@@ -291,8 +291,8 @@ func (s *appVersionStorage) importLegacyVersions(app appTypes.App) error {
 			continue
 		}
 		_, tag := image.SplitImageName(imageID)
-		version := imgData.Count
 		imgData.Count++
+		version := imgData.Count
 		vi := appTypes.AppVersionInfo{
 			Version:        version,
 			BuildImage:     imageID,

@@ -5,9 +5,11 @@
 package mongodb
 
 import (
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/kr/pretty"
 	"github.com/tsuru/tsuru/storage/storagetest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -106,7 +108,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 		v.UpdatedAt = time.Time{}
 		versions.Versions[k] = v
 	}
-	c.Assert(versions, check.DeepEquals, appTypes.AppVersions{
+	expected := appTypes.AppVersions{
 		AppName:               "myapp",
 		Count:                 19,
 		LastSuccessfulVersion: 17,
@@ -246,8 +248,8 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 					"web": {"python myapp2.py"},
 				},
 			},
-			18: {
-				Version:          18,
+			19: {
+				Version:          19,
 				BuildImage:       "myregistry.com/tsuru/app-myapp:mycustomtag",
 				DeployImage:      "",
 				CustomData:       map[string]interface{}{},
@@ -257,5 +259,111 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				DeploySuccessful: false,
 			},
 		},
-	})
+	}
+	c.Assert(versions, check.DeepEquals, expected, check.Commentf("Diff: %s", strings.Join(pretty.Diff(versions, expected), "\n")))
+}
+
+func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
+	// docker_app_image
+	appImagesData := bson.M{"_id": "myapp", "count": 2, "images": []string{
+		"myregistry.com/tsuru/app-myapp:v1",
+		"myregistry.com/tsuru/app-myapp:v2",
+	}}
+
+	// builder_app_image
+	builderImagesData := bson.M{"_id": "myapp", "images": []string{
+		"myregistry.com/tsuru/app-myapp:custom1",
+		"myregistry.com/tsuru/app-myapp:custom2",
+		"myregistry.com/tsuru/app-myapp:v1-builder",
+		"myregistry.com/tsuru/app-myapp:v2-builder",
+	}}
+
+	// docker_image_custom_data
+	imageData := []interface{}{
+		bson.M{
+			"_id":       "myregistry.com/tsuru/app-myapp:v1",
+			"processes": bson.M{"web": "python myapp.py"},
+		},
+		bson.M{
+			"_id":       "myregistry.com/tsuru/app-myapp:v2",
+			"processes": bson.M{"web": "python myapp2.py"},
+		},
+	}
+
+	storage := &appVersionStorage{}
+	coll, err := storage.legacyImagesCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	err = coll.Insert(appImagesData)
+	c.Assert(err, check.IsNil)
+
+	builderColl, err := storage.legacyBuilderImagesCollection()
+	c.Assert(err, check.IsNil)
+	defer builderColl.Close()
+	err = builderColl.Insert(builderImagesData)
+	c.Assert(err, check.IsNil)
+
+	dataColl, err := storage.legacyCustomDataCollection()
+	c.Assert(err, check.IsNil)
+	defer dataColl.Close()
+	err = dataColl.Insert(imageData...)
+	c.Assert(err, check.IsNil)
+
+	versions, err := storage.AppVersions(&appTypes.MockApp{Name: "myapp"})
+	c.Assert(err, check.IsNil)
+	for k, v := range versions.Versions {
+		c.Assert(v.CreatedAt.IsZero(), check.Equals, false)
+		c.Assert(v.UpdatedAt.IsZero(), check.Equals, false)
+		v.CreatedAt = time.Time{}
+		v.UpdatedAt = time.Time{}
+		versions.Versions[k] = v
+	}
+
+	expected := appTypes.AppVersions{
+		AppName:               "myapp",
+		Count:                 4,
+		LastSuccessfulVersion: 2,
+		Versions: map[int]appTypes.AppVersionInfo{
+			1: {
+				Version:          1,
+				BuildImage:       "myregistry.com/tsuru/app-myapp:v1-builder",
+				DeployImage:      "myregistry.com/tsuru/app-myapp:v1",
+				DeploySuccessful: true,
+				Processes: map[string][]string{
+					"web": {"python myapp.py"},
+				},
+				CustomData:   map[string]interface{}{},
+				ExposedPorts: []string{},
+			},
+			2: {
+				Version:          2,
+				BuildImage:       "myregistry.com/tsuru/app-myapp:v2-builder",
+				DeployImage:      "myregistry.com/tsuru/app-myapp:v2",
+				DeploySuccessful: true,
+				Processes: map[string][]string{
+					"web": {"python myapp2.py"},
+				},
+				CustomData:   map[string]interface{}{},
+				ExposedPorts: []string{},
+			},
+			3: {
+				Version:        3,
+				BuildImage:     "myregistry.com/tsuru/app-myapp:custom1",
+				CustomBuildTag: "custom1",
+				CustomData:     map[string]interface{}{},
+				Processes:      map[string][]string{},
+				ExposedPorts:   []string{},
+			},
+			4: {
+				Version:        4,
+				BuildImage:     "myregistry.com/tsuru/app-myapp:custom2",
+				CustomBuildTag: "custom2",
+				CustomData:     map[string]interface{}{},
+				Processes:      map[string][]string{},
+				ExposedPorts:   []string{},
+			},
+		},
+	}
+
+	c.Assert(versions, check.DeepEquals, expected, check.Commentf("Diff: %s", strings.Join(pretty.Diff(versions, expected), "\n")))
 }
