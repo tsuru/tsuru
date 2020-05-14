@@ -219,6 +219,8 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Origin:       origin,
 		Rollback:     true,
 	}
+	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
+	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	opts.GetKind()
 	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canRollback {
@@ -340,6 +342,8 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Origin:       origin,
 		Kind:         app.DeployRebuild,
 	}
+	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
+	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
 	if !canDeploy {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
