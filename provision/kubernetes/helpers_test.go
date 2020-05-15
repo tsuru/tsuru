@@ -460,6 +460,11 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 			Labels:    expectedLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: expectedLabels,
+				},
+			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/app-name":        "myapp",

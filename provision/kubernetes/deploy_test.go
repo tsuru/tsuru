@@ -98,11 +98,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/app-process-replicas": "1",
 		"tsuru.io/app-platform":         "",
 		"tsuru.io/app-pool":             "test-default",
-		"tsuru.io/app-version":          "1",
 		"tsuru.io/provisioner":          "kubernetes",
 		"tsuru.io/builder":              "",
 		"app":                           "myapp-p1",
-		"version":                       "v1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -111,6 +109,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		}
 		podLabels[k] = v
 	}
+	podLabels["tsuru.io/app-version"] = "1"
+	podLabels["version"] = "v1"
 	annotations := map[string]string{
 		"tsuru.io/router-type": "fake",
 		"tsuru.io/router-name": "fake",
@@ -1750,11 +1750,9 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		"tsuru.io/app-process-replicas":    "1",
 		"tsuru.io/app-platform":            "",
 		"tsuru.io/app-pool":                "test-default",
-		"tsuru.io/app-version":             "2",
 		"tsuru.io/provisioner":             "kubernetes",
 		"tsuru.io/builder":                 "",
 		"app":                              "myapp-p1",
-		"version":                          "v2",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -1763,6 +1761,8 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		}
 		podLabels[k] = v
 	}
+	podLabels["tsuru.io/app-version"] = "2"
+	podLabels["version"] = "v2"
 	annotations := map[string]string{
 		"tsuru.io/router-type": "fake",
 		"tsuru.io/router-name": "fake",
@@ -1952,8 +1952,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 
 	expectedDep := legacyDep.DeepCopy()
 	expectedDep.Labels["tsuru.io/restarts"] = "1"
-	expectedDep.Labels["tsuru.io/app-version"] = "1"
 	expectedDep.Labels["tsuru.io/is-routable"] = "true"
+	delete(expectedDep.Labels, "version")
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
@@ -2030,8 +2030,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	c.Assert(err, check.IsNil)
 
 	expectedDepBase := legacyDep.DeepCopy()
-	expectedDepBase.Labels["tsuru.io/app-version"] = "1"
 	expectedDepBase.Labels["tsuru.io/is-routable"] = "true"
+	delete(expectedDepBase.Labels, "version")
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
 	expectedDepBase.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
@@ -2045,9 +2045,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 
 	expectedDepV2 := legacyDep.DeepCopy()
 	expectedDepV2.Name = "myapp-p1-v2"
-	expectedDepV2.Labels["version"] = "v2"
-	expectedDepV2.Labels["tsuru.io/app-version"] = "2"
 	expectedDepV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
+	delete(expectedDepV2.Labels, "version")
 	delete(expectedDepV2.Labels, "tsuru.io/is-routable")
 	delete(expectedDepV2.Labels, "tsuru.io/is-isolated-run")
 	expectedDepV2.Spec.Selector.MatchLabels["tsuru.io/app-version"] = "2"

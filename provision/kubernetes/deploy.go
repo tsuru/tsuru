@@ -576,11 +576,11 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 		return nil, nil, nil, err
 	}
 	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
-	expandedLabels := labels.ToLabels()
-	expandedLabelsNoReplicas := labels.WithoutAppReplicas().ToLabels()
+	depLabels := labels.WithoutVersion().ToLabels()
+	podLabels := labels.WithoutAppReplicas().ToLabels()
 	baseName := deploymentNameForAppBase(a, process)
-	expandedLabels["app"] = baseName
-	expandedLabelsNoReplicas["app"] = baseName
+	depLabels["app"] = baseName
+	podLabels["app"] = baseName
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort
@@ -595,7 +595,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
 			Namespace:   ns,
-			Labels:      expandedLabels,
+			Labels:      depLabels,
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -613,7 +613,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      expandedLabelsNoReplicas,
+					Labels:      podLabels,
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
@@ -674,7 +674,7 @@ type serviceManager struct {
 var _ servicecommon.ServiceManager = &serviceManager{}
 
 func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTypes.AppVersion, preserveOldVersions bool) error {
-	deps, err := allDeploymentsForApp(m.client, a)
+	depGroups, err := deploymentsDataForApp(m.client, a)
 	if err != nil {
 		return err
 	}
@@ -689,16 +689,18 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
-	for _, dep := range deps {
-		labels := labelSetFromMeta(&dep.ObjectMeta)
-		toKeep := labels.AppReplicas() > 0 && (preserveOldVersions || labels.AppVersion() == deployedVersion.Version())
+	for _, depsData := range depGroups.versioned {
+		for _, depData := range depsData {
+			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion.Version())
 
-		if toKeep {
-			processInUse[labels.AppProcess()] = struct{}{}
-			versionInUse[processVersionKey{process: labels.AppProcess(), version: labels.AppVersion()}] = struct{}{}
-		} else {
-			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", dep.Name)
-			err = cleanupSingleDeployment(m.client, &dep)
+			if toKeep {
+				processInUse[depData.process] = struct{}{}
+				versionInUse[processVersionKey{process: depData.process, version: depData.version}] = struct{}{}
+				continue
+			}
+
+			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", depData.dep)
+			err = cleanupSingleDeployment(m.client, depData.dep)
 			if err != nil {
 				multiErrors.Add(err)
 			}
@@ -1030,7 +1032,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			oldDep.ResourceVersion = ""
 			fmt.Fprintf(m.writer, "\n**** UPDATING BACK AFTER FAILURE ****\n")
 			_, rollbackErr = m.client.AppsV1().Deployments(ns).Update(oldDep)
-		} else if oldDep == nil && newDep != nil {
+		} else if oldDep == nil {
 			// We have just created the deployment, so we need to remove it
 			fmt.Fprintf(m.writer, "\n**** DELETING CREATED DEPLOYMENT AFTER FAILURE ****\n")
 			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})

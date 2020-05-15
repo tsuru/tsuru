@@ -520,29 +520,21 @@ func cleanupReplicas(client *ClusterClient, dep *appsv1.Deployment) error {
 }
 
 func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVersion, error) {
-	deps, err := allDeploymentsForApp(client, a)
+	depData, err := deploymentsDataForApp(client, a)
 	if err != nil {
 		return nil, err
 	}
-	for _, dep := range deps {
-		labels := labelSetFromMeta(&dep.ObjectMeta)
 
-		if !(labels.IsBase() || labels.AppVersion() == 0) {
-			continue
-		}
-
-		if len(dep.Spec.Template.Spec.Containers) == 0 {
-			continue
-		}
-
-		img := dep.Spec.Template.Spec.Containers[0].Image
-		version, err := servicemanager.AppVersion.VersionByImageOrVersion(a, img)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		return version, nil
+	if depData.base.dep == nil || len(depData.base.dep.Spec.Template.Spec.Containers) == 0 {
+		return nil, nil
 	}
-	return nil, nil
+
+	img := depData.base.dep.Spec.Template.Spec.Containers[0].Image
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(a, img)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return version, nil
 }
 
 func allDeploymentsForApp(client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
@@ -679,6 +671,7 @@ type deploymentInfo struct {
 	isLegacy   bool
 	isBase     bool
 	isRoutable bool
+	replicas   int
 }
 
 func deploymentsDataForProcess(client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
@@ -703,7 +696,8 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 	}
 	result.count = len(deps)
 	for i, dep := range deps {
-		labels := labelSetFromMeta(&dep.ObjectMeta)
+		depLabels := labelSetFromMeta(&dep.ObjectMeta)
+		labels := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
 		version := labels.AppVersion()
 		isLegacy := false
 		isBase := labels.IsBase()
@@ -727,6 +721,8 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 			isLegacy:   isLegacy,
 			isBase:     isBase,
 			isRoutable: isRoutable,
+			replicas:   depLabels.AppReplicas(),
+			process:    labels.AppProcess(),
 		}
 		result.versioned[version] = append(result.versioned[version], di)
 		if isBase {
