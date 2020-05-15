@@ -156,36 +156,63 @@ func removeOldImages() error {
 	return multi.ToError()
 }
 
-func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsToRemove, versionsToClean []appTypes.AppVersionInfo) {
+func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsToRemove, versionsToMaintain []appTypes.AppVersionInfo) {
 	var regularVersions, customTagVersions []appTypes.AppVersionInfo
 	for _, v := range versions.Versions {
-		if v.CustomBuildTag != "" {
+		if !v.DeploySuccessful {
+			versionsToRemove = append(versionsToRemove, v)
+		} else if v.CustomBuildTag != "" {
 			customTagVersions = append(customTagVersions, v)
 		} else {
 			regularVersions = append(regularVersions, v)
 		}
 	}
 
-	sort.Slice(regularVersions, func(i, j int) bool {
-		return regularVersions[i].Version > regularVersions[j].Version
-	})
+	sort.Sort(priorizedAppVersions(versionsToRemove))
+	sort.Sort(priorizedAppVersions(regularVersions))
+	sort.Sort(priorizedAppVersions(customTagVersions))
 
-	sort.Slice(customTagVersions, func(i, j int) bool {
-		return customTagVersions[i].Version > customTagVersions[j].Version
-	})
-
+	runningRegularVersions := 0
 	for i, version := range regularVersions {
 		// never consider lastSuccessfulversion to garbage collection
 		if i == 0 || version.Version == versions.LastSuccessfulVersion {
+			runningRegularVersions++
 			continue
 		}
 		if i >= historySize {
 			versionsToRemove = append(versionsToRemove, version)
 		} else {
-			versionsToClean = append(versionsToClean, version)
+			versionsToMaintain = append(versionsToMaintain, version)
 		}
-
 	}
-	versionsToClean = append(versionsToClean, customTagVersions...)
-	return
+
+	versionsToMaintain = append(versionsToMaintain, customTagVersions...)
+
+	freeSlotsToMaintain := historySize - runningRegularVersions - len(versionsToMaintain)
+	if freeSlotsToMaintain > 0 {
+		split := min(freeSlotsToMaintain, len(versionsToRemove))
+		versionsToMaintain = append(versionsToMaintain, versionsToRemove[0:split]...)
+		versionsToRemove = versionsToRemove[split:]
+	}
+
+	return versionsToRemove, versionsToMaintain
+}
+
+type priorizedAppVersions []appTypes.AppVersionInfo
+
+func (p priorizedAppVersions) Len() int      { return len(p) }
+func (p priorizedAppVersions) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+func (p priorizedAppVersions) Less(i, j int) bool {
+	if p[i].UpdatedAt.Equal(p[j].UpdatedAt) {
+		return p[i].Version > p[j].Version
+	}
+
+	return p[i].UpdatedAt.After(p[j].UpdatedAt)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
