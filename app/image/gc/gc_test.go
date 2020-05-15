@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -109,6 +110,8 @@ func insertTestVersions(c *check.C, a provision.App) {
 	c.Assert(err, check.IsNil)
 	err = version.CommitBuildImage()
 	c.Assert(err, check.IsNil)
+	err = version.CommitSuccessful()
+	c.Assert(err, check.IsNil)
 	desiredNumberOfVersions := 12
 	for i := 1; i <= desiredNumberOfVersions; i++ {
 		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
@@ -119,10 +122,8 @@ func insertTestVersions(c *check.C, a provision.App) {
 		c.Assert(err, check.IsNil)
 		err = version.CommitBaseImage()
 		c.Assert(err, check.IsNil)
-
-		if i == desiredNumberOfVersions {
-			version.CommitSuccessful()
-		}
+		err = version.CommitSuccessful()
+		c.Assert(err, check.IsNil)
 	}
 }
 
@@ -384,30 +385,124 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 }
 
 func (s *S) TestGCSelectionOfApp(c *check.C) {
-	appVersions := appTypes.AppVersions{
-		LastSuccessfulVersion: 10,
-		Versions:              map[int]appTypes.AppVersionInfo{},
+	now := time.Now()
+	testCases := []struct {
+		explanation                string
+		historySize                int
+		appVersions                func() appTypes.AppVersions
+		expectedVersionsToRemove   []int
+		expectedVersionsToMaintain []int
+	}{
+		{
+			explanation: "should use ID to sort when is same updatedAt",
+			historySize: 5,
+			appVersions: func() appTypes.AppVersions {
+				appVersions := appTypes.AppVersions{
+					LastSuccessfulVersion: 10,
+					Versions:              map[int]appTypes.AppVersionInfo{},
+				}
+
+				for i := 10; i > 0; i-- {
+					appVersions.Versions[i] = appTypes.AppVersionInfo{
+						Version:          i,
+						DeploySuccessful: true,
+						UpdatedAt:        now,
+					}
+				}
+
+				return appVersions
+			},
+			expectedVersionsToRemove:   []int{5, 4, 3, 2, 1},
+			expectedVersionsToMaintain: []int{9, 8, 7, 6},
+		},
+		{
+			explanation: "should use updatedAt to short the versions",
+			historySize: 5,
+			appVersions: func() appTypes.AppVersions {
+				appVersions := appTypes.AppVersions{
+					LastSuccessfulVersion: 10,
+					Versions:              map[int]appTypes.AppVersionInfo{},
+				}
+
+				for i := 10; i > 0; i-- {
+					appVersions.Versions[i] = appTypes.AppVersionInfo{
+						Version:          i,
+						DeploySuccessful: true,
+						UpdatedAt:        now.Add(time.Minute * time.Duration(i)),
+					}
+				}
+
+				return appVersions
+			},
+			expectedVersionsToRemove:   []int{5, 4, 3, 2, 1},
+			expectedVersionsToMaintain: []int{9, 8, 7, 6},
+		},
+
+		{
+			explanation: "should always priorize unsucessful deployed versions to be removed",
+			historySize: 10,
+			appVersions: func() appTypes.AppVersions {
+				appVersions := appTypes.AppVersions{
+					LastSuccessfulVersion: 30,
+					Versions:              map[int]appTypes.AppVersionInfo{},
+				}
+
+				for i := 30; i > 0; i-- {
+					appVersions.Versions[i] = appTypes.AppVersionInfo{
+						Version:          i,
+						DeploySuccessful: (i % 2) == 0, // create a sampling with 50% failed deploys
+						UpdatedAt:        now.Add(time.Minute * time.Duration(i)),
+					}
+				}
+
+				return appVersions
+			},
+			// remove first all unsuccessful versions
+			expectedVersionsToRemove: []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 10, 8, 6, 4, 2},
+			// clean all successful versions
+			expectedVersionsToMaintain: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
+		},
+
+		{
+			explanation: "not remove unsucessful deployed versions when reach historySize",
+			historySize: 10,
+			appVersions: func() appTypes.AppVersions {
+				appVersions := appTypes.AppVersions{
+					LastSuccessfulVersion: 8,
+					Versions:              map[int]appTypes.AppVersionInfo{},
+				}
+
+				for i := 8; i > 0; i-- {
+					appVersions.Versions[i] = appTypes.AppVersionInfo{
+						Version:          i,
+						DeploySuccessful: (i % 2) == 0, // create a sampling with 50% failed deploys
+						UpdatedAt:        now.Add(time.Minute * time.Duration(i)),
+					}
+				}
+
+				return appVersions
+			},
+			expectedVersionsToRemove: []int{},
+			// maintain unsuccessfull version for a time
+			expectedVersionsToMaintain: []int{6, 4, 2, 7, 5, 3, 1},
+		},
 	}
 
-	for i := 10; i > 0; i-- {
-		appVersions.Versions[i] = appTypes.AppVersionInfo{Version: i}
+	for _, testCase := range testCases {
+		c.Log("Running: " + testCase.explanation)
+		versionsToRemove, versionsToMaintain := gcForAppVersions(testCase.appVersions(), testCase.historySize)
+		versionsToMaintainIDs := []int{}
+		versionsToRemoveIDs := []int{}
+
+		for _, version := range versionsToMaintain {
+			versionsToMaintainIDs = append(versionsToMaintainIDs, version.Version)
+		}
+		for _, version := range versionsToRemove {
+			versionsToRemoveIDs = append(versionsToRemoveIDs, version.Version)
+		}
+
+		c.Check(versionsToRemoveIDs, check.DeepEquals, testCase.expectedVersionsToRemove)
+		c.Check(versionsToMaintainIDs, check.DeepEquals, testCase.expectedVersionsToMaintain)
+		c.Log("Finished: " + testCase.explanation)
 	}
-	versionsToRemove, versionsToClean := gcForAppVersions(appVersions, 5)
-
-	c.Check(versionsToRemove, check.HasLen, 5)
-	c.Check(versionsToRemove, check.DeepEquals, []appTypes.AppVersionInfo{
-		{Version: 5},
-		{Version: 4},
-		{Version: 3},
-		{Version: 2},
-		{Version: 1},
-	})
-
-	c.Check(versionsToClean, check.HasLen, 4)
-	c.Check(versionsToClean, check.DeepEquals, []appTypes.AppVersionInfo{
-		{Version: 9},
-		{Version: 8},
-		{Version: 7},
-		{Version: 6},
-	})
 }
