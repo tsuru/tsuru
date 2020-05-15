@@ -109,7 +109,8 @@ func insertTestVersions(c *check.C, a provision.App) {
 	c.Assert(err, check.IsNil)
 	err = version.CommitBuildImage()
 	c.Assert(err, check.IsNil)
-	for i := 0; i < 12; i++ {
+	desiredNumberOfVersions := 12
+	for i := 1; i <= desiredNumberOfVersions; i++ {
 		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 			App: a,
 		})
@@ -118,6 +119,10 @@ func insertTestVersions(c *check.C, a provision.App) {
 		c.Assert(err, check.IsNil)
 		err = version.CommitBaseImage()
 		c.Assert(err, check.IsNil)
+
+		if i == desiredNumberOfVersions {
+			version.CommitSuccessful()
+		}
 	}
 }
 
@@ -246,6 +251,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	}
 	sort.Strings(appImgs)
 	sort.Strings(builderImgs)
+	sort.Strings(nodeDeleteCalls)
 	c.Check(appImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:v10",
 		u.Host + "/tsuru/app-myapp:v11",
@@ -272,29 +278,29 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v9-builder",
 	})
 	c.Check(nodeDeleteCalls, check.DeepEquals, []string{
-		"/images/" + u.Host + "/tsuru/app-myapp:v12",
-		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
 		"/images/" + u.Host + "/tsuru/app-myapp:v10",
 		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v12",
+		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
 		"/images/" + u.Host + "/tsuru/app-myapp:v2",
 		"/images/" + u.Host + "/tsuru/app-myapp:v2-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
 	})
 }
 
@@ -374,5 +380,34 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v7-builder",
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
+	})
+}
+
+func (s *S) TestGCSelectionOfApp(c *check.C) {
+	appVersions := appTypes.AppVersions{
+		LastSuccessfulVersion: 10,
+		Versions:              map[int]appTypes.AppVersionInfo{},
+	}
+
+	for i := 10; i > 0; i-- {
+		appVersions.Versions[i] = appTypes.AppVersionInfo{Version: i}
+	}
+	versionsToRemove, versionsToClean := gcForAppVersions(appVersions, 5)
+
+	c.Check(versionsToRemove, check.HasLen, 5)
+	c.Check(versionsToRemove, check.DeepEquals, []appTypes.AppVersionInfo{
+		{Version: 5},
+		{Version: 4},
+		{Version: 3},
+		{Version: 2},
+		{Version: 1},
+	})
+
+	c.Check(versionsToClean, check.HasLen, 4)
+	c.Check(versionsToClean, check.DeepEquals, []appTypes.AppVersionInfo{
+		{Version: 9},
+		{Version: 8},
+		{Version: 7},
+		{Version: 6},
 	})
 }

@@ -99,6 +99,7 @@ func cleanImageForApp(a *app.App, imgName string, removeFromRegistry bool) bool 
 	defer func() {
 		log.Debugf("[image gc] image %q processed, removed from registry: %v, removed from database: %v", imgName, removeFromRegistry, removeFromRegistry && shouldRemove)
 	}()
+	// after deprecation of dockercluster we can remove the call of CleanImage
 	err := a.CleanImage(imgName)
 	if err != nil {
 		shouldRemove = false
@@ -144,34 +145,47 @@ func removeOldImages() error {
 			}
 			continue
 		}
-
-		var regularVersions, customTagVersions []appTypes.AppVersionInfo
-		for _, v := range versions.Versions {
-			if v.CustomBuildTag != "" {
-				customTagVersions = append(customTagVersions, v)
-			} else {
-				regularVersions = append(regularVersions, v)
-			}
+		versionsToRemove, versionsToClean := gcForAppVersions(versions, historySize)
+		for _, version := range versionsToRemove {
+			cleanImageForAppVersion(a, version, true)
 		}
-
-		sort.Slice(regularVersions, func(i, j int) bool {
-			return regularVersions[i].UpdatedAt.After(regularVersions[j].UpdatedAt)
-		})
-
-		sort.Slice(customTagVersions, func(i, j int) bool {
-			return customTagVersions[i].UpdatedAt.After(customTagVersions[j].UpdatedAt)
-		})
-
-		for i, version := range regularVersions {
-			if i == 0 {
-				continue
-			}
-			cleanImageForAppVersion(a, version, i >= historySize)
-		}
-
-		for _, version := range customTagVersions {
+		for _, version := range versionsToClean {
 			cleanImageForAppVersion(a, version, false)
 		}
 	}
 	return multi.ToError()
+}
+
+func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsToRemove, versionsToClean []appTypes.AppVersionInfo) {
+	var regularVersions, customTagVersions []appTypes.AppVersionInfo
+	for _, v := range versions.Versions {
+		if v.CustomBuildTag != "" {
+			customTagVersions = append(customTagVersions, v)
+		} else {
+			regularVersions = append(regularVersions, v)
+		}
+	}
+
+	sort.Slice(regularVersions, func(i, j int) bool {
+		return regularVersions[i].Version > regularVersions[j].Version
+	})
+
+	sort.Slice(customTagVersions, func(i, j int) bool {
+		return customTagVersions[i].Version > customTagVersions[j].Version
+	})
+
+	for i, version := range regularVersions {
+		// never consider lastSuccessfulversion to garbage collection
+		if i == 0 || version.Version == versions.LastSuccessfulVersion {
+			continue
+		}
+		if i >= historySize {
+			versionsToRemove = append(versionsToRemove, version)
+		} else {
+			versionsToClean = append(versionsToClean, version)
+		}
+
+	}
+	versionsToClean = append(versionsToClean, customTagVersions...)
+	return
 }
