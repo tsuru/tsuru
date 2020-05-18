@@ -20,6 +20,8 @@ type appVersionImpl struct {
 	versionInfo *appTypes.AppVersionInfo
 }
 
+var _ appTypes.AppVersion = &appVersionImpl{}
+
 func (v *appVersionImpl) BuildImageName() string {
 	return image.AppBuildImageName(v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())
 }
@@ -92,6 +94,15 @@ func (v *appVersionImpl) CommitSuccessful() error {
 	}
 	v.versionInfo.DeploySuccessful = true
 	return v.storage.UpdateVersionSuccess(v.app.GetName(), v.versionInfo)
+}
+
+func (v *appVersionImpl) MarkToRemotion() error {
+	err := v.refresh()
+	if err != nil {
+		return err
+	}
+	v.versionInfo.MarkedToRemotion = true
+	return v.storage.UpdateVersion(v.app.GetName(), v.versionInfo)
 }
 
 func (v *appVersionImpl) AddData(args appTypes.AddVersionDataArgs) error {

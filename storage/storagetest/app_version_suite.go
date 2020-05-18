@@ -29,6 +29,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(versions.Versions[vi1.Version].Disabled, check.Equals, true)
 	c.Assert(versions.Versions[vi2.Version].Disabled, check.Equals, false)
+	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C) {
@@ -99,14 +100,11 @@ func (s *AppVersionSuite) TestAppVersionStorage_AppVersions(c *check.C) {
 		v.UpdatedAt = time.Time{}
 		versions.Versions[k] = v
 	}
-	c.Assert(versions, check.DeepEquals, appTypes.AppVersions{
-		AppName:               "myapp",
-		Count:                 2,
-		LastSuccessfulVersion: 0,
-		Versions: map[int]appTypes.AppVersionInfo{
-			1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		},
+	c.Assert(versions.AppName, check.Equals, "myapp")
+	c.Assert(versions.Count, check.Equals, 2)
+	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }
 
@@ -148,23 +146,19 @@ func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
 			allVersions[i].Versions[k] = v
 		}
 	}
-	c.Assert(allVersions, check.DeepEquals, []appTypes.AppVersions{
-		{
-			AppName:               "myapp1",
-			Count:                 1,
-			LastSuccessfulVersion: 0,
-			Versions: map[int]appTypes.AppVersionInfo{
-				1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			},
-		},
-		{
-			AppName:               "myapp2",
-			Count:                 1,
-			LastSuccessfulVersion: 0,
-			Versions: map[int]appTypes.AppVersionInfo{
-				1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			},
-		},
+	c.Assert(allVersions, check.HasLen, 2)
+	c.Assert(allVersions[0].AppName, check.Equals, "myapp1")
+	c.Assert(allVersions[0].Count, check.Equals, 1)
+	c.Assert(allVersions[0].UpdatedAt.Unix() <= time.Now().UTC().Unix(), check.Equals, true)
+	c.Assert(allVersions[0].Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+	})
+
+	c.Assert(allVersions[1].AppName, check.Equals, "myapp2")
+	c.Assert(allVersions[1].Count, check.Equals, 1)
+	c.Assert(allVersions[1].UpdatedAt.Unix() <= time.Now().UTC().Unix(), check.Equals, true)
+	c.Assert(allVersions[1].Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }
 
@@ -190,12 +184,10 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 		v.UpdatedAt = time.Time{}
 		versions.Versions[k] = v
 	}
-	c.Assert(versions, check.DeepEquals, appTypes.AppVersions{
-		AppName:               "myapp",
-		Count:                 2,
-		LastSuccessfulVersion: 0,
-		Versions: map[int]appTypes.AppVersionInfo{
-			2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		},
+	c.Assert(versions.AppName, check.DeepEquals, "myapp")
+	c.Assert(versions.Count, check.DeepEquals, 2)
+	c.Assert(versions.LastSuccessfulVersion, check.DeepEquals, 0)
+	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }

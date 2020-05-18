@@ -150,6 +150,20 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 	return version
 }
 
+func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
+	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		App: app,
+	})
+	c.Assert(err, check.IsNil)
+	err = version.CommitBuildImage()
+	c.Assert(err, check.IsNil)
+	err = version.CommitBaseImage()
+	c.Assert(err, check.IsNil)
+	err = version.MarkToRemotion()
+	c.Assert(err, check.IsNil)
+	return version
+}
+
 func (s *S) TestListFilteredDeploys(c *check.C) {
 	a := App{
 		Name:      "g1",
@@ -937,6 +951,37 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Version, check.Equals, "v20")
 	c.Assert(imgID, check.Equals, "")
+}
+
+func (s *S) TestRollbackWithVersionMarkedToRemoved(c *check.C) {
+	a := App{
+		Name:      "otherapp",
+		Platform:  "zend",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Router:    "fake",
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	newUnsuccessfulAppVersion(c, &a)
+	writer := &bytes.Buffer{}
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = Deploy(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Image:        "v1",
+		Rollback:     true,
+		Event:        evt,
+	})
+	c.Assert(err, check.NotNil)
+	err = errors.Cause(err)
+	c.Assert(err, check.Equals, appTypes.ErrVersionMarkedToRemotion)
 }
 
 func (s *S) TestDeployKind(c *check.C) {
