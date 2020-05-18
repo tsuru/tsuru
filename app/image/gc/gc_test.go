@@ -462,30 +462,6 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 			// clean all successful versions
 			expectedVersionsToMaintain: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
 		},
-
-		{
-			explanation: "not remove unsucessful deployed versions when reach historySize",
-			historySize: 10,
-			appVersions: func() appTypes.AppVersions {
-				appVersions := appTypes.AppVersions{
-					LastSuccessfulVersion: 8,
-					Versions:              map[int]appTypes.AppVersionInfo{},
-				}
-
-				for i := 8; i > 0; i-- {
-					appVersions.Versions[i] = appTypes.AppVersionInfo{
-						Version:          i,
-						DeploySuccessful: (i % 2) == 0, // create a sampling with 50% failed deploys
-						UpdatedAt:        now.Add(time.Minute * time.Duration(i)),
-					}
-				}
-
-				return appVersions
-			},
-			expectedVersionsToRemove: []int{},
-			// maintain unsuccessfull version for a time
-			expectedVersionsToMaintain: []int{6, 4, 2, 7, 5, 3, 1},
-		},
 	}
 
 	for _, testCase := range testCases {

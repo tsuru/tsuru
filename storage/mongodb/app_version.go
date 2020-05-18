@@ -111,17 +111,23 @@ func (s *appVersionStorage) legacyBuildImages(appName string) ([]string, error) 
 }
 
 func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersionInfo) error {
-	vi.UpdatedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	vi.UpdatedAt = now
 	return s.baseUpdate(appName, bson.M{
-		"$set": bson.M{fmt.Sprintf("versions.%d", vi.Version): vi},
+		"$set": bson.M{
+			fmt.Sprintf("versions.%d", vi.Version): vi,
+			"updatedat":                            now,
+		},
 	})
 }
 
 func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.AppVersionInfo) error {
-	vi.UpdatedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	vi.UpdatedAt = now
 	return s.baseUpdate(appName, bson.M{
 		"$set": bson.M{
 			"lastsuccessfulversion":                vi.Version,
+			"updatedat":                            now,
 			fmt.Sprintf("versions.%d", vi.Version): vi,
 		},
 	})
@@ -164,7 +170,8 @@ func (s *appVersionStorage) NewAppVersion(args appTypes.NewVersionArgs) (*appTyp
 	defer coll.Close()
 	_, err = coll.Upsert(bson.M{"appname": args.App.GetName()}, bson.M{
 		"$set": bson.M{
-			"count": appVersionInfo.Version,
+			"count":     appVersionInfo.Version,
+			"updatedat": time.Now().UTC(),
 			fmt.Sprintf("versions.%d", appVersionInfo.Version): appVersionInfo,
 		},
 	})
@@ -224,6 +231,7 @@ func (s *appVersionStorage) AppVersions(app appTypes.App) (appTypes.AppVersions,
 func (s *appVersionStorage) DeleteVersion(appName string, version int) error {
 	err := s.baseUpdate(appName, bson.M{
 		"$unset": bson.M{fmt.Sprintf("versions.%d", version): ""},
+		"$set":   bson.M{"updatedat": time.Now().UTC()},
 	})
 	if err == mgo.ErrNotFound {
 		return appTypes.ErrNoVersionsAvailable

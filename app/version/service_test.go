@@ -112,14 +112,11 @@ func (s *S) TestAppVersionService_AppVersions(c *check.C) {
 		v.UpdatedAt = time.Time{}
 		versions.Versions[k] = v
 	}
-	c.Assert(versions, check.DeepEquals, appTypes.AppVersions{
-		AppName:               "myapp",
-		Count:                 2,
-		LastSuccessfulVersion: 0,
-		Versions: map[int]appTypes.AppVersionInfo{
-			1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		},
+	c.Assert(versions.AppName, check.DeepEquals, "myapp")
+	c.Assert(versions.Count, check.DeepEquals, 2)
+	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }
 
@@ -165,23 +162,18 @@ func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 			allVersions[i].Versions[k] = v
 		}
 	}
-	c.Assert(allVersions, check.DeepEquals, []appTypes.AppVersions{
-		{
-			AppName:               "myapp1",
-			Count:                 1,
-			LastSuccessfulVersion: 0,
-			Versions: map[int]appTypes.AppVersionInfo{
-				1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			},
-		},
-		{
-			AppName:               "myapp2",
-			Count:                 1,
-			LastSuccessfulVersion: 0,
-			Versions: map[int]appTypes.AppVersionInfo{
-				1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-			},
-		},
+	c.Assert(allVersions, check.HasLen, 2)
+
+	c.Assert(allVersions[0].AppName, check.Equals, "myapp1")
+	c.Assert(allVersions[0].Count, check.Equals, 1)
+	c.Assert(allVersions[0].Versions[1], check.DeepEquals, appTypes.AppVersionInfo{
+		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{},
+	})
+
+	c.Assert(allVersions[1].AppName, check.Equals, "myapp2")
+	c.Assert(allVersions[1].Count, check.Equals, 1)
+	c.Assert(allVersions[1].Versions[1], check.DeepEquals, appTypes.AppVersionInfo{
+		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{},
 	})
 }
 
@@ -209,13 +201,10 @@ func (s *S) TestAppVersionService_DeleteVersion(c *check.C) {
 		v.UpdatedAt = time.Time{}
 		versions.Versions[k] = v
 	}
-	c.Assert(versions, check.DeepEquals, appTypes.AppVersions{
-		AppName:               "myapp",
-		Count:                 2,
-		LastSuccessfulVersion: 0,
-		Versions: map[int]appTypes.AppVersionInfo{
-			2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		},
+	c.Assert(versions.Count, check.Equals, 2)
+	c.Assert(versions.LastSuccessfulVersion, check.Equals, 0)
+	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }
 

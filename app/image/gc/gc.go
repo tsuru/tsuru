@@ -187,14 +187,6 @@ func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsT
 	}
 
 	versionsToMaintain = append(versionsToMaintain, customTagVersions...)
-
-	freeSlotsToMaintain := historySize - runningRegularVersions - len(versionsToMaintain)
-	if freeSlotsToMaintain > 0 {
-		split := min(freeSlotsToMaintain, len(versionsToRemove))
-		versionsToMaintain = append(versionsToMaintain, versionsToRemove[0:split]...)
-		versionsToRemove = versionsToRemove[split:]
-	}
-
 	return versionsToRemove, versionsToMaintain
 }
 
