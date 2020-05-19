@@ -6,6 +6,7 @@ package gc
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -214,6 +215,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("***", r.Method, r.URL.Path)
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -233,16 +235,22 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	gc.start()
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
+	sort.Strings(regDeleteCalls)
 	c.Check(regDeleteCalls, check.DeepEquals, []string{
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
-		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
+		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
 	})
 	versions, err := servicemanager.AppVersion.AppVersions(a)
 	c.Assert(err, check.IsNil)
 	var appImgs, builderImgs []string
+	var markedVersionsToRemoval []int
 	for _, version := range versions.Versions {
+		if version.MarkedToRemoval {
+			markedVersionsToRemoval = append(markedVersionsToRemoval, version.Version)
+			continue
+		}
 		if version.DeployImage != "" {
 			appImgs = append(appImgs, version.DeployImage)
 		}
@@ -250,9 +258,127 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 			builderImgs = append(builderImgs, version.BuildImage)
 		}
 	}
+	sort.Ints(markedVersionsToRemoval)
 	sort.Strings(appImgs)
 	sort.Strings(builderImgs)
 	sort.Strings(nodeDeleteCalls)
+	c.Check(markedVersionsToRemoval, check.DeepEquals, []int(nil))
+	c.Check(appImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:v10",
+		u.Host + "/tsuru/app-myapp:v11",
+		u.Host + "/tsuru/app-myapp:v12",
+		u.Host + "/tsuru/app-myapp:v13",
+		u.Host + "/tsuru/app-myapp:v4",
+		u.Host + "/tsuru/app-myapp:v5",
+		u.Host + "/tsuru/app-myapp:v6",
+		u.Host + "/tsuru/app-myapp:v7",
+		u.Host + "/tsuru/app-myapp:v8",
+		u.Host + "/tsuru/app-myapp:v9",
+	})
+	c.Check(builderImgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:my-custom-tag",
+		u.Host + "/tsuru/app-myapp:v10-builder",
+		u.Host + "/tsuru/app-myapp:v11-builder",
+		u.Host + "/tsuru/app-myapp:v12-builder",
+		u.Host + "/tsuru/app-myapp:v13-builder",
+		u.Host + "/tsuru/app-myapp:v4-builder",
+		u.Host + "/tsuru/app-myapp:v5-builder",
+		u.Host + "/tsuru/app-myapp:v6-builder",
+		u.Host + "/tsuru/app-myapp:v7-builder",
+		u.Host + "/tsuru/app-myapp:v8-builder",
+		u.Host + "/tsuru/app-myapp:v9-builder",
+	})
+	c.Check(nodeDeleteCalls, check.DeepEquals, []string{
+		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
+		"/images/" + u.Host + "/tsuru/app-myapp:v10",
+		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11",
+		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v12",
+		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v2",
+		"/images/" + u.Host + "/tsuru/app-myapp:v2-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3",
+		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4",
+		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5",
+		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6",
+		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7",
+		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8",
+		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9",
+		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
+	})
+}
+
+func (s *S) TestDryRunGCStartWithApp(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var nodeDeleteCalls []string
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" {
+			nodeDeleteCalls = append(nodeDeleteCalls, r.URL.Path)
+		}
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	var regDeleteCalls []string
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("***", r.Method, r.URL.Path)
+		if r.Method == "HEAD" {
+			w.Header().Set("Docker-Content-Digest", r.URL.Path)
+			return
+		}
+		if r.Method == "DELETE" {
+			regDeleteCalls = append(regDeleteCalls, r.URL.Path)
+		}
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a)
+
+	gc := &imgGC{once: &sync.Once{}, dryRun: true}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+	// must never delete an image from registry when use dryRun
+	c.Check(regDeleteCalls, check.DeepEquals, []string(nil))
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	c.Assert(err, check.IsNil)
+	var appImgs, builderImgs []string
+	var markedVersionsToRemoval []int
+	for _, version := range versions.Versions {
+		if version.MarkedToRemoval {
+			markedVersionsToRemoval = append(markedVersionsToRemoval, version.Version)
+			continue
+		}
+		if version.DeployImage != "" {
+			appImgs = append(appImgs, version.DeployImage)
+		}
+		if version.BuildImage != "" {
+			builderImgs = append(builderImgs, version.BuildImage)
+		}
+	}
+	sort.Ints(markedVersionsToRemoval)
+	sort.Strings(appImgs)
+	sort.Strings(builderImgs)
+	sort.Strings(nodeDeleteCalls)
+	c.Check(markedVersionsToRemoval, check.DeepEquals, []int{2, 3})
 	c.Check(appImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:v10",
 		u.Host + "/tsuru/app-myapp:v11",
@@ -347,7 +473,12 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	versions, err := servicemanager.AppVersion.AppVersions(a)
 	c.Assert(err, check.IsNil)
 	var appImgs, builderImgs []string
+	var markedVersionsToRemoval []int
 	for _, version := range versions.Versions {
+		if version.MarkedToRemoval {
+			markedVersionsToRemoval = append(markedVersionsToRemoval, version.Version)
+			continue
+		}
 		if version.DeployImage != "" {
 			appImgs = append(appImgs, version.DeployImage)
 		}
@@ -355,8 +486,10 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 			builderImgs = append(builderImgs, version.BuildImage)
 		}
 	}
+	sort.Ints(markedVersionsToRemoval)
 	sort.Strings(appImgs)
 	sort.Strings(builderImgs)
+	c.Check(markedVersionsToRemoval, check.DeepEquals, []int(nil))
 	c.Check(appImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:v10",
 		u.Host + "/tsuru/app-myapp:v11",
@@ -384,7 +517,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	})
 }
 
-func (s *S) TestGCSelectionOfApp(c *check.C) {
+func (s *S) TestSelectAppVersions(c *check.C) {
 	now := time.Now()
 	testCases := []struct {
 		explanation                            string
@@ -491,19 +624,18 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 
 	for _, testCase := range testCases {
 		c.Log("Running: " + testCase.explanation)
-		versionsToRemove, versionsToMaintain := gcForAppVersions(testCase.appVersions(), testCase.deployedVersions, testCase.historySize)
-		versionsToMaintainIDs := []int{}
-		versionsToRemoveIDs := []int{}
+		versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(testCase.appVersions(), testCase.deployedVersions, testCase.historySize)
 
-		for _, version := range versionsToMaintain {
-			versionsToMaintainIDs = append(versionsToMaintainIDs, version.Version)
-		}
-		for _, version := range versionsToRemove {
-			versionsToRemoveIDs = append(versionsToRemoveIDs, version.Version)
-		}
-
-		c.Check(versionsToRemoveIDs, check.DeepEquals, testCase.expectedVersionsToRemove)
-		c.Check(versionsToMaintainIDs, check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
+		c.Check(versionIDs(versionsToRemove), check.DeepEquals, testCase.expectedVersionsToRemove)
+		c.Check(versionIDs(versionsToPruneFromProvisioner), check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
 		c.Log("Finished: " + testCase.explanation)
 	}
+}
+
+func versionIDs(versions []appTypes.AppVersionInfo) []int {
+	ids := []int{}
+	for _, version := range versions {
+		ids = append(ids, version.Version)
+	}
+	return ids
 }

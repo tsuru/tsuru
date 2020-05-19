@@ -16,6 +16,8 @@ type appVersionService struct {
 	storage appTypes.AppVersionStorage
 }
 
+var _ appTypes.AppVersionService = &appVersionService{}
+
 func AppVersionService() (appTypes.AppVersionService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
@@ -112,6 +114,10 @@ func (s *appVersionService) AllAppVersions() ([]appTypes.AppVersions, error) {
 
 func (s *appVersionService) DeleteVersion(appName string, version int) error {
 	return s.storage.DeleteVersion(appName, version)
+}
+
+func (s *appVersionService) MarkVersionToRemoval(appName string, version int) error {
+	return s.storage.MarkVersionToRemoval(appName, version)
 }
 
 func (s *appVersionService) AppVersionFromInfo(app appTypes.App, info appTypes.AppVersionInfo) appTypes.AppVersion {

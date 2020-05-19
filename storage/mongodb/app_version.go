@@ -134,12 +134,16 @@ func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.Ap
 }
 
 func (s *appVersionStorage) baseUpdate(appName string, updateQuery bson.M) error {
+	return s.baseUpdateWhere(bson.M{"appname": appName}, updateQuery)
+}
+
+func (s *appVersionStorage) baseUpdateWhere(where, updateQuery bson.M) error {
 	coll, err := s.collection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	err = coll.Update(bson.M{"appname": appName}, updateQuery)
+	err = coll.Update(where, updateQuery)
 	if err == mgo.ErrNotFound {
 		return appTypes.ErrNoVersionsAvailable
 	}
@@ -229,14 +233,28 @@ func (s *appVersionStorage) AppVersions(app appTypes.App) (appTypes.AppVersions,
 }
 
 func (s *appVersionStorage) DeleteVersion(appName string, version int) error {
-	err := s.baseUpdate(appName, bson.M{
+	return s.baseUpdate(appName, bson.M{
 		"$unset": bson.M{fmt.Sprintf("versions.%d", version): ""},
 		"$set":   bson.M{"updatedat": time.Now().UTC()},
 	})
-	if err == mgo.ErrNotFound {
-		return appTypes.ErrNoVersionsAvailable
+}
+
+func (s *appVersionStorage) MarkVersionToRemoval(appName string, version int) error {
+	now := time.Now().UTC()
+	versionKey := fmt.Sprintf("versions.%d", version)
+	where := bson.M{
+		"appname":  appName,
+		versionKey: bson.M{"$exists": true},
 	}
-	return err
+	update := bson.M{
+		"$set": bson.M{
+			versionKey + ".markedtoremoval": true,
+			versionKey + ".updatedat":       now,
+			"updatedat":                     now,
+		},
+	}
+
+	return s.baseUpdateWhere(where, update)
 }
 
 func (s *appVersionStorage) importLegacyVersions(app appTypes.App) error {
