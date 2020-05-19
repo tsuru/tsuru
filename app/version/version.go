@@ -96,12 +96,12 @@ func (v *appVersionImpl) CommitSuccessful() error {
 	return v.storage.UpdateVersionSuccess(v.app.GetName(), v.versionInfo)
 }
 
-func (v *appVersionImpl) MarkToRemotion() error {
+func (v *appVersionImpl) MarkToRemoval() error {
 	err := v.refresh()
 	if err != nil {
 		return err
 	}
-	v.versionInfo.MarkedToRemotion = true
+	v.versionInfo.MarkedToRemoval = true
 	return v.storage.UpdateVersion(v.app.GetName(), v.versionInfo)
 }
 

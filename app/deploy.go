@@ -379,8 +379,8 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return "", err
 		}
 		versionInfo := version.VersionInfo()
-		if versionInfo.MarkedToRemotion {
-			return "", appTypes.ErrVersionMarkedToRemotion
+		if versionInfo.MarkedToRemoval {
+			return "", appTypes.ErrVersionMarkedToRemoval
 		} else if versionInfo.Disabled {
 			return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
 		}

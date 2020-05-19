@@ -159,7 +159,7 @@ func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersio
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
-	err = version.MarkToRemotion()
+	err = version.MarkToRemoval()
 	c.Assert(err, check.IsNil)
 	return version
 }
@@ -981,7 +981,7 @@ func (s *S) TestRollbackWithVersionMarkedToRemoved(c *check.C) {
 	})
 	c.Assert(err, check.NotNil)
 	err = errors.Cause(err)
-	c.Assert(err, check.Equals, appTypes.ErrVersionMarkedToRemotion)
+	c.Assert(err, check.Equals, appTypes.ErrVersionMarkedToRemoval)
 }
 
 func (s *S) TestDeployKind(c *check.C) {
