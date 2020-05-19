@@ -6,7 +6,6 @@ package gc
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -215,7 +214,6 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("***", r.Method, r.URL.Path)
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
@@ -336,7 +334,6 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("***", r.Method, r.URL.Path)
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
 			return
