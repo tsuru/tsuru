@@ -49,11 +49,13 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C)
 	c.Assert(versions.LastSuccessfulVersion, check.Equals, vi1.Version)
 	c.Assert(versions.Versions[vi1.Version].DeploySuccessful, check.Equals, true)
 	c.Assert(versions.Versions[vi2.Version].DeploySuccessful, check.Equals, false)
+	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp"}
 	vi, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{
-		App:            &appTypes.MockApp{Name: "myapp"},
+		App:            app,
 		EventID:        "myevtid",
 		CustomBuildTag: "mybuildtag",
 		Description:    "mydesc",
@@ -61,6 +63,9 @@ func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(vi.CreatedAt.IsZero(), check.Equals, false)
 	c.Assert(vi.UpdatedAt.IsZero(), check.Equals, false)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi.UpdatedAt.Unix())
 	vi.CreatedAt = time.Time{}
 	vi.UpdatedAt = time.Time{}
 	c.Assert(vi, check.DeepEquals, &appTypes.AppVersionInfo{
@@ -187,6 +192,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 	c.Assert(versions.AppName, check.DeepEquals, "myapp")
 	c.Assert(versions.Count, check.DeepEquals, 2)
 	c.Assert(versions.LastSuccessfulVersion, check.DeepEquals, 0)
+	c.Assert(versions.UpdatedAt.IsZero(), check.Equals, false)
 	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
 		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
