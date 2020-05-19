@@ -38,9 +38,9 @@ var (
 		Buckets: prometheus.ExponentialBuckets(0.1, 3, 10),
 	})
 
-	versionsMarkedToRemotionTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_versions_marked_to_remotion_total",
-		Help: "The number of versions of applications marked to remotion",
+	versionsMarkedToRemovalTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_gc_versions_marked_to_removal_total",
+		Help: "The number of versions of applications that was marked to removal",
 	})
 
 	// just used for dockercluster provisioner
@@ -186,7 +186,7 @@ func markOldImages() error {
 
 		versionsToRemove, versionsToPruneFromProvisioner := gcForAppVersions(versions, deployedVersions, historySize)
 		for _, version := range versionsToRemove {
-			versionsMarkedToRemotionTotal.Inc()
+			versionsMarkedToRemovalTotal.Inc()
 			cleanImageForAppVersion(a, version, true)
 		}
 		for _, version := range versionsToPruneFromProvisioner {

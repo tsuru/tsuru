@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrNoVersionsAvailable     = errors.New("no versions available for app")
-	ErrVersionMarkedToRemotion = errors.New("the selected version is marked to remotion")
+	ErrNoVersionsAvailable    = errors.New("no versions available for app")
+	ErrVersionMarkedToRemoval = errors.New("the selected version is marked to removal")
 )
 
 type ErrInvalidVersion struct {
@@ -41,7 +41,7 @@ type AppVersion interface {
 	BaseImageName() string
 	CommitBaseImage() error
 	CommitSuccessful() error
-	MarkToRemotion() error
+	MarkToRemoval() error
 	VersionInfo() AppVersionInfo
 	Processes() (map[string][]string, error)
 	TsuruYamlData() (provTypes.TsuruYamlData, error)
@@ -80,7 +80,7 @@ type AppVersionInfo struct {
 	DisabledReason   string                 `json:"disabledReason"`
 	Disabled         bool                   `json:"disabled"`
 	DeploySuccessful bool                   `json:"deploySuccessful"`
-	MarkedToRemotion bool                   `json:"markedToRemotion"`
+	MarkedToRemoval  bool                   `json:"markedToRemoval"`
 }
 
 type NewVersionArgs struct {
