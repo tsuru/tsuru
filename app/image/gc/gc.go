@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
@@ -22,6 +24,30 @@ import (
 
 const (
 	imageGCRunInterval = 5 * time.Minute
+)
+
+var (
+	jobsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_gc_jobs_total",
+		Help: "The number of times that gc had runned",
+	})
+
+	jobDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "tsuru_gc_job_duration_seconds",
+		Help:    "How long during the GC process",
+		Buckets: prometheus.ExponentialBuckets(0.1, 3, 10),
+	})
+
+	versionsMarkedToRemotionTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_gc_versions_marked_to_remotion_total",
+		Help: "The number of versions of applications marked to remotion",
+	})
+
+	// just used for dockercluster provisioner
+	provisionerPruneUnusedImagesTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "tsuru_gc_provisioner_prune_unsed_images_total",
+		Help: "The number of unsed images that are prunned from provisioner",
+	})
 )
 
 func Initialize() error {
@@ -55,7 +81,7 @@ func (g *imgGC) Shutdown(ctx context.Context) error {
 
 func (g *imgGC) spin() {
 	for {
-		err := removeOldImages()
+		err := markOldImages()
 		if err != nil {
 			log.Errorf("[image gc] errors running GC: %v", err)
 		}
@@ -117,7 +143,11 @@ func cleanImageForApp(a *app.App, imgName string, removeFromRegistry bool) bool 
 	return false
 }
 
-func removeOldImages() error {
+func markOldImages() error {
+	jobsTotal.Inc()
+	timer := prometheus.NewTimer(jobDuration)
+	defer timer.ObserveDuration()
+
 	log.Debugf("[image gc] starting image gc process")
 	defer log.Debugf("[image gc] finished image gc process")
 	allAppVersions, err := servicemanager.AppVersion.AllAppVersions()
@@ -145,18 +175,29 @@ func removeOldImages() error {
 			}
 			continue
 		}
-		versionsToRemove, versionsToClean := gcForAppVersions(versions, historySize)
+
+		deployedVersions, err := a.DeployedVersions()
+		if err == app.ErrNoVersionProvisioner {
+			deployedVersions = []int{versions.LastSuccessfulVersion}
+		} else if err != nil {
+			multi.Add(errors.Wrapf(err, "Could not get deployed versions of app: %s", versions.AppName))
+			continue
+		}
+
+		versionsToRemove, versionsToPruneFromProvisioner := gcForAppVersions(versions, deployedVersions, historySize)
 		for _, version := range versionsToRemove {
+			versionsMarkedToRemotionTotal.Inc()
 			cleanImageForAppVersion(a, version, true)
 		}
-		for _, version := range versionsToClean {
+		for _, version := range versionsToPruneFromProvisioner {
+			provisionerPruneUnusedImagesTotal.Inc()
 			cleanImageForAppVersion(a, version, false)
 		}
 	}
 	return multi.ToError()
 }
 
-func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsToRemove, versionsToMaintain []appTypes.AppVersionInfo) {
+func gcForAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) (versionsToRemove, versionsToPruneFromProvisioner []appTypes.AppVersionInfo) {
 	var regularVersions, customTagVersions []appTypes.AppVersionInfo
 	for _, v := range versions.Versions {
 		if !v.DeploySuccessful {
@@ -172,22 +213,20 @@ func gcForAppVersions(versions appTypes.AppVersions, historySize int) (versionsT
 	sort.Sort(priorizedAppVersions(regularVersions))
 	sort.Sort(priorizedAppVersions(customTagVersions))
 
-	runningRegularVersions := 0
 	for i, version := range regularVersions {
 		// never consider lastSuccessfulversion to garbage collection
-		if i == 0 || version.Version == versions.LastSuccessfulVersion {
-			runningRegularVersions++
+		if i == 0 || version.Version == versions.LastSuccessfulVersion || intIn(version.Version, deployedVersions) {
 			continue
 		}
 		if i >= historySize {
 			versionsToRemove = append(versionsToRemove, version)
 		} else {
-			versionsToMaintain = append(versionsToMaintain, version)
+			versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, version)
 		}
 	}
 
-	versionsToMaintain = append(versionsToMaintain, customTagVersions...)
-	return versionsToRemove, versionsToMaintain
+	versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, customTagVersions...)
+	return
 }
 
 type priorizedAppVersions []appTypes.AppVersionInfo
@@ -207,4 +246,13 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func intIn(n int, slice []int) bool {
+	for _, sliceN := range slice {
+		if sliceN == n {
+			return true
+		}
+	}
+	return false
 }

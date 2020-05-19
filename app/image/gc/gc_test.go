@@ -387,11 +387,12 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 func (s *S) TestGCSelectionOfApp(c *check.C) {
 	now := time.Now()
 	testCases := []struct {
-		explanation                string
-		historySize                int
-		appVersions                func() appTypes.AppVersions
-		expectedVersionsToRemove   []int
-		expectedVersionsToMaintain []int
+		explanation                            string
+		historySize                            int
+		appVersions                            func() appTypes.AppVersions
+		deployedVersions                       []int
+		expectedVersionsToRemove               []int
+		expectedVersionsToPruneFromProvisioner []int
 	}{
 		{
 			explanation: "should use ID to sort when is same updatedAt",
@@ -412,8 +413,8 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:   []int{5, 4, 3, 2, 1},
-			expectedVersionsToMaintain: []int{9, 8, 7, 6},
+			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
+			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
 		},
 		{
 			explanation: "should use updatedAt to short the versions",
@@ -434,8 +435,8 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:   []int{5, 4, 3, 2, 1},
-			expectedVersionsToMaintain: []int{9, 8, 7, 6},
+			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
+			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
 		},
 
 		{
@@ -460,13 +461,37 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 			// remove first all unsuccessful versions
 			expectedVersionsToRemove: []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 10, 8, 6, 4, 2},
 			// clean all successful versions
-			expectedVersionsToMaintain: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
+			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
+		},
+
+		{
+			explanation:      "must never remove deployed versions",
+			historySize:      10,
+			deployedVersions: []int{20, 10, 8, 2},
+			appVersions: func() appTypes.AppVersions {
+				appVersions := appTypes.AppVersions{
+					LastSuccessfulVersion: 20,
+					Versions:              map[int]appTypes.AppVersionInfo{},
+				}
+
+				for i := 30; i > 0; i-- {
+					appVersions.Versions[i] = appTypes.AppVersionInfo{
+						Version:          i,
+						DeploySuccessful: (i % 2) == 0, // create a sampling with 50% failed deploys
+						UpdatedAt:        now.Add(time.Minute * time.Duration(i)),
+					}
+				}
+
+				return appVersions
+			},
+			expectedVersionsToRemove:               []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 6, 4},
+			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 18, 16, 14, 12},
 		},
 	}
 
 	for _, testCase := range testCases {
 		c.Log("Running: " + testCase.explanation)
-		versionsToRemove, versionsToMaintain := gcForAppVersions(testCase.appVersions(), testCase.historySize)
+		versionsToRemove, versionsToMaintain := gcForAppVersions(testCase.appVersions(), testCase.deployedVersions, testCase.historySize)
 		versionsToMaintainIDs := []int{}
 		versionsToRemoveIDs := []int{}
 
@@ -478,7 +503,7 @@ func (s *S) TestGCSelectionOfApp(c *check.C) {
 		}
 
 		c.Check(versionsToRemoveIDs, check.DeepEquals, testCase.expectedVersionsToRemove)
-		c.Check(versionsToMaintainIDs, check.DeepEquals, testCase.expectedVersionsToMaintain)
+		c.Check(versionsToMaintainIDs, check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
 		c.Log("Finished: " + testCase.explanation)
 	}
 }

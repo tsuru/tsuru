@@ -61,6 +61,8 @@ var (
 	ErrNoAccess          = errors.New("team does not have access to this app")
 	ErrCannotOrphanApp   = errors.New("cannot revoke access from this team, as it's the unique team with access to the app")
 	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
+
+	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
 )
 
 var (
@@ -2500,6 +2502,17 @@ func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error 
 		return errors.Errorf("provisioner %v does not support setting versions routable", prov.GetName())
 	}
 	return rprov.ToggleRoutable(app, version, isRoutable)
+}
+
+func (app *App) DeployedVersions() ([]int, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	if rprov, ok := prov.(provision.VersionsProvisioner); ok {
+		return rprov.DeployedVersions(app)
+	}
+	return nil, ErrNoVersionProvisioner
 }
 
 func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
