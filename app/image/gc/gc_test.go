@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
@@ -428,6 +429,20 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		"/images/" + u.Host + "/tsuru/app-myapp:v9",
 		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
 	})
+
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	sort.Slice(evts, func(i, j int) bool { return evts[i].Kind.Name < evts[j].Kind.Name })
+
+	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeGC)
+	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "gc"})
+	c.Check(evts[0].Error, check.Equals, "")
+
+	c.Check(evts[1].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[1].Target.Value, check.Equals, "myapp")
+	c.Check(evts[1].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
+	c.Check(evts[1].Error, check.Equals, "")
 }
 
 func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
@@ -514,6 +529,20 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
 	})
+
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 2)
+	sort.Slice(evts, func(i, j int) bool { return evts[i].Kind.Name < evts[j].Kind.Name })
+
+	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeGC)
+	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "gc"})
+	c.Check(evts[0].Error, check.Equals, "")
+
+	c.Check(evts[1].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[1].Target.Value, check.Equals, "myapp")
+	c.Check(evts[1].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
+	c.Check(evts[1].Error, check.Equals, "")
 }
 
 func (s *S) TestSelectAppVersions(c *check.C) {
