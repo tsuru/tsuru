@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
@@ -88,8 +89,6 @@ func Initialize() error {
 type imgGC struct {
 	once   *sync.Once
 	stopCh chan struct{}
-	// dryRun is used to disable all prunes on registry indeed to use to validate the effect of GC
-	dryRun bool
 }
 
 func (g *imgGC) start() {
@@ -116,7 +115,11 @@ func (g *imgGC) spin() {
 			log.Errorf("[image gc] errors running GC mark: %v", err)
 		}
 
-		if !g.dryRun {
+		dryRun, err := config.GetBool("docker:gc:dry-run")
+		if err != nil {
+			log.Errorf("[image gc] fetch config error: %v", err)
+		}
+		if !dryRun {
 			err = sweepOldImages()
 			if err != nil {
 				log.Errorf("[image gc] errors running GC sweep: %v", err)
