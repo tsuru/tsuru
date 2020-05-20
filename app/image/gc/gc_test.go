@@ -346,10 +346,12 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	defer registrySrv.Close()
 
 	config.Set("docker:registry", u.Host)
+	config.Set("docker:gc:dry-run", true)
 	defer config.Unset("docker:registry")
+	defer config.Set("docker:gc:dry-run", false)
 	insertTestVersions(c, a)
 
-	gc := &imgGC{once: &sync.Once{}, dryRun: true}
+	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
