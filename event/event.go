@@ -111,6 +111,7 @@ var (
 	TargetTypeCluster         = TargetType("cluster")
 	TargetTypeVolume          = TargetType("volume")
 	TargetTypeWebhook         = TargetType("webhook")
+	TargetTypeGC              = TargetType("gc")
 )
 
 const (
@@ -845,6 +846,10 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 }
 
 func newEvt(opts *Opts) (evt *Event, err error) {
+	if opts.RetryTimeout == 0 {
+		return newEvtOnce(opts)
+	}
+
 	timeoutCh := time.After(opts.RetryTimeout)
 	for {
 		evt, err := newEvtOnce(opts)

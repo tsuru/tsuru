@@ -18,10 +18,13 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 const (
@@ -110,27 +113,58 @@ func (g *imgGC) Shutdown(ctx context.Context) error {
 
 func (g *imgGC) spin() {
 	for {
-		err := markOldImages()
-		if err != nil {
-			log.Errorf("[image gc] errors running GC mark: %v", err)
-		}
+		runPeriodicGC()
 
-		dryRun, err := config.GetBool("docker:gc:dry-run")
-		if err != nil {
-			log.Errorf("[image gc] fetch config error: %v", err)
-		}
-		if !dryRun {
-			err = sweepOldImages()
-			if err != nil {
-				log.Errorf("[image gc] errors running GC sweep: %v", err)
-			}
-		}
 		select {
 		case <-g.stopCh:
 			return
 		case <-time.After(imageGCRunInterval):
 		}
 	}
+}
+
+func runPeriodicGC() (err error) {
+	evt, err := event.NewInternal(&event.Opts{
+		Target:       event.Target{Type: event.TargetTypeGC, Value: "global"},
+		InternalKind: "gc",
+		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxGlobal, "")),
+	})
+	defer func() {
+		if evt != nil {
+			evt.Done(err)
+		}
+		log.Errorf("[image gc] %v", err)
+	}()
+
+	if err != nil {
+		if _, ok := err.(event.ErrEventLocked); ok {
+			return
+		}
+		err = errors.Wrap(err, "could not create event")
+		return
+	}
+
+	err = markOldImages()
+	if err != nil {
+		err = errors.Wrap(err, "errors running GC mark")
+		return
+	}
+
+	dryRun, err := config.GetBool("docker:gc:dry-run")
+	if err != nil {
+		err = errors.Wrap(err, "fetch config error")
+		return
+	}
+	if dryRun {
+		return
+	}
+
+	err = sweepOldImages()
+	if err != nil {
+		err = errors.Wrap(err, "errors running GC sweep")
+	}
+
+	return
 }
 
 func CleanImage(appName string, version appTypes.AppVersionInfo, removeFromRegistry bool) {
@@ -174,42 +208,79 @@ func markOldImages() error {
 		}
 		if a == nil {
 			log.Debugf("[image gc] app %q not found, removing everything", appVersions.AppName)
-			err = registry.RemoveAppImages(appVersions.AppName)
-			if err != nil {
-				multi.Add(err)
-			}
-			err = servicemanager.AppVersion.DeleteVersions(appVersions.AppName)
+			err = pruneAllVersionsByApp(appVersions.AppName)
 			if err != nil {
 				multi.Add(err)
 			}
 			continue
 		}
 
-		deployedVersions, err := a.DeployedVersions()
-		if err == app.ErrNoVersionProvisioner {
-			deployedVersions = []int{appVersions.LastSuccessfulVersion}
-		} else if err != nil {
-			multi.Add(errors.Wrapf(err, "Could not get deployed versions of app: %s", appVersions.AppName))
+		//
+		requireExclusiveLock, err := markOldImagesForAppVersion(a, appVersions, historySize, false)
+		if err != nil {
+			multi.Add(err)
+			continue
+		}
+		if !requireExclusiveLock {
 			continue
 		}
 
-		versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(appVersions, deployedVersions, historySize)
-		for _, version := range versionsToRemove {
-			versionsMarkedToRemovalTotal.Inc()
-			pruned := pruneVersionFromProvisioner(a, version)
-			if !pruned {
+		evt, err := event.NewInternal(&event.Opts{
+			Target:       event.Target{Type: event.TargetTypeApp, Value: appVersions.AppName},
+			InternalKind: "version gc",
+			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appVersions.AppName)),
+		})
+
+		if err != nil {
+			if _, ok := err.(event.ErrEventLocked); !ok {
 				continue
 			}
-			err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
-			if err != nil {
-				multi.Add(errors.Wrapf(err, "Could not mark version %d to removal of app: %s", version.Version, appVersions.AppName))
-			}
+			multi.Add(errors.Wrapf(err, "unable to acquire lock of app: %q", appVersions.AppName))
+			continue
 		}
+
+		_, err = markOldImagesForAppVersion(a, appVersions, historySize, true)
+		if err != nil {
+			multi.Add(err)
+		}
+		evt.Done(err)
+	}
+	return multi.ToError()
+}
+
+func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
+	deployedVersions, err := a.DeployedVersions()
+	if err == app.ErrNoVersionProvisioner {
+		deployedVersions = []int{appVersions.LastSuccessfulVersion}
+	} else if err != nil {
+		return false, errors.Wrapf(err, "Could not get deployed versions of app: %s", appVersions.AppName)
+	}
+
+	versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(appVersions, deployedVersions, historySize)
+	if !exclusiveLockAcquired {
 		for _, version := range versionsToPruneFromProvisioner {
 			pruneVersionFromProvisioner(a, version)
 		}
 	}
-	return multi.ToError()
+
+	if len(versionsToRemove) == 0 {
+		return false, nil
+	} else if !exclusiveLockAcquired {
+		return true, nil
+	}
+
+	for _, version := range versionsToRemove {
+		versionsMarkedToRemovalTotal.Inc()
+		pruned := pruneVersionFromProvisioner(a, version)
+		if !pruned {
+			continue
+		}
+		err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
+		if err != nil {
+			return false, errors.Wrapf(err, "Could not mark version %d to removal of app: %s", version.Version, appVersions.AppName)
+		}
+	}
+	return false, nil
 }
 
 func sweepOldImages() error {
@@ -275,6 +346,21 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 
 	versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, customTagVersions...)
 	return
+}
+
+func pruneAllVersionsByApp(appName string) error {
+	multi := tsuruErrors.NewMultiError()
+
+	err := registry.RemoveAppImages(appName)
+	if err != nil {
+		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appName))
+	}
+	err = servicemanager.AppVersion.DeleteVersions(appName)
+	if err != nil {
+		multi.Add(errors.Wrapf(err, "could not remove versions from storage, app: %q", appName))
+	}
+
+	return multi.ToError()
 }
 
 func pruneVersionFromRegistry(version appTypes.AppVersionInfo) (pruned bool) {
