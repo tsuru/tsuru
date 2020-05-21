@@ -82,6 +82,17 @@ var (
 	})
 )
 
+func init() {
+	event.SetThrottling(event.ThrottlingSpec{
+		TargetType: event.TargetTypeGC,
+		KindName:   "gc",
+		Time:       imageGCRunInterval,
+		Max:        1,
+		AllTargets: true,
+		WaitFinish: true,
+	})
+}
+
 func Initialize() error {
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
@@ -144,10 +155,14 @@ func runPeriodicGC() (err error) {
 	}()
 
 	if err != nil {
-		if _, ok := err.(event.ErrEventLocked); ok {
+		_, isThrottled := err.(event.ErrThrottled)
+		_, isLocked := err.(event.ErrEventLocked)
+		if isThrottled || isLocked {
+			gcExecutionsTotal.WithLabelValues("suspended").Inc()
 			err = nil
 			return
 		}
+
 		err = errors.Wrap(err, "could not create event")
 		return
 	}
