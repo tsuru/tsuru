@@ -63,6 +63,7 @@ type AppVersions struct {
 	LastSuccessfulVersion int                    `json:"lastSuccessfulVersion"`
 	Versions              map[int]AppVersionInfo `json:"versions"`
 	UpdatedAt             time.Time              `json:"updatedAt"`
+	MarkedToRemoval       bool                   `json:"markedToRemoval"`
 }
 
 type AppVersionInfo struct {
@@ -99,8 +100,9 @@ type AppVersionService interface {
 	NewAppVersion(args NewVersionArgs) (AppVersion, error)
 	DeleteVersions(appName string) error
 	DeleteVersion(appName string, version int) error
-	MarkVersionToRemoval(appName string, version int) error
 	AppVersionFromInfo(App, AppVersionInfo) AppVersion
+	MarkToRemoval(appName string) error
+	MarkVersionToRemoval(appName string, version int) error
 }
 
 type AppVersionStorage interface {
@@ -111,5 +113,6 @@ type AppVersionStorage interface {
 	AllAppVersions() ([]AppVersions, error)
 	AppVersions(app App) (AppVersions, error)
 	DeleteVersion(appName string, version int) error
+	MarkToRemoval(appName string) error
 	MarkVersionToRemoval(appName string, version int) error
 }

@@ -40,7 +40,7 @@ var (
 	executionDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "tsuru_gc_execution_duration_seconds",
 		Help:    "How long during the GC process",
-		Buckets: prometheus.ExponentialBuckets(0.1, 3, 10),
+		Buckets: prometheus.ExponentialBuckets(0.1, 2.7, 10),
 	}, []string{"phase"})
 
 	versionsMarkedToRemovalTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -145,6 +145,7 @@ func runPeriodicGC() (err error) {
 
 	if err != nil {
 		if _, ok := err.(event.ErrEventLocked); ok {
+			err = nil
 			return
 		}
 		err = errors.Wrap(err, "could not create event")
@@ -195,8 +196,8 @@ func markOldImages() error {
 			continue
 		}
 		if a == nil {
-			log.Debugf("[image gc] app %q not found, removing everything", appVersions.AppName)
-			err = pruneAllVersionsByApp(appVersions.AppName)
+			log.Debugf("[image gc] app %q not found, mark everything to removal", appVersions.AppName)
+			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName)
 			if err != nil {
 				multi.Add(err)
 			}
@@ -259,10 +260,7 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 
 	for _, version := range versionsToRemove {
 		versionsMarkedToRemovalTotal.Inc()
-		pruned := pruneVersionFromProvisioner(a, version)
-		if !pruned {
-			continue
-		}
+
 		err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
 		if err != nil {
 			return false, errors.Wrapf(err, "Could not mark version %d to removal of app: %s", version.Version, appVersions.AppName)
@@ -285,17 +283,41 @@ func sweepOldImages() error {
 	}
 
 	multi := tsuruErrors.NewMultiError()
+	versionsToRemove := map[string][]appTypes.AppVersionInfo{}
 	for _, appVersions := range allAppVersions {
+		if appVersions.MarkedToRemoval {
+			err := pruneAllVersionsByApp(appVersions.AppName)
+			if err != nil {
+				multi.Add(err)
+			}
+			continue
+		}
 		for _, version := range appVersions.Versions {
 			if !version.MarkedToRemoval {
 				continue
 			}
-			pruned := pruneVersionFromRegistry(version)
+			versionsToRemove[appVersions.AppName] = append(versionsToRemove[appVersions.AppName], version)
+		}
+	}
+
+	for appName, versions := range versionsToRemove {
+		a, err := app.GetByName(appName)
+		if err != nil && err != appTypes.ErrAppNotFound {
+			multi.Add(err)
+			continue
+		}
+
+		for _, version := range versions {
+			pruned := pruneVersionFromProvisioner(a, version)
+			if !pruned {
+				continue
+			}
+			pruned = pruneVersionFromRegistry(version)
 			if !pruned {
 				continue
 			}
 
-			pruneVersionFromStorage(appVersions.AppName, version)
+			pruneVersionFromStorage(appName, version)
 		}
 	}
 
