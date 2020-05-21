@@ -568,53 +568,6 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
-func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
-	config.Set("docker:image-history-size", 1)
-	defer config.Unset("docker:image-history-size")
-	a := s.newApp("appdeployimagetest")
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	baseImgName := "tsuru/app-" + a.Name + ":v1"
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	}
-	version, err := newVersionForApp(s.p, &a, customData)
-	c.Assert(err, check.IsNil)
-	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		var result docker.Config
-		jsonErr := json.Unmarshal(data, &result)
-		if jsonErr == nil {
-			if result.Image == baseImgName {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("my awesome error"))
-				return
-			}
-		}
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 1)
-	_, err = s.p.Deploy(provision.DeployArgs{App: &a, Version: version, Event: evt})
-	c.Assert(err, check.ErrorMatches, ".*my awesome error.*")
-	imgs, err = s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(imgs, check.HasLen, 0)
-}
-
 func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	a := s.newApp("otherapp")
 	err := s.conn.Apps().Insert(a)
