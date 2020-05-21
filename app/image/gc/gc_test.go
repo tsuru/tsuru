@@ -103,7 +103,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.storage.Close()
 }
 
-func insertTestVersions(c *check.C, a provision.App) {
+func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {
 	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 		App:            a,
 		CustomBuildTag: "my-custom-tag",
@@ -113,7 +113,6 @@ func insertTestVersions(c *check.C, a provision.App) {
 	c.Assert(err, check.IsNil)
 	err = version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
-	desiredNumberOfVersions := 12
 	for i := 1; i <= desiredNumberOfVersions; i++ {
 		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 			App: a,
@@ -157,7 +156,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 	defer config.Unset("docker:registry")
 	defer srv.Close()
 	fakeApp := provisiontest.NewFakeApp("myapp", "go", 0)
-	insertTestVersions(c, fakeApp)
+	insertTestVersions(c, fakeApp, 12)
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
 	err := gc.Shutdown(context.Background())
@@ -228,7 +227,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	insertTestVersions(c, a)
+	insertTestVersions(c, a, 12)
 
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
@@ -350,7 +349,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	config.Set("docker:gc:dry-run", true)
 	defer config.Unset("docker:registry")
 	defer config.Set("docker:gc:dry-run", false)
-	insertTestVersions(c, a)
+	insertTestVersions(c, a, 12)
 
 	gc := &imgGC{once: &sync.Once{}}
 	gc.start()
@@ -432,17 +431,53 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 2)
-	sort.Slice(evts, func(i, j int) bool { return evts[i].Kind.Name < evts[j].Kind.Name })
-
-	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeGC)
-	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "gc"})
+	c.Assert(evts, check.HasLen, 1)
+	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[0].Target.Value, check.Equals, "myapp")
+	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
 	c.Check(evts[0].Error, check.Equals, "")
+}
 
-	c.Check(evts[1].Target.Type, check.Equals, event.TargetTypeApp)
-	c.Check(evts[1].Target.Value, check.Equals, "myapp")
-	c.Check(evts[1].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
-	c.Check(evts[1].Error, check.Equals, "")
+func (s *S) TestGCNoOPWithApp(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	var nodeDeleteCalls int
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nodeDeleteCalls++
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	var regDeleteCalls int
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		regDeleteCalls++
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a, 5)
+
+	gc := &imgGC{once: &sync.Once{}}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+	c.Check(regDeleteCalls, check.Equals, 0)
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	c.Assert(err, check.IsNil)
+	c.Check(versions.Versions, check.HasLen, 6)
+
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
 }
 
 func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
@@ -469,7 +504,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
-	insertTestVersions(c, a)
+	insertTestVersions(c, a, 12)
 
 	nGoroutines := 10
 	wg := sync.WaitGroup{}
@@ -532,17 +567,12 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 2)
-	sort.Slice(evts, func(i, j int) bool { return evts[i].Kind.Name < evts[j].Kind.Name })
+	c.Assert(evts, check.HasLen, 1)
 
-	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeGC)
-	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "gc"})
+	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[0].Target.Value, check.Equals, "myapp")
+	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
 	c.Check(evts[0].Error, check.Equals, "")
-
-	c.Check(evts[1].Target.Type, check.Equals, event.TargetTypeApp)
-	c.Check(evts[1].Target.Value, check.Equals, "myapp")
-	c.Check(evts[1].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
-	c.Check(evts[1].Error, check.Equals, "")
 }
 
 func (s *S) TestSelectAppVersions(c *check.C) {

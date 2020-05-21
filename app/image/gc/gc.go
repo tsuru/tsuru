@@ -130,10 +130,17 @@ func runPeriodicGC() (err error) {
 		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxGlobal, "")),
 	})
 	defer func() {
-		if evt != nil {
+		if err != nil {
+			log.Errorf("[image gc] %v", err)
+		}
+		if evt == nil {
+			return
+		}
+		if err == nil {
+			evt.Abort()
+		} else {
 			evt.Done(err)
 		}
-		log.Errorf("[image gc] %v", err)
 	}()
 
 	if err != nil {
@@ -167,25 +174,6 @@ func runPeriodicGC() (err error) {
 	return
 }
 
-func CleanImage(appName string, version appTypes.AppVersionInfo, removeFromRegistry bool) {
-	a, err := app.GetByName(appName)
-	if err != nil {
-		log.Errorf("[image gc] error getting app by name %q: %v. Image kept on list to retry later.", appName, err)
-		return
-	}
-	pruned := pruneVersionFromProvisioner(a, version)
-	if !pruned || !removeFromRegistry {
-		return
-	}
-
-	pruned = pruneVersionFromRegistry(version)
-	if !pruned {
-		return
-	}
-
-	pruneVersionFromStorage(appName, version)
-}
-
 func markOldImages() error {
 	gcExecutionsTotal.WithLabelValues("mark").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("mark"))
@@ -215,7 +203,6 @@ func markOldImages() error {
 			continue
 		}
 
-		//
 		requireExclusiveLock, err := markOldImagesForAppVersion(a, appVersions, historySize, false)
 		if err != nil {
 			multi.Add(err)
@@ -265,7 +252,8 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 
 	if len(versionsToRemove) == 0 {
 		return false, nil
-	} else if !exclusiveLockAcquired {
+	}
+	if !exclusiveLockAcquired {
 		return true, nil
 	}
 

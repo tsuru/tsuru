@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -371,19 +370,11 @@ func (p *dockerProvisioner) Deploy(args provision.DeployArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = p.deployAndClean(args.App, args.Version, args.Event)
+	err = p.deploy(args.App, args.Version, args.Event)
 	if err != nil {
 		return "", err
 	}
 	return imageID, nil
-}
-
-func (p *dockerProvisioner) deployAndClean(a provision.App, version appTypes.AppVersion, evt *event.Event) error {
-	err := p.deploy(a, version, evt)
-	if err != nil {
-		gc.CleanImage(a.GetName(), version.VersionInfo(), true)
-	}
-	return err
 }
 
 func (p *dockerProvisioner) deploy(a provision.App, version appTypes.AppVersion, evt *event.Event) error {
