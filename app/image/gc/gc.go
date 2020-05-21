@@ -317,7 +317,11 @@ func sweepOldImages() error {
 
 	for appName, versions := range versionsToRemove {
 		a, err := app.GetByName(appName)
-		if err != nil && err != appTypes.ErrAppNotFound {
+		if err == appTypes.ErrAppNotFound {
+			// in the next mark process will be removed
+			continue
+		}
+		if err != nil {
 			multi.Add(err)
 			continue
 		}
