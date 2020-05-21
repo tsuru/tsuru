@@ -116,6 +116,10 @@ func (s *appVersionService) DeleteVersion(appName string, version int) error {
 	return s.storage.DeleteVersion(appName, version)
 }
 
+func (s *appVersionService) MarkToRemoval(appName string) error {
+	return s.storage.MarkToRemoval(appName)
+}
+
 func (s *appVersionService) MarkVersionToRemoval(appName string, version int) error {
 	return s.storage.MarkVersionToRemoval(appName, version)
 }

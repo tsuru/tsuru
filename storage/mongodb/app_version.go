@@ -239,6 +239,16 @@ func (s *appVersionStorage) DeleteVersion(appName string, version int) error {
 	})
 }
 
+func (s *appVersionStorage) MarkToRemoval(appName string) error {
+	update := bson.M{
+		"$set": bson.M{
+			"markedtoremoval": true,
+			"updatedat":       time.Now().UTC(),
+		},
+	}
+	return s.baseUpdate(appName, update)
+}
+
 func (s *appVersionStorage) MarkVersionToRemoval(appName string, version int) error {
 	now := time.Now().UTC()
 	versionKey := fmt.Sprintf("versions.%d", version)
