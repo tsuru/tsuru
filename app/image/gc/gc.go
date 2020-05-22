@@ -327,16 +327,22 @@ func sweepOldImages() error {
 		}
 
 		for _, version := range versions {
-			pruned := pruneVersionFromProvisioner(a, version)
-			if !pruned {
+			err := pruneVersionFromProvisioner(a, version)
+			if err != nil {
+				multi.Add(err)
 				continue
 			}
-			pruned = pruneVersionFromRegistry(version)
-			if !pruned {
+			err = pruneVersionFromRegistry(version)
+			if err != nil {
+				multi.Add(err)
 				continue
 			}
 
-			pruneVersionFromStorage(appName, version)
+			err = pruneVersionFromStorage(appName, version)
+			if err != nil {
+				multi.Add(err)
+				continue
+			}
 		}
 	}
 
@@ -392,65 +398,80 @@ func pruneAllVersionsByApp(appName string) error {
 	return multi.ToError()
 }
 
-func pruneVersionFromRegistry(version appTypes.AppVersionInfo) (pruned bool) {
-	pruned = true
+func pruneVersionFromRegistry(version appTypes.AppVersionInfo) error {
+	multi := tsuruErrors.NewMultiError()
+
 	if version.DeployImage != "" {
-		pruned = pruneImageFromRegistry(version.DeployImage) && pruned
+		err := pruneImageFromRegistry(version.DeployImage)
+		if err != nil {
+			multi.Add(err)
+		}
 	}
 
 	if version.BuildImage != "" {
-		pruned = pruneImageFromRegistry(version.BuildImage) && pruned
+		err := pruneImageFromRegistry(version.BuildImage)
+		if err != nil {
+			multi.Add(err)
+		}
 	}
 
-	return pruned
+	return multi.ToError()
 }
 
-func pruneImageFromRegistry(image string) (pruned bool) {
+func pruneImageFromRegistry(image string) error {
 	registryPruneTotal.Inc()
 
 	if err := registry.RemoveImageIgnoreNotFound(image); err != nil {
-		log.Errorf("[image gc] error removing old image from registry %q: %s. Image kept on list to retry later.",
-			image, err.Error())
+		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
+		log.Errorf("[image gc] %s", err.Error())
 		registryPruneFailuresTotal.Inc()
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
-func pruneVersionFromProvisioner(a *app.App, version appTypes.AppVersionInfo) (pruned bool) {
-	pruned = true
+func pruneVersionFromProvisioner(a *app.App, version appTypes.AppVersionInfo) error {
+	multi := tsuruErrors.NewMultiError()
 	if version.DeployImage != "" {
-		pruned = pruneImageFromProvisioner(a, version.DeployImage) && pruned
+		err := pruneImageFromProvisioner(a, version.DeployImage)
+		if err != nil {
+			multi.Add(err)
+		}
 	}
 	if version.BuildImage != "" {
-		pruned = pruneImageFromProvisioner(a, version.BuildImage) && pruned
+		err := pruneImageFromProvisioner(a, version.BuildImage)
+		if err != nil {
+			multi.Add(err)
+		}
 	}
-	return pruned
+	return multi.ToError()
 }
 
-func pruneImageFromProvisioner(a *app.App, image string) (pruned bool) {
+func pruneImageFromProvisioner(a *app.App, image string) error {
 	provisionerPruneTotal.Inc()
 
 	err := a.CleanImage(image)
 	if err != nil {
-		log.Errorf("[image gc] error removing old image from provisioner for app %q: %v. Image kept on list to retry later.",
-			image, err.Error())
+		err = errors.Wrapf(err, "error removing old image from provisioner for app: %q, image: %s", a.Name, image)
+		log.Errorf("[image gc] %s", err.Error())
 		provisionerPruneFailuresTotal.Inc()
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
 
-func pruneVersionFromStorage(appName string, version appTypes.AppVersionInfo) {
+func pruneVersionFromStorage(appName string, version appTypes.AppVersionInfo) error {
 	storagePruneTotal.Inc()
 
 	err := servicemanager.AppVersion.DeleteVersion(appName, version.Version)
 	if err != nil {
-		log.Errorf("[image gc] error removing old version from database %q: %s", version, err)
+		err = errors.Wrapf(err, "error removing old version from database for app: %q, version: %d", appName, version.Version)
+		log.Errorf("[image gc] %s", err.Error())
 		storagePruneFailuresTotal.Inc()
 	}
+	return nil
 }
 
 type priorizedAppVersions []appTypes.AppVersionInfo
