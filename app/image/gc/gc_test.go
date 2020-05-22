@@ -6,6 +6,7 @@ package gc
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -311,6 +312,93 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		"/images/" + u.Host + "/tsuru/app-myapp:v9",
 		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
 	})
+}
+
+func (s *S) TestGCStartWithErrorOnProvisioner(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Unavailable", http.StatusInternalServerError)
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Unavailable", http.StatusInternalServerError)
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a, 11)
+
+	gc := &imgGC{once: &sync.Once{}}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	evts = filterGCEvents(evts)
+	c.Assert(evts, check.HasLen, 1)
+	if !c.Check(strings.Contains(evts[0].Error, "error removing old image from provisioner for app: \"myapp\""), check.Equals, true) {
+		fmt.Println(evts[0].Error)
+	}
+
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	c.Assert(err, check.IsNil)
+	c.Check(len(versions.Versions), check.Equals, 12)
+}
+
+func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Unavailable", http.StatusInternalServerError)
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	insertTestVersions(c, a, 11)
+
+	gc := &imgGC{once: &sync.Once{}}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+
+	evts, err := event.All()
+	c.Assert(err, check.IsNil)
+	evts = filterGCEvents(evts)
+	c.Assert(evts, check.HasLen, 1)
+	if !c.Check(strings.Contains(evts[0].Error, "empty digest returned for image"), check.Equals, true) {
+		fmt.Println(evts[0].Error)
+	}
+
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	c.Assert(err, check.IsNil)
+	c.Check(len(versions.Versions), check.Equals, 12)
 }
 
 func (s *S) TestDryRunGCStartWithApp(c *check.C) {
@@ -692,4 +780,16 @@ func versionIDs(versions []appTypes.AppVersionInfo) []int {
 		ids = append(ids, version.Version)
 	}
 	return ids
+}
+
+func filterGCEvents(evts []*event.Event) []*event.Event {
+	n := 0
+	for _, evt := range evts {
+		if evt.Target.Type == event.TargetTypeGC {
+			evts[n] = evt
+			n++
+		}
+	}
+	evts = evts[:n]
+	return evts
 }
