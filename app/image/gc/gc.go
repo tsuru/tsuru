@@ -465,13 +465,6 @@ func (p priorizedAppVersions) Less(i, j int) bool {
 	return p[i].UpdatedAt.After(p[j].UpdatedAt)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func intIn(n int, slice []int) bool {
 	for _, sliceN := range slice {
 		if sliceN == n {
