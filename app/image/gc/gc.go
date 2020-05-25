@@ -167,26 +167,27 @@ func runPeriodicGC() (err error) {
 		return
 	}
 
+	multi := tsuruErrors.NewMultiError()
 	err = markOldImages()
 	if err != nil {
-		err = errors.Wrap(err, "errors running GC mark")
-		return
+		multi.Add(errors.Wrap(err, "errors running GC mark"))
 	}
 
 	dryRun, err := config.GetBool("docker:gc:dry-run")
 	if err != nil {
-		err = errors.Wrap(err, "fetch config error")
-		return
+		multi.Add(errors.Wrap(err, "fetch config error"))
 	}
 	if dryRun {
+		err = multi.ToError()
 		return
 	}
 
 	err = sweepOldImages()
 	if err != nil {
-		err = errors.Wrap(err, "errors running GC sweep")
+		multi.Add(errors.Wrap(err, "errors running GC sweep"))
 	}
 
+	err = multi.ToError()
 	return
 }
 
@@ -327,11 +328,8 @@ func sweepOldImages() error {
 		}
 
 		for _, version := range versions {
-			err := pruneVersionFromProvisioner(a, version)
-			if err != nil {
-				multi.Add(err)
-				continue
-			}
+			pruneVersionFromProvisioner(a, version)
+
 			err = pruneVersionFromRegistry(version)
 			if err != nil {
 				multi.Add(err)

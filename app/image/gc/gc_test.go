@@ -314,7 +314,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	})
 }
 
-func (s *S) TestGCStartWithErrorOnProvisioner(c *check.C) {
+func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
@@ -331,7 +331,9 @@ func (s *S) TestGCStartWithErrorOnProvisioner(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Unavailable", http.StatusInternalServerError)
+		if r.Method == "HEAD" {
+			w.Header().Set("Docker-Content-Digest", r.URL.Path)
+		}
 	}))
 	u, _ := url.Parse(registrySrv.URL)
 	defer registrySrv.Close()
@@ -348,14 +350,11 @@ func (s *S) TestGCStartWithErrorOnProvisioner(c *check.C) {
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	evts = filterGCEvents(evts)
-	c.Assert(evts, check.HasLen, 1)
-	if !c.Check(strings.Contains(evts[0].Error, "error removing old image from provisioner for app: \"myapp\""), check.Equals, true) {
-		fmt.Println(evts[0].Error)
-	}
+	c.Assert(evts, check.HasLen, 0)
 
 	versions, err := servicemanager.AppVersion.AppVersions(a)
 	c.Assert(err, check.IsNil)
-	c.Check(len(versions.Versions), check.Equals, 12)
+	c.Check(len(versions.Versions), check.Equals, 11)
 }
 
 func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
