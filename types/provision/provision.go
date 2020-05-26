@@ -24,6 +24,7 @@ type TsuruYamlRestartHooks struct {
 
 type TsuruYamlHealthcheck struct {
 	Path            string            `json:"path"`
+	Command         []string          `json:"command"`
 	Method          string            `json:"method"`
 	Status          int               `json:"status"`
 	Scheme          string            `json:"scheme"`
