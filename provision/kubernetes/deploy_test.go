@@ -784,6 +784,50 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		},
 		{
 			hc: provTypes.TsuruYamlHealthcheck{
+				Path:   "/hc",
+				Scheme: "https",
+				Command: []string{
+					"cat",
+					"/tmp/healthy",
+				},
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
+				TimeoutSeconds:   60,
+				Handler: apiv1.Handler{
+					HTTPGet: &apiv1.HTTPGetAction{
+						Path:        "/hc",
+						Port:        intstr.FromInt(8888),
+						Scheme:      apiv1.URISchemeHTTPS,
+						HTTPHeaders: []apiv1.HTTPHeader{},
+					},
+				},
+			},
+		},
+		{
+			hc: provTypes.TsuruYamlHealthcheck{
+				Command: []string{
+					"cat",
+					"/tmp/healthy",
+				},
+			},
+			expectedReadiness: &apiv1.Probe{
+				PeriodSeconds:    10,
+				FailureThreshold: 3,
+				TimeoutSeconds:   60,
+				Handler: apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{
+							"cat",
+							"/tmp/healthy",
+						},
+					},
+				},
+			},
+		},
+		{
+			hc: provTypes.TsuruYamlHealthcheck{
 				Path:            "/hc",
 				Scheme:          "https",
 				IntervalSeconds: 9,
