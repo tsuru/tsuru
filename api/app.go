@@ -1336,7 +1336,10 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
+		Target: appTarget(appName),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: serviceInstanceTarget(serviceName, instanceName)},
+		},
 		Kind:       permission.PermAppUpdateBind,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
@@ -1417,7 +1420,10 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
+		Target: appTarget(appName),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: serviceInstanceTarget(serviceName, instanceName)},
+		},
 		Kind:       permission.PermAppUpdateUnbind,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
