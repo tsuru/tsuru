@@ -1484,6 +1484,11 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 	if err != nil {
 		return err
 	}
+	for i, c := range pod.Spec.Containers {
+		if c.Name != inspectContainer {
+			pod.Spec.Containers[i].ImagePullPolicy = apiv1.PullAlways
+		}
+	}
 
 	ns, err := params.client.AppNamespace(params.app)
 	if err != nil {
