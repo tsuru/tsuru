@@ -277,6 +277,7 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 		}
 		labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
+	labels["name"] = ns
 	return labels, nil
 }
 
