@@ -261,14 +261,16 @@ func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 }
 
 func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
+	labels := map[string]string{
+		"name": ns,
+	}
 	if c.CustomData == nil {
-		return nil, nil
+		return labels, nil
 	}
 	nsLabelsConf := c.configForContext(ns, namespaceLabelsKey)
 	if nsLabelsConf == "" {
-		return nil, nil
+		return labels, nil
 	}
-	labels := make(map[string]string)
 	labelsRaw := strings.Split(nsLabelsConf, ",")
 	for _, l := range labelsRaw {
 		parts := strings.Split(l, "=")
@@ -277,7 +279,6 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 		}
 		labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
-	labels["name"] = ns
 	return labels, nil
 }
 

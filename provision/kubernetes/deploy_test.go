@@ -3144,8 +3144,13 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 		expected   apiv1.Namespace
 	}{
 		{
-			name:     "myns",
-			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "myns"}},
+			name: "myns",
+			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: "myns",
+				Labels: map[string]string{
+					"name": "myns",
+				},
+			}},
 		},
 		{
 			name: "myns",
@@ -3155,8 +3160,9 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: "myns",
 				Labels: map[string]string{
-					"lb1": "val1",
-					"lb2": "val2",
+					"lb1":  "val1",
+					"lb2":  "val2",
+					"name": "myns",
 				},
 			}},
 		},
@@ -3170,7 +3176,8 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: "myns",
 				Labels: map[string]string{
-					"lb3": "val3",
+					"lb3":  "val3",
+					"name": "myns",
 				},
 			}},
 		},
@@ -3183,8 +3190,9 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 			expected: apiv1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: "myns2",
 				Labels: map[string]string{
-					"lb1": "val1",
-					"lb2": "val2",
+					"lb1":  "val1",
+					"lb2":  "val2",
+					"name": "myns2",
 				},
 			}},
 		},
