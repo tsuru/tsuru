@@ -102,6 +102,11 @@ Here is how you can configure a health check in your yaml file:
   checked. This regular expression uses `Go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
+* ``healthcheck:command``: Exclusive to the ``kubernetes``
+  provisioner. A command to execute inside the unit container.
+  Exit status of zero is considered healthy and non-zero is unhealthy.
+  This option defaults to an empty string array. If ``healthcheck:path``
+  is set, this option will be ignored.
 * ``healthcheck:allowed_failures``: The number of allowed failures before that
   the health check consider the application as unhealthy. Defaults to 0.
 * ``healthcheck:use_in_router``: Whether this health check path should also be

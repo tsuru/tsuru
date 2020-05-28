@@ -393,7 +393,7 @@ type hcResult struct {
 
 func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error) {
 	var result hcResult
-	if hc == nil || hc.Path == "" {
+	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
 		return result, nil
 	}
 	if hc.Scheme == "" {
@@ -425,14 +425,19 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		FailureThreshold: int32(hc.AllowedFailures),
 		PeriodSeconds:    int32(hc.IntervalSeconds),
 		TimeoutSeconds:   int32(hc.TimeoutSeconds),
-		Handler: apiv1.Handler{
-			HTTPGet: &apiv1.HTTPGetAction{
-				Path:        hc.Path,
-				Port:        intstr.FromInt(port),
-				Scheme:      apiv1.URIScheme(hc.Scheme),
-				HTTPHeaders: headers,
-			},
-		},
+		Handler:          apiv1.Handler{},
+	}
+	if hc.Path != "" {
+		probe.Handler.HTTPGet = &apiv1.HTTPGetAction{
+			Path:        hc.Path,
+			Port:        intstr.FromInt(port),
+			Scheme:      apiv1.URIScheme(hc.Scheme),
+			HTTPHeaders: headers,
+		}
+	} else {
+		probe.Handler.Exec = &apiv1.ExecAction{
+			Command: hc.Command,
+		}
 	}
 	result.readiness = probe
 	if hc.ForceRestart {

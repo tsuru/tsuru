@@ -27,6 +27,7 @@ type TsuruYamlHealthcheck struct {
 	Method          string            `json:"method"`
 	Status          int               `json:"status"`
 	Scheme          string            `json:"scheme"`
+	Command         []string          `json:"command,omitempty" bson:",omitempty"`
 	Headers         map[string]string `json:"headers,omitempty" bson:",omitempty"`
 	Match           string            `json:"match,omitempty" bson:",omitempty"`
 	RouterBody      string            `json:"router_body,omitempty" yaml:"router_body" bson:"router_body,omitempty"`

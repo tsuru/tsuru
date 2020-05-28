@@ -714,7 +714,7 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 		},
 
 		{
-			explanation: "should always priorize unsucessful deployed versions to be removed",
+			explanation: "should always priorize unsuccessful deployed versions to be removed",
 			historySize: 10,
 			appVersions: func() appTypes.AppVersions {
 				appVersions := appTypes.AppVersions{
