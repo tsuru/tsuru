@@ -50,6 +50,12 @@ type ClusterStorage interface {
 	Delete(Cluster) error
 }
 
+func (c *Cluster) CleanUpSensitive() {
+	c.ClientKey = nil
+	delete(c.CustomData, "token")
+	delete(c.CustomData, "password")
+}
+
 var (
 	ErrClusterNotFound = errors.New("cluster not found")
 	ErrNoCluster       = errors.New("no cluster")

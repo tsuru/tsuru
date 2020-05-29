@@ -218,6 +218,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"event-block.add",
 	"event-block.remove",
 ).add(
+	"cluster.admin",
 	"cluster.read.events",
 	"cluster.create",
 	"cluster.update",

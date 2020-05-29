@@ -182,8 +182,11 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
-	for i := range clusters {
-		clusters[i].ClientKey = nil
+	admin := permission.Check(t, permission.PermClusterAdmin)
+	if !admin {
+		for i := range clusters {
+			clusters[i].CleanUpSensitive()
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(clusters)

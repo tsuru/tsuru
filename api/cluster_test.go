@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/ajg/form"
+	"github.com/tsuru/tsuru/permission"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
@@ -174,6 +176,43 @@ func (s *S) TestListClusters(c *check.C) {
 	request, err := http.NewRequest(http.MethodGet, "/1.3/provisioner/clusters", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	var retClusters []provision.Cluster
+	err = json.Unmarshal(recorder.Body.Bytes(), &retClusters)
+	c.Assert(err, check.IsNil)
+	c.Assert(retClusters, check.DeepEquals, []provision.Cluster{{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		CaCert:      []byte("testCA"),
+		ClientCert:  []byte("testCert"),
+		ClientKey:   []byte("testKey"),
+		Provisioner: "fake",
+		Default:     true,
+	}})
+}
+
+func (s *S) TestListClustersNonAdminUser(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermClusterRead,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	kubeCluster := provision.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"addr1"},
+		CaCert:      []byte("testCA"),
+		ClientCert:  []byte("testCert"),
+		ClientKey:   []byte("testKey"),
+		Provisioner: "fake",
+		Default:     true,
+	}
+	s.mockService.Cluster.OnList = func() ([]provision.Cluster, error) {
+		return []provision.Cluster{kubeCluster}, nil
+	}
+	request, err := http.NewRequest(http.MethodGet, "/1.3/provisioner/clusters", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
