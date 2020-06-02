@@ -29,56 +29,100 @@ import (
 
 const (
 	imageGCRunInterval = 5 * time.Minute
+	promNamespace      = "tsuru"
+	promSubsystem      = "gc"
 )
 
 var (
 	gcExecutionsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_gc_executions_total",
-		Help: "The number of times that gc had runned by phase",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "executions_total",
+		Help:      "The number of times that gc had runned by phase",
 	}, []string{"phase"})
 
 	executionDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "tsuru_gc_execution_duration_seconds",
-		Help:    "How long during the GC process",
-		Buckets: prometheus.ExponentialBuckets(0.1, 2.7, 10),
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "execution_duration_seconds",
+		Help:      "How long during the GC process",
+		Buckets:   prometheus.ExponentialBuckets(0.1, 2.7, 10),
 	}, []string{"phase"})
 
 	versionsMarkedToRemovalTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_versions_marked_to_removal_total",
-		Help: "The number of versions of applications that was marked to removal",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "versions_marked_to_removal_total",
+		Help:      "The number of versions of applications that was marked to removal",
 	})
 
 	// just used for dockercluster provisioner
 	provisionerPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_provisioner_prune_total",
-		Help: "The number of executions of prune against the provisioner",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_total",
+		Help:      "The number of executions of prune against the provisioner",
 	})
 
 	provisionerPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_provisioner_prune_failures_total",
-		Help: "The number of failures to prune unused images from provisioner",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_failures_total",
+		Help:      "The number of failures to prune unused images from provisioner",
+	})
+
+	provisionerPruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_duration_seconds",
+		Help:      "How long during single prune to provisioner",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 
 	// registry metrics
 	registryPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_registry_prune_total",
-		Help: "The number of executions of prune against the registry",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_total",
+		Help:      "The number of executions of prune against the registry",
 	})
 
 	registryPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_registry_prune_failures_total",
-		Help: "The number of failures to prune unused images from registry",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_failures_total",
+		Help:      "The number of failures to prune unused images from registry",
+	})
+
+	registryPruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_duration_seconds",
+		Help:      "How long during single prune to registry",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 
 	// database metrics
 	storagePruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_storage_prune_total",
-		Help: "The number of executions of prune against the storage",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_total",
+		Help:      "The number of executions of prune against the storage",
 	})
 
 	storagePruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_storage_prune_failures_total",
-		Help: "The number of failures to prune unused images from storage",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_failures_total",
+		Help:      "The number of failures to prune unused images from storage",
+	})
+
+	storagePruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_duration_seconds",
+		Help:      "How long during single prune to storage",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 )
 
@@ -418,6 +462,8 @@ func pruneVersionFromRegistry(version appTypes.AppVersionInfo) error {
 
 func pruneImageFromRegistry(image string) error {
 	registryPruneTotal.Inc()
+	timer := prometheus.NewTimer(registryPruneDuration)
+	defer timer.ObserveDuration()
 
 	if err := registry.RemoveImageIgnoreNotFound(image); err != nil {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
@@ -448,6 +494,8 @@ func pruneVersionFromProvisioner(a *app.App, version appTypes.AppVersionInfo) er
 
 func pruneImageFromProvisioner(a *app.App, image string) error {
 	provisionerPruneTotal.Inc()
+	timer := prometheus.NewTimer(provisionerPruneDuration)
+	defer timer.ObserveDuration()
 
 	err := a.CleanImage(image)
 	if err != nil {
@@ -462,6 +510,8 @@ func pruneImageFromProvisioner(a *app.App, image string) error {
 
 func pruneVersionFromStorage(appName string, version appTypes.AppVersionInfo) error {
 	storagePruneTotal.Inc()
+	timer := prometheus.NewTimer(storagePruneDuration)
+	defer timer.ObserveDuration()
 
 	err := servicemanager.AppVersion.DeleteVersion(appName, version.Version)
 	if err != nil {
