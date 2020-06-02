@@ -346,10 +346,16 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	defer config.Set("docker:gc:dry-run", false)
 	defer config.Unset("docker:registry")
 
+	now := time.Now()
+
 	for i := 0; i < 2; i++ {
 		evt := event.Event{}
 		evt.UniqueID = bson.NewObjectId()
-		evt.Running = i%2 == 0
+		if i%2 == 0 {
+			evt.Running = true
+		} else {
+			evt.EndTime = now
+		}
 
 		err := evt.RawInsert(nil, nil, nil)
 		c.Assert(err, check.IsNil)

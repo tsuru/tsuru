@@ -340,7 +340,7 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 	return false, nil
 }
 
-// versionsSafeToRemove checks wheather a version does have a related event running
+// versionsSafeToRemove checks whether a version does have a related event running
 func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.AppVersionInfo, error) {
 	uniqueIds := []bson.ObjectId{}
 	mapEventID := map[string]appTypes.AppVersionInfo{}
@@ -367,7 +367,7 @@ func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.App
 
 	safeVersions := []appTypes.AppVersionInfo{}
 	for _, event := range events {
-		if event.Running {
+		if event.Running || event.EndTime.IsZero() {
 			continue
 		}
 
