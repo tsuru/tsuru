@@ -6,12 +6,37 @@
 
 package cmd
 
-import "github.com/tsuru/tsuru/exec"
+import (
+	"fmt"
+	"strings"
+	"golang.org/x/sys/unix"
+	"github.com/tsuru/tsuru/exec"
+)
+
+func isWSL() bool {
+	var u unix.Utsname
+	err := unix.Uname(&u)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	release := strings.ToLower(string(u.Release[:]))
+	return strings.Contains(release, "microsoft")
+}
 
 func open(url string) error {
+
+	cmd := "xdg-open"
+	args := []string{url}
+
+	if(isWSL()){
+		cmd = "powershell.exe"
+		args = []string{"-c", "start", url}
+	}
+
 	opts := exec.ExecuteOptions{
-		Cmd:  "xdg-open",
-		Args: []string{url},
+		Cmd:  cmd,
+		Args: args,
 	}
 	return executor().Execute(opts)
 }
