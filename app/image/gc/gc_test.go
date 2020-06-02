@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
@@ -107,6 +108,7 @@ func (s *S) TearDownSuite(c *check.C) {
 func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {
 	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 		App:            a,
+		EventID:        bson.NewObjectId().Hex(),
 		CustomBuildTag: "my-custom-tag",
 	})
 	c.Assert(err, check.IsNil)
@@ -116,7 +118,8 @@ func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int
 	c.Assert(err, check.IsNil)
 	for i := 1; i <= desiredNumberOfVersions; i++ {
 		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
-			App: a,
+			App:     a,
+			EventID: bson.NewObjectId().Hex(),
 		})
 		c.Assert(err, check.IsNil)
 		err = version.CommitBuildImage()
@@ -311,6 +314,83 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
 		"/images/" + u.Host + "/tsuru/app-myapp:v9",
 		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
+	})
+}
+
+func (s *S) TestGCStartWithRunningEvent(c *check.C) {
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: s.team}}, nil
+	}
+	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer nodeSrv.Close()
+	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+		Address: nodeSrv.URL,
+		Pool:    "p1",
+	})
+	c.Assert(err, check.IsNil)
+	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "HEAD" {
+			w.Header().Set("Docker-Content-Digest", r.URL.Path)
+			return
+		}
+	}))
+	u, _ := url.Parse(registrySrv.URL)
+	defer registrySrv.Close()
+
+	config.Set("docker:gc:dry-run", true)
+	config.Set("docker:registry", u.Host)
+	defer config.Set("docker:gc:dry-run", false)
+	defer config.Unset("docker:registry")
+
+	for i := 0; i < 2; i++ {
+		evt := event.Event{}
+		evt.UniqueID = bson.NewObjectId()
+		evt.Running = i%2 == 0
+
+		err := evt.RawInsert(nil, nil, nil)
+		c.Assert(err, check.IsNil)
+
+		appVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			App:     a,
+			EventID: evt.UniqueID.Hex(),
+		})
+
+		c.Assert(err, check.IsNil)
+		err = appVersion.CommitBuildImage()
+		c.Assert(err, check.IsNil)
+		err = appVersion.CommitBaseImage()
+	}
+
+	gc := &imgGC{once: &sync.Once{}}
+	gc.start()
+	err = gc.Shutdown(context.Background())
+	c.Assert(err, check.IsNil)
+	versions, err := servicemanager.AppVersion.AppVersions(a)
+	c.Assert(err, check.IsNil)
+	var imgs []string
+	var markedVersionsToRemoval []int
+	for _, version := range versions.Versions {
+		if version.MarkedToRemoval {
+			markedVersionsToRemoval = append(markedVersionsToRemoval, version.Version)
+			continue
+		}
+		if version.DeployImage != "" {
+			imgs = append(imgs, version.DeployImage)
+		}
+		if version.BuildImage != "" {
+			imgs = append(imgs, version.BuildImage)
+		}
+	}
+	sort.Ints(markedVersionsToRemoval)
+	// the most important assert, we must never mark a version with running event related
+	c.Assert(markedVersionsToRemoval, check.DeepEquals, []int{2})
+	c.Assert(imgs, check.DeepEquals, []string{
+		u.Host + "/tsuru/app-myapp:v1",
+		u.Host + "/tsuru/app-myapp:v1-builder",
 	})
 }
 
@@ -667,6 +747,7 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 		deployedVersions                       []int
 		expectedVersionsToRemove               []int
 		expectedVersionsToPruneFromProvisioner []int
+		expectedUnsuccessfulDeployments        []int
 	}{
 		{
 			explanation: "should use ID to sort when is same updatedAt",
@@ -689,6 +770,7 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 			},
 			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
 			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
+			expectedUnsuccessfulDeployments:        []int{},
 		},
 		{
 			explanation: "should use updatedAt to short the versions",
@@ -711,10 +793,11 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 			},
 			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
 			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
+			expectedUnsuccessfulDeployments:        []int{},
 		},
 
 		{
-			explanation: "should always priorize unsuccessful deployed versions to be removed",
+			explanation: "should return unsuccessful deployed versions in the specified array",
 			historySize: 10,
 			appVersions: func() appTypes.AppVersions {
 				appVersions := appTypes.AppVersions{
@@ -732,10 +815,9 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			// remove first all unsuccessful versions
-			expectedVersionsToRemove: []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 10, 8, 6, 4, 2},
-			// clean all successful versions
+			expectedVersionsToRemove:               []int{10, 8, 6, 4, 2},
 			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
+			expectedUnsuccessfulDeployments:        []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
 		},
 
 		{
@@ -758,17 +840,19 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1, 6, 4},
+			expectedVersionsToRemove:               []int{6, 4},
 			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 18, 16, 14, 12},
+			expectedUnsuccessfulDeployments:        []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
 		},
 	}
 
 	for _, testCase := range testCases {
 		c.Log("Running: " + testCase.explanation)
-		versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(testCase.appVersions(), testCase.deployedVersions, testCase.historySize)
+		selection := selectAppVersions(testCase.appVersions(), testCase.deployedVersions, testCase.historySize)
 
-		c.Check(versionIDs(versionsToRemove), check.DeepEquals, testCase.expectedVersionsToRemove)
-		c.Check(versionIDs(versionsToPruneFromProvisioner), check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
+		c.Check(versionIDs(selection.toRemove), check.DeepEquals, testCase.expectedVersionsToRemove)
+		c.Check(versionIDs(selection.unsuccessfulDeploys), check.DeepEquals, testCase.expectedUnsuccessfulDeployments)
+		c.Check(versionIDs(selection.toPruneFromProvisioner), check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
 		c.Log("Finished: " + testCase.explanation)
 	}
 }

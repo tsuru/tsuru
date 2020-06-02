@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -280,7 +281,7 @@ func markOldImages() error {
 		})
 
 		if err != nil {
-			if _, ok := err.(event.ErrEventLocked); !ok {
+			if _, ok := err.(event.ErrEventLocked); ok {
 				continue
 			}
 			multi.Add(errors.Wrapf(err, "unable to acquire lock of app: %q", appVersions.AppName))
@@ -304,21 +305,31 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 		return false, errors.Wrapf(err, "Could not get deployed versions of app: %s", appVersions.AppName)
 	}
 
-	versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(appVersions, deployedVersions, historySize)
+	selection := selectAppVersions(appVersions, deployedVersions, historySize)
 	if !exclusiveLockAcquired {
-		for _, version := range versionsToPruneFromProvisioner {
+		for _, version := range selection.toPruneFromProvisioner {
 			pruneVersionFromProvisioner(a, version)
 		}
 	}
-
-	if len(versionsToRemove) == 0 {
+	if len(selection.toRemove) == 0 && len(selection.unsuccessfulDeploys) == 0 {
 		return false, nil
 	}
 	if !exclusiveLockAcquired {
 		return true, nil
 	}
 
-	for _, version := range versionsToRemove {
+	// we can not remove a running deployment version
+	// to accomplish that, let's check the every EventID whether is running.
+	if len(selection.unsuccessfulDeploys) > 0 {
+		versionsSafeToRemove, err := versionsSafeToRemove(selection.unsuccessfulDeploys)
+		if err != nil {
+			return false, errors.Wrapf(err, "Could not check events running of app: %s", appVersions.AppName)
+		}
+
+		selection.toRemove = append(selection.toRemove, versionsSafeToRemove...)
+	}
+
+	for _, version := range selection.toRemove {
 		versionsMarkedToRemovalTotal.Inc()
 
 		err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
@@ -327,6 +338,47 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 		}
 	}
 	return false, nil
+}
+
+// versionsSafeToRemove checks wheather a version does have a related event running
+func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.AppVersionInfo, error) {
+	uniqueIds := []bson.ObjectId{}
+	mapEventID := map[string]appTypes.AppVersionInfo{}
+
+	for _, v := range appVersions {
+		if v.EventID == "" {
+			continue
+		}
+		uniqueIds = append(uniqueIds, bson.ObjectIdHex(v.EventID))
+		mapEventID[v.EventID] = v
+	}
+
+	events, err := event.List(&event.Filter{
+		Raw: bson.M{
+			"uniqueid": bson.M{
+				"$in": uniqueIds,
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	safeVersions := []appTypes.AppVersionInfo{}
+	for _, event := range events {
+		if event.Running {
+			continue
+		}
+
+		version, found := mapEventID[event.UniqueID.Hex()]
+		if !found {
+			continue
+		}
+		safeVersions = append(safeVersions, version)
+	}
+
+	return safeVersions, nil
 }
 
 func sweepOldImages() error {
@@ -391,13 +443,23 @@ func sweepOldImages() error {
 	return multi.ToError()
 }
 
-func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) (versionsToRemove, versionsToPruneFromProvisioner []appTypes.AppVersionInfo) {
+type appVersionsSelection struct {
+	toRemove               []appTypes.AppVersionInfo
+	unsuccessfulDeploys    []appTypes.AppVersionInfo
+	toPruneFromProvisioner []appTypes.AppVersionInfo
+}
+
+func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) *appVersionsSelection {
 	var regularVersions, customTagVersions []appTypes.AppVersionInfo
+	selection := &appVersionsSelection{}
 	for _, v := range versions.Versions {
 		if v.MarkedToRemoval {
 			continue
 		} else if !v.DeploySuccessful {
-			versionsToRemove = append(versionsToRemove, v)
+			// A point to remember: @wpjunior
+			// All deploys are created with flag above as a false value
+			// It means in the future will turned to true, to avoid a remotion of a running event please check whether v.EventID is running.
+			selection.unsuccessfulDeploys = append(selection.unsuccessfulDeploys, v)
 		} else if v.CustomBuildTag != "" {
 			customTagVersions = append(customTagVersions, v)
 		} else {
@@ -405,7 +467,7 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 		}
 	}
 
-	sort.Sort(priorizedAppVersions(versionsToRemove))
+	sort.Sort(priorizedAppVersions(selection.unsuccessfulDeploys))
 	sort.Sort(priorizedAppVersions(regularVersions))
 	sort.Sort(priorizedAppVersions(customTagVersions))
 
@@ -415,14 +477,14 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 			continue
 		}
 		if i >= historySize {
-			versionsToRemove = append(versionsToRemove, version)
+			selection.toRemove = append(selection.toRemove, version)
 		} else {
-			versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, version)
+			selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, version)
 		}
 	}
 
-	versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, customTagVersions...)
-	return
+	selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, customTagVersions...)
+	return selection
 }
 
 func pruneAllVersionsByApp(appName string) error {
