@@ -23,13 +23,16 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersion(c *check.C) {
 	vi2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
 	vi1.Disabled = true
-	err = s.AppVersionStorage.UpdateVersion("myapp", vi1)
-	c.Assert(err, check.IsNil)
 	versions, err := s.AppVersionStorage.AppVersions(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(versions.Versions[vi1.Version].Disabled, check.Equals, true)
-	c.Assert(versions.Versions[vi2.Version].Disabled, check.Equals, false)
-	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
+	err = s.AppVersionStorage.UpdateVersion("myapp", vi1)
+	c.Assert(err, check.IsNil)
+	updatedVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(updatedVersions.UpdatedHash, check.Not(check.Equals), versions.UpdatedHash)
+	c.Assert(updatedVersions.Versions[vi1.Version].Disabled, check.Equals, true)
+	c.Assert(updatedVersions.Versions[vi2.Version].Disabled, check.Equals, false)
+	c.Assert(updatedVersions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C) {
@@ -41,15 +44,18 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C)
 	c.Assert(err, check.IsNil)
 	vi2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
 	vi1.DeploySuccessful = true
 	err = s.AppVersionStorage.UpdateVersionSuccess("myapp", vi1)
 	c.Assert(err, check.IsNil)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	updatedVersions, err := s.AppVersionStorage.AppVersions(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(versions.LastSuccessfulVersion, check.Equals, vi1.Version)
-	c.Assert(versions.Versions[vi1.Version].DeploySuccessful, check.Equals, true)
-	c.Assert(versions.Versions[vi2.Version].DeploySuccessful, check.Equals, false)
-	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
+	c.Assert(updatedVersions.UpdatedHash, check.Not(check.Equals), versions.UpdatedHash)
+	c.Assert(updatedVersions.LastSuccessfulVersion, check.Equals, vi1.Version)
+	c.Assert(updatedVersions.Versions[vi1.Version].DeploySuccessful, check.Equals, true)
+	c.Assert(updatedVersions.Versions[vi2.Version].DeploySuccessful, check.Equals, false)
+	c.Assert(updatedVersions.UpdatedAt.Unix(), check.Equals, vi2.UpdatedAt.Unix())
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
@@ -66,6 +72,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 	versions, err := s.AppVersionStorage.AppVersions(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi.UpdatedAt.Unix())
+	c.Assert(versions.UpdatedHash, check.Not(check.Equals), "")
 	vi.CreatedAt = time.Time{}
 	vi.UpdatedAt = time.Time{}
 	c.Assert(vi, check.DeepEquals, &appTypes.AppVersionInfo{
@@ -177,6 +184,8 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
 	err = s.AppVersionStorage.DeleteVersion(app.Name, 9)
 	c.Assert(err, check.IsNil)
 
@@ -190,6 +199,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 		versions.Versions[k] = v
 	}
 	c.Assert(versions.AppName, check.DeepEquals, "myapp")
+	c.Assert(versions.UpdatedHash, check.Not(check.Equals), oldVersions.UpdatedHash)
 	c.Assert(versions.Count, check.DeepEquals, 2)
 	c.Assert(versions.LastSuccessfulVersion, check.DeepEquals, 0)
 	c.Assert(versions.UpdatedAt.IsZero(), check.Equals, false)

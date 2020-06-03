@@ -12,6 +12,8 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+	uuid "github.com/nu7hatch/gouuid"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
@@ -112,11 +114,16 @@ func (s *appVersionStorage) legacyBuildImages(appName string) ([]string, error) 
 
 func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersionInfo) error {
 	now := time.Now().UTC()
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	vi.UpdatedAt = now
 	return s.baseUpdate(appName, bson.M{
 		"$set": bson.M{
 			fmt.Sprintf("versions.%d", vi.Version): vi,
 			"updatedat":                            now,
+			"updatedhash":                          uuidV4.String(),
 		},
 	})
 }
@@ -124,10 +131,15 @@ func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersio
 func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.AppVersionInfo) error {
 	now := time.Now().UTC()
 	vi.UpdatedAt = now
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	return s.baseUpdate(appName, bson.M{
 		"$set": bson.M{
 			"lastsuccessfulversion":                vi.Version,
 			"updatedat":                            now,
+			"updatedhash":                          uuidV4.String(),
 			fmt.Sprintf("versions.%d", vi.Version): vi,
 		},
 	})
@@ -158,6 +170,10 @@ func (s *appVersionStorage) NewAppVersion(args appTypes.NewVersionArgs) (*appTyp
 	currentCount := appVersions.Count + 1
 
 	now := time.Now().UTC()
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	appVersionInfo := appTypes.AppVersionInfo{
 		Description:    args.Description,
 		Version:        currentCount,
@@ -174,8 +190,9 @@ func (s *appVersionStorage) NewAppVersion(args appTypes.NewVersionArgs) (*appTyp
 	defer coll.Close()
 	_, err = coll.Upsert(bson.M{"appname": args.App.GetName()}, bson.M{
 		"$set": bson.M{
-			"count":     appVersionInfo.Version,
-			"updatedat": time.Now().UTC(),
+			"count":       appVersionInfo.Version,
+			"updatedat":   time.Now().UTC(),
+			"updatedhash": uuidV4.String(),
 			fmt.Sprintf("versions.%d", appVersionInfo.Version): appVersionInfo,
 		},
 	})
@@ -233,17 +250,29 @@ func (s *appVersionStorage) AppVersions(app appTypes.App) (appTypes.AppVersions,
 }
 
 func (s *appVersionStorage) DeleteVersion(appName string, version int) error {
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	return s.baseUpdate(appName, bson.M{
 		"$unset": bson.M{fmt.Sprintf("versions.%d", version): ""},
-		"$set":   bson.M{"updatedat": time.Now().UTC()},
+		"$set": bson.M{
+			"updatedat":   time.Now().UTC(),
+			"updatedhash": uuidV4.String(),
+		},
 	})
 }
 
 func (s *appVersionStorage) MarkToRemoval(appName string) error {
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	update := bson.M{
 		"$set": bson.M{
 			"markedtoremoval": true,
 			"updatedat":       time.Now().UTC(),
+			"updatedhash":     uuidV4.String(),
 		},
 	}
 	return s.baseUpdate(appName, update)
@@ -256,11 +285,16 @@ func (s *appVersionStorage) MarkVersionToRemoval(appName string, version int) er
 		"appname":  appName,
 		versionKey: bson.M{"$exists": true},
 	}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	update := bson.M{
 		"$set": bson.M{
 			versionKey + ".markedtoremoval": true,
 			versionKey + ".updatedat":       now,
 			"updatedat":                     now,
+			"updatedhash":                   uuidV4.String(),
 		},
 	}
 

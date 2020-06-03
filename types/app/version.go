@@ -63,6 +63,7 @@ type AppVersions struct {
 	LastSuccessfulVersion int                    `json:"lastSuccessfulVersion"`
 	Versions              map[int]AppVersionInfo `json:"versions"`
 	UpdatedAt             time.Time              `json:"updatedAt"`
+	UpdatedHash           string                 `json:"updatedHash"`
 	MarkedToRemoval       bool                   `json:"markedToRemoval"`
 }
 
