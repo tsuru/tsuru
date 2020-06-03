@@ -112,7 +112,7 @@ func (s *appVersionStorage) legacyBuildImages(appName string) ([]string, error) 
 	return imageData.Images, err
 }
 
-func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersionInfo) error {
+func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
 	uuidV4, err := uuid.NewV4()
 	if err != nil {
@@ -125,10 +125,10 @@ func (s *appVersionStorage) UpdateVersion(appName string, vi *appTypes.AppVersio
 			"updatedat":                            now,
 			"updatedhash":                          uuidV4.String(),
 		},
-	})
+	}, opts...)
 }
 
-func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.AppVersionInfo) error {
+func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
 	vi.UpdatedAt = now
 	uuidV4, err := uuid.NewV4()
@@ -142,11 +142,17 @@ func (s *appVersionStorage) UpdateVersionSuccess(appName string, vi *appTypes.Ap
 			"updatedhash":                          uuidV4.String(),
 			fmt.Sprintf("versions.%d", vi.Version): vi,
 		},
-	})
+	}, opts...)
 }
 
-func (s *appVersionStorage) baseUpdate(appName string, updateQuery bson.M) error {
-	return s.baseUpdateWhere(bson.M{"appname": appName}, updateQuery)
+func (s *appVersionStorage) baseUpdate(appName string, updateQuery bson.M, opts ...*appTypes.AppVersionWriteOptions) error {
+	where := bson.M{"appname": appName}
+
+	// when receive a PreviousUpdatedHash will perform a optimistic update
+	if len(opts) > 0 && opts[0].PreviousUpdatedHash != "" {
+		where["updatedhash"] = opts[0].PreviousUpdatedHash
+	}
+	return s.baseUpdateWhere(where, updateQuery)
 }
 
 func (s *appVersionStorage) baseUpdateWhere(where, updateQuery bson.M) error {
@@ -157,6 +163,9 @@ func (s *appVersionStorage) baseUpdateWhere(where, updateQuery bson.M) error {
 	defer coll.Close()
 	err = coll.Update(where, updateQuery)
 	if err == mgo.ErrNotFound {
+		if where["updatedhash"] != "" {
+			return appTypes.ErrTransactionCancelledByChange
+		}
 		return appTypes.ErrNoVersionsAvailable
 	}
 	return err
@@ -202,14 +211,24 @@ func (s *appVersionStorage) NewAppVersion(args appTypes.NewVersionArgs) (*appTyp
 	return &appVersionInfo, nil
 }
 
-func (s *appVersionStorage) DeleteVersions(appName string) error {
+func (s *appVersionStorage) DeleteVersions(appName string, opts ...*appTypes.AppVersionWriteOptions) error {
 	coll, err := s.collection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
+	where := bson.M{"appname": appName}
+
+	// when receive a PreviousUpdatedHash will perform a optimistic delete
+	if len(opts) > 0 && opts[0].PreviousUpdatedHash != "" {
+		where["updatedhash"] = opts[0].PreviousUpdatedHash
+	}
+
 	err = coll.Remove(bson.M{"appname": appName})
 	if err == mgo.ErrNotFound {
+		if where["updatedhash"] != "" {
+			return appTypes.ErrTransactionCancelledByChange
+		}
 		return nil
 	}
 	return err
@@ -249,21 +268,25 @@ func (s *appVersionStorage) AppVersions(app appTypes.App) (appTypes.AppVersions,
 	return appVersions, err
 }
 
-func (s *appVersionStorage) DeleteVersion(appName string, version int) error {
+func (s *appVersionStorage) DeleteVersionIDs(appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
 	uuidV4, err := uuid.NewV4()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
+	unset := bson.M{}
+	for _, version := range versions {
+		unset[fmt.Sprintf("versions.%d", version)] = ""
+	}
 	return s.baseUpdate(appName, bson.M{
-		"$unset": bson.M{fmt.Sprintf("versions.%d", version): ""},
+		"$unset": unset,
 		"$set": bson.M{
 			"updatedat":   time.Now().UTC(),
 			"updatedhash": uuidV4.String(),
 		},
-	})
+	}, opts...)
 }
 
-func (s *appVersionStorage) MarkToRemoval(appName string) error {
+func (s *appVersionStorage) MarkToRemoval(appName string, opts ...*appTypes.AppVersionWriteOptions) error {
 	uuidV4, err := uuid.NewV4()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
@@ -278,26 +301,30 @@ func (s *appVersionStorage) MarkToRemoval(appName string) error {
 	return s.baseUpdate(appName, update)
 }
 
-func (s *appVersionStorage) MarkVersionToRemoval(appName string, version int) error {
+func (s *appVersionStorage) MarkVersionsToRemoval(appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
 	now := time.Now().UTC()
-	versionKey := fmt.Sprintf("versions.%d", version)
-	where := bson.M{
-		"appname":  appName,
-		versionKey: bson.M{"$exists": true},
-	}
 	uuidV4, err := uuid.NewV4()
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	update := bson.M{
-		"$set": bson.M{
-			versionKey + ".markedtoremoval": true,
-			versionKey + ".updatedat":       now,
-			"updatedat":                     now,
-			"updatedhash":                   uuidV4.String(),
-		},
+
+	where := bson.M{
+		"appname": appName,
 	}
 
+	set := bson.M{
+		"updatedat":   now,
+		"updatedhash": uuidV4.String(),
+	}
+
+	for _, version := range versions {
+		versionKey := fmt.Sprintf("versions.%d", version)
+		where[versionKey] = bson.M{"$exists": true}
+		set[versionKey+".markedtoremoval"] = true
+		set[versionKey+".updatedat"] = now
+	}
+
+	update := bson.M{"$set": set}
 	return s.baseUpdateWhere(where, update)
 }
 

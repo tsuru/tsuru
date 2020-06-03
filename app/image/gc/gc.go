@@ -258,8 +258,11 @@ func markOldImages() error {
 		}
 		if a == nil {
 			log.Debugf("[image gc] app %q not found, mark everything to removal", appVersions.AppName)
-			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName)
-			if err != nil {
+			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+				PreviousUpdatedHash: appVersions.UpdatedHash,
+			})
+
+			if err != nil && err != appTypes.ErrTransactionCancelledByChange {
 				multi.Add(err)
 			}
 			continue
@@ -329,13 +332,18 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 		selection.toRemove = append(selection.toRemove, versionsSafeToRemove...)
 	}
 
+	versionIDs := []int{}
 	for _, version := range selection.toRemove {
 		versionsMarkedToRemovalTotal.Inc()
+		versionIDs = append(versionIDs, version.Version)
+	}
 
-		err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
-		if err != nil {
-			return false, errors.Wrapf(err, "Could not mark version %d to removal of app: %s", version.Version, appVersions.AppName)
-		}
+	err = servicemanager.AppVersion.MarkVersionsToRemoval(a.Name, versionIDs, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		return false, errors.Wrapf(err, "Could not mark versions to removal of app: %s", appVersions.AppName)
 	}
 	return false, nil
 }
@@ -396,9 +404,11 @@ func sweepOldImages() error {
 
 	multi := tsuruErrors.NewMultiError()
 	versionsToRemove := map[string][]appTypes.AppVersionInfo{}
+	versionsIDsToRemove := map[string][]int{}
+	mapAppVersions := map[string]appTypes.AppVersions{}
 	for _, appVersions := range allAppVersions {
 		if appVersions.MarkedToRemoval {
-			err := pruneAllVersionsByApp(appVersions.AppName)
+			err := pruneAllVersionsByApp(appVersions)
 			if err != nil {
 				multi.Add(err)
 			}
@@ -409,6 +419,10 @@ func sweepOldImages() error {
 				continue
 			}
 			versionsToRemove[appVersions.AppName] = append(versionsToRemove[appVersions.AppName], version)
+			versionsIDsToRemove[appVersions.AppName] = append(versionsIDsToRemove[appVersions.AppName], version.Version)
+		}
+		if len(versionsIDsToRemove[appVersions.AppName]) > 0 {
+			mapAppVersions[appVersions.AppName] = appVersions
 		}
 	}
 
@@ -423,6 +437,7 @@ func sweepOldImages() error {
 			continue
 		}
 
+		versionsToRemove := []int{}
 		for _, version := range versions {
 			pruneVersionFromProvisioner(a, version)
 
@@ -432,11 +447,13 @@ func sweepOldImages() error {
 				continue
 			}
 
-			err = pruneVersionFromStorage(appName, version)
-			if err != nil {
-				multi.Add(err)
-				continue
-			}
+			versionsToRemove = append(versionsToRemove, version.Version)
+		}
+
+		err = pruneVersionFromStorage(mapAppVersions[appName], versionsToRemove)
+		if err != nil {
+			multi.Add(err)
+			continue
 		}
 	}
 
@@ -487,16 +504,18 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 	return selection
 }
 
-func pruneAllVersionsByApp(appName string) error {
+func pruneAllVersionsByApp(appVersions appTypes.AppVersions) error {
 	multi := tsuruErrors.NewMultiError()
 
-	err := registry.RemoveAppImages(appName)
+	err := registry.RemoveAppImages(appVersions.AppName)
 	if err != nil {
-		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appName))
+		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
 	}
-	err = servicemanager.AppVersion.DeleteVersions(appName)
-	if err != nil {
-		multi.Add(errors.Wrapf(err, "could not remove versions from storage, app: %q", appName))
+	err = servicemanager.AppVersion.DeleteVersions(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		multi.Add(errors.Wrapf(err, "could not remove versions from storage, app: %q", appVersions.AppName))
 	}
 
 	return multi.ToError()
@@ -570,14 +589,16 @@ func pruneImageFromProvisioner(a *app.App, image string) error {
 	return nil
 }
 
-func pruneVersionFromStorage(appName string, version appTypes.AppVersionInfo) error {
+func pruneVersionFromStorage(appVersions appTypes.AppVersions, versions []int) error {
 	storagePruneTotal.Inc()
 	timer := prometheus.NewTimer(storagePruneDuration)
 	defer timer.ObserveDuration()
 
-	err := servicemanager.AppVersion.DeleteVersion(appName, version.Version)
-	if err != nil {
-		err = errors.Wrapf(err, "error removing old version from database for app: %q, version: %d", appName, version.Version)
+	err := servicemanager.AppVersion.DeleteVersionIDs(appVersions.AppName, versions, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		err = errors.Wrapf(err, "error removing old versions from database for app: %q", appVersions.AppName)
 		log.Errorf("[image gc] %s", err.Error())
 		storagePruneFailuresTotal.Inc()
 	}

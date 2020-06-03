@@ -104,24 +104,24 @@ func (s *appVersionService) AppVersions(app appTypes.App) (appTypes.AppVersions,
 	return s.storage.AppVersions(app)
 }
 
-func (s *appVersionService) DeleteVersions(appName string) error {
-	return s.storage.DeleteVersions(appName)
+func (s *appVersionService) DeleteVersions(appName string, opts ...*appTypes.AppVersionWriteOptions) error {
+	return s.storage.DeleteVersions(appName, opts...)
 }
 
 func (s *appVersionService) AllAppVersions() ([]appTypes.AppVersions, error) {
 	return s.storage.AllAppVersions()
 }
 
-func (s *appVersionService) DeleteVersion(appName string, version int) error {
-	return s.storage.DeleteVersion(appName, version)
+func (s *appVersionService) DeleteVersionIDs(appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
+	return s.storage.DeleteVersionIDs(appName, versions, opts...)
 }
 
-func (s *appVersionService) MarkToRemoval(appName string) error {
-	return s.storage.MarkToRemoval(appName)
+func (s *appVersionService) MarkToRemoval(appName string, opts ...*appTypes.AppVersionWriteOptions) error {
+	return s.storage.MarkToRemoval(appName, opts...)
 }
 
-func (s *appVersionService) MarkVersionToRemoval(appName string, version int) error {
-	return s.storage.MarkVersionToRemoval(appName, version)
+func (s *appVersionService) MarkVersionsToRemoval(appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
+	return s.storage.MarkVersionsToRemoval(appName, versions, opts...)
 }
 
 func (s *appVersionService) AppVersionFromInfo(app appTypes.App, info appTypes.AppVersionInfo) appTypes.AppVersion {
