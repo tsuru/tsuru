@@ -174,10 +174,10 @@ func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
 	})
 }
 
-func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
+func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersionIDs(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
 
-	err := s.AppVersionStorage.DeleteVersion(app.Name, 1)
+	err := s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
@@ -186,10 +186,10 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	oldVersions, err := s.AppVersionStorage.AppVersions(app)
 	c.Assert(err, check.IsNil)
-	err = s.AppVersionStorage.DeleteVersion(app.Name, 9)
+	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{9})
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.DeleteVersion(app.Name, 1)
+	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1})
 	c.Assert(err, check.IsNil)
 	versions, err := s.AppVersionStorage.AppVersions(app)
 	c.Assert(err, check.IsNil)
@@ -207,3 +207,75 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersion(c *check.C) {
 		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
 	})
 }
+
+func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeletes(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp-concurrent"}
+
+	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
+	c.Check(versions.Count, check.DeepEquals, 2)
+	c.Check(versions.LastSuccessfulVersion, check.DeepEquals, 0)
+	c.Check(versions.UpdatedAt.IsZero(), check.Equals, false)
+
+	versionIDs := []int{}
+	for versionID := range versions.Versions {
+		versionIDs = append(versionIDs, versionID)
+	}
+
+	c.Check(versionIDs, check.DeepEquals, []int{1})
+}
+
+func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyMarkToRemoval(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp-concurrent"}
+
+	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.MarkVersionsToRemoval(app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.MarkVersionsToRemoval(app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
+	c.Check(versions.Count, check.DeepEquals, 2)
+	c.Check(versions.LastSuccessfulVersion, check.DeepEquals, 0)
+	c.Check(versions.UpdatedAt.IsZero(), check.Equals, false)
+
+	versionIDs := []int{}
+	for versionID, v := range versions.Versions {
+		if !v.MarkedToRemoval {
+			versionIDs = append(versionIDs, versionID)
+		}
+	}
+
+	c.Check(versionIDs, check.DeepEquals, []int{1})
+}
+
+// TODO: UpdateVersion, UpdateVersionSuccess, DeleteVersions

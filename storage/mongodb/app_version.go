@@ -163,7 +163,7 @@ func (s *appVersionStorage) baseUpdateWhere(where, updateQuery bson.M) error {
 	defer coll.Close()
 	err = coll.Update(where, updateQuery)
 	if err == mgo.ErrNotFound {
-		if where["updatedhash"] != "" {
+		if _, exists := where["updatedhash"]; exists {
 			return appTypes.ErrTransactionCancelledByChange
 		}
 		return appTypes.ErrNoVersionsAvailable
@@ -226,7 +226,7 @@ func (s *appVersionStorage) DeleteVersions(appName string, opts ...*appTypes.App
 
 	err = coll.Remove(bson.M{"appname": appName})
 	if err == mgo.ErrNotFound {
-		if where["updatedhash"] != "" {
+		if _, exists := where["updatedhash"]; exists {
 			return appTypes.ErrTransactionCancelledByChange
 		}
 		return nil
@@ -310,6 +310,11 @@ func (s *appVersionStorage) MarkVersionsToRemoval(appName string, versions []int
 
 	where := bson.M{
 		"appname": appName,
+	}
+
+	// when receive a PreviousUpdatedHash will perform a optimistic delete
+	if len(opts) > 0 && opts[0].PreviousUpdatedHash != "" {
+		where["updatedhash"] = opts[0].PreviousUpdatedHash
 	}
 
 	set := bson.M{
