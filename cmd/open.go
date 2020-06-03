@@ -9,8 +9,9 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"golang.org/x/sys/unix"
+
 	"github.com/tsuru/tsuru/exec"
+	"golang.org/x/sys/unix"
 )
 
 func isWSL() bool {
@@ -29,7 +30,7 @@ func open(url string) error {
 	cmd := "xdg-open"
 	args := []string{url}
 
-	if(isWSL()){
+	if isWSL() {
 		cmd = "powershell.exe"
 		args = []string{"-c", "start", url}
 	}
