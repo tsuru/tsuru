@@ -224,7 +224,7 @@ func (s *appVersionStorage) DeleteVersions(appName string, opts ...*appTypes.App
 		where["updatedhash"] = opts[0].PreviousUpdatedHash
 	}
 
-	err = coll.Remove(bson.M{"appname": appName})
+	err = coll.Remove(where)
 	if err == mgo.ErrNotFound {
 		if _, exists := where["updatedhash"]; exists {
 			return appTypes.ErrTransactionCancelledByChange

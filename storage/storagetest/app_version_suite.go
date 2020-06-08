@@ -278,4 +278,100 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyMarkToRemoval(c *chec
 	c.Check(versionIDs, check.DeepEquals, []int{1})
 }
 
-// TODO: UpdateVersion, UpdateVersionSuccess, DeleteVersions
+func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersion(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp-concurrent"}
+
+	v1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	v2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+
+	v1.DeploySuccessful = true
+	err = s.AppVersionStorage.UpdateVersion(app.Name, v1, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Assert(err, check.IsNil)
+
+	v2.DeploySuccessful = true
+	err = s.AppVersionStorage.UpdateVersion(app.Name, v2, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
+	c.Check(versions.Count, check.DeepEquals, 2)
+	c.Check(versions.LastSuccessfulVersion, check.DeepEquals, 0)
+	c.Check(versions.UpdatedAt.IsZero(), check.Equals, false)
+
+	versionIDs := []int{}
+	for versionID, v := range versions.Versions {
+		if v.DeploySuccessful {
+			versionIDs = append(versionIDs, versionID)
+		}
+	}
+
+	c.Check(versionIDs, check.DeepEquals, []int{1})
+}
+
+func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersionSuccess(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp-concurrent"}
+
+	v1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	v2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+
+	v1.DeploySuccessful = true
+	err = s.AppVersionStorage.UpdateVersionSuccess(app.Name, v1, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.UpdateVersionSuccess(app.Name, v2, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
+	versions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
+	c.Check(versions.Count, check.DeepEquals, 2)
+	c.Check(versions.LastSuccessfulVersion, check.DeepEquals, 1)
+	c.Check(versions.UpdatedAt.IsZero(), check.Equals, false)
+
+	versionIDs := []int{}
+	for versionID, v := range versions.Versions {
+		if v.DeploySuccessful {
+			versionIDs = append(versionIDs, versionID)
+		}
+	}
+
+	c.Check(versionIDs, check.DeepEquals, []int{1})
+}
+
+func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeleteVersions(c *check.C) {
+	app := &appTypes.MockApp{Name: "myapp-concurrent"}
+
+	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	c.Assert(err, check.IsNil)
+	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+
+	err = s.AppVersionStorage.DeleteVersions(app.Name, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: "invalid-updated-hash",
+	})
+	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
+
+	err = s.AppVersionStorage.DeleteVersions(app.Name, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: oldVersions.UpdatedHash,
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+}
