@@ -567,7 +567,7 @@ func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppVersion.DeleteVersion(app.GetName(), version.Version())
+	err = servicemanager.AppVersion.DeleteVersionIDs(app.GetName(), []int{version.Version()})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())

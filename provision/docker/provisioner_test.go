@@ -2247,7 +2247,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	c.Assert(routes, check.DeepEquals, []appTypes.RoutableAddresses{{Addresses: []*url.URL{}}})
 	version, err := newSuccessfulVersionForApp(s.p, fakeApp, nil)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppVersion.DeleteVersion(fakeApp.GetName(), version.Version())
+	err = servicemanager.AppVersion.DeleteVersionIDs(fakeApp.GetName(), []int{version.Version()})
 	c.Assert(err, check.IsNil)
 	routes, err = s.p.RoutableAddresses(fakeApp)
 	c.Assert(err, check.IsNil)
