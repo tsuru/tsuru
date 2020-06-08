@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -29,56 +30,100 @@ import (
 
 const (
 	imageGCRunInterval = 5 * time.Minute
+	promNamespace      = "tsuru"
+	promSubsystem      = "gc"
 )
 
 var (
 	gcExecutionsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_gc_executions_total",
-		Help: "The number of times that gc had runned by phase",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "executions_total",
+		Help:      "The number of times that gc had runned by phase",
 	}, []string{"phase"})
 
 	executionDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "tsuru_gc_execution_duration_seconds",
-		Help:    "How long during the GC process",
-		Buckets: prometheus.ExponentialBuckets(0.1, 2.7, 10),
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "execution_duration_seconds",
+		Help:      "How long during the GC process",
+		Buckets:   prometheus.ExponentialBuckets(0.1, 2.7, 10),
 	}, []string{"phase"})
 
 	versionsMarkedToRemovalTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_versions_marked_to_removal_total",
-		Help: "The number of versions of applications that was marked to removal",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "versions_marked_to_removal_total",
+		Help:      "The number of versions of applications that was marked to removal",
 	})
 
 	// just used for dockercluster provisioner
 	provisionerPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_provisioner_prune_total",
-		Help: "The number of executions of prune against the provisioner",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_total",
+		Help:      "The number of executions of prune against the provisioner",
 	})
 
 	provisionerPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_provisioner_prune_failures_total",
-		Help: "The number of failures to prune unused images from provisioner",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_failures_total",
+		Help:      "The number of failures to prune unused images from provisioner",
+	})
+
+	provisionerPruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "provisioner_prune_duration_seconds",
+		Help:      "How long during single prune to provisioner",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 
 	// registry metrics
 	registryPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_registry_prune_total",
-		Help: "The number of executions of prune against the registry",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_total",
+		Help:      "The number of executions of prune against the registry",
 	})
 
 	registryPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_registry_prune_failures_total",
-		Help: "The number of failures to prune unused images from registry",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_failures_total",
+		Help:      "The number of failures to prune unused images from registry",
+	})
+
+	registryPruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "registry_prune_duration_seconds",
+		Help:      "How long during single prune to registry",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 
 	// database metrics
 	storagePruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_storage_prune_total",
-		Help: "The number of executions of prune against the storage",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_total",
+		Help:      "The number of executions of prune against the storage",
 	})
 
 	storagePruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_gc_storage_prune_failures_total",
-		Help: "The number of failures to prune unused images from storage",
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_failures_total",
+		Help:      "The number of failures to prune unused images from storage",
+	})
+
+	storagePruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "storage_prune_duration_seconds",
+		Help:      "How long during single prune to storage",
+		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
 	})
 )
 
@@ -213,8 +258,11 @@ func markOldImages() error {
 		}
 		if a == nil {
 			log.Debugf("[image gc] app %q not found, mark everything to removal", appVersions.AppName)
-			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName)
-			if err != nil {
+			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+				PreviousUpdatedHash: appVersions.UpdatedHash,
+			})
+
+			if err != nil && err != appTypes.ErrTransactionCancelledByChange {
 				multi.Add(err)
 			}
 			continue
@@ -236,7 +284,7 @@ func markOldImages() error {
 		})
 
 		if err != nil {
-			if _, ok := err.(event.ErrEventLocked); !ok {
+			if _, ok := err.(event.ErrEventLocked); ok {
 				continue
 			}
 			multi.Add(errors.Wrapf(err, "unable to acquire lock of app: %q", appVersions.AppName))
@@ -260,29 +308,85 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 		return false, errors.Wrapf(err, "Could not get deployed versions of app: %s", appVersions.AppName)
 	}
 
-	versionsToRemove, versionsToPruneFromProvisioner := selectAppVersions(appVersions, deployedVersions, historySize)
+	selection := selectAppVersions(appVersions, deployedVersions, historySize)
 	if !exclusiveLockAcquired {
-		for _, version := range versionsToPruneFromProvisioner {
+		for _, version := range selection.toPruneFromProvisioner {
 			pruneVersionFromProvisioner(a, version)
 		}
 	}
-
-	if len(versionsToRemove) == 0 {
+	if len(selection.toRemove) == 0 && len(selection.unsuccessfulDeploys) == 0 {
 		return false, nil
 	}
 	if !exclusiveLockAcquired {
 		return true, nil
 	}
 
-	for _, version := range versionsToRemove {
-		versionsMarkedToRemovalTotal.Inc()
-
-		err = servicemanager.AppVersion.MarkVersionToRemoval(a.Name, version.Version)
+	// we can not remove a running deployment version
+	// to accomplish that, let's check the every EventID whether is running.
+	if len(selection.unsuccessfulDeploys) > 0 {
+		versionsSafeToRemove, err := versionsSafeToRemove(selection.unsuccessfulDeploys)
 		if err != nil {
-			return false, errors.Wrapf(err, "Could not mark version %d to removal of app: %s", version.Version, appVersions.AppName)
+			return false, errors.Wrapf(err, "Could not check events running of app: %s", appVersions.AppName)
 		}
+
+		selection.toRemove = append(selection.toRemove, versionsSafeToRemove...)
+	}
+
+	versionIDs := []int{}
+	for _, version := range selection.toRemove {
+		versionsMarkedToRemovalTotal.Inc()
+		versionIDs = append(versionIDs, version.Version)
+	}
+
+	err = servicemanager.AppVersion.MarkVersionsToRemoval(a.Name, versionIDs, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		return false, errors.Wrapf(err, "Could not mark versions to removal of app: %s", appVersions.AppName)
 	}
 	return false, nil
+}
+
+// versionsSafeToRemove checks whether a version does have a related event running
+func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.AppVersionInfo, error) {
+	uniqueIds := []bson.ObjectId{}
+	mapEventID := map[string]appTypes.AppVersionInfo{}
+
+	for _, v := range appVersions {
+		if v.EventID == "" {
+			continue
+		}
+		uniqueIds = append(uniqueIds, bson.ObjectIdHex(v.EventID))
+		mapEventID[v.EventID] = v
+	}
+
+	events, err := event.List(&event.Filter{
+		Raw: bson.M{
+			"uniqueid": bson.M{
+				"$in": uniqueIds,
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	safeVersions := []appTypes.AppVersionInfo{}
+	for _, event := range events {
+		if event.Running || event.EndTime.IsZero() {
+			continue
+		}
+
+		version, found := mapEventID[event.UniqueID.Hex()]
+		if !found {
+			continue
+		}
+		safeVersions = append(safeVersions, version)
+	}
+
+	return safeVersions, nil
 }
 
 func sweepOldImages() error {
@@ -300,9 +404,11 @@ func sweepOldImages() error {
 
 	multi := tsuruErrors.NewMultiError()
 	versionsToRemove := map[string][]appTypes.AppVersionInfo{}
+	versionsIDsToRemove := map[string][]int{}
+	mapAppVersions := map[string]appTypes.AppVersions{}
 	for _, appVersions := range allAppVersions {
 		if appVersions.MarkedToRemoval {
-			err := pruneAllVersionsByApp(appVersions.AppName)
+			err := pruneAllVersionsByApp(appVersions)
 			if err != nil {
 				multi.Add(err)
 			}
@@ -313,6 +419,10 @@ func sweepOldImages() error {
 				continue
 			}
 			versionsToRemove[appVersions.AppName] = append(versionsToRemove[appVersions.AppName], version)
+			versionsIDsToRemove[appVersions.AppName] = append(versionsIDsToRemove[appVersions.AppName], version.Version)
+		}
+		if len(versionsIDsToRemove[appVersions.AppName]) > 0 {
+			mapAppVersions[appVersions.AppName] = appVersions
 		}
 	}
 
@@ -327,6 +437,7 @@ func sweepOldImages() error {
 			continue
 		}
 
+		versionsToRemove := []int{}
 		for _, version := range versions {
 			pruneVersionFromProvisioner(a, version)
 
@@ -336,24 +447,36 @@ func sweepOldImages() error {
 				continue
 			}
 
-			err = pruneVersionFromStorage(appName, version)
-			if err != nil {
-				multi.Add(err)
-				continue
-			}
+			versionsToRemove = append(versionsToRemove, version.Version)
+		}
+
+		err = pruneVersionFromStorage(mapAppVersions[appName], versionsToRemove)
+		if err != nil {
+			multi.Add(err)
+			continue
 		}
 	}
 
 	return multi.ToError()
 }
 
-func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) (versionsToRemove, versionsToPruneFromProvisioner []appTypes.AppVersionInfo) {
+type appVersionsSelection struct {
+	toRemove               []appTypes.AppVersionInfo
+	unsuccessfulDeploys    []appTypes.AppVersionInfo
+	toPruneFromProvisioner []appTypes.AppVersionInfo
+}
+
+func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) *appVersionsSelection {
 	var regularVersions, customTagVersions []appTypes.AppVersionInfo
+	selection := &appVersionsSelection{}
 	for _, v := range versions.Versions {
 		if v.MarkedToRemoval {
 			continue
 		} else if !v.DeploySuccessful {
-			versionsToRemove = append(versionsToRemove, v)
+			// A point to remember: @wpjunior
+			// All deploys are created with flag above as a false value
+			// It means in the future will turned to true, to avoid a remotion of a running event please check whether v.EventID is running.
+			selection.unsuccessfulDeploys = append(selection.unsuccessfulDeploys, v)
 		} else if v.CustomBuildTag != "" {
 			customTagVersions = append(customTagVersions, v)
 		} else {
@@ -361,7 +484,7 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 		}
 	}
 
-	sort.Sort(priorizedAppVersions(versionsToRemove))
+	sort.Sort(priorizedAppVersions(selection.unsuccessfulDeploys))
 	sort.Sort(priorizedAppVersions(regularVersions))
 	sort.Sort(priorizedAppVersions(customTagVersions))
 
@@ -371,26 +494,28 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 			continue
 		}
 		if i >= historySize {
-			versionsToRemove = append(versionsToRemove, version)
+			selection.toRemove = append(selection.toRemove, version)
 		} else {
-			versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, version)
+			selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, version)
 		}
 	}
 
-	versionsToPruneFromProvisioner = append(versionsToPruneFromProvisioner, customTagVersions...)
-	return
+	selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, customTagVersions...)
+	return selection
 }
 
-func pruneAllVersionsByApp(appName string) error {
+func pruneAllVersionsByApp(appVersions appTypes.AppVersions) error {
 	multi := tsuruErrors.NewMultiError()
 
-	err := registry.RemoveAppImages(appName)
+	err := registry.RemoveAppImages(appVersions.AppName)
 	if err != nil {
-		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appName))
+		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
 	}
-	err = servicemanager.AppVersion.DeleteVersions(appName)
-	if err != nil {
-		multi.Add(errors.Wrapf(err, "could not remove versions from storage, app: %q", appName))
+	err = servicemanager.AppVersion.DeleteVersions(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		multi.Add(errors.Wrapf(err, "could not remove versions from storage, app: %q", appVersions.AppName))
 	}
 
 	return multi.ToError()
@@ -418,6 +543,8 @@ func pruneVersionFromRegistry(version appTypes.AppVersionInfo) error {
 
 func pruneImageFromRegistry(image string) error {
 	registryPruneTotal.Inc()
+	timer := prometheus.NewTimer(registryPruneDuration)
+	defer timer.ObserveDuration()
 
 	if err := registry.RemoveImageIgnoreNotFound(image); err != nil {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
@@ -448,6 +575,8 @@ func pruneVersionFromProvisioner(a *app.App, version appTypes.AppVersionInfo) er
 
 func pruneImageFromProvisioner(a *app.App, image string) error {
 	provisionerPruneTotal.Inc()
+	timer := prometheus.NewTimer(provisionerPruneDuration)
+	defer timer.ObserveDuration()
 
 	err := a.CleanImage(image)
 	if err != nil {
@@ -460,12 +589,16 @@ func pruneImageFromProvisioner(a *app.App, image string) error {
 	return nil
 }
 
-func pruneVersionFromStorage(appName string, version appTypes.AppVersionInfo) error {
+func pruneVersionFromStorage(appVersions appTypes.AppVersions, versions []int) error {
 	storagePruneTotal.Inc()
+	timer := prometheus.NewTimer(storagePruneDuration)
+	defer timer.ObserveDuration()
 
-	err := servicemanager.AppVersion.DeleteVersion(appName, version.Version)
-	if err != nil {
-		err = errors.Wrapf(err, "error removing old version from database for app: %q, version: %d", appName, version.Version)
+	err := servicemanager.AppVersion.DeleteVersionIDs(appVersions.AppName, versions, &appTypes.AppVersionWriteOptions{
+		PreviousUpdatedHash: appVersions.UpdatedHash,
+	})
+	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
+		err = errors.Wrapf(err, "error removing old versions from database for app: %q", appVersions.AppName)
 		log.Errorf("[image gc] %s", err.Error())
 		storagePruneFailuresTotal.Inc()
 	}

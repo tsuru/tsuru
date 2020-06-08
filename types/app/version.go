@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	ErrNoVersionsAvailable    = errors.New("no versions available for app")
-	ErrVersionMarkedToRemoval = errors.New("the selected version is marked to removal")
+	ErrNoVersionsAvailable          = errors.New("no versions available for app")
+	ErrTransactionCancelledByChange = errors.New("The update has been cancelled by a previous change")
+	ErrVersionMarkedToRemoval       = errors.New("the selected version is marked to removal")
 )
 
 type ErrInvalidVersion struct {
@@ -63,6 +64,7 @@ type AppVersions struct {
 	LastSuccessfulVersion int                    `json:"lastSuccessfulVersion"`
 	Versions              map[int]AppVersionInfo `json:"versions"`
 	UpdatedAt             time.Time              `json:"updatedAt"`
+	UpdatedHash           string                 `json:"updatedHash"`
 	MarkedToRemoval       bool                   `json:"markedToRemoval"`
 }
 
@@ -91,6 +93,11 @@ type NewVersionArgs struct {
 	Description    string
 }
 
+type AppVersionWriteOptions struct {
+	// PreviousUpdatedHash is used to avoid a race of updates and loss data by concurrent updates.
+	PreviousUpdatedHash string
+}
+
 type AppVersionService interface {
 	AllAppVersions() ([]AppVersions, error)
 	AppVersions(app App) (AppVersions, error)
@@ -98,21 +105,21 @@ type AppVersionService interface {
 	VersionByImageOrVersion(app App, image string) (AppVersion, error)
 	LatestSuccessfulVersion(app App) (AppVersion, error)
 	NewAppVersion(args NewVersionArgs) (AppVersion, error)
-	DeleteVersions(appName string) error
-	DeleteVersion(appName string, version int) error
+	DeleteVersions(appName string, opts ...*AppVersionWriteOptions) error
+	DeleteVersionIDs(appName string, versions []int, opts ...*AppVersionWriteOptions) error
 	AppVersionFromInfo(App, AppVersionInfo) AppVersion
-	MarkToRemoval(appName string) error
-	MarkVersionToRemoval(appName string, version int) error
+	MarkToRemoval(appName string, opts ...*AppVersionWriteOptions) error
+	MarkVersionsToRemoval(appName string, versions []int, opts ...*AppVersionWriteOptions) error
 }
 
 type AppVersionStorage interface {
-	UpdateVersion(appName string, vi *AppVersionInfo) error
-	UpdateVersionSuccess(appName string, vi *AppVersionInfo) error
+	UpdateVersion(appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
+	UpdateVersionSuccess(appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
 	NewAppVersion(args NewVersionArgs) (*AppVersionInfo, error)
-	DeleteVersions(appName string) error
+	DeleteVersions(appName string, opts ...*AppVersionWriteOptions) error
 	AllAppVersions() ([]AppVersions, error)
 	AppVersions(app App) (AppVersions, error)
-	DeleteVersion(appName string, version int) error
-	MarkToRemoval(appName string) error
-	MarkVersionToRemoval(appName string, version int) error
+	DeleteVersionIDs(appName string, versions []int, opts ...*AppVersionWriteOptions) error
+	MarkToRemoval(appName string, opts ...*AppVersionWriteOptions) error
+	MarkVersionsToRemoval(appName string, versions []int, opts ...*AppVersionWriteOptions) error
 }

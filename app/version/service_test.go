@@ -177,22 +177,22 @@ func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 	})
 }
 
-func (s *S) TestAppVersionService_DeleteVersion(c *check.C) {
+func (s *S) TestAppVersionService_DeleteVersionIDs(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	err = svc.DeleteVersion(app.Name, 1)
+	err = svc.DeleteVersionIDs(app.Name, []int{1})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
 	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	err = svc.DeleteVersion(app.Name, 9)
+	err = svc.DeleteVersionIDs(app.Name, []int{9})
 	c.Assert(err, check.IsNil)
 
-	err = svc.DeleteVersion(app.Name, 1)
+	err = svc.DeleteVersionIDs(app.Name, []int{1})
 	c.Assert(err, check.IsNil)
 	versions, err := svc.AppVersions(app)
 	c.Assert(err, check.IsNil)
