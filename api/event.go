@@ -11,6 +11,8 @@ import (
 	"strconv"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -43,6 +45,12 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if len(events) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
+	}
+	for _, event := range events {
+		err = suppressSensitiveEnvs(event)
+		if err != nil {
+			return err
+		}
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(events)
@@ -97,6 +105,10 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Add("Content-Type", "application/json")
+	err = suppressSensitiveEnvs(e)
+	if err != nil {
+		return err
+	}
 	return json.NewEncoder(w).Encode(e)
 }
 
@@ -245,4 +257,31 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
+}
+
+func suppressSensitiveEnvs(e *event.Event) error {
+	if supressEnabled, _ := config.GetBool("events:suppress-sensitive-envs"); !supressEnabled {
+		return nil
+	}
+	if e.Kind.Name != permission.PermAppDeploy.FullName() || len(e.StartCustomData.Data) == 0 {
+		return nil
+	}
+
+	deployOptions := &app.DeployOptions{}
+	err := bson.Unmarshal(e.StartCustomData.Data, deployOptions)
+	if err != nil {
+		return err
+	}
+
+	if deployOptions.App == nil {
+		return nil
+	}
+
+	deployOptions.App.SuppressSensitiveEnvs()
+
+	e.StartCustomData.Data, err = bson.Marshal(deployOptions)
+	if err != nil {
+		return err
+	}
+	return nil
 }

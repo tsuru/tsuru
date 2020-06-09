@@ -15,6 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -82,6 +83,37 @@ func (s *EventSuite) SetUpTest(c *check.C) {
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
+}
+
+func (s *EventSuite) generateEventCustomData(appName string) *app.DeployOptions {
+	return &app.DeployOptions{
+		App: &app.App{
+			Name: appName,
+			Env: map[string]bind.EnvVar{
+				"MY_PASSWORD": {
+					Name:   "MY_PASSWORD",
+					Public: false,
+					Value:  "password123",
+				},
+			},
+			ServiceEnvs: []bind.ServiceEnvVar{
+				{
+					EnvVar: bind.EnvVar{
+						Name:   "MY_IMPORTANT_VAR",
+						Public: true,
+						Value:  "123",
+					},
+				},
+				{
+					EnvVar: bind.EnvVar{
+						Name:   "MY_PRECIOUS_VAR",
+						Public: false,
+						Value:  "123",
+					},
+				},
+			},
+		},
+	}
 }
 
 func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
@@ -384,12 +416,94 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Assert(recorder.Body.String(), check.Equals, "")
+	}
 	var result event.Event
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
+}
+
+func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
+	config.Set("events:suppress-sensitive-envs", true)
+	defer config.Unset("events:suppress-sensitive-envs")
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeApp, Value: "aha"},
+		Owner:      s.token,
+		Kind:       permission.PermAppDeploy,
+		Allowed:    event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
+		CustomData: s.generateEventCustomData("aha"),
+	})
+	c.Assert(err, check.IsNil)
+	u := fmt.Sprintf("/events/%s", evt.UniqueID.Hex())
+	request, err := http.NewRequest("GET", u, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Assert(recorder.Body.String(), check.Equals, "")
+	}
+	var result event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
+	c.Assert(result.Target, check.DeepEquals, evt.Target)
+
+	deployOptions := &app.DeployOptions{}
+	err = bson.Unmarshal(result.StartCustomData.Data, deployOptions)
+	c.Assert(err, check.IsNil)
+
+	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
+		"MY_PASSWORD": bind.EnvVar{
+			Name:   "MY_PASSWORD",
+			Value:  "****",
+			Alias:  "",
+			Public: false,
+		}})
+	c.Assert(deployOptions.App.ServiceEnvs, check.DeepEquals, []bind.ServiceEnvVar{
+		{
+			EnvVar: bind.EnvVar{
+				Name:   "MY_IMPORTANT_VAR",
+				Value:  "123",
+				Public: true,
+			},
+		},
+		{
+			EnvVar: bind.EnvVar{
+				Name:  "MY_PRECIOUS_VAR",
+				Value: "****",
+			},
+		},
+	})
+	request, err = http.NewRequest("GET", "/events", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var results []event.Event
+	err = json.Unmarshal(recorder.Body.Bytes(), &results)
+	c.Assert(results, check.HasLen, 1)
+	deployOptions = &app.DeployOptions{}
+	err = bson.Unmarshal(results[0].StartCustomData.Data, deployOptions)
+	c.Assert(err, check.IsNil)
+	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
+		"MY_PASSWORD": bind.EnvVar{
+			Name:   "MY_PASSWORD",
+			Value:  "****",
+			Alias:  "",
+			Public: false,
+		}})
+
 }
 
 func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
