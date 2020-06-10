@@ -1346,6 +1346,30 @@ IaaS. As an example, having the configuration below would allow you to call
 
 .. _config_throttling:
 
+Event rebuild routes configuration
+----------------------------------
+
+event:rebuild-routes-task:base-delay
+++++++++++++++++++++++++++++++++++++
+
+Duration in nanoseconds (supports human friendly amounts as well, such as ``1s``). Used to
+compute the exponential backoff time between failures in a row. Defaults to 5 milliseconds.
+
+event:rebuild-routes-task:max-delay
++++++++++++++++++++++++++++++++++++
+
+Duration in nanoseconds (supports human friendly amounts as well, such as ``1s``).
+Used as the maximum backoff time. Defaults to 1000 seconds.
+
+.. highlight:: yaml
+
+::
+
+    event:
+        rebuild-routes-task:
+            base-delay: 5ms
+            max-delay:  1000s
+
 Event throttling configuration
 ------------------------------
 
