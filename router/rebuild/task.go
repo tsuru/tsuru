@@ -6,10 +6,13 @@ package rebuild
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -92,9 +95,20 @@ func process(key interface{}) error {
 
 func Initialize(finder func(string) (RebuildApp, error)) error {
 	appFinder = finder
+
+	baseDelay := 5 * time.Millisecond
+	if delay, err := config.GetDuration(fmt.Sprintf("event:%s:base-delay", eventKindRebuild)); err == nil && delay > 0 {
+		baseDelay = delay
+	}
+
+	maxDelay := 1000 * time.Second
+	if delay, err := config.GetDuration(fmt.Sprintf("event:%s:max-delay", eventKindRebuild)); err == nil && delay > 0 {
+		maxDelay = delay
+	}
+
 	task = &rebuildTask{
 		queue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(),
+			workqueue.NewItemExponentialFailureRateLimiter(baseDelay, maxDelay),
 			"tsuru_workqueue_rebuild",
 		),
 	}
