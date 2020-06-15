@@ -77,7 +77,7 @@ var (
 		Subsystem: promSubsystem,
 		Name:      "provisioner_prune_duration_seconds",
 		Help:      "How long during single prune to provisioner",
-		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
+		Buckets:   prometheus.ExponentialBuckets(0.005, 4, 10),
 	})
 
 	// registry metrics
@@ -100,7 +100,7 @@ var (
 		Subsystem: promSubsystem,
 		Name:      "registry_prune_duration_seconds",
 		Help:      "How long during single prune to registry",
-		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
+		Buckets:   prometheus.ExponentialBuckets(0.005, 4, 10),
 	})
 
 	// database metrics
@@ -123,7 +123,7 @@ var (
 		Subsystem: promSubsystem,
 		Name:      "storage_prune_duration_seconds",
 		Help:      "How long during single prune to storage",
-		Buckets:   prometheus.ExponentialBuckets(0.005, 2.7, 10),
+		Buckets:   prometheus.ExponentialBuckets(0.005, 4, 10),
 	})
 )
 
