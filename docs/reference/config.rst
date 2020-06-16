@@ -80,7 +80,7 @@ domain. This setting is optional, unless ``use-tls`` is true.
 tls:validate-certificate
 ++++++++++++++++++++++++
 
-``tls:validate-certificate`` prevents an invalid certificate from being offered 
+``tls:validate-certificate`` prevents an invalid certificate from being offered
 to web clients or not. This setting is optional and defaults to "false".
 
 If enabled, the server will validate the certificates before server's start and
@@ -810,6 +810,11 @@ The maximum number of layers in Docker images. This number represents the
 number of times that Tsuru will reuse the previous image on application
 deployment. The default value is 10.
 
+docker:gc:dry-run
++++++++++++++++++
+
+If set to ``true``, tsuru garbage collector won't remove old and failed images from registry.
+
 .. _config_bs:
 
 docker:bs:image
@@ -1393,6 +1398,15 @@ event:throttling:[]:all-targets
 
 Boolean value describing whether the throttling will apply to all events target
 values or to individual values.
+
+Security configuration
+----------------------
+
+events:suppress-sensitive-envs
+++++++++++++++++++++++++++++++
+
+Boolean value used to enable supression of sensitive environment variables on `tsuru event-info` and tsuru-dashboard.
+Defaults to ``false``, will be ``true`` in next minor version.
 
 Volume plans configuration
 --------------------------
