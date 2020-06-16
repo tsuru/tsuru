@@ -8,13 +8,13 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 )
 
-const suppressedEnv = "****"
+var SuppressedEnv = "*** (private variable)"
 
 func (a *App) SuppressSensitiveEnvs() {
 	newEnv := map[string]bind.EnvVar{}
 	for key, env := range a.Env {
 		if !env.Public {
-			env.Value = suppressedEnv
+			env.Value = SuppressedEnv
 		}
 		newEnv[key] = env
 	}
@@ -22,7 +22,7 @@ func (a *App) SuppressSensitiveEnvs() {
 
 	for i, serviceEnv := range a.ServiceEnvs {
 		if !serviceEnv.EnvVar.Public {
-			a.ServiceEnvs[i].Value = suppressedEnv
+			a.ServiceEnvs[i].Value = SuppressedEnv
 		}
 	}
 }

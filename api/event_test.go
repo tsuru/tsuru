@@ -464,7 +464,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
 		"MY_PASSWORD": bind.EnvVar{
 			Name:   "MY_PASSWORD",
-			Value:  "****",
+			Value:  "*** (private variable)",
 			Alias:  "",
 			Public: false,
 		}})
@@ -479,7 +479,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 		{
 			EnvVar: bind.EnvVar{
 				Name:  "MY_PRECIOUS_VAR",
-				Value: "****",
+				Value: "*** (private variable)",
 			},
 		},
 	})
@@ -499,7 +499,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
 		"MY_PASSWORD": bind.EnvVar{
 			Name:   "MY_PASSWORD",
-			Value:  "****",
+			Value:  "*** (private variable)",
 			Alias:  "",
 			Public: false,
 		}})
