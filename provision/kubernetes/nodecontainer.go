@@ -176,6 +176,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if err != nil {
 		return err
 	}
+	serviceLinks := false
 	ds := &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dsName,
@@ -197,6 +198,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 					Labels: ls.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: &serviceLinks,
 					HostPID:            config.HostConfig.PidMode == "host",
 					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: serviceAccountName,

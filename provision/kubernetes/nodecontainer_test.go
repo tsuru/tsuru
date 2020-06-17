@@ -234,6 +234,7 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 					},
 				},
 				Spec: apiv1.PodSpec{
+					EnableServiceLinks: func(b bool) *bool { return &b }(false),
 					ServiceAccountName: "node-container-bs",
 					Affinity:           expectedAffinity,
 					Volumes: []apiv1.Volume{
