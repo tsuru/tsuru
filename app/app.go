@@ -172,9 +172,6 @@ func (app *App) CleanImage(img string) error {
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	var err error
 	if app.provisioner == nil {
-		if app.Pool == "" {
-			return provision.GetDefault()
-		}
 		app.provisioner, err = pool.GetProvisionerForPool(app.Pool)
 	}
 	return app.provisioner, err

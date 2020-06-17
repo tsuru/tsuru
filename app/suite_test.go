@@ -181,6 +181,8 @@ func (s *S) SetUpTest(c *check.C) {
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
 	setupMocks(s)
+	servicemanager.App, err = AppService()
+	c.Assert(err, check.IsNil)
 	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()

@@ -27,6 +27,7 @@ import (
 	tsuruv1client "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	informers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	kscheme "k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
@@ -54,7 +56,7 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	AppNamespace(provision.App) (string, error)
+	AppNamespace(appTypes.App) (string, error)
 	PoolNamespace(string) string
 	Namespace() string
 	GetCluster() *provTypes.Cluster
@@ -117,6 +119,11 @@ func (c *clientCoreWrapper) Pods(namespace string) v1core.PodInterface {
 type clientPodsWrapper struct {
 	v1core.PodInterface
 	cluster ClusterInterface
+}
+
+func (c *clientPodsWrapper) GetLogs(name string, opts *apiv1.PodLogOptions) *rest.Request {
+	cli, _ := rest.RESTClientFor(c.cluster.RestConfig())
+	return cli.Get().Namespace(c.cluster.Namespace()).Name(name).Resource("pods").SubResource("log").VersionedParams(opts, kscheme.ParameterCodec)
 }
 
 type StreamResult struct {

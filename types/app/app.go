@@ -8,6 +8,16 @@ import (
 	"net/url"
 )
 
+type App interface {
+	GetName() string
+	GetPool() string
+	GetTeamOwner() string
+	GetPlatform() string
+	GetPlatformVersion() string
+	GetDeploys() uint
+	GetUpdatePlatform() bool
+}
+
 type AppRouter struct {
 	Name         string            `json:"name"`
 	Opts         map[string]string `json:"opts"`
@@ -22,4 +32,8 @@ type RoutableAddresses struct {
 	Prefix    string
 	Addresses []*url.URL
 	ExtraData map[string]string
+}
+
+type AppService interface {
+	GetByName(name string) (App, error)
 }

@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	App                       app.AppService
 	AppCache                  cache.AppCacheService
 	Plan                      app.PlanService
 	Platform                  app.PlatformService

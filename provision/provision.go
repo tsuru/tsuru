@@ -37,6 +37,7 @@ var (
 	ErrEmptyApp      = errors.New("no units for this app")
 	ErrNodeNotFound  = errors.New("node not found")
 
+	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
 	DefaultProvisioner = defaultDockerProvisioner
 )
 
@@ -374,6 +375,12 @@ type ExecOptions struct {
 
 type ExecutableProvisioner interface {
 	ExecuteCommand(opts ExecOptions) error
+}
+
+// LogsProvisioner is a provisioner that is self responsible for storage logs.
+type LogsProvisioner interface {
+	ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
+	WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
 }
 
 // SleepableProvisioner is a provisioner that allows putting applications to

@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -29,71 +30,78 @@ var (
 
 	buckets = append([]float64{0.1, 0.5}, prometheus.ExponentialBuckets(1, 1.6, 15)...)
 
-	logsInQueue = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tsuru_logs_queue_current",
-		Help: "The current number of log entries in dispatcher queue.",
+	logsInQueue = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "queue_current",
+		Help:      "The current number of log entries in dispatcher queue.",
 	})
 
-	logsInAppQueues = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tsuru_logs_app_queues_current",
-		Help: "The current number of log entries in app queues.",
+	logsInAppQueues = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "app_queues_current",
+		Help:      "The current number of log entries in app queues.",
 	}, []string{"app"})
 
-	logsQueueBlockedTotal = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "tsuru_logs_queue_blocked_seconds_total",
-		Help: "The total time spent blocked trying to add log to queue.",
+	logsQueueBlockedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "queue_blocked_seconds_total",
+		Help:      "The total time spent blocked trying to add log to queue.",
 	})
 
-	logsQueueSize = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "tsuru_logs_dispatcher_queue_size",
-		Help: "The max number of log entries in a dispatcher queue.",
+	logsQueueSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "dispatcher_queue_size",
+		Help:      "The max number of log entries in a dispatcher queue.",
 	})
 
-	logsEnqueued = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_enqueued_total",
-		Help: "The number of log entries enqueued for processing.",
+	logsEnqueued = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "enqueued_total",
+		Help:      "The number of log entries enqueued for processing.",
 	}, []string{"app"})
 
-	logsWritten = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_write_total",
-		Help: "The number of log entries written to mongo.",
+	logsWritten = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "write_total",
+		Help:      "The number of log entries written to mongo.",
 	}, []string{"app"})
 
-	logsDropped = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_dropped_total",
-		Help: "The number of log entries dropped due to full buffers.",
+	logsDropped = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "dropped_total",
+		Help:      "The number of log entries dropped due to full buffers.",
 	}, []string{"app"})
 
-	logsDroppedRateLimit = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_dropped_rate_limit_total",
-		Help: "The number of log entries dropped due to rate limit exceeded.",
+	logsDroppedRateLimit = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "dropped_rate_limit_total",
+		Help:      "The number of log entries dropped due to rate limit exceeded.",
 	}, []string{"app"})
 
-	logsMongoFullLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "tsuru_logs_mongo_full_duration_seconds",
-		Help:    "The latency distributions for log messages to be stored in database.",
-		Buckets: buckets,
+	logsMongoFullLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "mongo_full_duration_seconds",
+		Help:      "The latency distributions for log messages to be stored in database.",
+		Buckets:   buckets,
 	})
 
-	logsMongoLatency = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "tsuru_logs_mongo_duration_seconds",
-		Help:    "The latency distributions for log messages to be stored in database.",
-		Buckets: buckets,
+	logsMongoLatency = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "mongo_duration_seconds",
+		Help:      "The latency distributions for log messages to be stored in database.",
+		Buckets:   buckets,
 	})
 )
-
-func init() {
-	prometheus.MustRegister(logsInQueue)
-	prometheus.MustRegister(logsInAppQueues)
-	prometheus.MustRegister(logsQueueSize)
-	prometheus.MustRegister(logsEnqueued)
-	prometheus.MustRegister(logsWritten)
-	prometheus.MustRegister(logsDropped)
-	prometheus.MustRegister(logsDroppedRateLimit)
-	prometheus.MustRegister(logsQueueBlockedTotal)
-	prometheus.MustRegister(logsMongoFullLatency)
-	prometheus.MustRegister(logsMongoLatency)
-}
 
 type logDispatcher struct {
 	mu             sync.RWMutex
