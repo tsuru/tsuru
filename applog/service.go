@@ -10,6 +10,11 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
+const (
+	promNamespace = "tsuru"
+	promSubsystem = "logs"
+)
+
 func AppLogService() (appTypes.AppLogService, error) {
 	appLogSvc, _ := config.GetString("log:app-log-service")
 	if appLogSvc == "" {
@@ -28,6 +33,5 @@ func AppLogService() (appTypes.AppLogService, error) {
 	if err != nil {
 		return nil, err
 	}
-	return svc, nil
-
+	return newProvisionerWrapper(svc), nil
 }

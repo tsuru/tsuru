@@ -446,6 +446,9 @@ func listPools(query bson.M) ([]Pool, error) {
 }
 
 func GetProvisionerForPool(name string) (provision.Provisioner, error) {
+	if name == "" {
+		return provision.GetDefault()
+	}
 	prov := poolCache.Get(name)
 	if prov != nil {
 		return prov, nil

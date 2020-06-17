@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -23,10 +22,7 @@ func (s *S) TestLogStreamTrackerAddRemove(c *check.C) {
 }
 
 func (s *S) TestLogStreamTrackerShutdown(c *check.C) {
-	l, err := servicemanager.AppLog.Watch(appTypes.ListLogArgs{
-		AppName: "myapp",
-	})
-	c.Assert(err, check.IsNil)
+	l := appTypes.NewMockLogWatcher()
 	logTracker.add(l)
 	logTracker.Shutdown(context.Background())
 	select {

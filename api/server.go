@@ -97,6 +97,10 @@ var onceServices sync.Once
 
 func setupServices() error {
 	var err error
+	servicemanager.App, err = app.AppService()
+	if err != nil {
+		return err
+	}
 	servicemanager.TeamToken, err = auth.TeamTokenService()
 	if err != nil {
 		return err

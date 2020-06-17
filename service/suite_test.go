@@ -9,7 +9,6 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
-	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -17,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
@@ -81,8 +81,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.ServiceBrokerCatalogCache.OnLoad = func(_ string) (*serviceTypes.BrokerCatalog, error) {
 		return nil, fmt.Errorf("not found")
 	}
-	servicemanager.AppLog, err = applog.AppLogService()
-	c.Assert(err, check.IsNil)
+	servicemanager.AppLog = &appTypes.MockAppLogService{}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }

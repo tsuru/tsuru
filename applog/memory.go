@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -22,42 +23,45 @@ const (
 	watchBufferSize         = 1000
 	watchWarningInterval    = 30 * time.Second
 	baseLogSize             = unsafe.Sizeof(appTypes.Applog{}) + unsafe.Sizeof(ringEntry{})
+	logMemorySubsytem       = "logs_memory"
 )
 
 var (
-	logsMemoryReceived = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_memory_received_total",
-		Help: "The number of in memory log entries received for processing.",
+	logsMemoryReceived = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: logMemorySubsytem,
+		Name:      "received_total",
+		Help:      "The number of in memory log entries received for processing.",
 	}, []string{"app"})
 
-	logsMemoryEvicted = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_memory_evicted_total",
-		Help: "The number of in memory log entries removed due to full buffer.",
+	logsMemoryEvicted = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: logMemorySubsytem,
+		Name:      "evicted_total",
+		Help:      "The number of in memory log entries removed due to full buffer.",
 	}, []string{"app"})
 
-	logsMemoryDroppedWatch = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "tsuru_logs_memory_watch_dropped_total",
-		Help: "The number of messages dropped in watchers due to a slow client.",
+	logsMemoryDroppedWatch = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: logMemorySubsytem,
+		Name:      "watch_dropped_total",
+		Help:      "The number of messages dropped in watchers due to a slow client.",
 	}, []string{"app"})
 
-	logsMemorySize = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tsuru_logs_memory_size",
-		Help: "The size in bytes for in memory log entries of a given app.",
+	logsMemorySize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: logMemorySubsytem,
+		Name:      "size",
+		Help:      "The size in bytes for in memory log entries of a given app.",
 	}, []string{"app"})
 
-	logsMemoryLength = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "tsuru_logs_memory_length",
-		Help: "The number of in memory log entries for a given app.",
+	logsMemoryLength = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: promNamespace,
+		Subsystem: logMemorySubsytem,
+		Name:      "length",
+		Help:      "The number of in memory log entries for a given app.",
 	}, []string{"app"})
 )
-
-func init() {
-	prometheus.MustRegister(logsMemoryReceived)
-	prometheus.MustRegister(logsMemoryEvicted)
-	prometheus.MustRegister(logsMemoryDroppedWatch)
-	prometheus.MustRegister(logsMemorySize)
-	prometheus.MustRegister(logsMemoryLength)
-}
 
 type memoryLogService struct {
 	bufferMap sync.Map

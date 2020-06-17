@@ -134,6 +134,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	s.setupMocks()
+	servicemanager.App, err = app.AppService()
+	c.Assert(err, check.IsNil)
 	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()

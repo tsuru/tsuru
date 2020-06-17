@@ -76,6 +76,7 @@ var (
 	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
 	_ provision.HCProvisioner            = &kubernetesProvisioner{}
 	_ provision.VersionsProvisioner      = &kubernetesProvisioner{}
+	_ provision.LogsProvisioner          = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	// _ provision.OptionalLogsProvisioner  = &kubernetesProvisioner{}

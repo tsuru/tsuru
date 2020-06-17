@@ -26,15 +26,6 @@ func (i ErrInvalidVersion) Error() string {
 	return fmt.Sprintf("Invalid version: %s", i.Version)
 }
 
-type App interface {
-	GetName() string
-	GetTeamOwner() string
-	GetPlatform() string
-	GetPlatformVersion() string
-	GetDeploys() uint
-	GetUpdatePlatform() bool
-}
-
 type AppVersion interface {
 	Version() int
 	BuildImageName() string

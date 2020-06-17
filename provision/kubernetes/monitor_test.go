@@ -93,3 +93,20 @@ func (s *S) TestNewRouterControllerSameInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.Equals, c2)
 }
+
+func (s *S) TestPodListeners(c *check.C) {
+	podListener1 := &podListener{}
+	podListener2 := &podListener{}
+
+	clusterController, err := getClusterController(s.p, s.clusterClient)
+	c.Assert(err, check.IsNil)
+	clusterController.addPodListener("my-app", podListener1)
+	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
+	clusterController.addPodListener("my-app", podListener2)
+	clusterController.removePodListener("my-app", podListener1)
+	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
+	_, contains := clusterController.podListeners["my-app"][podListener2]
+	c.Assert(contains, check.Equals, true)
+	clusterController.removePodListener("my-app", podListener2)
+	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 0)
+}

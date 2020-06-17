@@ -47,6 +47,11 @@ var eventKindsIgnoreRebuild = []string{
 	permission.PermAppUpdateRoutable.FullName(),
 }
 
+type podListener struct {
+	OnEvent func(*apiv1.Pod)
+}
+type podListeners map[*podListener]struct{}
+
 type clusterController struct {
 	mu                 sync.Mutex
 	cluster            *ClusterClient
@@ -60,6 +65,8 @@ type clusterController struct {
 	resourceReadyCache map[types.NamespacedName]bool
 	startedAt          time.Time
 	leader             int32
+	podListeners       map[string]podListeners
+	podListenersMu     sync.RWMutex
 	wg                 sync.WaitGroup
 }
 
@@ -83,6 +90,7 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		cancel:             cancel,
 		resourceReadyCache: make(map[types.NamespacedName]bool),
 		startedAt:          time.Now(),
+		podListeners:       make(map[string]podListeners),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
@@ -162,6 +170,25 @@ func (c *clusterController) start() error {
 			}
 		},
 	})
+
+	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			pod, ok := obj.(*apiv1.Pod)
+			if !ok {
+				return
+			}
+
+			c.notifyPodChanges(pod)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			newPod, ok := newObj.(*apiv1.Pod)
+			if !ok {
+				return
+			}
+			c.notifyPodChanges(newPod)
+		},
+	})
+
 	return nil
 }
 
@@ -202,6 +229,40 @@ func (c *clusterController) onDelete(obj interface{}) error {
 	}
 	c.enqueuePodDelete(pod)
 	return nil
+}
+
+func (c *clusterController) notifyPodChanges(pod *apiv1.Pod) {
+	c.podListenersMu.RLock()
+	defer c.podListenersMu.RUnlock()
+
+	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
+	listeners, contains := c.podListeners[appName]
+	if !contains {
+		return
+	}
+
+	for listener := range listeners {
+		listener.OnEvent(pod)
+	}
+}
+
+func (c *clusterController) addPodListener(appName string, listener *podListener) {
+	c.podListenersMu.Lock()
+	defer c.podListenersMu.Unlock()
+
+	if c.podListeners[appName] == nil {
+		c.podListeners[appName] = make(podListeners)
+	}
+	c.podListeners[appName][listener] = struct{}{}
+}
+
+func (c *clusterController) removePodListener(appName string, listener *podListener) {
+	c.podListenersMu.Lock()
+	defer c.podListenersMu.Unlock()
+
+	if c.podListeners[appName] != nil {
+		delete(c.podListeners[appName], listener)
+	}
 }
 
 func (c *clusterController) enqueuePodDelete(pod *apiv1.Pod) {

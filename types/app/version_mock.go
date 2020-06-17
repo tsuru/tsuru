@@ -5,13 +5,17 @@
 package app
 
 type MockApp struct {
-	Name, TeamOwner, Platform, PlatformVersion string
-	Deploys                                    uint
-	UpdatePlatform                             bool
+	Name, TeamOwner, Platform, PlatformVersion, Pool string
+	Deploys                                          uint
+	UpdatePlatform                                   bool
 }
 
 func (a *MockApp) GetName() string {
 	return a.Name
+}
+
+func (a *MockApp) GetPool() string {
+	return a.Pool
 }
 
 func (a *MockApp) GetTeamOwner() string {
