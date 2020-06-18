@@ -789,11 +789,93 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) 
 	params := map[string]interface{}{
 		"description": "",
 		"teamowner":   "",
+		"parameters":  "",
 	}
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Neither the description, team owner, tags or plan were set. You must define at least one.\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Neither the description, team owner, tags, plan or plan parameters were set. You must define at least one.\n")
+}
+
+func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.C) {
+	si := service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		PlanName:    "large",
+		Parameters: map[string]interface{}{
+			"storage":       "hdd",
+			"old-parameter": "old-value",
+		},
+	}
+	err := s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	params := map[string]interface{}{
+		"parameters.storage":  "ssd",
+		"parameters.replicas": "5",
+	}
+	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	c.Assert(err, check.IsNil)
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       si.Teams,
+		TeamOwner:   s.team.Name,
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		PlanName:    "large",
+		Parameters: map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
+	})
+}
+
+func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPermission(c *check.C) {
+	si := service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		PlanName:    "large",
+		Parameters: map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
+	}
+	err := s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	params := map[string]interface{}{
+		"description": "changed",
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdatePlan,
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+	})
+	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	c.Assert(err, check.IsNil)
+	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Teams:       si.Teams,
+		TeamOwner:   s.team.Name,
+		Apps:        []string{},
+		BoundUnits:  []service.Unit{},
+		Tags:        []string{},
+		PlanName:    "large",
+		Parameters: map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
+	})
 }
 
 func makeRequestToRemoveServiceInstance(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {

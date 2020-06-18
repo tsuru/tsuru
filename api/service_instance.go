@@ -131,6 +131,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Plan        string
 		TeamOwner   string
 		Tags        []string
+		Parameters  map[string]interface{}
 	}{}
 	err = ParseInput(r, &updateData)
 	if err != nil {
@@ -163,10 +164,14 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdatePlan)
 		si.PlanName = updateData.Plan
 	}
+	if updateData.Parameters != nil {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateParameters)
+		si.Parameters = updateData.Parameters
+	}
 	if len(wantedPerms) == 0 {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Neither the description, team owner, tags or plan were set. You must define at least one.",
+			Message: "Neither the description, team owner, tags, plan or plan parameters were set. You must define at least one.",
 		}
 	}
 	for _, perm := range wantedPerms {

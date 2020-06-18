@@ -141,6 +141,7 @@ var updateServiceInstance = action.Action{
 					"tags":        updateData.Tags,
 					"teamowner":   updateData.TeamOwner,
 					"plan_name":   updateData.PlanName,
+					"parameters":  updateData.Parameters,
 				},
 				"$addToSet": bson.M{
 					"teams": updateData.TeamOwner,
