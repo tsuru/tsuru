@@ -1558,6 +1558,9 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		PlanName:    "small",
 		Description: "desc",
 		Tags:        []string{"tag 1"},
+		Parameters: map[string]interface{}{
+			"storage-type": "ssd",
+		},
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
@@ -1581,6 +1584,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		PlanDescription: "no space left for you",
 		Description:     si.Description,
 		Tags:            []string{"tag 1"},
+		Parameters:      map[string]interface{}{"storage-type": "ssd"},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1624,6 +1628,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 		PlanDescription: "",
 		Description:     si.Description,
 		Tags:            []string{"tag 1", "tag 2"},
+		Parameters:      map[string]interface{}{},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
