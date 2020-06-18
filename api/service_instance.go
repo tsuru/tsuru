@@ -410,6 +410,7 @@ type serviceInstanceInfo struct {
 	PlanDescription string
 	CustomInfo      map[string]string
 	Tags            []string
+	Parameters      map[string]interface{}
 }
 
 // title: service instance info
@@ -455,6 +456,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		PlanDescription: plan.Description,
 		CustomInfo:      info,
 		Tags:            serviceInstance.Tags,
+		Parameters:      serviceInstance.Parameters,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(sInfo)
