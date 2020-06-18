@@ -2436,8 +2436,9 @@ paths:
       consumes:
         - application/json
       parameters:
-        - name: setData
+        - name: poolConstraint
           in: body
+          required: true
           schema:
             $ref: "#/definitions/PoolConstraintSet"
       responses:
