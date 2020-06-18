@@ -2406,6 +2406,55 @@ paths:
         - cluster
       security:
         - Bearer: []
+  /1.3/constraints:
+    get:
+      operationId: ConstraintList
+      description: List pool constraints
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: PoolConstraints
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/PoolConstraint"
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - pool
+      security:
+        - Bearer: []
+    put:
+      operationId: ConstraintSet
+      description: Update a service instance
+      consumes:
+        - application/json
+      parameters:
+        - name: setData
+          in: body
+          schema:
+            $ref: "#/definitions/PoolConstraintSet"
+      responses:
+        "200":
+          description: Pool constraint set
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - pool
+      security:
+        - Bearer: []
 definitions:
   ErrorMessage:
     description: Error message.
@@ -3399,4 +3448,32 @@ definitions:
       version:
         type: string
       isRoutable:
+        type: boolean
+  PoolConstraint:
+    type: object
+    properties:
+      PoolExpr:
+        type: string
+      Field:
+        type: string
+      Values:
+        type: array
+        items:
+          type: string
+      Blacklist:
+        type: boolean
+  PoolConstraintSet:
+    type: object
+    properties:
+      append:
+        type: boolean
+      PoolExpr:
+        type: string
+      Field:
+        type: string
+      Values:
+        type: array
+        items:
+          type: string
+      Blacklist:
         type: boolean
