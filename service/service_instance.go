@@ -53,6 +53,10 @@ type ServiceInstance struct {
 
 	// BrokerData stores data used by Instances provisioned by Brokers
 	BrokerData *BrokerInstanceData `json:"broker_data,omitempty" bson:"broker_data"`
+
+	// ForceRemove indicates whether service instance should be removed even the
+	// related call to service API fails.
+	ForceRemove bool `bson:"-" json:"-"`
 }
 
 type BrokerInstanceData struct {
@@ -98,8 +102,15 @@ func DeleteInstance(si *ServiceInstance, evt *event.Event, requestID string) err
 		return err
 	}
 	endpoint, err := s.getClient("production")
-	if err == nil {
-		endpoint.Destroy(si, evt, requestID)
+	if err != nil {
+		return err
+	}
+	err = endpoint.Destroy(si, evt, requestID)
+	if err != nil {
+		if !si.ForceRemove {
+			return err
+		}
+		fmt.Fprintf(evt, "could not delete the service instance on service api: %v. ignoring this error due to force removal...\n", err)
 	}
 	conn, err := db.Conn()
 	if err != nil {
