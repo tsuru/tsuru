@@ -949,7 +949,6 @@ func makeRequestToRemoveServiceInstanceWithUnbind(service, instance string, c *c
 	url := fmt.Sprintf("/services/%[1]s/instances/%[2]s?:service=%[1]s&:instance=%[2]s&unbindall=true", service, instance)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
@@ -1109,6 +1108,30 @@ func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	recorder, request := makeRequestToRemoveServiceInstance("purity", "purity-instance", c)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(called, check.Equals, true)
+}
+
+func (s *ServiceInstanceSuite) TestRemoveServiceInstanceForcingRemoval(c *check.C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/purity-instance" {
+			called = true
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "some internal error")
+			return
+		}
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "purity", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	recorder, request := makeRequestToRemoveServiceInstanceWithUnbind("purity", "purity-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

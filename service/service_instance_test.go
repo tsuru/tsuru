@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -75,18 +76,52 @@ func (s *InstanceSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && strings.HasSuffix(r.URL.Path, "/resources/MySQL") {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
 	err := Create(Service{
 		Name:       "mongodb",
 		Password:   "password",
 		OwnerTeams: []string{"raul"},
 		Endpoint: map[string]string{
-			"production": "http://localhost:8080",
+			"production": ts.URL,
 		},
 	})
 	c.Assert(err, check.IsNil)
 	si := &ServiceInstance{Name: "MySQL", ServiceName: "mongodb"}
 	s.conn.ServiceInstances().Insert(&si)
 	evt := createEvt(c)
+	err = DeleteInstance(si, evt, "")
+	c.Assert(err, check.IsNil)
+	query := bson.M{"name": si.Name}
+	qtd, err := s.conn.ServiceInstances().Find(query).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(qtd, check.Equals, 0)
+}
+
+func (s *InstanceSuite) TestDeleteServiceInstanceWithForceRemoveEnabled(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	err := Create(Service{
+		Name:       "mongodb",
+		Password:   "password",
+		OwnerTeams: []string{"raul"},
+		Endpoint: map[string]string{
+			"production": ts.URL,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	si := &ServiceInstance{Name: "MySQL", ServiceName: "mongodb"}
+	s.conn.ServiceInstances().Insert(&si)
+	evt := createEvt(c)
+	si.ForceRemove = true
 	err = DeleteInstance(si, evt, "")
 	c.Assert(err, check.IsNil)
 	query := bson.M{"name": si.Name}

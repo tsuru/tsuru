@@ -236,31 +236,30 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	requestID := requestIDHeader(r)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
 	if unbindAllBool {
-		if len(serviceInstance.Apps) > 0 {
-			for _, appName := range serviceInstance.Apps {
-				_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
-				if instErr != nil {
-					return instErr
-				}
-				fmt.Fprintf(evt, "Unbind app %q ...\n", app.GetName())
-				instErr = serviceInstance.UnbindApp(service.UnbindAppArgs{
-					App:         app,
-					Restart:     true,
-					ForceRemove: false,
-					Event:       evt,
-					RequestID:   requestID,
-				})
-				if instErr != nil {
-					return instErr
-				}
-				fmt.Fprintf(evt, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
+		for _, appName := range serviceInstance.Apps {
+			_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
+			if instErr != nil {
+				return instErr
 			}
-			serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
-			if err != nil {
-				return err
+			fmt.Fprintf(evt, "Unbind app %q ...\n", app.GetName())
+			instErr = serviceInstance.UnbindApp(service.UnbindAppArgs{
+				App:         app,
+				Restart:     true,
+				ForceRemove: false,
+				Event:       evt,
+				RequestID:   requestID,
+			})
+			if instErr != nil {
+				return instErr
 			}
+			fmt.Fprintf(evt, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
+		}
+		serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
+		if err != nil {
+			return err
 		}
 	}
+	serviceInstance.ForceRemove = unbindAllBool
 	err = service.DeleteInstance(serviceInstance, evt, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
