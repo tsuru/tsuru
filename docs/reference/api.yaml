@@ -60,6 +60,40 @@ paths:
         - service
       security:
         - Bearer: []
+  /1.0/services/{service}/instances:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+    post:
+      operationId: InstanceCreate
+      description: Create a service instance
+      consumes:
+        - application/json
+      parameters:
+        - name: instance
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/ServiceInstance"
+      responses:
+        "200":
+          description: Service instance created
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
   /1.0/services/{service}/instances/{instance}:
     parameters:
       - name: service
