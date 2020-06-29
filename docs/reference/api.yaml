@@ -187,6 +187,48 @@ paths:
         - service
       security:
         - Bearer: []
+
+  /1.0/services/{service}/instances/{instance}/{app}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    put:
+      operationId: ServiceInstanceBind
+      description: Bind the service instance to app
+      parameters:
+        - name: bindData
+          in: body
+          schema:
+            $ref: "#/definitions/ServiceInstanceBind"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Instance bound to the app.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
   /1.7/brokers:
     get:
       operationId: ServiceBrokerList
@@ -2593,6 +2635,15 @@ definitions:
       tags:
         type: array
         items:
+          type: string
+  ServiceInstanceBind:
+    type: object
+    properties:
+      noRestart:
+        type: boolean
+      parameters:
+        type: object
+        additionalProperties:
           type: string
   Pool:
     type: object
