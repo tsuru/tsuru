@@ -290,6 +290,64 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 	})
 }
 
+func (s *S) TestManagerDeployNodeContainerOnSinglePool(c *check.C) {
+	s.mock.MockfakeNodes(c)
+	s.clusterClient.CustomData[singlePoolKey] = "true"
+	c1 := nodecontainer.NodeContainerConfig{
+		Name: "bs",
+		Config: docker.Config{
+			Image:      "bsimg",
+			Env:        []string{"a=b"},
+			Entrypoint: []string{"cmd0"},
+			Cmd:        []string{"cmd1"},
+		},
+		HostConfig: docker.HostConfig{
+			RestartPolicy: docker.AlwaysRestart(),
+			Privileged:    true,
+			Binds:         []string{"/xyz:/abc:ro"},
+		},
+	}
+	err := nodecontainer.AddNewContainer("", &c1)
+	c.Assert(err, check.IsNil)
+	poolName := "mypool"
+	err = pool.AddPool(pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
+	c.Assert(err, check.IsNil)
+	m := nodeContainerManager{}
+	err = m.DeployNodeContainer(&c1, poolName, servicecommon.PoolFilter{}, false)
+	c.Assert(err, check.IsNil)
+	ns := s.client.PoolNamespace(poolName)
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(daemons.Items, check.HasLen, 1)
+	daemon, err := s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-pool-mypool", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity := &apiv1.Affinity{}
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{poolName}}, false)
+	c.Assert(err, check.IsNil)
+	daemon, err = s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	expectedAffinity = &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
+					MatchExpressions: []apiv1.NodeSelectorRequirement{
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpExists,
+						},
+						{
+							Key:      "tsuru.io/pool",
+							Operator: apiv1.NodeSelectorOpNotIn,
+							Values:   []string{poolName},
+						},
+					},
+				}},
+			},
+		},
+	}
+	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+}
+
 func (s *S) TestManagerDeployNodeContainerIgnoreInvalidPools(c *check.C) {
 	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{

@@ -41,6 +41,7 @@ const (
 	disableHeadlessKey     = "disable-headless"
 	maxSurgeKey            = "max-surge"
 	maxUnavailableKey      = "max-unavailable"
+	singlePoolKey          = "single-pool"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -59,6 +60,7 @@ var (
 		disableHeadlessKey:     "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
 		maxSurgeKey:            "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
 		maxUnavailableKey:      "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
+		singlePoolKey:          "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
 	}
 )
 
@@ -316,6 +318,17 @@ func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
 		return defaultUnvailable
 	}
 	return intstr.Parse(maxUnavailable)
+}
+
+func (c *ClusterClient) SinglePool(pool string) (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	singlePool := c.configForContext(pool, singlePoolKey)
+	if singlePool == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(singlePool)
 }
 
 func (c *ClusterClient) configForContext(context, key string) string {

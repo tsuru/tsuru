@@ -219,6 +219,29 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 	c.Assert(ovf, check.Equals, int64(0))
 }
 
+func (s *S) TestClusterSinglePool(c *check.C) {
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+		"single-pool":           "",
+		"my-pool:single-pool":   "true",
+		"my-pool-2:single-pool": "0",
+		"invalid:single-pool":   "a",
+	}}
+	client, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	ovf, err := client.SinglePool("my-pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, true)
+	ovf, err = client.SinglePool("my-pool-2")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, false)
+	ovf, err = client.SinglePool("global")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, false)
+	ovf, err = client.SinglePool("invalid")
+	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+	c.Assert(ovf, check.Equals, false)
+}
+
 func (s *S) TestClustersForApps(c *check.C) {
 	c1 := provTypes.Cluster{
 		Name:        "c1",
