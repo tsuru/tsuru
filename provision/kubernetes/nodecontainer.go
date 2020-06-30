@@ -93,6 +93,13 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 			},
 		},
 	}
+	singlePool, err := client.SinglePool(pool)
+	if err != nil {
+		return err
+	}
+	if singlePool && pool != "" {
+		affinity = &apiv1.Affinity{}
+	}
 	if oldDs != nil && placementOnly {
 		if reflect.DeepEqual(oldDs.Spec.Template.Spec.Affinity, affinity) {
 			return nil

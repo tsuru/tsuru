@@ -551,10 +551,17 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	}
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
+	singlePool, err := client.SinglePool(a.GetPool())
+	if err != nil {
+		return nil, nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
+	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   a.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
+	if singlePool {
+		nodeSelector = map[string]string{}
+	}
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
@@ -1589,6 +1596,13 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 		Pool:   app.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
+	singlePool, err := client.SinglePool(app.GetPool())
+	if err != nil {
+		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
+	}
+	if singlePool {
+		nodeSelector = map[string]string{}
+	}
 	_, uid := dockercommon.UserForContainer()
 	ns, err := client.AppNamespace(app)
 	if err != nil {
@@ -1666,6 +1680,13 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 				}},
 			},
 		},
+	}
+	singlePool, err := client.SinglePool("")
+	if err != nil {
+		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
+	}
+	if singlePool {
+		affinity = &apiv1.Affinity{}
 	}
 	_, uid := dockercommon.UserForContainer()
 	ns := client.Namespace()

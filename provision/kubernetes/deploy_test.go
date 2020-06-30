@@ -1732,6 +1732,35 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	})
 }
 
+func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	s.clusterClient.CustomData[singlePoolKey] = "true"
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{})
+}
+
 func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
@@ -2445,6 +2474,32 @@ trap end EXIT
 mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
 }
 
+func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
+	s.mock.IgnorePool = true
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	s.clusterClient.CustomData[singlePoolKey] = "true"
+	err := s.p.Provision(a)
+	c.Assert(err, check.IsNil)
+	version := newVersion(c, a, nil)
+	err = createDeployPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		sourceImage:       version.BuildImageName(),
+		destinationImages: []string{version.BaseImageName()},
+		inputFile:         "/dev/null",
+		podName:           "myapp-v1-deploy",
+	})
+	s.mock.IgnorePool = false
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string{})
+}
+
 func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
@@ -2477,6 +2532,23 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 
+}
+
+func (s *S) TestCreateImageBuildPodContainerOnSinglePool(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	s.clusterClient.CustomData[singlePoolKey] = "true"
+	err := createImageBuildPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		podName:           "myplatform-image-build",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/data/context.tar.gz",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
 }
 
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
