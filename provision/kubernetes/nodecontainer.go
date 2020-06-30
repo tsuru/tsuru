@@ -93,7 +93,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 			},
 		},
 	}
-	singlePool, err := client.SinglePool(pool)
+	singlePool, err := client.SinglePool()
 	if err != nil {
 		return err
 	}

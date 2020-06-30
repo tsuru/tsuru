@@ -25,6 +25,9 @@ func (n *kubernetesNodeWrapper) IaaSID() string {
 }
 
 func (n *kubernetesNodeWrapper) Pool() string {
+	if ok, _ := n.cluster.SinglePool(); len(n.cluster.Pools) > 0 && ok {
+		return n.cluster.Pools[0]
+	}
 	return labelSetFromMeta(&n.node.ObjectMeta).NodePool()
 }
 

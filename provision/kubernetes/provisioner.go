@@ -201,6 +201,9 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 }
 
 func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
+	if _, ok := c.CustomData[singlePoolKey]; ok && len(c.Pools) > 1 {
+		return errors.Errorf("only one pool is allowed to use entire cluster as single-pool. %d pools found", len(c.Pools))
+	}
 	return nil
 }
 
