@@ -320,12 +320,12 @@ func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
 	return intstr.Parse(maxUnavailable)
 }
 
-func (c *ClusterClient) SinglePool(pool string) (bool, error) {
+func (c *ClusterClient) SinglePool() (bool, error) {
 	if c.CustomData == nil {
 		return false, nil
 	}
-	singlePool := c.configForContext(pool, singlePoolKey)
-	if singlePool == "" {
+	singlePool, ok := c.CustomData[singlePoolKey]
+	if singlePool == "" || !ok {
 		return false, nil
 	}
 	return strconv.ParseBool(singlePool)

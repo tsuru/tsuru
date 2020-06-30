@@ -220,26 +220,64 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 }
 
 func (s *S) TestClusterSinglePool(c *check.C) {
-	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
-		"single-pool":           "",
-		"my-pool:single-pool":   "true",
-		"my-pool-2:single-pool": "0",
-		"invalid:single-pool":   "a",
-	}}
-	client, err := NewClusterClient(&c1)
-	c.Assert(err, check.IsNil)
-	ovf, err := client.SinglePool("my-pool")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, true)
-	ovf, err = client.SinglePool("my-pool-2")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, false)
-	ovf, err = client.SinglePool("global")
-	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, false)
-	ovf, err = client.SinglePool("invalid")
-	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, false)
+	tests := []struct {
+		customData map[string]string
+		expected   struct {
+			val bool
+			err bool
+		}
+	}{
+		{
+			customData: map[string]string{
+				"single-pool": "",
+			},
+			expected: struct {
+				val bool
+				err bool
+			}{false, false},
+		},
+		{
+			customData: map[string]string{
+				"single-pool": "true",
+			},
+			expected: struct {
+				val bool
+				err bool
+			}{true, false},
+		},
+		{
+			customData: map[string]string{
+				"single-pool": "0",
+			},
+			expected: struct {
+				val bool
+				err bool
+			}{false, false},
+		},
+		{
+			customData: map[string]string{
+				"single-pool": "a",
+			},
+			expected: struct {
+				val bool
+				err bool
+			}{false, true},
+		},
+	}
+	for _, tt := range tests {
+		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
+		client, err := NewClusterClient(&c1)
+		ovf, err := client.SinglePool()
+		if tt.expected.err {
+			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+			c.Assert(ovf, check.Equals, false)
+		} else {
+			c.Assert(err, check.IsNil)
+			c.Assert(ovf, check.Equals, tt.expected.val)
+		}
+
+	}
+
 }
 
 func (s *S) TestClustersForApps(c *check.C) {

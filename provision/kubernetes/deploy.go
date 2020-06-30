@@ -551,7 +551,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	}
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
-	singlePool, err := client.SinglePool(a.GetPool())
+	singlePool, err := client.SinglePool()
 	if err != nil {
 		return nil, nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
@@ -1596,7 +1596,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 		Pool:   app.GetPool(),
 		Prefix: tsuruLabelPrefix,
 	}).ToNodeByPoolSelector()
-	singlePool, err := client.SinglePool(app.GetPool())
+	singlePool, err := client.SinglePool()
 	if err != nil {
 		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
@@ -1681,7 +1681,7 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 			},
 		},
 	}
-	singlePool, err := client.SinglePool("")
+	singlePool, err := client.SinglePool()
 	if err != nil {
 		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}

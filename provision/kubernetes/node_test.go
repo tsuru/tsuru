@@ -63,6 +63,26 @@ func (s *S) TestNodePool(c *check.C) {
 			},
 		},
 	}
+	node.cluster = s.clusterClient
+	c.Assert(node.Pool(), check.Equals, "p1")
+}
+
+func (s *S) TestNodePoolSinglePool(c *check.C) {
+	s.clusterClient.CustomData["single-pool"] = "true"
+	s.clusterClient.Pools = []string{"p1"}
+	node := kubernetesNodeWrapper{
+		node: &apiv1.Node{
+			Status: apiv1.NodeStatus{
+				Addresses: []apiv1.NodeAddress{
+					{
+						Type:    apiv1.NodeInternalIP,
+						Address: "192.168.99.100",
+					},
+				},
+			},
+		},
+	}
+	node.cluster = s.clusterClient
 	c.Assert(node.Pool(), check.Equals, "p1")
 }
 
