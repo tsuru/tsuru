@@ -389,9 +389,8 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
 		oldVersion:     oldVersion,
 	}
-	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err = updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
-	c.Assert(processes, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",
@@ -429,9 +428,8 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
 		oldVersion:     oldVersion,
 	}
-	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
-	c.Assert(processes, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
 		Process:  "web",

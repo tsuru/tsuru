@@ -9,10 +9,12 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -3400,6 +3402,72 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
+	wgFunc := s.mock.DeploymentReactions(c)
+	defer wgFunc()
+	var rolloutFailureCalled bool
+	var wg sync.WaitGroup
+	f1 := func(action ktesting.Action) (bool, runtime.Object, error) {
+		wg.Add(1)
+		defer wg.Done()
+		dep := action.(ktesting.CreateAction).GetObject().(*appsv1.Deployment)
+		if dep == nil {
+			dep = action.(ktesting.UpdateAction).GetObject().(*appsv1.Deployment)
+		}
+		if dep.Name == "myapp-p2" && dep.Spec.Template.Labels["tsuru.io/app-version"] == "2" {
+			dep.Status.Conditions = append(dep.Status.Conditions, appsv1.DeploymentCondition{
+				Type:   appsv1.DeploymentProgressing,
+				Reason: deadlineExeceededProgressCond,
+			})
+			rolloutFailureCalled = true
+			return true, dep, nil
+		}
+		if rolloutFailureCalled && dep.Name == "myapp-p1" {
+			dep.Status.Conditions = append(dep.Status.Conditions, appsv1.DeploymentCondition{
+				Type:   appsv1.DeploymentProgressing,
+				Reason: deadlineExeceededProgressCond,
+			})
+			return true, dep, nil
+		}
+		return false, nil, nil
+	}
+	s.client.PrependReactor("create", "deployments", f1)
+	s.client.PrependReactor("update", "deployments", f1)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Plan = appTypes.Plan{Memory: 1024}
+	manager := &serviceManager{client: s.clusterClient, writer: os.Stdout}
+	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1", "p2": "cm2"}})
+	err = servicecommon.RunServicePipeline(manager, nil, provision.DeployArgs{App: a, Version: firstVersion}, nil)
+	c.Assert(err, check.IsNil)
+	wgFunc()
+	wg.Wait()
+	evt, err := event.New(&event.Opts{
+		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:          permission.PermAppDeploy,
+		Owner:         s.token,
+		Allowed:       event.Allowed(permission.PermAppDeploy),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
+		Cancelable:    true,
+	})
+	c.Assert(err, check.IsNil)
+	manager.writer = evt
+	args := provision.DeployArgs{
+		App:   a,
+		Event: evt,
+		Version: newVersion(c, a, map[string]interface{}{
+			"processes": map[string]interface{}{"p1": "CM1", "p2": "CM2"},
+		}),
+	}
+	err = servicecommon.RunServicePipeline(manager, firstVersion, args, nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(rolloutFailureCalled, check.Equals, true)
+	c.Assert(evt.Done(err), check.IsNil)
+	c.Assert(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*`)
+	c.Assert(evt.Log(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
 }
 
 func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes.AppVersion) (*appsv1.Deployment, *apiv1.Service) {
