@@ -2250,7 +2250,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			Value: addr,
 		})
 		routers[i].Address = addr
-		rType, _, _ := router.Type(routerName)
+		rType, _ := router.Type(routerName)
 		routers[i].Type = rType
 	}
 	return routers, multi.ToError()

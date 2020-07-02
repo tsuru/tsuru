@@ -4,7 +4,32 @@
 
 package router
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/pkg/errors"
+)
+
+var (
+	ErrRouterTemplateNotFound = errors.New("router template not found")
+)
+
+type RouterTemplate struct {
+	Name   string
+	Type   string
+	Config map[string]interface{}
+}
+
+type RouterTemplateService interface {
+	RouterTemplateStorage
+}
+
+type RouterTemplateStorage interface {
+	Save(RouterTemplate) error
+	Get(name string) (*RouterTemplate, error)
+	List() ([]RouterTemplate, error)
+	Remove(name string) error
+}
 
 type HealthcheckData struct {
 	Path    string

@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	check "gopkg.in/check.v1"
 )
 
@@ -45,6 +46,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:user", s.user)
 	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("routers:fake:type", "fakeType")
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) SetUpTest(c *check.C) {

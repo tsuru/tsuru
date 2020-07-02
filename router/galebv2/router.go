@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
@@ -40,33 +39,37 @@ var clientCache struct {
 	cache map[string]*galebClient.GalebClient
 }
 
-func getClient(configPrefix string) (*galebClient.GalebClient, error) {
+func getClient(routerName string, config router.ConfigGetter) (*galebClient.GalebClient, error) {
 	clientCache.Lock()
 	defer clientCache.Unlock()
 	if clientCache.cache == nil {
 		clientCache.cache = map[string]*galebClient.GalebClient{}
 	}
-	if clientCache.cache[configPrefix] != nil {
-		return clientCache.cache[configPrefix], nil
-	}
-	apiURL, err := config.GetString(configPrefix + ":api-url")
+	key, err := config.Hash()
 	if err != nil {
 		return nil, err
 	}
-	username, _ := config.GetString(configPrefix + ":username")
-	password, _ := config.GetString(configPrefix + ":password")
-	tokenHeader, _ := config.GetString(configPrefix + ":token-header")
-	useToken, _ := config.GetBool(configPrefix + ":use-token")
-	environment, _ := config.GetString(configPrefix + ":environment")
-	project, _ := config.GetString(configPrefix + ":project")
-	balancePolicy, _ := config.GetString(configPrefix + ":balance-policy")
-	ruleType, _ := config.GetString(configPrefix + ":rule-type")
-	debug, _ := config.GetBool(configPrefix + ":debug")
-	waitTimeoutSec, err := config.GetInt(configPrefix + ":wait-timeout")
+	if clientCache.cache[key] != nil {
+		return clientCache.cache[key], nil
+	}
+	apiURL, err := config.GetString("api-url")
+	if err != nil {
+		return nil, err
+	}
+	username, _ := config.GetString("username")
+	password, _ := config.GetString("password")
+	tokenHeader, _ := config.GetString("token-header")
+	useToken, _ := config.GetBool("use-token")
+	environment, _ := config.GetString("environment")
+	project, _ := config.GetString("project")
+	balancePolicy, _ := config.GetString("balance-policy")
+	ruleType, _ := config.GetString("rule-type")
+	debug, _ := config.GetBool("debug")
+	waitTimeoutSec, err := config.GetInt("wait-timeout")
 	if err != nil {
 		waitTimeoutSec = 10 * 60
 	}
-	maxRequests, _ := config.GetInt(configPrefix + ":max-requests")
+	maxRequests, _ := config.GetInt("max-requests")
 	client := &galebClient.GalebClient{
 		ApiURL:        apiURL,
 		Username:      username,
@@ -81,14 +84,14 @@ func getClient(configPrefix string) (*galebClient.GalebClient, error) {
 		Debug:         debug,
 		MaxRequests:   maxRequests,
 	}
-	clientCache.cache[configPrefix] = client
+	clientCache.cache[key] = client
 	return client, nil
 }
 
 type galebRouter struct {
 	client     *galebClient.GalebClient
 	domain     string
-	prefix     string
+	config     router.ConfigGetter
 	routerName string
 }
 
@@ -97,19 +100,19 @@ func init() {
 	hc.AddChecker("Router galeb", router.BuildHealthCheck(routerType))
 }
 
-func createRouter(routerName, configPrefix string) (router.Router, error) {
-	domain, err := config.GetString(configPrefix + ":domain")
+func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+	domain, err := config.GetString("domain")
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(configPrefix)
+	client, err := getClient(routerName, config)
 	if err != nil {
 		return nil, err
 	}
 	r := galebRouter{
 		client:     client,
 		domain:     domain,
-		prefix:     configPrefix,
+		config:     config,
 		routerName: routerName,
 	}
 	return &r, nil

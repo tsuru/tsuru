@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
@@ -113,26 +112,25 @@ func init() {
 	router.Register(routerType, createRouter)
 }
 
-func createRouter(routerName, configPrefix string) (router.Router, error) {
-	endpoint, err := config.GetString(configPrefix + ":api-url")
+func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+	endpoint, err := config.GetString("api-url")
 	if err != nil {
 		return nil, err
 	}
-	debug, _ := config.GetBool(configPrefix + ":debug")
-	headers, _ := config.Get(configPrefix + ":headers")
+	debug, _ := config.GetBool("debug")
+	headers, _ := config.Get("headers")
 	headerMap := make(map[string]string)
 	if headers != nil {
-		h, ok := headers.(map[interface{}]interface{})
+		h, ok := headers.(map[string]interface{})
 		if !ok {
 			return nil, errors.Errorf("invalid header configuration: %v", headers)
 		}
 		for k, v := range h {
-			k, okK := k.(string)
 			v, okV := v.(string)
-			if !okK || !okV {
+			if !okV {
 				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
 			}
-			value, _ := config.GetString(fmt.Sprintf("%s:headers:%s", configPrefix, k))
+			value, _ := config.GetString(fmt.Sprintf("headers:%s", k))
 			headerMap[k] = value
 		}
 	}

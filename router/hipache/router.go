@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 	tsuruRedis "github.com/tsuru/tsuru/redis"
@@ -44,25 +43,29 @@ func init() {
 	hc.AddChecker("Router Planb", router.BuildHealthCheck("planb"))
 }
 
-func createHipacheRouter(routerName, configPrefix string) (router.Router, error) {
-	return &hipacheRouter{prefix: configPrefix, routerName: routerName}, nil
+func createHipacheRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+	return &hipacheRouter{config: config, routerName: routerName}, nil
 }
 
-func createPlanbRouter(routerName, configPrefix string) (router.Router, error) {
-	return &planbRouter{hipacheRouter{prefix: configPrefix, routerName: routerName}}, nil
+func createPlanbRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+	return &planbRouter{hipacheRouter{config: config, routerName: routerName}}, nil
 }
 
 func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
+	key, err := r.config.Hash()
+	if err != nil {
+		return nil, err
+	}
 	redisClientsMut.RLock()
-	client := redisClients[r.prefix]
+	client := redisClients[key]
 	if client == nil {
 		redisClientsMut.RUnlock()
 		redisClientsMut.Lock()
 		defer redisClientsMut.Unlock()
-		client = redisClients[r.prefix]
+		client = redisClients[key]
 		if client == nil {
 			var err error
-			client, err = tsuruRedis.NewRedisDefaultConfig(r.prefix, &tsuruRedis.CommonConfig{
+			client, err = tsuruRedis.NewRedisDefaultConfig(r.routerName, r.config, &tsuruRedis.CommonConfig{
 				PoolSize:     1000,
 				PoolTimeout:  2 * time.Second,
 				IdleTimeout:  2 * time.Minute,
@@ -75,7 +78,7 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 			if err != nil {
 				return nil, err
 			}
-			redisClients[r.prefix] = client
+			redisClients[key] = client
 		}
 	} else {
 		redisClientsMut.RUnlock()
@@ -85,7 +88,7 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 
 type hipacheRouter struct {
 	routerName string
-	prefix     string
+	config     router.ConfigGetter
 }
 
 func (r *hipacheRouter) GetName() string {
@@ -98,7 +101,7 @@ func (r *hipacheRouter) AddBackend(app router.App) (err error) {
 	defer func() {
 		done(err)
 	}()
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return &router.RouterError{Op: "add", Err: err}
 	}
@@ -133,7 +136,7 @@ func (r *hipacheRouter) RemoveBackend(name string) (err error) {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
@@ -183,7 +186,7 @@ func (r *hipacheRouter) AddRoutes(name string, addresses []*url.URL) (err error)
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		log.Errorf("error on getting hipache domain in add route for %s - %v", backendName, addresses)
 		return &router.RouterError{Op: "add", Err: err}
@@ -250,7 +253,7 @@ func (r *hipacheRouter) RemoveRoutes(name string, addresses []*url.URL) (err err
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return &router.RouterError{Op: "remove", Err: err}
 	}
@@ -336,7 +339,7 @@ func (r *hipacheRouter) SetCName(cname, name string) (err error) {
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return &router.RouterError{Op: "setCName", Err: err}
 	}
@@ -450,7 +453,7 @@ func (r *hipacheRouter) Addr(name string) (addr string, err error) {
 	if err != nil {
 		return "", err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return "", &router.RouterError{Op: "get", Err: err}
 	}
@@ -478,7 +481,7 @@ func (r *hipacheRouter) Routes(name string) (urls []*url.URL, err error) {
 	if err != nil {
 		return nil, err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return nil, &router.RouterError{Op: "routes", Err: err}
 	}
@@ -531,7 +534,7 @@ func (r *hipacheRouter) Swap(backend1, backend2 string, cnameOnly bool) (err err
 }
 
 func (r *hipacheRouter) StartupMessage() (string, error) {
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return "", err
 	}
@@ -547,7 +550,7 @@ func (r *hipacheRouter) SetHealthcheck(name string, data routerTypes.Healthcheck
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString(r.prefix + ":domain")
+	domain, err := r.config.GetString("domain")
 	if err != nil {
 		return &router.RouterError{Op: "setHealthcheck", Err: err}
 	}

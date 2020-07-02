@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/router"
 	redis "gopkg.in/redis.v3"
 )
 
@@ -145,14 +145,6 @@ func redisServer(addr string, redisConfig *CommonConfig) (Client, error) {
 	return &ClientWrapper{Client: client}, nil
 }
 
-func NewRedis(prefix string) (Client, error) {
-	return NewRedisDefaultConfig(prefix, &CommonConfig{
-		PoolSize:    1000,
-		PoolTimeout: time.Second,
-		IdleTimeout: 2 * time.Minute,
-	})
-}
-
 func createServerList(addrs string) []string {
 	parts := strings.Split(addrs, ",")
 	for i := range parts {
@@ -161,99 +153,106 @@ func createServerList(addrs string) []string {
 	return parts
 }
 
-func NewRedisDefaultConfig(prefix string, defaultConfig *CommonConfig) (client Client, err error) {
+func NewRedisDefaultConfig(name string, config router.ConfigGetter, defaultConfig *CommonConfig) (client Client, err error) {
 	defer func() {
 		if client != nil {
-			collector.Add(prefix, client)
+			collector.Add(name, client)
 		}
 	}()
-	db, err := config.GetInt(prefix + ":redis-db")
+	if defaultConfig == nil {
+		defaultConfig = &CommonConfig{
+			PoolSize:    1000,
+			PoolTimeout: time.Second,
+			IdleTimeout: 2 * time.Minute,
+		}
+	}
+	db, err := config.GetInt("redis-db")
 	if err != nil && defaultConfig.TryLegacy {
-		db, err = config.GetInt(prefix + ":db")
+		db, err = config.GetInt("db")
 	}
 	if err == nil {
 		defaultConfig.DB = int64(db)
 	}
-	password, err := config.GetString(prefix + ":redis-password")
+	password, err := config.GetString("redis-password")
 	if err != nil && defaultConfig.TryLegacy {
-		password, err = config.GetString(prefix + ":password")
+		password, err = config.GetString("password")
 	}
 	if err == nil {
 		defaultConfig.Password = password
 	}
-	poolSize, err := config.GetInt(prefix + ":redis-pool-size")
+	poolSize, err := config.GetInt("redis-pool-size")
 	if err == nil {
 		defaultConfig.PoolSize = poolSize
 	}
-	maxRetries, err := config.GetInt(prefix + ":redis-max-retries")
+	maxRetries, err := config.GetInt("redis-max-retries")
 	if err == nil {
 		defaultConfig.MaxRetries = maxRetries
 	}
-	poolTimeout, err := config.GetFloat(prefix + ":redis-pool-timeout")
+	poolTimeout, err := config.GetFloat("redis-pool-timeout")
 	if err == nil {
 		defaultConfig.PoolTimeout = time.Duration(poolTimeout * float64(time.Second))
 	}
-	idleTimeout, err := config.GetFloat(prefix + ":redis-pool-idle-timeout")
+	idleTimeout, err := config.GetFloat("redis-pool-idle-timeout")
 	if err == nil {
 		defaultConfig.IdleTimeout = time.Duration(idleTimeout * float64(time.Second))
 	}
-	dialTimeout, err := config.GetFloat(prefix + ":redis-dial-timeout")
+	dialTimeout, err := config.GetFloat("redis-dial-timeout")
 	if err == nil {
 		defaultConfig.DialTimeout = time.Duration(dialTimeout * float64(time.Second))
 	}
-	readTimeout, err := config.GetFloat(prefix + ":redis-read-timeout")
+	readTimeout, err := config.GetFloat("redis-read-timeout")
 	if err == nil {
 		defaultConfig.ReadTimeout = time.Duration(readTimeout * float64(time.Second))
 	}
-	writeTimeout, err := config.GetFloat(prefix + ":redis-write-timeout")
+	writeTimeout, err := config.GetFloat("redis-write-timeout")
 	if err == nil {
 		defaultConfig.WriteTimeout = time.Duration(writeTimeout * float64(time.Second))
 	}
-	sentinels, err := config.GetString(prefix + ":redis-sentinel-addrs")
+	sentinels, err := config.GetString("redis-sentinel-addrs")
 	if err == nil {
-		masterName, _ := config.GetString(prefix + ":redis-sentinel-master")
+		masterName, _ := config.GetString("redis-sentinel-master")
 		if masterName == "" {
-			return nil, errors.Errorf("%s:redis-sentinel-master must be specified if using redis-sentinel", prefix)
+			return nil, errors.Errorf("%s:redis-sentinel-master must be specified if using redis-sentinel", name)
 		}
-		log.Debugf("Connecting to redis sentinel from %q config prefix. Addrs: %s. Master: %s. DB: %d.", prefix, sentinels, masterName, db)
+		log.Debugf("Connecting to redis sentinel from %q config prefix. Addrs: %s. Master: %s. DB: %d.", name, sentinels, masterName, db)
 		return newRedisSentinel(createServerList(sentinels), masterName, defaultConfig)
 	}
-	cluster, err := config.GetString(prefix + ":redis-cluster-addrs")
+	cluster, err := config.GetString("redis-cluster-addrs")
 	if err == nil {
 		if defaultConfig.DB != 0 {
-			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with db != 0 is not supported", prefix)
+			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with db != 0 is not supported", name)
 		}
 		if defaultConfig.MaxRetries != 0 {
-			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with max-retries > 0 is not supported", prefix)
+			return nil, errors.Errorf("could not initialize redis from %q config, using redis-cluster with max-retries > 0 is not supported", name)
 		}
-		log.Debugf("Connecting to redis cluster from %q config prefix. Addrs: %s. DB: %d.", prefix, cluster, db)
+		log.Debugf("Connecting to redis cluster from %q config prefix. Addrs: %s. DB: %d.", name, cluster, db)
 		return redisCluster(createServerList(cluster), defaultConfig)
 	}
-	server, err := config.GetString(prefix + ":redis-server")
+	server, err := config.GetString("redis-server")
 	if err == nil {
-		log.Debugf("Connecting to redis server from %q config prefix. Addr: %s. DB: %d.", prefix, server, db)
+		log.Debugf("Connecting to redis server from %q config prefix. Addr: %s. DB: %d.", name, server, db)
 		return redisServer(server, defaultConfig)
 	}
-	host, err := config.GetString(prefix + ":redis-host")
+	host, err := config.GetString("redis-host")
 	if err != nil && defaultConfig.TryLegacy {
-		host, err = config.GetString(prefix + ":host")
+		host, err = config.GetString("host")
 	}
 	if err == nil {
 		portStr := "6379"
-		port, err := config.Get(prefix + ":redis-port")
+		port, err := config.Get("redis-port")
 		if err != nil && defaultConfig.TryLegacy {
-			port, err = config.Get(prefix + ":port")
+			port, err = config.Get("port")
 		}
 		if err == nil {
 			portStr = fmt.Sprintf("%v", port)
 		}
 		addr := fmt.Sprintf("%s:%s", host, portStr)
-		log.Debugf("Connecting to redis host/port from %q config prefix. Addr: %s. DB: %d.", prefix, addr, db)
+		log.Debugf("Connecting to redis host/port from %q config prefix. Addr: %s. DB: %d.", name, addr, db)
 		return redisServer(addr, defaultConfig)
 	}
 	if defaultConfig.TryLocal {
 		addr := "localhost:6379"
-		log.Debugf("Connecting to redis on localhost from %q config prefix. Addr: %s. DB: %d.", prefix, addr, db)
+		log.Debugf("Connecting to redis on localhost from %q config prefix. Addr: %s. DB: %d.", name, addr, db)
 		return redisServer(addr, defaultConfig)
 	}
 	return nil, ErrNoRedisConfig

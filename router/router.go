@@ -19,11 +19,12 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
 )
 
-type routerFactory func(routerName, configPrefix string) (Router, error)
+type routerFactory func(routerName string, config ConfigGetter) (Router, error)
 
 var (
 	ErrBackendExists         = errors.New("Backend already exists")
@@ -58,7 +59,19 @@ func Unregister(name string) {
 	delete(routers, name)
 }
 
-func Type(name string) (string, string, error) {
+func Type(name string) (string, error) {
+	rt, err := servicemanager.RouterTemplate.Get(name)
+	if err != nil && err != router.ErrRouterTemplateNotFound {
+		return "", err
+	}
+	if rt != nil {
+		return rt.Type, nil
+	}
+	rType, _, err := configType(name)
+	return rType, err
+}
+
+func configType(name string) (string, string, error) {
 	prefix := "routers:" + name
 	routerType, err := config.GetString(prefix + ":type")
 	if err != nil {
@@ -74,15 +87,28 @@ func Type(name string) (string, string, error) {
 
 // Get gets the named router from the registry.
 func Get(name string) (Router, error) {
-	routerType, prefix, err := Type(name)
-	if err != nil {
-		return nil, &ErrRouterNotFound{Name: name}
+	rt, err := servicemanager.RouterTemplate.Get(name)
+	if err != nil && err != router.ErrRouterTemplateNotFound {
+		return nil, err
+	}
+	var routerType string
+	var config ConfigGetter
+	if rt != nil {
+		routerType = rt.Type
+		config = &templateConfigGetter{template: *rt}
+	} else {
+		var prefix string
+		routerType, prefix, err = configType(name)
+		if err != nil {
+			return nil, &ErrRouterNotFound{Name: name}
+		}
+		config = &StaticConfigGetter{Prefix: prefix}
 	}
 	factory, ok := routers[routerType]
 	if !ok {
 		return nil, errors.Errorf("unknown router: %q.", routerType)
 	}
-	r, err := factory(name, prefix)
+	r, err := factory(name, config)
 	if err != nil {
 		return nil, err
 	}
@@ -425,6 +451,27 @@ func ListWithInfo() ([]PlanRouter, error) {
 }
 
 func List() ([]PlanRouter, error) {
+	allRouters, err := listConfigRouters()
+	if err != nil {
+		return nil, err
+	}
+	dynamicRouters, err := servicemanager.RouterTemplate.List()
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range dynamicRouters {
+		allRouters = append(allRouters, PlanRouter{
+			Name: r.Name,
+			Type: r.Type,
+		})
+	}
+	sort.Slice(allRouters, func(i, j int) bool {
+		return allRouters[i].Name < allRouters[j].Name
+	})
+	return allRouters, nil
+}
+
+func listConfigRouters() ([]PlanRouter, error) {
 	routerConfig, err := config.Get("routers")
 	var routers map[interface{}]interface{}
 	if err == nil {
