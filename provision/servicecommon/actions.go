@@ -6,6 +6,9 @@ package servicecommon
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"os"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -82,18 +85,24 @@ func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, 
 }
 
 func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelReplicas) {
+	var w io.Writer = os.Stderr
+	if args.event != nil {
+		w = args.event
+	}
+	errors := tsuruErrors.NewMultiError()
 	for processName, oldLabels := range processes {
 		var err error
-
 		if args.oldVersion == nil || oldLabels.labels == nil {
 			err = args.manager.RemoveService(args.app, processName, args.newVersion)
 		} else {
 			err = args.manager.DeployService(context.Background(), args.app, processName, oldLabels.labels, oldLabels.realReplicas, args.oldVersion, args.preserveVersions)
 		}
-
 		if err != nil {
-			log.Errorf("error rolling back updated service for %s[%s]: %+v", args.app.GetName(), processName, err)
+			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s]: %+v", args.app.GetName(), processName, err))
 		}
+	}
+	if errors.ToError() != nil {
+		fmt.Fprintf(w, "some errors occured when rolling back services: %+v", errors)
 	}
 }
 
@@ -209,9 +218,8 @@ var updateServices = &action.Action{
 		}
 		if err != nil {
 			rollbackAddedProcesses(args, deployedProcesses)
-			return nil, err
 		}
-		return deployedProcesses, nil
+		return deployedProcesses, err
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(*pipelineArgs)
