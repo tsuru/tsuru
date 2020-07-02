@@ -3424,7 +3424,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 			rolloutFailureCalled = true
 			return true, dep, nil
 		}
-		if rolloutFailureCalled && dep.Name == "myapp-p1" {
+		if rolloutFailureCalled && dep.Name == "myapp-p1" && dep.Spec.Template.Labels["tsuru.io/app-version"] == "1" {
 			dep.Status.Conditions = append(dep.Status.Conditions, appsv1.DeploymentCondition{
 				Type:   appsv1.DeploymentProgressing,
 				Reason: deadlineExeceededProgressCond,

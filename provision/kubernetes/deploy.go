@@ -711,7 +711,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 				continue
 			}
 
-			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", depData.dep)
+			fmt.Fprintf(m.writer, " ---> Cleaning up deployment %s\n", depData.dep.Name)
 			err = cleanupSingleDeployment(m.client, depData.dep)
 			if err != nil {
 				multiErrors.Add(err)
@@ -768,7 +768,9 @@ func (m *serviceManager) CurrentLabels(a provision.App, process string, version 
 		}
 		return nil, err
 	}
-	return labelSetFromMeta(&dep.ObjectMeta), nil
+	depLabels := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
+	podLabels := labelOnlySetFromMetaPrefix(&dep.Spec.Template.ObjectMeta, false)
+	return depLabels.Merge(podLabels), nil
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"

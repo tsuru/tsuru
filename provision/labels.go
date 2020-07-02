@@ -79,6 +79,26 @@ func (s *LabelSet) DeepCopy() *LabelSet {
 	return newLabels
 }
 
+func (s *LabelSet) Merge(override *LabelSet) *LabelSet {
+	if s == nil {
+		return nil
+	}
+	l := s.DeepCopy()
+	if override == nil {
+		return l
+	}
+	for k, v := range override.Labels {
+		l.Labels[k] = v
+	}
+	for k, v := range override.RawLabels {
+		l.RawLabels[k] = v
+	}
+	if override.Prefix != "" {
+		l.Prefix = override.Prefix
+	}
+	return l
+}
+
 func (s *LabelSet) ToLabels() map[string]string {
 	result := withPrefix(s.Labels, s.Prefix)
 	for k, v := range s.RawLabels {
