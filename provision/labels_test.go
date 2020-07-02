@@ -178,3 +178,22 @@ func (s *S) TestLabelSet_WithoutAppReplicas(c *check.C) {
 	c.Assert(ls.Labels["app-process-replicas"], check.Equals, "3")
 	c.Assert(ls.WithoutAppReplicas().Labels["app-process-replicas"], check.Equals, "")
 }
+
+func (s *S) TestLabelSet_Merge(c *check.C) {
+	src := &provision.LabelSet{
+		Labels:    map[string]string{"l0": "w0", "l1": "w1"},
+		RawLabels: map[string]string{"l2": "w2"},
+		Prefix:    "myprefix.example.com/",
+	}
+	override := &provision.LabelSet{
+		Labels:    map[string]string{"l1": "v1"},
+		RawLabels: map[string]string{"l2": "v2", "l3": "v3"},
+	}
+	ls := src.Merge(override)
+	expected := &provision.LabelSet{
+		Labels:    map[string]string{"l0": "w0", "l1": "v1"},
+		RawLabels: map[string]string{"l2": "v2", "l3": "v3"},
+		Prefix:    "myprefix.example.com/",
+	}
+	c.Assert(ls, check.DeepEquals, expected)
+}
