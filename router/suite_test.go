@@ -10,6 +10,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/servicemanager"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,6 +30,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "router_tests")
 	var err error
 	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
+	servicemanager.RouterTemplate, err = TemplateService()
 	c.Assert(err, check.IsNil)
 
 }

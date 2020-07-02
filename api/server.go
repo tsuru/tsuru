@@ -153,6 +153,10 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
+	servicemanager.RouterTemplate, err = router.TemplateService()
+	if err != nil {
+		return err
+	}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	return err
 }

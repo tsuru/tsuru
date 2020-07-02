@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
 )
@@ -32,4 +33,5 @@ var (
 	AppLog                    app.AppLogService
 	InstanceTracker           tracker.InstanceService
 	AppVersion                app.AppVersionService
+	RouterTemplate            router.RouterTemplateService
 )

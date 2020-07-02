@@ -8,16 +8,18 @@ import (
 	"errors"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestRegisterAndGet(c *check.C) {
 	var r Router
-	var prefixes []string
+	var getters []ConfigGetter
 	var names []string
-	routerCreator := func(name, prefix string) (Router, error) {
+	routerCreator := func(name string, config ConfigGetter) (Router, error) {
 		names = append(names, name)
-		prefixes = append(prefixes, prefix)
+		getters = append(getters, config)
 		return r, nil
 	}
 	Register("router", routerCreator)
@@ -27,7 +29,10 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.DeepEquals, got)
 	c.Assert(names, check.DeepEquals, []string{"mine"})
-	c.Assert(prefixes, check.DeepEquals, []string{"routers:mine"})
+	c.Assert(getters, check.HasLen, 1)
+	getterType, err := getters[0].GetString("type")
+	c.Assert(err, check.IsNil)
+	c.Assert(getterType, check.Equals, "router")
 	_, err = Get("unknown-router")
 	c.Assert(err, check.DeepEquals, &ErrRouterNotFound{Name: "unknown-router"})
 	config.Set("routers:mine-unknown:type", "unknown")
@@ -40,7 +45,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 func (s *S) TestRegisterAndType(c *check.C) {
 	config.Set("routers:mine:type", "myrouter")
 	defer config.Unset("routers:mine:type")
-	rType, prefix, err := Type("mine")
+	rType, prefix, err := configType("mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(rType, check.Equals, "myrouter")
 	c.Assert(prefix, check.Equals, "routers:mine")
@@ -49,13 +54,13 @@ func (s *S) TestRegisterAndType(c *check.C) {
 }
 
 func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {
-	rType, prefix, err := Type("hipache")
+	rType, prefix, err := configType("hipache")
 	c.Assert(err, check.IsNil)
 	c.Assert(rType, check.Equals, "hipache")
 	c.Assert(prefix, check.Equals, "hipache")
 	config.Set("routers:hipache:type", "htype")
 	defer config.Unset("routers:hipache:type")
-	rType, prefix, err = Type("hipache")
+	rType, prefix, err = configType("hipache")
 	c.Assert(err, check.IsNil)
 	c.Assert(rType, check.Equals, "htype")
 	c.Assert(prefix, check.Equals, "routers:hipache")
@@ -63,10 +68,10 @@ func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {
 
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	var names []string
-	var prefixes []string
-	routerCreator := func(name, prefix string) (Router, error) {
+	var getters []ConfigGetter
+	routerCreator := func(name string, config ConfigGetter) (Router, error) {
 		names = append(names, name)
-		prefixes = append(prefixes, prefix)
+		getters = append(getters, config)
 		var r Router
 		return r, nil
 	}
@@ -80,7 +85,51 @@ func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	_, err = Get("inst2")
 	c.Assert(err, check.IsNil)
 	c.Assert(names, check.DeepEquals, []string{"inst1", "inst2"})
-	c.Assert(prefixes, check.DeepEquals, []string{"routers:inst1", "routers:inst2"})
+	c.Assert(getters, check.HasLen, 2)
+	getterType, err := getters[0].GetString("type")
+	c.Assert(err, check.IsNil)
+	c.Assert(getterType, check.Equals, "myrouter")
+	getterType, err = getters[1].GetString("type")
+	c.Assert(err, check.IsNil)
+	c.Assert(getterType, check.Equals, "myrouter")
+}
+
+func (s *S) TestGetDynamicRouter(c *check.C) {
+	var names []string
+	var getters []ConfigGetter
+	routerCreator := func(name string, config ConfigGetter) (Router, error) {
+		names = append(names, name)
+		getters = append(getters, config)
+		var r Router
+		return r, nil
+	}
+	Register("myrouter", routerCreator)
+	config.Set("routers:inst1:type", "myrouter")
+	config.Set("routers:inst1:cfg1", "v1")
+	defer config.Unset("routers:inst1")
+
+	err := servicemanager.RouterTemplate.Save(router.RouterTemplate{
+		Name: "inst2",
+		Type: "myrouter",
+		Config: map[string]interface{}{
+			"cfg1": "v2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = Get("inst1")
+	c.Assert(err, check.IsNil)
+	_, err = Get("inst2")
+	c.Assert(err, check.IsNil)
+
+	c.Assert(names, check.DeepEquals, []string{"inst1", "inst2"})
+	c.Assert(getters, check.HasLen, 2)
+	getterType, err := getters[0].GetString("cfg1")
+	c.Assert(err, check.IsNil)
+	c.Assert(getterType, check.Equals, "v1")
+	getterType, err = getters[1].GetString("cfg1")
+	c.Assert(err, check.IsNil)
+	c.Assert(getterType, check.Equals, "v2")
 }
 
 func (s *S) TestDefault(c *check.C) {
@@ -256,6 +305,32 @@ func (s *S) TestListDefaultDockerRouter(c *check.C) {
 	c.Assert(routers, check.DeepEquals, expected)
 }
 
+func (s *S) TestListIncludesDynamic(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
+
+	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
+		return nil, nil
+	})
+
+	err := servicemanager.RouterTemplate.Save(router.RouterTemplate{
+		Name: "router-dyn",
+		Type: "myrouter",
+	})
+	c.Assert(err, check.IsNil)
+
+	expected := []PlanRouter{
+		{Name: "router-dyn", Type: "myrouter"},
+		{Name: "router1", Type: "foo"},
+		{Name: "router2", Type: "bar"},
+	}
+	routers, err := List()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
 type testInfoRouter struct{ Router }
 
 func (r *testInfoRouter) GetInfo() (map[string]string, error) {
@@ -274,7 +349,7 @@ func (s *S) TestListWithInfo(c *check.C) {
 	config.Set("routers:router2:default", true)
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
-	fooCreator := func(name, prefix string) (Router, error) {
+	fooCreator := func(name string, config ConfigGetter) (Router, error) {
 		return &testInfoRouter{}, nil
 	}
 	Register("foo", fooCreator)
@@ -294,10 +369,10 @@ func (s *S) TestListWithInfoError(c *check.C) {
 	config.Set("routers:router2:default", true)
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
-	fooCreator := func(name, prefix string) (Router, error) {
+	fooCreator := func(name string, config ConfigGetter) (Router, error) {
 		return &testInfoRouter{}, nil
 	}
-	barCreator := func(name, prefix string) (Router, error) {
+	barCreator := func(name string, config ConfigGetter) (Router, error) {
 		return &testInfoErrRouter{}, nil
 	}
 	Register("foo", fooCreator)

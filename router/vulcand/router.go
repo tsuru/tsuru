@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
 	"github.com/vulcand/route"
@@ -30,24 +29,22 @@ func init() {
 
 type vulcandRouter struct {
 	client     *api.Client
-	prefix     string
 	domain     string
 	routerName string
 }
 
-func createRouter(routerName, configPrefix string) (router.Router, error) {
-	vURL, err := config.GetString(configPrefix + ":api-url")
+func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+	vURL, err := config.GetString("api-url")
 	if err != nil {
 		return nil, err
 	}
-	domain, err := config.GetString(configPrefix + ":domain")
+	domain, err := config.GetString("domain")
 	if err != nil {
 		return nil, err
 	}
 	client := api.NewClient(vURL, registry.GetRegistry())
 	vRouter := &vulcandRouter{
 		client:     client,
-		prefix:     configPrefix,
 		domain:     domain,
 		routerName: routerName,
 	}

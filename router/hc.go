@@ -5,7 +5,6 @@
 package router
 
 import (
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 )
 
@@ -16,22 +15,17 @@ import (
 // all custom routers).
 func BuildHealthCheck(routerName string) func() error {
 	return func() error {
-		routerConfig, err := config.Get("routers")
+		configRouters, err := listConfigRouters()
 		if err != nil {
 			return hc.ErrDisabledComponent
 		}
-		routers, _ := routerConfig.(map[interface{}]interface{})
 		checkCount := 0
-		for ifaceName := range routers {
-			name := ifaceName.(string)
-			if name != routerName {
-				namedRouter := routers[name].(map[interface{}]interface{})
-				if tp, _ := namedRouter["type"].(string); tp != routerName {
-					continue
-				}
+		for _, r := range configRouters {
+			if r.Name != routerName && r.Type != routerName {
+				continue
 			}
 			checkCount++
-			err := healthCheck(name)
+			err := healthCheck(r.Name)
 			if err != nil {
 				return err
 			}

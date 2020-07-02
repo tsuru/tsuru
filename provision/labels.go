@@ -451,7 +451,7 @@ type ProcessLabelsOpts struct {
 func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 	var routerNames, routerTypes []string
 	for _, appRouter := range opts.App.GetRouters() {
-		routerType, _, err := router.Type(appRouter.Name)
+		routerType, err := router.Type(appRouter.Name)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
@@ -92,6 +93,7 @@ func (s *RouterSuite) SetUpTest(c *check.C) {
 	if s.SetUpTestFunc != nil {
 		s.SetUpTestFunc(c)
 	}
+	servicemock.SetMockService(&servicemock.MockService{})
 	c.Logf("generic router test for %T", s.Router)
 }
 

@@ -21,6 +21,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	"github.com/tsuru/tsuru/tsurutest"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
@@ -76,6 +77,7 @@ func (s *S) SetUpTest(c *check.C) {
 	api.InitProxyController(s.engine, nil, router)
 	s.vulcandServer = httptest.NewServer(router)
 	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -120,12 +122,10 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r1.client.Addr, check.Equals, "http://localhost:1")
 	c.Assert(r1.domain, check.Equals, "inst1.example.com")
-	c.Assert(r1.prefix, check.Equals, "routers:inst1")
 	r2, ok := got2.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r2.client.Addr, check.Equals, "http://localhost:2")
 	c.Assert(r2.domain, check.Equals, "inst2.example.com")
-	c.Assert(r2.prefix, check.Equals, "routers:inst2")
 }
 
 func (s *S) TestAddBackend(c *check.C) {

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
@@ -66,6 +67,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Collection("router_fake_tests").Database)
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownTest(c *check.C) {
