@@ -108,7 +108,7 @@ func (s *S) TestGetDynamicRouter(c *check.C) {
 	config.Set("routers:inst1:cfg1", "v1")
 	defer config.Unset("routers:inst1")
 
-	err := servicemanager.RouterTemplate.Save(router.RouterTemplate{
+	err := servicemanager.RouterTemplate.Create(router.RouterTemplate{
 		Name: "inst2",
 		Type: "myrouter",
 		Config: map[string]interface{}{
@@ -308,6 +308,7 @@ func (s *S) TestListDefaultDockerRouter(c *check.C) {
 func (s *S) TestListIncludesDynamic(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:cfg1", "aaa")
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
 
@@ -315,16 +316,19 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 		return nil, nil
 	})
 
-	err := servicemanager.RouterTemplate.Save(router.RouterTemplate{
+	err := servicemanager.RouterTemplate.Create(router.RouterTemplate{
 		Name: "router-dyn",
 		Type: "myrouter",
+		Config: map[string]interface{}{
+			"mycfg": "zzz",
+		},
 	})
 	c.Assert(err, check.IsNil)
 
 	expected := []PlanRouter{
-		{Name: "router-dyn", Type: "myrouter"},
+		{Name: "router-dyn", Type: "myrouter", Dynamic: true, Config: map[string]interface{}{"mycfg": "zzz"}},
 		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar"},
+		{Name: "router2", Type: "bar", Config: map[string]interface{}{"cfg1": "aaa"}},
 	}
 	routers, err := List()
 	c.Assert(err, check.IsNil)

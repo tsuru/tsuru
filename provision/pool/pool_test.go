@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -45,6 +46,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	servicemock.SetMockService(&servicemock.MockService{})
 }
 
 func (s *S) TearDownSuite(c *check.C) {
