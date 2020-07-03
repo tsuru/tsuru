@@ -16,6 +16,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
@@ -424,10 +425,12 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 }
 
 type PlanRouter struct {
-	Name    string            `json:"name"`
-	Type    string            `json:"type"`
-	Info    map[string]string `json:"info"`
-	Default bool              `json:"default"`
+	Name    string                 `json:"name"`
+	Type    string                 `json:"type"`
+	Info    map[string]string      `json:"info"`
+	Config  map[string]interface{} `json:"config"`
+	Dynamic bool                   `json:"dynamic"`
+	Default bool                   `json:"default"`
 }
 
 func ListWithInfo() ([]PlanRouter, error) {
@@ -461,8 +464,10 @@ func List() ([]PlanRouter, error) {
 	}
 	for _, r := range dynamicRouters {
 		allRouters = append(allRouters, PlanRouter{
-			Name: r.Name,
-			Type: r.Type,
+			Name:    r.Name,
+			Type:    r.Type,
+			Config:  r.Config,
+			Dynamic: true,
 		})
 	}
 	sort.Slice(allRouters, func(i, j int) bool {
@@ -502,9 +507,20 @@ func listConfigRouters() ([]PlanRouter, error) {
 		if !defaultFlag {
 			defaultFlag = value == dockerRouter
 		}
+		var config map[string]interface{}
+		if routerProperties != nil {
+			configRaw := internalConfig.ConvertEntries(routerProperties)
+			config, _ = configRaw.(map[string]interface{})
+			delete(config, "type")
+			delete(config, "default")
+			if len(config) == 0 {
+				config = nil
+			}
+		}
 		routersList = append(routersList, PlanRouter{
 			Name:    value,
 			Type:    routerType,
+			Config:  config,
 			Default: defaultFlag,
 		})
 	}

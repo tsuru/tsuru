@@ -241,4 +241,12 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"webhook.create",
 	"webhook.update",
 	"webhook.delete",
+).addWithCtx(
+	"router", []permTypes.ContextType{permTypes.CtxRouter},
+).addWithCtx(
+	"router.create", []permTypes.ContextType{},
+).add(
+	"router.read.events",
+	"router.update",
+	"router.delete",
 )

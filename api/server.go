@@ -424,6 +424,10 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", "DELETE", "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
 	m.Add("1.3", "GET", "/healing", AuthorizationRequiredHandler(healingHistoryHandler))
 	m.Add("1.3", "GET", "/routers", AuthorizationRequiredHandler(listRouters))
+	m.Add("1.8", "POST", "/routers", AuthorizationRequiredHandler(addRouter))
+	m.Add("1.8", "PUT", "/routers/{name}", AuthorizationRequiredHandler(updateRouter))
+	m.Add("1.8", "DELETE", "/routers/{name}", AuthorizationRequiredHandler(deleteRouter))
+
 	m.Add("1.2", "GET", "/metrics", promhttp.Handler())
 
 	m.Add("1.7", "GET", "/provisioner", AuthorizationRequiredHandler(provisionerList))

@@ -112,6 +112,7 @@ var (
 	TargetTypeVolume          = TargetType("volume")
 	TargetTypeWebhook         = TargetType("webhook")
 	TargetTypeGC              = TargetType("gc")
+	TargetTypeRouter          = TargetType("router")
 )
 
 const (
@@ -279,6 +280,8 @@ func GetTargetType(t string) (TargetType, error) {
 		return TargetTypeVolume, nil
 	case "webhook":
 		return TargetTypeWebhook, nil
+	case "router":
+		return TargetTypeRouter, nil
 	}
 	return TargetType(""), ErrInvalidTargetType
 }

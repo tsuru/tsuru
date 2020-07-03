@@ -21,7 +21,11 @@ type RouterTemplate struct {
 }
 
 type RouterTemplateService interface {
-	RouterTemplateStorage
+	Get(name string) (*RouterTemplate, error)
+	List() ([]RouterTemplate, error)
+	Remove(name string) error
+	Create(RouterTemplate) error
+	Update(RouterTemplate) error
 }
 
 type RouterTemplateStorage interface {

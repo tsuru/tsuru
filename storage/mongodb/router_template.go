@@ -14,7 +14,7 @@ import (
 type routerTemplate struct {
 	Name   string `bson:"_id"`
 	Type   string
-	Config map[string]interface{}
+	Config map[string]interface{} `bson:",omitempty"`
 }
 
 type routerTemplateStorage struct{}

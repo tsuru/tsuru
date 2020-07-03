@@ -9,17 +9,25 @@ var (
 )
 
 type MockRouterTemplateService struct {
-	OnSave   func(RouterTemplate) error
+	OnCreate func(RouterTemplate) error
+	OnUpdate func(RouterTemplate) error
 	OnGet    func(name string) (*RouterTemplate, error)
 	OnList   func() ([]RouterTemplate, error)
 	OnRemove func(name string) error
 }
 
-func (m *MockRouterTemplateService) Save(rt RouterTemplate) error {
-	if m.OnSave == nil {
+func (m *MockRouterTemplateService) Create(rt RouterTemplate) error {
+	if m.OnCreate == nil {
 		return nil
 	}
-	return m.OnSave(rt)
+	return m.OnCreate(rt)
+}
+
+func (m *MockRouterTemplateService) Update(rt RouterTemplate) error {
+	if m.OnUpdate == nil {
+		return nil
+	}
+	return m.OnUpdate(rt)
 }
 
 func (m *MockRouterTemplateService) Get(name string) (*RouterTemplate, error) {

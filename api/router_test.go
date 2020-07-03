@@ -18,8 +18,67 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
+
+func (s *S) TestRoutersAdd(c *check.C) {
+	var created routerTypes.RouterTemplate
+	s.mockService.RouterTemplate.OnCreate = func(rt routerTypes.RouterTemplate) error {
+		created = rt
+		return nil
+	}
+	body := `{"name": "r1", "type": "t1", "config": {"a": "b"}}`
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/routers", strings.NewReader(body))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(created, check.DeepEquals, routerTypes.RouterTemplate{
+		Name:   "r1",
+		Type:   "t1",
+		Config: map[string]interface{}{"a": "b"},
+	})
+}
+
+func (s *S) TestRoutersUpdate(c *check.C) {
+	var updated routerTypes.RouterTemplate
+	s.mockService.RouterTemplate.OnUpdate = func(rt routerTypes.RouterTemplate) error {
+		updated = rt
+		return nil
+	}
+	body := `{"type": "t1", "config": {"a": "b"}}`
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/routers/r1", strings.NewReader(body))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(updated, check.DeepEquals, routerTypes.RouterTemplate{
+		Name:   "r1",
+		Type:   "t1",
+		Config: map[string]interface{}{"a": "b"},
+	})
+}
+
+func (s *S) TestRoutersDelete(c *check.C) {
+	var removed string
+	s.mockService.RouterTemplate.OnRemove = func(rtName string) error {
+		removed = rtName
+		return nil
+	}
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/routers/r1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(removed, check.Equals, "r1")
+}
 
 func (s *S) TestRoutersListNoContent(c *check.C) {
 	err := config.Unset("routers")
@@ -34,8 +93,54 @@ func (s *S) TestRoutersListNoContent(c *check.C) {
 }
 
 func (s *S) TestRoutersList(c *check.C) {
+	rt := routerTypes.RouterTemplate{
+		Name:   "rt1",
+		Type:   "foo",
+		Config: map[string]interface{}{"a": "b"},
+	}
+	s.mockService.RouterTemplate.OnList = func() ([]routerTypes.RouterTemplate, error) {
+		return []routerTypes.RouterTemplate{rt}, nil
+	}
+	s.mockService.RouterTemplate.OnGet = func(name string) (*routerTypes.RouterTemplate, error) {
+		return &rt, nil
+	}
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:mycfg", "1")
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
+	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	defer router.Unregister("foo")
+	defer router.Unregister("bar")
+	recorder := httptest.NewRecorder()
+	expected := []router.PlanRouter{
+		{Name: "fake", Type: "fake", Default: true},
+		{Name: "fake-tls", Type: "fake-tls"},
+		{Name: "router1", Type: "foo"},
+		{Name: "router2", Type: "bar", Config: map[string]interface{}{"mycfg": "1"}},
+		{Name: "rt1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}},
+	}
+	request, err := http.NewRequest("GET", "/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var routers []router.PlanRouter
+	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
+func (s *S) TestRoutersListRestrictedTokeNoConfig(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	config.Set("routers:router2:mycfg", "1")
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
 	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
@@ -51,7 +156,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	}
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")

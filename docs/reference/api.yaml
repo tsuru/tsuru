@@ -2553,7 +2553,142 @@ paths:
         - pool
       security:
         - Bearer: []
+  /1.3/routers:
+    get:
+      operationId: RouterList
+      description: List available routers
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Routers
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/PlanRouter"
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - router
+      security:
+        - Bearer: []
+  /1.8/routers:
+    post:
+      operationId: RouterCreate
+      description: Adds a new router template
+      consumes:
+        - application/json
+      parameters:
+        - name: router
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/RouterTemplate"
+      responses:
+        "200":
+          description: Router template added
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - router
+      security:
+        - Bearer: []
+  /1.8/routers/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Router template name.
+    put:
+      operationId: RouterUpdate
+      description: Updates a router template
+      consumes:
+        - application/json
+      parameters:
+        - name: router
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RouterTemplate"
+      responses:
+        "200":
+          description: Router template updated
+          schema:
+            $ref: "#/definitions/TeamToken"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Router template not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - router
+      security:
+        - Bearer: []
+    delete:
+      operationId: RouterDelete
+      description: Deletes a router template
+      responses:
+        "200":
+          description: Router template deleted
+          schema:
+            $ref: "#/definitions/TeamToken"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Router template not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - router
+      security:
+        - Bearer: []
 definitions:
+  RouterTemplate:
+    description: Router template
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+      config:
+        type: object
+  PlanRouter:
+    description: Plan Router
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+      config:
+        type: object
+      info:
+        type: object
+        additionalProperties:
+          type: string
+      default:
+        type: boolean
+      dynamic:
+        type: boolean
   ErrorMessage:
     description: Error message.
     type: string
@@ -3226,7 +3361,7 @@ definitions:
         type: object
         additionalProperties:
           type: string
-      addres:
+      address:
         type: string
       type:
         type: string

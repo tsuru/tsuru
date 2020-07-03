@@ -17,7 +17,130 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
+
+// title: router add
+// path: /routers
+// method: POST
+// responses:
+//   201: Created
+//   400: Invalid router
+//   409: Router already exists
+func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	var routerTemplate routerTypes.RouterTemplate
+	err = ParseInput(r, &routerTemplate)
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(t, permission.PermRouterCreate)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	_, err = servicemanager.RouterTemplate.Get(routerTemplate.Name)
+	if err == nil {
+		return &errors.HTTP{Code: http.StatusConflict, Message: "router template already exists"}
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerTemplate.Name},
+		Kind:       permission.PermRouterCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name}),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = servicemanager.RouterTemplate.Create(routerTemplate)
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
+	}
+	return err
+}
+
+// title: router update
+// path: /routers/{name}
+// method: PUT
+// responses:
+//   200: OK
+//   400: Invalid router
+//   404: Router not found
+func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	var routerTemplate routerTypes.RouterTemplate
+
+	routerName := r.URL.Query().Get(":name")
+	err = ParseInput(r, &routerTemplate)
+	if err != nil {
+		return err
+	}
+	routerTemplate.Name = routerName
+
+	allowed := permission.Check(t, permission.PermRouterUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name})
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerTemplate.Name},
+		Kind:       permission.PermRouterUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name}),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	err = servicemanager.RouterTemplate.Update(routerTemplate)
+	if err != nil {
+		if err == routerTypes.ErrRouterTemplateNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	return nil
+}
+
+// title: router delete
+// path: /routers/{name}
+// method: DELETE
+// responses:
+//   200: OK
+//   404: Router not found
+func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	routerName := r.URL.Query().Get(":name")
+
+	allowed := permission.Check(t, permission.PermRouterDelete, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName})
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerName},
+		Kind:       permission.PermRouterDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName}),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	err = servicemanager.RouterTemplate.Remove(routerName)
+	if err != nil {
+		if err == routerTypes.ErrRouterTemplateNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	return nil
+}
 
 // title: router list
 // path: /routers
@@ -65,6 +188,12 @@ contexts:
 			if _, ok := routersAllowed[r.Name]; ok {
 				filteredRouters = append(filteredRouters, r)
 			}
+		}
+	}
+	isRouterCreator := permission.Check(t, permission.PermRouterCreate)
+	if !isRouterCreator {
+		for i := range filteredRouters {
+			filteredRouters[i].Config = nil
 		}
 	}
 	if len(filteredRouters) == 0 {

@@ -59,7 +59,7 @@ func (s *ConfigSuite) SetUpTest(c *check.C) {
 			Type:   "myrouter",
 			Config: routerConfig,
 		}
-		err = svc.Save(rt)
+		err = svc.Create(rt)
 		c.Assert(err, check.IsNil)
 		dbRt, err := svc.Get(rt.Name)
 		c.Assert(err, check.IsNil)

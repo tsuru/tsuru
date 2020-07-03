@@ -28,7 +28,39 @@ func TemplateService() (routerTypes.RouterTemplateService, error) {
 	}, nil
 }
 
-func (s *templateService) Save(rt routerTypes.RouterTemplate) error {
+func (s *templateService) Update(rt routerTypes.RouterTemplate) error {
+	existing, err := s.storage.Get(rt.Name)
+	if err != nil {
+		return err
+	}
+	if rt.Type != "" {
+		existing.Type = rt.Type
+	}
+	err = s.validate(*existing)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range rt.Config {
+		if v == nil {
+			delete(existing.Config, k)
+		} else {
+			existing.Config[k] = v
+		}
+	}
+
+	return s.storage.Save(*existing)
+}
+
+func (s *templateService) Create(rt routerTypes.RouterTemplate) error {
+	err := s.validate(rt)
+	if err != nil {
+		return err
+	}
+	return s.storage.Save(rt)
+}
+
+func (s *templateService) validate(rt routerTypes.RouterTemplate) error {
 	if rt.Name == "" || rt.Type == "" {
 		return errors.New("router template name and type are required")
 	}
@@ -38,7 +70,7 @@ func (s *templateService) Save(rt routerTypes.RouterTemplate) error {
 	if _, err := config.Get("routers:" + rt.Name); err == nil {
 		return errors.Errorf("router named %q already exists in config", rt.Name)
 	}
-	return s.storage.Save(rt)
+	return nil
 }
 
 func (s *templateService) Get(name string) (*routerTypes.RouterTemplate, error) {
