@@ -89,16 +89,24 @@ func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelRepli
 	if args.event != nil {
 		w = args.event
 	}
+	hasOldVersion := args.oldVersion != nil
 	errors := tsuruErrors.NewMultiError()
 	for processName, oldLabels := range processes {
-		var err error
-		if args.oldVersion == nil || oldLabels.labels == nil {
-			err = args.manager.RemoveService(args.app, processName, args.newVersion)
-		} else {
-			err = args.manager.DeployService(context.Background(), args.app, processName, oldLabels.labels, oldLabels.realReplicas, args.oldVersion, args.preserveVersions)
+		if !hasOldVersion || oldLabels.labels == nil {
+			if err := args.manager.RemoveService(args.app, processName, args.newVersion); err != nil {
+				errors.Add(fmt.Errorf("error removing service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.newVersion.Version(), err))
+			}
+			hasOldVersion = false
+			continue
 		}
+		err := args.manager.DeployService(context.Background(), args.app, processName, oldLabels.labels, oldLabels.realReplicas, args.oldVersion, args.preserveVersions)
 		if err != nil {
-			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s]: %+v", args.app.GetName(), processName, err))
+			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.oldVersion.Version(), err))
+		}
+	}
+	if hasOldVersion {
+		if err := args.manager.CleanupServices(args.app, args.oldVersion, args.preserveVersions); err != nil {
+			errors.Add(fmt.Errorf("error cleaning up services after rollback: %+v", err))
 		}
 	}
 	if errors.ToError() != nil {
