@@ -3371,8 +3371,6 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1", "p2": "cm2"}})
 	err = servicecommon.RunServicePipeline(manager, nil, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
-	wgFunc()
-	wg.Wait()
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
@@ -3392,10 +3390,16 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	}
 	err = servicecommon.RunServicePipeline(manager, firstVersion, args, nil)
 	c.Assert(err, check.NotNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	c.Assert(rolloutFailureCalled, check.Equals, true)
 	c.Assert(evt.Done(err), check.IsNil)
+	c.Assert(evt.Log(), check.Matches, `(?s).*---> Cleaning up service myapp-p1-v2.*`)
 	c.Assert(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*`)
-	c.Assert(evt.Log(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
+	c.Assert(evt.Log(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\] \[version 1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
 }
 
 func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes.AppVersion) (*appsv1.Deployment, *apiv1.Service) {

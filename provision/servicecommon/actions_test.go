@@ -410,6 +410,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 0, labels: labelsWorker},
 		{action: "deploy", app: fakeApp, processName: "web", version: oldVersion, replicas: 0, labels: labelsWebOld},
+		{action: "cleanup", app: fakeApp, version: oldVersion},
 	})
 }
 
