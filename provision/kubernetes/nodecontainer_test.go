@@ -326,26 +326,8 @@ func (s *S) TestManagerDeployNodeContainerOnSinglePool(c *check.C) {
 	err = m.DeployNodeContainer(&c1, "", servicecommon.PoolFilter{Exclude: []string{poolName}}, false)
 	c.Assert(err, check.IsNil)
 	daemon, err = s.client.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
-	expectedAffinity = &apiv1.Affinity{
-		NodeAffinity: &apiv1.NodeAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
-				NodeSelectorTerms: []apiv1.NodeSelectorTerm{{
-					MatchExpressions: []apiv1.NodeSelectorRequirement{
-						{
-							Key:      "tsuru.io/pool",
-							Operator: apiv1.NodeSelectorOpExists,
-						},
-						{
-							Key:      "tsuru.io/pool",
-							Operator: apiv1.NodeSelectorOpNotIn,
-							Values:   []string{poolName},
-						},
-					},
-				}},
-			},
-		},
-	}
-	c.Assert(daemon.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	c.Assert(err, check.ErrorMatches, "daemonsets.apps \"node-container-bs-all\" not found")
+	c.Assert(daemon, check.IsNil)
 }
 
 func (s *S) TestManagerDeployNodeContainerIgnoreInvalidPools(c *check.C) {

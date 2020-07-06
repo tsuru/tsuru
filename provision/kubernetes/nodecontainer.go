@@ -97,7 +97,10 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if err != nil {
 		return err
 	}
-	if singlePool && pool != "" {
+	if singlePool {
+		if pool == "" {
+			return nil
+		}
 		affinity = &apiv1.Affinity{}
 	}
 	if oldDs != nil && placementOnly {
