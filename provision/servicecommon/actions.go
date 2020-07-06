@@ -7,8 +7,6 @@ package servicecommon
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -84,11 +82,7 @@ func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, 
 	})
 }
 
-func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelReplicas) {
-	var w io.Writer = os.Stderr
-	if args.event != nil {
-		w = args.event
-	}
+func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelReplicas) error {
 	hasOldVersion := args.oldVersion != nil
 	errors := tsuruErrors.NewMultiError()
 	for processName, oldLabels := range processes {
@@ -109,9 +103,7 @@ func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelRepli
 			errors.Add(fmt.Errorf("error cleaning up services after rollback: %+v", err))
 		}
 	}
-	if errors.ToError() != nil {
-		fmt.Fprintf(w, "some errors occured when rolling back services: %+v", errors)
-	}
+	return errors.ToError()
 }
 
 func rawLabelsAndReplicas(args *pipelineArgs, processName string, version appTypes.AppVersion) (*labelReplicas, error) {
@@ -224,10 +216,14 @@ var updateServices = &action.Action{
 			}
 			deployedProcesses[processName] = oldLabelsMap[processName]
 		}
+		errs := tsuruErrors.NewMultiError()
 		if err != nil {
-			rollbackAddedProcesses(args, deployedProcesses)
+			errs.Add(err)
+			if nerr := rollbackAddedProcesses(args, deployedProcesses); nerr != nil {
+				errs.Add(nerr)
+			}
 		}
-		return deployedProcesses, err
+		return deployedProcesses, errs.ToError()
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(*pipelineArgs)
