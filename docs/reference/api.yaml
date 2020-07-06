@@ -2580,7 +2580,7 @@ paths:
   /1.8/routers:
     post:
       operationId: RouterCreate
-      description: Adds a new router template
+      description: Adds a new dynamic router
       consumes:
         - application/json
       parameters:
@@ -2588,10 +2588,10 @@ paths:
           in: body
           required: true
           schema:
-            $ref: "#/definitions/RouterTemplate"
+            $ref: "#/definitions/DynamicRouter"
       responses:
         "200":
-          description: Router template added
+          description: Dynamic router added
         "400":
           description: Invalid data
           schema:
@@ -2611,10 +2611,10 @@ paths:
         required: true
         type: string
         minLength: 1
-        description: Router template name.
+        description: Dynamic router name.
     put:
       operationId: RouterUpdate
-      description: Updates a router template
+      description: Updates a dynamic router
       consumes:
         - application/json
       parameters:
@@ -2622,10 +2622,10 @@ paths:
           required: true
           in: body
           schema:
-            $ref: "#/definitions/RouterTemplate"
+            $ref: "#/definitions/DynamicRouter"
       responses:
         "200":
-          description: Router template updated
+          description: Dynamic router updated
           schema:
             $ref: "#/definitions/TeamToken"
         "401":
@@ -2633,7 +2633,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
-          description: Router template not found
+          description: Dynamic router not found
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2642,10 +2642,10 @@ paths:
         - Bearer: []
     delete:
       operationId: RouterDelete
-      description: Deletes a router template
+      description: Deletes a dynamic router
       responses:
         "200":
-          description: Router template deleted
+          description: Dynamic router deleted
           schema:
             $ref: "#/definitions/TeamToken"
         "401":
@@ -2653,7 +2653,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
-          description: Router template not found
+          description: Dynamic router not found
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2661,8 +2661,8 @@ paths:
       security:
         - Bearer: []
 definitions:
-  RouterTemplate:
-    description: Router template
+  DynamicRouter:
+    description: Dynamic router
     type: object
     properties:
       name:

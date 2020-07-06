@@ -23,9 +23,9 @@ import (
 )
 
 func (s *S) TestRoutersAdd(c *check.C) {
-	var created routerTypes.RouterTemplate
-	s.mockService.RouterTemplate.OnCreate = func(rt routerTypes.RouterTemplate) error {
-		created = rt
+	var created routerTypes.DynamicRouter
+	s.mockService.DynamicRouter.OnCreate = func(dr routerTypes.DynamicRouter) error {
+		created = dr
 		return nil
 	}
 	body := `{"name": "r1", "type": "t1", "config": {"a": "b"}}`
@@ -36,7 +36,7 @@ func (s *S) TestRoutersAdd(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	c.Assert(created, check.DeepEquals, routerTypes.RouterTemplate{
+	c.Assert(created, check.DeepEquals, routerTypes.DynamicRouter{
 		Name:   "r1",
 		Type:   "t1",
 		Config: map[string]interface{}{"a": "b"},
@@ -44,9 +44,9 @@ func (s *S) TestRoutersAdd(c *check.C) {
 }
 
 func (s *S) TestRoutersUpdate(c *check.C) {
-	var updated routerTypes.RouterTemplate
-	s.mockService.RouterTemplate.OnUpdate = func(rt routerTypes.RouterTemplate) error {
-		updated = rt
+	var updated routerTypes.DynamicRouter
+	s.mockService.DynamicRouter.OnUpdate = func(dr routerTypes.DynamicRouter) error {
+		updated = dr
 		return nil
 	}
 	body := `{"type": "t1", "config": {"a": "b"}}`
@@ -57,7 +57,7 @@ func (s *S) TestRoutersUpdate(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(updated, check.DeepEquals, routerTypes.RouterTemplate{
+	c.Assert(updated, check.DeepEquals, routerTypes.DynamicRouter{
 		Name:   "r1",
 		Type:   "t1",
 		Config: map[string]interface{}{"a": "b"},
@@ -66,7 +66,7 @@ func (s *S) TestRoutersUpdate(c *check.C) {
 
 func (s *S) TestRoutersDelete(c *check.C) {
 	var removed string
-	s.mockService.RouterTemplate.OnRemove = func(rtName string) error {
+	s.mockService.DynamicRouter.OnRemove = func(rtName string) error {
 		removed = rtName
 		return nil
 	}
@@ -93,16 +93,16 @@ func (s *S) TestRoutersListNoContent(c *check.C) {
 }
 
 func (s *S) TestRoutersList(c *check.C) {
-	rt := routerTypes.RouterTemplate{
-		Name:   "rt1",
+	dr := routerTypes.DynamicRouter{
+		Name:   "dr1",
 		Type:   "foo",
 		Config: map[string]interface{}{"a": "b"},
 	}
-	s.mockService.RouterTemplate.OnList = func() ([]routerTypes.RouterTemplate, error) {
-		return []routerTypes.RouterTemplate{rt}, nil
+	s.mockService.DynamicRouter.OnList = func() ([]routerTypes.DynamicRouter, error) {
+		return []routerTypes.DynamicRouter{dr}, nil
 	}
-	s.mockService.RouterTemplate.OnGet = func(name string) (*routerTypes.RouterTemplate, error) {
-		return &rt, nil
+	s.mockService.DynamicRouter.OnGet = func(name string) (*routerTypes.DynamicRouter, error) {
+		return &dr, nil
 	}
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
@@ -115,11 +115,11 @@ func (s *S) TestRoutersList(c *check.C) {
 	defer router.Unregister("bar")
 	recorder := httptest.NewRecorder()
 	expected := []router.PlanRouter{
+		{Name: "dr1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}},
 		{Name: "fake", Type: "fake", Default: true},
 		{Name: "fake-tls", Type: "fake-tls"},
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar", Config: map[string]interface{}{"mycfg": "1"}},
-		{Name: "rt1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}},
 	}
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)

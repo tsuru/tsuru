@@ -24,7 +24,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	}
 	Register("router", routerCreator)
 	config.Set("routers:mine:type", "router")
-	defer config.Unset("routers:mine:type")
+	defer config.Unset("routers:mine")
 	got, err := Get("mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.DeepEquals, got)
@@ -36,7 +36,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 	_, err = Get("unknown-router")
 	c.Assert(err, check.DeepEquals, &ErrRouterNotFound{Name: "unknown-router"})
 	config.Set("routers:mine-unknown:type", "unknown")
-	defer config.Unset("routers:mine-unknown:type")
+	defer config.Unset("routers:mine-unknown")
 	_, err = Get("mine-unknown")
 	c.Assert(err, check.Not(check.IsNil))
 	c.Assert(`unknown router: "unknown".`, check.Equals, err.Error())
@@ -44,7 +44,7 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 
 func (s *S) TestRegisterAndType(c *check.C) {
 	config.Set("routers:mine:type", "myrouter")
-	defer config.Unset("routers:mine:type")
+	defer config.Unset("routers:mine")
 	rType, prefix, err := configType("mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(rType, check.Equals, "myrouter")
@@ -108,7 +108,7 @@ func (s *S) TestGetDynamicRouter(c *check.C) {
 	config.Set("routers:inst1:cfg1", "v1")
 	defer config.Unset("routers:inst1")
 
-	err := servicemanager.RouterTemplate.Create(router.RouterTemplate{
+	err := servicemanager.DynamicRouter.Create(router.DynamicRouter{
 		Name: "inst2",
 		Type: "myrouter",
 		Config: map[string]interface{}{
@@ -316,7 +316,7 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 		return nil, nil
 	})
 
-	err := servicemanager.RouterTemplate.Create(router.RouterTemplate{
+	err := servicemanager.DynamicRouter.Create(router.DynamicRouter{
 		Name: "router-dyn",
 		Type: "myrouter",
 		Config: map[string]interface{}{

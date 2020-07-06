@@ -16,7 +16,7 @@ type ConfigSuite struct {
 
 func init() {
 	check.Suite(&ConfigSuite{getter: &StaticConfigGetter{}})
-	check.Suite(&ConfigSuite{getter: &templateConfigGetter{}})
+	check.Suite(&ConfigSuite{getter: &dynamicConfigGetter{}})
 }
 
 func (s *ConfigSuite) SetUpTest(c *check.C) {
@@ -51,19 +51,19 @@ func (s *ConfigSuite) SetUpTest(c *check.C) {
 	switch g := s.getter.(type) {
 	case *StaticConfigGetter:
 		g.Prefix = "mine"
-	case *templateConfigGetter:
-		svc, err := TemplateService()
+	case *dynamicConfigGetter:
+		svc, err := DynamicRouterService()
 		c.Assert(err, check.IsNil)
-		rt := router.RouterTemplate{
+		dr := router.DynamicRouter{
 			Name:   "mine",
 			Type:   "myrouter",
 			Config: routerConfig,
 		}
-		err = svc.Create(rt)
+		err = svc.Create(dr)
 		c.Assert(err, check.IsNil)
-		dbRt, err := svc.Get(rt.Name)
+		dbDR, err := svc.Get(dr.Name)
 		c.Assert(err, check.IsNil)
-		g.template = *dbRt
+		g.router = *dbDR
 	}
 }
 

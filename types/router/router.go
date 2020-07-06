@@ -11,27 +11,27 @@ import (
 )
 
 var (
-	ErrRouterTemplateNotFound = errors.New("router template not found")
+	ErrDynamicRouterNotFound = errors.New("dynamic router not found")
 )
 
-type RouterTemplate struct {
+type DynamicRouter struct {
 	Name   string
 	Type   string
 	Config map[string]interface{}
 }
 
-type RouterTemplateService interface {
-	Get(name string) (*RouterTemplate, error)
-	List() ([]RouterTemplate, error)
+type DynamicRouterService interface {
+	Get(name string) (*DynamicRouter, error)
+	List() ([]DynamicRouter, error)
 	Remove(name string) error
-	Create(RouterTemplate) error
-	Update(RouterTemplate) error
+	Create(DynamicRouter) error
+	Update(DynamicRouter) error
 }
 
-type RouterTemplateStorage interface {
-	Save(RouterTemplate) error
-	Get(name string) (*RouterTemplate, error)
-	List() ([]RouterTemplate, error)
+type DynamicRouterStorage interface {
+	Save(DynamicRouter) error
+	Get(name string) (*DynamicRouter, error)
+	List() ([]DynamicRouter, error)
 	Remove(name string) error
 }
 

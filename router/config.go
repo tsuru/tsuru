@@ -26,35 +26,35 @@ type ConfigGetter interface {
 	Hash() (string, error)
 }
 
-var _ ConfigGetter = &templateConfigGetter{}
+var _ ConfigGetter = &dynamicConfigGetter{}
 var _ ConfigGetter = &StaticConfigGetter{}
 
-type templateConfigGetter struct {
-	template router.RouterTemplate
+type dynamicConfigGetter struct {
+	router router.DynamicRouter
 }
 
 type StaticConfigGetter struct {
 	Prefix string
 }
 
-func (g *templateConfigGetter) Get(name string) (interface{}, error) {
-	v, ok := g.template.Config[name]
+func (g *dynamicConfigGetter) Get(name string) (interface{}, error) {
+	v, ok := g.router.Config[name]
 	if !ok {
 		return "", ErrRouterConfigNotFound
 	}
 	return v, nil
 }
 
-func (g *templateConfigGetter) GetString(name string) (string, error) {
-	v, ok := g.template.Config[name]
+func (g *dynamicConfigGetter) GetString(name string) (string, error) {
+	v, ok := g.router.Config[name]
 	if !ok {
 		return "", ErrRouterConfigNotFound
 	}
 	return fmt.Sprint(v), nil
 }
 
-func (g *templateConfigGetter) GetInt(name string) (int, error) {
-	value, ok := g.template.Config[name]
+func (g *dynamicConfigGetter) GetInt(name string) (int, error) {
+	value, ok := g.router.Config[name]
 	if !ok {
 		return 0, ErrRouterConfigNotFound
 	}
@@ -70,8 +70,8 @@ func (g *templateConfigGetter) GetInt(name string) (int, error) {
 	return 0, errors.New("not a number")
 }
 
-func (g *templateConfigGetter) GetBool(name string) (bool, error) {
-	value, ok := g.template.Config[name]
+func (g *dynamicConfigGetter) GetBool(name string) (bool, error) {
+	value, ok := g.router.Config[name]
 	if !ok {
 		return false, ErrRouterConfigNotFound
 	}
@@ -84,8 +84,8 @@ func (g *templateConfigGetter) GetBool(name string) (bool, error) {
 	return false, errors.New("not a boolean")
 }
 
-func (g *templateConfigGetter) GetFloat(name string) (float64, error) {
-	value, ok := g.template.Config[name]
+func (g *dynamicConfigGetter) GetFloat(name string) (float64, error) {
+	value, ok := g.router.Config[name]
 	if !ok {
 		return 0, ErrRouterConfigNotFound
 	}
@@ -98,8 +98,8 @@ func (g *templateConfigGetter) GetFloat(name string) (float64, error) {
 	return 0, errors.New("not a float")
 }
 
-func (g *templateConfigGetter) Hash() (string, error) {
-	cfg, err := json.Marshal(g.template.Config)
+func (g *dynamicConfigGetter) Hash() (string, error) {
+	cfg, err := json.Marshal(g.router.Config)
 	if err != nil {
 		return "", err
 	}

@@ -31,7 +31,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	servicemanager.RouterTemplate, err = TemplateService()
+	servicemanager.DynamicRouter, err = DynamicRouterService()
 	c.Assert(err, check.IsNil)
 
 }

@@ -11,68 +11,68 @@ import (
 	"github.com/tsuru/tsuru/types/router"
 )
 
-type routerTemplate struct {
+type dynamicRouter struct {
 	Name   string `bson:"_id"`
 	Type   string
 	Config map[string]interface{} `bson:",omitempty"`
 }
 
-type routerTemplateStorage struct{}
+type dynamicRouterStorage struct{}
 
-func (s *routerTemplateStorage) coll(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("router_templates")
+func (s *dynamicRouterStorage) coll(conn *db.Storage) *dbStorage.Collection {
+	return conn.Collection("dynamic_routers")
 }
 
-func (s *routerTemplateStorage) Save(rt router.RouterTemplate) error {
+func (s *dynamicRouterStorage) Save(dr router.DynamicRouter) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.coll(conn).UpsertId(rt.Name, routerTemplate(rt))
+	_, err = s.coll(conn).UpsertId(dr.Name, dynamicRouter(dr))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *routerTemplateStorage) Get(name string) (*router.RouterTemplate, error) {
+func (s *dynamicRouterStorage) Get(name string) (*router.DynamicRouter, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var rt routerTemplate
-	err = s.coll(conn).FindId(name).One(&rt)
+	var dr dynamicRouter
+	err = s.coll(conn).FindId(name).One(&dr)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, router.ErrRouterTemplateNotFound
+			return nil, router.ErrDynamicRouterNotFound
 		}
 		return nil, err
 	}
-	result := router.RouterTemplate(rt)
+	result := router.DynamicRouter(dr)
 	return &result, nil
 }
 
-func (s *routerTemplateStorage) List() ([]router.RouterTemplate, error) {
+func (s *dynamicRouterStorage) List() ([]router.DynamicRouter, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var rts []routerTemplate
-	err = s.coll(conn).Find(nil).All(&rts)
+	var drs []dynamicRouter
+	err = s.coll(conn).Find(nil).All(&drs)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]router.RouterTemplate, len(rts))
-	for i := range rts {
-		result[i] = router.RouterTemplate(rts[i])
+	result := make([]router.DynamicRouter, len(drs))
+	for i := range drs {
+		result[i] = router.DynamicRouter(drs[i])
 	}
 	return result, nil
 }
 
-func (s *routerTemplateStorage) Remove(name string) error {
+func (s *dynamicRouterStorage) Remove(name string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func (s *routerTemplateStorage) Remove(name string) error {
 	err = s.coll(conn).RemoveId(name)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return router.ErrRouterTemplateNotFound
+			return router.ErrDynamicRouterNotFound
 		}
 		return err
 	}
