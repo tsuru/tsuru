@@ -61,12 +61,12 @@ func Unregister(name string) {
 }
 
 func Type(name string) (string, error) {
-	rt, err := servicemanager.RouterTemplate.Get(name)
-	if err != nil && err != router.ErrRouterTemplateNotFound {
+	dr, err := servicemanager.DynamicRouter.Get(name)
+	if err != nil && err != router.ErrDynamicRouterNotFound {
 		return "", err
 	}
-	if rt != nil {
-		return rt.Type, nil
+	if dr != nil {
+		return dr.Type, nil
 	}
 	rType, _, err := configType(name)
 	return rType, err
@@ -88,15 +88,15 @@ func configType(name string) (string, string, error) {
 
 // Get gets the named router from the registry.
 func Get(name string) (Router, error) {
-	rt, err := servicemanager.RouterTemplate.Get(name)
-	if err != nil && err != router.ErrRouterTemplateNotFound {
+	dr, err := servicemanager.DynamicRouter.Get(name)
+	if err != nil && err != router.ErrDynamicRouterNotFound {
 		return nil, err
 	}
 	var routerType string
 	var config ConfigGetter
-	if rt != nil {
-		routerType = rt.Type
-		config = &templateConfigGetter{template: *rt}
+	if dr != nil {
+		routerType = dr.Type
+		config = &dynamicConfigGetter{router: *dr}
 	} else {
 		var prefix string
 		routerType, prefix, err = configType(name)
@@ -458,7 +458,7 @@ func List() ([]PlanRouter, error) {
 	if err != nil {
 		return nil, err
 	}
-	dynamicRouters, err := servicemanager.RouterTemplate.List()
+	dynamicRouters, err := servicemanager.DynamicRouter.List()
 	if err != nil {
 		return nil, err
 	}

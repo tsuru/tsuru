@@ -10,12 +10,12 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func (s *S) TestTemplateServiceCreate(c *check.C) {
-	svc, err := TemplateService()
+func (s *S) TestDynamicRouterServiceCreate(c *check.C) {
+	svc, err := DynamicRouterService()
 	c.Assert(err, check.IsNil)
-	err = svc.Create(router.RouterTemplate{})
-	c.Assert(err, check.ErrorMatches, `router template name and type are required`)
-	err = svc.Create(router.RouterTemplate{
+	err = svc.Create(router.DynamicRouter{})
+	c.Assert(err, check.ErrorMatches, `dynamic router name and type are required`)
+	err = svc.Create(router.DynamicRouter{
 		Name: "myrouter",
 		Type: "invalid",
 	})
@@ -25,34 +25,34 @@ func (s *S) TestTemplateServiceCreate(c *check.C) {
 	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
 		return nil, nil
 	})
-	err = svc.Create(router.RouterTemplate{
+	err = svc.Create(router.DynamicRouter{
 		Name: "mine",
 		Type: "myrouter",
 	})
 	c.Assert(err, check.ErrorMatches, `router named "mine" already exists in config`)
-	err = svc.Create(router.RouterTemplate{
+	err = svc.Create(router.DynamicRouter{
 		Name: "mine2",
 		Type: "myrouter",
 	})
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestTemplateServiceUpdateNotFound(c *check.C) {
-	svc, err := TemplateService()
+func (s *S) TestDynamicRouterServiceUpdateNotFound(c *check.C) {
+	svc, err := DynamicRouterService()
 	c.Assert(err, check.IsNil)
-	err = svc.Update(router.RouterTemplate{
+	err = svc.Update(router.DynamicRouter{
 		Name: "mine",
 	})
-	c.Assert(err, check.Equals, router.ErrRouterTemplateNotFound)
+	c.Assert(err, check.Equals, router.ErrDynamicRouterNotFound)
 }
 
-func (s *S) TestTemplateServiceUpdate(c *check.C) {
-	svc, err := TemplateService()
+func (s *S) TestDynamicRouterServiceUpdate(c *check.C) {
+	svc, err := DynamicRouterService()
 	c.Assert(err, check.IsNil)
 	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
 		return nil, nil
 	})
-	err = svc.Create(router.RouterTemplate{
+	err = svc.Create(router.DynamicRouter{
 		Name: "mine",
 		Type: "myrouter",
 		Config: map[string]interface{}{
@@ -62,7 +62,7 @@ func (s *S) TestTemplateServiceUpdate(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = svc.Update(router.RouterTemplate{
+	err = svc.Update(router.DynamicRouter{
 		Name: "mine",
 		Config: map[string]interface{}{
 			"a": nil,
@@ -71,9 +71,9 @@ func (s *S) TestTemplateServiceUpdate(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	dbRT, err := svc.Get("mine")
+	dbDR, err := svc.Get("mine")
 	c.Assert(err, check.IsNil)
-	c.Assert(dbRT, check.DeepEquals, &router.RouterTemplate{
+	c.Assert(dbDR, check.DeepEquals, &router.DynamicRouter{
 		Name: "mine",
 		Type: "myrouter",
 		Config: map[string]interface{}{

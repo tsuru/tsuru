@@ -5,48 +5,48 @@
 package router
 
 var (
-	_ RouterTemplateService = &MockRouterTemplateService{}
+	_ DynamicRouterService = &MockDynamicRouterService{}
 )
 
-type MockRouterTemplateService struct {
-	OnCreate func(RouterTemplate) error
-	OnUpdate func(RouterTemplate) error
-	OnGet    func(name string) (*RouterTemplate, error)
-	OnList   func() ([]RouterTemplate, error)
+type MockDynamicRouterService struct {
+	OnCreate func(DynamicRouter) error
+	OnUpdate func(DynamicRouter) error
+	OnGet    func(name string) (*DynamicRouter, error)
+	OnList   func() ([]DynamicRouter, error)
 	OnRemove func(name string) error
 }
 
-func (m *MockRouterTemplateService) Create(rt RouterTemplate) error {
+func (m *MockDynamicRouterService) Create(dr DynamicRouter) error {
 	if m.OnCreate == nil {
 		return nil
 	}
-	return m.OnCreate(rt)
+	return m.OnCreate(dr)
 }
 
-func (m *MockRouterTemplateService) Update(rt RouterTemplate) error {
+func (m *MockDynamicRouterService) Update(dr DynamicRouter) error {
 	if m.OnUpdate == nil {
 		return nil
 	}
-	return m.OnUpdate(rt)
+	return m.OnUpdate(dr)
 }
 
-func (m *MockRouterTemplateService) Get(name string) (*RouterTemplate, error) {
+func (m *MockDynamicRouterService) Get(name string) (*DynamicRouter, error) {
 	if m.OnGet == nil {
-		return nil, ErrRouterTemplateNotFound
+		return nil, ErrDynamicRouterNotFound
 	}
 	return m.OnGet(name)
 }
 
-func (m *MockRouterTemplateService) List() ([]RouterTemplate, error) {
+func (m *MockDynamicRouterService) List() ([]DynamicRouter, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 	return m.OnList()
 }
 
-func (m *MockRouterTemplateService) Remove(name string) error {
+func (m *MockDynamicRouterService) Remove(name string) error {
 	if m.OnRemove == nil {
-		return ErrRouterTemplateNotFound
+		return ErrDynamicRouterNotFound
 	}
 	return m.OnRemove(name)
 }

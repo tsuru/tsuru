@@ -37,7 +37,7 @@ type DbDriver struct {
 	AppLogStorage                    app.AppLogStorage
 	InstanceTrackerStorage           tracker.InstanceStorage
 	AppVersionStorage                app.AppVersionStorage
-	RouterTemplateStorage            router.RouterTemplateStorage
+	DynamicRouterStorage             router.DynamicRouterStorage
 }
 
 var (

@@ -28,8 +28,8 @@ import (
 //   400: Invalid router
 //   409: Router already exists
 func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	var routerTemplate routerTypes.RouterTemplate
-	err = ParseInput(r, &routerTemplate)
+	var dynamicRouter routerTypes.DynamicRouter
+	err = ParseInput(r, &dynamicRouter)
 	if err != nil {
 		return err
 	}
@@ -39,23 +39,23 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return permission.ErrUnauthorized
 	}
 
-	_, err = servicemanager.RouterTemplate.Get(routerTemplate.Name)
+	_, err = servicemanager.DynamicRouter.Get(dynamicRouter.Name)
 	if err == nil {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "router template already exists"}
+		return &errors.HTTP{Code: http.StatusConflict, Message: "dynamic router already exists"}
 	}
 
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerTemplate.Name},
+		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name}),
+		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name}),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.RouterTemplate.Create(routerTemplate)
+	err = servicemanager.DynamicRouter.Create(dynamicRouter)
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -70,35 +70,35 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   400: Invalid router
 //   404: Router not found
 func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	var routerTemplate routerTypes.RouterTemplate
+	var dynamicRouter routerTypes.DynamicRouter
 
 	routerName := r.URL.Query().Get(":name")
-	err = ParseInput(r, &routerTemplate)
+	err = ParseInput(r, &dynamicRouter)
 	if err != nil {
 		return err
 	}
-	routerTemplate.Name = routerName
+	dynamicRouter.Name = routerName
 
-	allowed := permission.Check(t, permission.PermRouterUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name})
+	allowed := permission.Check(t, permission.PermRouterUpdate, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name})
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerTemplate.Name},
+		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerTemplate.Name}),
+		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name}),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
 
-	err = servicemanager.RouterTemplate.Update(routerTemplate)
+	err = servicemanager.DynamicRouter.Update(dynamicRouter)
 	if err != nil {
-		if err == routerTypes.ErrRouterTemplateNotFound {
+		if err == routerTypes.ErrDynamicRouterNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -132,9 +132,9 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	defer func() { evt.Done(err) }()
 
-	err = servicemanager.RouterTemplate.Remove(routerName)
+	err = servicemanager.DynamicRouter.Remove(routerName)
 	if err != nil {
-		if err == routerTypes.ErrRouterTemplateNotFound {
+		if err == routerTypes.ErrDynamicRouterNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err

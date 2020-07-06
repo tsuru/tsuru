@@ -33,5 +33,5 @@ var (
 	AppLog                    app.AppLogService
 	InstanceTracker           tracker.InstanceService
 	AppVersion                app.AppVersionService
-	RouterTemplate            router.RouterTemplateService
+	DynamicRouter             router.DynamicRouterService
 )

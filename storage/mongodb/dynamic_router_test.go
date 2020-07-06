@@ -9,7 +9,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-var _ = check.Suite(&storagetest.RouterTemplateSuite{
-	RouterTemplateStorage: &routerTemplateStorage{},
-	SuiteHooks:            &mongodbBaseTest{},
+var _ = check.Suite(&storagetest.DynamicRouterSuite{
+	DynamicRouterStorage: &dynamicRouterStorage{},
+	SuiteHooks:           &mongodbBaseTest{},
 })

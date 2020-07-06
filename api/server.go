@@ -153,7 +153,7 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.RouterTemplate, err = router.TemplateService()
+	servicemanager.DynamicRouter, err = router.DynamicRouterService()
 	if err != nil {
 		return err
 	}
