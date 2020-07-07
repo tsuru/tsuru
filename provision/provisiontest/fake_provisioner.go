@@ -366,6 +366,7 @@ type failure struct {
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
 	Name           string
+	LogsEnabled    bool
 	outputs        chan []byte
 	failures       chan failure
 	apps           map[string]provisionedApp
@@ -1361,6 +1362,9 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 }
 
 func (p *FakeProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	if !p.LogsEnabled {
+		return nil, provision.ErrLogsUnavailable
+	}
 	return []appTypes.Applog{
 		{
 			Message: "Fake message from provisioner",
@@ -1369,6 +1373,9 @@ func (p *FakeProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) 
 }
 
 func (p *FakeProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	if !p.LogsEnabled {
+		return nil, provision.ErrLogsUnavailable
+	}
 	watcher := appTypes.NewMockLogWatcher()
 	watcher.Enqueue(appTypes.Applog{Message: "Fake message from provisioner"})
 	return watcher, nil

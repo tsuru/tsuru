@@ -25,6 +25,7 @@ type ProvisionerWrapperSuite struct {
 
 func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 	provisioner := provisiontest.NewFakeProvisioner()
+	provisioner.LogsEnabled = true
 	var err error
 	s.tsuruLogService, err = memoryAppLogService()
 	c.Check(err, check.IsNil)
@@ -62,7 +63,6 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 }
 
 func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
-
 	watcher, err := s.provisionerWrapper.Watch(app.ListLogArgs{
 		AppName: "myapp",
 	})
