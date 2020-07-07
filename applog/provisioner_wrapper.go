@@ -5,6 +5,10 @@
 package applog
 
 import (
+	"sort"
+	"sync"
+	"sync/atomic"
+
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -16,12 +20,14 @@ var _ appTypes.AppLogService = &provisionerWrapper{}
 // provisionerWrapper is a layer designed to use provision native logging when is possible,
 // otherwise will use backwards compatibility with own tsuru log api.
 type provisionerWrapper struct {
-	logService appTypes.AppLogService
+	logService        appTypes.AppLogService
+	provisionerGetter logsProvisionerGetter
 }
 
 func newProvisionerWrapper(logService appTypes.AppLogService) appTypes.AppLogService {
 	return &provisionerWrapper{
-		logService: logService,
+		logService:        logService,
+		provisionerGetter: defaultLogsProvisionerGetter,
 	}
 }
 
@@ -40,9 +46,13 @@ func (k *provisionerWrapper) List(args appTypes.ListLogArgs) ([]appTypes.Applog,
 	if err != nil {
 		return nil, err
 	}
-	logsProvisioner, err := k.getLogsProvisioner(a)
+	tsuruLogs, err := k.logService.List(args)
+	if err != nil {
+		return nil, err
+	}
+	logsProvisioner, err := k.provisionerGetter(a)
 	if err == provision.ErrLogsUnavailable {
-		return k.logService.List(args)
+		return tsuruLogs, nil
 	}
 	if err != nil {
 		return nil, err
@@ -50,8 +60,15 @@ func (k *provisionerWrapper) List(args appTypes.ListLogArgs) ([]appTypes.Applog,
 
 	logs, err := logsProvisioner.ListLogs(a, args)
 	if err == provision.ErrLogsUnavailable {
-		return k.logService.List(args)
+		return tsuruLogs, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	logs = append(logs, tsuruLogs...)
+	sort.SliceStable(logs, func(i, j int) bool {
+		return logs[i].Date.Before(logs[j].Date)
+	})
 	return logs, err
 }
 
@@ -60,18 +77,33 @@ func (k *provisionerWrapper) Watch(args appTypes.ListLogArgs) (appTypes.LogWatch
 	if err != nil {
 		return nil, err
 	}
-	logsProvisioner, err := k.getLogsProvisioner(a)
+	tsuruWatcher, err := k.logService.Watch(args)
+	if err != nil {
+		return nil, err
+	}
+
+	logsProvisioner, err := k.provisionerGetter(a)
 	if err == provision.ErrLogsUnavailable {
-		return k.logService.Watch(args)
+		return tsuruWatcher, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return logsProvisioner.WatchLogs(a, args)
+	provisionerWatcher, err := logsProvisioner.WatchLogs(a, args)
+	if err == provision.ErrLogsUnavailable {
+		return tsuruWatcher, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return newMultiWatcher(provisionerWatcher, tsuruWatcher), nil
 }
 
-func (k *provisionerWrapper) getLogsProvisioner(a appTypes.App) (provision.LogsProvisioner, error) {
+type logsProvisionerGetter func(a appTypes.App) (provision.LogsProvisioner, error)
+
+var defaultLogsProvisionerGetter = func(a appTypes.App) (provision.LogsProvisioner, error) {
 	provisioner, err := pool.GetProvisionerForPool(a.GetPool())
 	if err != nil {
 		return nil, err
@@ -82,4 +114,62 @@ func (k *provisionerWrapper) getLogsProvisioner(a appTypes.App) (provision.LogsP
 	}
 
 	return nil, provision.ErrLogsUnavailable
+}
+
+var _ appTypes.LogWatcher = &multiWatcher{}
+
+type multiWatcher struct {
+	subWatchers []appTypes.LogWatcher
+	ch          chan appTypes.Applog
+	close       chan struct{}
+	closeCalled int32
+	wg          sync.WaitGroup
+}
+
+func newMultiWatcher(subWatchers ...appTypes.LogWatcher) *multiWatcher {
+	watcher := &multiWatcher{
+		subWatchers: subWatchers,
+		ch:          make(chan appTypes.Applog, 1000),
+		close:       make(chan struct{}),
+	}
+
+	watcher.wg.Add(len(subWatchers))
+	for _, subWatcher := range subWatchers {
+		go watcher.startConsume(subWatcher)
+	}
+
+	return watcher
+}
+
+func (m *multiWatcher) startConsume(subWatcher appTypes.LogWatcher) {
+	defer m.wg.Done()
+	c := subWatcher.Chan()
+	for {
+		select {
+		case log, open := <-c:
+
+			if !open {
+				return
+			}
+
+			m.ch <- log
+		case <-m.close:
+			return
+		}
+	}
+}
+func (m *multiWatcher) Chan() <-chan appTypes.Applog {
+	return m.ch
+}
+func (m *multiWatcher) Close() {
+	if atomic.AddInt32(&m.closeCalled, 1) != 1 {
+		return
+	}
+
+	close(m.close)
+	for _, subWatcher := range m.subWatchers {
+		subWatcher.Close()
+	}
+	m.wg.Wait()
+	close(m.ch)
 }

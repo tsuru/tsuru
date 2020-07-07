@@ -37,3 +37,18 @@ func (a *MockApp) GetDeploys() uint {
 func (a *MockApp) GetUpdatePlatform() bool {
 	return a.UpdatePlatform
 }
+
+var _ AppService = &MockAppService{}
+
+type MockAppService struct {
+	Apps []App
+}
+
+func (m *MockAppService) GetByName(name string) (App, error) {
+	for _, app := range m.Apps {
+		if app.GetName() == name {
+			return app, nil
+		}
+	}
+	return nil, ErrAppNotFound
+}

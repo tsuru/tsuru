@@ -35,7 +35,11 @@ func (m *MockLogWatcher) Close() {
 	close(m.ch)
 }
 
-func NewMockLogWatcher() LogWatcher {
+func (m *MockLogWatcher) Enqueue(log Applog) {
+	m.ch <- log
+}
+
+func NewMockLogWatcher() *MockLogWatcher {
 	return &MockLogWatcher{
 		ch: make(chan Applog, 10),
 	}
