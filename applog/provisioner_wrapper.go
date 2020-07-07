@@ -152,7 +152,12 @@ func (m *multiWatcher) startConsume(subWatcher appTypes.LogWatcher) {
 				return
 			}
 
-			m.ch <- log
+			select {
+			case m.ch <- log:
+			case <-m.close:
+				return
+
+			}
 		case <-m.close:
 			return
 		}
