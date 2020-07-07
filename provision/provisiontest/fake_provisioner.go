@@ -39,6 +39,7 @@ var (
 	_ provision.InterAppProvisioner  = &FakeProvisioner{}
 	_ provision.UpdatableProvisioner = &FakeProvisioner{}
 	_ provision.Provisioner          = &FakeProvisioner{}
+	_ provision.LogsProvisioner      = &FakeProvisioner{}
 	_ provision.App                  = &FakeApp{}
 	_ bind.App                       = &FakeApp{}
 )
@@ -1357,6 +1358,20 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 		},
 	}, nil
 
+}
+
+func (p *FakeProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	return []appTypes.Applog{
+		{
+			Message: "Fake message from provisioner",
+		},
+	}, nil
+}
+
+func (p *FakeProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	watcher := appTypes.NewMockLogWatcher()
+	watcher.Enqueue(appTypes.Applog{Message: "Fake message from provisioner"})
+	return watcher, nil
 }
 
 func stringInArray(value string, array []string) bool {
