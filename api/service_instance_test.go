@@ -1114,6 +1114,14 @@ func (s *ServiceInstanceSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check
 	c.Assert(called, check.Equals, true)
 }
 
+func makeRequestToRemoveServiceInstanceWithForceRemoval(service, instance string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+	url := fmt.Sprintf("/services/%[1]s/instances/%[2]s?:service=%[1]s&:instance=%[2]s&ignoreerrors=true", service, instance)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
 func (s *ServiceInstanceSuite) TestRemoveServiceInstanceForcingRemoval(c *check.C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1131,7 +1139,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceForcingRemoval(c *check.
 	si := service.ServiceInstance{Name: "purity-instance", ServiceName: "purity", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	recorder, request := makeRequestToRemoveServiceInstanceWithUnbind("purity", "purity-instance", c)
+	recorder, request := makeRequestToRemoveServiceInstanceWithForceRemoval("purity", "purity-instance", c)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
