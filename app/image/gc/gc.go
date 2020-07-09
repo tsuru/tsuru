@@ -472,13 +472,13 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 	for _, v := range versions.Versions {
 		if v.MarkedToRemoval {
 			continue
+		} else if v.CustomBuildTag != "" {
+			customTagVersions = append(customTagVersions, v)
 		} else if !v.DeploySuccessful {
 			// A point to remember: @wpjunior
 			// All deploys are created with flag above as a false value
 			// It means in the future will turned to true, to avoid a remotion of a running event please check whether v.EventID is running.
 			selection.unsuccessfulDeploys = append(selection.unsuccessfulDeploys, v)
-		} else if v.CustomBuildTag != "" {
-			customTagVersions = append(customTagVersions, v)
 		} else {
 			regularVersions = append(regularVersions, v)
 		}
