@@ -2590,7 +2590,7 @@ paths:
           schema:
             $ref: "#/definitions/DynamicRouter"
       responses:
-        "200":
+        "201":
           description: Dynamic router added
         "400":
           description: Invalid data
@@ -2626,8 +2626,6 @@ paths:
       responses:
         "200":
           description: Dynamic router updated
-          schema:
-            $ref: "#/definitions/TeamToken"
         "401":
           description: Unauthorized.
           schema:
@@ -2646,8 +2644,6 @@ paths:
       responses:
         "200":
           description: Dynamic router deleted
-          schema:
-            $ref: "#/definitions/TeamToken"
         "401":
           description: Unauthorized.
           schema:
