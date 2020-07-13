@@ -1592,10 +1592,8 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	})
 
 	c.Assert(addrs, check.DeepEquals, []provision.AppInternalAddress{
-		{Domain: "myapp-jobs-units.default.svc.cluster.local", Protocol: "", Port: 0},
 		{Domain: "myapp-jobs-v1.default.svc.cluster.local", Protocol: "", Port: 0},
 		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201},
-		{Domain: "myapp-web-units.default.svc.cluster.local", Protocol: "", Port: 0},
 		{Domain: "myapp-web-v1.default.svc.cluster.local", Protocol: "", Port: 0},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80},

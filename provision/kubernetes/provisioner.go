@@ -920,6 +920,10 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 
 	addresses := []provision.AppInternalAddress{}
 	for _, service := range svcs {
+		// we can't show headless services
+		if service.Spec.ClusterIP == "None" {
+			continue
+		}
 		for _, port := range service.Spec.Ports {
 			addresses = append(addresses, provision.AppInternalAddress{
 				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
