@@ -37,34 +37,24 @@ var (
 		Name: "tsuru_oauth_request_errors_total",
 		Help: "The total number of oauth request errors.",
 	})
+
+	_ auth.Scheme = &oAuthScheme{}
 )
 
-type OAuthParser interface {
-	Parse(infoResponse *http.Response) (string, error)
-}
-
-type OAuthScheme struct {
-	BaseConfig   oauth2.Config
-	InfoURL      string
-	CallbackPort int
-	Parser       OAuthParser
+type oAuthScheme struct {
+	infoURL      string
+	callbackPort int
 }
 
 func init() {
-	auth.RegisterScheme("oauth", &OAuthScheme{})
+	auth.RegisterScheme("oauth", &oAuthScheme{})
 	prometheus.MustRegister(requestLatencies)
 	prometheus.MustRegister(requestErrors)
 }
 
 // This method loads basic config and returns a copy of the
 // config object.
-func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
-	if s.BaseConfig.ClientID != "" {
-		return s.BaseConfig, nil
-	}
-	if s.Parser == nil {
-		s.Parser = s
-	}
+func (s *oAuthScheme) loadConfig() (oauth2.Config, error) {
 	var emptyConfig oauth2.Config
 	clientId, err := config.GetString("auth:oauth:client-id")
 	if err != nil {
@@ -94,9 +84,9 @@ func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
 	if err != nil {
 		log.Debugf("auth:oauth:callback-port not found using random port: %s", err)
 	}
-	s.InfoURL = infoURL
-	s.CallbackPort = callbackPort
-	s.BaseConfig = oauth2.Config{
+	s.infoURL = infoURL
+	s.callbackPort = callbackPort
+	return oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
 		Scopes:       []string{scope},
@@ -104,11 +94,10 @@ func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
 			AuthURL:  authURL,
 			TokenURL: tokenURL,
 		},
-	}
-	return s.BaseConfig, nil
+	}, nil
 }
 
-func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
+func (s *oAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	conf, err := s.loadConfig()
 	if err != nil {
 		return nil, err
@@ -129,7 +118,7 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	return s.handleToken(oauthToken)
 }
 
-func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
+func (s *oAuthScheme) handleToken(t *oauth2.Token) (*tokenWrapper, error) {
 	if t.AccessToken == "" {
 		return nil, ErrEmptyAccessToken
 	}
@@ -139,14 +128,14 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	}
 	client := conf.Client(context.Background(), t)
 	t0 := time.Now()
-	response, err := client.Get(s.InfoURL)
+	response, err := client.Get(s.infoURL)
 	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()
 		return nil, err
 	}
 	defer response.Body.Close()
-	email, err := s.Parser.Parse(response)
+	email, err := s.parse(response)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +157,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 			return nil, err
 		}
 	}
-	token := Token{Token: *t, UserEmail: email}
+	token := tokenWrapper{Token: *t, UserEmail: email}
 	err = token.save()
 	if err != nil {
 		return nil, err
@@ -176,21 +165,21 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 	return &token, nil
 }
 
-func (s *OAuthScheme) AppLogin(appName string) (auth.Token, error) {
+func (s *oAuthScheme) AppLogin(appName string) (auth.Token, error) {
 	nativeScheme := native.NativeScheme{}
 	return nativeScheme.AppLogin(appName)
 }
 
-func (s *OAuthScheme) AppLogout(token string) error {
+func (s *oAuthScheme) AppLogout(token string) error {
 	nativeScheme := native.NativeScheme{}
 	return nativeScheme.AppLogout(token)
 }
 
-func (s *OAuthScheme) Logout(token string) error {
+func (s *oAuthScheme) Logout(token string) error {
 	return deleteToken(token)
 }
 
-func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
+func (s *oAuthScheme) Auth(header string) (auth.Token, error) {
 	token, err := getToken(header)
 	if err != nil {
 		nativeScheme := native.NativeScheme{}
@@ -206,20 +195,20 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	return token, nil
 }
 
-func (s *OAuthScheme) Name() string {
+func (s *oAuthScheme) Name() string {
 	return "oauth"
 }
 
-func (s *OAuthScheme) Info() (auth.SchemeInfo, error) {
+func (s *oAuthScheme) Info() (auth.SchemeInfo, error) {
 	config, err := s.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 	config.RedirectURL = "__redirect_url__"
-	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": strconv.Itoa(s.CallbackPort)}, nil
+	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": strconv.Itoa(s.callbackPort)}, nil
 }
 
-func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
+func (s *oAuthScheme) parse(infoResponse *http.Response) (string, error) {
 	user := struct {
 		Email string `json:"email"`
 	}{}
@@ -237,7 +226,7 @@ func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
 	return user.Email, nil
 }
 
-func (s *OAuthScheme) Create(user *auth.User) (*auth.User, error) {
+func (s *oAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	user.Password = ""
 	err := user.Create()
 	if err != nil {
@@ -246,7 +235,7 @@ func (s *OAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	return user, nil
 }
 
-func (s *OAuthScheme) Remove(u *auth.User) error {
+func (s *oAuthScheme) Remove(u *auth.User) error {
 	err := deleteAllTokens(u.Email)
 	if err != nil {
 		return err

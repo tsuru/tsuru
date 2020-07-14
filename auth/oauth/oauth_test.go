@@ -21,7 +21,7 @@ import (
 )
 
 func (s *S) TestOAuthLoginWithoutCode(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	params := make(map[string]string)
 	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
@@ -29,7 +29,7 @@ func (s *S) TestOAuthLoginWithoutCode(c *check.C) {
 }
 
 func (s *S) TestOAuthLoginWithoutRedirectUrl(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	_, err := scheme.Login(params)
@@ -37,7 +37,7 @@ func (s *S) TestOAuthLoginWithoutRedirectUrl(c *check.C) {
 }
 
 func (s *S) TestOAuthLogin(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
 	s.rsps["/user"] = `{"email":"rand@althor.com"}`
 	params := make(map[string]string)
@@ -65,7 +65,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
 	config.Set("auth:user-registration", false)
 	defer config.Set("auth:user-registration", true)
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
 	s.rsps["/user"] = `{"email":"rand@althor.com"}`
 	params := make(map[string]string)
@@ -76,7 +76,7 @@ func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
 }
 
 func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
@@ -88,7 +88,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
 }
 
 func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
 	s.rsps["/user"] = `{"email":""}`
 	params := make(map[string]string)
@@ -102,13 +102,13 @@ func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
 }
 
 func (s *S) TestOAuthName(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	name := scheme.Name()
 	c.Assert(name, check.Equals, "oauth")
 }
 
 func (s *S) TestOAuthInfo(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	info, err := scheme.Info()
 	c.Assert(err, check.IsNil)
 	c.Assert(info["authorizeUrl"], check.Matches, s.server.URL+"/auth.*")
@@ -120,7 +120,7 @@ func (s *S) TestOAuthInfo(c *check.C) {
 func (s *S) TestOAuthInfoWithPort(c *check.C) {
 	config.Set("auth:oauth:callback-port", 9009)
 	defer config.Set("auth:oauth:callback-port", nil)
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	info, err := scheme.Info()
 	c.Assert(err, check.IsNil)
 	c.Assert(info["port"], check.Equals, "9009")
@@ -129,8 +129,8 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 func (s *S) TestOAuthParse(c *check.C) {
 	b := ioutil.NopCloser(bytes.NewBufferString(`{"email":"x@x.com"}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
-	parser := OAuthParser(&OAuthScheme{})
-	email, err := parser.Parse(rsp)
+	parser := &oAuthScheme{}
+	email, err := parser.parse(rsp)
 	c.Assert(err, check.IsNil)
 	c.Assert(email, check.Equals, "x@x.com")
 }
@@ -138,24 +138,24 @@ func (s *S) TestOAuthParse(c *check.C) {
 func (s *S) TestOAuthParseInvalid(c *check.C) {
 	b := ioutil.NopCloser(bytes.NewBufferString(`{xxxxxxx}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
-	parser := OAuthParser(&OAuthScheme{})
-	_, err := parser.Parse(rsp)
+	parser := &oAuthScheme{}
+	_, err := parser.parse(rsp)
 	c.Assert(err, check.ErrorMatches, `unable to parse user data: {xxxxxxx}: invalid character.*`)
 }
 
 func (s *S) TestOAuthParseInvalidStatus(c *check.C) {
 	b := ioutil.NopCloser(bytes.NewBufferString(`invalid token`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusUnauthorized}
-	parser := OAuthParser(&OAuthScheme{})
-	_, err := parser.Parse(rsp)
+	parser := &oAuthScheme{}
+	_, err := parser.parse(rsp)
 	c.Assert(err, check.ErrorMatches, `unexpected user data response 401: invalid token`)
 }
 
 func (s *S) TestOAuthAuth(c *check.C) {
-	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := tokenWrapper{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	token, err := scheme.Auth("bearer myvalidtoken")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.reqs, check.HasLen, 0)
@@ -163,7 +163,7 @@ func (s *S) TestOAuthAuth(c *check.C) {
 }
 
 func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
-	token := Token{
+	token := tokenWrapper{
 		Token: oauth2.Token{
 			AccessToken: "myexpiredtoken",
 			Expiry:      time.Now().Add(time.Minute * -1),
@@ -172,14 +172,14 @@ func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
 	}
 	err := token.save()
 	c.Assert(err, check.IsNil)
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	_, err = scheme.Auth("bearer myexpiredtoken")
 	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestOAuthAppLogin(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	token, err := scheme.AppLogin("myApp")
 	c.Assert(err, check.IsNil)
 	c.Assert(token.IsAppToken(), check.Equals, true)
@@ -187,7 +187,7 @@ func (s *S) TestOAuthAppLogin(c *check.C) {
 }
 
 func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	appToken, err := scheme.AppLogin("myApp")
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth("bearer " + appToken.GetValue())
@@ -199,7 +199,7 @@ func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
 }
 
 func (s *S) TestOAuthCreate(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	user := auth.User{Email: "x@x.com", Password: "something"}
 	_, err := scheme.Create(&user)
 	c.Assert(err, check.IsNil)
@@ -211,7 +211,7 @@ func (s *S) TestOAuthCreate(c *check.C) {
 }
 
 func (s *S) TestOAuthRemove(c *check.C) {
-	scheme := OAuthScheme{}
+	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
 	s.rsps["/user"] = `{"email":"rand@althor.com"}`
 	params := make(map[string]string)
@@ -226,7 +226,7 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	var tokens []Token
+	var tokens []tokenWrapper
 	coll := collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"useremail": "rand@althor.com"}).All(&tokens)
