@@ -93,6 +93,9 @@ func (p *kubernetesProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLo
 	if err != nil {
 		return nil, err
 	}
+	if len(args.Units) > 0 {
+		pods = filterPods(pods, args.Units)
+	}
 	watchingPods := map[string]bool{}
 	ctx, done := context.WithCancel(context.Background())
 	watcher := &k8sLogsNotifier{
@@ -107,15 +110,17 @@ func (p *kubernetesProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLo
 			continue
 		}
 		watchingPods[pod.ObjectMeta.Name] = true
+		watcher.wg.Add(1)
 		go watcher.watchPod(pod, false)
 	}
 
 	podListener := &podListener{
 		OnEvent: func(pod *apiv1.Pod) {
 			_, alreadyWatching := watchingPods[pod.ObjectMeta.Name]
-
-			if !alreadyWatching && pod.Status.Phase != apiv1.PodPending {
+			podMatches := matchPod(pod, args)
+			if !alreadyWatching && podMatches && pod.Status.Phase != apiv1.PodPending {
 				watchingPods[pod.ObjectMeta.Name] = true
+				watcher.wg.Add(1)
 				go watcher.watchPod(pod, true)
 			}
 		},
@@ -271,7 +276,7 @@ type k8sLogsNotifier struct {
 }
 
 func (k *k8sLogsNotifier) watchPod(pod *apiv1.Pod, notify bool) {
-	k.wg.Add(1)
+
 	defer k.wg.Done()
 	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
 	appProcess := pod.ObjectMeta.Labels["tsuru.io/app-process"]
@@ -337,4 +342,19 @@ func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
 	}
 
 	return result
+}
+
+func matchPod(pod *apiv1.Pod, args appTypes.ListLogArgs) bool {
+	if args.Source != "" && pod.ObjectMeta.Labels["tsuru.io/app-process"] != args.Source {
+		return false
+	}
+
+	if len(args.Units) > 0 {
+		nameSet := set.FromSlice(args.Units)
+		if !nameSet.Includes(pod.ObjectMeta.Name) {
+			return false
+		}
+	}
+
+	return true
 }

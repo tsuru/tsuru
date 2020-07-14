@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/event"
@@ -218,6 +219,71 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 
 		if len(receivedLogs) == 3 {
 			watcher.Close()
+		}
+	}
+
+	c.Check(receivedLogs, check.HasLen, 3)
+}
+
+func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		parts := strings.Split(r.URL.Path, "/")
+		i := 0
+		flusher := w.(http.Flusher)
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+				fmt.Fprintf(w, "2019-05-06T15:04:05Z its a message log: %d-%s\n", i, parts[5])
+				flusher.Flush()
+				time.Sleep(time.Second)
+				i++
+			}
+		}
+	}
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version := newCommittedVersion(c, a, customData)
+	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	wait()
+	watcher, err := s.p.WatchLogs(a, appTypes.ListLogArgs{
+		AppName: a.GetName(),
+		Limit:   10,
+		Units:   []string{"myapp-web-pod-1-1", "not-found-unit"},
+	})
+	c.Assert(err, check.IsNil)
+	logChan := watcher.Chan()
+
+	receivedLogs := []appTypes.Applog{}
+	timer := time.After(time.Second * 5)
+loop:
+	for {
+		select {
+		case <-timer:
+			break loop
+		case log, ok := <-logChan:
+			if !ok {
+				break loop
+			}
+			receivedLogs = append(receivedLogs, log)
+
+			if len(receivedLogs) == 3 {
+				watcher.Close()
+			}
 		}
 	}
 
