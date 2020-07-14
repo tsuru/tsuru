@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,8 +27,7 @@ const (
 )
 
 var (
-	watchNewPodsInterval = time.Second * 10
-	watchTimeout         = time.Hour
+	watchTimeout = time.Hour
 )
 
 func (p *kubernetesProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
@@ -54,6 +54,12 @@ func (p *kubernetesProvisioner) ListLogs(app appTypes.App, args appTypes.ListLog
 	}
 
 	pods, err := podInformer.Lister().Pods(ns).List(listPodsSelectorForLog(args))
+	if err != nil {
+		return nil, err
+	}
+	if len(args.Units) > 0 {
+		pods = filterPods(pods, args.Units)
+	}
 	return listLogsFromPods(clusterClient, ns, pods, args)
 }
 
@@ -199,9 +205,13 @@ func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod
 }
 
 func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
-	return labels.SelectorFromSet(labels.Set(map[string]string{
+	m := map[string]string{
 		"tsuru.io/app-name": args.AppName,
-	}))
+	}
+	if args.Source != "" {
+		m["tsuru.io/app-process"] = args.Source
+	}
+	return labels.SelectorFromSet(labels.Set(m))
 }
 
 func parsek8sLogLine(line string) (appLog appTypes.Applog) {
@@ -315,4 +325,16 @@ func (k *k8sLogsNotifier) Close() {
 		k.wg.Wait()
 		close(k.ch)
 	})
+}
+
+func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
+	nameSet := set.FromSlice(names)
+	result := []*apiv1.Pod{}
+	for _, pod := range pods {
+		if nameSet.Includes(pod.ObjectMeta.Name) {
+			result = append(result, pod)
+		}
+	}
+
+	return result
 }
