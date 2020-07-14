@@ -15,7 +15,10 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ appTypes.AppLogService = &provisionerWrapper{}
+var (
+	_ appTypes.AppLogService         = &provisionerWrapper{}
+	_ appTypes.AppLogServiceInstance = &provisionerWrapper{}
+)
 
 // provisionerWrapper is a layer designed to use provision native logging when is possible,
 // otherwise will use backwards compatibility with own tsuru log api.
@@ -99,6 +102,14 @@ func (k *provisionerWrapper) Watch(args appTypes.ListLogArgs) (appTypes.LogWatch
 	}
 
 	return newMultiWatcher(provisionerWatcher, tsuruWatcher), nil
+}
+
+func (k *provisionerWrapper) Instance() appTypes.AppLogService {
+	if svcInstance, ok := k.logService.(appTypes.AppLogServiceInstance); ok {
+		return svcInstance.Instance()
+	}
+
+	return k.logService
 }
 
 type logsProvisionerGetter func(a appTypes.App) (provision.LogsProvisioner, error)

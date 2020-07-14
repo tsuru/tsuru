@@ -128,3 +128,32 @@ func (s *ProvisionerWrapperSuite) Test_MultiWatcher(c *check.C) {
 	c.Check(appLogs[0].Message, check.Equals, "from watcher 1")
 	c.Check(appLogs[1].Message, check.Equals, "from watcher 2")
 }
+
+func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
+	provisioner := provisiontest.NewFakeProvisioner()
+	provisioner.LogsEnabled = true
+	memoryService, err := memoryAppLogService()
+	c.Check(err, check.IsNil)
+
+	pw := &provisionerWrapper{
+		logService: memoryService,
+		provisionerGetter: func(a appTypes.App) (provision.LogsProvisioner, error) {
+			return provisioner, nil
+		},
+	}
+	instanceService := pw.Instance()
+	c.Check(instanceService, check.Equals, memoryService)
+
+	aggregatorService := &aggregatorLogService{
+		base: memoryService,
+	}
+
+	pw = &provisionerWrapper{
+		logService: aggregatorService,
+		provisionerGetter: func(a appTypes.App) (provision.LogsProvisioner, error) {
+			return provisioner, nil
+		},
+	}
+	instanceService = pw.Instance()
+	c.Check(instanceService, check.Equals, memoryService)
+}
