@@ -94,19 +94,27 @@ func (s *S) TestNewRouterControllerSameInstance(c *check.C) {
 	c.Assert(c1, check.Equals, c2)
 }
 
+type podListenerImpl struct {
+}
+
+func (*podListenerImpl) OnPodEvent(pod *apiv1.Pod) {
+}
+
 func (s *S) TestPodListeners(c *check.C) {
-	podListener1 := &podListener{}
-	podListener2 := &podListener{}
+
+	podListener1 := &podListenerImpl{}
+	podListener2 := &podListenerImpl{}
 
 	clusterController, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	clusterController.addPodListener("my-app", podListener1)
+	clusterController.addPodListener("my-app", "listerner1", podListener1)
 	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
-	clusterController.addPodListener("my-app", podListener2)
-	clusterController.removePodListener("my-app", podListener1)
+	clusterController.addPodListener("my-app", "listerner2", podListener2)
+	clusterController.removePodListener("my-app", "listerner1")
 	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
-	_, contains := clusterController.podListeners["my-app"][podListener2]
+
+	_, contains := clusterController.podListeners["my-app"]["listerner2"]
 	c.Assert(contains, check.Equals, true)
-	clusterController.removePodListener("my-app", podListener2)
+	clusterController.removePodListener("my-app", "listerner2")
 	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 0)
 }

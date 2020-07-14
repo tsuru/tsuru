@@ -47,10 +47,10 @@ var eventKindsIgnoreRebuild = []string{
 	permission.PermAppUpdateRoutable.FullName(),
 }
 
-type podListener struct {
-	OnEvent func(*apiv1.Pod)
+type podListener interface {
+	OnPodEvent(*apiv1.Pod)
 }
-type podListeners map[*podListener]struct{}
+type podListeners map[string]podListener
 
 type clusterController struct {
 	mu                 sync.Mutex
@@ -241,27 +241,27 @@ func (c *clusterController) notifyPodChanges(pod *apiv1.Pod) {
 		return
 	}
 
-	for listener := range listeners {
-		listener.OnEvent(pod)
+	for _, listener := range listeners {
+		listener.OnPodEvent(pod)
 	}
 }
 
-func (c *clusterController) addPodListener(appName string, listener *podListener) {
+func (c *clusterController) addPodListener(appName string, key string, listener podListener) {
 	c.podListenersMu.Lock()
 	defer c.podListenersMu.Unlock()
 
 	if c.podListeners[appName] == nil {
 		c.podListeners[appName] = make(podListeners)
 	}
-	c.podListeners[appName][listener] = struct{}{}
+	c.podListeners[appName][key] = listener
 }
 
-func (c *clusterController) removePodListener(appName string, listener *podListener) {
+func (c *clusterController) removePodListener(appName string, key string) {
 	c.podListenersMu.Lock()
 	defer c.podListenersMu.Unlock()
 
 	if c.podListeners[appName] != nil {
-		delete(c.podListeners[appName], listener)
+		delete(c.podListeners[appName], key)
 	}
 }
 

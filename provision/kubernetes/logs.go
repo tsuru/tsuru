@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	uuid "github.com/nu7hatch/gouuid"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -96,41 +98,33 @@ func (p *kubernetesProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLo
 	if len(args.Units) > 0 {
 		pods = filterPods(pods, args.Units)
 	}
-	watchingPods := map[string]bool{}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return nil, errors.WithMessage(err, "failed to generate uuid v4")
+	}
 	ctx, done := context.WithCancel(context.Background())
-	watcher := &k8sLogsNotifier{
-		ctx:           ctx,
-		ch:            make(chan appTypes.Applog, logWatchBufferSize),
-		ns:            ns,
-		clusterClient: clusterClient,
-		done:          done,
+	watcher := &k8sLogsWatcher{
+		id:           uuidV4.String(),
+		logArgs:      args,
+		ctx:          ctx,
+		ch:           make(chan appTypes.Applog, logWatchBufferSize),
+		ns:           ns,
+		done:         done,
+		watchingPods: map[string]bool{},
+
+		clusterClient:     clusterClient,
+		clusterController: clusterController,
 	}
 	for _, pod := range pods {
 		if pod.Status.Phase == apiv1.PodPending {
 			continue
 		}
-		watchingPods[pod.ObjectMeta.Name] = true
+		watcher.watchingPods[pod.ObjectMeta.Name] = true
 		watcher.wg.Add(1)
 		go watcher.watchPod(pod, false)
 	}
 
-	podListener := &podListener{
-		OnEvent: func(pod *apiv1.Pod) {
-			_, alreadyWatching := watchingPods[pod.ObjectMeta.Name]
-			podMatches := matchPod(pod, args)
-			if !alreadyWatching && podMatches && pod.Status.Phase != apiv1.PodPending {
-				watchingPods[pod.ObjectMeta.Name] = true
-				watcher.wg.Add(1)
-				go watcher.watchPod(pod, true)
-			}
-		},
-	}
-
-	clusterController.addPodListener(args.AppName, podListener)
-	go func() {
-		<-ctx.Done()
-		clusterController.removePodListener(args.AppName, podListener)
-	}()
+	clusterController.addPodListener(args.AppName, watcher.id, watcher)
 
 	return watcher, nil
 }
@@ -264,7 +258,8 @@ func infoToLog(appName string, message string) appTypes.Applog {
 	}
 }
 
-type k8sLogsNotifier struct {
+type k8sLogsWatcher struct {
+	id   string
 	ctx  context.Context
 	ch   chan appTypes.Applog
 	ns   string
@@ -272,10 +267,13 @@ type k8sLogsNotifier struct {
 	once sync.Once
 	done context.CancelFunc
 
-	clusterClient *ClusterClient
+	logArgs           appTypes.ListLogArgs
+	clusterClient     *ClusterClient
+	clusterController *clusterController
+	watchingPods      map[string]bool
 }
 
-func (k *k8sLogsNotifier) watchPod(pod *apiv1.Pod, notify bool) {
+func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, notify bool) {
 
 	defer k.wg.Done()
 	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
@@ -320,16 +318,27 @@ func (k *k8sLogsNotifier) watchPod(pod *apiv1.Pod, notify bool) {
 	}
 }
 
-func (k *k8sLogsNotifier) Chan() <-chan appTypes.Applog {
+func (k *k8sLogsWatcher) Chan() <-chan appTypes.Applog {
 	return k.ch
 }
 
-func (k *k8sLogsNotifier) Close() {
+func (k *k8sLogsWatcher) Close() {
 	k.once.Do(func() {
+		k.clusterController.removePodListener(k.logArgs.AppName, k.id)
 		k.done()
 		k.wg.Wait()
 		close(k.ch)
 	})
+}
+
+func (k *k8sLogsWatcher) OnPodEvent(pod *apiv1.Pod) {
+	_, alreadyWatching := k.watchingPods[pod.ObjectMeta.Name]
+	podMatches := matchPod(pod, k.logArgs)
+	if !alreadyWatching && podMatches && pod.Status.Phase != apiv1.PodPending {
+		k.watchingPods[pod.ObjectMeta.Name] = true
+		k.wg.Add(1)
+		go k.watchPod(pod, true)
+	}
 }
 
 func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
