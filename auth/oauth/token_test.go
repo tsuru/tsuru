@@ -11,10 +11,10 @@ import (
 )
 
 func (s *S) TestGetToken(c *check.C) {
-	existing := tokenWrapper{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
-	var result []tokenWrapper
+	var result []Token
 	coll := collection()
 	defer coll.Close()
 	coll.Find(nil).All(&result)
@@ -43,12 +43,12 @@ func (s *S) TestGetTokenInvalid(c *check.C) {
 }
 
 func (s *S) TestSave(c *check.C) {
-	existing := tokenWrapper{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	coll := collection()
 	defer coll.Close()
-	var tokens []tokenWrapper
+	var tokens []Token
 	err = coll.Find(nil).All(&tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 1)
@@ -56,14 +56,14 @@ func (s *S) TestSave(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
-	existing := tokenWrapper{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	err = deleteToken("myvalidtoken")
 	c.Assert(err, check.IsNil)
 	coll := collection()
 	defer coll.Close()
-	var tokens []tokenWrapper
+	var tokens []Token
 	err = coll.Find(nil).All(&tokens)
 	c.Assert(err, check.IsNil)
 	c.Assert(tokens, check.HasLen, 0)

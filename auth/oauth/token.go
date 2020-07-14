@@ -17,39 +17,37 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var _ authTypes.Token = &tokenWrapper{}
-
-type tokenWrapper struct {
+type Token struct {
 	oauth2.Token
 	UserEmail string `json:"email"`
 }
 
-func (t *tokenWrapper) GetValue() string {
+func (t *Token) GetValue() string {
 	return t.AccessToken
 }
 
-func (t *tokenWrapper) User() (*authTypes.User, error) {
+func (t *Token) User() (*authTypes.User, error) {
 	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
-func (t *tokenWrapper) IsAppToken() bool {
+func (t *Token) IsAppToken() bool {
 	return false
 }
 
-func (t *tokenWrapper) GetUserName() string {
+func (t *Token) GetUserName() string {
 	return t.UserEmail
 }
 
-func (t *tokenWrapper) GetAppName() string {
+func (t *Token) GetAppName() string {
 	return ""
 }
 
-func (t *tokenWrapper) Permissions() ([]permission.Permission, error) {
+func (t *Token) Permissions() ([]permission.Permission, error) {
 	return auth.BaseTokenPermission(t)
 }
 
-func getToken(header string) (*tokenWrapper, error) {
-	var t tokenWrapper
+func getToken(header string) (*Token, error) {
+	var t Token
 	token, err := auth.ParseToken(header)
 	if err != nil {
 		return nil, err
@@ -79,7 +77,7 @@ func deleteAllTokens(email string) error {
 	return err
 }
 
-func (t *tokenWrapper) save() error {
+func (t *Token) save() error {
 	coll := collection()
 	defer coll.Close()
 	return coll.Insert(t)
