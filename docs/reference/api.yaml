@@ -3762,7 +3762,7 @@ definitions:
       config:
         type: object
         properties:
-          envs:
+          env:
             type: array
             items:
               type: string
