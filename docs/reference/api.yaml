@@ -2656,6 +2656,33 @@ paths:
         - router
       security:
         - Bearer: []
+  /1.2/nodecontainers:
+    post:
+      operationId: NodeContainerCreate
+      description: Creates container that runs on every node
+      consumes:
+        - application/json
+      parameters:
+        - name: nodecontainer
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/NodeContainer"
+      responses:
+        "200":
+          description: Node container created
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "400":
+          description: Wrong configuration
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - nodecontainer
+      security:
+        - Bearer: []
 definitions:
   DynamicRouter:
     description: Dynamic router
@@ -3722,3 +3749,20 @@ definitions:
           type: string
       Blacklist:
         type: boolean
+  NodeContainer:
+    description: Data sent to set up a node container
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      pool:
+        type: string
+      config:
+        type: object
+        properties:
+          envs:
+            type: array
+            items:
+              type: string
