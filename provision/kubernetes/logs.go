@@ -275,17 +275,18 @@ type k8sLogsWatcher struct {
 	watchingPods      map[string]bool
 }
 
-func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, notify bool) {
+func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 
 	defer k.wg.Done()
 	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
 	appProcess := pod.ObjectMeta.Labels["tsuru.io/app-process"]
+	var tailLines int64
 
-	if notify {
+	if addedLater {
 		k.ch <- infoToLog(appName, "Starting to watch new unit: "+pod.ObjectMeta.Name)
+		tailLines = int64(k.logArgs.Limit) // shun that startup logs be forgotten
 	}
 
-	var tailLines int64
 	request := k.clusterClient.CoreV1().Pods(k.ns).GetLogs(pod.ObjectMeta.Name, &apiv1.PodLogOptions{
 		Follow:     true,
 		TailLines:  &tailLines,
