@@ -174,8 +174,8 @@ func getPoolsSatisfyConstraints(exactCheck bool, field poolConstraintType, value
 		return nil, err
 	}
 	var satisfying []Pool
-loop:
 	for _, p := range pools {
+		checked := false
 		constraints, err := getConstraintsForPool(p.Name, field)
 		if err != nil {
 			return nil, err
@@ -186,13 +186,16 @@ loop:
 		}
 		for _, v := range values {
 			if exactCheck && !c.checkExact(v) {
-				continue loop
+				continue
 			}
 			if !exactCheck && !c.check(v) {
-				continue loop
+				continue
 			}
+			checked = true
 		}
-		satisfying = append(satisfying, p)
+		if checked || len(values) == 0 {
+			satisfying = append(satisfying, p)
+		}
 	}
 	return satisfying, nil
 }

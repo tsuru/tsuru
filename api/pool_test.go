@@ -416,6 +416,9 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, teamName),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "foo_team"),
 	})
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name}
