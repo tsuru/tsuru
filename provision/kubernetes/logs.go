@@ -205,8 +205,9 @@ func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod
 
 func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
 	m := map[string]string{
-		"tsuru.io/is-service": "true", // to skip build pods
-		"tsuru.io/app-name":   args.AppName,
+		"tsuru.io/is-build":  "false",
+		"tsuru.io/is-deploy": "false",
+		"tsuru.io/app-name":  args.AppName,
 	}
 	if args.Source != "" {
 		m["tsuru.io/app-process"] = args.Source
@@ -355,7 +356,10 @@ func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
 }
 
 func matchPod(pod *apiv1.Pod, args appTypes.ListLogArgs) bool {
-	if pod.ObjectMeta.Labels["tsuru.io/is-service"] != "true" {
+	if pod.ObjectMeta.Labels["tsuru.io/is-build"] == "true" {
+		return false
+	}
+	if pod.ObjectMeta.Labels["tsuru.io/is-deploy"] == "true" {
 		return false
 	}
 	if args.Source != "" && pod.ObjectMeta.Labels["tsuru.io/app-process"] != args.Source {
