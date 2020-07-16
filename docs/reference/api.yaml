@@ -2766,6 +2766,10 @@ definitions:
         type: string
       description:
         type: string
+      parameters:
+        type: object
+        additionalProperties:
+          type: string
   ServiceInstanceBoundUnit:
     type: object
     properties:
@@ -2814,6 +2818,10 @@ definitions:
       tags:
         type: array
         items:
+          type: string
+      parameters:
+        type: object
+        additionalProperties:
           type: string
   ServiceInstanceBind:
     type: object
