@@ -45,7 +45,7 @@ func init() {
 		config.Set("routers:generic_hipache:domain", "hipache.router")
 		base.prefix = "routers:generic_hipache"
 		base.SetUpTest(c)
-		suite.Router = &hipacheRouter{config: &router.StaticConfigGetter{Prefix: base.prefix}}
+		suite.Router = &hipacheRouter{config: router.ConfigGetterFromPrefix(base.prefix)}
 	}
 	check.Suite(suite)
 }
@@ -84,7 +84,7 @@ func (s *S) SetUpTest(c *check.C) {
 		s.prefix = "hipache"
 	}
 	dbtest.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: s.prefix}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix(s.prefix)}
 	conn, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	clearRedisKeys("frontend*", conn, c)
@@ -98,7 +98,7 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestStressRace(c *check.C) {
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	wg := sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -114,7 +114,7 @@ func (s *S) TestStressRace(c *check.C) {
 }
 
 func (s *S) TestConnect(c *check.C) {
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.NotNil)
@@ -123,18 +123,18 @@ func (s *S) TestConnect(c *check.C) {
 }
 
 func (s *S) TestConnectCachesConnectionAcrossInstances(c *check.C) {
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got1, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	c.Assert(got1, check.NotNil)
 	got2, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	c.Assert(got2, check.NotNil)
-	rtest = hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest = hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got3, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	c.Assert(got3, check.NotNil)
-	rtest = hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache2"}}
+	rtest = hipacheRouter{config: router.ConfigGetterFromPrefix("hipache2")}
 	other, err := rtest.connect()
 	c.Assert(err, check.IsNil)
 	c.Assert(other, check.NotNil)
@@ -147,7 +147,7 @@ func (s *S) TestConnectWithPassword(c *check.C) {
 	config.Set("hipache:redis-password", "123456")
 	defer config.Unset("hipache:redis-password")
 	clearConnCache()
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got, err := rtest.connect()
 	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
 	c.Assert(got, check.IsNil)
@@ -157,7 +157,7 @@ func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *check.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	clearConnCache()
-	rtest := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got, err := rtest.connect()
 	c.Assert(err, check.NotNil)
 	c.Assert(got, check.IsNil)
@@ -201,7 +201,7 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 }
 
 func (s *S) TestAddBackend(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -213,7 +213,7 @@ func (s *S) TestAddBackend(c *check.C) {
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	hcData := routerTypes.HealthcheckData{
@@ -236,7 +236,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 }
 
 func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	err = router.SetCName("mycname.com", "tip")
@@ -254,7 +254,7 @@ func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *c
 }
 
 func (s *S) TestAddRoutes(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -270,7 +270,7 @@ func (s *S) TestAddRoutes(c *check.C) {
 }
 
 func (s *S) TestAddRoutesNoNewRoute(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -291,7 +291,7 @@ func (s *S) TestAddRoutesNoNewRoute(c *check.C) {
 }
 
 func (s *S) TestAddRouteNoDomainConfigured(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
@@ -308,14 +308,14 @@ func (s *S) TestAddRouteNoDomainConfigured(c *check.C) {
 }
 
 func (s *S) TestAddRouteConnectFailure(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	clearConnCache()
-	r2 := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r2 := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	addr, _ := url.Parse("http://www.tsuru.io")
 	err = r2.AddRoutes("tip", []*url.URL{addr})
 	c.Assert(err, check.NotNil)
@@ -326,7 +326,7 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 }
 
 func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -351,7 +351,7 @@ func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	addr, _ := url.Parse("http://10.10.10.10")
@@ -369,7 +369,7 @@ func (s *S) TestRemoveRoute(c *check.C) {
 }
 
 func (s *S) TestRemoveRouteNoDomainConfigured(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
@@ -385,14 +385,14 @@ func (s *S) TestRemoveRouteNoDomainConfigured(c *check.C) {
 }
 
 func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	clearConnCache()
-	r2 := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r2 := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	addr, _ := url.Parse("http://tip.golang.org")
 	err = r2.RemoveRoutes("tip", []*url.URL{addr})
 	c.Assert(err, check.NotNil)
@@ -402,7 +402,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *check.C) {
 }
 
 func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -421,20 +421,20 @@ func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *check.C) {
 }
 
 func (s *S) TestHealthCheck(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	c.Assert(router.HealthCheck(), check.IsNil)
 }
 
 func (s *S) TestHealthCheckFailure(c *check.C) {
 	config.Set("super-hipache:redis-server", "localhost:6739")
 	defer config.Unset("super-hipache:redis-server")
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "super-hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("super-hipache")}
 	err := router.HealthCheck()
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestGetCNames(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -446,14 +446,14 @@ func (s *S) TestGetCNames(c *check.C) {
 }
 
 func (s *S) TestGetCNameIgnoresErrNil(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	cnames, err := router.getCNames("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(cnames, check.DeepEquals, []string{})
 }
 
 func (s *S) TestSetCName(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -462,7 +462,7 @@ func (s *S) TestSetCName(c *check.C) {
 }
 
 func (s *S) TestSetCNameWithPreviousRoutes(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -484,7 +484,7 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *check.C) {
 }
 
 func (s *S) TestSetCNameTwiceFixInconsistencies(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("myapp")
@@ -526,7 +526,7 @@ func (s *S) TestSetCNameTwiceFixInconsistencies(c *check.C) {
 }
 
 func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -540,7 +540,7 @@ func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *check.C) {
 }
 
 func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -563,7 +563,7 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -582,7 +582,7 @@ func (s *S) TestUnsetCName(c *check.C) {
 }
 
 func (s *S) TestUnsetTwoCNames(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("myapp")
@@ -611,7 +611,7 @@ func (s *S) TestUnsetTwoCNames(c *check.C) {
 }
 
 func (s *S) TestAddr(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -625,7 +625,7 @@ func (s *S) TestAddr(c *check.C) {
 }
 
 func (s *S) TestAddrNoDomainConfigured(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
@@ -640,14 +640,14 @@ func (s *S) TestAddrNoDomainConfigured(c *check.C) {
 }
 
 func (s *S) TestAddrConnectFailure(c *check.C) {
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("tip")
 	config.Set("hipache:redis-server", "127.0.0.1:6380")
 	defer config.Unset("hipache:redis-server")
 	clearConnCache()
-	r2 := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r2 := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	addr, err := r2.Addr("tip")
 	c.Assert(addr, check.Equals, "")
 	e, ok := err.(*router.RouterError)
@@ -656,7 +656,7 @@ func (s *S) TestAddrConnectFailure(c *check.C) {
 }
 
 func (s *S) TestRoutes(c *check.C) {
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := router.AddBackend(routertest.FakeApp{Name: "tip"})
 	c.Assert(err, check.IsNil)
 	defer router.RemoveBackend("tip")
@@ -674,7 +674,7 @@ func (s *S) TestSwap(c *check.C) {
 	backend2 := "b2"
 	addr1, _ := url.Parse("http://127.0.0.1")
 	addr2, _ := url.Parse("http://10.10.10.10")
-	router := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	router := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	router.AddBackend(routertest.FakeApp{Name: backend1})
 	defer router.RemoveBackend(backend1)
 	router.AddRoutes(backend1, []*url.URL{addr1})
@@ -697,7 +697,7 @@ func (s *S) TestSwap(c *check.C) {
 
 func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
 	backend1 := "b1"
-	r := hipacheRouter{config: &router.StaticConfigGetter{Prefix: "hipache"}}
+	r := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	err := r.AddBackend(routertest.FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
 	redisConn, err := r.connect()
@@ -709,7 +709,7 @@ func (s *S) TestAddRouteAfterCorruptedRedis(c *check.C) {
 }
 
 func (s *S) TestAddCertificate(c *check.C) {
-	r := planbRouter{hipacheRouter{config: &router.StaticConfigGetter{Prefix: "planb"}}}
+	r := planbRouter{hipacheRouter{config: router.ConfigGetterFromPrefix("planb")}}
 	r.AddCertificate(routertest.FakeApp{}, "www.example.com", "cert-content", "key-content")
 	redisConn, err := r.connect()
 	c.Assert(err, check.IsNil)
@@ -721,7 +721,7 @@ func (s *S) TestAddCertificate(c *check.C) {
 }
 
 func (s *S) TestRemoveCertificate(c *check.C) {
-	r := planbRouter{hipacheRouter{config: &router.StaticConfigGetter{Prefix: "planb"}}}
+	r := planbRouter{hipacheRouter{config: router.ConfigGetterFromPrefix("planb")}}
 	r.AddCertificate(routertest.FakeApp{}, "www.example.com", "cert-content", "key-content")
 	redisConn, err := r.connect()
 	c.Assert(err, check.IsNil)
@@ -757,7 +757,7 @@ ZBGdNK2/tDsQl5Wb+qnz5Ge9obybRLHHL2L5mrSwb+nC+nrC2nlfjJgVse9HhU9j
 Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
-	r := planbRouter{hipacheRouter{config: &router.StaticConfigGetter{Prefix: "planb"}}}
+	r := planbRouter{hipacheRouter{config: router.ConfigGetterFromPrefix("planb")}}
 	err := r.AddCertificate(routertest.FakeApp{}, "myapp.io", testCert, "key-content")
 	c.Assert(err, check.IsNil)
 	cert, err := r.GetCertificate(routertest.FakeApp{}, "myapp.io")
@@ -766,7 +766,7 @@ YRLI1QVj1Q==
 }
 
 func (s *S) TestGetCertificateNotFound(c *check.C) {
-	r := planbRouter{hipacheRouter{config: &router.StaticConfigGetter{Prefix: "planb"}}}
+	r := planbRouter{hipacheRouter{config: router.ConfigGetterFromPrefix("planb")}}
 	cert, err := r.GetCertificate(routertest.FakeApp{}, "otherapp")
 	c.Assert(err, check.DeepEquals, router.ErrCertificateNotFound)
 	c.Assert(cert, check.Equals, "")

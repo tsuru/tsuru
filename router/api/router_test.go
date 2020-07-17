@@ -49,7 +49,7 @@ func init() {
 		config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 		config.Set("database:name", "router_api_tests")
 		r.backends = make(map[string]*backend)
-		apiRouter, err := createRouter("api", &router.StaticConfigGetter{Prefix: "routers:apirouter"})
+		apiRouter, err := createRouter("api", router.ConfigGetterFromPrefix("routers:apirouter"))
 		c.Assert(err, check.IsNil)
 		suite.Router = apiRouter
 	}
@@ -387,7 +387,7 @@ func (s *S) TestCreateRouterSupport(c *check.C) {
 	})
 	for i = range tt {
 		comment := check.Commentf("case %d: %v", i, tt[i])
-		r, err := createRouter("myrouter", &router.StaticConfigGetter{Prefix: "routers:apirouter"})
+		r, err := createRouter("myrouter", router.ConfigGetterFromPrefix("routers:apirouter"))
 		c.Assert(err, check.IsNil, comment)
 		_, ok := r.(router.CNameRouter)
 		c.Assert(ok, check.Equals, tt[i].expectCname, comment)
@@ -409,7 +409,7 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 	config.Set("routers:apirouter:headers", map[interface{}]interface{}{"X-CUSTOM": "HI", "X-CUSTOM-ENV": "$ROUTER_ENV_HEADER_OPT"})
 	defer config.Unset("router:apirouter:headers")
 	defer os.Unsetenv("ROUTER_ENV_HEADER_OPT")
-	r, err := createRouter("apirouter", &router.StaticConfigGetter{Prefix: "routers:apirouter"})
+	r, err := createRouter("apirouter", router.ConfigGetterFromPrefix("routers:apirouter"))
 	c.Assert(err, check.IsNil)
 	_, code, err := r.(*struct {
 		router.Router

@@ -30,6 +30,24 @@ func ConvertEntries(initial interface{}) interface{} {
 	}
 }
 
+func UnconvertEntries(initial interface{}) interface{} {
+	switch initialType := initial.(type) {
+	case []interface{}:
+		for i := range initialType {
+			initialType[i] = UnconvertEntries(initialType[i])
+		}
+		return initialType
+	case map[string]interface{}:
+		output := make(map[interface{}]interface{}, len(initialType))
+		for k, v := range initialType {
+			output[k] = UnconvertEntries(v)
+		}
+		return output
+	default:
+		return initialType
+	}
+}
+
 func UnmarshalConfig(key string, result interface{}) error {
 	data, err := config.Get(key)
 	if err != nil {

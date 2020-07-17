@@ -42,7 +42,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/hashicorp/go-version v0.0.0-20160519212729-0181db470237
 	github.com/heptio/authenticator v0.3.0 // indirect
-	github.com/howeyc/fsnotify v0.8.13 // indirect
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
@@ -73,7 +72,7 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
-	github.com/tsuru/config v0.0.0-20170714194731-1d2644c59846
+	github.com/tsuru/config v0.0.0-20200717192526-2a9a0efe5f28
 	github.com/tsuru/docker-cluster v0.0.0-20190325123005-f372d8d4e354
 	github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
@@ -101,10 +100,10 @@ require (
 	gopkg.in/ahmetb/go-linq.v3 v3.0.0-00010101000000-000000000000 // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528 // indirect
 	gopkg.in/redis.v3 v3.6.4
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
 	k8s.io/apiextensions-apiserver v0.0.0-20190918201827-3de75813f604
 	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
