@@ -96,14 +96,14 @@ func Get(name string) (Router, error) {
 	var config ConfigGetter
 	if dr != nil {
 		routerType = dr.Type
-		config = &dynamicConfigGetter{router: *dr}
+		config = configGetterFromData(dr.Config)
 	} else {
 		var prefix string
 		routerType, prefix, err = configType(name)
 		if err != nil {
 			return nil, &ErrRouterNotFound{Name: name}
 		}
-		config = &StaticConfigGetter{Prefix: prefix}
+		config = ConfigGetterFromPrefix(prefix)
 	}
 	factory, ok := routers[routerType]
 	if !ok {

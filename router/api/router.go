@@ -121,7 +121,7 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 	headers, _ := config.Get("headers")
 	headerMap := make(map[string]string)
 	if headers != nil {
-		h, ok := headers.(map[string]interface{})
+		h, ok := headers.(map[interface{}]interface{})
 		if !ok {
 			return nil, errors.Errorf("invalid header configuration: %v", headers)
 		}
@@ -131,7 +131,7 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
 			}
 			value, _ := config.GetString(fmt.Sprintf("headers:%s", k))
-			headerMap[k] = value
+			headerMap[fmt.Sprint(k)] = value
 		}
 	}
 	baseRouter := &apiRouter{

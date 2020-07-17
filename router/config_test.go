@@ -5,8 +5,9 @@
 package router
 
 import (
+	"testing"
+
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -14,15 +15,18 @@ type ConfigSuite struct {
 	getter ConfigGetter
 }
 
-func init() {
-	check.Suite(&ConfigSuite{getter: &StaticConfigGetter{}})
-	check.Suite(&ConfigSuite{getter: &dynamicConfigGetter{}})
-}
-
-func (s *ConfigSuite) SetUpTest(c *check.C) {
-	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
-		return nil, nil
-	})
+func TestDynamicSuites(t *testing.T) {
+	config.Set("mine:type", "myrouter")
+	config.Set("mine:str", "str")
+	config.Set("mine:str-int", "1")
+	config.Set("mine:str-float", "1.1")
+	config.Set("mine:int", 1)
+	config.Set("mine:float", 1.1)
+	config.Set("mine:bool", true)
+	config.Set("mine:complex:a", "b")
+	config.Set("mine:complex:c:d", 1)
+	prefixGetter := ConfigGetterFromPrefix("mine")
+	check.Suite(&ConfigSuite{getter: prefixGetter})
 
 	routerConfig := map[string]interface{}{
 		"str":       "str",
@@ -38,33 +42,21 @@ func (s *ConfigSuite) SetUpTest(c *check.C) {
 			},
 		},
 	}
-	config.Set("mine:type", "myrouter")
-	config.Set("mine:str", "str")
-	config.Set("mine:str-int", "1")
-	config.Set("mine:str-float", "1.1")
-	config.Set("mine:int", 1)
-	config.Set("mine:float", 1.1)
-	config.Set("mine:bool", true)
-	config.Set("mine:complex:a", "b")
-	config.Set("mine:complex:c:d", 1)
+	check.Suite(&ConfigSuite{getter: configGetterFromData(routerConfig)})
+}
 
-	switch g := s.getter.(type) {
-	case *StaticConfigGetter:
-		g.Prefix = "mine"
-	case *dynamicConfigGetter:
-		svc, err := DynamicRouterService()
-		c.Assert(err, check.IsNil)
-		dr := router.DynamicRouter{
-			Name:   "mine",
-			Type:   "myrouter",
-			Config: routerConfig,
-		}
-		err = svc.Create(dr)
-		c.Assert(err, check.IsNil)
-		dbDR, err := svc.Get(dr.Name)
-		c.Assert(err, check.IsNil)
-		g.router = *dbDR
-	}
+func (s *S) TestConfigFromPrefixInvalid(c *check.C) {
+	cfg := ConfigGetterFromPrefix("invalid9999")
+	v, err := cfg.GetString("x")
+	c.Assert(err, check.FitsTypeOf, config.ErrKeyNotFound{})
+	c.Check(v, check.Equals, "")
+}
+
+func (s *S) TestConfigFromDataInvalid(c *check.C) {
+	cfg := ConfigGetterFromData(nil)
+	v, err := cfg.GetString("x")
+	c.Assert(err, check.FitsTypeOf, config.ErrKeyNotFound{})
+	c.Check(v, check.Equals, "")
 }
 
 func (s *ConfigSuite) TearDownTest(c *check.C) {
@@ -110,10 +102,24 @@ func (s *ConfigSuite) TestGetBool(c *check.C) {
 func (s *ConfigSuite) TestGet(c *check.C) {
 	v, err := s.getter.Get("complex")
 	c.Assert(err, check.IsNil)
-	c.Check(v, check.DeepEquals, map[string]interface{}{
+	c.Check(v, check.DeepEquals, map[interface{}]interface{}{
 		"a": "b",
-		"c": map[string]interface{}{
+		"c": map[interface{}]interface{}{
 			"d": 1,
 		},
 	})
+
+	v, err = s.getter.Get("complex:a")
+	c.Assert(err, check.IsNil)
+	c.Check(v, check.Equals, "b")
+
+	v, err = s.getter.Get("complex:c")
+	c.Assert(err, check.IsNil)
+	c.Check(v, check.DeepEquals, map[interface{}]interface{}{
+		"d": 1,
+	})
+
+	v, err = s.getter.Get("complex:c:d")
+	c.Assert(err, check.IsNil)
+	c.Check(v, check.Equals, 1)
 }
