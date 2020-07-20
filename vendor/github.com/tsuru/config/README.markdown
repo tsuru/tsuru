@@ -1,8 +1,8 @@
-#Config
+# Config
 
-[![Build Status](https://secure.travis-ci.org/tsuru/config.png)](http://travis-ci.org/tsuru/config)
+[![ci](https://github.com/tsuru/config/workflows/ci/badge.svg)](https://github.com/tsuru/config/actions?query=workflow%3Aci)
 
-[![GoDoc](http://godoc.org/github.com/tsuru/config?status.png)](http://godoc.org/github.com/tsuru/config)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/tsuru/config)](https://pkg.go.dev/github.com/tsuru/config)
 
 Config is a Go package to manage yaml configuration files.
 

@@ -21,12 +21,12 @@ import (
 	"sync"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/howeyc/fsnotify"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var ErrMismatchConf = errors.New("Your conf is wrong:")
+var errNotJSON = errors.New("not a valid json")
 
 type ErrKeyNotFound struct {
 	Key string
@@ -36,32 +36,28 @@ func (e ErrKeyNotFound) Error() string {
 	return fmt.Sprintf("key %q not found", e.Key)
 }
 
-type configuration struct {
+type Configuration struct {
 	data map[interface{}]interface{}
 	sync.RWMutex
 }
 
-func (c *configuration) Store(data map[interface{}]interface{}) {
+func (c *Configuration) Store(data map[interface{}]interface{}) {
 	c.Lock()
 	defer c.Unlock()
 	c.store(data)
 }
 
-func (c *configuration) store(data map[interface{}]interface{}) {
+func (c *Configuration) store(data map[interface{}]interface{}) {
 	c.data = data
 }
 
-func (c *configuration) Data() map[interface{}]interface{} {
+func (c *Configuration) Data() map[interface{}]interface{} {
 	c.RLock()
 	defer c.RUnlock()
 	return c.data
 }
 
-var configs configuration
-
-func readConfigBytes(data []byte, out interface{}) error {
-	return yaml.Unmarshal(data, out)
-}
+var DefaultConfig Configuration
 
 // ReadConfigBytes receives a slice of bytes and builds the internal
 // configuration object.
@@ -69,10 +65,14 @@ func readConfigBytes(data []byte, out interface{}) error {
 // If the given slice is not a valid yaml file, ReadConfigBytes returns a
 // non-nil error.
 func ReadConfigBytes(data []byte) error {
+	return DefaultConfig.ReadConfigBytes(data)
+}
+
+func (c *Configuration) ReadConfigBytes(data []byte) error {
 	var newConfig map[interface{}]interface{}
-	err := readConfigBytes(data, &newConfig)
+	err := yaml.Unmarshal(data, &newConfig)
 	if err == nil {
-		configs.Store(newConfig)
+		c.Store(newConfig)
 	}
 	return err
 }
@@ -83,11 +83,15 @@ func ReadConfigBytes(data []byte) error {
 // It returns error if it can not read the given file or if the file contents
 // is not valid yaml.
 func ReadConfigFile(filePath string) error {
+	return DefaultConfig.ReadConfigFile(filePath)
+}
+
+func (c *Configuration) ReadConfigFile(filePath string) error {
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
-	return ReadConfigBytes(data)
+	return c.ReadConfigBytes(data)
 }
 
 // ReadAndWatchConfigFile reads and watchs for changes in the configuration
@@ -95,7 +99,11 @@ func ReadConfigFile(filePath string) error {
 // configuration gets updated. With this function, daemons that use this
 // package may reload configuration without restarting.
 func ReadAndWatchConfigFile(filePath string) error {
-	err := ReadConfigFile(filePath)
+	return DefaultConfig.ReadAndWatchConfigFile(filePath)
+}
+
+func (c *Configuration) ReadAndWatchConfigFile(filePath string) error {
+	err := c.ReadConfigFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -112,7 +120,7 @@ func ReadAndWatchConfigFile(filePath string) error {
 			select {
 			case e := <-w.Event:
 				if e.IsModify() {
-					ReadConfigFile(filePath)
+					c.ReadConfigFile(filePath)
 				}
 			case <-w.Error: // just ignore errors
 			}
@@ -123,7 +131,11 @@ func ReadAndWatchConfigFile(filePath string) error {
 
 // Bytes serialize the configuration in YAML format.
 func Bytes() ([]byte, error) {
-	return yaml.Marshal(configs.Data())
+	return DefaultConfig.Bytes()
+}
+
+func (c *Configuration) Bytes() ([]byte, error) {
+	return yaml.Marshal(c.Data())
 }
 
 // WriteConfigFile writes the configuration to the disc, using the given path.
@@ -132,7 +144,11 @@ func Bytes() ([]byte, error) {
 // This function will create the file if it does not exist, setting permissions
 // to "perm".
 func WriteConfigFile(filePath string, perm os.FileMode) error {
-	b, err := Bytes()
+	return DefaultConfig.WriteConfigFile(filePath, perm)
+}
+
+func (c *Configuration) WriteConfigFile(filePath string, perm os.FileMode) error {
+	b, err := c.Bytes()
 	if err != nil {
 		return err
 	}
@@ -172,21 +188,25 @@ func WriteConfigFile(filePath string, perm os.FileMode) error {
 // would return "localhost/test". If the variable value is a json object/list, this
 // object will also be expanded.
 func Get(key string) (interface{}, error) {
+	return DefaultConfig.Get(key)
+}
+
+func (c *Configuration) Get(key string) (interface{}, error) {
 	keys := strings.Split(key, ":")
-	configs.RLock()
-	defer configs.RUnlock()
-	conf, ok := configs.data[keys[0]]
+	c.RLock()
+	defer c.RUnlock()
+	conf, ok := c.data[keys[0]]
 	if !ok {
 		return nil, ErrKeyNotFound{Key: key}
 	}
 	for _, k := range keys[1:] {
-		switch c := conf.(type) {
+		switch configEntry := conf.(type) {
 		case map[interface{}]interface{}:
-			if conf, ok = c[k]; !ok {
+			if conf, ok = configEntry[k]; !ok {
 				return nil, ErrKeyNotFound{Key: key}
 			}
 		case string:
-			value, err := expandEnv(c)
+			value, err := expandEnv(configEntry)
 			if err != nil {
 				return nil, ErrMismatchConf
 			}
@@ -212,6 +232,9 @@ func Get(key string) (interface{}, error) {
 func expandEnv(s string) (interface{}, error) {
 	raw := os.ExpandEnv(s)
 	var jsonMap map[string]interface{}
+	if len(raw) == 0 || (raw[0] != '{' && raw[0] != '[') {
+		return raw, errNotJSON
+	}
 	err := json.Unmarshal([]byte(raw), &jsonMap)
 	if err != nil {
 		var jsonSlice []interface{}
@@ -246,7 +269,11 @@ func toInfMap(sMap map[string]interface{}) map[interface{}]interface{} {
 //
 // It returns error if the key is undefined or if it is not a string.
 func GetString(key string) (string, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetString(key)
+}
+
+func (c *Configuration) GetString(key string) (string, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return "", err
 	}
@@ -266,7 +293,11 @@ func GetString(key string) (string, error) {
 //
 // It returns error if the key is undefined or if it is not a int.
 func GetInt(key string) (int, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetInt(key)
+}
+
+func (c *Configuration) GetInt(key string) (int, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return 0, err
 	}
@@ -276,7 +307,7 @@ func GetInt(key string) (int, error) {
 		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
 			return int(i), nil
 		}
-	} else if v, err := GetFloat(key); err == nil {
+	} else if v, err := c.GetFloat(key); err == nil {
 		if float64(int(v)) == v {
 			return int(v), nil
 		}
@@ -289,7 +320,11 @@ func GetInt(key string) (int, error) {
 //
 // It returns error if the key is undefined or if it is not a float.
 func GetFloat(key string) (float64, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetFloat(key)
+}
+
+func (c *Configuration) GetFloat(key string) (float64, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return 0, err
 	}
@@ -310,7 +345,11 @@ func GetFloat(key string) (float64, error) {
 
 // GetUint parses and returns an unsigned integer from the config file.
 func GetUint(key string) (uint, error) {
-	if v, err := GetInt(key); err == nil {
+	return DefaultConfig.GetUint(key)
+}
+
+func (c *Configuration) GetUint(key string) (uint, error) {
+	if v, err := c.GetInt(key); err == nil {
 		if v < 0 {
 			return 0, &InvalidValue{key, "uint"}
 		}
@@ -330,7 +369,11 @@ func GetUint(key string) (uint, error) {
 //  - 1 (one nanosecond)
 //  - 1000000000 (one billion nanoseconds, or one second)
 func GetDuration(key string) (time.Duration, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetDuration(key)
+}
+
+func (c *Configuration) GetDuration(key string) (time.Duration, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return 0, err
 	}
@@ -352,7 +395,11 @@ func GetDuration(key string) (time.Duration, error) {
 
 // GetBool does a type assertion before returning the requested value
 func GetBool(key string) (bool, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetBool(key)
+}
+
+func (c *Configuration) GetBool(key string) (bool, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return false, err
 	}
@@ -376,13 +423,16 @@ func GetBool(key string) (bool, error) {
 // If GetList find an item that is not a string (for example 5.08734792), it
 // will convert the item.
 func GetList(key string) ([]string, error) {
-	value, err := Get(key)
+	return DefaultConfig.GetList(key)
+}
+
+func (c *Configuration) GetList(key string) ([]string, error) {
+	value, err := c.Get(key)
 	if err != nil {
 		return nil, err
 	}
-	switch value.(type) {
+	switch v := value.(type) {
 	case []interface{}:
-		v := value.([]interface{})
 		result := make([]string, len(v))
 		for i, item := range v {
 			switch v := item.(type) {
@@ -400,7 +450,7 @@ func GetList(key string) ([]string, error) {
 		}
 		return result, nil
 	case []string:
-		return value.([]string), nil
+		return v, nil
 	}
 	return nil, &InvalidValue{key, "list"}
 }
@@ -443,6 +493,10 @@ func mergeMaps(map1, map2 map[interface{}]interface{}) map[interface{}]interface
 // Values defined by this function affects only runtime informatin, nothing
 // defined by Set is persisted in the filesystem or any database.
 func Set(key string, value interface{}) {
+	DefaultConfig.Set(key, value)
+}
+
+func (c *Configuration) Set(key string, value interface{}) {
 	parts := strings.Split(key, ":")
 	last := map[interface{}]interface{}{
 		parts[len(parts)-1]: value,
@@ -452,9 +506,9 @@ func Set(key string, value interface{}) {
 			parts[i]: last,
 		}
 	}
-	configs.Lock()
-	defer configs.Unlock()
-	configs.store(mergeMaps(configs.data, last))
+	c.Lock()
+	defer c.Unlock()
+	c.store(mergeMaps(c.data, last))
 }
 
 // Unset removes a key from the configuration map. It returns an error if the
@@ -463,11 +517,15 @@ func Set(key string, value interface{}) {
 // Calling this function does not remove a key from a configuration file, only
 // from the in-memory configuration object.
 func Unset(key string) error {
+	return DefaultConfig.Unset(key)
+}
+
+func (c *Configuration) Unset(key string) error {
 	var i int
 	var part string
-	configs.Lock()
-	defer configs.Unlock()
-	data := configs.data
+	c.Lock()
+	defer c.Unlock()
+	data := c.data
 	m := make(map[interface{}]interface{}, len(data))
 	for k, v := range data {
 		m[k] = v
@@ -486,7 +544,7 @@ func Unset(key string) error {
 		}
 	}
 	delete(m, part)
-	configs.store(root)
+	c.store(root)
 	return nil
 }
 
