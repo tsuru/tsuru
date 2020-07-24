@@ -26,6 +26,7 @@ func init() {
 		InstanceTrackerStorage:           &instanceTrackerStorage{},
 		AppVersionStorage:                &appVersionStorage{},
 		DynamicRouterStorage:             &dynamicRouterStorage{},
+		AuthGroupStorage:                 &authGroupStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }

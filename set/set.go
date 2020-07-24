@@ -61,6 +61,13 @@ func (s Set) Sorted() []string {
 	return result
 }
 
+func (s Set) Equal(other Set) bool {
+	if len(s) != len(other) {
+		return false
+	}
+	return len(s.Intersection(other)) == len(s)
+}
+
 func FromValues(l ...string) Set {
 	return FromSlice(l)
 }

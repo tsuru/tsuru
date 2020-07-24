@@ -140,6 +140,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
+	servicemanager.AuthGroup, err = auth.GroupService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) setupMocks() {

@@ -60,7 +60,8 @@ func (s *S) TestCreateRootUserCmdRun(c *check.C) {
 	}
 	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin, nil)
 	client := cmd.NewClient(&http.Client{}, nil, manager)
-	command := createRootUserCmd{}
+	command := &tsurudCommand{Command: createRootUserCmd{}}
+	command.Flags().Parse(true, []string{"--config", "testdata/tsuru.conf"})
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Password: \nConfirm: \nRoot user successfully created.\n")

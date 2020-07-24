@@ -31,6 +31,7 @@ type MockService struct {
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
 	InstanceTracker           tracker.InstanceService
 	DynamicRouter             *router.MockDynamicRouterService
+	AuthGroup                 auth.GroupService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -47,6 +48,7 @@ func SetMockService(m *MockService) {
 	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}
 	m.InstanceTracker = &tracker.MockInstanceService{}
 	m.DynamicRouter = &router.MockDynamicRouterService{}
+	m.AuthGroup = &auth.MockGroupService{}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -59,6 +61,7 @@ func SetMockService(m *MockService) {
 	servicemanager.ServiceBrokerCatalogCache = m.ServiceBrokerCatalogCache
 	servicemanager.InstanceTracker = m.InstanceTracker
 	servicemanager.DynamicRouter = m.DynamicRouter
+	servicemanager.AuthGroup = m.AuthGroup
 }
 
 func (m *MockService) ResetCache() {

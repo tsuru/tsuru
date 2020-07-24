@@ -35,4 +35,5 @@ var (
 	InstanceTracker           tracker.InstanceService
 	AppVersion                app.AppVersionService
 	DynamicRouter             router.DynamicRouterService
+	AuthGroup                 auth.GroupService
 )

@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -34,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
@@ -102,6 +104,10 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 		Scheme:  permission.PermAll,
 		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
+	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
+	servicemanager.AuthGroup, err = auth.GroupService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *HandlersSuite) TearDownTest(c *check.C) {

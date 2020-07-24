@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -180,6 +181,7 @@ func ContextsForPermission(token Token, scheme *PermissionScheme, ctxTypes ...pe
 func Check(token Token, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {
+		log.Errorf("unable to read token permissions: %v", err)
 		return false
 	}
 	return CheckFromPermList(perms, scheme, contexts...)

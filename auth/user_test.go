@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
@@ -375,14 +376,17 @@ func (s *S) TestRemoveRoleFromAllUsers(c *check.C) {
 }
 
 func (s *S) TestUserPermissions(c *check.C) {
+
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
+
 	perms, err := u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
 		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
 	})
+
 	r1, err := permission.NewRole("r1", "app", "")
 	c.Assert(err, check.IsNil)
 	err = r1.AddPermissions("app.update.env", "app.deploy")
@@ -391,6 +395,9 @@ func (s *S) TestUserPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = u.AddRole("r1", "myapp2")
 	c.Assert(err, check.IsNil)
+	err = servicemanager.AuthGroup.AddRole("g1", "r1", "myapp3")
+	c.Assert(err, check.IsNil)
+
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
@@ -399,6 +406,38 @@ func (s *S) TestUserPermissions(c *check.C) {
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp2")},
 		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp2")},
+	})
+}
+
+func (s *S) TestUserPermissionsIncludeGroups(c *check.C) {
+	u := User{Email: "me@tsuru.com", Password: "123", Groups: []string{"g1", "g2"}}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+
+	r1, err := permission.NewRole("r1", "app", "")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("app.update.env", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp2")
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.AuthGroup.AddRole("g2", "r1", "myapp3")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.AuthGroup.AddRole("g3", "r1", "myapp4")
+	c.Assert(err, check.IsNil)
+
+	perms, err := u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermUser, Context: permission.Context(permTypes.CtxUser, u.Email)},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permTypes.CtxApp, "myapp3")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permTypes.CtxApp, "myapp3")},
 	})
 }
 

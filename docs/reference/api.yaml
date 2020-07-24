@@ -2675,6 +2675,69 @@ paths:
         - nodecontainer
       security:
         - Bearer: []
+  /1.9/roles/{role_name}/group:
+    post:
+      operationId: AssignRoleToGroup
+      description: Assigns a role to a group.
+      consumes:
+        - application/json
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: token
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AssignGroupArgs"
+      responses:
+        "200":
+          description: Role assigned.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Role not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.6/roles/{role_name}/group/{group_name}:
+    delete:
+      operationId: DissociateRoleFromGroup
+      description: Dissociates a role from a group.
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: group_name
+          required: true
+          in: path
+          type: string
+        - name: context
+          required: true
+          in: query
+          type: string
+      responses:
+        "200":
+          description: Role dissociated.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Role not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
 definitions:
   DynamicRouter:
     description: Dynamic router
@@ -3551,6 +3614,14 @@ definitions:
     type: object
     properties:
       token_id:
+        type: string
+      context:
+        type: string
+  AssignGroupArgs:
+    description: Assign role to group arguments.
+    type: object
+    properties:
+      group_name:
         type: string
       context:
         type: string

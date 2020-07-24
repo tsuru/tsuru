@@ -132,7 +132,16 @@ func (s *S) TestOAuthParse(c *check.C) {
 	parser := &oAuthScheme{}
 	email, err := parser.parse(rsp)
 	c.Assert(err, check.IsNil)
-	c.Assert(email, check.Equals, "x@x.com")
+	c.Assert(email, check.DeepEquals, userData{Email: "x@x.com"})
+}
+
+func (s *S) TestOAuthParseWithGroups(c *check.C) {
+	b := ioutil.NopCloser(bytes.NewBufferString(`{"email":"x@x.com", "groups": ["g1", "g2"]}`))
+	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
+	parser := &oAuthScheme{}
+	email, err := parser.parse(rsp)
+	c.Assert(err, check.IsNil)
+	c.Assert(email, check.DeepEquals, userData{Email: "x@x.com", Groups: []string{"g1", "g2"}})
 }
 
 func (s *S) TestOAuthParseInvalid(c *check.C) {

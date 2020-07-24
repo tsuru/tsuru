@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -31,6 +32,7 @@ type User struct {
 	Password string
 	APIKey   string
 	Roles    []authTypes.RoleInstance `bson:",omitempty"`
+	Groups   []string                 `bson:",omitempty"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {
@@ -247,7 +249,19 @@ func expandRolePermissions(roleInstances []authTypes.RoleInstance) ([]permission
 }
 
 func (u *User) Permissions() ([]permission.Permission, error) {
-	permissions, err := expandRolePermissions(u.Roles)
+	groupsFilter := []string{}
+	if u.Groups != nil {
+		groupsFilter = u.Groups
+	}
+	groups, err := servicemanager.AuthGroup.List(groupsFilter)
+	if err != nil {
+		return nil, err
+	}
+	allRoles := u.Roles
+	for _, group := range groups {
+		allRoles = append(allRoles, group.Roles...)
+	}
+	permissions, err := expandRolePermissions(allRoles)
 	if err != nil {
 		return nil, err
 	}
