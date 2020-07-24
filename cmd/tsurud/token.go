@@ -15,6 +15,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/permission"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 

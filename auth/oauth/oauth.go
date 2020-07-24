@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/set"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
 )
@@ -135,14 +136,14 @@ func (s *oAuthScheme) handleToken(t *oauth2.Token) (*tokenWrapper, error) {
 		return nil, err
 	}
 	defer response.Body.Close()
-	email, err := s.parse(response)
+	user, err := s.parse(response)
 	if err != nil {
 		return nil, err
 	}
-	if email == "" {
+	if user.Email == "" {
 		return nil, ErrEmptyUserEmail
 	}
-	_, err = auth.GetUserByEmail(email)
+	dbUser, err := auth.GetUserByEmail(user.Email)
 	if err != nil {
 		if err != authTypes.ErrUserNotFound {
 			return nil, err
@@ -151,13 +152,20 @@ func (s *oAuthScheme) handleToken(t *oauth2.Token) (*tokenWrapper, error) {
 		if !registrationEnabled {
 			return nil, err
 		}
-		user := &auth.User{Email: email}
-		err = user.Create()
-		if err != nil {
-			return nil, err
+		dbUser = &auth.User{Email: user.Email}
+		err = dbUser.Create()
+	} else {
+		dbGroups := set.FromSlice(dbUser.Groups)
+		providerGroups := set.FromSlice(user.Groups)
+		if !dbGroups.Equal(providerGroups) {
+			dbUser.Groups = user.Groups
+			err = dbUser.Update()
 		}
 	}
-	token := tokenWrapper{Token: *t, UserEmail: email}
+	if err != nil {
+		return nil, err
+	}
+	token := tokenWrapper{Token: *t, UserEmail: user.Email}
 	err = token.save()
 	if err != nil {
 		return nil, err
@@ -208,22 +216,25 @@ func (s *oAuthScheme) Info() (auth.SchemeInfo, error) {
 	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": strconv.Itoa(s.callbackPort)}, nil
 }
 
-func (s *oAuthScheme) parse(infoResponse *http.Response) (string, error) {
-	user := struct {
-		Email string `json:"email"`
-	}{}
+type userData struct {
+	Email  string   `json:"email"`
+	Groups []string `json:"groups"`
+}
+
+func (s *oAuthScheme) parse(infoResponse *http.Response) (userData, error) {
+	var user userData
 	data, err := ioutil.ReadAll(infoResponse.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to read user data response")
+		return user, errors.Wrap(err, "unable to read user data response")
 	}
 	if infoResponse.StatusCode != http.StatusOK {
-		return "", errors.Errorf("unexpected user data response %d: %s", infoResponse.StatusCode, data)
+		return user, errors.Errorf("unexpected user data response %d: %s", infoResponse.StatusCode, data)
 	}
 	err = json.Unmarshal(data, &user)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse user data: %s", data)
+		return user, errors.Wrapf(err, "unable to parse user data: %s", data)
 	}
-	return user.Email, nil
+	return user, nil
 }
 
 func (s *oAuthScheme) Create(user *auth.User) (*auth.User, error) {

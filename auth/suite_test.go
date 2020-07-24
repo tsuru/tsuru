@@ -51,6 +51,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.Team, err = TeamService()
 	c.Assert(err, check.IsNil)
+	servicemanager.AuthGroup, err = GroupService()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

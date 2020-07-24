@@ -38,6 +38,7 @@ type DbDriver struct {
 	InstanceTrackerStorage           tracker.InstanceStorage
 	AppVersionStorage                app.AppVersionStorage
 	DynamicRouterStorage             router.DynamicRouterStorage
+	AuthGroupStorage                 auth.GroupStorage
 }
 
 var (

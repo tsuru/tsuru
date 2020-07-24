@@ -18,6 +18,7 @@ type User struct {
 	Password string
 	APIKey   string
 	Roles    []RoleInstance
+	Groups   []string
 }
 
 type RoleInstance struct {

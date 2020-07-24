@@ -162,6 +162,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AuthGroup, err = auth.GroupService()
 	return err
 }
 
@@ -383,6 +387,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Get", "/permissions", AuthorizationRequiredHandler(listPermissions))
 	m.Add("1.6", "Post", "/roles/{name}/token", AuthorizationRequiredHandler(assignRoleToToken))
 	m.Add("1.6", "Delete", "/roles/{name}/token/{token_id}", AuthorizationRequiredHandler(dissociateRoleFromToken))
+	m.Add("1.9", "Post", "/roles/{name}/group", AuthorizationRequiredHandler(assignRoleToGroup))
+	m.Add("1.9", "Delete", "/roles/{name}/group/{group_name}", AuthorizationRequiredHandler(dissociateRoleFromGroup))
 
 	m.Add("1.0", "Get", "/debug/goroutines", AuthorizationRequiredHandler(dumpGoroutines))
 	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(indexHandler))

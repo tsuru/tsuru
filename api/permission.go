@@ -762,3 +762,70 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	return err
 }
+
+// title: assign role to group
+// path: /roles/{name}/group
+// method: POST
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role not found
+func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+		return permission.ErrUnauthorized
+	}
+	groupName := InputValue(r, "group_name")
+	contextValue := InputValue(r, "context")
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateAssign,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = canUseRole(t, roleName, contextValue)
+	if err != nil {
+		return err
+	}
+	return servicemanager.AuthGroup.AddRole(groupName, roleName, contextValue)
+}
+
+// title: dissociate role from group
+// path: /roles/{name}/group/{group_name}
+// method: DELETE
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Role not found
+func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+		return permission.ErrUnauthorized
+	}
+	groupName := r.URL.Query().Get(":group_name")
+	contextValue := InputValue(r, "context")
+	roleName := r.URL.Query().Get(":name")
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateDissociate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = canUseRole(t, roleName, contextValue)
+	if err != nil {
+		return err
+	}
+	return servicemanager.AuthGroup.RemoveRole(groupName, roleName, contextValue)
+}
