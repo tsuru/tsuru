@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/set"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 var (
@@ -58,6 +59,8 @@ var (
 	labelBuilder = "builder"
 
 	labelClusterMetadata = "tsuru.io/cluster"
+
+	labelCustomTagsPrefix = "custom-tag-"
 )
 
 type LabelSet struct {
@@ -449,8 +452,13 @@ func SplitServiceLabelsAnnotations(ls *LabelSet) (labels *LabelSet, ann *LabelSe
 	for k, v := range ls.RawLabels {
 		labels.RawLabels[k] = v
 	}
+
 	for k, v := range ls.Labels {
-		if _, ok := annKeys[k]; ok {
+		_, isAnnotation := annKeys[k]
+		if !isAnnotation {
+			isAnnotation = v != "" && len(validation.IsValidLabelValue(v)) > 0
+		}
+		if isAnnotation {
 			ann.Labels[k] = v
 		} else {
 			labels.Labels[k] = v
@@ -478,7 +486,7 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 		routerNames = append(routerNames, appRouter.Name)
 		routerTypes = append(routerTypes, routerType)
 	}
-	return &LabelSet{
+	ls := &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:     strconv.FormatBool(true),
 			labelIsStopped:   strconv.FormatBool(false),
@@ -493,7 +501,27 @@ func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
 			labelBuilder:     opts.Builder,
 		},
 		Prefix: opts.Prefix,
-	}, nil
+	}
+	for _, tag := range opts.App.ListTags() {
+		parts := strings.SplitN(tag, "=", 2)
+		var key, value string
+		if len(parts) > 0 {
+			key = parts[0]
+		}
+		if len(parts) > 1 {
+			value = parts[1]
+		}
+		if key == "" {
+			continue
+		}
+		key = labelCustomTagsPrefix + key
+		if len(validation.IsQualifiedName(key)) > 0 {
+			// Ignoring tags that are not valid identifiers for labels or annotations
+			continue
+		}
+		ls.Labels[key] = value
+	}
+	return ls, nil
 }
 
 type ServiceAccountLabelsOpts struct {

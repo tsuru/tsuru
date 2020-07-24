@@ -2571,3 +2571,7 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 
 	return versionProv, nil, nil
 }
+
+func (app *App) ListTags() []string {
+	return app.Tags
+}

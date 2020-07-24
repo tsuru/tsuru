@@ -47,6 +47,13 @@ func (s *S) TestProcessLabels(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
+	a.Tags = []string{
+		"tag1=1",
+		"tag2",
+		"space tag",
+		"weird %$! tag",
+		"tag3=a=b=c obla di obla da",
+	}
 	opts := provision.ProcessLabelsOpts{
 		App:         a,
 		Process:     "p1",
@@ -56,17 +63,20 @@ func (s *S) TestProcessLabels(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
-			"is-tsuru":     "true",
-			"is-stopped":   "false",
-			"is-deploy":    "false",
-			"app-name":     "myapp",
-			"app-process":  "p1",
-			"app-platform": "cobol",
-			"app-pool":     "test-default",
-			"router-name":  "fake",
-			"router-type":  "fake",
-			"provisioner":  "kubernetes",
-			"builder":      "",
+			"is-tsuru":        "true",
+			"is-stopped":      "false",
+			"is-deploy":       "false",
+			"app-name":        "myapp",
+			"app-process":     "p1",
+			"app-platform":    "cobol",
+			"app-pool":        "test-default",
+			"router-name":     "fake",
+			"router-type":     "fake",
+			"provisioner":     "kubernetes",
+			"builder":         "",
+			"custom-tag-tag1": "1",
+			"custom-tag-tag2": "",
+			"custom-tag-tag3": "a=b=c obla di obla da",
 		},
 	})
 }
@@ -196,4 +206,54 @@ func (s *S) TestLabelSet_Merge(c *check.C) {
 		Prefix:    "myprefix.example.com/",
 	}
 	c.Assert(ls, check.DeepEquals, expected)
+}
+
+func (s *S) TestSplitServiceLabelsAnnotations(c *check.C) {
+	ls := &provision.LabelSet{
+		RawLabels: map[string]string{
+			"a": "b",
+		},
+		Labels: map[string]string{
+			"is-tsuru":        "true",
+			"is-stopped":      "false",
+			"is-deploy":       "false",
+			"app-name":        "myapp",
+			"app-process":     "p1",
+			"app-platform":    "cobol",
+			"app-pool":        "test-default",
+			"router-name":     "fake",
+			"router-type":     "fake",
+			"provisioner":     "kubernetes",
+			"builder":         "",
+			"custom-tag-tag1": "1",
+			"custom-tag-tag2": "",
+			"custom-tag-tag3": "a=b=c obla di obla da",
+		},
+	}
+	labels, annotations := provision.SplitServiceLabelsAnnotations(ls)
+	c.Assert(labels, check.DeepEquals, &provision.LabelSet{
+		RawLabels: map[string]string{
+			"a": "b",
+		},
+		Labels: map[string]string{
+			"is-tsuru":        "true",
+			"is-stopped":      "false",
+			"is-deploy":       "false",
+			"app-name":        "myapp",
+			"app-process":     "p1",
+			"app-platform":    "cobol",
+			"app-pool":        "test-default",
+			"provisioner":     "kubernetes",
+			"builder":         "",
+			"custom-tag-tag1": "1",
+			"custom-tag-tag2": "",
+		},
+	})
+	c.Assert(annotations, check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"router-name":     "fake",
+			"router-type":     "fake",
+			"custom-tag-tag3": "a=b=c obla di obla da",
+		},
+	})
 }
