@@ -537,7 +537,7 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 		}(i)
 	}
 	wg.Wait()
-	c.Assert(registerCount, check.Equals, int64(nTests))
+	c.Assert(atomic.LoadInt64(&registerCount), check.Equals, int64(nTests))
 }
 
 func (s *S) TestRollbackDeploy(c *check.C) {
