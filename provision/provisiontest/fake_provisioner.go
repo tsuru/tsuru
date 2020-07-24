@@ -79,6 +79,7 @@ type FakeApp struct {
 	TeamOwner       string
 	Teams           []string
 	Quota           quota.Quota
+	Tags            []string
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -355,6 +356,10 @@ func (app *FakeApp) GetAddresses() ([]string, error) {
 		return nil, err
 	}
 	return []string{addr}, nil
+}
+
+func (app *FakeApp) ListTags() []string {
+	return app.Tags
 }
 
 type Cmd struct {

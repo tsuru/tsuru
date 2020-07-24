@@ -241,6 +241,8 @@ type App interface {
 	GetTeamOwner() string
 
 	SetQuotaInUse(int) error
+
+	ListTags() []string
 }
 
 type BuilderDockerClient interface {
