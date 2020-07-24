@@ -149,7 +149,7 @@ func (s *S) TestConnectWithPassword(c *check.C) {
 	clearConnCache()
 	rtest := hipacheRouter{config: router.ConfigGetterFromPrefix("hipache")}
 	got, err := rtest.connect()
-	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
+	c.Assert(err, check.ErrorMatches, ".*ERR.*AUTH.*")
 	c.Assert(got, check.IsNil)
 }
 

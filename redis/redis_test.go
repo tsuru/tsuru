@@ -53,7 +53,7 @@ func (s *S) TestNewRedisSimpleServerUsePassword(c *check.C) {
 	s.setConfig("redis-server", "localhost:6379")
 	s.setConfig("redis-password", "invalid-password")
 	cli, err := NewRedisDefaultConfig("mine", router.ConfigGetterFromPrefix(s.prefix), nil)
-	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
+	c.Assert(err, check.ErrorMatches, ".*ERR.*AUTH.*")
 	c.Assert(cli, check.IsNil)
 	c.Assert(collector.clients["mine"], check.IsNil)
 }
