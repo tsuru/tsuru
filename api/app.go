@@ -490,8 +490,11 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if len(updateData.Tags) > 0 {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTags)
 	}
-	if updateData.Plan != (appTypes.Plan{}) {
+	if updateData.Plan.Name != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
+	}
+	if updateData.Plan.Override != (appTypes.PlanOverride{}) {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlanoverride)
 	}
 	if updateData.Pool != "" {
 		if noRestart {
