@@ -292,15 +292,16 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 type inputApp struct {
-	TeamOwner   string
-	Platform    string
-	Plan        string
-	Name        string
-	Description string
-	Pool        string
-	Router      string
-	RouterOpts  map[string]string
-	Tags        []string
+	TeamOwner    string
+	Platform     string
+	Plan         string
+	Name         string
+	Description  string
+	Pool         string
+	Router       string
+	RouterOpts   map[string]string
+	Tags         []string
+	PlanOverride appTypes.PlanOverride
 }
 
 func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, error) {
@@ -462,7 +463,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	imageReset, _ := strconv.ParseBool(InputValue(r, "imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
-		Plan:           appTypes.Plan{Name: ia.Plan},
+		Plan:           appTypes.Plan{Name: ia.Plan, Override: ia.PlanOverride},
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
@@ -489,7 +490,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if len(updateData.Tags) > 0 {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateTags)
 	}
-	if updateData.Plan.Name != "" {
+	if updateData.Plan != (appTypes.Plan{}) {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
 	}
 	if updateData.Pool != "" {

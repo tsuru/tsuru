@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -360,7 +361,6 @@ type UpdateAppArgs struct {
 // Update changes informations of the application.
 func (app *App) Update(args UpdateAppArgs) (err error) {
 	description := args.UpdateData.Description
-	planName := args.UpdateData.Plan.Name
 	poolName := args.UpdateData.Pool
 	teamOwner := args.UpdateData.TeamOwner
 	platform := args.UpdateData.Platform
@@ -386,13 +386,14 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if err != nil {
 		return err
 	}
-	if planName != "" {
-		plan, errFind := servicemanager.Plan.FindByName(planName)
+	if args.UpdateData.Plan.Name != "" {
+		plan, errFind := servicemanager.Plan.FindByName(args.UpdateData.Plan.Name)
 		if errFind != nil {
 			return errFind
 		}
 		app.Plan = *plan
 	}
+	app.Plan.MergeOverride(args.UpdateData.Plan.Override)
 	if teamOwner != "" {
 		team, errTeam := servicemanager.Team.FindByName(teamOwner)
 		if errTeam != nil {
@@ -445,7 +446,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
 			&destroyAppOldProvisioner)
-	} else if app.Plan != oldApp.Plan && args.ShouldRestart {
+	} else if !reflect.DeepEqual(app.Plan, oldApp.Plan) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool {
 		actions = append(actions, &restartApp)
@@ -1404,7 +1405,17 @@ func (app *App) GetTeamsName() []string {
 
 // GetMemory returns the memory limit (in bytes) for the app.
 func (app *App) GetMemory() int64 {
+	if app.Plan.Override.Memory != nil {
+		return *app.Plan.Override.Memory
+	}
 	return app.Plan.Memory
+}
+
+func (app *App) GetMilliCPU() int {
+	if app.Plan.Override.CPUMilli != nil {
+		return *app.Plan.Override.CPUMilli
+	}
+	return app.Plan.CPUMilli
 }
 
 // GetSwap returns the swap limit (in bytes) for the app.

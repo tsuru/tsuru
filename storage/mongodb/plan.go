@@ -21,7 +21,9 @@ type plan struct {
 	Memory   int64
 	Swap     int64
 	CpuShare int
+	CPUMilli int
 	Default  bool
+	Override app.PlanOverride `bson:"-"`
 }
 
 func plansCollection(conn *db.Storage) *dbStorage.Collection {

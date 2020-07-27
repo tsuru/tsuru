@@ -1890,6 +1890,76 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
+func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	originalPlan := appTypes.Plan{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		return &originalPlan, nil
+	}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{originalPlan}, nil
+	}
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: originalPlan}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, &a)
+
+	tests := []struct {
+		body               string
+		memory, swap       int64
+		cpuShare, cpuMilli int
+	}{
+		{
+			body:     "planoverride.memory=314572800",
+			memory:   314572800,
+			swap:     536870912,
+			cpuShare: 100,
+			cpuMilli: 0,
+		},
+		{
+			body:     "planoverride.cpumilli=200",
+			memory:   314572800,
+			swap:     536870912,
+			cpuShare: 100,
+			cpuMilli: 200,
+		},
+		{
+			body:     "planoverride.memory=",
+			memory:   536870912,
+			swap:     536870912,
+			cpuShare: 100,
+			cpuMilli: 200,
+		},
+		{
+			body:     "planoverride.cpumilli=100",
+			memory:   536870912,
+			swap:     536870912,
+			cpuShare: 100,
+			cpuMilli: 100,
+		},
+	}
+
+	for i, tt := range tests {
+		c.Logf("test %d", i)
+		body := strings.NewReader(tt.body)
+		request, err := http.NewRequest("PUT", "/apps/someapp", body)
+		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder := httptest.NewRecorder()
+		s.testServer.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %v", recorder.Body.String()))
+		dbApp, err := app.GetByName(a.Name)
+		c.Assert(err, check.IsNil)
+		c.Assert(dbApp.GetMemory(), check.Equals, tt.memory)
+		c.Assert(dbApp.GetSwap(), check.Equals, tt.swap)
+		c.Assert(dbApp.GetCpuShare(), check.Equals, tt.cpuShare)
+		c.Assert(dbApp.GetMilliCPU(), check.Equals, tt.cpuMilli)
+		c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, i+1)
+	}
+}
+
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
 	plan := appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
