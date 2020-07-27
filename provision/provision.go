@@ -228,6 +228,7 @@ type App interface {
 	Envs() map[string]bind.EnvVar
 
 	GetMemory() int64
+	GetMilliCPU() int
 	GetSwap() int64
 	GetCpuShare() int
 

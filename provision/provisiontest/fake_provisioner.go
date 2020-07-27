@@ -66,6 +66,7 @@ type FakeApp struct {
 	Memory          int64
 	Swap            int64
 	CpuShare        int
+	MilliCPU        int
 	commMut         sync.Mutex
 	Deploys         uint
 	env             map[string]bind.EnvVar
@@ -109,6 +110,10 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 		}
 	}
 	return &app
+}
+
+func (a *FakeApp) GetMilliCPU() int {
+	return a.MilliCPU
 }
 
 func (a *FakeApp) GetMemory() int64 {
