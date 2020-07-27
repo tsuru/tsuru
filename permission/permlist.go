@@ -36,6 +36,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.cname.add",
 	"app.update.cname.remove",
 	"app.update.plan",
+	"app.update.planoverride",
 	"app.update.platform",
 	"app.update.bind",
 	"app.update.bind-volume",
