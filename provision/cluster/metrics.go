@@ -12,6 +12,7 @@ import (
 
 var (
 	desc        = prometheus.NewDesc("tsuru_cluster_info", "Basic information about existing clusters", []string{"provisioner", "name"}, nil)
+	poolsDesc   = prometheus.NewDesc("tsuru_cluster_pool", "information about related pool that are inside the cluster", []string{"name", "pool"}, nil)
 	failureDesc = prometheus.NewDesc("tsuru_cluster_fetch_fail", "indicates whether failed to get clusters", []string{}, nil)
 )
 
@@ -41,5 +42,9 @@ func (c *clustersMetricCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, cluster := range clusters {
 		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(1), cluster.Provisioner, cluster.Name)
+
+		for _, pool := range cluster.Pools {
+			ch <- prometheus.MustNewConstMetric(poolsDesc, prometheus.GaugeValue, float64(1), cluster.Name, pool)
+		}
 	}
 }
