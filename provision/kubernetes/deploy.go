@@ -696,6 +696,11 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 		version int
 	}
 
+	deployedProcesses, err := deployedVersion.Processes()
+	if err != nil {
+		return err
+	}
+
 	fmt.Fprint(m.writer, "\n---- Cleaning up resources ----\n")
 
 	processInUse := map[string]struct{}{}
@@ -704,6 +709,11 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
 			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion.Version())
+
+			// we neven't delete a base deployment, perhaps in case of Procfile change we must do it
+			if _, hasProcess := deployedProcesses[depData.process]; depData.isBase && hasProcess {
+				toKeep = true
+			}
 
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
