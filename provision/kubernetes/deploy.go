@@ -35,7 +35,6 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +45,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/kubectl/pkg/polymorphichelpers"
 )
 
 const (
@@ -1052,9 +1052,16 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
-			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
-				Name: depArgs.name,
-			})
+			rollbacker, err := polymorphichelpers.RollbackerFor(nil, m.client)
+			if err != nil {
+				return errors.Wrap(err, "unable to instantiate rollbacker")
+			}
+			result, err := rollbacker.Rollback(info.Object, nil, 0, false)
+			if err != nil {
+				return errors.Wrap(err, "unable to rollback")
+			}
+
+			fmt.Fprintf(m.writer, "\n*** %s ***", result)
 		}
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
