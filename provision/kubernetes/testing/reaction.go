@@ -6,6 +6,7 @@ package testing
 
 import (
 	"bufio"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -590,6 +592,13 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
+			var revision int
+			if dep.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] != "" {
+				revision, _ = strconv.Atoi(dep.ObjectMeta.Annotations["deployment.kubernetes.io/revision"])
+			}
+			revision++
+
 			rs := &appsv1.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        dep.Name + "-1",
@@ -603,9 +612,14 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 					Template: *dep.Spec.Template.DeepCopy(),
 				},
 			}
+			if rs.ObjectMeta.Annotations == nil {
+				rs.ObjectMeta.Annotations = map[string]string{}
+			}
+			rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
 			rs.OwnerReferences = []metav1.OwnerReference{
 				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			}
+			rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
 			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Create(rs)
 			_, err = s.client.AppsV1().ReplicaSets(dep.Namespace).Update(rs)
 			c.Assert(err, check.IsNil)
@@ -657,4 +671,11 @@ func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace str
 		}
 	}
 	return nil
+}
+
+func shortMD5ForObject(i interface{}) string {
+	b, _ := json.Marshal(i)
+	m := md5.Sum(b)
+
+	return fmt.Sprintf("%x", m)[0:10]
 }
