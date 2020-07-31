@@ -2883,10 +2883,12 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "false")
 	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
 
-	rs, err := s.client.AppsV1().ReplicaSets("default").Get("myapp-web-1", metav1.GetOptions{})
+	rsList, err := s.client.AppsV1().ReplicaSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "false")
-	c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+	for _, rs := range rsList.Items {
+		c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "false")
+		c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "false")
+	}
 
 	pods, err := s.client.CoreV1().Pods("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2903,10 +2905,12 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	c.Assert(dep.Labels["tsuru.io/is-routable"], check.Equals, "true")
 	c.Assert(dep.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
 
-	rs, err = s.client.AppsV1().ReplicaSets("default").Get("myapp-web-1", metav1.GetOptions{})
+	rsList, err = s.client.AppsV1().ReplicaSets("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "true")
-	c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+	for _, rs := range rsList.Items {
+		c.Assert(rs.Labels["tsuru.io/is-routable"], check.Equals, "true")
+		c.Assert(rs.Spec.Template.Labels["tsuru.io/is-routable"], check.Equals, "true")
+	}
 
 	pods, err = s.client.CoreV1().Pods("default").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

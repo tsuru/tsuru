@@ -35,7 +35,6 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2736,7 +2735,13 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
@@ -2745,19 +2750,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version1,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	var rollbackObj *extensions.DeploymentRollback
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		if action.GetSubresource() == "rollback" {
-			rollbackObj = obj.(*extensions.DeploymentRollback)
-			return true, rollbackObj, nil
-		}
 		dep := obj.(*appsv1.Deployment)
 		dep.Status.UnavailableReplicas = 2
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
@@ -2777,19 +2777,21 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	})
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version2,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
-	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1",
-	})
-	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
-	err = cleanupDeployment(s.clusterClient, a, "p1", version)
-	c.Assert(err, check.IsNil)
+
 	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
+
+	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
+	err = cleanupDeployment(s.clusterClient, a, "p1", version1)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2802,7 +2804,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version2,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
@@ -2894,7 +2896,13 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cm1",
 			"p2": "cmd2",
@@ -2903,21 +2911,16 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version1,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	var rollbackObj *extensions.DeploymentRollback
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
-		if action.GetSubresource() == "rollback" {
-			rollbackObj = obj.(*extensions.DeploymentRollback)
-			return true, rollbackObj, nil
-		}
 		dep := obj.(*appsv1.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
@@ -2960,17 +2963,19 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	})
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version2,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
-	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1",
-	})
+
+	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
+
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
-	err = cleanupDeployment(s.clusterClient, a, "p1", version)
+	err = cleanupDeployment(s.clusterClient, a, "p1", version1)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2983,7 +2988,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version2,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
@@ -3003,29 +3008,24 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"p1": "cmd1",
 		},
 	})
-	c.Assert(err, check.IsNil)
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cmd1",
+		},
+	})
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version1,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	var rollbackObj *extensions.DeploymentRollback
-	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
-		obj := action.(ktesting.CreateAction).GetObject()
-		if action.GetSubresource() == "rollback" {
-			rollbackObj = obj.(*extensions.DeploymentRollback)
-			return true, rollbackObj, nil
-		}
-		return false, nil, nil
-	})
 	s.client.PrependReactor("update", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
 		dep := obj.(*appsv1.Deployment)
@@ -3038,20 +3038,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		for k, v := range dep.Spec.Template.Labels {
 			labelsCp[k] = v
 		}
-		go func() {
-			ns, nsErr := s.client.AppNamespace(a)
-			c.Assert(nsErr, check.IsNil)
-			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "replica-for-" + dep.Name,
-					Labels: labelsCp,
-					Annotations: map[string]string{
-						"deployment.kubernetes.io/revision": strconv.Itoa(int(dep.Status.ObservedGeneration)),
-					},
-				},
-			})
-			c.Assert(repErr, check.IsNil)
-		}()
 		return false, nil, nil
 	})
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -3069,15 +3055,19 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	})
 	err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
 		App:     a,
-		Version: version,
+		Version: version2,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
-	c.Assert(rollbackObj, check.DeepEquals, &extensions.DeploymentRollback{
-		Name: "myapp-p1",
-	})
+
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+
+	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 }
 
 func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *check.C) {

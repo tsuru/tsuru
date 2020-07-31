@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	v1informers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
@@ -205,6 +206,20 @@ func allNewPodsRunning(client *ClusterClient, a provision.App, process string, d
 
 func activeReplicaSetForDeployment(client *ClusterClient, dep *appsv1.Deployment) (*appsv1.ReplicaSet, error) {
 	depRevision := dep.Annotations[replicaDepRevision]
+
+	replicaSets, err := getAllReplicasets(client, dep)
+	if err != nil {
+		return nil, err
+	}
+	for _, rs := range replicaSets {
+		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
+			return &rs, nil
+		}
+	}
+	return nil, k8sErrors.NewNotFound(appsv1.Resource("replicaset"), fmt.Sprintf("deployment: %v, revision: %v", dep.Name, depRevision))
+}
+
+func getAllReplicasets(client kubernetes.Interface, dep *appsv1.Deployment) ([]appsv1.ReplicaSet, error) {
 	sel, err := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -215,12 +230,8 @@ func activeReplicaSetForDeployment(client *ClusterClient, dep *appsv1.Deployment
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	for i, rs := range replicaSets.Items {
-		if rs.Annotations != nil && rs.Annotations[replicaDepRevision] == depRevision {
-			return &replicaSets.Items[i], nil
-		}
-	}
-	return nil, k8sErrors.NewNotFound(appsv1.Resource("replicaset"), fmt.Sprintf("deployment: %v, revision: %v", dep.Name, depRevision))
+
+	return replicaSets.Items, nil
 }
 
 func podsForReplicaSet(client *ClusterClient, rs *appsv1.ReplicaSet) ([]apiv1.Pod, error) {

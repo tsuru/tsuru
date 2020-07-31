@@ -35,7 +35,6 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1052,9 +1051,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			rollbackErr = m.client.AppsV1().Deployments(ns).Delete(newDep.Name, &metav1.DeleteOptions{})
 		} else {
 			fmt.Fprintf(m.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n")
-			rollbackErr = m.client.ExtensionsV1beta1().Deployments(ns).Rollback(&extensions.DeploymentRollback{
-				Name: depArgs.name,
-			})
+
+			// This code was copied from kubernetes codebase, in the next update of version of kubectl
+			// we need to move to import this library:
+			// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/rollback.go#L48
+			rollbacker := &DeploymentRollbacker{c: m.client}
+			_, rollbackErr = rollbacker.Rollback(newDep)
 		}
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)
