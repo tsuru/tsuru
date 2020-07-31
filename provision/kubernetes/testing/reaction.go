@@ -604,7 +604,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 					Name:        dep.Name + "-1",
 					Namespace:   dep.Namespace,
 					Labels:      dep.Labels,
-					Annotations: dep.Annotations,
+					Annotations: map[string]string{},
 				},
 				Spec: appsv1.ReplicaSetSpec{
 					Replicas: dep.Spec.Replicas,
@@ -612,8 +612,9 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 					Template: *dep.Spec.Template.DeepCopy(),
 				},
 			}
-			if rs.ObjectMeta.Annotations == nil {
-				rs.ObjectMeta.Annotations = map[string]string{}
+
+			for k, v := range dep.Annotations {
+				rs.Annotations[k] = v
 			}
 			rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
 			rs.OwnerReferences = []metav1.OwnerReference{
