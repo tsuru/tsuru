@@ -24,6 +24,8 @@ type clustersMetricCollector struct{}
 
 func (c *clustersMetricCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- desc
+	ch <- poolsDesc
+	ch <- failureDesc
 }
 
 func (c *clustersMetricCollector) Collect(ch chan<- prometheus.Metric) {
