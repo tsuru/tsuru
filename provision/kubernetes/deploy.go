@@ -1056,7 +1056,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 			// we need to move to import this library:
 			// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/rollback.go#L48
 			rollbacker := &DeploymentRollbacker{c: m.client}
-			_, rollbackErr = rollbacker.Rollback(newDep)
+			rollbackErr = rollbacker.Rollback(m.writer, newDep)
 		}
 		if rollbackErr != nil {
 			fmt.Fprintf(m.writer, "\n**** ERROR DURING ROLLBACK ****\n ---> %s <---\n", rollbackErr)

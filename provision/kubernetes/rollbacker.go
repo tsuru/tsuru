@@ -16,6 +16,7 @@ package kubernetes
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,11 +27,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	rollbackSuccess = "rolled back"
-	rollbackSkipped = "skipped rollback"
 )
 
 // annotationsToSkip lists the annotations that should be preserved from the deployment and not
@@ -49,10 +45,10 @@ type DeploymentRollbacker struct {
 	c kubernetes.Interface
 }
 
-func (r *DeploymentRollbacker) Rollback(obj *appsv1.Deployment) (string, error) {
+func (r *DeploymentRollbacker) Rollback(w io.Writer, obj *appsv1.Deployment) error {
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
-		return "", fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
+		return fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
 	}
 	name := accessor.GetName()
 	namespace := accessor.GetNamespace()
@@ -63,21 +59,22 @@ func (r *DeploymentRollbacker) Rollback(obj *appsv1.Deployment) (string, error) 
 	// here. This follows the same pattern as for DaemonSet and StatefulSet.
 	deployment, err := r.c.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve Deployment %s: %v", name, err)
+		return fmt.Errorf("failed to retrieve Deployment %s: %v", name, err)
 	}
 
 	rsForRevision, err := r.deploymentRevision(deployment)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if deployment.Spec.Paused {
-		return "", fmt.Errorf("you cannot rollback a paused deployment; resume it first with 'kubectl rollout resume deployment/%s' and try again", name)
+		return fmt.Errorf("you cannot rollback a paused deployment; resume it first with 'kubectl rollout resume deployment/%s' and try again", name)
 	}
 
 	// Skip if the revision already matches current Deployment
 	if equalIgnoreHash(&rsForRevision.Spec.Template, &deployment.Spec.Template) {
-		return fmt.Sprintf("%s (current template already matches revision %d)", rollbackSkipped, 0), nil
+		fmt.Fprintf(w, "skipped rollback (current template already matches revision), deployment:%s, replicaset: %s\n", deployment.ObjectMeta.Name, rsForRevision.ObjectMeta.Name)
+		return nil
 	}
 
 	// remove hash label before patching back into the deployment
@@ -96,17 +93,19 @@ func (r *DeploymentRollbacker) Rollback(obj *appsv1.Deployment) (string, error) 
 		}
 	}
 
+	fmt.Fprintf(w, "Deployment: %s, restoring podTemplate from replicaSet: %s\n", deployment.ObjectMeta.Name, rsForRevision.ObjectMeta.Name)
+
 	// make patch to restore
 	patchType, patch, err := getDeploymentPatch(&rsForRevision.Spec.Template, annotations)
 	if err != nil {
-		return "", fmt.Errorf("failed restoring revision %d: %v", 0, err)
+		return fmt.Errorf("failed restoring revision %d: %v", 0, err)
 	}
 
 	// Restore revision
 	if _, err = r.c.AppsV1().Deployments(namespace).Patch(name, patchType, patch); err != nil {
-		return "", fmt.Errorf("failed restoring revision %d: %v", 0, err)
+		return fmt.Errorf("failed restoring revision %d: %v", 0, err)
 	}
-	return rollbackSuccess, nil
+	return nil
 }
 
 func (r *DeploymentRollbacker) deploymentRevision(deployment *appsv1.Deployment) (*appsv1.ReplicaSet, error) {
