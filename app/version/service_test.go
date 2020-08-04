@@ -134,8 +134,9 @@ func (s *S) TestAppVersionService_DeleteVersions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = svc.DeleteVersions(app.Name)
 	c.Assert(err, check.IsNil)
-	_, err = svc.AppVersions(app)
-	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	appVersion, err := svc.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
 func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
