@@ -224,13 +224,22 @@ func (s *appVersionStorage) DeleteVersions(appName string, opts ...*appTypes.App
 		where["updatedhash"] = opts[0].PreviousUpdatedHash
 	}
 
-	err = coll.Remove(where)
-	if err == mgo.ErrNotFound {
-		if _, exists := where["updatedhash"]; exists {
-			return appTypes.ErrTransactionCancelledByChange
-		}
+	uuidV4, err := uuid.NewV4()
+	if err != nil {
+		return errors.WithMessage(err, "failed to generate uuid v4")
+	}
+
+	err = s.baseUpdate(appName, bson.M{
+		"$set": bson.M{
+			"versions":    map[int]appTypes.AppVersionInfo{},
+			"updatedhash": uuidV4.String(),
+		},
+	}, opts...)
+
+	if err == appTypes.ErrNoVersionsAvailable {
 		return nil
 	}
+
 	return err
 }
 

@@ -132,8 +132,9 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.AppVersionStorage.DeleteVersions(app.Name)
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.AppVersions(app)
-	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	appVersion, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
@@ -372,6 +373,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeleteVersions(c *che
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.AppVersions(app)
-	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	appVersion, err := s.AppVersionStorage.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
