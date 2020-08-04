@@ -3279,25 +3279,12 @@ definitions:
         type: string
   UpdateApp:
     type: object
-    required:
-      - name
     properties:
-      name:
-        type: string
-        description: App name.
       tags:
         type: array
         items:
           type: string
         description: App tags.
-      router:
-        type: string
-        description: App router name.
-      routeropts:
-        type: object
-        additionalProperties:
-          type: string
-        description: Custom router options.
       plan:
         type: string
         description: App plan name.
