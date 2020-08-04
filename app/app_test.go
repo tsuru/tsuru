@@ -113,8 +113,10 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-	_, err = servicemanager.AppVersion.AppVersions(app)
-	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	appVersion, err := servicemanager.AppVersion.AppVersions(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersion.Count, check.Not(check.Equals), 0)
+	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
 func (s *S) TestDeleteWithEvents(c *check.C) {

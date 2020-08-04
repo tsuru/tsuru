@@ -193,7 +193,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11-builder",
 	})
 	versions, err := servicemanager.AppVersion.AppVersions(fakeApp)
-	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
+	c.Assert(err, check.IsNil)
 	c.Assert(len(versions.Versions), check.Equals, 0)
 }
 

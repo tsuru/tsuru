@@ -67,14 +67,14 @@ func (s *S) TestGetBuildImage(c *check.C) {
 			name:              "more deploys with version",
 			successfulVersion: true,
 			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
-			expectedImage:     "tsuru/app-myapp:v1",
+			expectedImage:     "tsuru/app-myapp:v2",
 		},
 		{
 			name:              "more deploys with version with ns",
 			successfulVersion: true,
 			ns:                "other-tsuru",
 			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
-			expectedImage:     "other-tsuru/app-myapp:v1",
+			expectedImage:     "other-tsuru/app-myapp:v3",
 		},
 		{
 			name:              "multiple 10 deploys with version",
@@ -87,7 +87,7 @@ func (s *S) TestGetBuildImage(c *check.C) {
 			registry:          "mock.registry.com",
 			successfulVersion: true,
 			app:               appTypes.MockApp{Platform: "python", Deploys: 1, PlatformVersion: "latest"},
-			expectedImage:     "mock.registry.com/tsuru/app-myapp:v1",
+			expectedImage:     "mock.registry.com/tsuru/app-myapp:v5",
 		},
 	}
 
@@ -97,7 +97,6 @@ func (s *S) TestGetBuildImage(c *check.C) {
 		config.Set("docker:registry", tt.registry)
 		tt.app.Name = "myapp"
 		if tt.successfulVersion {
-			servicemanager.AppVersion.DeleteVersions("myapp")
 			version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 				App: &appTypes.MockApp{Name: "myapp"},
 			})
