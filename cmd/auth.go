@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -138,92 +137,6 @@ func (c *logout) Run(context *Context, client *Client) error {
 		return errors.New("You're not logged in!")
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged out!")
-	return nil
-}
-
-type APIRolePermissionData struct {
-	Name         string
-	ContextType  string
-	ContextValue string
-}
-
-// APIUser is a user in the tsuru API.
-type APIUser struct {
-	Email       string
-	Roles       []APIRolePermissionData
-	Permissions []APIRolePermissionData
-}
-
-func (u *APIUser) RoleInstances() []string {
-	roles := make([]string, len(u.Roles))
-	for i, r := range u.Roles {
-		if r.ContextValue != "" {
-			r.ContextValue = " " + r.ContextValue
-		}
-		roles[i] = fmt.Sprintf("%s(%s%s)", r.Name, r.ContextType, r.ContextValue)
-	}
-	sort.Strings(roles)
-	return roles
-}
-
-func (u *APIUser) PermissionInstances() []string {
-	permissions := make([]string, len(u.Permissions))
-	for i, r := range u.Permissions {
-		if r.Name == "" {
-			r.Name = "*"
-		}
-		if r.ContextValue != "" {
-			r.ContextValue = " " + r.ContextValue
-		}
-		permissions[i] = fmt.Sprintf("%s(%s%s)", r.Name, r.ContextType, r.ContextValue)
-	}
-	sort.Strings(permissions)
-	return permissions
-}
-
-func GetUser(client *Client) (*APIUser, error) {
-	url, err := GetURL("/users/info")
-	if err != nil {
-		return nil, err
-	}
-	request, _ := http.NewRequest("GET", url, nil)
-	resp, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var u APIUser
-	err = json.NewDecoder(resp.Body).Decode(&u)
-	if err != nil {
-		return nil, err
-	}
-	return &u, nil
-}
-
-type userInfo struct{}
-
-func (userInfo) Info() *Info {
-	return &Info{
-		Name:  "user-info",
-		Usage: "user-info",
-		Desc:  "Displays information about the current user.",
-	}
-}
-
-func (userInfo) Run(context *Context, client *Client) error {
-	u, err := GetUser(client)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(context.Stdout, "Email: %s\n", u.Email)
-	roles := u.RoleInstances()
-	if len(roles) > 0 {
-		fmt.Fprintf(context.Stdout, "Roles:\n\t%s\n", strings.Join(roles, "\n\t"))
-	}
-	perms := u.PermissionInstances()
-	if len(perms) > 0 {
-		fmt.Fprintf(context.Stdout, "Permissions:\n\t%s\n", strings.Join(perms, "\n\t"))
-	}
 	return nil
 }
 

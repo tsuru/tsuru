@@ -82,7 +82,6 @@ func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manag
 	m.Register(&targetAdd{})
 	m.Register(&targetRemove{})
 	m.Register(&targetSet{})
-	m.Register(userInfo{})
 	m.RegisterTopic("target", targetTopic)
 	return m
 }
