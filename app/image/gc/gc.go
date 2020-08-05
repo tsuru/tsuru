@@ -250,6 +250,10 @@ func markOldImages() error {
 	historySize := image.ImageHistorySize()
 	multi := tsuruErrors.NewMultiError()
 	for _, appVersions := range allAppVersions {
+		if len(appVersions.Versions) == 0 {
+			continue
+		}
+
 		log.Debugf("[image gc] processing %d versions for app %q", len(appVersions.Versions), appVersions.AppName)
 		a, err := app.GetByName(appVersions.AppName)
 		if err != nil && err != appTypes.ErrAppNotFound {

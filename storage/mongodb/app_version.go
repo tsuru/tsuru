@@ -231,8 +231,9 @@ func (s *appVersionStorage) DeleteVersions(appName string, opts ...*appTypes.App
 
 	err = s.baseUpdate(appName, bson.M{
 		"$set": bson.M{
-			"versions":    map[int]appTypes.AppVersionInfo{},
-			"updatedhash": uuidV4.String(),
+			"versions":        map[int]appTypes.AppVersionInfo{},
+			"updatedhash":     uuidV4.String(),
+			"markedtoremoval": false,
 		},
 	}, opts...)
 
