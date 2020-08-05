@@ -47,7 +47,6 @@ const (
 	tsuruExtraLabelsMeta      = tsuruLabelPrefix + "extra-labels"
 	tsuruExtraAnnotationsMeta = tsuruLabelPrefix + "extra-annotations"
 	replicaDepRevision        = "deployment.kubernetes.io/revision"
-	kubeKindReplicaSet        = "ReplicaSet"
 	kubeLabelNameMaxLen       = 55
 )
 

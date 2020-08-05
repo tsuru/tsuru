@@ -621,10 +621,10 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			}
 			rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
-			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Create(rs)
-			_, err = s.client.AppsV1().ReplicaSets(dep.Namespace).Update(rs)
+			_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(rs)
+			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(rs)
 			c.Assert(err, check.IsNil)
-			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
+			_ = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
 			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
 			c.Assert(err, check.IsNil)
 

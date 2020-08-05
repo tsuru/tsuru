@@ -213,11 +213,11 @@ func (b *rebuilder) rebuildRoutesInRouter(appRouter appTypes.AppRouter) (*Rebuil
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			prefixResult, err := b.syncRoutePrefix(r, prefix, newRoutesForPrefix, oldRoutesForPrefix)
+			prefixResult, prefixErr := b.syncRoutePrefix(r, prefix, newRoutesForPrefix, oldRoutesForPrefix)
 			if err == nil {
 				resultCh <- *prefixResult
 			} else {
-				errorCh <- err
+				errorCh <- prefixErr
 			}
 		}()
 	}

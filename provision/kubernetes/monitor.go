@@ -64,10 +64,10 @@ type clusterController struct {
 	cancel             context.CancelFunc
 	resourceReadyCache map[types.NamespacedName]bool
 	startedAt          time.Time
-	leader             int32
 	podListeners       map[string]podListeners
 	podListenersMu     sync.RWMutex
 	wg                 sync.WaitGroup
+	leader             int32
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {

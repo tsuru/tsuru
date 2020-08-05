@@ -328,12 +328,13 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 	// we can not remove a running deployment version
 	// to accomplish that, let's check the every EventID whether is running.
 	if len(selection.unsuccessfulDeploys) > 0 {
-		versionsSafeToRemove, err := versionsSafeToRemove(selection.unsuccessfulDeploys)
+		var toRemove []appTypes.AppVersionInfo
+		toRemove, err = versionsSafeToRemove(selection.unsuccessfulDeploys)
 		if err != nil {
 			return false, errors.Wrapf(err, "Could not check events running of app: %s", appVersions.AppName)
 		}
 
-		selection.toRemove = append(selection.toRemove, versionsSafeToRemove...)
+		selection.toRemove = append(selection.toRemove, toRemove...)
 	}
 
 	versionIDs := []int{}

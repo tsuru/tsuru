@@ -267,6 +267,7 @@ func (s *S) TestClusterSinglePool(c *check.C) {
 	for _, tt := range tests {
 		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
 		client, err := NewClusterClient(&c1)
+		c.Assert(err, check.IsNil)
 		ovf, err := client.SinglePool()
 		if tt.expected.err {
 			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")

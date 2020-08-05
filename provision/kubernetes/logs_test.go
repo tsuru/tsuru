@@ -51,6 +51,7 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",
@@ -89,6 +90,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",
@@ -136,6 +138,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",
@@ -192,6 +195,7 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",
@@ -251,6 +255,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
+	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "run mycmd arg1",

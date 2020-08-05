@@ -357,10 +357,11 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 			evt.EndTime = now
 		}
 
-		err := evt.RawInsert(nil, nil, nil)
+		err = evt.RawInsert(nil, nil, nil)
 		c.Assert(err, check.IsNil)
 
-		appVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		var appVersion appTypes.AppVersion
+		appVersion, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
 			App:     a,
 			EventID: evt.UniqueID.Hex(),
 		})
@@ -369,6 +370,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 		err = appVersion.CommitBuildImage()
 		c.Assert(err, check.IsNil)
 		err = appVersion.CommitBaseImage()
+		c.Assert(err, check.IsNil)
 	}
 
 	gc := &imgGC{once: &sync.Once{}}

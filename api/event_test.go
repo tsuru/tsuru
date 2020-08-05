@@ -462,7 +462,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"MY_PASSWORD": bind.EnvVar{
+		"MY_PASSWORD": {
 			Name:   "MY_PASSWORD",
 			Value:  "*** (private variable)",
 			Alias:  "",
@@ -492,12 +492,13 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var results []event.Event
 	err = json.Unmarshal(recorder.Body.Bytes(), &results)
+	c.Assert(err, check.IsNil)
 	c.Assert(results, check.HasLen, 1)
 	deployOptions = &app.DeployOptions{}
 	err = bson.Unmarshal(results[0].StartCustomData.Data, deployOptions)
 	c.Assert(err, check.IsNil)
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
-		"MY_PASSWORD": bind.EnvVar{
+		"MY_PASSWORD": {
 			Name:   "MY_PASSWORD",
 			Value:  "*** (private variable)",
 			Alias:  "",

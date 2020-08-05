@@ -394,7 +394,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 		if i == 2 {
 			labels["a"] = "y"
 		}
-		_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+		_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("pod-%d", i),
 				Namespace: ns,
