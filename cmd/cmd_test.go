@@ -771,13 +771,6 @@ func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
 	c.Assert(ver, check.FitsTypeOf, &version{})
 }
 
-func (s *S) TestUserInfoIsRegisteredByBaseManager(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	info, ok := mngr.Commands["user-info"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(info, check.FitsTypeOf, userInfo{})
-}
-
 func (s *S) TestInvalidCommandTopicMatch(c *check.C) {
 	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
 	var stdout, stderr bytes.Buffer

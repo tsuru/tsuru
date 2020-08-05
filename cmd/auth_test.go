@@ -282,59 +282,6 @@ func (s *S) TestReadTokenEnvironmentVariable(c *check.C) {
 	c.Assert(token, check.Equals, "ABCDEFGH")
 }
 
-func (s *S) TestGetUser(c *check.C) {
-	transport := cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{
-			Message: `{"Email":"myuser@company.com"}`,
-			Status:  http.StatusOK,
-		},
-		CondFunc: func(req *http.Request) bool {
-			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
-		},
-	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
-	expected := &APIUser{
-		Email: "myuser@company.com",
-	}
-	user, err := GetUser(client)
-	c.Assert(err, check.IsNil)
-	c.Assert(user, check.DeepEquals, expected)
-}
-
-func (s *S) TestUserInfoRun(c *check.C) {
-	var called bool
-	expected := `Email: myuser@company.com
-Roles:
-	x(y a)
-	x(y b)
-Permissions:
-	a(y q)
-`
-	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	command := userInfo{}
-	transport := cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{
-			Message: `{"Email":"myuser@company.com","Roles":[
-	{"Name":"x","ContextType":"y","ContextValue":"a"},
-	{"Name":"x","ContextType":"y","ContextValue":"b"}
-],
-"Permissions":[
-	{"Name":"a","ContextType":"y","ContextValue":"q"}
-]}`,
-			Status: http.StatusOK,
-		},
-		CondFunc: func(req *http.Request) bool {
-			called = true
-			return req.Method == "GET" && req.URL.Path == "/1.0/users/info"
-		},
-	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, globalManager)
-	err := command.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(called, check.Equals, true)
-}
-
 func (s *S) TestPasswordFromReaderUsingFile(c *check.C) {
 	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
 	filename := path.Join(tmpdir, "password-reader.txt")
