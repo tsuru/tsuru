@@ -87,6 +87,9 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 func (s *AuthSuite) SetUpTest(c *check.C) {
 	s.mockTeamService = &authTypes.MockTeamService{}
 	servicemanager.Team = s.mockTeamService
+	var err error
+	servicemanager.AuthGroup, err = auth.GroupService()
+	c.Assert(err, check.IsNil)
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
@@ -95,7 +98,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.team2 = &authTypes.Team{Name: "tsuruteam2"}
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err := pool.AddPool(opts)
+	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1556,6 +1559,50 @@ func (s *AuthSuite) TestUserInfoWithRoles(c *check.C) {
 			{Name: "app.deploy", ContextType: "team", ContextValue: "a"},
 			{Name: "app.deploy", ContextType: "team", ContextValue: "b"},
 		},
+	}
+	var got apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	sort.Sort(rolePermList(got.Permissions))
+	sort.Sort(rolePermList(got.Roles))
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *AuthSuite) TestUserInfoWithRolesFromGroups(c *check.C) {
+	token := userWithPermission(c)
+	r, err := permission.NewRole("myrole", "team", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("app.create", "app.deploy")
+	c.Assert(err, check.IsNil)
+	u, err := auth.ConvertNewUser(token.User())
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("myrole", "a")
+	c.Assert(err, check.IsNil)
+	u.Groups = []string{"grp1", "grp2"}
+	err = u.Update()
+	c.Assert(err, check.IsNil)
+	err = servicemanager.AuthGroup.AddRole("grp2", "myrole", "b")
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest(http.MethodGet, "/users/info", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	expected := apiUser{
+		Email: u.Email,
+		Roles: []rolePermissionData{
+			{Name: "myrole", ContextType: "team", ContextValue: "a"},
+			{Name: "myrole", ContextType: "team", ContextValue: "b", Group: "grp2"},
+		},
+		Permissions: []rolePermissionData{
+			{Name: "app.create", ContextType: "team", ContextValue: "a"},
+			{Name: "app.create", ContextType: "team", ContextValue: "b", Group: "grp2"},
+			{Name: "app.deploy", ContextType: "team", ContextValue: "a"},
+			{Name: "app.deploy", ContextType: "team", ContextValue: "b", Group: "grp2"},
+		},
+		Groups: []string{"grp1", "grp2"},
 	}
 	var got apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&got)
