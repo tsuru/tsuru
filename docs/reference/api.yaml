@@ -3082,6 +3082,8 @@ definitions:
         type: string
       contextvalue:
         type: string
+      group:
+        type: string
   PermissionUser:
     description: Permission of an user.
     type: object
@@ -3091,6 +3093,8 @@ definitions:
       contexttype:
         type: string
       contextvalue:
+        type: string
+      group:
         type: string
   User:
     description: User object.
@@ -3103,6 +3107,10 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/RoleUser"
+      groups:
+        type: array
+        items:
+          type: string
       permissions:
         type: array
         items:

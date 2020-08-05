@@ -248,12 +248,20 @@ func expandRolePermissions(roleInstances []authTypes.RoleInstance) ([]permission
 	return permissions, nil
 }
 
-func (u *User) Permissions() ([]permission.Permission, error) {
+func (u *User) UserGroups() ([]authTypes.Group, error) {
 	groupsFilter := []string{}
 	if u.Groups != nil {
 		groupsFilter = u.Groups
 	}
 	groups, err := servicemanager.AuthGroup.List(groupsFilter)
+	if err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func (u *User) Permissions() ([]permission.Permission, error) {
+	groups, err := u.UserGroups()
 	if err != nil {
 		return nil, err
 	}
