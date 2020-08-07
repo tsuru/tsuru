@@ -7,6 +7,7 @@ package service
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -759,12 +760,16 @@ func (s *S) TestPlans(c *check.C) {
 
 func (s *S) TestEndpointProxy(c *check.C) {
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("URL: %#v\n", r.URL)
+		c.Assert(r.URL.Query().Get("callback"), check.Equals, "")
+		c.Assert(r.URL.Query().Get("foo"), check.Equals, "bar")
+		c.Assert(r.URL.Query()["names"], check.DeepEquals, []string{"joe", "doe"})
 		w.WriteHeader(http.StatusNoContent)
 	}
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	request, err := http.NewRequest(http.MethodGet, "/", nil)
+	request, err := http.NewRequest(http.MethodGet, "/?callback=/backup&foo=bar&names=joe&names=doe", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	evt := createEvt(c)
