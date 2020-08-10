@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
@@ -141,15 +142,7 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 		debug:      debug,
 		headers:    headerMap,
 	}
-	supports := map[capability]bool{}
-	for _, cap := range allCaps {
-		var err error
-		supports[cap], err = baseRouter.checkSupports(string(cap))
-		if err != nil {
-			log.Errorf("failed to fetch %q support from router %q: %s", cap, routerName, err)
-		}
-	}
-	baseRouter.supIface = toSupportedInterface(baseRouter, supports)
+	baseRouter.supIface = toSupportedInterface(baseRouter, baseRouter.checkAllCapabilities())
 	return baseRouter.supIface, nil
 }
 
@@ -590,4 +583,26 @@ func addDefaultOpts(app router.App, opts map[string]string) map[string]interface
 	mergedOpts[prefix+"app-teamowner"] = app.GetTeamOwner()
 	mergedOpts[prefix+"app-teams"] = app.GetTeamsName()
 	return mergedOpts
+}
+
+func (r *apiRouter) checkAllCapabilities() map[capability]bool {
+	mu := sync.Mutex{}
+	supports := map[capability]bool{}
+	wg := sync.WaitGroup{}
+	for _, cap := range allCaps {
+		wg.Add(1)
+		cap := cap
+		go func() {
+			defer wg.Done()
+			result, err := r.checkSupports(string(cap))
+			if err != nil {
+				log.Errorf("failed to fetch %q support from router %q: %s", cap, r.routerName, err)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			supports[cap] = result
+		}()
+	}
+	wg.Wait()
+	return supports
 }
