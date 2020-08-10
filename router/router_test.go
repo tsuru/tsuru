@@ -371,19 +371,26 @@ func (s *S) TestListWithInfoError(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
 	config.Set("routers:router2:default", true)
+	config.Set("routers:router3:type", "baz")
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
+	defer config.Unset("routers:router3")
 	fooCreator := func(name string, config ConfigGetter) (Router, error) {
 		return &testInfoRouter{}, nil
 	}
 	barCreator := func(name string, config ConfigGetter) (Router, error) {
 		return &testInfoErrRouter{}, nil
 	}
+	bazCreator := func(name string, config ConfigGetter) (Router, error) {
+		return nil, errors.New("create error")
+	}
 	Register("foo", fooCreator)
 	Register("bar", barCreator)
+	Register("baz", bazCreator)
 	expected := []PlanRouter{
 		{Name: "router1", Type: "foo", Info: map[string]string{"her": "amaat"}, Default: false},
 		{Name: "router2", Type: "bar", Info: map[string]string{"error": "error getting router info"}, Default: true},
+		{Name: "router3", Type: "baz", Info: map[string]string{"error": "create error"}, Default: false},
 	}
 	routers, err := ListWithInfo()
 	c.Assert(err, check.IsNil)

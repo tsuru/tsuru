@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -438,19 +439,33 @@ func ListWithInfo() ([]PlanRouter, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, planRouter := range routers {
-		r, err := Get(planRouter.Name)
-		if err != nil {
-			return nil, err
-		}
-		if infoR, ok := r.(InfoRouter); ok {
-			routers[i].Info, err = infoR.GetInfo()
-			if err != nil {
-				routers[i].Info = map[string]string{"error": err.Error()}
+	wg := sync.WaitGroup{}
+	for i := range routers {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			info, infoErr := fetchRouterInfo(routers[i].Name)
+			if infoErr != nil {
+				routers[i].Info = map[string]string{"error": infoErr.Error()}
+			} else {
+				routers[i].Info = info
 			}
-		}
+		}()
 	}
+	wg.Wait()
 	return routers, nil
+}
+
+func fetchRouterInfo(name string) (map[string]string, error) {
+	r, err := Get(name)
+	if err != nil {
+		return nil, err
+	}
+	if infoR, ok := r.(InfoRouter); ok {
+		return infoR.GetInfo()
+	}
+	return nil, nil
 }
 
 func List() ([]PlanRouter, error) {
