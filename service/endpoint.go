@@ -6,6 +6,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -347,7 +348,15 @@ func (c *endpointClient) Plans(requestID string) ([]Plan, error) {
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
 func (c *endpointClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
-	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
+	q := r.URL.Query()
+	delete(q, "callback")
+	delete(q, ":service")  // injected as named param by DelayedRouter
+	delete(q, ":instance") // injected as named param by DelayedRouter
+	qstring := q.Encode()
+	if qstring != "" {
+		qstring = fmt.Sprintf("?%s", qstring)
+	}
+	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + qstring
 	url, err := url.Parse(rawurl)
 	if err != nil {
 		log.Errorf("Got error while creating service proxy url %s: %s", rawurl, err)
@@ -366,7 +375,9 @@ func (c *endpointClient) Proxy(path string, evt *event.Event, requestID string, 
 		req.Host = url.Host
 		req.URL = url
 	}
-	proxy := &httputil.ReverseProxy{Director: director}
+	proxy := &httputil.ReverseProxy{
+		Director: director,
+	}
 	proxy.ServeHTTP(w, r)
 	return nil
 }
