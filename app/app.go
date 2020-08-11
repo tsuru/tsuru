@@ -582,10 +582,6 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Destroy(app)
-	if err != nil {
-		logErr("Unable to destroy app in provisioner", err)
-	}
 	err = registry.RemoveAppImages(appName)
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
@@ -670,6 +666,15 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	}
 	if err != nil {
 		logErr("Unable to remove app from db", err)
+	}
+	// NOTE: some provisioners hold apps' info on their own (e.g. apps.tsuru.io
+	// CustomResource on Kubernetes). Deleting the app on provisioner as the last
+	// step of removal, we may give time enough to external components
+	// (e.g. tsuru/kubernetes-router) that depend on the provisioner's app info
+	// finish as expected.
+	err = prov.Destroy(app)
+	if err != nil {
+		logErr("Unable to destroy app in provisioner", err)
 	}
 	err = event.MarkAsRemoved(event.Target{Type: event.TargetTypeApp, Value: appName})
 	if err != nil {
