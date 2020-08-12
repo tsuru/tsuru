@@ -1116,7 +1116,7 @@ paths:
       operationId: UsersList
       description: List users.
       parameters:
-        - name: email
+        - name: userEmail
           in: query
           required: true
           type: string
