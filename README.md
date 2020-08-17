@@ -48,7 +48,7 @@ $ tsuru install create
 You need to have [Go](https://golang.org/doc/install) properly installed on your machine.
 
 ```
-$ git clone github.com/tsuru/tsuru-client $GOPATH/src/github.com/tsuru/tsuru-client
+$ git clone https://github.com/tsuru/tsuru-client $GOPATH/src/github.com/tsuru/tsuru-client
 $ cd $GOPATH/src/github.com/tsuru/tsuru-client
 $ make install
 ```
