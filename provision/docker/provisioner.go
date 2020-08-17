@@ -42,6 +42,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/api"
 	_ "github.com/tsuru/tsuru/router/galebv2"
 	_ "github.com/tsuru/tsuru/router/hipache"
+	_ "github.com/tsuru/tsuru/router/kubernetes/loadbalancer"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"
 	"github.com/tsuru/tsuru/safe"
