@@ -44,11 +44,11 @@ func init() {
 	hc.AddChecker("Router Planb", router.BuildHealthCheck("planb"))
 }
 
-func createHipacheRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createHipacheRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &hipacheRouter{config: config, routerName: routerName}, nil
 }
 
-func createPlanbRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createPlanbRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &planbRouter{hipacheRouter{config: config, routerName: routerName}}, nil
 }
 
@@ -89,7 +89,7 @@ func (r *hipacheRouter) connect() (tsuruRedis.Client, error) {
 
 type hipacheRouter struct {
 	routerName string
-	config     router.ConfigGetter
+	config     routerTypes.ConfigGetter
 }
 
 func (r *hipacheRouter) GetName() string {

@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 var (
@@ -37,7 +38,7 @@ func init() {
 	router.Register(routerType, createRouter)
 }
 
-func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &loadbalancerRouter{
 		routerName: routerName,
 	}, nil

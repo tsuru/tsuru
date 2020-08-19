@@ -15,9 +15,9 @@ import (
 
 func (s *S) TestRegisterAndGet(c *check.C) {
 	var r Router
-	var getters []ConfigGetter
+	var getters []router.ConfigGetter
 	var names []string
-	routerCreator := func(name string, config ConfigGetter) (Router, error) {
+	routerCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		names = append(names, name)
 		getters = append(getters, config)
 		return r, nil
@@ -68,8 +68,8 @@ func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {
 
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	var names []string
-	var getters []ConfigGetter
-	routerCreator := func(name string, config ConfigGetter) (Router, error) {
+	var getters []router.ConfigGetter
+	routerCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		names = append(names, name)
 		getters = append(getters, config)
 		var r Router
@@ -96,8 +96,8 @@ func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 
 func (s *S) TestGetDynamicRouter(c *check.C) {
 	var names []string
-	var getters []ConfigGetter
-	routerCreator := func(name string, config ConfigGetter) (Router, error) {
+	var getters []router.ConfigGetter
+	routerCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		names = append(names, name)
 		getters = append(getters, config)
 		var r Router
@@ -312,7 +312,7 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
 
-	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
+	Register("myrouter", func(name string, config router.ConfigGetter) (Router, error) {
 		return nil, nil
 	})
 
@@ -353,7 +353,7 @@ func (s *S) TestListWithInfo(c *check.C) {
 	config.Set("routers:router2:default", true)
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
-	fooCreator := func(name string, config ConfigGetter) (Router, error) {
+	fooCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		return &testInfoRouter{}, nil
 	}
 	Register("foo", fooCreator)
@@ -375,13 +375,13 @@ func (s *S) TestListWithInfoError(c *check.C) {
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
 	defer config.Unset("routers:router3")
-	fooCreator := func(name string, config ConfigGetter) (Router, error) {
+	fooCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		return &testInfoRouter{}, nil
 	}
-	barCreator := func(name string, config ConfigGetter) (Router, error) {
+	barCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		return &testInfoErrRouter{}, nil
 	}
-	bazCreator := func(name string, config ConfigGetter) (Router, error) {
+	bazCreator := func(name string, config router.ConfigGetter) (Router, error) {
 		return nil, errors.New("create error")
 	}
 	Register("foo", fooCreator)

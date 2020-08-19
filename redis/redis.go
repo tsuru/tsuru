@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	redis "gopkg.in/redis.v3"
 )
 
@@ -153,7 +153,7 @@ func createServerList(addrs string) []string {
 	return parts
 }
 
-func NewRedisDefaultConfig(name string, config router.ConfigGetter, defaultConfig *CommonConfig) (client Client, err error) {
+func NewRedisDefaultConfig(name string, config routerTypes.ConfigGetter, defaultConfig *CommonConfig) (client Client, err error) {
 	defer func() {
 		if client != nil {
 			collector.Add(name, client)

@@ -440,7 +440,7 @@ func (s *S) TestCreateRouterConcurrent(c *check.C) {
 	defer config.Unset("routers:r1:api-url")
 	defer config.Unset("routers:r2:api-url")
 	nConcurrent := 50
-	configs := []router.ConfigGetter{router.ConfigGetterFromPrefix("routers:r1"), router.ConfigGetterFromPrefix("routers:r2")}
+	configs := []routerTypes.ConfigGetter{router.ConfigGetterFromPrefix("routers:r1"), router.ConfigGetterFromPrefix("routers:r2")}
 	var routers []*galebRouter
 	var mu sync.Mutex
 	wg := sync.WaitGroup{}

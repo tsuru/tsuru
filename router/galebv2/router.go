@@ -39,7 +39,7 @@ var clientCache struct {
 	cache map[string]*galebClient.GalebClient
 }
 
-func getClient(routerName string, config router.ConfigGetter) (*galebClient.GalebClient, error) {
+func getClient(routerName string, config routerTypes.ConfigGetter) (*galebClient.GalebClient, error) {
 	clientCache.Lock()
 	defer clientCache.Unlock()
 	if clientCache.cache == nil {
@@ -91,7 +91,7 @@ func getClient(routerName string, config router.ConfigGetter) (*galebClient.Gale
 type galebRouter struct {
 	client     *galebClient.GalebClient
 	domain     string
-	config     router.ConfigGetter
+	config     routerTypes.ConfigGetter
 	routerName string
 }
 
@@ -100,7 +100,7 @@ func init() {
 	hc.AddChecker("Router galeb", router.BuildHealthCheck(routerType))
 }
 
-func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	domain, err := config.GetString("domain")
 	if err != nil {
 		return nil, err

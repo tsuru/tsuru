@@ -7,18 +7,10 @@ package router
 import (
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
-type ConfigGetter interface {
-	GetString(string) (string, error)
-	GetInt(string) (int, error)
-	GetFloat(string) (float64, error)
-	GetBool(string) (bool, error)
-	Get(string) (interface{}, error)
-	Hash() (string, error)
-}
-
-var _ ConfigGetter = &delegateConfigGetter{}
+var _ routerTypes.ConfigGetter = &delegateConfigGetter{}
 
 type delegateConfigGetter struct {
 	*config.Configuration
@@ -34,14 +26,14 @@ func (g *delegateConfigGetter) Hash() (string, error) {
 
 var ConfigGetterFromData = configGetterFromData
 
-func configGetterFromData(data map[string]interface{}) ConfigGetter {
+func configGetterFromData(data map[string]interface{}) routerTypes.ConfigGetter {
 	cfg := config.Configuration{}
 	unconverted, _ := internalConfig.UnconvertEntries(data).(map[interface{}]interface{})
 	cfg.Store(unconverted)
 	return &delegateConfigGetter{Configuration: &cfg}
 }
 
-func ConfigGetterFromPrefix(prefix string) ConfigGetter {
+func ConfigGetterFromPrefix(prefix string) routerTypes.ConfigGetter {
 	data, _ := config.Get(prefix)
 	cfg := config.Configuration{}
 	unconverted, _ := data.(map[interface{}]interface{})

@@ -22,7 +22,7 @@ func (s *S) TestDynamicRouterServiceCreate(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `router type "invalid" is not registered`)
 	config.Set("routers:mine:type", "myrouter")
 	defer config.Unset("routers:mine")
-	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
+	Register("myrouter", func(name string, config router.ConfigGetter) (Router, error) {
 		return nil, nil
 	})
 	err = svc.Create(router.DynamicRouter{
@@ -49,7 +49,7 @@ func (s *S) TestDynamicRouterServiceUpdateNotFound(c *check.C) {
 func (s *S) TestDynamicRouterServiceUpdate(c *check.C) {
 	svc, err := DynamicRouterService()
 	c.Assert(err, check.IsNil)
-	Register("myrouter", func(name string, config ConfigGetter) (Router, error) {
+	Register("myrouter", func(name string, config router.ConfigGetter) (Router, error) {
 		return nil, nil
 	})
 	err = svc.Create(router.DynamicRouter{

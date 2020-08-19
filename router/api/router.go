@@ -113,7 +113,7 @@ func init() {
 	router.Register(routerType, createRouter)
 }
 
-func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	endpoint, err := config.GetString("api-url")
 	if err != nil {
 		return nil, err

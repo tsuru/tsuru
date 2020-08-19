@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
 
 type ConfigSuite struct {
-	getter ConfigGetter
+	getter routerTypes.ConfigGetter
 }
 
 func TestDynamicSuites(t *testing.T) {

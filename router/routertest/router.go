@@ -58,31 +58,31 @@ func init() {
 	router.Register("fake-prefix", createPrefixRouter)
 }
 
-func createRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &FakeRouter, nil
 }
 
-func createHCRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createHCRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &HCRouter, nil
 }
 
-func createTLSRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createTLSRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &TLSRouter, nil
 }
 
-func createOptsRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createOptsRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &OptsRouter, nil
 }
 
-func createInfoRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createInfoRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &InfoRouter, nil
 }
 
-func createStatusRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createStatusRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &StatusRouter, nil
 }
 
-func createPrefixRouter(name string, config router.ConfigGetter) (router.Router, error) {
+func createPrefixRouter(name string, config routerTypes.ConfigGetter) (router.Router, error) {
 	return &PrefixRouter, nil
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	"github.com/vulcand/route"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
@@ -34,7 +35,7 @@ type vulcandRouter struct {
 	routerName string
 }
 
-func createRouter(routerName string, config router.ConfigGetter) (router.Router, error) {
+func createRouter(routerName string, config routerTypes.ConfigGetter) (router.Router, error) {
 	vURL, err := config.GetString("api-url")
 	if err != nil {
 		return nil, err

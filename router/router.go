@@ -24,9 +24,10 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
-type routerFactory func(routerName string, config ConfigGetter) (Router, error)
+type routerFactory func(routerName string, config routerTypes.ConfigGetter) (Router, error)
 
 var (
 	ErrBackendExists         = errors.New("Backend already exists")
@@ -94,7 +95,7 @@ func Get(name string) (Router, error) {
 		return nil, err
 	}
 	var routerType string
-	var config ConfigGetter
+	var config routerTypes.ConfigGetter
 	if dr != nil {
 		routerType = dr.Type
 		config = configGetterFromData(dr.Config)
