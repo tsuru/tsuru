@@ -1,8 +1,11 @@
-package loadbalancer
+// Copyright 2020 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package kubernetes
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 
 	"github.com/tsuru/tsuru/provision"
@@ -15,6 +18,7 @@ var (
 	_ router.InfoRouter = &loadbalancerRouter{}
 
 	errNotImplementedYet = errors.New("Not implemented yet")
+	errNotSupported      = errors.New("Not supported provisioner")
 )
 
 const (
@@ -47,11 +51,11 @@ func (r *loadbalancerRouter) AddBackend(app router.App) (err error) {
 }
 
 func (r *loadbalancerRouter) AddBackendOpts(app router.App, opts map[string]string) error {
-	return r.syncLB(app, opts)
+	return r.ensureBackend(app, opts)
 }
 
 func (r *loadbalancerRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
-	return r.syncLB(app, opts)
+	return r.ensureBackend(app, opts)
 }
 
 func (r *loadbalancerRouter) RemoveBackend(name string) (err error) {
@@ -88,13 +92,16 @@ func (r *loadbalancerRouter) GetInfo() (map[string]string, error) {
 		exposePortOpt:     "Port to be exposed by the Load Balancer. Defaults to 80.",
 	}, nil
 }
-func (r *loadbalancerRouter) syncLB(app router.App, opts map[string]string) error {
+func (r *loadbalancerRouter) ensureBackend(app router.App, opts map[string]string) error {
 	provisioner, err := provision.Get("kubernetes")
 	if err != nil {
 		return err
 	}
-	fmt.Println("provisioner ***", provisioner, err)
-	//pool := app.GetPool()
-	// TODO: discover the cluster
-	return errNotImplementedYet
+
+	routableProvisioner, ok := provisioner.(provision.RoutableProvisioner)
+	if !ok {
+		return errNotSupported
+	}
+
+	return routableProvisioner.EnsureRouter(app.GetName(), "loadbalancer", opts)
 }

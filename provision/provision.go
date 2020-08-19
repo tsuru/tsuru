@@ -386,6 +386,11 @@ type LogsProvisioner interface {
 	WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
 }
 
+// Routable Provisioner is an provisioner that owns  owned model of routing
+type RoutableProvisioner interface {
+	EnsureRouter(appName, routerType string, opts map[string]string) error
+}
+
 // SleepableProvisioner is a provisioner that allows putting applications to
 // sleep.
 type SleepableProvisioner interface {
