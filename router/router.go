@@ -137,20 +137,12 @@ func Default() (string, error) {
 	return "", ErrDefaultRouterNotFound
 }
 
-// App is the interface implemented by routable applications.
-type App interface {
-	GetName() string
-	GetPool() string
-	GetTeamOwner() string
-	GetTeamsName() []string
-}
-
 // Router is the basic interface of this package. It provides methods for
 // managing backends and routes. Each backend can have multiple routes.
 type Router interface {
 	GetName() string
 
-	AddBackend(app App) error
+	AddBackend(app appTypes.App) error
 	RemoveBackend(name string) error
 	AddRoutes(name string, address []*url.URL) error
 	RemoveRoutes(name string, addresses []*url.URL) error
@@ -186,16 +178,16 @@ type HealthChecker interface {
 }
 
 type OptsRouter interface {
-	AddBackendOpts(app App, opts map[string]string) error
-	UpdateBackendOpts(app App, opts map[string]string) error
+	AddBackendOpts(app appTypes.App, opts map[string]string) error
+	UpdateBackendOpts(app appTypes.App, opts map[string]string) error
 }
 
 // TLSRouter is a router that supports adding and removing
 // certificates for a given cname
 type TLSRouter interface {
-	AddCertificate(app App, cname, certificate, key string) error
-	RemoveCertificate(app App, cname string) error
-	GetCertificate(app App, cname string) (string, error)
+	AddCertificate(app appTypes.App, cname, certificate, key string) error
+	RemoveCertificate(app appTypes.App, cname string) error
+	GetCertificate(app appTypes.App, cname string) (string, error)
 }
 
 type InfoRouter interface {
@@ -203,7 +195,7 @@ type InfoRouter interface {
 }
 
 type AsyncRouter interface {
-	AddBackendAsync(app App) error
+	AddBackendAsync(app appTypes.App) error
 	SetCNameAsync(cname, name string) error
 	AddRoutesAsync(name string, address []*url.URL) error
 	RemoveRoutesAsync(name string, addresses []*url.URL) error

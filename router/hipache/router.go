@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	tsuruRedis "github.com/tsuru/tsuru/redis"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	redis "gopkg.in/redis.v3"
 )
@@ -95,7 +96,7 @@ func (r *hipacheRouter) GetName() string {
 	return r.routerName
 }
 
-func (r *hipacheRouter) AddBackend(app router.App) (err error) {
+func (r *hipacheRouter) AddBackend(app appTypes.App) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -576,7 +577,7 @@ type planbRouter struct {
 
 var _ router.TLSRouter = &planbRouter{}
 
-func (r *planbRouter) AddCertificate(_ router.App, cname, cert, key string) (err error) {
+func (r *planbRouter) AddCertificate(_ appTypes.App, cname, cert, key string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -595,7 +596,7 @@ func (r *planbRouter) AddCertificate(_ router.App, cname, cert, key string) (err
 	return nil
 }
 
-func (r *planbRouter) RemoveCertificate(_ router.App, cname string) (err error) {
+func (r *planbRouter) RemoveCertificate(_ appTypes.App, cname string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -611,7 +612,7 @@ func (r *planbRouter) RemoveCertificate(_ router.App, cname string) (err error) 
 	return nil
 }
 
-func (r *planbRouter) GetCertificate(_ router.App, cname string) (cert string, err error) {
+func (r *planbRouter) GetCertificate(_ appTypes.App, cname string) (cert string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

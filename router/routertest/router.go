@@ -186,7 +186,7 @@ func (r *fakeRouter) HasRoute(name, address string) bool {
 	return false
 }
 
-func (r *fakeRouter) AddBackend(app router.App) error {
+func (r *fakeRouter) AddBackend(app appTypes.App) error {
 	name := app.GetName()
 	if r.HasBackend(name) {
 		return router.ErrBackendExists
@@ -441,19 +441,19 @@ type tlsRouter struct {
 
 var _ router.TLSRouter = &tlsRouter{}
 
-func (r *tlsRouter) AddCertificate(app router.App, cname, certificate, key string) error {
+func (r *tlsRouter) AddCertificate(app appTypes.App, cname, certificate, key string) error {
 	r.Certs[cname] = certificate
 	r.Keys[cname] = key
 	return nil
 }
 
-func (r *tlsRouter) RemoveCertificate(app router.App, cname string) error {
+func (r *tlsRouter) RemoveCertificate(app appTypes.App, cname string) error {
 	delete(r.Certs, cname)
 	delete(r.Keys, cname)
 	return nil
 }
 
-func (r *tlsRouter) GetCertificate(app router.App, cname string) (string, error) {
+func (r *tlsRouter) GetCertificate(app appTypes.App, cname string) (string, error) {
 	data, ok := r.Certs[cname]
 	if !ok {
 		return "", router.ErrCertificateNotFound
@@ -476,12 +476,12 @@ type optsRouter struct {
 
 var _ router.OptsRouter = &optsRouter{}
 
-func (r *optsRouter) AddBackendOpts(app router.App, opts map[string]string) error {
+func (r *optsRouter) AddBackendOpts(app appTypes.App, opts map[string]string) error {
 	r.Opts[app.GetName()] = opts
 	return r.fakeRouter.AddBackend(app)
 }
 
-func (r *optsRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
+func (r *optsRouter) UpdateBackendOpts(app appTypes.App, opts map[string]string) error {
 	r.Opts[app.GetName()] = opts
 	return nil
 }

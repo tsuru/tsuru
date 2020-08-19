@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var (
@@ -46,15 +47,15 @@ type loadbalancerRouter struct {
 	routerName string
 }
 
-func (r *loadbalancerRouter) AddBackend(app router.App) (err error) {
+func (r *loadbalancerRouter) AddBackend(app appTypes.App) (err error) {
 	return r.AddBackendOpts(app, nil)
 }
 
-func (r *loadbalancerRouter) AddBackendOpts(app router.App, opts map[string]string) error {
+func (r *loadbalancerRouter) AddBackendOpts(app appTypes.App, opts map[string]string) error {
 	return r.ensureBackend(app, opts)
 }
 
-func (r *loadbalancerRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
+func (r *loadbalancerRouter) UpdateBackendOpts(app appTypes.App, opts map[string]string) error {
 	return r.ensureBackend(app, opts)
 }
 
@@ -92,7 +93,7 @@ func (r *loadbalancerRouter) GetInfo() (map[string]string, error) {
 		exposePortOpt:     "Port to be exposed by the Load Balancer. Defaults to 80.",
 	}, nil
 }
-func (r *loadbalancerRouter) ensureBackend(app router.App, opts map[string]string) error {
+func (r *loadbalancerRouter) ensureBackend(app appTypes.App, opts map[string]string) error {
 	provisioner, err := provision.Get("kubernetes")
 	if err != nil {
 		return err
@@ -103,5 +104,5 @@ func (r *loadbalancerRouter) ensureBackend(app router.App, opts map[string]strin
 		return errNotSupported
 	}
 
-	return routableProvisioner.EnsureRouter(app.GetName(), "loadbalancer", opts)
+	return routableProvisioner.EnsureRouter(app, "loadbalancer", opts)
 }

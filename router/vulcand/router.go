@@ -14,6 +14,7 @@ import (
 
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/vulcand/route"
 	"github.com/vulcand/vulcand/api"
 	"github.com/vulcand/vulcand/engine"
@@ -71,7 +72,7 @@ func (r *vulcandRouter) serverName(address string) string {
 	return fmt.Sprintf("tsuru_%x", md5.Sum([]byte(address)))
 }
 
-func (r *vulcandRouter) AddBackend(app router.App) (err error) {
+func (r *vulcandRouter) AddBackend(app appTypes.App) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {

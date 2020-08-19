@@ -235,10 +235,10 @@ type App interface {
 	GetUpdatePlatform() bool
 
 	GetRouters() []appTypes.AppRouter
-
 	GetPool() string
 
 	GetTeamOwner() string
+	GetTeamsName() []string
 
 	SetQuotaInUse(int) error
 
@@ -388,7 +388,7 @@ type LogsProvisioner interface {
 
 // Routable Provisioner is an provisioner that owns  owned model of routing
 type RoutableProvisioner interface {
-	EnsureRouter(appName, routerType string, opts map[string]string) error
+	EnsureRouter(app appTypes.App, routerType string, opts map[string]string) error
 }
 
 // SleepableProvisioner is a provisioner that allows putting applications to

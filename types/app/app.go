@@ -12,6 +12,7 @@ type App interface {
 	GetName() string
 	GetPool() string
 	GetTeamOwner() string
+	GetTeamsName() []string
 	GetPlatform() string
 	GetPlatformVersion() string
 	GetDeploys() uint

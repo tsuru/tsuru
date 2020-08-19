@@ -150,11 +150,11 @@ func (r *apiRouter) GetName() string {
 	return r.routerName
 }
 
-func (r *apiRouter) AddBackend(app router.App) (err error) {
+func (r *apiRouter) AddBackend(app appTypes.App) (err error) {
 	return r.AddBackendOpts(app, nil)
 }
 
-func (r *apiRouter) AddBackendOpts(app router.App, opts map[string]string) error {
+func (r *apiRouter) AddBackendOpts(app appTypes.App, opts map[string]string) error {
 	err := r.doBackendOpts(app, http.MethodPost, opts)
 	if err != nil {
 		return err
@@ -162,11 +162,11 @@ func (r *apiRouter) AddBackendOpts(app router.App, opts map[string]string) error
 	return router.Store(app.GetName(), app.GetName(), routerType)
 }
 
-func (r *apiRouter) UpdateBackendOpts(app router.App, opts map[string]string) error {
+func (r *apiRouter) UpdateBackendOpts(app appTypes.App, opts map[string]string) error {
 	return r.doBackendOpts(app, http.MethodPut, opts)
 }
 
-func (r *apiRouter) doBackendOpts(app router.App, method string, opts map[string]string) error {
+func (r *apiRouter) doBackendOpts(app appTypes.App, method string, opts map[string]string) error {
 	path := fmt.Sprintf("backend/%s", app.GetName())
 	b, err := json.Marshal(addDefaultOpts(app, opts))
 	if err != nil {
@@ -418,7 +418,7 @@ func (r *apiRouterWithCnameSupport) CNames(name string) ([]*url.URL, error) {
 	return urls, nil
 }
 
-func (r *apiRouterWithTLSSupport) AddCertificate(app router.App, cname, certificate, key string) error {
+func (r *apiRouterWithTLSSupport) AddCertificate(app appTypes.App, cname, certificate, key string) error {
 	cert := certData{Certificate: certificate, Key: key}
 	b, err := json.Marshal(&cert)
 	if err != nil {
@@ -428,7 +428,7 @@ func (r *apiRouterWithTLSSupport) AddCertificate(app router.App, cname, certific
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) RemoveCertificate(app router.App, cname string) error {
+func (r *apiRouterWithTLSSupport) RemoveCertificate(app appTypes.App, cname string) error {
 	_, code, err := r.do(http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
 	if code == http.StatusNotFound {
 		return router.ErrCertificateNotFound
@@ -436,7 +436,7 @@ func (r *apiRouterWithTLSSupport) RemoveCertificate(app router.App, cname string
 	return err
 }
 
-func (r *apiRouterWithTLSSupport) GetCertificate(app router.App, cname string) (string, error) {
+func (r *apiRouterWithTLSSupport) GetCertificate(app appTypes.App, cname string) (string, error) {
 	data, code, err := r.do(http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
 	switch code {
 	case http.StatusNotFound:
@@ -573,7 +573,7 @@ func (r *apiRouter) doRoutesPrefix(name string, addresses appTypes.RoutableAddre
 	return r.doRoutesReq(name, req, suffix)
 }
 
-func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {
+func addDefaultOpts(app appTypes.App, opts map[string]string) map[string]interface{} {
 	mergedOpts := make(map[string]interface{})
 	for k, v := range opts {
 		mergedOpts[k] = v

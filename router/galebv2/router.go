@@ -147,11 +147,11 @@ func (r *galebRouter) poolNameToPrefix(poolName, base string) string {
 	return strings.TrimPrefix(strings.TrimPrefix(poolName, r.poolName("", base)), galebClient.RoutePrefixSeparator)
 }
 
-func (r *galebRouter) AddBackend(app router.App) (err error) {
+func (r *galebRouter) AddBackend(app appTypes.App) (err error) {
 	return r.addBackend(app.GetName(), "", true)
 }
 
-func (r *galebRouter) AddBackendAsync(app router.App) (err error) {
+func (r *galebRouter) AddBackendAsync(app appTypes.App) (err error) {
 	return r.addBackend(app.GetName(), "", false)
 }
 

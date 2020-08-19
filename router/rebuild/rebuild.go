@@ -32,7 +32,7 @@ type RebuildPrefixResult struct {
 }
 
 type RebuildApp interface {
-	router.App
+	appTypes.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
 	GetHealthcheckData() (routerTypes.HealthcheckData, error)

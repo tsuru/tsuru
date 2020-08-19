@@ -18,9 +18,12 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+var _ appTypes.App = &FakeApp{}
+
 type FakeApp struct {
 	Name      string
 	Pool      string
+	Platform  string
 	Teams     []string
 	TeamOwner string
 }
@@ -33,12 +36,28 @@ func (r FakeApp) GetPool() string {
 	return r.Pool
 }
 
+func (r FakeApp) GetPlatform() string {
+	return r.Platform
+}
+
+func (r FakeApp) GetPlatformVersion() string {
+	return ""
+}
+
+func (r FakeApp) GetUpdatePlatform() bool {
+	return false
+}
+
 func (r FakeApp) GetTeamOwner() string {
 	return r.TeamOwner
 }
 
 func (r FakeApp) GetTeamsName() []string {
 	return r.Teams
+}
+
+func (r FakeApp) GetDeploys() uint {
+	return 0
 }
 
 const (
