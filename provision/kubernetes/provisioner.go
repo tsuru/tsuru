@@ -541,6 +541,14 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 				}
 			}
 		}
+
+		var status provision.Status
+		if pod.Status.Phase == apiv1.PodRunning {
+			status = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
+		} else {
+			status = stateMap[pod.Status.Phase]
+		}
+
 		units = append(units, provision.Unit{
 			ID:          pod.Name,
 			Name:        pod.Name,
@@ -548,7 +556,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 			ProcessName: appProcess,
 			Type:        l.AppPlatform(),
 			IP:          wrapper.ip(),
-			Status:      stateMap[pod.Status.Phase],
+			Status:      status,
 			Address:     u,
 			Addresses:   urls,
 			Version:     appVersion,
@@ -556,6 +564,20 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		})
 	}
 	return units, nil
+}
+
+func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) provision.Status {
+	for _, containerStatus := range statuses {
+		if containerStatus.Ready {
+			continue
+		}
+		if containerStatus.LastTerminationState.Terminated != nil {
+			return provision.StatusError
+		}
+
+		return provision.StatusStarting
+	}
+	return provision.StatusStarted
 }
 
 // merged from https://github.com/kubernetes/kubernetes/blob/1f69c34478800e150acd022f6313a15e1cb7a97c/pkg/quota/evaluator/core/pods.go#L333
