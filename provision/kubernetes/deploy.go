@@ -697,7 +697,7 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTypes.AppVersion, preserveOldVersions bool) error {
+func (m *serviceManager) CleanupServices(a provision.App, deployedVersion int, preserveOldVersions bool) error {
 	depGroups, err := deploymentsDataForApp(m.client, a)
 	if err != nil {
 		return err
@@ -715,7 +715,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion.Version())
+			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion)
 
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
@@ -759,21 +759,21 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion appTyp
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) RemoveService(a provision.App, process string, version appTypes.AppVersion) error {
+func (m *serviceManager) RemoveService(a provision.App, process string, versionNumber int) error {
 	multiErrors := tsuruErrors.NewMultiError()
-	err := cleanupDeployment(m.client, a, process, version)
+	err := cleanupDeployment(m.client, a, process, versionNumber)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(err)
 	}
-	err = cleanupServices(m.client, a, process, version)
+	err = cleanupServices(m.client, a, process, versionNumber)
 	if err != nil {
 		multiErrors.Add(err)
 	}
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string, version appTypes.AppVersion) (*provision.LabelSet, error) {
-	dep, err := deploymentForVersion(m.client, a, process, version)
+func (m *serviceManager) CurrentLabels(a provision.App, process string, versionNumber int) (*provision.LabelSet, error) {
+	dep, err := deploymentForVersion(m.client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil
@@ -1210,7 +1210,7 @@ func (m *serviceManager) ensureServices(a provision.App, process string, labels,
 		}
 
 		if len(svcPorts) == 0 {
-			err = cleanupServices(m.client, a, process, version)
+			err = cleanupServices(m.client, a, process, version.Version())
 			if err != nil {
 				return err
 			}

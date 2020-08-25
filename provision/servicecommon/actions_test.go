@@ -81,6 +81,7 @@ type managerCall struct {
 	app              provision.App
 	processName      string
 	version          appTypes.AppVersion
+	versionNumber    int
 	labels           *provision.LabelSet
 	replicas         int
 	preserveVersions bool
@@ -99,9 +100,9 @@ func (m *recordManager) reset() {
 	m.calls = nil
 }
 
-func (m *recordManager) CurrentLabels(a provision.App, processName string, version appTypes.AppVersion) (*provision.LabelSet, error) {
+func (m *recordManager) CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, error) {
 	if m.lastLabels != nil {
-		return m.lastLabels[fmt.Sprintf("%s-v%d", processName, version.Version())], nil
+		return m.lastLabels[fmt.Sprintf("%s-v%d", processName, versionNumber)], nil
 	}
 	return nil, nil
 }
@@ -123,23 +124,23 @@ func (m *recordManager) DeployService(ctx context.Context, a provision.App, proc
 	return nil
 }
 
-func (m *recordManager) CleanupServices(a provision.App, version appTypes.AppVersion, preserveVersions bool) error {
+func (m *recordManager) CleanupServices(a provision.App, versionNumber int, preserveVersions bool) error {
 	call := managerCall{
 		action:           "cleanup",
 		app:              a,
-		version:          version,
+		versionNumber:    versionNumber,
 		preserveVersions: preserveVersions,
 	}
 	m.calls = append(m.calls, call)
 	return nil
 }
 
-func (m *recordManager) RemoveService(a provision.App, processName string, version appTypes.AppVersion) error {
+func (m *recordManager) RemoveService(a provision.App, processName string, versionNumber int) error {
 	call := managerCall{
-		action:      "remove",
-		processName: processName,
-		app:         a,
-		version:     version,
+		action:        "remove",
+		processName:   processName,
+		app:           a,
+		versionNumber: versionNumber,
 	}
 	m.calls = append(m.calls, call)
 	if m.removeErrMap != nil {
@@ -186,7 +187,7 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 			"worker2": "python worker2",
 		},
 	})
-	err := RunServicePipeline(m, oldVersion, provision.DeployArgs{
+	err := RunServicePipeline(m, oldVersion.Version(), provision.DeployArgs{
 		App:     fakeApp,
 		Version: newVersion,
 	}, ProcessSpec{
@@ -211,8 +212,8 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 0, labels: labelsWorker},
-		{action: "remove", app: fakeApp, processName: "worker1", version: oldVersion},
-		{action: "cleanup", app: fakeApp, version: newVersion},
+		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
+		{action: "cleanup", app: fakeApp, versionNumber: newVersion.Version()},
 	})
 	c.Assert(newVersion.VersionInfo().DeploySuccessful, check.Equals, true)
 }
@@ -232,7 +233,7 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 			"worker2": "python worker2",
 		},
 	})
-	err := RunServicePipeline(m, oldVersion, provision.DeployArgs{
+	err := RunServicePipeline(m, oldVersion.Version(), provision.DeployArgs{
 		App:     fakeApp,
 		Version: newVersion,
 	}, nil)
@@ -254,8 +255,8 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 1, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 1, labels: labelsWorker},
-		{action: "remove", app: fakeApp, processName: "worker1", version: oldVersion},
-		{action: "cleanup", app: fakeApp, version: newVersion},
+		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
+		{action: "cleanup", app: fakeApp, versionNumber: newVersion.Version()},
 	})
 	c.Assert(newVersion.VersionInfo().DeploySuccessful, check.Equals, true)
 }
@@ -269,7 +270,7 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 			"worker1": "python worker1",
 		},
 	})
-	err := RunServicePipeline(m, nil, provision.DeployArgs{
+	err := RunServicePipeline(m, 0, provision.DeployArgs{
 		App:     fakeApp,
 		Version: version,
 	}, ProcessSpec{
@@ -294,7 +295,7 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", version: version, replicas: 1, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker1", version: version, replicas: 0, labels: labelsWorker},
-		{action: "cleanup", app: fakeApp, version: version},
+		{action: "cleanup", app: fakeApp, versionNumber: version.Version()},
 	})
 }
 
@@ -304,11 +305,12 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	oldVersion := newSuccessfulVersion(c, fakeApp, nil)
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 1}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 1}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
@@ -332,11 +334,12 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	oldVersion := newSuccessfulVersion(c, fakeApp, nil)
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{Start: true}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{Start: true}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
@@ -383,11 +386,12 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	oldVersion := newSuccessfulVersion(c, fakeApp, nil)
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	_, err = updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
@@ -410,7 +414,6 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 0, labels: labelsWorker},
 		{action: "deploy", app: fakeApp, processName: "web", version: oldVersion, replicas: 0, labels: labelsWebOld},
-		{action: "cleanup", app: fakeApp, version: oldVersion},
 	})
 }
 
@@ -423,11 +426,12 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 	oldVersion := newSuccessfulVersion(c, fakeApp, nil)
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	_, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
@@ -448,7 +452,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 	expected := []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 0, labels: labelsWorker},
-		{action: "remove", app: fakeApp, processName: "web", version: newVersion},
+		{action: "remove", app: fakeApp, processName: "web", versionNumber: newVersion.Version()},
 	}
 	c.Assert(m.calls, check.DeepEquals, expected)
 }
@@ -459,11 +463,12 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 	oldVersion := newSuccessfulVersion(c, fakeApp, nil)
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:      fakeApp,
@@ -484,7 +489,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 		return m.calls[0].action < m.calls[1].action
 	})
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "remove", app: fakeApp, processName: "worker2", version: newVersion},
+		{action: "remove", app: fakeApp, processName: "worker2", versionNumber: newVersion.Version()},
 		{action: "deploy", app: fakeApp, processName: "web", version: oldVersion, replicas: 0, labels: labelsWeb},
 	})
 }
@@ -512,17 +517,18 @@ func (s *S) TestRemoveOldServicesForward(c *check.C) {
 	})
 	newVersion := newVersion(c, fakeApp, nil)
 	args := &pipelineArgs{
-		manager:        m,
-		app:            fakeApp,
-		newVersion:     newVersion,
-		newVersionSpec: ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
-		oldVersion:     oldVersion,
+		manager:          m,
+		app:              fakeApp,
+		newVersion:       newVersion,
+		newVersionSpec:   ProcessSpec{"web": ProcessState{Increment: 5}, "worker2": ProcessState{}},
+		oldVersion:       oldVersion,
+		oldVersionNumber: oldVersion.Version(),
 	}
 	_, err := removeOldServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
-		{action: "remove", app: fakeApp, processName: "worker1", version: oldVersion},
-		{action: "cleanup", app: fakeApp, version: newVersion},
+		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
+		{action: "cleanup", app: fakeApp, versionNumber: newVersion.Version()},
 	})
 }
 
@@ -632,7 +638,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		c.Logf("test %d", i)
 		for _, s := range tt.states {
 			m.reset()
-			err := RunServicePipeline(m, newVersion, provision.DeployArgs{
+			err := RunServicePipeline(m, newVersion.Version(), provision.DeployArgs{
 				App:     a,
 				Version: newVersion,
 			}, ProcessSpec{

@@ -26,6 +26,14 @@ func (i ErrInvalidVersion) Error() string {
 	return fmt.Sprintf("Invalid version: %s", i.Version)
 }
 
+func IsInvalidVersionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	_, ok := err.(ErrInvalidVersion)
+	return ok
+}
+
 type AppVersion interface {
 	Version() int
 	BuildImageName() string

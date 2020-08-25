@@ -1269,14 +1269,14 @@ func (p *kubernetesProvisioner) Deploy(args provision.DeployArgs) (string, error
 		client: client,
 		writer: args.Event,
 	}
-	var oldVersion appTypes.AppVersion
+	var oldVersionNumber int
 	if !args.PreserveVersions {
-		oldVersion, err = baseVersionForApp(client, args.App)
+		oldVersionNumber, err = baseVersionForApp(client, args.App)
 		if err != nil {
 			return "", err
 		}
 	}
-	err = servicecommon.RunServicePipeline(manager, oldVersion, args, nil)
+	err = servicecommon.RunServicePipeline(manager, oldVersionNumber, args, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
