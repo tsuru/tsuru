@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
@@ -529,22 +528,17 @@ func cleanupReplicas(client *ClusterClient, dep *appsv1.Deployment) error {
 	return cleanupPods(client, listOpts, dep)
 }
 
-func baseVersionForApp(client *ClusterClient, a provision.App) (appTypes.AppVersion, error) {
+func baseVersionForApp(client *ClusterClient, a provision.App) (int, error) {
 	depData, err := deploymentsDataForApp(client, a)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	if depData.base.dep == nil || len(depData.base.dep.Spec.Template.Spec.Containers) == 0 {
-		return nil, nil
+	if depData.base.dep == nil {
+		return 0, nil
 	}
 
-	img := depData.base.dep.Spec.Template.Spec.Containers[0].Image
-	version, err := servicemanager.AppVersion.VersionByImageOrVersion(a, img)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return version, nil
+	return depData.base.version, nil
 }
 
 func allDeploymentsForApp(client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
@@ -742,19 +736,19 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 	return result
 }
 
-func deploymentForVersion(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) (*appsv1.Deployment, error) {
+func deploymentForVersion(client *ClusterClient, a provision.App, process string, versionNumber int) (*appsv1.Deployment, error) {
 	groupedDeps, err := deploymentsDataForProcess(client, a, process)
 	if err != nil {
 		return nil, err
 	}
 
-	depsData := groupedDeps.versioned[version.Version()]
+	depsData := groupedDeps.versioned[versionNumber]
 	if len(depsData) == 0 {
-		return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, version.Version()))
+		return nil, k8sErrors.NewNotFound(appsv1.Resource("deployment"), fmt.Sprintf("app: %v, process: %v, version: %v", a.GetName(), process, versionNumber))
 	}
 
 	if len(depsData) > 1 {
-		return nil, errors.Errorf("two many deployments for same version %d and process %q: %d", version.Version(), process, len(depsData))
+		return nil, errors.Errorf("two many deployments for same version %d and process %q: %d", versionNumber, process, len(depsData))
 	}
 
 	return depsData[0].dep, nil
@@ -774,8 +768,8 @@ func cleanupSingleDeployment(client *ClusterClient, dep *appsv1.Deployment) erro
 	return cleanupReplicas(client, dep)
 }
 
-func cleanupDeployment(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) error {
-	dep, err := deploymentForVersion(client, a, process, version)
+func cleanupDeployment(client *ClusterClient, a provision.App, process string, versionNumber int) error {
+	dep, err := deploymentForVersion(client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil
@@ -821,7 +815,7 @@ func allServicesForAppProcess(client *ClusterClient, a provision.App, process st
 	return svcs.Items, nil
 }
 
-func cleanupServices(client *ClusterClient, a provision.App, process string, version appTypes.AppVersion) error {
+func cleanupServices(client *ClusterClient, a provision.App, process string, versionNumber int) error {
 	svcs, err := allServicesForAppProcess(client, a, process)
 	if err != nil {
 		return err
@@ -837,7 +831,7 @@ func cleanupServices(client *ClusterClient, a provision.App, process string, ver
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
 		svcVersion := labels.AppVersion()
-		if svcVersion == version.Version() || !processInUse {
+		if svcVersion == versionNumber || !processInUse {
 			toDelete = append(toDelete, svc)
 		}
 	}

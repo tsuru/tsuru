@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -15,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -32,6 +34,7 @@ type ProcessSpec map[string]ProcessState
 type pipelineArgs struct {
 	manager          ServiceManager
 	app              provision.App
+	oldVersionNumber int
 	oldVersion       appTypes.AppVersion
 	newVersion       appTypes.AppVersion
 	newVersionSpec   ProcessSpec
@@ -45,13 +48,23 @@ type labelReplicas struct {
 }
 
 type ServiceManager interface {
-	RemoveService(a provision.App, processName string, version appTypes.AppVersion) error
-	CurrentLabels(a provision.App, processName string, version appTypes.AppVersion) (*provision.LabelSet, error)
+	RemoveService(a provision.App, processName string, versionNumber int) error
+	CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, error)
 	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error
-	CleanupServices(a provision.App, version appTypes.AppVersion, preserveOldVersions bool) error
+	CleanupServices(a provision.App, versionNumber int, preserveOldVersions bool) error
 }
 
-func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, args provision.DeployArgs, updateSpec ProcessSpec) error {
+// RunServicePipeline runs a pipeline for deploy a service with multiple
+// processes. oldVersion is an int instead of a AppVersion because it may not
+// exist in our data store anymore.
+func RunServicePipeline(manager ServiceManager, oldVersionNumber int, args provision.DeployArgs, updateSpec ProcessSpec) error {
+	oldVersion, err := servicemanager.AppVersion.VersionByImageOrVersion(args.App, strconv.Itoa(oldVersionNumber))
+	if err != nil {
+		if !appTypes.IsInvalidVersionError(err) {
+			return errors.WithStack(err)
+		}
+		log.Errorf("unable to find version %d for app %q: %v", oldVersionNumber, args.App.GetName(), err)
+	}
 	newProcesses, err := args.Version.Processes()
 	if err != nil {
 		return err
@@ -75,6 +88,7 @@ func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, 
 		manager:          manager,
 		app:              args.App,
 		preserveVersions: args.PreserveVersions,
+		oldVersionNumber: oldVersionNumber,
 		oldVersion:       oldVersion,
 		newVersion:       args.Version,
 		newVersionSpec:   newSpec,
@@ -83,34 +97,31 @@ func RunServicePipeline(manager ServiceManager, oldVersion appTypes.AppVersion, 
 }
 
 func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelReplicas) error {
-	hasOldVersion := args.oldVersion != nil
 	errors := tsuruErrors.NewMultiError()
 	for processName, oldLabels := range processes {
-		if !hasOldVersion || oldLabels.labels == nil {
-			if err := args.manager.RemoveService(args.app, processName, args.newVersion); err != nil {
+		if oldLabels.labels == nil {
+			if err := args.manager.RemoveService(args.app, processName, args.newVersion.Version()); err != nil {
 				errors.Add(fmt.Errorf("error removing service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.newVersion.Version(), err))
 			}
-			hasOldVersion = false
+			continue
+		}
+		if args.oldVersion == nil {
+			errors.Add(fmt.Errorf("unable to rollback service for %s[%s] to version %d, version not found anymore", args.app.GetName(), processName, args.oldVersionNumber))
 			continue
 		}
 		err := args.manager.DeployService(context.Background(), args.app, processName, oldLabels.labels, oldLabels.realReplicas, args.oldVersion, args.preserveVersions)
 		if err != nil {
-			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.oldVersion.Version(), err))
-		}
-	}
-	if hasOldVersion {
-		if err := args.manager.CleanupServices(args.app, args.oldVersion, args.preserveVersions); err != nil {
-			errors.Add(fmt.Errorf("error cleaning up services after rollback: %+v", err))
+			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.oldVersionNumber, err))
 		}
 	}
 	return errors.ToError()
 }
 
-func rawLabelsAndReplicas(args *pipelineArgs, processName string, version appTypes.AppVersion) (*labelReplicas, error) {
-	if version == nil {
+func rawLabelsAndReplicas(args *pipelineArgs, processName string, versionNumber int) (*labelReplicas, error) {
+	if versionNumber == 0 {
 		return &labelReplicas{}, nil
 	}
-	labels, err := args.manager.CurrentLabels(args.app, processName, version)
+	labels, err := args.manager.CurrentLabels(args.app, processName, versionNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +201,7 @@ var updateServices = &action.Action{
 		oldLabelsMap := map[string]*labelReplicas{}
 		newLabelsMap := map[string]*labelReplicas{}
 		for _, processName := range toDeployProcesses {
-			oldLabels, err := rawLabelsAndReplicas(args, processName, args.oldVersion)
+			oldLabels, err := rawLabelsAndReplicas(args, processName, args.oldVersionNumber)
 			if err != nil {
 				return nil, err
 			}
@@ -252,7 +263,7 @@ var removeOldServices = &action.Action{
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		err = args.manager.CleanupServices(args.app, args.newVersion, args.preserveVersions)
+		err = args.manager.CleanupServices(args.app, args.newVersion.Version(), args.preserveVersions)
 		if err != nil {
 			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}
@@ -272,7 +283,7 @@ func removeOld(args *pipelineArgs) error {
 	new := set.FromMap(args.newVersionSpec)
 	errs := tsuruErrors.NewMultiError()
 	for processName := range old.Difference(new) {
-		err = args.manager.RemoveService(args.app, processName, args.oldVersion)
+		err = args.manager.RemoveService(args.app, processName, args.oldVersion.Version())
 		if err != nil {
 			errs.Add(err)
 		}

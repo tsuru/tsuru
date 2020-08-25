@@ -436,7 +436,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(err) }()
 	version, err := servicemanager.AppVersion.VersionByImageOrVersion(&a, args.Version)
 	if err != nil {
-		if _, ok := err.(appTypes.ErrInvalidVersion); ok {
+		if appTypes.IsInvalidVersionError(err) {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err

@@ -32,7 +32,7 @@ func ChangeAppState(manager ServiceManager, a provision.App, process string, sta
 	for _, procName := range processes {
 		spec[procName] = state
 	}
-	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
+	err = RunServicePipeline(manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -56,7 +56,7 @@ func ChangeUnits(manager ServiceManager, a provision.App, units int, processName
 			return errors.WithStack(err)
 		}
 	}
-	err = RunServicePipeline(manager, version, provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
+	err = RunServicePipeline(manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
 		processName: ProcessState{Increment: units},
 	})
 	if err != nil {
