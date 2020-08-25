@@ -844,6 +844,83 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 	c.Assert(units[0].ProcessName, check.DeepEquals, "web")
 }
 
+func (s *S) TestUnitsStarting(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.Start(a, "", version)
+	c.Assert(err, check.IsNil)
+	wait()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 1)
+	s.waitPodUpdate(c, func() {
+		for _, p := range podlist.Items {
+			if p.Labels["tsuru.io/app-process"] == "web" {
+				p.Status.Phase = apiv1.PodRunning
+				p.Status.ContainerStatuses = []apiv1.ContainerStatus{
+					{
+						Ready: false,
+					},
+				}
+				_, err = s.client.CoreV1().Pods("default").Update(&p)
+				c.Assert(err, check.IsNil)
+			}
+		}
+	})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].Status, check.DeepEquals, provision.StatusStarting)
+}
+
+func (s *S) TestUnitsStartingError(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.Start(a, "", version)
+	c.Assert(err, check.IsNil)
+	wait()
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 1)
+	s.waitPodUpdate(c, func() {
+		for _, p := range podlist.Items {
+			if p.Labels["tsuru.io/app-process"] == "web" {
+				p.Status.Phase = apiv1.PodRunning
+				p.Status.ContainerStatuses = []apiv1.ContainerStatus{
+					{
+						Ready: false,
+						LastTerminationState: apiv1.ContainerState{
+							Terminated: &apiv1.ContainerStateTerminated{
+								Reason: "Error",
+							},
+						},
+					},
+				}
+				_, err = s.client.CoreV1().Pods("default").Update(&p)
+				c.Assert(err, check.IsNil)
+			}
+		}
+	})
+	units, err := s.p.Units(a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+}
+
 func (s *S) TestUnitsEmpty(c *check.C) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
