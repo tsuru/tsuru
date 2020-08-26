@@ -5,15 +5,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
-	"github.com/tsuru/tablecli"
 	"github.com/tsuru/tsuru/fs"
 )
 
@@ -89,30 +86,6 @@ func ReadToken() (string, error) {
 		return "", nil
 	}
 	return "", err
-}
-
-type ServiceModel struct {
-	Service   string
-	Instances []string
-}
-
-func ShowServicesInstancesList(b []byte) ([]byte, error) {
-	var services []ServiceModel
-	err := json.Unmarshal(b, &services)
-	if err != nil {
-		return []byte{}, err
-	}
-	if len(services) == 0 {
-		return []byte{}, nil
-	}
-	table := tablecli.NewTable()
-	table.Headers = tablecli.Row([]string{"Services", "Instances"})
-	for _, s := range services {
-		insts := strings.Join(s.Instances, ", ")
-		r := tablecli.Row([]string{s.Service, insts})
-		table.AddRow(r)
-	}
-	return table.Bytes(), nil
 }
 
 func MergeFlagSet(fs1, fs2 *gnuflag.FlagSet) *gnuflag.FlagSet {
