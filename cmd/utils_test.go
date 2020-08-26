@@ -119,19 +119,6 @@ func (s *S) TestReadTokenFileNotFound(c *check.C) {
 	c.Assert(token, check.Equals, "")
 }
 
-func (s *S) TestShowServicesInstancesList(c *check.C) {
-	expected := `+----------+-----------+
-| Services | Instances |
-+----------+-----------+
-| mongodb  | my_nosql  |
-+----------+-----------+
-`
-	b := `[{"service": "mongodb", "instances": ["my_nosql"]}]`
-	result, err := ShowServicesInstancesList([]byte(b))
-	c.Assert(err, check.IsNil)
-	c.Assert(string(result), check.Equals, expected)
-}
-
 func (s *S) TestMergeFlagSet(c *check.C) {
 	var x, y bool
 	fs1 := gnuflag.NewFlagSet("x", gnuflag.ExitOnError)
