@@ -41,6 +41,7 @@ import (
 	policy "k8s.io/api/policy/v1beta1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -57,6 +58,8 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
 )
+
+var defaultEphemeralStorageLimit = resource.MustParse("100Mi")
 
 type kubernetesProvisioner struct {
 	mu                 sync.Mutex

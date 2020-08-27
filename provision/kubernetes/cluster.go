@@ -21,6 +21,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -43,6 +44,7 @@ const (
 	maxSurgeKey            = "max-surge"
 	maxUnavailableKey      = "max-unavailable"
 	singlePoolKey          = "single-pool"
+	ephemeralStorageKey    = "ephemeral-storage"
 
 	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
 	defaultLogsFromAPIServer   = false
@@ -65,6 +67,7 @@ var (
 		maxSurgeKey:            "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
 		maxUnavailableKey:      "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
 		singlePoolKey:          "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
+		ephemeralStorageKey:    fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
 
 		enableLogsFromAPIServerKey: "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}
@@ -227,6 +230,21 @@ func (c *ClusterClient) Namespace() string {
 		return c.CustomData[namespaceClusterKey]
 	}
 	return "tsuru"
+}
+
+func (c *ClusterClient) ephemeralStorage(pool string) (resource.Quantity, error) {
+	if c.CustomData == nil {
+		return defaultEphemeralStorageLimit, nil
+	}
+	ephemeralRaw := c.configForContext(pool, ephemeralStorageKey)
+	if ephemeralRaw == "" {
+		return defaultEphemeralStorageLimit, nil
+	}
+	quantity, err := resource.ParseQuantity(ephemeralRaw)
+	if err != nil {
+		return defaultEphemeralStorageLimit, nil
+	}
+	return quantity, nil
 }
 
 func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
