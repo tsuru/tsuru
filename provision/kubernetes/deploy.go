@@ -578,6 +578,14 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI)
 		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu)/overcommit, resource.DecimalSI)
 	}
+	ephemeral, err := client.ephemeralStorage(a.GetPool())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if ephemeral.Value() > 0 {
+		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
+		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
+	}
 	volumes, mounts, err := createVolumesForApp(client, a)
 	if err != nil {
 		return nil, nil, nil, err

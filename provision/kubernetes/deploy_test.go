@@ -182,8 +182,12 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								{Name: "PORT_p1", Value: "8888"},
 							},
 							Resources: apiv1.ResourceRequirements{
-								Limits:   apiv1.ResourceList{},
-								Requests: apiv1.ResourceList{},
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+								},
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
@@ -1610,10 +1614,12 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceMemory:           *expectedMemory,
+			apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
 		},
 		Requests: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceMemory:           *expectedMemory,
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 		},
 	})
 }
@@ -1649,10 +1655,12 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceMemory:           *expectedMemory,
+			apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
 		},
 		Requests: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemoryRequest,
+			apiv1.ResourceMemory:           *expectedMemoryRequest,
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 		},
 	})
 }
@@ -1689,12 +1697,110 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemory,
+			apiv1.ResourceMemory:           *expectedMemory,
+			apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
 		},
 		Requests: apiv1.ResourceList{
-			apiv1.ResourceMemory: *expectedMemoryRequest,
+			apiv1.ResourceMemory:           *expectedMemoryRequest,
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *check.C) {
+	tests := []struct {
+		key      string
+		value    string
+		expected apiv1.ResourceRequirements
+	}{
+		{
+			expected: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+				},
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+				},
+			},
+		},
+		{
+			key:   ephemeralStorageKey,
+			value: "9Mi",
+			expected: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: resource.MustParse("9Mi"),
+				},
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+				},
+			},
+		},
+		{
+			key:   "test-default:" + ephemeralStorageKey,
+			value: "1Mi",
+			expected: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: resource.MustParse("1Mi"),
+				},
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+				},
+			},
+		},
+		{
+			key:   "other:" + ephemeralStorageKey,
+			value: "1Mi",
+			expected: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+				},
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+				},
+			},
+		},
+		{
+			key:   ephemeralStorageKey,
+			value: "0",
+			expected: apiv1.ResourceRequirements{
+				Limits:   apiv1.ResourceList{},
+				Requests: apiv1.ResourceList{},
+			},
+		},
+	}
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+
+	for i, tt := range tests {
+		c.Logf("test %d", i)
+		for k := range s.clusterClient.CustomData {
+			delete(s.clusterClient.CustomData, k)
+		}
+		s.clusterClient.CustomData[tt.key] = tt.value
+		m := serviceManager{client: s.clusterClient}
+		err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+			App:     a,
+			Version: version,
+		}, servicecommon.ProcessSpec{
+			"p1": servicecommon.ProcessState{Start: true},
+		})
+		c.Assert(err, check.IsNil)
+		waitDep()
+		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, tt.expected)
+	}
 }
 
 func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable(c *check.C) {
@@ -1913,8 +2019,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 								{Name: "PORT_p1", Value: "8888"},
 							},
 							Resources: apiv1.ResourceRequirements{
-								Limits:   apiv1.ResourceList{},
-								Requests: apiv1.ResourceList{},
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+								},
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
@@ -3564,8 +3674,12 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 								{Name: "PORT_p1", Value: "8888"},
 							},
 							Resources: apiv1.ResourceRequirements{
-								Limits:   apiv1.ResourceList{},
-								Requests: apiv1.ResourceList{},
+								Limits: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+								},
+								Requests: apiv1.ResourceList{
+									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+								},
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
