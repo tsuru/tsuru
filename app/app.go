@@ -241,6 +241,13 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
 	}
+	autoscale, err := app.AutoScaleInfo()
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
+	}
+	if autoscale != nil {
+		result["autoscale"] = autoscale
+	}
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
@@ -2591,4 +2598,28 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 
 func (app *App) ListTags() []string {
 	return app.Tags
+}
+
+func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if !ok {
+		return nil, nil
+	}
+	return autoscaleProv.GetAutoScale(app)
+}
+
+func (app *App) AutoScale(spec provision.AutoScaleSpec) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if !ok {
+		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
+	}
+	return autoscaleProv.SetAutoScale(app, spec)
 }

@@ -539,6 +539,18 @@ type CleanImageProvisioner interface {
 	CleanImage(appName string, image string) error
 }
 
+type AutoScaleSpec struct {
+	Process    string `json:"process"`
+	MinUnits   uint   `json:"minUnits"`
+	MaxUnits   uint   `json:"maxUnits"`
+	AverageCPU string `json:"averageCPU"`
+}
+
+type AutoScaleProvisioner interface {
+	GetAutoScale(a App) ([]AutoScaleSpec, error)
+	SetAutoScale(a App, spec AutoScaleSpec) error
+}
+
 type Node interface {
 	Pool() string
 	IaaSID() string

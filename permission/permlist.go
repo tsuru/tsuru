@@ -23,6 +23,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.unit.remove",
 	"app.update.unit.register",
 	"app.update.unit.status",
+	"app.update.unit.autoscale",
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",

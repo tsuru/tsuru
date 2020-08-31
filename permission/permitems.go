@@ -73,6 +73,7 @@ var (
 	PermAppUpdateUnbindVolume            = PermissionRegistry.get("app.update.unbind-volume")            // [global app team pool]
 	PermAppUpdateUnit                    = PermissionRegistry.get("app.update.unit")                     // [global app team pool]
 	PermAppUpdateUnitAdd                 = PermissionRegistry.get("app.update.unit.add")                 // [global app team pool]
+	PermAppUpdateUnitAutoscale           = PermissionRegistry.get("app.update.unit.autoscale")           // [global app team pool]
 	PermAppUpdateUnitRegister            = PermissionRegistry.get("app.update.unit.register")            // [global app team pool]
 	PermAppUpdateUnitRemove              = PermissionRegistry.get("app.update.unit.remove")              // [global app team pool]
 	PermAppUpdateUnitStatus              = PermissionRegistry.get("app.update.unit.status")              // [global app team pool]
