@@ -2699,6 +2699,95 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return &autoscaleProv{}, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	repository.Manager().CreateRepository("name", nil)
+	opts := pool.AddPoolOptions{Name: "test", Default: false, Provisioner: "autoscaleProv"}
+	err := pool.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:        "name",
+		Platform:    "Framework",
+		Teams:       []string{"team1"},
+		CName:       []string{"name.mycompany.com"},
+		Owner:       "appOwner",
+		Deploys:     7,
+		Pool:        "test",
+		Description: "description",
+		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		TeamOwner:   "myteam",
+		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+		Tags:        []string{"tag a", "tag b"},
+		InternalAddresses: []provision.AppInternalAddress{
+			{
+				Domain:   "name.cluster.local",
+				Protocol: "TCP",
+				Port:     4000,
+			},
+		},
+	}
+	err = app.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	c.Assert(err, check.IsNil)
+	err = routertest.FakeRouter.AddBackend(&app)
+	c.Assert(err, check.IsNil)
+	expected := map[string]interface{}{
+		"name":       "name",
+		"platform":   "Framework",
+		"repository": "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":      []interface{}{"team1"},
+		"units":      []interface{}{},
+		"ip":         "name.fakerouter.com",
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "name.cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(4000),
+			}},
+		"cname":       []interface{}{"name.mycompany.com"},
+		"owner":       "appOwner",
+		"deploys":     float64(7),
+		"pool":        "test",
+		"description": "description",
+		"teamowner":   "myteam",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
+			"router":   "fake",
+		},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"routers": []interface{}{
+			map[string]interface{}{
+				"name":      "fake",
+				"address":   "name.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{"opt1": "val1"},
+			},
+		},
+		"tags": []interface{}{"tag a", "tag b"},
+		"autoscale": []interface{}{
+			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "averageCPU": ""},
+		},
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 	app := App{
 		Name:        "name",
@@ -5466,5 +5555,40 @@ func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(hcData, check.DeepEquals, routerTypes.HealthcheckData{
 		TCPOnly: true,
+	})
+}
+
+type autoscaleProv struct {
+	provisiontest.FakeProvisioner
+	autoscales []provision.AutoScaleSpec
+}
+
+func (p *autoscaleProv) GetAutoScale(app provision.App) ([]provision.AutoScaleSpec, error) {
+	return p.autoscales, nil
+}
+
+func (p *autoscaleProv) SetAutoScale(app provision.App, spec provision.AutoScaleSpec) error {
+	p.autoscales = append(p.autoscales, spec)
+	return nil
+}
+
+func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return &autoscaleProv{}, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
+	err := a.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	c.Assert(err, check.IsNil)
+	err = a.AutoScale(provision.AutoScaleSpec{Process: "p2"})
+	c.Assert(err, check.IsNil)
+	scales, err := a.AutoScaleInfo()
+	c.Assert(err, check.IsNil)
+	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+		{Process: "p1"},
+		{Process: "p2"},
 	})
 }

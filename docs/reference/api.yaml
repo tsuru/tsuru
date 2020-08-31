@@ -2740,7 +2740,57 @@ paths:
         - auth
       security:
         - Bearer: []
+  /1.9/apps/{app}/units/autoscale:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AutoScaleSet
+      description: Set new unit autoscale spec.
+      parameters:
+        - name: autoScaleSpec
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AutoScaleSpec"
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: AutoScale updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
 definitions:
+  AutoScaleSpec:
+    description: Units Auto Scale spec
+    type: object
+    properties:
+      process:
+        type: string
+      minUnits:
+        type: integer
+      maxUnits:
+        type: integer
+      averageCPU:
+        type: string
   DynamicRouter:
     description: Dynamic router
     type: object
