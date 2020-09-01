@@ -150,6 +150,10 @@ func (s *LabelSet) ToVolumeSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelVolumeName), s.Prefix)
 }
 
+func (s *LabelSet) ToHPASelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelIsTsuru, labelAppName), s.Prefix)
+}
+
 func (s *LabelSet) AppName() string {
 	return s.getLabel(labelAppName)
 }
