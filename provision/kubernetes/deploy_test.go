@@ -1789,7 +1789,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 		}
 		s.clusterClient.CustomData[tt.key] = tt.value
 		m := serviceManager{client: s.clusterClient}
-		err = servicecommon.RunServicePipeline(&m, nil, provision.DeployArgs{
+		err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
 			App:     a,
 			Version: version,
 		}, servicecommon.ProcessSpec{
