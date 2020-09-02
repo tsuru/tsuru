@@ -797,18 +797,35 @@ func createDeployTimeoutError(client *ClusterClient, ns string, selector map[str
 		return errors.Errorf("Unknown error deploying application, timeout after %v", timeout)
 	}
 	var msgsStr []string
-	badUnitsSet := make(map[string]struct{})
-	for _, m := range messages {
-		badUnitsSet[m.podName] = struct{}{}
+	var pods []*apiv1.Pod
+
+	crashedUnitsSet := make(map[string]struct{})
+	for i, m := range messages {
+		crashedUnitsSet[m.pod.Name] = struct{}{}
 		msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s", m.message))
+		pods = append(pods, &messages[i].pod)
 	}
-	var badUnits []string
-	for u := range badUnitsSet {
-		badUnits = append(badUnits, u)
+	var crashedUnits []string
+	for u := range crashedUnitsSet {
+		crashedUnits = append(crashedUnits, u)
 	}
+
+	var crashedUnitsLogs []appTypes.Applog
+
+	if client.LogsFromAPIServerEnabled() {
+		crashedUnitsLogs, err = listLogsFromPods(client, ns, pods, appTypes.ListLogArgs{
+			Limit: 10,
+		})
+
+		if err != nil {
+			return errors.Wrap(err, "Could not get logs from crashed units")
+		}
+	}
+
 	return provision.ErrUnitStartup{
-		BadUnits: badUnits,
-		Err:      errors.New(strings.Join(msgsStr, "\n")),
+		CrashedUnits:     crashedUnits,
+		CrashedUnitsLogs: crashedUnitsLogs,
+		Err:              errors.New(strings.Join(msgsStr, "\n")),
 	}
 }
 
