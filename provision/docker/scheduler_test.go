@@ -346,7 +346,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
+		id := fmt.Sprint(i)
+		cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -437,7 +438,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
+		id := fmt.Sprint(i)
+		cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -526,7 +528,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	for i := 0; i < 5; i++ {
-		cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
+		id := fmt.Sprint(i)
+		cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}}
 		err = contColl.Insert(cont)
 		c.Assert(err, check.IsNil)
 		opts := docker.CreateContainerOptions{
@@ -584,7 +587,8 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}}
+			id := fmt.Sprint(i)
+			cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "coolapp9", "web")
@@ -630,7 +634,8 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}}
+			id := fmt.Sprint(i)
+			cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "oblivion", ProcessName: "web"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "oblivion", "web")
@@ -673,7 +678,8 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
-			cont := container.Container{Container: types.Container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}}
+			id := fmt.Sprint(i)
+			cont := container.Container{Container: types.Container{ID: id, Name: fmt.Sprintf("unit%d", i), AppName: "skyrim", ProcessName: "worker"}}
 			insertErr := contColl.Insert(cont)
 			c.Assert(insertErr, check.IsNil)
 			node, insertErr := sched.chooseNodeToAdd(nodes, cont.Name, "skyrim", "worker")

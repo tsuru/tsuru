@@ -709,35 +709,20 @@ func (e *Error) Error() string {
 }
 
 type ErrUnitStartup struct {
-	BadUnits []string
-	Err      error
+	CrashedUnits     []string
+	CrashedUnitsLogs []appTypes.Applog
+	Err              error
 }
 
 func (e ErrUnitStartup) Error() string {
 	return e.Err.Error()
 }
 
-func (e ErrUnitStartup) IsStartupError() bool {
-	return true
-}
-
-func (e ErrUnitStartup) Units() []string {
-	return e.BadUnits
-}
-
-func StartupBadUnits(err error) []string {
-	se, ok := errors.Cause(err).(interface {
-		Units() []string
-	})
-	if ok {
-		return se.Units()
+func IsStartupError(err error) (*ErrUnitStartup, bool) {
+	causeErr := errors.Cause(err)
+	if errUnitStartup, ok := causeErr.(ErrUnitStartup); ok {
+		return &errUnitStartup, ok
 	}
-	return nil
-}
-
-func IsStartupError(err error) bool {
-	se, ok := errors.Cause(err).(interface {
-		IsStartupError() bool
-	})
-	return ok && se.IsStartupError()
+	errUnitStartup, ok := causeErr.(*ErrUnitStartup)
+	return errUnitStartup, ok
 }

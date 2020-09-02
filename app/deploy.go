@@ -256,14 +256,19 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 		err:    base,
 		action: action,
 	}
-	if provision.IsStartupError(base) {
+	if startupErr, ok := provision.IsStartupError(base); ok {
+		logErr.logs = startupErr.CrashedUnitsLogs
+		if logErr.logs != nil {
+			return logErr
+		}
+
 		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
 		token, _ := AuthScheme.Auth(tokenValue)
-		units := provision.StartupBadUnits(base)
+
 		logErr.logs, _ = app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
-			Units:        units,
+			Units:        startupErr.CrashedUnits,
 			Token:        token,
 			Limit:        10,
 		})

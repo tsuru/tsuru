@@ -247,8 +247,8 @@ func podsForReplicaSet(client *ClusterClient, rs *appsv1.ReplicaSet) ([]apiv1.Po
 }
 
 type podErrorMessage struct {
-	podName string
 	message string
+	pod     apiv1.Pod
 }
 
 func notReadyPodEvents(client *ClusterClient, ns string, selector map[string]string) ([]podErrorMessage, error) {
@@ -283,7 +283,7 @@ func notReadyPodEventsForPods(client *ClusterClient, pods []apiv1.Pod) ([]podErr
 				} else if cond.Reason != "" {
 					msg = fmt.Sprintf("%s: %s", msg, cond.Reason)
 				}
-				messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
+				messages = append(messages, podErrorMessage{pod: pod, message: msg})
 			}
 		}
 		for _, contStatus := range pod.Status.ContainerStatuses {
@@ -298,7 +298,7 @@ func notReadyPodEventsForPods(client *ClusterClient, pods []apiv1.Pod) ([]podErr
 			if termState.Message != "" {
 				msg = fmt.Sprintf("%s: %s", msg, termState.Message)
 			}
-			messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
+			messages = append(messages, podErrorMessage{pod: pod, message: msg})
 		}
 		lastEvt, err := lastEventForPod(client, &pod)
 		if err != nil {
@@ -326,7 +326,7 @@ func notReadyPodEventsForPods(client *ClusterClient, pods []apiv1.Pod) ([]podErr
 			if lastEvt.Message != "" {
 				msg = fmt.Sprintf("%s: %s", msg, lastEvt.Message)
 			}
-			messages = append(messages, podErrorMessage{podName: pod.Name, message: msg})
+			messages = append(messages, podErrorMessage{pod: pod, message: msg})
 		}
 	}
 	return messages, nil
