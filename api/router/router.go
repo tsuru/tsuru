@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/tsuru/tsuru/api/context"
+	"github.com/tsuru/tsuru/api/observability"
 )
 
 const (
@@ -18,7 +20,8 @@ const (
 	// when a request is about to be served.
 	versionMatcher = "/{version:[0-9.]+}"
 
-	routeNameVariable = ":mux-route-name"
+	routeNameVariable    = ":mux-route-name"
+	pathTemplateVariable = ":mux-path-template"
 )
 
 type Route struct {
@@ -38,12 +41,18 @@ type DelayedRouter struct {
 	routes map[*mux.Route]*Route
 }
 
-func (r *DelayedRouter) registerVars(req *http.Request, vars map[string]string, routeName string) {
+func (r *DelayedRouter) registerMatch(req *http.Request, match mux.RouteMatch) {
 	values := make(url.Values)
+	routeName := match.Route.GetName()
 	if routeName != "" {
 		values.Set(routeNameVariable, routeName)
 	}
-	for key, value := range vars {
+	pathTemplate, _ := match.Route.GetPathTemplate()
+	if pathTemplate != "" {
+		values.Set(pathTemplateVariable, strings.TrimPrefix(pathTemplate, versionMatcher))
+	}
+
+	for key, value := range match.Vars {
 		values[":"+key] = []string{value}
 	}
 	req.URL.RawQuery = values.Encode() + "&" + req.URL.RawQuery
@@ -62,6 +71,9 @@ func (r *DelayedRouter) addRoute(name, version, path string, h http.Handler, met
 	if name != "" {
 		plainRoute.Name(name)
 		versionedRoute.Name(name)
+	}
+	for _, method := range methods {
+		observability.PrePopulateMetrics(method, path)
 	}
 	return muxRoute
 }
@@ -85,6 +97,8 @@ func (r *DelayedRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 		return
 	}
-	r.registerVars(req, match.Vars, match.Route.GetName())
+
+	r.registerMatch(req, match)
+	observability.StartSpan(req)
 	context.SetDelayedHandler(req, match.Handler)
 }

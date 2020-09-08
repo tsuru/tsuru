@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/observability"
 	apiRouter "github.com/tsuru/tsuru/api/router"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/api/tracker"
@@ -503,7 +504,7 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.NewRecovery())
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	if !dry {
-		n.Use(newLoggerMiddleware())
+		n.Use(observability.NewMiddleware())
 	}
 	n.UseHandler(m)
 	n.Use(&flushingWriterMiddleware{

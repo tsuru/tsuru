@@ -59,10 +59,12 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.8.1
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
 	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
+	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
 	github.com/rancher/kontainer-engine v0.0.0-00010101000000-000000000000
 	github.com/rancher/rke v0.3.0-rc10.0.20190910214044-f622c8b94257
@@ -79,6 +81,8 @@ require (
 	github.com/tsuru/go-gandalfclient v0.0.0-20160909010455-9d375d012f75
 	github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
+	github.com/uber/jaeger-client-go v2.25.0+incompatible
+	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/ugorji/go/codec v1.1.7
 	github.com/vishvananda/netlink v1.0.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect

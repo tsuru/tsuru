@@ -350,8 +350,10 @@ func (c *endpointClient) Plans(requestID string) ([]Plan, error) {
 func (c *endpointClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	delete(q, "callback")
-	delete(q, ":service")  // injected as named param by DelayedRouter
-	delete(q, ":instance") // injected as named param by DelayedRouter
+	delete(q, ":service")           // injected as named param by DelayedRouter
+	delete(q, ":instance")          // injected as named param by DelayedRouter
+	delete(q, ":mux-route-name")    // injected as named param by DelayedRouter
+	delete(q, ":mux-path-template") // injected as named param by DelayedRouter
 	qstring := q.Encode()
 	if qstring != "" {
 		qstring = fmt.Sprintf("?%s", qstring)
