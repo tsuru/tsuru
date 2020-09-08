@@ -43,7 +43,7 @@ We did an important architectural change using kubernetes provisioner, we intend
 Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`_)
 -----------------------------------------------------------------------------------------------------------------
 
-Tsuru now it is supported to create and update routers without changing the config file, a new API has been implemented and created respective tsuru commands.
+Tsuru now has support to create and update routers without changing the config file.
 
 
 
