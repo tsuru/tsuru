@@ -20,33 +20,30 @@ New features
 Add support for multiple versions in kubernetes provisioner (`#2392 <https://github.com/tsuru/tsuru/pull/2392>`_)
 -----------------------------------------------------------------------------------------------------------------
 
-In this release we designed to allow to deploy many versions of same app at the same time, it is permit to developers can attempt to rollout their apps with canary support.
-
-
-
+In this release we added support for running multiple versions of the same app at the same time, this allows developers to roll out their apps using a canary strategy.
 
 Use versions to manage images and its metadata (`#2390 <https://github.com/tsuru/tsuru/pull/2390>`_)
 ----------------------------------------------------------------------------------------------------
 
-Tsuru introduced a new concept called app versions, this concept allow us to simplify lot how we handle images and how we add metadata to images generated during a deploy. This is the first step in supporting running multiple versions of the same app simultaneously.
+Tsuru introduced a new concept called app versions, this concept allows us to simplify lot how we handle images and how we add metadata to images generated during a deploy. This is the first step in supporting running multiple versions of the same app simultaneously.
 
 
 Improve container image garbage collector: add metrics, locks and creates a tsuru event (`#2400 <https://github.com/tsuru/tsuru/pull/2400>`_)
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
-Now the Garbage collector of images use a tsuru event to register all chages made from it.
+Now the Garbage collector of images uses a tsuru event to register all changes made from it.
 
 
 Stream logs directly from kubernetes api-server (`#2408 <https://github.com/tsuru/tsuru/pull/2408>`_)
 ----------------------------------------------------------------------------------------------------
 
-We did an important architectural change using kubernetes provisioner, we intend to maintain Tsuru as a globally control-plane application, we are assigning the responsibility to store logs on kubelet engine, then allowing Tsuru to maintain many k8s clusters without bottleneck.
+We did an important architectural change using kubernetes provisioner, we intend to maintain Tsuru as a global control-plane application, we are assigning the responsibility to store logs to kubelet engine, thus allowing Tsuru to maintain many k8s clusters without any bottleneck.
 
 
 Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`_)
 -----------------------------------------------------------------------------------------------------------------
 
-Tsuru now it is support to create and update routers without changing the config file, a new API has been implemented and created respective tsuru commands.
+Tsuru now it is supported to create and update routers without changing the config file, a new API has been implemented and created respective tsuru commands.
 
 
 
