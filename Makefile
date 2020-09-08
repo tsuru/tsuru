@@ -92,9 +92,9 @@ release:
 
 	@echo "Releasing tsuru $(version) version."
 	@echo "Replacing version string."
-	@sed -i "" "s/release = '.*'/release = '$(version)'/g" docs/conf.py
-	@sed -i "" "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
-	@sed -i "" 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
+	@sed -i "s/release = '.*'/release = '$(version)'/g" docs/conf.py
+	@sed -i "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
+	@sed -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
 
 	@git add docs/conf.py api/server.go
 	@git commit -m "bump to $(version)"
