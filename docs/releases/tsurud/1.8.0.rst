@@ -95,10 +95,10 @@ Bug fixes
 
 * provision/docker: Ignore errors during bind unit when adding units (`#2393 <https://github.com/tsuru/tsuru/pull/2393>`_)
 
-* router/rebuild: Only save rebuild event on error (`#2394 https://github.com/tsuru/tsuru/pull/2394`_)
+* router/rebuild: Only save rebuild event on error (`#2394 <https://github.com/tsuru/tsuru/pull/2394>`_)
 
-* router/galebv2: Use unambiguous prefix for galeb pool and rule names (`#2397 https://github.com/tsuru/tsuru/pull/2397`_)
+* router/galebv2: Use unambiguous prefix for galeb pool and rule names (`#2397 <https://github.com/tsuru/tsuru/pull/2397>`_)
 
-* provision/kubernetes: Use labels in pod template to find version (`#2399 https://github.com/tsuru/tsuru/pull/2399`_)
+* provision/kubernetes: Use labels in pod template to find version (`#2399 <https://github.com/tsuru/tsuru/pull/2399>`_)
 
-* Fix pool list for users on multiple teams (`#2415 https://github.com/tsuru/tsuru/pull/2415`_)
+* Fix pool list for users on multiple teams (`#2415 <https://github.com/tsuru/tsuru/pull/2415>`_)
