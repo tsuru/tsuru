@@ -1,0 +1,104 @@
+.. Copyright 2020 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+==========================
+tsurud 1.8.0 release notes
+==========================
+
+Welcome to tsurud 1.8.0!
+
+These release notes cover the :ref:`new features <new-1.8.0>`, :ref:`bug fixes
+<bug-1.8.0>`. For a complete list of changes, `check our 1.8.0 github milestone
+<https://github.com/tsuru/tsuru/issues?utf8=%E2%9C%93&q=milestone%3A1.8+>`_.
+
+.. _new-1.8.0:
+
+New features
+============
+
+Add support for multiple versions in kubernetes provisioner (`#2392 <https://github.com/tsuru/tsuru/pull/2392>`_)
+-----------------------------------------------------------------------------------------------------------------
+
+In this release we designed to allow to deploy many versions of same app at the same time, it is permit to developers can attempt to rollout their apps with canary support.
+
+
+
+
+Use versions to manage images and its metadata (`#2390 <https://github.com/tsuru/tsuru/pull/2390>`_)
+----------------------------------------------------------------------------------------------------
+
+Tsuru introduced a new concept called app versions, this concept allow us to simplify lot how we handle images and how we add metadata to images generated during a deploy. This is the first step in supporting running multiple versions of the same app simultaneously.
+
+
+Improve container image garbage collector: add metrics, locks and creates a tsuru event (`#2400 <https://github.com/tsuru/tsuru/pull/2400>`_)
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Now the Garbage collector of images use a tsuru event to register all chages made from it.
+
+
+Stream logs directly from kubernetes api-server (`#2408 <https://github.com/tsuru/tsuru/pull/2408>`)
+----------------------------------------------------------------------------------------------------
+
+We did an important architectural change using kubernetes provisioner, we intend to maintain Tsuru as a globally control-plane application, we are assigning the responsibility to store logs on kubelet engine, then allowing Tsuru to maintain many k8s clusters without bottleneck.
+
+
+Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`)
+-----------------------------------------------------------------------------------------------------------------
+
+Tsuru now it is support to create and update routers without changing the config file, a new API has been implemented and created respective tsuru commands.
+
+
+
+Other improvements
+==================
+
+* provision/docker: add pids limit config option (`#2384 <https://github.com/tsuru/tsuru/pull/2384>`_)
+
+* provision/kubernetes: Configurable max surge and unavailable in deploys (`#2385 <https://github.com/tsuru/tsuru/pull/2385>`_)
+
+* provision/kubernetes: Improved errors and cancelation for image deploys (`#2388 <https://github.com/tsuru/tsuru/pull/2388>`_)
+
+* provision/kubernetes: Remove '-base' suffix for base deployments #2395
+
+* auth/oauth: Make types private and always read urls from config #2396
+
+* Return all cluster information for admin users #2402
+
+* Add WSL2 oauth support #2404
+
+* Add a flag to suppress sensitive environment variables at the event API #2405
+
+* feat(api/service): support updating and showing plan parameters for service instances #2409
+
+* fix(api/service): support for force removal of service instances #2410
+
+* provision/kubernetes: add option to use entire cluster as a single pool #2411
+
+* provision/cluster: add metrics for cluster info #2417
+
+* provision: Propagate app tags as labels or annotations #2418
+
+* Allow overriding plan memory and cpu for a single app #2420
+
+* provision/kubernetes: drop usage of deprecated rollback subresource #2423
+
+
+.. _bug-1.8.0:
+
+Bug fixes
+=========
+
+* Ensure image versions are never reused and always incremented (`#2382 <https://github.com/tsuru/tsuru/pull/2382>`_)
+
+* provision/kubernetes: Reset deployment timeout when progress happens (`#2386 <https://github.com/tsuru/tsuru/pull/2386>`_)
+
+* provision/docker: Ignore errors during bind unit when adding units (`#2393 <https://github.com/tsuru/tsuru/pull/2393>`_)
+
+* router/rebuild: Only save rebuild event on error (`#2394 https://github.com/tsuru/tsuru/pull/2394`_)
+
+* router/galebv2: Use unambiguous prefix for galeb pool and rule names #2397
+
+* provision/kubernetes: Use labels in pod template to find version #2399
+
+* Fix pool list for users on multiple teams #2415
