@@ -37,13 +37,13 @@ Improve container image garbage collector: add metrics, locks and creates a tsur
 Now the Garbage collector of images use a tsuru event to register all chages made from it.
 
 
-Stream logs directly from kubernetes api-server (`#2408 <https://github.com/tsuru/tsuru/pull/2408>`)
+Stream logs directly from kubernetes api-server (`#2408 <https://github.com/tsuru/tsuru/pull/2408>`_)
 ----------------------------------------------------------------------------------------------------
 
 We did an important architectural change using kubernetes provisioner, we intend to maintain Tsuru as a globally control-plane application, we are assigning the responsibility to store logs on kubelet engine, then allowing Tsuru to maintain many k8s clusters without bottleneck.
 
 
-Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`)
+Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`_)
 -----------------------------------------------------------------------------------------------------------------
 
 Tsuru now it is support to create and update routers without changing the config file, a new API has been implemented and created respective tsuru commands.
@@ -59,29 +59,29 @@ Other improvements
 
 * provision/kubernetes: Improved errors and cancelation for image deploys (`#2388 <https://github.com/tsuru/tsuru/pull/2388>`_)
 
-* provision/kubernetes: Remove '-base' suffix for base deployments #2395
+* provision/kubernetes: Remove '-base' suffix for base deployments (`#2395 <https://github.com/tsuru/tsuru/pull/2395>`_)
 
-* auth/oauth: Make types private and always read urls from config #2396
+* auth/oauth: Make types private and always read urls from config (`#2396 <https://github.com/tsuru/tsuru/pull/2396>`_)
 
-* Return all cluster information for admin users #2402
+* Return all cluster information for admin users (`#2402 <https://github.com/tsuru/tsuru/pull/2402>`_)
 
-* Add WSL2 oauth support #2404
+* Add WSL2 oauth support (`#2404 <https://github.com/tsuru/tsuru/pull/2404>`_)
 
-* Add a flag to suppress sensitive environment variables at the event API #2405
+* Add a flag to suppress sensitive environment variables at the event API (`#2405 <https://github.com/tsuru/tsuru/pull/2405>`_)
 
-* feat(api/service): support updating and showing plan parameters for service instances #2409
+* feat(api/service): support updating and showing plan parameters for service instances (`#2409 <https://github.com/tsuru/tsuru/pull/2409>`_)
 
-* fix(api/service): support for force removal of service instances #2410
+* fix(api/service): support for force removal of service instances (`#2410 <https://github.com/tsuru/tsuru/pull/2410>`_)
 
-* provision/kubernetes: add option to use entire cluster as a single pool #2411
+* provision/kubernetes: add option to use entire cluster as a single pool (`#2411 <https://github.com/tsuru/tsuru/pull/2411>`_)
 
-* provision/cluster: add metrics for cluster info #2417
+* provision/cluster: add metrics for cluster info (`#2417 <https://github.com/tsuru/tsuru/pull/2417>`_)
 
-* provision: Propagate app tags as labels or annotations #2418
+* provision: Propagate app tags as labels or annotations (`#2418 <https://github.com/tsuru/tsuru/pull/2418>`_)
 
-* Allow overriding plan memory and cpu for a single app #2420
+* Allow overriding plan memory and cpu for a single app (`#2420 <https://github.com/tsuru/tsuru/pull/2420>`_)
 
-* provision/kubernetes: drop usage of deprecated rollback subresource #2423
+* provision/kubernetes: drop usage of deprecated rollback subresource (`#2423 <https://github.com/tsuru/tsuru/pull/2423>`_)
 
 
 .. _bug-1.8.0:
@@ -97,8 +97,8 @@ Bug fixes
 
 * router/rebuild: Only save rebuild event on error (`#2394 https://github.com/tsuru/tsuru/pull/2394`_)
 
-* router/galebv2: Use unambiguous prefix for galeb pool and rule names #2397
+* router/galebv2: Use unambiguous prefix for galeb pool and rule names (`#2397 https://github.com/tsuru/tsuru/pull/2397`_)
 
-* provision/kubernetes: Use labels in pod template to find version #2399
+* provision/kubernetes: Use labels in pod template to find version (`#2399 https://github.com/tsuru/tsuru/pull/2399`_)
 
-* Fix pool list for users on multiple teams #2415
+* Fix pool list for users on multiple teams (`#2415 https://github.com/tsuru/tsuru/pull/2415`_)
