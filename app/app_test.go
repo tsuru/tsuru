@@ -2704,7 +2704,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "autoscaleProv"
 	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
-		return &autoscaleProv{}, nil
+		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("autoscaleProv")
 
@@ -2763,6 +2763,10 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			"swap":     float64(128),
 			"cpushare": float64(100),
 			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
@@ -2777,7 +2781,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		},
 		"tags": []interface{}{"tag a", "tag b"},
 		"autoscale": []interface{}{
-			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "averageCPU": ""},
+			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "averageCPU": "", "version": float64(0)},
 		},
 	}
 	data, err := app.MarshalJSON()
@@ -5558,26 +5562,12 @@ func (s *S) TestGetHealthcheckDataHCProvisioner(c *check.C) {
 	})
 }
 
-type autoscaleProv struct {
-	provisiontest.FakeProvisioner
-	autoscales []provision.AutoScaleSpec
-}
-
-func (p *autoscaleProv) GetAutoScale(app provision.App) ([]provision.AutoScaleSpec, error) {
-	return p.autoscales, nil
-}
-
-func (p *autoscaleProv) SetAutoScale(app provision.App, spec provision.AutoScaleSpec) error {
-	p.autoscales = append(p.autoscales, spec)
-	return nil
-}
-
 func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "autoscaleProv"
 	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
-		return &autoscaleProv{}, nil
+		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
@@ -5589,6 +5579,13 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
 		{Process: "p1"},
+		{Process: "p2"},
+	})
+	err = a.RemoveAutoScale("p1")
+	c.Assert(err, check.IsNil)
+	scales, err = a.AutoScaleInfo()
+	c.Assert(err, check.IsNil)
+	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
 		{Process: "p2"},
 	})
 }

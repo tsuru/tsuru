@@ -2623,3 +2623,15 @@ func (app *App) AutoScale(spec provision.AutoScaleSpec) error {
 	}
 	return autoscaleProv.SetAutoScale(app, spec)
 }
+
+func (app *App) RemoveAutoScale(process string) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if !ok {
+		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
+	}
+	return autoscaleProv.RemoveAutoScale(app, process)
+}

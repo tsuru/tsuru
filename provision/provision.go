@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -546,9 +547,24 @@ type AutoScaleSpec struct {
 	AverageCPU string `json:"averageCPU"`
 }
 
+func (s AutoScaleSpec) Validate() error {
+	if s.MinUnits == 0 {
+		return errors.New("minimum units must be greater than 0")
+	}
+	if s.MaxUnits < s.MinUnits {
+		return errors.New("maximum units must be greater than minimum units")
+	}
+	_, err := resource.ParseQuantity(s.AverageCPU)
+	if err != nil {
+		return errors.Wrap(err, "unable to parse average CPU")
+	}
+	return nil
+}
+
 type AutoScaleProvisioner interface {
 	GetAutoScale(a App) ([]AutoScaleSpec, error)
 	SetAutoScale(a App, spec AutoScaleSpec) error
+	RemoveAutoScale(a App, process string) error
 }
 
 type Node interface {
