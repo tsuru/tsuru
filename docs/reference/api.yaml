@@ -521,6 +521,8 @@ paths:
           in: body
           schema:
             $ref: "#/definitions/UpdateApp"
+      consumes:
+        - application/json
       produces:
       - application/x-json-stream
       responses:
