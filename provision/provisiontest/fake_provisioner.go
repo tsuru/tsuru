@@ -1460,3 +1460,40 @@ type provisionedApp struct {
 	image     string
 	mockAddrs []appTypes.RoutableAddresses
 }
+
+type AutoScaleProvisioner struct {
+	*FakeProvisioner
+	autoscales map[string][]provision.AutoScaleSpec
+}
+
+var _ provision.AutoScaleProvisioner = &AutoScaleProvisioner{}
+
+func (p *AutoScaleProvisioner) GetAutoScale(app provision.App) ([]provision.AutoScaleSpec, error) {
+	if p.autoscales == nil {
+		return nil, nil
+	}
+	return p.autoscales[app.GetName()], nil
+}
+
+func (p *AutoScaleProvisioner) SetAutoScale(app provision.App, spec provision.AutoScaleSpec) error {
+	if p.autoscales == nil {
+		p.autoscales = make(map[string][]provision.AutoScaleSpec)
+	}
+	p.autoscales[app.GetName()] = append(p.autoscales[app.GetName()], spec)
+	return nil
+}
+
+func (p *AutoScaleProvisioner) RemoveAutoScale(app provision.App, process string) error {
+	if p.autoscales == nil {
+		return nil
+	}
+	previous := p.autoscales[app.GetName()]
+	p.autoscales[app.GetName()] = nil
+	for _, spec := range previous {
+		if spec.Process == process {
+			continue
+		}
+		p.autoscales[app.GetName()] = append(p.autoscales[app.GetName()], spec)
+	}
+	return nil
+}

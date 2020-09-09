@@ -1872,9 +1872,26 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpe
 	return spec
 }
 
+func (p *kubernetesProvisioner) RemoveAutoScale(a provision.App, process string) error {
+	client, err := clusterForPool(a.GetPool())
+	if err != nil {
+		return err
+	}
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return err
+	}
+	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(hpaNameForApp(a, process), &metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 func (p *kubernetesProvisioner) SetAutoScale(a provision.App, spec provision.AutoScaleSpec) error {
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App: a,
+		App:     a,
+		Process: spec.Process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,

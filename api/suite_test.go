@@ -121,6 +121,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()
+	pool.ResetCache()
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = nativeScheme
 	s.Pool = "test1"
