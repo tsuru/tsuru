@@ -2676,6 +2676,10 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"swap":     float64(128),
 			"cpushare": float64(100),
 			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
@@ -2735,6 +2739,10 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 			"swap":     float64(128),
 			"cpushare": float64(100),
 			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{},
@@ -2785,6 +2793,10 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"swap":     float64(0),
 			"cpushare": float64(0),
 			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{},
@@ -2851,6 +2863,10 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"swap":     float64(128),
 			"cpushare": float64(100),
 			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},

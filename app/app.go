@@ -216,6 +216,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		"memory":   app.Plan.Memory,
 		"swap":     app.Plan.Swap,
 		"cpushare": app.Plan.CpuShare,
+		"override": app.Plan.Override,
 	}
 	routers, err := app.GetRoutersWithAddr()
 	if err != nil {
