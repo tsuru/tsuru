@@ -1102,6 +1102,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
+
+	err = ensureAutoScale(m.client, a, process)
+	if err != nil {
+		return errors.Wrap(err, "unable to ensure auto scale is configured")
+	}
+
 	return nil
 }
 

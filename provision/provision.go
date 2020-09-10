@@ -545,6 +545,7 @@ type AutoScaleSpec struct {
 	MinUnits   uint   `json:"minUnits"`
 	MaxUnits   uint   `json:"maxUnits"`
 	AverageCPU string `json:"averageCPU"`
+	Version    int    `json:"version"`
 }
 
 func (s AutoScaleSpec) Validate() error {
