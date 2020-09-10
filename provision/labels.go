@@ -151,7 +151,11 @@ func (s *LabelSet) ToVolumeSelector() map[string]string {
 }
 
 func (s *LabelSet) ToHPASelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelIsTsuru, labelAppName), s.Prefix)
+	keys := []string{labelIsTsuru, labelAppName}
+	if s.getLabel(labelAppProcess) != "" {
+		keys = append(keys, labelAppProcess)
+	}
+	return withPrefix(subMap(s.Labels, keys...), s.Prefix)
 }
 
 func (s *LabelSet) AppName() string {
