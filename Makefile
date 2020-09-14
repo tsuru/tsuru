@@ -2,61 +2,43 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
+SHELL = /bin/bash -o pipefail
 BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 
-.PHONY: all check-path test race docs install tsurud $(TSR_BIN)
+.PHONY: all test race docs install tsurud $(TSR_BIN)
 
-all: check-path test
-
-# It does not support GOPATH with multiple paths.
-check-path:
-ifndef GOPATH
-	@echo "FATAL: you must declare GOPATH environment variable, for more"
-	@echo "       details, please check"
-	@echo "       http://golang.org/doc/code.html#GOPATH"
-	@exit 1
-endif
-ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
-	@echo "FATAL: you must clone tsuru inside your GOPATH To do so,"
-	@echo "       you can run go get github.com/tsuru/tsuru/..."
-	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/tsuru/tsuru"
-	@exit 1
-endif
-	@exit 0
+all: test
 
 _go_test:
-	go clean $(GO_EXTRAFLAGS) ./...
-	go test $(GO_EXTRAFLAGS) ./... -check.v
+	go clean ./...
+	go test ./... -check.v
 
 _tsurud_dry:
-	go build $(GO_EXTRAFLAGS) -o tsurud ./cmd/tsurud
+	go build -o tsurud ./cmd/tsurud
 	./tsurud api --dry --config ./etc/tsuru.conf
 	rm -f tsurud
 
 test: _go_test _tsurud_dry
 
 leakdetector:
-	go list ./... | xargs -I {} bash -c 'pushd $(GOPATH)/src/{}; go test --tags leakdetector; popd' | tee /tmp/leaktest.log
+	go test -test.v --tags leakdetector ./... | tee /tmp/leaktest.log
 	(cat /tmp/leaktest.log | grep LEAK) && exit 1 || exit 0
 
 lint: metalint
 	misc/check-contributors.sh
 
 metalint:
-	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.30.0
-	go install ./...
-	go test -i ./...
+	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.31.0
 	echo "$$(go list ./... | grep -v /vendor/)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
 		time golangci-lint run -c ./.golangci.yml
 
 race:
-	go test $(GO_EXTRAFLAGS) -race -i ./...
-	go test $(GO_EXTRAFLAGS) -race ./...
+	go test -race ./...
 
 _install_api_doc:
-	@go get $(GO_EXTRAFLAGS) github.com/tsuru/tsuru-api-docs
+	@go get github.com/tsuru/tsuru-api-docs
 
 api-doc: _install_api_doc
 	@tsuru-api-docs | grep -v missing > docs/handlers.yml
@@ -108,7 +90,7 @@ release:
 	@echo "$(version) released!"
 
 install:
-	go install $(GO_EXTRAFLAGS) ./... $$(go list ../tsuru-client/... | grep -v /vendor/)
+	go install ./...
 
 serve: run-tsurud-api
 
@@ -128,7 +110,7 @@ run-tsurud-token: $(TSR_BIN)
 	$(TSR_BIN) token
 
 validate-api-spec:
-	cd / && go get github.com/go-swagger/go-swagger/cmd/swagger@v0.22.0
+	cd / && GO111MODULE=on go get github.com/go-swagger/go-swagger/cmd/swagger@v0.22.0
 	swagger validate ./docs/reference/api.yaml
 
 test-int:

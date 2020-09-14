@@ -1,0 +1,219 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:4
+        ports:
+        - 27017:27017
+      redis:
+        image: redis
+        ports:
+        - 6379:6379
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-gorace-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ runner.os }}-gorace-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-gorace-
+    # This magic line is to restore the timestamps (mtime) for each file based
+    # on the its last commit. This allows Go test cache to reuse results for
+    # tests that depend on fixture files.
+    - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
+    - run: sudo apt-get update && sudo apt-get install -y xmlsec1
+    - run: go test -race ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - uses: actions-contrib/golangci-lint@v1
+      with:
+        golangci_lint_version: v1.31.0
+      env:
+        GOROOT: ""
+
+  check-contributors:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: ./misc/check-contributors.sh
+
+  leakdetector:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:4
+        ports:
+        - 27017:27017
+      redis:
+        image: redis
+        ports:
+        - 6379:6379
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-goleak-
+    - run: git ls-tree -r -t --full-name --name-only HEAD | grep -v vendor | xargs -I{} -P4 sh -c 'touch -d $(git log --pretty=format:%cI -1 HEAD -- "{}") "{}"'
+    - run: sudo apt-get update && sudo apt-get install -y xmlsec1
+    - run: make leakdetector
+
+  check-handlers:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - run: ./misc/check-handlers.sh
+
+  check-events:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - run: ./misc/check-events.sh
+
+  check-api-doc:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - run: make check-api-doc
+
+  validate-api-spec:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - run: make validate-api-spec
+
+  verify-codegen:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.14'
+    - uses: actions/checkout@v2
+    - run: go get golang.org/x/tools/cmd/goimports
+    - run: ./hack/verify-codegen.sh
+      env:
+        GOPATH: /tmp
+
+  docker-image:
+    needs:
+    - test
+    - lint
+    - check-contributors
+    - leakdetector
+    - check-handlers
+    - check-events
+    - check-api-doc
+    - validate-api-spec
+    - verify-codegen
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: docker/setup-buildx-action@v1
+    - uses: actions/cache@v2
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+    - uses: Surgo/docker-smart-tag-action@v1
+      id: smarttag
+      with:
+        docker_image: tsuru/api
+        default_branch: master
+    - uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+    - uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: ${{ steps.smarttag.outputs.tag }}
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache
+
+  packagecloud:
+    needs:
+    - docker-image
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: goreleaser/goreleaser-action@v2
+      with:
+        args: release --rm-dist
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/setup-ruby@v1
+      with:
+        ruby-version: '2.x'
+    - run: |
+        curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | bash
+      env:
+        PACKAGE_NAME: tsuru
+        PACKAGECLOUD_TOKEN: ${{secrets.PACKAGECLOUD_TOKEN}}
+        SKIP_GORELEASER: "true"

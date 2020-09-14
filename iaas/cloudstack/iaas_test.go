@@ -362,7 +362,7 @@ func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	machine := iaas.Machine{Id: "myMachineId"}
 	err = cs.DeleteMachine(&machine)
-	c.Assert(err, check.ErrorMatches, ".*no such host.*")
+	c.Assert(err, check.NotNil)
 }
 
 func (s *cloudstackSuite) TestHealthCheck(c *check.C) {
