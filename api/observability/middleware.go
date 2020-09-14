@@ -161,8 +161,7 @@ func StartSpan(r *http.Request) {
 }
 
 func sanitizeURL(u *url.URL) *url.URL {
-	var destURL url.URL
-	destURL = *u
+	destURL := *u
 
 	values := u.Query()
 	for k := range values {
