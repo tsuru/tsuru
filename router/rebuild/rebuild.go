@@ -120,7 +120,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	}
 	if cnameRouter, ok := r.(router.CNameRouter); ok {
 		var oldCnames []*url.URL
-		oldCnames, err = cnameRouter.CNames(ctx, b.app.GetName())
+		oldCnames, err = cnameRouter.CNames(ctx, b.app)
 		if err != nil {
 			return nil, err
 		}
@@ -133,9 +133,9 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 		for _, cname := range appCnames {
 			fmt.Fprintf(b.w, " ---> Adding cname: %s\n", cname)
 			if asyncR == nil {
-				err = cnameRouter.SetCName(ctx, cname, b.app.GetName())
+				err = cnameRouter.SetCName(ctx, cname, b.app)
 			} else {
-				err = asyncR.SetCNameAsync(ctx, cname, b.app.GetName())
+				err = asyncR.SetCNameAsync(ctx, cname, b.app)
 			}
 			if err != nil && err != router.ErrCNameExists {
 				return nil, err
@@ -143,7 +143,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 		}
 		for _, toRemoveCname := range toRemove {
 			fmt.Fprintf(b.w, " ---> Removing cname: %s\n", toRemoveCname.Host)
-			err = cnameRouter.UnsetCName(ctx, toRemoveCname.Host, b.app.GetName())
+			err = cnameRouter.UnsetCName(ctx, toRemoveCname.Host, b.app)
 			if err != nil && err != router.ErrCNameNotFound {
 				return nil, err
 			}
@@ -155,7 +155,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 			return nil, errHc
 		}
 		fmt.Fprintf(b.w, " ---> Setting healthcheck: %s\n", hcData.String())
-		errHc = hcRouter.SetHealthcheck(ctx, b.app.GetName(), hcData)
+		errHc = hcRouter.SetHealthcheck(ctx, b.app, hcData)
 		if errHc != nil {
 			return nil, errHc
 		}
@@ -164,13 +164,13 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	prefixRouter, isPrefixRouter := r.(router.PrefixRouter)
 	var oldRoutes []appTypes.RoutableAddresses
 	if isPrefixRouter {
-		oldRoutes, err = prefixRouter.RoutesPrefix(ctx, b.app.GetName())
+		oldRoutes, err = prefixRouter.RoutesPrefix(ctx, b.app)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		var simpleOldRoutes []*url.URL
-		simpleOldRoutes, err = r.Routes(ctx, b.app.GetName())
+		simpleOldRoutes, err = r.Routes(ctx, b.app)
 		if err != nil {
 			return nil, err
 		}
@@ -281,11 +281,11 @@ func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix
 	fmt.Fprintf(b.w, " ---> Updating routes%s: %d added, %d removed\n", prefixMsg, len(toAdd), len(toRemove))
 	if prefixRouter != nil {
 		newRoutesForPrefix.Addresses = toAdd
-		err = prefixRouter.AddRoutesPrefix(ctx, b.app.GetName(), newRoutesForPrefix, b.wait)
+		err = prefixRouter.AddRoutesPrefix(ctx, b.app, newRoutesForPrefix, b.wait)
 	} else if asyncR == nil {
-		err = r.AddRoutes(ctx, b.app.GetName(), toAdd)
+		err = r.AddRoutes(ctx, b.app, toAdd)
 	} else {
-		err = asyncR.AddRoutesAsync(ctx, b.app.GetName(), toAdd)
+		err = asyncR.AddRoutesAsync(ctx, b.app, toAdd)
 	}
 	if err != nil {
 		return nil, err
@@ -293,11 +293,11 @@ func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix
 
 	if prefixRouter != nil {
 		oldRoutesForPrefix.Addresses = toRemove
-		err = prefixRouter.RemoveRoutesPrefix(ctx, b.app.GetName(), oldRoutesForPrefix, b.wait)
+		err = prefixRouter.RemoveRoutesPrefix(ctx, b.app, oldRoutesForPrefix, b.wait)
 	} else if asyncR == nil {
-		err = r.RemoveRoutes(ctx, b.app.GetName(), toRemove)
+		err = r.RemoveRoutes(ctx, b.app, toRemove)
 	} else {
-		err = asyncR.RemoveRoutesAsync(ctx, b.app.GetName(), toRemove)
+		err = asyncR.RemoveRoutesAsync(ctx, b.app, toRemove)
 	}
 	if err != nil {
 		return nil, err

@@ -646,7 +646,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		var r router.Router
 		r, err = router.Get(ctx, appRouter.Name)
 		if err == nil {
-			err = r.RemoveBackend(ctx, app.Name)
+			err = r.RemoveBackend(ctx, app)
 		}
 		if err != nil {
 			logErr("Failed to remove router backend", err)
@@ -1329,17 +1329,17 @@ func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr stri
 			return err
 		}
 		var oldRoutes []*url.URL
-		oldRoutes, err = r.Routes(app.ctx, app.GetName())
+		oldRoutes, err = r.Routes(app.ctx, app)
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
 		}
-		err = r.RemoveRoutes(app.ctx, app.GetName(), oldRoutes)
+		err = r.RemoveRoutes(app.ctx, app, oldRoutes)
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
 		}
-		err = r.AddRoutes(app.ctx, app.GetName(), []*url.URL{proxyURL})
+		err = r.AddRoutes(app.ctx, app, []*url.URL{proxyURL})
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
@@ -2053,7 +2053,7 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 		app1.GetRoutersWithAddr()
 		app2.GetRoutersWithAddr()
 	}(app1, app2)
-	err = r1.Swap(ctx, app1.Name, app2.Name, cnameOnly)
+	err = r1.Swap(ctx, app1, app2, cnameOnly)
 	if err != nil {
 		return err
 	}
@@ -2157,7 +2157,7 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	routers := append(app.GetRouters(), appRouter)
 	err = app.updateRoutersDB(routers)
 	if err != nil {
-		rollbackErr := r.RemoveBackend(app.ctx, appRouter.Name)
+		rollbackErr := r.RemoveBackend(app.ctx, app)
 		if rollbackErr != nil {
 			log.Errorf("unable to remove router backend rolling back add router: %v", rollbackErr)
 		}
@@ -2226,7 +2226,7 @@ func (app *App) RemoveRouter(name string) error {
 	if err != nil {
 		return err
 	}
-	err = r.RemoveBackend(app.ctx, app.Name)
+	err = r.RemoveBackend(app.ctx, app)
 	if err != nil {
 		log.Errorf("unable to remove router backend: %v", err)
 	}
@@ -2277,13 +2277,13 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			multi.Add(err)
 			continue
 		}
-		addr, err := r.Addr(app.ctx, app.Name)
+		addr, err := r.Addr(app.ctx, app)
 		if err != nil {
 			multi.Add(err)
 			continue
 		}
 		if statusRouter, ok := r.(router.StatusRouter); ok {
-			status, detail, stErr := statusRouter.GetBackendStatus(app.ctx, app.Name)
+			status, detail, stErr := statusRouter.GetBackendStatus(app.ctx, app)
 			if stErr != nil {
 				multi.Add(err)
 				continue
@@ -2292,7 +2292,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].StatusDetail = detail
 		}
 		if prefixRouter, ok := r.(router.PrefixRouter); ok {
-			addrs, aErr := prefixRouter.Addresses(app.ctx, app.Name)
+			addrs, aErr := prefixRouter.Addresses(app.ctx, app)
 			if aErr != nil {
 				multi.Add(aErr)
 				continue

@@ -209,24 +209,24 @@ func (r *galebRouter) addBackend(ctx context.Context, name, prefix string, wait 
 	return nil
 }
 
-func (r *galebRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) AddRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return r.addRoutes(ctx, name, "", addresses, true)
+	return r.addRoutes(ctx, app, "", addresses, true)
 }
 
-func (r *galebRouter) AddRoutesAsync(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) AddRoutesAsync(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return r.addRoutes(ctx, name, "", addresses, false)
+	return r.addRoutes(ctx, app, "", addresses, false)
 }
 
-func (r *galebRouter) addRoutes(ctx context.Context, name, prefix string, addresses []*url.URL, wait bool) error {
-	backendName, err := router.Retrieve(name)
+func (r *galebRouter) addRoutes(ctx context.Context, app router.App, prefix string, addresses []*url.URL, wait bool) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -236,24 +236,24 @@ func (r *galebRouter) addRoutes(ctx context.Context, name, prefix string, addres
 	return r.client.AddBackends(ctx, addresses, r.poolName(prefix, backendName), wait)
 }
 
-func (r *galebRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) RemoveRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return r.removeRoutes(ctx, name, "", addresses, true)
+	return r.removeRoutes(ctx, app, "", addresses, true)
 }
 
-func (r *galebRouter) RemoveRoutesAsync(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *galebRouter) RemoveRoutesAsync(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return r.removeRoutes(ctx, name, "", addresses, false)
+	return r.removeRoutes(ctx, app, "", addresses, false)
 }
 
-func (r *galebRouter) removeRoutes(ctx context.Context, name, prefix string, addresses []*url.URL, wait bool) error {
-	backendName, err := router.Retrieve(name)
+func (r *galebRouter) removeRoutes(ctx context.Context, app router.App, prefix string, addresses []*url.URL, wait bool) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -281,12 +281,12 @@ func (r *galebRouter) removeRoutes(ctx context.Context, name, prefix string, add
 	return r.client.RemoveResourcesByIDs(ctx, ids, wait)
 }
 
-func (r *galebRouter) CNames(ctx context.Context, name string) (urls []*url.URL, err error) {
+func (r *galebRouter) CNames(ctx context.Context, app router.App) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +296,7 @@ func (r *galebRouter) CNames(ctx context.Context, name string) (urls []*url.URL,
 		return nil, err
 	}
 	urls = []*url.URL{}
-	address, err := r.Addr(ctx, name)
+	address, err := r.Addr(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -308,20 +308,20 @@ func (r *galebRouter) CNames(ctx context.Context, name string) (urls []*url.URL,
 	return urls, nil
 }
 
-func (r *galebRouter) SetCName(ctx context.Context, cname, name string) (err error) {
-	return r.setCName(ctx, cname, name, true)
+func (r *galebRouter) SetCName(ctx context.Context, cname string, app router.App) (err error) {
+	return r.setCName(ctx, cname, app, true)
 }
 
-func (r *galebRouter) SetCNameAsync(ctx context.Context, cname, name string) (err error) {
-	return r.setCName(ctx, cname, name, false)
+func (r *galebRouter) SetCNameAsync(ctx context.Context, cname string, app router.App) (err error) {
+	return r.setCName(ctx, cname, app, false)
 }
 
-func (r *galebRouter) setCName(ctx context.Context, cname, name string, wait bool) (err error) {
+func (r *galebRouter) setCName(ctx context.Context, cname string, app router.App, wait bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func (r *galebRouter) setCName(ctx context.Context, cname, name string, wait boo
 	return router.ErrCNameExists
 }
 
-func (r *galebRouter) UnsetCName(ctx context.Context, cname, name string) (err error) {
+func (r *galebRouter) UnsetCName(ctx context.Context, cname string, app router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -352,12 +352,12 @@ func (r *galebRouter) UnsetCName(ctx context.Context, cname, name string) (err e
 	return err
 }
 
-func (r *galebRouter) MoveCName(ctx context.Context, cname, orgBackend, dstBackend string) (err error) {
+func (r *galebRouter) MoveCName(ctx context.Context, cname string, orgApp, dstApp router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	dstBackendName, err := router.Retrieve(dstBackend)
+	dstBackendName, err := router.Retrieve(dstApp.GetName())
 	if err != nil {
 		return err
 	}
@@ -369,32 +369,32 @@ func (r *galebRouter) MoveCName(ctx context.Context, cname, orgBackend, dstBacke
 	return err
 }
 
-func (r *galebRouter) Addr(ctx context.Context, name string) (addr string, err error) {
+func (r *galebRouter) Addr(ctx context.Context, app router.App) (addr string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return "", err
 	}
 	return r.virtualHostName("", backendName), nil
 }
 
-func (r *galebRouter) Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) (err error) {
+func (r *galebRouter) Swap(ctx context.Context, app1, app2 router.App, cnameOnly bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return router.Swap(ctx, r, backend1, backend2, cnameOnly)
+	return router.Swap(ctx, r, app1, app2, cnameOnly)
 }
 
-func (r *galebRouter) Routes(ctx context.Context, name string) (urls []*url.URL, err error) {
+func (r *galebRouter) Routes(ctx context.Context, app router.App) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -424,16 +424,16 @@ func (r *galebRouter) HealthCheck(ctx context.Context) (err error) {
 	return r.client.Healthcheck(ctx)
 }
 
-func (r *galebRouter) RemoveBackend(ctx context.Context, name string) (err error) {
+func (r *galebRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
-	if backendName != name {
+	if backendName != app.GetName() {
 		return router.ErrBackendSwapped
 	}
 	poolTargets, err := r.client.FindAllTargetsByPoolPrefix(ctx, r.poolName("", backendName))
@@ -535,12 +535,12 @@ func (r *galebRouter) forceCleanupBackend(ctx context.Context, backendName, pref
 	return multiErr.ToError()
 }
 
-func (r *galebRouter) SetHealthcheck(ctx context.Context, name string, data routerTypes.HealthcheckData) (err error) {
+func (r *galebRouter) SetHealthcheck(ctx context.Context, app router.App, data routerTypes.HealthcheckData) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -563,12 +563,12 @@ func (r *galebRouter) SetHealthcheck(ctx context.Context, name string, data rout
 	return r.client.UpdatePoolProperties(ctx, poolName, poolHealthCheck)
 }
 
-func (r *galebRouter) RoutesPrefix(ctx context.Context, name string) (addrs []appTypes.RoutableAddresses, err error) {
+func (r *galebRouter) RoutesPrefix(ctx context.Context, app router.App) (addrs []appTypes.RoutableAddresses, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -593,12 +593,12 @@ func (r *galebRouter) RoutesPrefix(ctx context.Context, name string) (addrs []ap
 	return addrs, nil
 }
 
-func (r *galebRouter) Addresses(ctx context.Context, name string) (addrs []string, err error) {
+func (r *galebRouter) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -608,17 +608,17 @@ func (r *galebRouter) Addresses(ctx context.Context, name string) (addrs []strin
 	}
 	for poolName := range poolTargets {
 		prefix := r.poolNameToPrefix(poolName, backendName)
-		addrs = append(addrs, r.virtualHostName(prefix, name))
+		addrs = append(addrs, r.virtualHostName(prefix, app.GetName()))
 	}
 	return addrs, nil
 }
 
-func (r *galebRouter) AddRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) (err error) {
+func (r *galebRouter) AddRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -628,22 +628,22 @@ func (r *galebRouter) AddRoutesPrefix(ctx context.Context, name string, addresse
 			return err
 		}
 	}
-	return r.addRoutes(ctx, name, addresses.Prefix, addresses.Addresses, sync)
+	return r.addRoutes(ctx, app, addresses.Prefix, addresses.Addresses, sync)
 }
 
-func (r *galebRouter) RemoveRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) (err error) {
+func (r *galebRouter) RemoveRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	err = r.removeRoutes(ctx, name, addresses.Prefix, addresses.Addresses, false)
+	err = r.removeRoutes(ctx, app, addresses.Prefix, addresses.Addresses, false)
 	if err != nil {
 		return err
 	}
 	if addresses.Prefix == "" {
 		return nil
 	}
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}

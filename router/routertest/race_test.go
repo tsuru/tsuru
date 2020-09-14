@@ -25,17 +25,18 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	for i := 1; i < 256; i++ {
 		wg.Add(5)
 		name := fmt.Sprintf("route-%d", i)
+		app := FakeApp{Name: name}
 		addr, _ := url.Parse(fmt.Sprintf("http://10.10.10.%d", i))
 		go func() {
-			fake.AddBackend(ctx, FakeApp{Name: name})
+			fake.AddBackend(ctx, app)
 			wg.Done()
 		}()
 		go func() {
-			fake.AddRoutes(ctx, name, []*url.URL{addr})
+			fake.AddRoutes(ctx, app, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveRoutes(ctx, name, []*url.URL{addr})
+			fake.RemoveRoutes(ctx, app, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {
@@ -43,7 +44,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveBackend(ctx, name)
+			fake.RemoveBackend(ctx, app)
 			wg.Done()
 		}()
 	}

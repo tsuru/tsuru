@@ -132,16 +132,16 @@ func (r *hipacheRouter) AddBackend(ctx context.Context, app router.App) (err err
 	return router.Store(name, name, routerType)
 }
 
-func (r *hipacheRouter) RemoveBackend(ctx context.Context, name string) (err error) {
+func (r *hipacheRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
-	if backendName != name {
+	if backendName != app.GetName() {
 		return router.ErrBackendSwapped
 	}
 	domain, err := r.config.GetString("domain")
@@ -185,12 +185,12 @@ func (r *hipacheRouter) RemoveBackend(ctx context.Context, name string) (err err
 	return nil
 }
 
-func (r *hipacheRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *hipacheRouter) AddRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (r *hipacheRouter) AddRoutes(ctx context.Context, name string, addresses []
 		log.Errorf("error on getting hipache domain in add route for %s - %v", backendName, addresses)
 		return &router.RouterError{Op: "add", Err: err}
 	}
-	routes, err := r.Routes(ctx, name)
+	routes, err := r.Routes(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ addresses:
 		toAdd = append(toAdd, addr.String())
 	}
 	if len(toAdd) == 0 {
-		log.Debugf("[add-routes] no new routes to add for %q", name)
+		log.Debugf("[add-routes] no new routes to add for %q", app.GetName())
 		return nil
 	}
 	frontend := "frontend:" + backendName + "." + domain
@@ -252,12 +252,12 @@ func (r *hipacheRouter) addRoutes(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
+func (r *hipacheRouter) RemoveRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -310,12 +310,12 @@ func (r *hipacheRouter) HealthCheck(ctx context.Context) (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) CNames(ctx context.Context, name string) (urls []*url.URL, err error) {
+func (r *hipacheRouter) CNames(ctx context.Context, app router.App) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	cnames, err := r.getCNames(name)
+	cnames, err := r.getCNames(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -338,12 +338,12 @@ func (r *hipacheRouter) getCNames(name string) ([]string, error) {
 	return cnames, nil
 }
 
-func (r *hipacheRouter) SetCName(ctx context.Context, cname, name string) (err error) {
+func (r *hipacheRouter) SetCName(ctx context.Context, cname string, app router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -414,12 +414,12 @@ func (r *hipacheRouter) SetCName(ctx context.Context, cname, name string) (err e
 	return nil
 }
 
-func (r *hipacheRouter) UnsetCName(ctx context.Context, cname, name string) (err error) {
+func (r *hipacheRouter) UnsetCName(ctx context.Context, cname string, app router.App) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -452,12 +452,12 @@ func (r *hipacheRouter) UnsetCName(ctx context.Context, cname, name string) (err
 	return nil
 }
 
-func (r *hipacheRouter) Addr(ctx context.Context, name string) (addr string, err error) {
+func (r *hipacheRouter) Addr(ctx context.Context, app router.App) (addr string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return "", err
 	}
@@ -480,12 +480,12 @@ func (r *hipacheRouter) Addr(ctx context.Context, name string) (addr string, err
 	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }
 
-func (r *hipacheRouter) Routes(ctx context.Context, name string) (urls []*url.URL, err error) {
+func (r *hipacheRouter) Routes(ctx context.Context, app router.App) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -533,12 +533,12 @@ func (r *hipacheRouter) removeElements(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) (err error) {
+func (r *hipacheRouter) Swap(ctx context.Context, app1, app2 router.App, cnameOnly bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return router.Swap(ctx, r, backend1, backend2, cnameOnly)
+	return router.Swap(ctx, r, app1, app2, cnameOnly)
 }
 
 func (r *hipacheRouter) StartupMessage() (string, error) {
@@ -549,12 +549,12 @@ func (r *hipacheRouter) StartupMessage() (string, error) {
 	return fmt.Sprintf("hipache router %q with redis at %q.", domain, "TODO"), nil
 }
 
-func (r *hipacheRouter) SetHealthcheck(ctx context.Context, name string, data routerTypes.HealthcheckData) (err error) {
+func (r *hipacheRouter) SetHealthcheck(ctx context.Context, app router.App, data routerTypes.HealthcheckData) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	backendName, err := router.Retrieve(name)
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}

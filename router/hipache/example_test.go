@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -28,17 +29,18 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddRoutes(ctx, "myapp", []*url.URL{u})
+	app := provisiontest.NewFakeApp("myapp", "static", 4)
+	err = router.AddRoutes(ctx, app, []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}
-	addr, _ := router.Addr(ctx, "myapp")
+	addr, _ := router.Addr(ctx, app)
 	fmt.Println("Please access:", addr)
-	err = router.RemoveRoutes(ctx, "myapp", []*url.URL{u})
+	err = router.RemoveRoutes(ctx, app, []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}
-	err = router.RemoveBackend(ctx, "myapp")
+	err = router.RemoveBackend(ctx, app)
 	if err != nil {
 		panic(err)
 	}

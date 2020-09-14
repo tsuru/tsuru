@@ -273,7 +273,7 @@ func (s *S) newContainer(c *check.C, client *docker.Client) *container.Container
 	fakeApp := provisiontest.NewFakeApp(container.AppName, "python", 0)
 	version := newVersionForApp(c, client, fakeApp, nil)
 	routertest.FakeRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: container.AppName})
-	routertest.FakeRouter.AddRoutes(context.TODO(), container.AppName, []*url.URL{container.Address()})
+	routertest.FakeRouter.AddRoutes(context.TODO(), fakeApp, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}

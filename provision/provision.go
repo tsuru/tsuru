@@ -240,6 +240,7 @@ type App interface {
 	GetPool() string
 
 	GetTeamOwner() string
+	GetTeamsName() []string
 
 	ListTags() []string
 }

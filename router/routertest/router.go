@@ -142,12 +142,12 @@ func (r *fakeRouter) HasBackend(name string) bool {
 	return ok
 }
 
-func (r *fakeRouter) CNames(ctx context.Context, name string) ([]*url.URL, error) {
+func (r *fakeRouter) CNames(ctx context.Context, app router.App) ([]*url.URL, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	result := []*url.URL{}
 	for cname, backendName := range r.cnames {
-		if backendName == name {
+		if backendName == app.GetName() {
 			result = append(result, &url.URL{Host: cname})
 		}
 	}
@@ -201,8 +201,9 @@ func (r *fakeRouter) AddBackend(ctx context.Context, app router.App) error {
 	return router.Store(name, name, "fake")
 }
 
-func (r *fakeRouter) RemoveBackend(ctx context.Context, name string) error {
+func (r *fakeRouter) RemoveBackend(ctx context.Context, app router.App) error {
 	r.mutex.Lock()
+	name := app.GetName()
 	if r.failuresByIp[name] {
 		r.mutex.Unlock()
 		return ErrForcedFailure
@@ -229,7 +230,8 @@ func (r *fakeRouter) RemoveBackend(ctx context.Context, name string) error {
 	return nil
 }
 
-func (r *fakeRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) error {
+func (r *fakeRouter) AddRoutes(ctx context.Context, app router.App, addresses []*url.URL) error {
+	name := app.GetName()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -258,7 +260,8 @@ addresses:
 	return nil
 }
 
-func (r *fakeRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) error {
+func (r *fakeRouter) RemoveRoutes(ctx context.Context, app router.App, addresses []*url.URL) error {
+	name := app.GetName()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -286,7 +289,8 @@ func (r *fakeRouter) RemoveRoutes(ctx context.Context, name string, addresses []
 	return nil
 }
 
-func (r *fakeRouter) SetCName(ctx context.Context, cname, name string) error {
+func (r *fakeRouter) SetCName(ctx context.Context, cname string, app router.App) error {
+	name := app.GetName()
 	r.mutex.Lock()
 	if r.failuresByIp[cname] {
 		r.mutex.Unlock()
@@ -312,7 +316,8 @@ func (r *fakeRouter) SetCName(ctx context.Context, cname, name string) error {
 	return nil
 }
 
-func (r *fakeRouter) UnsetCName(ctx context.Context, cname, name string) error {
+func (r *fakeRouter) UnsetCName(ctx context.Context, cname string, app router.App) error {
+	name := app.GetName()
 	r.mutex.Lock()
 	if r.failuresByIp[cname] {
 		r.mutex.Unlock()
@@ -344,7 +349,8 @@ func (r *fakeRouter) SetBackendAddr(ctx context.Context, name, addr string) {
 	r.backendAddrs[name] = addr
 }
 
-func (r *fakeRouter) Addr(ctx context.Context, name string) (string, error) {
+func (r *fakeRouter) Addr(ctx context.Context, app router.App) (string, error) {
+	name := app.GetName()
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if r.failuresByIp[r.GetName()+name] || r.failuresByIp[name] {
@@ -373,7 +379,8 @@ func (r *fakeRouter) Reset() {
 	r.healthcheck = make(map[string]routerTypes.HealthcheckData)
 }
 
-func (r *fakeRouter) Routes(ctx context.Context, name string) ([]*url.URL, error) {
+func (r *fakeRouter) Routes(ctx context.Context, app router.App) ([]*url.URL, error) {
+	name := app.GetName()
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -388,8 +395,8 @@ func (r *fakeRouter) Routes(ctx context.Context, name string) ([]*url.URL, error
 	return result, nil
 }
 
-func (r *fakeRouter) Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) error {
-	return router.Swap(ctx, r, backend1, backend2, cnameOnly)
+func (r *fakeRouter) Swap(ctx context.Context, app1, app2 router.App, cnameOnly bool) error {
+	return router.Swap(ctx, r, app1, app2, cnameOnly)
 }
 
 type hcRouter struct {
@@ -410,16 +417,16 @@ func (r *hcRouter) HealthCheck(context.Context) error {
 	return r.err
 }
 
-func (r *hcRouter) Addr(ctx context.Context, name string) (string, error) {
-	addr, err := r.fakeRouter.Addr(ctx, name)
+func (r *hcRouter) Addr(ctx context.Context, app router.App) (string, error) {
+	addr, err := r.fakeRouter.Addr(ctx, app)
 	if err != nil {
 		return "", err
 	}
 	return strings.Replace(addr, ".fakerouter.com", ".fakehcrouter.com", -1), nil
 }
 
-func (r *fakeRouter) SetHealthcheck(ctx context.Context, name string, data routerTypes.HealthcheckData) error {
-	backendName, err := router.Retrieve(name)
+func (r *fakeRouter) SetHealthcheck(ctx context.Context, app router.App, data routerTypes.HealthcheckData) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -468,8 +475,8 @@ func (r *tlsRouter) GetCertificate(ctx context.Context, app router.App, cname st
 	return data, nil
 }
 
-func (r *tlsRouter) Addr(ctx context.Context, name string) (string, error) {
-	addr, err := r.fakeRouter.Addr(ctx, name)
+func (r *tlsRouter) Addr(ctx context.Context, app router.App) (string, error) {
+	addr, err := r.fakeRouter.Addr(ctx, app)
 	if err != nil {
 		return "", err
 	}
@@ -517,7 +524,7 @@ type statusRouter struct {
 
 var _ router.StatusRouter = &statusRouter{}
 
-func (r *statusRouter) GetBackendStatus(ctx context.Context, name string) (router.BackendStatus, string, error) {
+func (r *statusRouter) GetBackendStatus(ctx context.Context, app router.App) (router.BackendStatus, string, error) {
 	return r.Status, r.StatusDetail, nil
 }
 
@@ -534,8 +541,8 @@ type prefixRouter struct {
 
 var _ router.PrefixRouter = &prefixRouter{}
 
-func (r *prefixRouter) RoutesPrefix(ctx context.Context, name string) ([]appTypes.RoutableAddresses, error) {
-	backendName, err := router.Retrieve(name)
+func (r *prefixRouter) RoutesPrefix(ctx context.Context, app router.App) ([]appTypes.RoutableAddresses, error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -544,8 +551,8 @@ func (r *prefixRouter) RoutesPrefix(ctx context.Context, name string) ([]appType
 	return r.prefixRoutes[backendName], nil
 }
 
-func (r *prefixRouter) Addresses(ctx context.Context, name string) ([]string, error) {
-	backendName, err := router.Retrieve(name)
+func (r *prefixRouter) Addresses(ctx context.Context, app router.App) ([]string, error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -563,9 +570,10 @@ func (r *prefixRouter) Addresses(ctx context.Context, name string) ([]string, er
 	return addrs, nil
 }
 
-func (r *prefixRouter) AddRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error {
+func (r *prefixRouter) AddRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
+	name := app.GetName()
 	if addresses.Prefix == "" {
-		err := r.AddRoutes(ctx, name, addresses.Addresses)
+		err := r.AddRoutes(ctx, app, addresses.Addresses)
 		if err != nil {
 			return err
 		}
@@ -600,9 +608,10 @@ func (r *prefixRouter) AddRoutesPrefix(ctx context.Context, name string, address
 	return nil
 }
 
-func (r *prefixRouter) RemoveRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error {
+func (r *prefixRouter) RemoveRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
+	name := app.GetName()
 	if addresses.Prefix == "" {
-		err := r.RemoveRoutes(ctx, name, addresses.Addresses)
+		err := r.RemoveRoutes(ctx, app, addresses.Addresses)
 		if err != nil {
 			return err
 		}
