@@ -704,7 +704,6 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 	}
 	result.count = len(deps)
 	for i, dep := range deps {
-		depLabels := labelSetFromMeta(&dep.ObjectMeta)
 		labels := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
 		version := labels.AppVersion()
 		isLegacy := false
@@ -729,8 +728,10 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 			isLegacy:   isLegacy,
 			isBase:     isBase,
 			isRoutable: isRoutable,
-			replicas:   depLabels.AppReplicas(),
 			process:    labels.AppProcess(),
+		}
+		if dep.Spec.Replicas != nil {
+			di.replicas = int(*dep.Spec.Replicas)
 		}
 		result.versioned[version] = append(result.versioned[version], di)
 		if isBase {

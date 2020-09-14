@@ -87,27 +87,23 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
 	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":             "true",
-		"tsuru.io/is-service":           "true",
-		"tsuru.io/is-build":             "false",
-		"tsuru.io/is-stopped":           "false",
-		"tsuru.io/is-deploy":            "false",
-		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/is-routable":          "true",
-		"tsuru.io/app-name":             "myapp",
-		"tsuru.io/app-process":          "p1",
-		"tsuru.io/app-process-replicas": "1",
-		"tsuru.io/app-platform":         "",
-		"tsuru.io/app-pool":             "test-default",
-		"tsuru.io/provisioner":          "kubernetes",
-		"tsuru.io/builder":              "",
-		"app":                           "myapp-p1",
+		"tsuru.io/is-tsuru":        "true",
+		"tsuru.io/is-service":      "true",
+		"tsuru.io/is-build":        "false",
+		"tsuru.io/is-stopped":      "false",
+		"tsuru.io/is-deploy":       "false",
+		"tsuru.io/is-isolated-run": "false",
+		"tsuru.io/is-routable":     "true",
+		"tsuru.io/app-name":        "myapp",
+		"tsuru.io/app-process":     "p1",
+		"tsuru.io/app-platform":    "",
+		"tsuru.io/app-pool":        "test-default",
+		"tsuru.io/provisioner":     "kubernetes",
+		"tsuru.io/builder":         "",
+		"app":                      "myapp-p1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
-		if k == "tsuru.io/app-process-replicas" {
-			continue
-		}
 		podLabels[k] = v
 	}
 	podLabels["tsuru.io/app-version"] = "1"
@@ -644,10 +640,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.AppReplicas(), check.Equals, 3)
-				c.Assert(ls.IsStopped(), check.Equals, true)
+				c.Assert(dep, check.IsNil)
 			},
 		},
 		{
@@ -664,7 +657,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
@@ -683,7 +676,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
@@ -702,10 +695,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.AppReplicas(), check.Equals, 3)
-				c.Assert(ls.IsStopped(), check.Equals, true)
+				c.Assert(dep, check.IsNil)
 			},
 		},
 		{
@@ -744,7 +734,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		nsName, err := s.client.AppNamespace(a)
 		c.Assert(err, check.IsNil)
 		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
-		c.Assert(err, check.IsNil)
+		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
 		waitDep()
 		tt.fn(dep)
 		err = cleanupDeployment(s.clusterClient, a, "p1", version.Version())
@@ -1927,7 +1917,6 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		"tsuru.io/is-isolated-run-version": "false",
 		"tsuru.io/app-name":                "myapp",
 		"tsuru.io/app-process":             "p1",
-		"tsuru.io/app-process-replicas":    "1",
 		"tsuru.io/app-platform":            "",
 		"tsuru.io/app-pool":                "test-default",
 		"tsuru.io/provisioner":             "kubernetes",
@@ -1936,9 +1925,6 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
-		if k == "tsuru.io/app-process-replicas" {
-			continue
-		}
 		podLabels[k] = v
 	}
 	podLabels["tsuru.io/app-version"] = "2"
@@ -2471,19 +2457,18 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Name:      "myapp-v1-deploy",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-deploy":            "false",
-				"tsuru.io/is-stopped":           "false",
-				"tsuru.io/is-tsuru":             "true",
-				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/is-isolated-run":      "false",
-				"tsuru.io/builder":              "",
-				"tsuru.io/app-process":          "",
-				"tsuru.io/is-build":             "true",
-				"tsuru.io/app-platform":         "python",
-				"tsuru.io/is-service":           "true",
-				"tsuru.io/app-process-replicas": "0",
-				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/is-deploy":       "false",
+				"tsuru.io/is-stopped":      "false",
+				"tsuru.io/is-tsuru":        "true",
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/is-isolated-run": "false",
+				"tsuru.io/builder":         "",
+				"tsuru.io/app-process":     "",
+				"tsuru.io/is-build":        "true",
+				"tsuru.io/app-platform":    "python",
+				"tsuru.io/is-service":      "true",
+				"tsuru.io/app-pool":        "test-default",
+				"tsuru.io/provisioner":     "kubernetes",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
@@ -2595,19 +2580,18 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			Name:      "myapp-v1-deploy",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-deploy":            "false",
-				"tsuru.io/is-stopped":           "false",
-				"tsuru.io/is-tsuru":             "true",
-				"tsuru.io/app-name":             "myapp",
-				"tsuru.io/is-isolated-run":      "false",
-				"tsuru.io/builder":              "",
-				"tsuru.io/app-process":          "",
-				"tsuru.io/is-build":             "true",
-				"tsuru.io/app-platform":         "python",
-				"tsuru.io/is-service":           "true",
-				"tsuru.io/app-process-replicas": "0",
-				"tsuru.io/app-pool":             "test-default",
-				"tsuru.io/provisioner":          "kubernetes",
+				"tsuru.io/is-deploy":       "false",
+				"tsuru.io/is-stopped":      "false",
+				"tsuru.io/is-tsuru":        "true",
+				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/is-isolated-run": "false",
+				"tsuru.io/builder":         "",
+				"tsuru.io/app-process":     "",
+				"tsuru.io/is-build":        "true",
+				"tsuru.io/app-platform":    "python",
+				"tsuru.io/is-service":      "true",
+				"tsuru.io/app-pool":        "test-default",
+				"tsuru.io/provisioner":     "kubernetes",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
@@ -3354,21 +3338,20 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 	expectedLabels := map[string]string{
-		"tsuru.io/is-tsuru":             "true",
-		"tsuru.io/is-build":             "false",
-		"tsuru.io/is-stopped":           "false",
-		"tsuru.io/is-service":           "true",
-		"tsuru.io/is-deploy":            "false",
-		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/app-name":             a.GetName(),
-		"tsuru.io/app-process":          "p1",
-		"tsuru.io/app-version":          "1",
-		"tsuru.io/app-process-replicas": "1",
-		"tsuru.io/restarts":             "0",
-		"tsuru.io/app-platform":         a.GetPlatform(),
-		"tsuru.io/app-pool":             a.GetPool(),
-		"tsuru.io/provisioner":          provisionerName,
-		"tsuru.io/builder":              "",
+		"tsuru.io/is-tsuru":        "true",
+		"tsuru.io/is-build":        "false",
+		"tsuru.io/is-stopped":      "false",
+		"tsuru.io/is-service":      "true",
+		"tsuru.io/is-deploy":       "false",
+		"tsuru.io/is-isolated-run": "false",
+		"tsuru.io/app-name":        a.GetName(),
+		"tsuru.io/app-process":     "p1",
+		"tsuru.io/app-version":     "1",
+		"tsuru.io/restarts":        "0",
+		"tsuru.io/app-platform":    a.GetPlatform(),
+		"tsuru.io/app-pool":        a.GetPool(),
+		"tsuru.io/provisioner":     provisionerName,
+		"tsuru.io/builder":         "",
 	}
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
@@ -3756,27 +3739,23 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
 	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":             "true",
-		"tsuru.io/is-service":           "true",
-		"tsuru.io/is-build":             "false",
-		"tsuru.io/is-stopped":           "false",
-		"tsuru.io/is-deploy":            "false",
-		"tsuru.io/is-isolated-run":      "false",
-		"tsuru.io/app-name":             "myapp",
-		"tsuru.io/app-process":          "p1",
-		"tsuru.io/app-process-replicas": "1",
-		"tsuru.io/app-platform":         "",
-		"tsuru.io/app-pool":             "test-default",
-		"tsuru.io/provisioner":          "kubernetes",
-		"tsuru.io/builder":              "",
-		"app":                           "myapp-p1",
-		"version":                       "v1",
+		"tsuru.io/is-tsuru":        "true",
+		"tsuru.io/is-service":      "true",
+		"tsuru.io/is-build":        "false",
+		"tsuru.io/is-stopped":      "false",
+		"tsuru.io/is-deploy":       "false",
+		"tsuru.io/is-isolated-run": "false",
+		"tsuru.io/app-name":        "myapp",
+		"tsuru.io/app-process":     "p1",
+		"tsuru.io/app-platform":    "",
+		"tsuru.io/app-pool":        "test-default",
+		"tsuru.io/provisioner":     "kubernetes",
+		"tsuru.io/builder":         "",
+		"app":                      "myapp-p1",
+		"version":                  "v1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
-		if k == "tsuru.io/app-process-replicas" {
-			continue
-		}
 		podLabels[k] = v
 	}
 	annotations := map[string]string{

@@ -1748,7 +1748,7 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 	ls.SetVersion(version)
 	dep.Spec.Paused = true
 	dep.ObjectMeta.Labels = ls.WithoutVersion().ToLabels()
-	dep.Spec.Template.ObjectMeta.Labels = ls.WithoutAppReplicas().ToLabels()
+	dep.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
 	_, err = client.AppsV1().Deployments(dep.Namespace).Update(dep)
 	if err != nil {
 		return errors.WithStack(err)

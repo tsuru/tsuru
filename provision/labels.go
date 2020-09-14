@@ -28,12 +28,11 @@ var (
 	labelIsHeadlessService = "is-headless-service"
 	labelIsRoutable        = "is-routable"
 
-	labelAppName            = "app-name"
-	labelAppProcess         = "app-process"
-	labelAppProcessReplicas = "app-process-replicas"
-	LabelAppPool            = "app-pool"
-	labelAppPlatform        = "app-platform"
-	labelAppVersion         = "app-version"
+	labelAppName     = "app-name"
+	labelAppProcess  = "app-process"
+	LabelAppPool     = "app-pool"
+	labelAppPlatform = "app-platform"
+	labelAppVersion  = "app-version"
 
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
@@ -197,10 +196,6 @@ func (s *LabelSet) WithoutVersion() *LabelSet {
 	return ns
 }
 
-func (s *LabelSet) WithoutAppReplicas() *LabelSet {
-	return s.without(labelAppProcessReplicas)
-}
-
 func (s *LabelSet) WithoutRoutable() *LabelSet {
 	return s.without(labelIsRoutable)
 }
@@ -279,11 +274,6 @@ func (s *LabelSet) NodeExtraData(cluster string) map[string]string {
 		m[labelClusterMetadata] = cluster
 	}
 	return m
-}
-
-func (s *LabelSet) AppReplicas() int {
-	replicas, _ := strconv.Atoi(s.getLabel(labelAppProcessReplicas))
-	return replicas
 }
 
 func (s *LabelSet) Restarts() int {
@@ -400,10 +390,9 @@ func (s *LabelSet) getBoolLabel(k string) bool {
 }
 
 type ServiceLabelsOpts struct {
-	App      App
-	Process  string
-	Replicas int
-	Version  int
+	App     App
+	Process string
+	Version int
 	ServiceLabelExtendedOpts
 }
 
@@ -439,7 +428,6 @@ func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	set.Labels[labelAppProcessReplicas] = strconv.Itoa(opts.Replicas)
 	if set.RawLabels == nil {
 		set.RawLabels = make(map[string]string)
 	}

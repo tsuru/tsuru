@@ -601,7 +601,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	}
 	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	depLabels := labels.WithoutVersion().ToLabels()
-	podLabels := labels.WithoutAppReplicas().ToLabels()
+	podLabels := labels.ToLabels()
 	baseName := deploymentNameForAppBase(a, process)
 	depLabels["app"] = baseName
 	podLabels["app"] = baseName
@@ -772,17 +772,17 @@ func (m *serviceManager) RemoveService(a provision.App, process string, versionN
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string, versionNumber int) (*provision.LabelSet, error) {
+func (m *serviceManager) CurrentLabels(a provision.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
 	dep, err := deploymentForVersion(m.client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	depLabels := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
 	podLabels := labelOnlySetFromMetaPrefix(&dep.Spec.Template.ObjectMeta, false)
-	return depLabels.Merge(podLabels), nil
+	return depLabels.Merge(podLabels), dep.Spec.Replicas, nil
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
@@ -1191,8 +1191,6 @@ func (m *serviceManager) ensureServices(a provision.App, process string, labels,
 	if policyLocal {
 		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
 	}
-
-	labels = labels.WithoutAppReplicas()
 
 	routableLabels := labels.WithoutVersion().WithoutIsolated()
 	routableLabels.SetIsRoutable()
