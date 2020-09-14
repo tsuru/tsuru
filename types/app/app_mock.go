@@ -10,6 +10,7 @@ type MockApp struct {
 	Name, TeamOwner, Platform, PlatformVersion, Pool string
 	Deploys                                          uint
 	UpdatePlatform                                   bool
+	TeamsName                                        []string
 }
 
 func (a *MockApp) GetName() string {
@@ -18,6 +19,10 @@ func (a *MockApp) GetName() string {
 
 func (a *MockApp) GetPool() string {
 	return a.Pool
+}
+
+func (a *MockApp) GetTeamsName() []string {
+	return a.TeamsName
 }
 
 func (a *MockApp) GetTeamOwner() string {

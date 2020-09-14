@@ -2501,7 +2501,7 @@ func (s *S) TestSleep(c *check.C) {
 	sleeps := s.provisioner.Sleeps(&a, "")
 	c.Assert(sleeps, check.Equals, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, proxyURL.String()), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 }
@@ -3991,7 +3991,7 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	}
 	err = a.Start(context.TODO(), &b, "web", "")
 	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
@@ -4013,7 +4013,7 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	}
 	err = a.Restart(context.TODO(), "web", "", &b)
 	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
@@ -4884,7 +4884,7 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {
@@ -4923,7 +4923,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {
@@ -4982,7 +4982,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, false)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {

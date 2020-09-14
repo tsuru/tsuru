@@ -50,20 +50,20 @@ func (s *ExternalSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
-	backend1 := "bx1"
-	backend2 := "bx2"
+	backend1 := routertest.FakeApp{Name: "bx1"}
+	backend2 := routertest.FakeApp{Name: "bx2"}
 	r, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
 	cnameRouter, ok := r.(router.CNameRouter)
 	c.Assert(ok, check.Equals, true)
-	err = r.AddBackend(context.TODO(), routertest.FakeApp{Name: backend1})
+	err = r.AddBackend(context.TODO(), backend1)
 	c.Assert(err, check.IsNil)
 	addr1, err := url.Parse("http://127.0.0.1")
 	c.Assert(err, check.IsNil)
 	r.AddRoutes(context.TODO(), backend1, []*url.URL{addr1})
 	err = cnameRouter.SetCName(context.TODO(), "cname.com", backend1)
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend(context.TODO(), routertest.FakeApp{Name: backend2})
+	err = r.AddBackend(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	addr2, err := url.Parse("http://10.10.10.10")
 	c.Assert(err, check.IsNil)
@@ -76,12 +76,12 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	routes2, err := r.Routes(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes2, check.DeepEquals, []*url.URL{addr2})
-	name1, err := router.Retrieve(backend1)
+	name1, err := router.Retrieve(backend1.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(name1, check.Equals, backend1)
-	name2, err := router.Retrieve(backend2)
+	c.Assert(name1, check.Equals, backend1.GetName())
+	name2, err := router.Retrieve(backend2.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(name2, check.Equals, backend2)
+	c.Assert(name2, check.Equals, backend2.GetName())
 	cnames, err := cnameRouter.CNames(context.TODO(), backend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(cnames, check.HasLen, 0)
@@ -100,14 +100,14 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 }
 
 func (s *ExternalSuite) TestSwap(c *check.C) {
-	backend1 := "b1"
-	backend2 := "b2"
+	backend1 := routertest.FakeApp{Name: "b1"}
+	backend2 := routertest.FakeApp{Name: "b2"}
 	r, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
-	r.AddBackend(context.TODO(), routertest.FakeApp{Name: backend1})
+	r.AddBackend(context.TODO(), backend1)
 	addr1, _ := url.Parse("http://127.0.0.1")
 	r.AddRoutes(context.TODO(), backend1, []*url.URL{addr1})
-	r.AddBackend(context.TODO(), routertest.FakeApp{Name: backend2})
+	r.AddBackend(context.TODO(), backend2)
 	addr2, _ := url.Parse("http://10.10.10.10")
 	r.AddRoutes(context.TODO(), backend2, []*url.URL{addr2})
 	err = router.Swap(context.TODO(), r, backend1, backend2, false)
@@ -118,31 +118,31 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 	routes2, err := r.Routes(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes2, check.DeepEquals, []*url.URL{addr2})
-	name1, err := router.Retrieve(backend1)
+	name1, err := router.Retrieve(backend1.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(name1, check.Equals, backend2)
-	name2, err := router.Retrieve(backend2)
+	c.Assert(name1, check.Equals, backend2.GetName())
+	name2, err := router.Retrieve(backend2.GetName())
 	c.Assert(err, check.IsNil)
-	c.Assert(name2, check.Equals, backend1)
+	c.Assert(name2, check.Equals, backend1.GetName())
 }
 
 func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	config.Set("hipache:redis-server", "127.0.0.1:6379")
 	config.Set("hipache:redis-db", 5)
-	backend1 := "bb1"
-	backend2 := "bb2"
+	backend1 := routertest.FakeApp{Name: "bb1"}
+	backend2 := routertest.FakeApp{Name: "bb2"}
 	r1, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
 	r2, err := router.Get(context.TODO(), "hipache")
 	c.Assert(err, check.IsNil)
-	err = r1.AddBackend(context.TODO(), routertest.FakeApp{Name: backend1})
+	err = r1.AddBackend(context.TODO(), backend1)
 	c.Assert(err, check.IsNil)
 	defer r1.RemoveBackend(context.TODO(), backend1)
 	addr1, _ := url.Parse("http://127.0.0.1")
 	err = r1.AddRoutes(context.TODO(), backend1, []*url.URL{addr1})
 	c.Assert(err, check.IsNil)
 	defer r1.RemoveRoutes(context.TODO(), backend1, []*url.URL{addr1})
-	err = r2.AddBackend(context.TODO(), routertest.FakeApp{Name: backend2})
+	err = r2.AddBackend(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	defer r2.RemoveBackend(context.TODO(), backend2)
 	addr2, _ := url.Parse("http://10.10.10.10")

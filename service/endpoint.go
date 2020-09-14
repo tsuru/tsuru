@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
@@ -500,35 +501,12 @@ func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requ
 	if requestIDHeader != "" && requestID != "" {
 		header.Set(requestIDHeader, requestID)
 	}
-	return multiClusterHeader(ctx, si, header)
-}
 
-func multiClusterHeader(ctx context.Context, si *ServiceInstance, header http.Header) (http.Header, error) {
-	if header == nil {
-		header = http.Header{}
-	}
 	if si == nil || si.Pool == "" {
 		return header, nil
 	}
-	p, err := servicemanager.Pool.FindByName(ctx, si.Pool)
-	if err != nil {
-		return header, err
-	}
-	header.Set("X-Tsuru-Pool-Name", p.Name)
-	header.Set("X-Tsuru-Pool-Provisioner", p.Provisioner)
-	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
-	if err != nil {
-		if err == provTypes.ErrNoCluster {
-			return header, nil
-		}
-		return header, err
-	}
-	header.Set("X-Tsuru-Cluster-Name", c.Name)
-	header.Set("X-Tsuru-Cluster-Provisioner", c.Provisioner)
-	for _, addr := range c.Addresses {
-		header.Add("X-Tsuru-Cluster-Addresses", addr)
-	}
-	return header, nil
+
+	return poolMultiCluster.Header(ctx, si.Pool, header)
 }
 
 func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bindParams BindAppParameters) (url.Values, error) {
