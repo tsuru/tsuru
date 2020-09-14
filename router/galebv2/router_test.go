@@ -561,7 +561,7 @@ func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {
 	}
 	fakeServer.prepareError("POST", "/api/target", "error for http://10.10.10.5:8080")
 	sort.Sort(routertest.URLList(addrs))
-	err = gRouter.AddRoutes(context.TODO(), "backend1", addrs)
+	err = gRouter.AddRoutes(context.TODO(), routertest.FakeApp{Name: "backend1"}, addrs)
 	c.Assert(err, check.ErrorMatches, `(?s)POST /target: invalid response code: 500: error for http://10.10.10.5:8080.*`)
 	c.Check(fakeServer.targets["http://10.10.10.5:8080"], check.IsNil)
 }
@@ -576,7 +576,7 @@ func (s *S) TestSetHealthcheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
-	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), "backend1", routerTypes.HealthcheckData{
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), routertest.FakeApp{Name: "backend1"}, routerTypes.HealthcheckData{
 		Path: "/",
 	})
 	c.Assert(err, check.IsNil)
@@ -595,7 +595,7 @@ func (s *S) TestSetHealthcheckTCPOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
-	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), "backend1", routerTypes.HealthcheckData{
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), routertest.FakeApp{Name: "backend1"}, routerTypes.HealthcheckData{
 		TCPOnly: true,
 	})
 	c.Assert(err, check.IsNil)

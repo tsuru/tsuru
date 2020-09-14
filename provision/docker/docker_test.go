@@ -87,8 +87,9 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		}
 	}
 
-	routertest.FakeRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: container.AppName})
-	routertest.FakeRouter.AddRoutes(context.TODO(), container.AppName, []*url.URL{container.Address()})
+	app := routertest.FakeApp{Name: container.AppName}
+	routertest.FakeRouter.AddBackend(context.TODO(), app)
+	routertest.FakeRouter.AddRoutes(context.TODO(), app, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}
@@ -119,7 +120,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 }
 
 func (s *S) removeTestContainer(c *container.Container) error {
-	routertest.FakeRouter.RemoveBackend(context.TODO(), c.AppName)
+	routertest.FakeRouter.RemoveBackend(context.TODO(), routertest.FakeApp{Name: c.AppName})
 	return c.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 }
 

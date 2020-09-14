@@ -250,7 +250,7 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
 	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
@@ -284,7 +284,7 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	version, err := newVersionForApp(s.p, app, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"api": "python myapi.py",
@@ -318,7 +318,7 @@ func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	version, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "4321"}}
@@ -348,7 +348,7 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsZero(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	version, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "0"}}
@@ -373,7 +373,7 @@ func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsZero(c *check.C) {
 func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsEmpty(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	version, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: ""}}
@@ -398,14 +398,14 @@ func (s *S) TestAddNewRouteForwardDoesNotAddWhenHostPortIsEmpty(c *check.C) {
 func (s *S) TestAddNewRouteBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
 	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
 	defer cont1.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	defer cont2.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	defer cont3.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
-	err := routertest.FakeRouter.AddRoutes(context.TODO(), app.GetName(), []*url.URL{cont1.Address(), cont2.Address()})
+	err := routertest.FakeRouter.AddRoutes(context.TODO(), app, []*url.URL{cont1.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -436,7 +436,7 @@ func (s *S) TestSetRouterHealthcheckForward(c *check.C) {
 	version, err := newVersionForApp(s.p, app, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
@@ -467,7 +467,7 @@ func (s *S) TestSetRouterHealthcheckForwardNoUseInRouter(c *check.C) {
 	version, err := newVersionForApp(s.p, app, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
@@ -496,7 +496,7 @@ func (s *S) TestSetRouterHealthcheckBackward(c *check.C) {
 	version, err := newVersionForApp(s.p, app, customData)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
@@ -534,14 +534,14 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 	err = oldVersion.CommitSuccessful()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}}
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}}
 	cont3 := container.Container{Container: types.Container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}}
 	defer cont1.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	defer cont2.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	defer cont3.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), app.GetName(), []*url.URL{cont1.Address(), cont2.Address()})
+	err = routertest.FakeRouter.AddRoutes(context.TODO(), app, []*url.URL{cont1.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -571,7 +571,7 @@ func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
 	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), app.GetName(), []int{version.Version()})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont1 := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "127.0.0.1", HostPort: ""}}
 	args := changeUnitsPipelineArgs{
 		app:         app,
@@ -601,12 +601,12 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 	err = oldVersion.CommitSuccessful()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1", HostPort: "1234"}}
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2", HostPort: "1234"}}
 	defer cont.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
 	defer cont2.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), app.GetName(), []*url.URL{cont.Address(), cont2.Address()})
+	err = routertest.FakeRouter.AddRoutes(context.TODO(), app, []*url.URL{cont.Address(), cont2.Address()})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.FailForIp(cont2.Address().String())
 	args := changeUnitsPipelineArgs{
@@ -628,7 +628,7 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *check.C) {
 func (s *S) TestRemoveOldRoutesBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	cont := container.Container{Container: types.Container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web"}}
 	cont2 := container.Container{Container: types.Container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web"}}
 	defer cont.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
@@ -819,12 +819,12 @@ func (s *S) TestProvisionRemoveOldUnitsName(c *check.C) {
 func (s *S) TestProvisionRemoveOldUnitsForward(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), cont.AppName)
+	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
 	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
 	unit := cont.AsUnit(app)
 	app.BindUnit(&unit)
 	args := changeUnitsPipelineArgs{
@@ -848,12 +848,12 @@ func (s *S) TestProvisionUnbindOldUnitsName(c *check.C) {
 func (s *S) TestProvisionUnbindOldUnitsForward(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(context.TODO(), cont.AppName)
+	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
 	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
 	unit := cont.AsUnit(app)
 	app.BindUnit(&unit)
 	args := changeUnitsPipelineArgs{

@@ -6335,7 +6335,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(context.TODO(), &a)
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), a.Name, []*url.URL{
+	err = routertest.FakeRouter.AddRoutes(context.TODO(), &a, []*url.URL{
 		{Host: "h1"},
 	})
 	c.Assert(err, check.IsNil)

@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/router"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	routerTypes "github.com/tsuru/tsuru/types/router"
@@ -46,8 +47,10 @@ type apiRouter struct {
 	endpoint   string
 	headers    map[string]string
 	client     *http.Client
-	debug      bool
 	supIface   router.Router
+
+	debug        bool
+	multiCluster bool
 }
 
 type apiRouterWithCnameSupport struct{ *apiRouter }
@@ -120,6 +123,7 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 		return nil, err
 	}
 	debug, _ := config.GetBool("debug")
+	multiCluster, _ := config.GetBool("multi-cluster")
 	headers, _ := config.Get("headers")
 	headerMap := make(map[string]string)
 	if headers != nil {
@@ -142,6 +146,8 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 		client:     net.Dial15Full60ClientNoKeepAlive,
 		debug:      debug,
 		headers:    headerMap,
+
+		multiCluster: multiCluster,
 	}
 	baseRouter.supIface = toSupportedInterface(baseRouter, baseRouter.checkAllCapabilities(context.Background()))
 	return baseRouter.supIface, nil
@@ -173,8 +179,14 @@ func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method st
 	if err != nil {
 		return err
 	}
+
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+
 	data := bytes.NewReader(b)
-	_, statusCode, err := r.do(ctx, method, path, data)
+	_, statusCode, err := r.do(ctx, method, path, headers, data)
 	if statusCode == http.StatusConflict {
 		return router.ErrBackendExists
 	}
@@ -184,9 +196,13 @@ func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method st
 	return err
 }
 
-func (r *apiRouter) RemoveBackend(ctx context.Context, name string) (err error) {
-	path := fmt.Sprintf("backend/%s", name)
-	data, statusCode, err := r.do(ctx, http.MethodDelete, path, nil)
+func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
+	path := fmt.Sprintf("backend/%s", app.GetName())
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	data, statusCode, err := r.do(ctx, http.MethodDelete, path, headers, nil)
 	switch statusCode {
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
@@ -198,25 +214,29 @@ func (r *apiRouter) RemoveBackend(ctx context.Context, name string) (err error) 
 	return err
 }
 
-func (r *apiRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(ctx, name, addresses, "")
+func (r *apiRouter) AddRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
+	return r.doRoutes(ctx, app, addresses, "")
 }
 
-func (r *apiRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
-	return r.doRoutes(ctx, name, addresses, "/remove")
+func (r *apiRouter) RemoveRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
+	return r.doRoutes(ctx, app, addresses, "/remove")
 }
 
-func (r *apiRouter) doRoutes(ctx context.Context, name string, addresses []*url.URL, suffix string) error {
+func (r *apiRouter) doRoutes(ctx context.Context, app router.App, addresses []*url.URL, suffix string) error {
 	req := &routesReq{}
 	req.Addresses = make([]string, len(addresses))
 	for i := range addresses {
 		req.Addresses[i] = addresses[i].String()
 	}
-	return r.doRoutesReq(ctx, name, req, suffix)
+	return r.doRoutesReq(ctx, app, req, suffix)
 }
 
-func (r *apiRouter) doRoutesReq(ctx context.Context, name string, req *routesReq, suffix string) error {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouter) doRoutesReq(ctx context.Context, app router.App, req *routesReq, suffix string) error {
+	backendName, err := router.Retrieve(app.GetName())
+	if err != nil {
+		return err
+	}
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -226,20 +246,24 @@ func (r *apiRouter) doRoutesReq(ctx context.Context, name string, req *routesReq
 	}
 	body := bytes.NewReader(data)
 	path := fmt.Sprintf("backend/%s/routes%s", backendName, suffix)
-	_, statusCode, err := r.do(ctx, http.MethodPost, path, body)
+	_, statusCode, err := r.do(ctx, http.MethodPost, path, headers, body)
 	if statusCode == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
 	return err
 }
 
-func (r *apiRouter) Routes(ctx context.Context, name string) (result []*url.URL, err error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouter) Routes(ctx context.Context, app router.App) (result []*url.URL, err error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
 	path := fmt.Sprintf("backend/%s/routes", backendName)
-	data, statusCode, err := r.do(ctx, http.MethodGet, path, nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	data, statusCode, err := r.do(ctx, http.MethodGet, path, headers, nil)
 	if statusCode == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
@@ -262,13 +286,17 @@ func (r *apiRouter) Routes(ctx context.Context, name string) (result []*url.URL,
 	return result, nil
 }
 
-func (r *apiRouter) Addr(ctx context.Context, name string) (addr string, err error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouter) Addr(ctx context.Context, app router.App) (addr string, err error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return "", err
 	}
 	path := fmt.Sprintf("backend/%s", backendName)
-	data, code, err := r.do(ctx, http.MethodGet, path, nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return "", err
+	}
+	data, code, err := r.do(ctx, http.MethodGet, path, headers, nil)
 	if err != nil {
 		if code == http.StatusNotFound {
 			return "", router.ErrBackendNotFound
@@ -280,21 +308,30 @@ func (r *apiRouter) Addr(ctx context.Context, name string) (addr string, err err
 	return resp.Address, err
 }
 
-func (r *apiRouter) Swap(ctx context.Context, backend1 string, backend2 string, cnameOnly bool) (err error) {
-	path := fmt.Sprintf("backend/%s/swap", backend1)
-	data, err := json.Marshal(swapReq{Target: backend2, CnameOnly: cnameOnly})
+func (r *apiRouter) Swap(ctx context.Context, app1 router.App, app2 router.App, cnameOnly bool) (err error) {
+	path := fmt.Sprintf("backend/%s/swap", app1.GetName())
+	data, err := json.Marshal(swapReq{Target: app2.GetName(), CnameOnly: cnameOnly})
 	if err != nil {
 		return err
 	}
 	body := bytes.NewReader(data)
-	_, code, err := r.do(ctx, http.MethodPost, path, body)
+
+	if r.multiCluster && app1.GetPool() != app2.GetPool() {
+		return router.ErrSwapAmongDifferentClusters
+	}
+
+	headers, err := r.getExtraHeadersFromApp(ctx, app1)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(ctx, http.MethodPost, path, headers, body)
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
 	if err != nil {
 		return err
 	}
-	return router.Swap(ctx, r.supIface, backend1, backend2, cnameOnly)
+	return router.Swap(ctx, r.supIface, app1, app2, cnameOnly)
 }
 
 func (r *apiRouter) StartupMessage() (string, error) {
@@ -302,7 +339,7 @@ func (r *apiRouter) StartupMessage() (string, error) {
 }
 
 func (r *apiRouter) HealthCheck(ctx context.Context) error {
-	data, code, err := r.do(ctx, http.MethodGet, "healthcheck", nil)
+	data, code, err := r.do(ctx, http.MethodGet, "healthcheck", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -314,7 +351,7 @@ func (r *apiRouter) HealthCheck(ctx context.Context) error {
 
 func (r *apiRouter) checkSupports(ctx context.Context, feature string) (bool, error) {
 	path := fmt.Sprintf("support/%s", feature)
-	data, statusCode, err := r.do(ctx, http.MethodGet, path, nil)
+	data, statusCode, err := r.do(ctx, http.MethodGet, path, nil, nil)
 	switch statusCode {
 	case http.StatusNotFound:
 		return false, nil
@@ -324,7 +361,7 @@ func (r *apiRouter) checkSupports(ctx context.Context, feature string) (bool, er
 	return false, errors.Errorf("failed to check support for %s: %s - %s - %d", feature, err, data, statusCode)
 }
 
-func (r *apiRouter) do(ctx context.Context, method, path string, body io.Reader) (data []byte, code int, err error) {
+func (r *apiRouter) do(ctx context.Context, method, path string, headers http.Header, body io.Reader) (data []byte, code int, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -335,6 +372,13 @@ func (r *apiRouter) do(ctx context.Context, method, path string, body io.Reader)
 		return nil, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+
+	for headerName, headerValues := range headers {
+		for _, headerValue := range headerValues {
+			req.Header.Add(headerName, headerValue)
+		}
+	}
+
 	for k, v := range r.headers {
 		req.Header.Set(k, v)
 	}
@@ -364,12 +408,16 @@ func (r *apiRouter) do(ctx context.Context, method, path string, body io.Reader)
 	return data, code, nil
 }
 
-func (r *apiRouterWithCnameSupport) SetCName(ctx context.Context, cname, name string) error {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithCnameSupport) SetCName(ctx context.Context, cname string, app router.App) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
-	_, code, err := r.do(ctx, http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(ctx, http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), headers, nil)
 	switch code {
 	case http.StatusBadRequest:
 		return router.ErrCNameNotAllowed
@@ -381,12 +429,16 @@ func (r *apiRouterWithCnameSupport) SetCName(ctx context.Context, cname, name st
 	return err
 }
 
-func (r *apiRouterWithCnameSupport) UnsetCName(ctx context.Context, cname, name string) error {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithCnameSupport) UnsetCName(ctx context.Context, cname string, app router.App) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
-	data, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	data, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), headers, nil)
 	switch code {
 	case http.StatusNotFound:
 		return router.ErrBackendNotFound
@@ -398,12 +450,16 @@ func (r *apiRouterWithCnameSupport) UnsetCName(ctx context.Context, cname, name 
 	return err
 }
 
-func (r *apiRouterWithCnameSupport) CNames(ctx context.Context, name string) ([]*url.URL, error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithCnameSupport) CNames(ctx context.Context, app router.App) ([]*url.URL, error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
-	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/cname", backendName), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/cname", backendName), headers, nil)
 	if code == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
@@ -428,12 +484,20 @@ func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app router
 	if err != nil {
 		return err
 	}
-	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), bytes.NewReader(b))
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, _, err = r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, bytes.NewReader(b))
 	return err
 }
 
 func (r *apiRouterWithTLSSupport) RemoveCertificate(ctx context.Context, app router.App, cname string) error {
-	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
 	if code == http.StatusNotFound {
 		return router.ErrCertificateNotFound
 	}
@@ -441,7 +505,11 @@ func (r *apiRouterWithTLSSupport) RemoveCertificate(ctx context.Context, app rou
 }
 
 func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router.App, cname string) (string, error) {
-	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return "", err
+	}
+	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/certificate/%s", app.GetName(), cname), headers, nil)
 	switch code {
 	case http.StatusNotFound:
 		return "", router.ErrCertificateNotFound
@@ -456,8 +524,8 @@ func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router
 	return "", err
 }
 
-func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(ctx context.Context, name string, data routerTypes.HealthcheckData) error {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(ctx context.Context, app router.App, data routerTypes.HealthcheckData) error {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -465,7 +533,11 @@ func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(ctx context.Context, na
 	if err != nil {
 		return err
 	}
-	_, code, err := r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", backendName), bytes.NewReader(b))
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+	_, code, err := r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", backendName), headers, bytes.NewReader(b))
 	if code == http.StatusNotFound {
 		return router.ErrBackendNotFound
 	}
@@ -473,7 +545,7 @@ func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(ctx context.Context, na
 }
 
 func (r *apiRouterWithInfo) GetInfo(ctx context.Context) (map[string]string, error) {
-	data, _, err := r.do(ctx, http.MethodGet, "info", nil)
+	data, _, err := r.do(ctx, http.MethodGet, "info", nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -485,12 +557,16 @@ func (r *apiRouterWithInfo) GetInfo(ctx context.Context) (map[string]string, err
 	return result, nil
 }
 
-func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, name string) (router.BackendStatus, string, error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, app router.App) (router.BackendStatus, string, error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return "", "", err
 	}
-	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status", backendName), nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return "", "", err
+	}
+	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status", backendName), headers, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -502,13 +578,17 @@ func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, name string)
 	return status.Status, status.Detail, nil
 }
 
-func (r *apiRouterWithPrefix) Addresses(ctx context.Context, name string) (addrs []string, err error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithPrefix) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
 	path := fmt.Sprintf("backend/%s", backendName)
-	data, code, err := r.do(ctx, http.MethodGet, path, nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	data, code, err := r.do(ctx, http.MethodGet, path, headers, nil)
 	if err != nil {
 		if code == http.StatusNotFound {
 			return nil, router.ErrBackendNotFound
@@ -520,13 +600,17 @@ func (r *apiRouterWithPrefix) Addresses(ctx context.Context, name string) (addrs
 	return resp.Addresses, err
 }
 
-func (r *apiRouterWithPrefix) RoutesPrefix(ctx context.Context, name string) ([]appTypes.RoutableAddresses, error) {
-	backendName, err := router.Retrieve(name)
+func (r *apiRouterWithPrefix) RoutesPrefix(ctx context.Context, app router.App) ([]appTypes.RoutableAddresses, error) {
+	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
 		return nil, err
 	}
 	path := fmt.Sprintf("backend/%s/routes", backendName)
-	data, statusCode, err := r.do(ctx, http.MethodGet, path, nil)
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	data, statusCode, err := r.do(ctx, http.MethodGet, path, headers, nil)
 	if statusCode == http.StatusNotFound {
 		return nil, router.ErrBackendNotFound
 	}
@@ -557,15 +641,15 @@ func (r *apiRouterWithPrefix) RoutesPrefix(ctx context.Context, name string) ([]
 	return result, nil
 }
 
-func (r *apiRouterWithPrefix) AddRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error {
-	return r.doRoutesPrefix(ctx, name, addresses, "")
+func (r *apiRouterWithPrefix) AddRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
+	return r.doRoutesPrefix(ctx, app, addresses, "")
 }
 
-func (r *apiRouterWithPrefix) RemoveRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error {
-	return r.doRoutesPrefix(ctx, name, addresses, "/remove")
+func (r *apiRouterWithPrefix) RemoveRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
+	return r.doRoutesPrefix(ctx, app, addresses, "/remove")
 }
 
-func (r *apiRouter) doRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, suffix string) error {
+func (r *apiRouter) doRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, suffix string) error {
 	req := &routesReq{
 		Prefix:    addresses.Prefix,
 		ExtraData: addresses.ExtraData,
@@ -574,7 +658,7 @@ func (r *apiRouter) doRoutesPrefix(ctx context.Context, name string, addresses a
 	for i := range addresses.Addresses {
 		req.Addresses[i] = addresses.Addresses[i].String()
 	}
-	return r.doRoutesReq(ctx, name, req, suffix)
+	return r.doRoutesReq(ctx, app, req, suffix)
 }
 
 func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {
@@ -609,4 +693,13 @@ func (r *apiRouter) checkAllCapabilities(ctx context.Context) map[capability]boo
 	}
 	wg.Wait()
 	return supports
+}
+
+func (r *apiRouter) getExtraHeadersFromApp(ctx context.Context, app router.App) (http.Header, error) {
+	if !r.multiCluster {
+		return http.Header{}, nil
+	}
+
+	poolName := app.GetPool()
+	return poolMultiCluster.Header(ctx, poolName, nil)
 }
