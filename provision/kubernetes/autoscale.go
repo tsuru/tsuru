@@ -152,7 +152,7 @@ func setAutoScale(client *ClusterClient, a provision.App, spec provision.AutoSca
 	}
 
 	labels, _ = provision.SplitServiceLabelsAnnotations(labels)
-	labels.WithoutAppReplicas().WithoutIsolated().WithoutRoutable().WithoutVersion()
+	labels.WithoutIsolated().WithoutRoutable().WithoutVersion()
 	minUnits := int32(spec.MinUnits)
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{

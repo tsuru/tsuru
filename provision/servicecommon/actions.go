@@ -49,7 +49,7 @@ type labelReplicas struct {
 
 type ServiceManager interface {
 	RemoveService(a provision.App, processName string, versionNumber int) error
-	CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, error)
+	CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
 	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error
 	CleanupServices(a provision.App, versionNumber int, preserveOldVersions bool) error
 }
@@ -121,56 +121,50 @@ func rawLabelsAndReplicas(args *pipelineArgs, processName string, versionNumber 
 	if versionNumber == 0 {
 		return &labelReplicas{}, nil
 	}
-	labels, err := args.manager.CurrentLabels(args.app, processName, versionNumber)
+	labels, replicas, err := args.manager.CurrentLabels(args.app, processName, versionNumber)
 	if err != nil {
 		return nil, err
 	}
 	if labels == nil {
 		return &labelReplicas{}, nil
 	}
-	replicas := labels.AppReplicas()
-	isStopped := labels.IsStopped()
-	realReplicas := replicas
-	if isStopped {
-		realReplicas = 0
+	lr := &labelReplicas{labels: labels}
+	if replicas != nil {
+		lr.realReplicas = int(*replicas)
 	}
-	return &labelReplicas{labels: labels, realReplicas: realReplicas}, nil
+	return lr, nil
 }
 
 func labelsForService(args *pipelineArgs, oldLabels labelReplicas, newVersion appTypes.AppVersion, processName string, pState ProcessState) (labelReplicas, error) {
-	replicas := 0
 	restartCount := 0
 	isStopped := false
 	isAsleep := false
 	if oldLabels.labels != nil {
-		replicas = oldLabels.labels.AppReplicas()
 		restartCount = oldLabels.labels.Restarts()
 		isStopped = oldLabels.labels.IsStopped()
 		isAsleep = oldLabels.labels.IsAsleep()
 	}
 	if pState.Increment != 0 {
-		replicas += pState.Increment
-		if replicas < 0 {
+		oldLabels.realReplicas += pState.Increment
+		if oldLabels.realReplicas < 0 {
 			return oldLabels, errors.New("cannot have less than 0 units")
 		}
 	}
 	if pState.Start || pState.Restart {
-		if replicas == 0 {
-			replicas = 1
+		if oldLabels.realReplicas == 0 {
+			oldLabels.realReplicas = 1
 		}
 		isStopped = false
 		isAsleep = false
 	}
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      args.app,
-		Process:  processName,
-		Replicas: replicas,
-		Version:  newVersion.Version(),
+		App:     args.app,
+		Process: processName,
+		Version: newVersion.Version(),
 	})
 	if err != nil {
 		return oldLabels, err
 	}
-	oldLabels.realReplicas = replicas
 	if isStopped || pState.Stop {
 		oldLabels.realReplicas = 0
 		labels.SetStopped()
@@ -211,7 +205,7 @@ var updateServices = &action.Action{
 				return nil, err
 			}
 			newLabelsMap[processName] = &labels
-			totalUnits += labels.labels.AppReplicas()
+			totalUnits += labels.realReplicas
 		}
 		err := args.app.SetQuotaInUse(totalUnits)
 		if err != nil {

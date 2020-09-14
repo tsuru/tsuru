@@ -86,10 +86,9 @@ func (s *S) TestServiceLabels(c *check.C) {
 	defer config.Unset("routers")
 	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
 	opts := provision.ServiceLabelsOpts{
-		App:      a,
-		Replicas: 3,
-		Process:  "p1",
-		Version:  9,
+		App:     a,
+		Process: "p1",
+		Version: 9,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			BuildImage:  "myimg",
 			IsBuild:     true,
@@ -104,23 +103,22 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"version": "v9",
 		},
 		Labels: map[string]string{
-			"is-tsuru":             "true",
-			"is-build":             "true",
-			"is-service":           "true",
-			"is-stopped":           "false",
-			"is-isolated-run":      "false",
-			"is-deploy":            "false",
-			"app-name":             "myapp",
-			"app-process":          "p1",
-			"app-process-replicas": "3",
-			"app-platform":         "cobol",
-			"app-pool":             "test-default",
-			"app-version":          "9",
-			"router-name":          "fake",
-			"router-type":          "fake",
-			"provisioner":          "kubernetes",
-			"build-image":          "myimg",
-			"builder":              "docker",
+			"is-tsuru":        "true",
+			"is-build":        "true",
+			"is-service":      "true",
+			"is-stopped":      "false",
+			"is-isolated-run": "false",
+			"is-deploy":       "false",
+			"app-name":        "myapp",
+			"app-process":     "p1",
+			"app-platform":    "cobol",
+			"app-pool":        "test-default",
+			"app-version":     "9",
+			"router-name":     "fake",
+			"router-type":     "fake",
+			"provisioner":     "kubernetes",
+			"build-image":     "myimg",
+			"builder":         "docker",
 		},
 	})
 }
@@ -166,27 +164,6 @@ func (s *S) TestNodeLabels(c *check.C) {
 		},
 		Prefix: "myprefix",
 	})
-}
-
-func (s *S) TestLabelSet_WithoutAppReplicas(c *check.C) {
-	config.Set("routers:fake:type", "fake")
-	defer config.Unset("routers")
-	a := provisiontest.NewFakeApp("myapp", "cobol", 0)
-	opts := provision.ServiceLabelsOpts{
-		App:      a,
-		Replicas: 3,
-		Process:  "p1",
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			BuildImage:  "myimg",
-			IsBuild:     true,
-			Provisioner: "kubernetes",
-			Builder:     "docker",
-		},
-	}
-	ls, err := provision.ServiceLabels(opts)
-	c.Assert(err, check.IsNil)
-	c.Assert(ls.Labels["app-process-replicas"], check.Equals, "3")
-	c.Assert(ls.WithoutAppReplicas().Labels["app-process-replicas"], check.Equals, "")
 }
 
 func (s *S) TestLabelSet_Merge(c *check.C) {

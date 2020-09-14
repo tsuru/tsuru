@@ -91,6 +91,7 @@ type recordManager struct {
 	deployErrMap map[string]error
 	removeErrMap map[string]error
 	lastLabels   map[string]*provision.LabelSet
+	lastReplicas map[string]*int32
 	calls        []managerCall
 }
 
@@ -100,11 +101,15 @@ func (m *recordManager) reset() {
 	m.calls = nil
 }
 
-func (m *recordManager) CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, error) {
+func (m *recordManager) CurrentLabels(a provision.App, processName string, versionNumber int) (ls *provision.LabelSet, rep *int32, err error) {
+	key := fmt.Sprintf("%s-v%d", processName, versionNumber)
 	if m.lastLabels != nil {
-		return m.lastLabels[fmt.Sprintf("%s-v%d", processName, versionNumber)], nil
+		ls = m.lastLabels[key]
 	}
-	return nil, nil
+	if m.lastReplicas != nil {
+		rep = m.lastReplicas[key]
+	}
+	return ls, rep, err
 }
 
 func (m *recordManager) DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error {
@@ -196,17 +201,15 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 5,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker2",
-		Replicas: 0,
-		Version:  2,
+		App:     fakeApp,
+		Process: "worker2",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -239,17 +242,15 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 1,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker2",
-		Replicas: 1,
-		Version:  2,
+		App:     fakeApp,
+		Process: "worker2",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -278,18 +279,16 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 1,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb.SetRestarts(1)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker1",
-		Replicas: 0,
-		Version:  1,
+		App:     fakeApp,
+		Process: "worker1",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -316,10 +315,9 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}})
 	newLabelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 1,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -345,17 +343,15 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}, "worker2": {}})
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 5,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker2",
-		Replicas: 1,
-		Version:  2,
+		App:     fakeApp,
+		Process: "worker2",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -368,10 +364,9 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
 	labelsWebOld, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 0,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -396,18 +391,16 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	_, err = updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 5,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker2",
-		Replicas: 0,
-		Version:  2,
+		App:     fakeApp,
+		Process: "worker2",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -436,17 +429,15 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 	_, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 5,
-		Version:  2,
+		App:     fakeApp,
+		Process: "web",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker2",
-		Replicas: 0,
-		Version:  2,
+		App:     fakeApp,
+		Process: "worker2",
+		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 	expected := []managerCall{
@@ -471,10 +462,9 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 		oldVersionNumber: oldVersion.Version(),
 	}
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 0,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	result := map[string]*labelReplicas{
@@ -559,9 +549,8 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 0)
-				c.Assert(ls.AppReplicas(), check.Equals, 3)
 				c.Assert(ls.IsStopped(), check.Equals, true)
-				c.Assert(a.Quota.InUse, check.Equals, 3)
+				c.Assert(a.Quota.InUse, check.Equals, 0)
 			},
 		},
 		{
@@ -577,7 +566,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(replicas, check.Equals, 3)
+				c.Assert(replicas, check.Equals, 1)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -594,7 +583,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(replicas, check.Equals, 3)
+				c.Assert(replicas, check.Equals, 1)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -612,7 +601,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 0)
-				c.Assert(ls.AppReplicas(), check.Equals, 3)
 				c.Assert(ls.IsStopped(), check.Equals, true)
 			},
 		},
@@ -651,6 +639,10 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			m.lastLabels = map[string]*provision.LabelSet{
 				"p1-v1": m.calls[0].labels,
 			}
+			rep := int32(m.calls[0].replicas)
+			m.lastReplicas = map[string]*int32{
+				"p1-v1": &rep,
+			}
 		}
 		c.Assert(m.calls, check.HasLen, 2)
 		c.Assert(m.calls[0].action, check.Equals, "deploy")
@@ -658,5 +650,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		tt.fn(m.calls[0].replicas, m.calls[0].labels)
 		m.reset()
 		m.lastLabels = nil
+		m.lastReplicas = nil
 	}
 }

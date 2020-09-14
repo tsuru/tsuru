@@ -22,18 +22,16 @@ func (s *S) TestChangeAppState(c *check.C) {
 	err := ChangeAppState(m, fakeApp, "", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 1,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb.SetRestarts(1)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker",
-		Replicas: 1,
-		Version:  1,
+		App:     fakeApp,
+		Process: "worker",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker.SetRestarts(1)
@@ -46,10 +44,9 @@ func (s *S) TestChangeAppState(c *check.C) {
 	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 0,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -72,17 +69,15 @@ func (s *S) TestChangeUnits(c *check.C) {
 	err := ChangeUnits(m, fakeApp, 1, "worker", latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 0,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "worker",
-		Replicas: 1,
-		Version:  1,
+		App:     fakeApp,
+		Process: "worker",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
@@ -106,10 +101,9 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 	err := ChangeUnits(m, fakeApp, 1, "", latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
-		App:      fakeApp,
-		Process:  "web",
-		Replicas: 1,
-		Version:  1,
+		App:     fakeApp,
+		Process: "web",
+		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
