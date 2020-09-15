@@ -70,14 +70,16 @@ func (s *S) TestListNodesWithFilter(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
 	s.mock.MockfakeNodes(c)
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
 	nodes, err := s.p.ListNodesByFilter(filter)
 	c.Assert(err, check.IsNil)
@@ -110,8 +112,10 @@ func (s *S) TestRemoveNode(c *check.C) {
 	opts := provision.RemoveNodeOptions{
 		Address: "192.168.99.1",
 	}
-	err := s.p.RemoveNode(opts)
-	c.Assert(err, check.IsNil)
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.RemoveNode(opts)
+		c.Assert(err, check.IsNil)
+	})
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -155,8 +159,10 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 		Address:   "192.168.99.1",
 		Rebalance: true,
 	}
-	err = s.p.RemoveNode(opts)
-	c.Assert(err, check.IsNil)
+	s.mock.WaitNodeUpdate(c, func() {
+		err = s.p.RemoveNode(opts)
+		c.Assert(err, check.IsNil)
+	})
 	nodes, err := s.p.ListNodes([]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -166,14 +172,16 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 func (s *S) TestAddNode(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -194,19 +202,21 @@ func (s *S) TestAddNode(c *check.C) {
 func (s *S) TestAddNodePrefixed(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"tsuru.io/m1":                "v1",
-			"m2":                         "v2",
-			"pool":                       "p2", // ignored
-			"tsuru.io/pool":              "p3", // ignored
-			"tsuru.io/extra-labels":      "k1=v1,k2=v2",
-			"tsuru.io/extra-annotations": "k3=v3,k4=v4",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"tsuru.io/m1":                "v1",
+				"m2":                         "v2",
+				"pool":                       "p2", // ignored
+				"tsuru.io/pool":              "p3", // ignored
+				"tsuru.io/extra-labels":      "k1=v1,k2=v2",
+				"tsuru.io/extra-annotations": "k3=v3,k4=v4",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -259,15 +269,17 @@ func (s *S) TestAddNodeExisting(c *check.C) {
 func (s *S) TestAddNodeIaaSID(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		IaaSID:  "id-1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			IaaSID:  "id-1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	nodes, err := s.p.ListNodes(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -321,16 +333,18 @@ func (s *S) TestAddNodeRegisterDisabled(c *check.C) {
 func (s *S) TestUpdateNode(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		err := s.p.UpdateNode(provision.UpdateNodeOptions{
 			Address: "my-node-addr",
 			Pool:    "p2",
 			Metadata: map[string]string{
@@ -360,17 +374,19 @@ func (s *S) TestUpdateNode(c *check.C) {
 func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		IaaSID:  "id-1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.mock.WaitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			IaaSID:  "id-1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		err := s.p.UpdateNode(provision.UpdateNodeOptions{
 			Address: "my-node-addr",
 			Pool:    "p2",
 			Metadata: map[string]string{
@@ -419,16 +435,18 @@ func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
 func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
-	})
-	c.Assert(err, check.IsNil)
 	s.waitNodeUpdate(c, func() {
-		err = s.p.AddNode(provision.AddNodeOptions{
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
+	})
+	s.waitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
 			Address: "my-node-addr",
 			Pool:    "p2",
 			IaaSID:  "valid-iaas-id",
@@ -449,16 +467,18 @@ func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
 func (s *S) TestUpdateNodeNoPool(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
-	})
-	c.Assert(err, check.IsNil)
 	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
+	})
+	s.waitNodeUpdate(c, func() {
+		err := s.p.UpdateNode(provision.UpdateNodeOptions{
 			Address: "my-node-addr",
 			Metadata: map[string]string{
 				"m1": "",
@@ -487,14 +507,16 @@ func (s *S) TestUpdateNodeNoPool(c *check.C) {
 func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
+	s.waitNodeUpdate(c, func() {
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+			Metadata: map[string]string{
+				"m1": "v1",
+			},
+		})
+		c.Assert(err, check.IsNil)
 	})
-	c.Assert(err, check.IsNil)
 	n1, err := s.client.CoreV1().Nodes().Get("my-node-addr", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	n1.Spec.Taints = append(n1.Spec.Taints, apiv1.Taint{
@@ -536,13 +558,15 @@ func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
 func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
 	config.Set("kubernetes:register-node", true)
 	defer config.Unset("kubernetes:register-node")
-	err := s.p.AddNode(provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(provision.UpdateNodeOptions{
+		err := s.p.AddNode(provision.AddNodeOptions{
+			Address: "my-node-addr",
+			Pool:    "p1",
+		})
+		c.Assert(err, check.IsNil)
+	})
+	s.waitNodeUpdate(c, func() {
+		err := s.p.UpdateNode(provision.UpdateNodeOptions{
 			Address: "my-node-addr",
 			Disable: true,
 		})
