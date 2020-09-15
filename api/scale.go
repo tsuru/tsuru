@@ -40,7 +40,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("unable to parse autoscale spec: %v", err),
 		}
 	}
-	err = spec.Validate()
+	err = spec.Validate(a.GetQuota().Limit)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,

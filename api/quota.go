@@ -118,7 +118,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(a.Quota)
+	return json.NewEncoder(w).Encode(a.GetQuota())
 }
 
 // title: update application quota
