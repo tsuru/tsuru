@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	"context"
 	"errors"
 
 	"github.com/globalsign/mgo/bson"
@@ -46,7 +47,7 @@ func (s *applogStorage) InsertApp(appName string, msgs ...*app.Applog) error {
 	return nil
 }
 
-func (s *applogStorage) List(args app.ListLogArgs) ([]app.Applog, error) {
+func (s *applogStorage) List(ctx context.Context, args app.ListLogArgs) ([]app.Applog, error) {
 	if args.AppName == "" {
 		return nil, errors.New("unable to list logs with empty app name")
 	}
@@ -68,7 +69,7 @@ func (s *applogStorage) List(args app.ListLogArgs) ([]app.Applog, error) {
 	return logs, nil
 }
 
-func (s *applogStorage) Watch(args app.ListLogArgs) (app.LogWatcher, error) {
+func (s *applogStorage) Watch(ctx context.Context, args app.ListLogArgs) (app.LogWatcher, error) {
 	listener, err := newLogListener(s, args)
 	if err != nil {
 		return nil, err

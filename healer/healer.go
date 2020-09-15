@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -54,7 +55,7 @@ func Initialize() (*NodeHealer, error) {
 	if waitSecondsNewMachine <= 0 {
 		waitSecondsNewMachine = 5 * 60
 	}
-	HealerInstance = newNodeHealer(nodeHealerArgs{
+	HealerInstance = newNodeHealer(context.Background(), nodeHealerArgs{
 		DisabledTime:          time.Duration(disabledSeconds) * time.Second,
 		WaitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
 		FailuresBeforeHealing: maxFailures,

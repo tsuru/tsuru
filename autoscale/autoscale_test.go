@@ -68,7 +68,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.appInstance.Pool = "pool1"
-	s.p.Provision(s.appInstance)
+	s.p.Provision(context.TODO(), s.appInstance)
 	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
@@ -84,7 +84,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -123,7 +123,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(nodes[0].Address(), check.Not(check.Equals), nodes[1].Address())
@@ -152,7 +152,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	}, eventtest.HasEvent)
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	newNodes, err := s.p.ListNodes(nil)
+	newNodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(newNodes, check.HasLen, 2)
 	evts, err := event.All()
@@ -180,7 +180,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -199,7 +199,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 	}
 	err := a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := event.All()
@@ -208,7 +208,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -220,7 +220,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	removedAddr := "http://n1:1"
@@ -253,7 +253,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -286,7 +286,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -319,7 +319,7 @@ func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -350,7 +350,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -379,7 +379,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *check.C) {
 	machine, err := iaas.CreateMachineForIaaS("my-scale-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: machine.FormatNodeAddress(),
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -394,7 +394,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -431,7 +431,7 @@ func (s *S) TestAutoScaleConfigRunOnceSingleNodeAddNodesErrorNoRebalance(c *chec
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -458,7 +458,7 @@ func (s *S) TestAutoScaleConfigRunOnceSingleNodeAddNodesErrorNoRebalance(c *chec
 }
 
 func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -472,7 +472,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(eventtest.EventDesc{
@@ -496,11 +496,11 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
-	err := s.p.RemoveNode(provision.RemoveNodeOptions{
+	err := s.p.RemoveNode(context.TODO(), provision.RemoveNodeOptions{
 		Address: "http://n1:1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Metadata: map[string]string{
 			"iaas":     "my-scale-iaas",
@@ -512,18 +512,18 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-	err = s.p.RemoveNode(provision.RemoveNodeOptions{
+	err = s.p.RemoveNode(context.TODO(), provision.RemoveNodeOptions{
 		Address: "http://n1:1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -535,7 +535,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	config.Set("docker:auto-scale:metadata-filter", "pool2")
 	defer config.Unset("docker:auto-scale:metadata-filter")
 	a.runOnce()
-	nodes, err = s.p.ListNodes(nil)
+	nodes, err = s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -544,7 +544,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(evts, check.HasLen, 0)
 	config.Set("docker:auto-scale:metadata-filter", "pool1")
 	a.runOnce()
-	nodes, err = s.p.ListNodes(nil)
+	nodes, err = s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err = event.All()
@@ -568,7 +568,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 		}()
 	}
 	wg.Wait()
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -599,7 +599,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -623,7 +623,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(u1, check.HasLen, 2)
 	// Should do nothing if calling on already scaled
 	a.runOnce()
-	nodes, err = s.p.ListNodes(nil)
+	nodes, err = s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err := event.All()
@@ -645,7 +645,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 3)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -677,7 +677,7 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -689,7 +689,7 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
@@ -711,7 +711,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address(), check.Equals, "http://n1:1")
@@ -753,14 +753,14 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 		Kind:         "autoscale",
 		ErrorMatches: `error scaling group pool1: aborting, impossible to fit max plan memory of 25165824 bytes, node max available memory is 20132659`,
 	}, eventtest.HasEvent)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 }
 
 func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 4)
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -785,7 +785,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 			"nodes":              bson.M{"$size": 1},
 		},
 	}, eventtest.HasEvent)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	u0, err := nodes[0].Units()
@@ -795,7 +795,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 5)
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -804,7 +804,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n3:3",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -831,7 +831,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 			"nodes":              bson.M{"$size": 2},
 		},
 	}, eventtest.HasEvent)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	u0, err := nodes[0].Units()
@@ -843,7 +843,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -868,7 +868,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 			"nodes":              bson.M{"$size": 1},
 		},
 	}, eventtest.HasEvent)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	u0, err := nodes[0].Units()
@@ -880,7 +880,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -889,7 +889,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n3:3",
 		Pool:    "pool1",
 		Metadata: map[string]string{
@@ -916,7 +916,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 			"nodes":              bson.M{"$size": 2},
 		},
 	}, eventtest.HasEvent)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	u0, err := nodes[0].Units()
@@ -926,11 +926,11 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 
 func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 4)
-	err := s.p.RemoveNode(provision.RemoveNodeOptions{
+	err := s.p.RemoveNode(context.TODO(), provision.RemoveNodeOptions{
 		Address: "http://n1:1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n1:1",
 		Metadata: map[string]string{
 			"iaas":    "my-scale-iaas",
@@ -938,7 +938,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.p.AddNode(provision.AddNodeOptions{
+	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://n2:2",
 		Metadata: map[string]string{
 			"iaas":    "my-scale-iaas",
@@ -955,7 +955,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 }
@@ -973,7 +973,7 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to create app event: event locked: app\(myapp\).*`)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := event.All()
@@ -996,7 +996,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	a := newConfig()
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*aborting scaler for now, gonna retry later: unable to create app event: event locked: app\(myapp\).*`)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := event.All()
@@ -1007,7 +1007,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	err := s.p.AddNode(provision.AddNodeOptions{
+	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://nx:9",
 		Pool:    "pool2",
 		Metadata: map[string]string{
@@ -1037,7 +1037,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance2 := provisiontest.NewFakeApp("myapp2", "python", 0)
 	appInstance2.Pool = "pool2"
-	s.p.Provision(appInstance2)
+	s.p.Provision(context.TODO(), appInstance2)
 	err = pool.AddPool(pool.AddPoolOptions{Name: "pool2"})
 	c.Assert(err, check.IsNil)
 	appStruct := &app.App{
@@ -1054,7 +1054,7 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	a := newConfig()
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(nil)
+	nodes, err := s.p.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 4, check.Commentf("log: %s", s.logBuf.String()))
 	c.Assert(eventtest.EventDesc{

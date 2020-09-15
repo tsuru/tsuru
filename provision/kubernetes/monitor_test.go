@@ -25,7 +25,7 @@ func (s *S) TestNewClusterController(c *check.C) {
 	watchFake := watch.NewFake()
 	s.client.Fake.PrependWatchReactor("pods", ktesting.DefaultWatchReactor(watchFake, nil))
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
 		App:     a,

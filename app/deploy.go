@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -77,8 +78,8 @@ func findValidImages(apps ...App) (set.Set, error) {
 }
 
 // ListDeploys returns the list of deploy that match a given filter.
-func ListDeploys(filter *Filter, skip, limit int) ([]DeployData, error) {
-	appsList, err := List(filter)
+func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]DeployData, error) {
+	appsList, err := List(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +216,7 @@ func (o *DeployOptions) GetKind() (kind DeployKind) {
 	return DeployArchiveURL
 }
 
-func Build(opts DeployOptions) (string, error) {
+func Build(ctx context.Context, opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in build opts")
 	}
@@ -234,7 +235,7 @@ func Build(opts DeployOptions) (string, error) {
 	if !ok {
 		return "", errors.Errorf("provisioner don't implement builder interface")
 	}
-	version, err := builderDeploy(builder, &opts, opts.Event)
+	version, err := builderDeploy(ctx, builder, &opts, opts.Event)
 	if err != nil {
 		return "", err
 	}
@@ -265,7 +266,7 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
 		token, _ := AuthScheme.Auth(tokenValue)
 
-		logErr.logs, _ = app.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		logErr.logs, _ = app.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
 			Units:        startupErr.CrashedUnits,
@@ -297,14 +298,14 @@ func (e *errorWithLog) Error() string {
 	return fmt.Sprintf("\n---- ERROR during %s: ----\n%v\n%s", e.action, e.err, logPart)
 }
 
-func validateVersions(opts DeployOptions) error {
+func validateVersions(ctx context.Context, opts DeployOptions) error {
 	if opts.NewVersion && opts.OverrideVersions {
 		return errors.New("conflicting deploy flags, new-version and override-old-versions")
 	}
 	if opts.NewVersion || opts.OverrideVersions {
 		return nil
 	}
-	multi, err := opts.App.hasMultipleVersions()
+	multi, err := opts.App.hasMultipleVersions(ctx)
 	if err != nil {
 		return err
 	}
@@ -317,11 +318,11 @@ func validateVersions(opts DeployOptions) error {
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
-func Deploy(opts DeployOptions) (string, error) {
+func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
 	}
-	err := validateVersions(opts)
+	err := validateVersions(ctx, opts)
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +330,7 @@ func Deploy(opts DeployOptions) (string, error) {
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
-	imageID, err := deployToProvisioner(&opts, opts.Event)
+	imageID, err := deployToProvisioner(ctx, &opts, opts.Event)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(opts.App.Name, opts.Event)
 	quotaErr := opts.App.fixQuota()
 	if quotaErr != nil {
@@ -360,7 +361,7 @@ func RollbackUpdate(app *App, imageID, reason string, disableRollback bool) erro
 	return version.ToggleEnabled(!disableRollback, reason)
 }
 
-func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) {
+func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Event) (string, error) {
 	prov, err := opts.App.getProvisioner()
 	if err != nil {
 		return "", err
@@ -390,12 +391,12 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 			return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
 		}
 	} else {
-		version, err = builderDeploy(deployer, opts, evt)
+		version, err = builderDeploy(ctx, deployer, opts, evt)
 		if err != nil {
 			return "", err
 		}
 	}
-	return deployer.Deploy(provision.DeployArgs{
+	return deployer.Deploy(ctx, provision.DeployArgs{
 		App:              opts.App,
 		Version:          version,
 		Event:            evt,
@@ -403,7 +404,7 @@ func deployToProvisioner(opts *DeployOptions, evt *event.Event) (string, error) 
 	})
 }
 
-func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
+func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	isRebuild := opts.Kind == DeployRebuild
 	buildOpts := builder.BuildOpts{
 		BuildFromFile: opts.Build,
@@ -419,7 +420,7 @@ func builderDeploy(prov provision.BuilderDeploy, opts *DeployOptions, evt *event
 	if err != nil {
 		return nil, err
 	}
-	version, err := builder.Build(prov, opts.App, evt, &buildOpts)
+	version, err := builder.Build(ctx, prov, opts.App, evt, &buildOpts)
 	if buildOpts.IsTsuruBuilderImage {
 		opts.Kind = DeployBuildedImage
 	}

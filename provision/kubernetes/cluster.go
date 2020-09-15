@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -384,13 +385,13 @@ type clusterApp struct {
 	apps   []provision.App
 }
 
-func clustersForApps(apps []provision.App) ([]clusterApp, error) {
+func clustersForApps(ctx context.Context, apps []provision.App) ([]clusterApp, error) {
 	clusterClientMap := map[string]clusterApp{}
 	var poolNames []string
 	for _, a := range apps {
 		poolNames = append(poolNames, a.GetPool())
 	}
-	clusterPoolMap, err := servicemanager.Cluster.FindByPools(provisionerName, poolNames)
+	clusterPoolMap, err := servicemanager.Cluster.FindByPools(ctx, provisionerName, poolNames)
 	if err != nil {
 		return nil, err
 	}
@@ -417,22 +418,22 @@ func clustersForApps(apps []provision.App) ([]clusterApp, error) {
 	return result, nil
 }
 
-func clusterForPool(pool string) (*ClusterClient, error) {
-	clust, err := servicemanager.Cluster.FindByPool(provisionerName, pool)
+func clusterForPool(ctx context.Context, pool string) (*ClusterClient, error) {
+	clust, err := servicemanager.Cluster.FindByPool(ctx, provisionerName, pool)
 	if err != nil {
 		return nil, err
 	}
 	return NewClusterClient(clust)
 }
 
-func clusterForPoolOrAny(pool string) (*ClusterClient, error) {
-	clust, err := clusterForPool(pool)
+func clusterForPoolOrAny(ctx context.Context, pool string) (*ClusterClient, error) {
+	clust, err := clusterForPool(ctx, pool)
 	if err == nil {
 		return clust, err
 	}
 	if err == provTypes.ErrNoCluster {
 		var clusters []provTypes.Cluster
-		clusters, err = servicemanager.Cluster.FindByProvisioner(provisionerName)
+		clusters, err = servicemanager.Cluster.FindByProvisioner(ctx, provisionerName)
 		if err == nil {
 			return NewClusterClient(&clusters[0])
 		}
@@ -440,8 +441,8 @@ func clusterForPoolOrAny(pool string) (*ClusterClient, error) {
 	return nil, err
 }
 
-func allClusters() ([]*ClusterClient, error) {
-	clusters, err := servicemanager.Cluster.FindByProvisioner(provisionerName)
+func allClusters(ctx context.Context) ([]*ClusterClient, error) {
+	clusters, err := servicemanager.Cluster.FindByProvisioner(ctx, provisionerName)
 	if err != nil {
 		return nil, err
 	}
@@ -455,8 +456,8 @@ func allClusters() ([]*ClusterClient, error) {
 	return clients, nil
 }
 
-func forEachCluster(fn func(client *ClusterClient) error) error {
-	clients, err := allClusters()
+func forEachCluster(ctx context.Context, fn func(client *ClusterClient) error) error {
+	clients, err := allClusters(ctx)
 	if err != nil {
 		return err
 	}

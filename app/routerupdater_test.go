@@ -21,13 +21,13 @@ func (s *S) TestAppRouterUpdaterUpdateWait(c *check.C) {
 		Name:      "app1",
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(&a, s.user)
+	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	updater := GetAppRouterUpdater()
 	updater.update(&a)
 	err = updater.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
-	apps, err := List(nil)
+	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Routers[0].Address, check.Equals, "app1.fakerouter.com")

@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -20,7 +22,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
@@ -34,13 +36,13 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt2", false)
 	c.Assert(err, check.IsNil)
-	err = s.p.Provision(provisiontest.NewFakeApp("otherapp", "python", 0))
+	err = s.p.Provision(context.TODO(), provisiontest.NewFakeApp("otherapp", "python", 0))
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -140,7 +142,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "emptyDir")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
@@ -151,7 +153,7 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -201,7 +203,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name:      "v1",
@@ -209,7 +211,7 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -273,7 +275,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	appCR := tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{
@@ -297,7 +299,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -325,7 +327,7 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
@@ -339,11 +341,11 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = s.p.Provision(provisiontest.NewFakeAppWithPool("otherapp", "python", "otherpool", 0))
+	err = s.p.Provision(context.TODO(), provisiontest.NewFakeAppWithPool("otherapp", "python", "otherpool", 0))
 	c.Assert(err, check.IsNil)
 	err = v.BindApp("otherapp", "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -355,7 +357,7 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
@@ -369,7 +371,7 @@ func (s *S) TestDeleteVolume(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
@@ -392,7 +394,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(exists, check.Equals, false)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err = s.p.Provision(a)
+	err = s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	v := volume.Volume{
 		Name: "v1",
@@ -406,7 +408,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create()
+	err = v.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)

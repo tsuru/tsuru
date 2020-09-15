@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -31,13 +32,13 @@ type nodeContainerManager struct {
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	if m.app != nil {
-		client, err := clusterForPool(m.app.GetPool())
+		client, err := clusterForPool(context.TODO(), m.app.GetPool())
 		if err != nil {
 			return err
 		}
 		return m.deployNodeContainerForCluster(client, *config, pool, filter, placementOnly)
 	}
-	err := forEachCluster(func(cluster *ClusterClient) error {
+	err := forEachCluster(context.TODO(), func(cluster *ClusterClient) error {
 		return m.deployNodeContainerForCluster(cluster, *config, pool, filter, placementOnly)
 	})
 	if err == provTypes.ErrNoCluster {
@@ -270,7 +271,7 @@ func poolBelongsToCluster(cluster *provTypes.Cluster, poolName string) (bool, er
 		}
 		return false, err
 	}
-	poolCluster, err := servicemanager.Cluster.FindByPool(poolData.Provisioner, poolName)
+	poolCluster, err := servicemanager.Cluster.FindByPool(context.TODO(), poolData.Provisioner, poolName)
 	if err != nil {
 		if err == provTypes.ErrNoCluster {
 			return false, nil

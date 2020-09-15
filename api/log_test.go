@@ -43,10 +43,10 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a1, s.user)
+	err := app.CreateApp(context.TODO(), &a1, s.user)
 	c.Assert(err, check.IsNil)
 	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a2, s.user)
+	err = app.CreateApp(context.TODO(), &a2, s.user)
 	c.Assert(err, check.IsNil)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
@@ -80,11 +80,11 @@ loop:
 			logs1 []appTypes.Applog
 			logs2 []appTypes.Applog
 		)
-		logs1, err = a1.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		logs1, err = a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 			Limit: 3,
 		})
 		c.Assert(err, check.IsNil)
-		logs2, err = a2.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		logs2, err = a2.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 			Limit: 2,
 		})
 		c.Assert(err, check.IsNil)
@@ -98,7 +98,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 3,
 	})
 	c.Assert(err, check.IsNil)
@@ -108,7 +108,7 @@ loop:
 		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
 		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
 	})
-	logs, err = a2.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err = a2.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 2,
 	})
 	c.Assert(err, check.IsNil)
@@ -124,10 +124,10 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	a1 := app.App{Name: "myapp1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a1, s.user)
+	err := app.CreateApp(context.TODO(), &a1, s.user)
 	c.Assert(err, check.IsNil)
 	a2 := app.App{Name: "myapp2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a2, s.user)
+	err = app.CreateApp(context.TODO(), &a2, s.user)
 	c.Assert(err, check.IsNil)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
@@ -164,7 +164,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 loop:
 	for {
 		var logs1 []appTypes.Applog
-		logs1, err = a1.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+		logs1, err = a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 			Limit: nConcurrency,
 		})
 		c.Assert(err, check.IsNil)
@@ -178,7 +178,7 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -213,7 +213,7 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	for i := 0; i < 100; i++ {
 		a := app.App{Name: fmt.Sprintf("myapp-%d", i), Platform: "zend", TeamOwner: s.team.Name}
 		apps = append(apps, a)
-		err := app.CreateApp(&a, s.user)
+		err := app.CreateApp(context.TODO(), &a, s.user)
 		c.Assert(err, check.IsNil)
 	}
 	baseMsg := `{"date": "2015-06-16T15:00:00.000Z", "message": "msg-%d", "source": "web", "appname": "%s", "unit": "unit1"}` + "\n"

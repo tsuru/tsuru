@@ -7,6 +7,7 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/pkg/errors"
@@ -34,7 +35,7 @@ type BuildOpts struct {
 
 // Builder is the basic interface of this package.
 type Builder interface {
-	Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error)
+	Build(ctx context.Context, p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error)
 }
 
 var builders = make(map[string]Builder)
@@ -42,8 +43,8 @@ var builders = make(map[string]Builder)
 // PlatformBuilder is a builder where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
 type PlatformBuilder interface {
-	PlatformBuild(appTypes.PlatformOptions) error
-	PlatformRemove(name string) error
+	PlatformBuild(context.Context, appTypes.PlatformOptions) error
+	PlatformRemove(ctx context.Context, name string) error
 }
 
 // Register registers a new builder in the Builder registry.
@@ -82,7 +83,7 @@ func Registry() ([]Builder, error) {
 	return registry, nil
 }
 
-func PlatformBuild(opts appTypes.PlatformOptions) error {
+func PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
 	builders, err := Registry()
 	if err != nil {
 		return err
@@ -91,7 +92,7 @@ func PlatformBuild(opts appTypes.PlatformOptions) error {
 	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformBuild(opts)
+			err = platformBuilder.PlatformBuild(ctx, opts)
 			if err == nil {
 				return nil
 			}
@@ -104,7 +105,7 @@ func PlatformBuild(opts appTypes.PlatformOptions) error {
 	return errors.New("No builder available")
 }
 
-func PlatformRemove(name string) error {
+func PlatformRemove(ctx context.Context, name string) error {
 	builders, err := Registry()
 	if err != nil {
 		return err
@@ -112,7 +113,7 @@ func PlatformRemove(name string) error {
 	multiErr := tsuruErrors.NewMultiError()
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformRemove(name)
+			err = platformBuilder.PlatformRemove(ctx, name)
 			if err == nil {
 				return nil
 			}

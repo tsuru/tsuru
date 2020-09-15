@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -58,10 +59,10 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 	})
@@ -97,10 +98,10 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 		Units:   []string{"myapp-web-pod-1-1"},
@@ -113,7 +114,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	c.Assert(logs[0].AppName, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
-	logs, err = s.p.ListLogs(a, appTypes.ListLogArgs{
+	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 		Units:   []string{"myapp-unit-not-found"},
@@ -145,10 +146,10 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	logs, err := s.p.ListLogs(a, appTypes.ListLogArgs{
+	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 		Source:  "web",
@@ -161,7 +162,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	c.Assert(logs[0].AppName, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
-	logs, err = s.p.ListLogs(a, appTypes.ListLogArgs{
+	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 		Source:  "not-found",
@@ -202,10 +203,10 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	watcher, err := s.p.WatchLogs(a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 	})
@@ -262,10 +263,10 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 		},
 	}
 	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(provision.DeployArgs{App: a, Version: version, Event: evt})
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	wait()
-	watcher, err := s.p.WatchLogs(a, appTypes.ListLogArgs{
+	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		AppName: a.GetName(),
 		Limit:   10,
 		Units:   []string{"myapp-web-pod-1-1", "not-found-unit"},

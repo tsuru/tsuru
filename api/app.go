@@ -96,6 +96,7 @@ func getApp(name string) (*app.App, error) {
 //   401: Unauthorized
 //   404: Not found
 func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -122,7 +123,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	return app.Delete(&a, evt, requestIDHeader(r))
+	return app.Delete(ctx, &a, evt, requestIDHeader(r))
 }
 
 // miniApp is a minimal representation of the app, created to make appList
@@ -197,6 +198,7 @@ contextsLoop:
 //   204: No content
 //   401: Unauthorized
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	filter := &app.Filter{}
 	if name := r.URL.Query().Get("name"); name != "" {
 		filter.NameMatches = name
@@ -228,7 +230,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	apps, err := app.List(appFilterByContext(contexts, filter))
+	apps, err := app.List(ctx, appFilterByContext(contexts, filter))
 	if err != nil {
 		return err
 	}
@@ -249,7 +251,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return json.NewEncoder(w).Encode(miniApps)
 	}
-	appUnits, err := app.Units(apps)
+	appUnits, err := app.Units(ctx, apps)
 	if err != nil {
 		return err
 	}
@@ -334,6 +336,7 @@ func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, err
 //   403: Quota exceeded
 //   409: App already exists
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var ia inputApp
 	err = ParseInput(r, &ia)
 	if err != nil {
@@ -371,7 +374,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if a.Platform != "" {
 		repo, _ := image.SplitImageName(a.Platform)
-		platform, errPlat := servicemanager.Platform.FindByName(repo)
+		platform, errPlat := servicemanager.Platform.FindByName(ctx, repo)
 		if errPlat != nil {
 			return errPlat
 		}
@@ -394,7 +397,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.CreateApp(&a, u)
+	err = app.CreateApp(ctx, &a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
 		if _, ok := err.(appTypes.NoTeamsError); ok {
@@ -455,6 +458,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   401: Unauthorized
 //   404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var ia inputApp
 	err = ParseInput(r, &ia)
 	if err != nil {
@@ -507,7 +511,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if updateData.Platform != "" {
 		repo, _ := image.SplitImageName(updateData.Platform)
-		platform, errPlat := servicemanager.Platform.FindByName(repo)
+		platform, errPlat := servicemanager.Platform.FindByName(ctx, repo)
 		if errPlat != nil {
 			return errPlat
 		}
@@ -552,7 +556,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(app.UpdateAppArgs{
+	err = a.Update(ctx, app.UpdateAppArgs{
 		UpdateData:    updateData,
 		Writer:        evt,
 		ShouldRestart: !noRestart,
@@ -595,6 +599,7 @@ func numberOfUnits(r *http.Request) (uint, error) {
 //   401: Unauthorized
 //   404: App not found
 func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -628,7 +633,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.AddUnits(n, processName, version, evt)
+	return a.AddUnits(ctx, n, processName, version, evt)
 }
 
 // title: remove units
@@ -642,6 +647,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   403: Not enough reserved units
 //   404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -675,7 +681,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.RemoveUnits(n, processName, version, evt)
+	return a.RemoveUnits(ctx, n, processName, version, evt)
 }
 
 // title: set unit status
@@ -732,6 +738,7 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: App or unit not found
 func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if t.GetAppName() != app.InternalAppName {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
@@ -740,7 +747,7 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	result, err := app.UpdateNodeStatus(hostInput)
+	result, err := app.UpdateNodeStatus(ctx, hostInput)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -952,6 +959,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //   401: Unauthorized
 //   404: App not found
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
 	if err != nil {
@@ -1005,7 +1013,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bind.SetEnvArgs{
 		Envs:          variables,
 		ShouldRestart: !e.NoRestart,
 		Writer:        evt,
@@ -1026,6 +1034,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -1064,7 +1073,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(bind.UnsetEnvArgs{
+	return a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
 		Writer:        evt,
@@ -1172,6 +1181,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   401: Unauthorized
 //   404: App not found
 func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var err error
 	var lines int
 	if l := r.URL.Query().Get("lines"); l != "" {
@@ -1215,7 +1225,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Units:        units,
 		Token:        t,
 	}
-	logs, err := a.LastLogs(logService, listArgs)
+	logs, err := a.LastLogs(ctx, logService, listArgs)
 	if err != nil {
 		return err
 	}
@@ -1227,7 +1237,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !follow {
 		return nil
 	}
-	watcher, err := logService.Watch(listArgs)
+	watcher, err := logService.Watch(ctx, listArgs)
 	if err != nil {
 		return err
 	}
@@ -1466,6 +1476,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1495,7 +1506,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart(process, version, evt)
+	return a.Restart(ctx, process, version, evt)
 }
 
 // title: app sleep
@@ -1509,6 +1520,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1547,7 +1559,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Sleep(evt, process, version, proxyURL)
+	return a.Sleep(ctx, evt, process, version, proxyURL)
 }
 
 // title: app log
@@ -1599,6 +1611,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   409: App locked
 //   412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	app1Name := InputValue(r, "app1")
 	app2Name := InputValue(r, "app2")
 	forceSwap := InputValue(r, "force")
@@ -1663,7 +1676,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			}
 		}
 	}
-	return app.Swap(app1, app2, cnameOnly)
+	return app.Swap(ctx, app1, app2, cnameOnly)
 }
 
 // title: app start
@@ -1676,6 +1689,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1705,7 +1719,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Start(evt, process, version)
+	return a.Start(ctx, evt, process, version)
 }
 
 // title: app stop
@@ -1718,6 +1732,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	process := InputValue(r, "process")
 	version := InputValue(r, "version")
 	appName := r.URL.Query().Get(":app")
@@ -1747,7 +1762,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Stop(evt, process, version)
+	return a.Stop(ctx, evt, process, version)
 }
 
 // title: app unlock
@@ -1776,6 +1791,7 @@ func isDeployAgentUA(r *http.Request) bool {
 //   401: Unauthorized
 //   404: App not found
 func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	a, err := app.GetByName(appName)
 	if err != nil {
@@ -1813,7 +1829,7 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-	err = a.RegisterUnit(hostname, customData)
+	err = a.RegisterUnit(ctx, hostname, customData)
 	if err != nil {
 		if err, ok := err.(*provision.UnitNotFoundError); ok {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -1867,6 +1883,7 @@ type compatRebuildRoutesResult struct {
 //   401: Unauthorized
 //   404: App not found
 func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -1891,7 +1908,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	result := make(map[string]rebuild.RebuildRoutesResult)
 	defer func() { evt.DoneCustomData(err, result) }()
 	w.Header().Set("Content-Type", "application/json")
-	result, err = rebuild.RebuildRoutes(&a, dry)
+	result, err = rebuild.RebuildRoutes(ctx, &a, dry)
 	if err != nil {
 		return err
 	}

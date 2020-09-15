@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -554,7 +555,7 @@ func processTags(tags []string) []string {
 	return processedTags
 }
 
-func RenameServiceInstanceTeam(oldName, newName string) error {
+func RenameServiceInstanceTeam(ctx context.Context, oldName, newName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

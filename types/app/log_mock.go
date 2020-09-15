@@ -4,6 +4,8 @@
 
 package app
 
+import "context"
+
 var _ AppLogService = &MockAppLogService{}
 
 type MockAppLogService struct{}
@@ -15,11 +17,11 @@ func (m *MockAppLogService) Add(appName, message, source, unit string) error {
 	return nil
 }
 
-func (m *MockAppLogService) List(args ListLogArgs) ([]Applog, error) {
+func (m *MockAppLogService) List(ctx context.Context, args ListLogArgs) ([]Applog, error) {
 	return []Applog{}, nil
 }
 
-func (m *MockAppLogService) Watch(args ListLogArgs) (LogWatcher, error) {
+func (m *MockAppLogService) Watch(ctx context.Context, args ListLogArgs) (LogWatcher, error) {
 	return NewMockLogWatcher(), nil
 }
 

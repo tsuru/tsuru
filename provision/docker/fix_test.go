@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -22,14 +23,14 @@ import (
 
 func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner) {
 	output := `{
-    "State": {
-        "Running": true,
-        "Pid": 2785,
-        "ExitCode": 0,
-        "StartedAt": "2013-08-15T03:38:45.709874216-03:00",
-        "Ghost": false
-    },
-    "Image": "b750fe79269d2ec9a3c593ef05b4332b1d1a02a62b4accb2c21d589ff2f5f2dc",
+	"State": {
+		"Running": true,
+		"Pid": 2785,
+		"ExitCode": 0,
+		"StartedAt": "2013-08-15T03:38:45.709874216-03:00",
+		"Ghost": false
+	},
+	"Image": "b750fe79269d2ec9a3c593ef05b4332b1d1a02a62b4accb2c21d589ff2f5f2dc",
 	"NetworkSettings": {
 		"IpAddress": "127.0.0.9",
 		"IpPrefixLen": 8,
@@ -90,8 +91,9 @@ func (s *S) TestFixContainer(c *check.C) {
 	err = s.conn.Apps().Insert(&app.App{Name: cont.AppName})
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp(cont.AppName, cont.Type, 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
+	ctx := context.TODO()
+	defer p.Destroy(ctx, appInstance)
+	p.Provision(ctx, appInstance)
 	var storage cluster.MapStorage
 	storage.StoreContainer(cont.ID, server.URL)
 	p.cluster, err = cluster.New(nil, &storage, "",

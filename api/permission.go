@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -193,7 +194,7 @@ func deployableApps(u *auth.User, rolesCache map[string]*permission.Role) ([]str
 		return nil, nil
 	}
 	filter := appFilterByContext(contexts, nil)
-	apps, err := app.List(filter)
+	apps, err := app.List(context.TODO(), filter)
 	if err != nil {
 		return nil, err
 	}

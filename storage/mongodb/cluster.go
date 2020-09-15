@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	"context"
 	"io"
 
 	"github.com/globalsign/mgo"
@@ -37,7 +38,7 @@ func clustersCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection("provisioner_clusters")
 }
 
-func (s *clusterStorage) Upsert(c provision.Cluster) error {
+func (s *clusterStorage) Upsert(ctx context.Context, c provision.Cluster) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -61,11 +62,11 @@ func (s *clusterStorage) Upsert(c provision.Cluster) error {
 	return errors.WithStack(err)
 }
 
-func (s *clusterStorage) FindAll() ([]provision.Cluster, error) {
+func (s *clusterStorage) FindAll(ctx context.Context) ([]provision.Cluster, error) {
 	return s.findByQuery(nil)
 }
 
-func (s *clusterStorage) FindByName(name string) (*provision.Cluster, error) {
+func (s *clusterStorage) FindByName(ctx context.Context, name string) (*provision.Cluster, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -83,11 +84,11 @@ func (s *clusterStorage) FindByName(name string) (*provision.Cluster, error) {
 	return &cluster, nil
 }
 
-func (s *clusterStorage) FindByProvisioner(provisioner string) ([]provision.Cluster, error) {
+func (s *clusterStorage) FindByProvisioner(ctx context.Context, provisioner string) ([]provision.Cluster, error) {
 	return s.findByQuery(bson.M{"provisioner": provisioner})
 }
 
-func (s *clusterStorage) FindByPool(provisioner, pool string) (*provision.Cluster, error) {
+func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool string) (*provision.Cluster, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -132,7 +133,7 @@ func (s *clusterStorage) findByQuery(query bson.M) ([]provision.Cluster, error) 
 	return provClusters, nil
 }
 
-func (s *clusterStorage) Delete(c provision.Cluster) error {
+func (s *clusterStorage) Delete(ctx context.Context, c provision.Cluster) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

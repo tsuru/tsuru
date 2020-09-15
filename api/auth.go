@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -229,7 +230,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	return managed.ResetPassword(u, token)
 }
 
-var teamRenameFns = []func(oldName, newName string) error{
+var teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
 	app.RenameTeam,
 	service.RenameServiceTeam,
 	service.RenameServiceInstanceTeam,
@@ -247,6 +248,7 @@ var teamRenameFns = []func(oldName, newName string) error{
 //   401: Unauthorized
 //   404: Team not found
 func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	type teamChange struct {
 		NewName string
@@ -293,7 +295,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	var toRollback []func(oldName, newName string) error
+	var toRollback []func(ctx context.Context, oldName, newName string) error
 	defer func() {
 		if err == nil {
 			return
@@ -303,7 +305,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			log.Errorf("error rolling back team creation from %v to %v", name, changeRequest.NewName)
 		}
 		for _, rollbackFn := range toRollback {
-			rollbackErr := rollbackFn(changeRequest.NewName, name)
+			rollbackErr := rollbackFn(ctx, changeRequest.NewName, name)
 			if rollbackErr != nil {
 				fnName := runtime.FuncForPC(reflect.ValueOf(rollbackFn).Pointer()).Name()
 				log.Errorf("error rolling back team name change in %v from %q to %q", fnName, name, changeRequest.NewName)
@@ -311,7 +313,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}()
 	for _, fn := range teamRenameFns {
-		err = fn(name, changeRequest.NewName)
+		err = fn(ctx, name, changeRequest.NewName)
 		if err != nil {
 			return err
 		}
@@ -468,6 +470,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 //   401: Unauthorized
 func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
 	team, err := servicemanager.Team.FindByName(teamName)
 	if err != nil {
@@ -477,7 +480,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-	apps, err := app.List(&app.Filter{
+	apps, err := app.List(ctx, &app.Filter{
 		Extra:     map[string][]string{"teams": {team.Name}},
 		TeamOwner: team.Name})
 	if err != nil {

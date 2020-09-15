@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -1745,12 +1746,12 @@ func (s *AuthSuite) TestUpdateTeamCallFnsAndRollback(c *check.C) {
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string
-	teamRenameFns = []func(oldName, newName string) error{
-		func(oldName, newName string) error {
+	teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
+		func(ctx context.Context, oldName, newName string) error {
 			calls1 = append(calls1, []string{oldName, newName})
 			return nil
 		},
-		func(oldName, newName string) error {
+		func(ctx context.Context, oldName, newName string) error {
 			calls2 = append(calls2, []string{oldName, newName})
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},
@@ -1780,15 +1781,15 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 	oldTeamRenameFns := teamRenameFns
 	defer func() { teamRenameFns = oldTeamRenameFns }()
 	var calls1, calls2 [][]string
-	teamRenameFns = []func(oldName, newName string) error{
-		func(oldName, newName string) error {
+	teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
+		func(ctx context.Context, oldName, newName string) error {
 			calls1 = append(calls1, []string{oldName, newName})
 			if len(calls1) == 2 {
 				return fmt.Errorf("error in rollback")
 			}
 			return nil
 		},
-		func(oldName, newName string) error {
+		func(ctx context.Context, oldName, newName string) error {
 			calls2 = append(calls2, []string{oldName, newName})
 			return fmt.Errorf("error in %q -> %q", oldName, newName)
 		},

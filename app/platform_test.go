@@ -6,6 +6,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -66,7 +67,7 @@ func (s *PlatformSuite) TestPlatformCreate(c *check.C) {
 			},
 		},
 	}
-	err := ps.Create(appTypes.PlatformOptions{Name: name})
+	err := ps.Create(context.TODO(), appTypes.PlatformOptions{Name: name})
 	c.Assert(err, check.IsNil)
 }
 
@@ -92,7 +93,7 @@ func (s *PlatformSuite) TestPlatformCreateValidatesPlatformName(c *check.C) {
 		{"myapp-40-characters-ppmyappmyappmyappmya", nil},
 	}
 	for _, t := range tt {
-		err := ps.Create(appTypes.PlatformOptions{Name: t.name})
+		err := ps.Create(context.TODO(), appTypes.PlatformOptions{Name: t.name})
 		c.Check(err, check.DeepEquals, t.expectedErr)
 	}
 }
@@ -106,7 +107,7 @@ func (s *PlatformSuite) TestPlatformCreateWithStorageError(c *check.C) {
 		},
 	}
 	name := "test-platform-add"
-	err := ps.Create(appTypes.PlatformOptions{Name: name})
+	err := ps.Create(context.TODO(), appTypes.PlatformOptions{Name: name})
 	c.Assert(err, check.Equals, appTypes.ErrDuplicatePlatform)
 }
 
@@ -130,7 +131,7 @@ func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	opts := appTypes.PlatformOptions{Name: name, Args: args}
-	err := ps.Create(opts)
+	err := ps.Create(context.TODO(), opts)
 	c.Assert(err, check.NotNil)
 }
 
@@ -155,11 +156,11 @@ func (s *PlatformSuite) TestPlatformList(c *check.C) {
 		},
 	}
 
-	plats, err := ps.List(false)
+	plats, err := ps.List(context.TODO(), false)
 	c.Assert(err, check.IsNil)
 	c.Assert(plats, check.HasLen, 5)
 
-	plats, err = ps.List(true)
+	plats, err = ps.List(context.TODO(), true)
 	c.Assert(err, check.IsNil)
 	c.Assert(plats, check.HasLen, 3)
 }
@@ -176,11 +177,11 @@ func (s *PlatformSuite) TestPlatformFindByName(c *check.C) {
 		},
 	}
 
-	p, err := ps.FindByName("java")
+	p, err := ps.FindByName(context.TODO(), "java")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Name, check.Equals, "java")
 
-	p, err = ps.FindByName("other")
+	p, err = ps.FindByName(context.TODO(), "other")
 	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
 	c.Assert(p, check.IsNil)
 }
@@ -211,10 +212,10 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 		c.Assert(o.Data, check.NotNil)
 		return nil
 	}
-	err := ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: "other", Args: args})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: "other", Args: args})
 	c.Assert(err, check.Equals, appTypes.ErrInvalidPlatform)
 }
 
@@ -247,7 +248,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -283,7 +284,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -320,7 +321,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -356,7 +357,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -392,7 +393,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -428,7 +429,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfileContent(c
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("")})
 	c.Assert(err, check.Equals, appTypes.ErrMissingFileContent)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -437,7 +438,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfileContent(c
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
 	ps := &platformService{}
-	err := ps.Update(appTypes.PlatformOptions{Name: ""})
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: ""})
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
@@ -470,7 +471,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, check.IsNil)
@@ -507,16 +508,16 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	s.mockService.PlatformImage.OnListImagesOrDefault = func(name string) ([]string, error) {
 		return []string{"tsuru/" + name + ":v1"}, nil
 	}
-	err = ps.Remove("platform-doesnt-exist")
+	err = ps.Remove(context.TODO(), "platform-doesnt-exist")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNotFound)
 
-	err = ps.Remove(name)
+	err = ps.Remove(context.TODO(), name)
 	c.Assert(err, check.IsNil)
 	c.Assert(registry.Repos, check.HasLen, 1)
 	c.Assert(registry.Repos[0].Tags, check.HasLen, 0)
 
-	err = ps.Remove("")
+	err = ps.Remove(context.TODO(), "")
 	c.Assert(err, check.Equals, appTypes.ErrPlatformNameMissing)
 }
 
@@ -540,7 +541,7 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Remove(name)
+	err = ps.Remove(context.TODO(), name)
 	c.Assert(err, check.NotNil)
 }
 
@@ -557,7 +558,7 @@ func (s *PlatformSuite) TestPlatformRollbackInvalidImage(c *check.C) {
 			},
 		},
 	}
-	err := ps.Rollback(appTypes.PlatformOptions{Name: name, ImageName: image})
+	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, ImageName: image})
 	c.Assert(err.Error(), check.Equals, "Image tsuru/no-valid-image not found in platform \"test-platform-rollback\"")
 }
 
@@ -581,6 +582,6 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 		c.Assert(o.Data, check.NotNil)
 		return nil
 	}
-	err := ps.Rollback(appTypes.PlatformOptions{Name: name, ImageName: image})
+	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, ImageName: image})
 	c.Assert(err, check.IsNil)
 }

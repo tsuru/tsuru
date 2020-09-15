@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -201,7 +202,7 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
 		}
-		err = app.SetEnvs(bind.SetEnvArgs{
+		err = app.SetEnvs(context.TODO(), bind.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
@@ -215,7 +216,7 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(bind.UnsetEnvArgs{
+			app.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
@@ -344,7 +345,7 @@ var provisionApp = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		err = prov.Provision(app)
+		err = prov.Provision(context.TODO(), app)
 		if err != nil {
 			return nil, err
 		}
@@ -354,7 +355,7 @@ var provisionApp = action.Action{
 		app := ctx.FWResult.(*App)
 		prov, err := app.getProvisioner()
 		if err == nil {
-			prov.Destroy(app)
+			prov.Destroy(context.TODO(), app)
 		}
 	},
 	MinParams: 1,
@@ -427,7 +428,7 @@ var provisionAddUnits = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.AddUnits(app, uint(n), process, version, w)
+		return nil, prov.AddUnits(context.TODO(), app, uint(n), process, version, w)
 	},
 	MinParams: 1,
 }
@@ -469,12 +470,12 @@ var restartApp = action.Action{
 			return nil, errors.New("expected app ptr as first arg")
 		}
 		w, _ := ctx.Params[2].(io.Writer)
-		return nil, app.Restart("", "", w)
+		return nil, app.Restart(context.TODO(), "", "", w)
 	},
 	Backward: func(ctx action.BWContext) {
 		oldApp := ctx.Params[1].(*App)
 		w, _ := ctx.Params[2].(io.Writer)
-		err := oldApp.Restart("", "", w)
+		err := oldApp.Restart(context.TODO(), "", "", w)
 		if err != nil {
 			log.Errorf("BACKWARD update app - failed to restart app: %s", err)
 		}
@@ -492,7 +493,7 @@ var provisionAppNewProvisioner = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.Provision(app)
+		return nil, prov.Provision(context.TODO(), app)
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
@@ -500,7 +501,7 @@ var provisionAppNewProvisioner = action.Action{
 		if err != nil {
 			log.Errorf("BACKWARD provision app - failed to get provisioner: %s", err)
 		}
-		err = prov.Destroy(app)
+		err = prov.Destroy(context.TODO(), app)
 		if err != nil {
 			log.Errorf("BACKWARD provision app - failed to destroy app in prov: %s", err)
 		}
@@ -542,7 +543,7 @@ var provisionAppAddUnits = action.Action{
 			app.Routers = routers
 			app.Router = router
 			if err == nil {
-				_, err = rebuild.RebuildRoutes(app, false)
+				_, err = rebuild.RebuildRoutes(context.TODO(), app, false)
 			}
 		}()
 		for processData, count := range unitCount {
@@ -550,7 +551,7 @@ var provisionAppAddUnits = action.Action{
 			if processData.version > 0 {
 				version = strconv.Itoa(processData.version)
 			}
-			err = app.AddUnits(count, processData.process, version, w)
+			err = app.AddUnits(context.TODO(), count, processData.process, version, w)
 			if err != nil {
 				return nil, err
 			}
@@ -574,7 +575,7 @@ var destroyAppOldProvisioner = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, oldProv.Destroy(oldApp)
+		return nil, oldProv.Destroy(context.TODO(), oldApp)
 	},
 }
 
@@ -595,7 +596,7 @@ var updateAppProvisioner = action.Action{
 		}
 		w, _ := ctx.Params[2].(io.Writer)
 		if upProv, ok := oldProv.(provision.UpdatableProvisioner); ok {
-			return nil, upProv.UpdateApp(oldApp, app, w)
+			return nil, upProv.UpdateApp(context.TODO(), oldApp, app, w)
 		}
 		return nil, nil
 	},
@@ -609,7 +610,7 @@ var updateAppProvisioner = action.Action{
 		}
 		w := ctx.Params[2].(io.Writer)
 		if upProv, ok := newProv.(provision.UpdatableProvisioner); ok {
-			if err := upProv.UpdateApp(app, oldApp, w); err != nil {
+			if err := upProv.UpdateApp(context.TODO(), app, oldApp, w); err != nil {
 				log.Errorf("BACKWARDS update-app-provisioner - failed to update app back to previous state: %v", err)
 			}
 		}

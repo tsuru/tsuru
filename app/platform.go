@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"strconv"
@@ -42,7 +43,7 @@ func PlatformService() (appTypes.PlatformService, error) {
 }
 
 // Create implements Create method of PlatformService interface
-func (s *platformService) Create(opts appTypes.PlatformOptions) error {
+func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOptions) error {
 	p := appTypes.Platform{Name: opts.Name}
 	if err := s.validate(p); err != nil {
 		return err
@@ -55,7 +56,7 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	err = builder.PlatformBuild(opts)
+	err = builder.PlatformBuild(ctx, opts)
 	if err != nil {
 		if imgErr := servicemanager.PlatformImage.DeleteImages(opts.Name); imgErr != nil {
 			log.Errorf("unable to remove platform images: %s", imgErr)
@@ -73,7 +74,7 @@ func (s *platformService) Create(opts appTypes.PlatformOptions) error {
 }
 
 // List implements List method of PlatformService interface
-func (s *platformService) List(enabledOnly bool) ([]appTypes.Platform, error) {
+func (s *platformService) List(ctx context.Context, enabledOnly bool) ([]appTypes.Platform, error) {
 	if enabledOnly {
 		return s.storage.FindEnabled()
 	}
@@ -81,7 +82,7 @@ func (s *platformService) List(enabledOnly bool) ([]appTypes.Platform, error) {
 }
 
 // FindByName implements FindByName method of PlatformService interface
-func (s *platformService) FindByName(name string) (*appTypes.Platform, error) {
+func (s *platformService) FindByName(ctx context.Context, name string) (*appTypes.Platform, error) {
 	p, err := s.storage.FindByName(name)
 	if err != nil {
 		return nil, appTypes.ErrInvalidPlatform
@@ -90,7 +91,7 @@ func (s *platformService) FindByName(name string) (*appTypes.Platform, error) {
 }
 
 // Update implements Update method of PlatformService interface
-func (s *platformService) Update(opts appTypes.PlatformOptions) error {
+func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOptions) error {
 	if opts.Name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
@@ -99,7 +100,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = s.FindByName(opts.Name)
+	_, err = s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 		if err != nil {
 			return err
 		}
-		err = builder.PlatformBuild(opts)
+		err = builder.PlatformBuild(ctx, opts)
 		if err != nil {
 			return err
 		}
@@ -144,7 +145,7 @@ func (s *platformService) Update(opts appTypes.PlatformOptions) error {
 }
 
 // Remove implements Remove method of PlatformService interface
-func (s *platformService) Remove(name string) error {
+func (s *platformService) Remove(ctx context.Context, name string) error {
 	if name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
@@ -157,7 +158,7 @@ func (s *platformService) Remove(name string) error {
 	if apps > 0 {
 		return appTypes.ErrDeletePlatformWithApps
 	}
-	err = builder.PlatformRemove(name)
+	err = builder.PlatformRemove(ctx, name)
 	if err != nil {
 		log.Errorf("Failed to remove platform from builder: %s", err)
 	}
@@ -179,14 +180,14 @@ func (s *platformService) Remove(name string) error {
 }
 
 // Rollback implements Rollback method of PlatformService interface
-func (s *platformService) Rollback(opts appTypes.PlatformOptions) error {
+func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOptions) error {
 	if opts.Name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
 	if opts.ImageName == "" {
 		return appTypes.ErrPlatformImageMissing
 	}
-	_, err := s.FindByName(opts.Name)
+	_, err := s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
@@ -202,7 +203,7 @@ func (s *platformService) Rollback(opts appTypes.PlatformOptions) error {
 	if err != nil {
 		return err
 	}
-	err = builder.PlatformBuild(opts)
+	err = builder.PlatformBuild(ctx, opts)
 	if err != nil {
 		return err
 	}

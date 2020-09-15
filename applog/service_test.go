@@ -5,6 +5,7 @@
 package applog
 
 import (
+	"context"
 	"strconv"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ var (
 func (s *ServiceSuite) Test_LogService_Add(c *check.C) {
 	err := s.svc.Add("myapp", "last log msg", "tsuru", "outermachine")
 	c.Assert(err, check.IsNil)
-	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -33,7 +34,7 @@ func (s *ServiceSuite) Test_LogService_Add(c *check.C) {
 func (s *ServiceSuite) Test_LogService_AddShouldAddOneRecordByLine(c *check.C) {
 	err := s.svc.Add("myapp", "last log msg\nfirst log", "tsuru", "outermachine")
 	c.Assert(err, check.IsNil)
-	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 2)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -45,7 +46,7 @@ func (s *ServiceSuite) Test_LogService_AddShouldNotLogBlankLines(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.svc.Add("ich", "", "", "")
 	c.Assert(err, check.IsNil)
-	logs, err := s.svc.List(appTypes.ListLogArgs{AppName: "ich"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "ich"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 }
@@ -55,7 +56,7 @@ func (s *ServiceSuite) Test_LogService_AddWithListeners(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -108,7 +109,7 @@ func (s *ServiceSuite) Test_LogService_List(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 5; i < 15; i++ {
@@ -121,7 +122,7 @@ func (s *ServiceSuite) Test_LogService_ListNegativeLimit(c *check.C) {
 	for i := 0; i < 15; i++ {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 	}
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: -1, AppName: "myapp"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: -1, AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
 }
@@ -130,7 +131,7 @@ func (s *ServiceSuite) Test_LogService_ListZeroLimit(c *check.C) {
 	for i := 0; i < 15; i++ {
 		s.svc.Add("myapp", strconv.Itoa(i), "tsuru", "rdaneel")
 	}
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 0, AppName: "myapp"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 0, AppName: "myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 15)
 }
@@ -141,7 +142,7 @@ func (s *ServiceSuite) Test_LogService_ListAll(c *check.C) {
 		time.Sleep(1e6) // let the time flow
 	}
 	s.svc.Add("myapp", "myapp log from circus", "circus", "rdaneel")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 1000, AppName: "myapp", Source: "tsuru"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 1000, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 15)
 	for i := 0; i < 15; i++ {
@@ -158,7 +159,7 @@ func (s *ServiceSuite) Test_LogService_ListUnitFilter(c *check.C) {
 	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
 	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
 	s.svc.Add("app3", "app3 other log from tsuru", "tsuru", "rgiskard")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Units: []string{"rdaneel", "rgiskard"}})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", Units: []string{"rdaneel", "rgiskard"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	for i := 6; i < 15; i++ {
@@ -175,7 +176,7 @@ func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
 	}
 	s.svc.Add("app3", "app3 log from circus", "circus", "rdaneel")
 	s.svc.Add("app3", "app3 log from tsuru", "tsuru", "seldon")
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertSource: true})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 10, AppName: "app3", Source: "tsuru", InvertSource: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Check(logs[0].Message, check.Equals, "app3 log from circus")
@@ -183,7 +184,7 @@ func (s *ServiceSuite) Test_LogService_ListFilterInvert(c *check.C) {
 }
 
 func (s *ServiceSuite) Test_LogService_ListEmpty(c *check.C) {
-	logs, err := s.svc.List(appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
+	logs, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{Limit: 10, AppName: "myapp", Source: "tsuru"})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.DeepEquals, []appTypes.Applog{})
 }
@@ -194,7 +195,7 @@ func addLog(c *check.C, svc appTypes.AppLogService, appName, message, source, un
 }
 
 func (s *ServiceSuite) TestWatch(c *check.C) {
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -209,7 +210,7 @@ func (s *ServiceSuite) TestWatch(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 		Source:  "web",
 		Units:   []string{"u1", "u9"},
@@ -239,7 +240,7 @@ func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchFilteredInvertSource(c *check.C) {
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName:      "myapp",
 		Source:       "web",
 		InvertSource: true,
@@ -263,7 +264,7 @@ func (s *ServiceSuite) TestWatchFilteredInvertSource(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -274,7 +275,7 @@ func (s *ServiceSuite) TestWatchClosingChannel(c *check.C) {
 }
 
 func (s *ServiceSuite) TestWatchClose(c *check.C) {
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -287,7 +288,7 @@ func (s *ServiceSuite) TestWatchDoubleClose(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "yourapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -300,7 +301,7 @@ func (s *ServiceSuite) TestWatchNotify(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "fade",
 	})
 	c.Assert(err, check.IsNil)
@@ -353,7 +354,7 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 		l []appTypes.Applog
 		sync.Mutex
 	}
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "fade",
 		Source:  "tsuru",
 		Units:   []string{"unit1"},
@@ -410,7 +411,7 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	defer func() {
 		c.Assert(recover(), check.IsNil)
 	}()
-	l, err := s.svc.Watch(appTypes.ListLogArgs{
+	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "fade",
 	})
 	c.Assert(err, check.IsNil)

@@ -5,6 +5,7 @@
 package builder
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -61,7 +62,7 @@ func (s S) TestPlatformBuild(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformBuild(appTypes.PlatformOptions{})
+	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.IsNil)
 }
 
@@ -74,12 +75,12 @@ func (s S) TestPlatformBuildError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformBuild(appTypes.PlatformOptions{})
+	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformBuildNoBuilder(c *check.C) {
-	err := PlatformBuild(appTypes.PlatformOptions{})
+	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }
 
@@ -94,7 +95,7 @@ func (s S) TestPlatformRemove(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	Register("builder3", &b3)
-	err := PlatformRemove("platform-name")
+	err := PlatformRemove(context.TODO(), "platform-name")
 	c.Assert(err, check.IsNil)
 }
 
@@ -107,11 +108,11 @@ func (s S) TestPlatformRemoveError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformRemove("platform-name")
+	err := PlatformRemove(context.TODO(), "platform-name")
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformRemoveNoBuilder(c *check.C) {
-	err := PlatformRemove("platform-name")
+	err := PlatformRemove(context.TODO(), "platform-name")
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }

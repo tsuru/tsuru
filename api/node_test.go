@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -65,7 +66,7 @@ func (s *S) TestAddNodeHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(rec.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, serverAddr)
@@ -93,7 +94,7 @@ func (s *S) TestAddNodeHandlerExistingInDifferentProvisioner(c *check.C) {
 	})
 	defer provision.Unregister("fake-other")
 	serverAddr := "http://mysrv1"
-	err := p1.AddNode(provision.AddNodeOptions{
+	err := p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: serverAddr,
 	})
 	c.Assert(err, check.IsNil)
@@ -183,7 +184,7 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	c.Assert(rec.Body.String(), check.Equals, "")
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address(), check.Equals, "http://test1.somewhere.com:2375")
@@ -311,7 +312,7 @@ func (s *S) TestRemoveNodeHandlerNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "host.com:2375",
 	})
 	c.Assert(err, check.IsNil)
@@ -323,7 +324,7 @@ func (s *S) TestRemoveNodeHandler(c *check.C) {
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(rec.Body.String(), check.Equals, "rebalancing...remove done!")
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
@@ -337,7 +338,7 @@ func (s *S) TestRemoveNodeHandler(c *check.C) {
 }
 
 func (s *S) TestRemoveNodeHandlerNoRebalance(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "host.com:2375",
 	})
 	c.Assert(err, check.IsNil)
@@ -349,7 +350,7 @@ func (s *S) TestRemoveNodeHandlerNoRebalance(c *check.C) {
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(rec.Body.String(), check.Equals, "remove done!")
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
@@ -366,7 +367,7 @@ func (s *S) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
@@ -379,7 +380,7 @@ func (s *S) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Body.String(), check.Equals, "rebalancing...remove done!")
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
@@ -391,7 +392,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
@@ -404,7 +405,7 @@ func (s *S) TestRemoveNodeHandlerWithRemoveIaaS(c *check.C) {
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Body.String(), check.Equals, "rebalancing...remove done!")
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 0)
 	_, err = iaas.FindMachineById(machine.Id)
@@ -421,12 +422,12 @@ func (s *S) TestListNodeHandlerNoContent(c *check.C) {
 }
 
 func (s *S) TestListNodeHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "host1.com:2375",
 		Pool:    "pool1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address:  "host2.com:2375",
 		Pool:     "pool2",
 		Metadata: map[string]string{"foo": "bar"},
@@ -452,18 +453,18 @@ func (s *S) TestListNodeHandler(c *check.C) {
 }
 
 func (s *S) TestListNodeHandlerWithFilter(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "host1.com:2375",
 		Pool:    "pool1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address:  "host2.com:2375",
 		Pool:     "pool2",
 		Metadata: map[string]string{"foo": "bar"},
 	})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address:  "host3.com:2375",
 		Pool:     "pool3",
 		Metadata: map[string]string{"foo": "bar", "key": "value"},
@@ -514,7 +515,7 @@ func (s *S) TestListUnitsByHostNotFound(c *check.C) {
 }
 
 func (s *S) TestListUnitsByHostNoContent(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://node1.company:4243",
 	})
 	c.Assert(err, check.IsNil)
@@ -528,15 +529,15 @@ func (s *S) TestListUnitsByHostNoContent(c *check.C) {
 }
 
 func (s *S) TestListUnitsByHostHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://node1.company:4243",
 	})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(2, "", "", nil)
+	err = a.AddUnits(context.TODO(), 2, "", "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/http://node1.company:4243/containers", nil)
 	c.Assert(err, check.IsNil)
@@ -576,7 +577,7 @@ func (s *S) TestListUnitsByAppNotFound(c *check.C) {
 
 func (s *S) TestListUnitsByAppNoContent(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	c.Assert(err, check.IsNil)
@@ -588,10 +589,10 @@ func (s *S) TestListUnitsByAppNoContent(c *check.C) {
 
 func (s *S) TestListUnitsByAppHandler(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(2, "", "", nil)
+	err = a.AddUnits(context.TODO(), 2, "", "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	c.Assert(err, check.IsNil)
@@ -622,10 +623,10 @@ func (s *S) TestListUnitsByAppHandler(c *check.C) {
 
 func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(2, "", "", nil)
+	err = a.AddUnits(context.TODO(), 2, "", "", nil)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/apps/myapp/containers", nil)
 	c.Assert(err, check.IsNil)
@@ -659,7 +660,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
@@ -685,7 +686,7 @@ func (s *S) TestUpdateNodeHandler(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
@@ -721,7 +722,7 @@ func (s *S) TestUpdateNodeHandlerNoAddress(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost1:1999",
 		Metadata: map[string]string{
 			"m1": "v1",
@@ -753,7 +754,7 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, provision.ErrNodeNotFound.Error()+"\n")
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
@@ -763,7 +764,7 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
@@ -786,14 +787,14 @@ func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Status(), check.Equals, "disabled")
 }
 
 func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
@@ -816,14 +817,14 @@ func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	nodes, err := s.provisioner.ListNodes(nil)
+	nodes, err := s.provisioner.ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Status(), check.Equals, "enabled")
 }
 
 func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost:1999",
 	})
 	c.Assert(err, check.IsNil)
@@ -1031,18 +1032,18 @@ func intPtr(i int) *int {
 }
 
 func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "n1",
 		Pool:    "test1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "n2",
 		Pool:    "test1",
 	})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
 	c.Assert(err, check.IsNil)
@@ -1055,7 +1056,7 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Matches, "(?s).*rebalancing - dry: false, force: true.*Units successfully rebalanced.*")
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	var nodes []string
 	for _, u := range units {
@@ -1074,16 +1075,16 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 	poolOpts := pool.AddPoolOptions{Name: "pool1"}
 	err := pool.AddPool(poolOpts)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "n1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(provision.AddNodeOptions{
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "n2",
 	})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
 	c.Assert(err, check.IsNil)
@@ -1132,7 +1133,7 @@ func (s *S) TestInfoNodeHandlerNotFound(c *check.C) {
 
 func (s *S) TestInfoNodeHandlerNodeOnly(c *check.C) {
 	nodeAddr := "http://host1.com:2375"
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeAddr,
 		Pool:    "pool1",
 		IaaSID:  "teste123",
@@ -1155,12 +1156,12 @@ func (s *S) TestInfoNodeHandlerNodeOnly(c *check.C) {
 
 func (s *S) TestInfoNodeHandler(c *check.C) {
 	nodeAddr := "host1.com:2375"
-	err := s.provisioner.AddNode(provision.AddNodeOptions{
+	err := s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeAddr,
 		Pool:    "pool1",
 	})
 	c.Assert(err, check.IsNil)
-	node, err := s.provisioner.GetNode(nodeAddr)
+	node, err := s.provisioner.GetNode(context.TODO(), nodeAddr)
 	c.Assert(err, check.IsNil)
 	nodeHealer := &healer.NodeHealer{}
 	checks := []provision.NodeCheckResult{
@@ -1174,7 +1175,7 @@ func (s *S) TestInfoNodeHandler(c *check.C) {
 	_, err = iaas.CreateMachineForIaaS("test123", map[string]string{"id": "teste123", "host": "host1.com", "port": "2375"})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "fake", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{
 		ID:      "a834h983j498j",

@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -161,7 +162,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 		Router:    "fake",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/apps/%s/build?tag=mytag", a.Name)
@@ -221,7 +222,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 		Router:    "fake",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
 	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("tag=mytag&archive-url=http://something.tar.gz"))
@@ -258,7 +259,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 
 func (s *BuildSuite) TestBuildWithoutTag(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/build", a.Name)
 	request, err := http.NewRequest(http.MethodPost, url, strings.NewReader("archive-url=http://something.tar.gz"))

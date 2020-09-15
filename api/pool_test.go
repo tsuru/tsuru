@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -174,7 +175,7 @@ func (s *S) TestRemovePoolHandlerWithApp(c *check.C) {
 	}
 	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/pools/pool1", nil)
 	c.Assert(err, check.IsNil)
@@ -205,7 +206,7 @@ func (s *S) TestRemovePoolUserWithoutAppPerms(c *check.C) {
 	}
 	err = pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&a, &newUser)
+	err = app.CreateApp(context.TODO(), &a, &newUser)
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/pools/pool1", nil)
 	c.Assert(err, check.IsNil)

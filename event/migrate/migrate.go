@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -122,7 +123,7 @@ func setAllowed(evt *event.Event) (err error) {
 		for _, p := range provisioners {
 			if nodeProvisioner, ok := p.(provision.NodeProvisioner); ok {
 				var nodes []provision.Node
-				nodes, err = nodeProvisioner.ListNodes([]string{evt.Target.Value})
+				nodes, err = nodeProvisioner.ListNodes(context.TODO(), []string{evt.Target.Value})
 				if err != nil {
 					return err
 				}

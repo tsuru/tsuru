@@ -32,6 +32,7 @@ const eventIDHeader = "X-Tsuru-Eventid"
 //   403: Forbidden
 //   404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	opts, err := prepareToBuild(r)
 	if err != nil {
 		return err
@@ -115,7 +116,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
 	opts.OutputStream = writer
-	imageID, err = app.Deploy(opts)
+	imageID, err = app.Deploy(ctx, opts)
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
 	}
@@ -186,6 +187,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Forbidden
 //   404: Not found
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
@@ -241,7 +243,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
-	imageID, err = app.Deploy(opts)
+	imageID, err = app.Deploy(ctx, opts)
 	if err != nil {
 		return err
 	}
@@ -256,6 +258,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //   200: OK
 //   204: No content
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermAppReadDeploy)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
@@ -267,7 +270,7 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	limit := r.URL.Query().Get("limit")
 	skipInt, _ := strconv.Atoi(skip)
 	limitInt, _ := strconv.Atoi(limit)
-	deploys, err := app.ListDeploys(filter, skipInt, limitInt)
+	deploys, err := app.ListDeploys(ctx, filter, skipInt, limitInt)
 	if err != nil {
 		return err
 	}
@@ -319,6 +322,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Forbidden
 //   404: Not found
 func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
@@ -363,7 +367,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
 	opts.Event = evt
-	imageID, err = app.Deploy(opts)
+	imageID, err = app.Deploy(ctx, opts)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -95,7 +96,7 @@ func (s *S) TestMigrateRCEventsNoApp(c *check.C) {
 
 func (s *S) TestMigrateRCEventsWithApp(c *check.C) {
 	a := app.App{Name: "a1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	now := time.Unix(time.Now().Unix(), 0).UTC()
 	id := bson.NewObjectId()

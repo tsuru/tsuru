@@ -5,6 +5,7 @@
 package rebuild
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -36,18 +37,18 @@ type RebuildApp interface {
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
 	GetHealthcheckData() (routerTypes.HealthcheckData, error)
-	RoutableAddresses() ([]appTypes.RoutableAddresses, error)
+	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
 }
 
-func RebuildRoutes(app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
-	return rebuildRoutes(app, dry, true, ioutil.Discard)
+func RebuildRoutes(ctx context.Context, app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
+	return rebuildRoutes(ctx, app, dry, true, ioutil.Discard)
 }
 
 func rebuildRoutesAsync(app RebuildApp, dry bool, w io.Writer) (map[string]RebuildRoutesResult, error) {
-	return rebuildRoutes(app, dry, false, w)
+	return rebuildRoutes(context.TODO(), app, dry, false, w)
 }
 
-func rebuildRoutes(app RebuildApp, dry, wait bool, w io.Writer) (map[string]RebuildRoutesResult, error) {
+func rebuildRoutes(ctx context.Context, app RebuildApp, dry, wait bool, w io.Writer) (map[string]RebuildRoutesResult, error) {
 	result := make(map[string]RebuildRoutesResult)
 	multi := errors.NewMultiError()
 	b := rebuilder{
@@ -57,7 +58,7 @@ func rebuildRoutes(app RebuildApp, dry, wait bool, w io.Writer) (map[string]Rebu
 		w:    w,
 	}
 	for _, appRouter := range app.GetRouters() {
-		resultInRouter, err := b.rebuildRoutesInRouter(appRouter)
+		resultInRouter, err := b.rebuildRoutesInRouter(ctx, appRouter)
 		if err == nil {
 			result[appRouter.Name] = *resultInRouter
 		} else {
@@ -91,7 +92,7 @@ type rebuilder struct {
 	w    io.Writer
 }
 
-func (b *rebuilder) rebuildRoutesInRouter(appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
+func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", b.app.GetName())
 	if b.w == nil {
 		b.w = ioutil.Discard
@@ -185,7 +186,7 @@ func (b *rebuilder) rebuildRoutesInRouter(appRouter appTypes.AppRouter) (*Rebuil
 		allPrefixes.Add(addrs.Prefix)
 	}
 
-	newRoutes, err := b.app.RoutableAddresses()
+	newRoutes, err := b.app.RoutableAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}

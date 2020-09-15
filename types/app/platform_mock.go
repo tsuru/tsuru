@@ -4,6 +4,8 @@
 
 package app
 
+import "context"
+
 var (
 	_ PlatformStorage = &MockPlatformStorage{}
 	_ PlatformService = &MockPlatformService{}
@@ -53,42 +55,42 @@ type MockPlatformService struct {
 	OnRollback   func(PlatformOptions) error
 }
 
-func (m *MockPlatformService) Create(opts PlatformOptions) error {
+func (m *MockPlatformService) Create(ctx context.Context, opts PlatformOptions) error {
 	if m.OnCreate == nil {
 		return nil
 	}
 	return m.OnCreate(opts)
 }
 
-func (m *MockPlatformService) List(enabledOnly bool) ([]Platform, error) {
+func (m *MockPlatformService) List(ctx context.Context, enabledOnly bool) ([]Platform, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 	return m.OnList(enabledOnly)
 }
 
-func (m *MockPlatformService) FindByName(name string) (*Platform, error) {
+func (m *MockPlatformService) FindByName(ctx context.Context, name string) (*Platform, error) {
 	if m.OnFindByName == nil {
 		return &Platform{Name: name}, nil
 	}
 	return m.OnFindByName(name)
 }
 
-func (m *MockPlatformService) Update(opts PlatformOptions) error {
+func (m *MockPlatformService) Update(ctx context.Context, opts PlatformOptions) error {
 	if m.OnUpdate == nil {
 		return nil
 	}
 	return m.OnUpdate(opts)
 }
 
-func (m *MockPlatformService) Remove(name string) error {
+func (m *MockPlatformService) Remove(ctx context.Context, name string) error {
 	if m.OnRemove == nil {
 		return nil
 	}
 	return m.OnRemove(name)
 }
 
-func (m *MockPlatformService) Rollback(opts PlatformOptions) error {
+func (m *MockPlatformService) Rollback(ctx context.Context, opts PlatformOptions) error {
 	if m.OnRollback == nil {
 		return nil
 	}

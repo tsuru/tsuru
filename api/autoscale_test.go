@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -77,7 +78,7 @@ func (s *S) TestAutoScaleHistoryHandler(c *check.C) {
 }
 
 func (s *S) TestAutoScaleRunHandler(c *check.C) {
-	s.provisioner.AddNode(provision.AddNodeOptions{
+	s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "localhost:1999",
 		Pool:    "pool1",
 	})

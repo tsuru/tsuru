@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -270,7 +271,8 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 }
 
 func tryRestartAppsByFilter(filter *app.Filter, writer io.Writer) error {
-	apps, err := app.List(filter)
+	ctx := context.TODO()
+	apps, err := app.List(ctx, filter)
 	if err != nil {
 		return err
 	}
@@ -289,7 +291,7 @@ func tryRestartAppsByFilter(filter *app.Filter, writer io.Writer) error {
 		go func(i int) {
 			defer wg.Done()
 			a := apps[i]
-			err := a.Restart("", "", writer)
+			err := a.Restart(ctx, "", "", writer)
 			if err != nil {
 				fmt.Fprintf(writer, "Error: unable to restart %s: %s\n", a.Name, err.Error())
 			} else {

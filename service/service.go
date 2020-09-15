@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -153,7 +154,7 @@ func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Se
 	return getServicesByFilter(filter)
 }
 
-func RenameServiceTeam(oldName, newName string) error {
+func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

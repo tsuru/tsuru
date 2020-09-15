@@ -5,6 +5,8 @@
 package cluster
 
 import (
+	"context"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -29,7 +31,7 @@ func (c *clustersMetricCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *clustersMetricCollector) Collect(ch chan<- prometheus.Metric) {
-	clusters, err := servicemanager.Cluster.List()
+	clusters, err := servicemanager.Cluster.List(context.Background())
 	failureValue := float64(0)
 	if err != nil {
 		failureValue = float64(1)

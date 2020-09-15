@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -25,7 +26,7 @@ func (s *S) TestPlatformBuild(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
@@ -55,7 +56,7 @@ func (s *S) TestPlatformBuildWithExtraTags(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
@@ -160,7 +161,7 @@ func (s *S) TestPlatformRemove(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	err = s.provisioner.AddNode(provision.AddNodeOptions{Address: server.URL()})
+	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{Address: server.URL()})
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	var b dockerBuilder

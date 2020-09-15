@@ -102,10 +102,10 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	err = service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, &s.user)
+	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -176,16 +176,16 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, &s.user)
+	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	a2 := &app.App{Name: "my-app2", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(a2, &s.user)
+	err = app.CreateApp(context.TODO(), a2, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
 	newVersionForApp(c, a2)
-	err = a.AddUnits(2, "", "", nil)
+	err = a.AddUnits(context.TODO(), 2, "", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a2.AddUnits(2, "", "", nil)
+	err = a2.AddUnits(context.TODO(), 2, "", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -242,10 +242,10 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 
 func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
-	err := app.CreateApp(a, &s.user)
+	err := app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	callCh := make(chan struct{})
 	err = service.InitializeSync(func() ([]bind.App, error) {
@@ -275,10 +275,10 @@ func (s *SyncSuite) TestBindSyncerError(c *check.C) {
 	err = service.Create(srvc)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, &s.user)
+	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)

@@ -6,6 +6,7 @@ package testing
 
 import (
 	"bufio"
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -136,7 +137,7 @@ type StreamResult struct {
 
 func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
@@ -165,7 +166,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 
 func (s *KubeMock) NoNodeReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
@@ -361,7 +362,7 @@ func SortNodes(nodes []*apiv1.Node) {
 }
 
 func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
-	nodes, err := s.p.(provision.NodeProvisioner).ListNodes(nil)
+	nodes, err := s.p.(provision.NodeProvisioner).ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	var rawNodes []*apiv1.Node
 	for _, n := range nodes {
@@ -370,7 +371,7 @@ func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
 	fn()
 	timeout := time.After(5 * time.Second)
 	for {
-		nodes, err = s.p.(provision.NodeProvisioner).ListNodes(nil)
+		nodes, err = s.p.(provision.NodeProvisioner).ListNodes(context.TODO(), nil)
 		c.Assert(err, check.IsNil)
 		var rawNodesAfter []*apiv1.Node
 		for _, n := range nodes {
@@ -500,7 +501,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err := s.p.RegisterUnit(a, pod.Name, map[string]interface{}{
+				err := s.p.RegisterUnit(context.TODO(), a, pod.Name, map[string]interface{}{
 					"processes": map[string]interface{}{
 						"web":    "python myapp.py",
 						"worker": "python myworker.py",

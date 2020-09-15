@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -327,7 +328,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 
 		err = storage.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
-		err = s.p.Provision(appStruct)
+		err = s.p.Provision(context.TODO(), appStruct)
 		c.Assert(err, check.IsNil)
 	}
 	values := url.Values{

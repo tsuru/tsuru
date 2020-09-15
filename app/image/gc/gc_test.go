@@ -202,7 +202,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	var nodeDeleteCalls []string
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +211,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		}
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -322,12 +322,12 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -407,13 +407,13 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unavailable", http.StatusInternalServerError)
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -450,12 +450,12 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -493,7 +493,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	var nodeDeleteCalls []string
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -502,7 +502,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		}
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -614,14 +614,14 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	var nodeDeleteCalls int
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nodeDeleteCalls++
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})
@@ -656,13 +656,13 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		return []authTypes.Team{{Name: s.team}}, nil
 	}
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(provision.AddNodeOptions{
+	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: nodeSrv.URL,
 		Pool:    "p1",
 	})

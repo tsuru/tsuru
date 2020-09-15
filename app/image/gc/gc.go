@@ -305,7 +305,7 @@ func markOldImages() error {
 }
 
 func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
-	deployedVersions, err := a.DeployedVersions()
+	deployedVersions, err := a.DeployedVersions(context.TODO())
 	if err == app.ErrNoVersionProvisioner {
 		deployedVersions = []int{appVersions.LastSuccessfulVersion}
 	} else if err != nil {

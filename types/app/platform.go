@@ -26,12 +26,12 @@ type PlatformOptions struct {
 }
 
 type PlatformService interface {
-	Create(PlatformOptions) error
-	List(bool) ([]Platform, error)
-	FindByName(string) (*Platform, error)
-	Update(PlatformOptions) error
-	Remove(string) error
-	Rollback(PlatformOptions) error
+	Create(context.Context, PlatformOptions) error
+	List(context.Context, bool) ([]Platform, error)
+	FindByName(context.Context, string) (*Platform, error)
+	Update(context.Context, PlatformOptions) error
+	Remove(context.Context, string) error
+	Rollback(context.Context, PlatformOptions) error
 }
 
 type PlatformStorage interface {

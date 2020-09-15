@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -48,7 +49,7 @@ func validateNodeAddress(address string) error {
 	return nil
 }
 
-func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptions) (string, map[string]string, error) {
+func addNodeForParams(ctx context.Context, p provision.NodeProvisioner, params provision.AddNodeOptions) (string, map[string]string, error) {
 	response := make(map[string]string)
 	var address string
 	if params.Register {
@@ -68,7 +69,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		params.IaaSID = m.Id
 	}
 	delete(params.Metadata, provision.PoolMetadataName)
-	prov, _, err := node.FindNodeSkipProvisioner(address, p.GetName())
+	prov, _, err := node.FindNodeSkipProvisioner(ctx, address, p.GetName())
 	if err != provision.ErrNodeNotFound {
 		if err == nil {
 			return "", nil, errors.Errorf("node with address %q already exists in provisioner %q", address, prov.GetName())
@@ -80,11 +81,11 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 		return address, response, err
 	}
 	params.Address = address
-	err = p.AddNode(params)
+	err = p.AddNode(ctx, params)
 	if err != nil {
 		return "", nil, err
 	}
-	node, err := p.GetNode(address)
+	node, err := p.GetNode(ctx, address)
 	if err != nil {
 		return "", nil, err
 	}
@@ -101,6 +102,7 @@ func addNodeForParams(p provision.NodeProvisioner, params provision.AddNodeOptio
 //   401: Unauthorized
 //   404: Not found
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var params provision.AddNodeOptions
 	err = ParseInput(r, &params)
 	if err != nil {
@@ -149,7 +151,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	w.WriteHeader(http.StatusCreated)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 15*time.Second, "")
 	defer keepAliveWriter.Stop()
-	addr, response, err := addNodeForParams(nodeProv, params)
+	addr, response, err := addNodeForParams(ctx, nodeProv, params)
 	evt.Target.Value = addr
 	if err != nil {
 		if desc := response["description"]; desc != "" {
@@ -168,11 +170,12 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return errors.Errorf("Node address is required.")
 	}
-	_, n, err := node.FindNode(address)
+	_, n, err := node.FindNode(ctx, address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -202,7 +205,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	defer func() { evt.Done(err) }()
 	noRebalance, _ := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
 	removeIaaS, _ := strconv.ParseBool(r.URL.Query().Get("remove-iaas"))
-	return node.RemoveNode(node.RemoveNodeArgs{
+	return node.RemoveNode(ctx, node.RemoveNodeArgs{
 		Node:       n,
 		Rebalance:  !noRebalance,
 		Writer:     w,
@@ -218,6 +221,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   200: Ok
 //   204: No content
 func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	filter := &provTypes.NodeFilter{}
 	err := ParseInput(r, &filter)
 	if err != nil {
@@ -240,9 +244,9 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		}
 		var nodes []provision.Node
 		if filter != nil {
-			nodes, err = nodeProv.ListNodesByFilter(filter)
+			nodes, err = nodeProv.ListNodesByFilter(ctx, filter)
 		} else {
-			nodes, err = nodeProv.ListNodes(nil)
+			nodes, err = nodeProv.ListNodes(ctx, nil)
 		}
 		if err != nil {
 			allNodes = append(allNodes, provision.NodeSpec{
@@ -310,6 +314,7 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   401: Unauthorized
 //   404: Not found
 func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var params provision.UpdateNodeOptions
 	err = ParseInput(r, &params)
 	if err != nil {
@@ -324,7 +329,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if params.Address == "" {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
-	prov, node, err := node.FindNode(params.Address)
+	prov, node, err := node.FindNode(ctx, params.Address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -367,7 +372,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return nodeProv.UpdateNode(params)
+	return nodeProv.UpdateNode(ctx, params)
 }
 
 // title: list units by node
@@ -380,8 +385,9 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   401: Unauthorized
 //   404: Not found
 func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	address := r.URL.Query().Get(":address")
-	_, node, err := node.FindNode(address)
+	_, node, err := node.FindNode(ctx, address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{
@@ -653,11 +659,12 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Not found
 func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	address := r.URL.Query().Get(":address")
 	if address == "" {
 		return errors.Errorf("Node address is required.")
 	}
-	_, node, err := node.FindNode(address)
+	_, node, err := node.FindNode(ctx, address)
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return &tsuruErrors.HTTP{

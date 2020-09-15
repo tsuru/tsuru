@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -26,9 +27,9 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	server := httptest.NewServer(s.testServer)
 	defer server.Close()
@@ -45,7 +46,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var shells []provision.ExecOptions
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		units, unitsErr := s.provisioner.Units(&a)
+		units, unitsErr := s.provisioner.Units(context.TODO(), &a)
 		c.Assert(unitsErr, check.IsNil)
 		unit := units[0]
 		shells = s.provisioner.Execs(unit.ID)
@@ -56,7 +57,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(shells[0].Units, check.DeepEquals, []string{units[0].ID})
@@ -68,9 +69,9 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	server := httptest.NewServer(s.testServer)
 	defer server.Close()
@@ -107,11 +108,11 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 5, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 5, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	unit := units[3]
 	server := httptest.NewServer(s.testServer)
@@ -139,7 +140,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
 	c.Assert(shells[0].Units, check.DeepEquals, []string{unit.ID})
-	units, err = s.provisioner.Units(&a)
+	units, err = s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
 		if u.ID != unit.ID {
@@ -154,11 +155,11 @@ func (s *S) TestAppShellIsolated(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 5, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 5, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	unit := units[3]
 	server := httptest.NewServer(s.testServer)
@@ -186,7 +187,7 @@ func (s *S) TestAppShellIsolated(c *check.C) {
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
 	c.Assert(shells[0].Units, check.HasLen, 0)
-	units, err = s.provisioner.Units(&a)
+	units, err = s.provisioner.Units(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
 		if u.ID != unit.ID {
@@ -201,9 +202,9 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	server := httptest.NewServer(s.testServer)
 	defer server.Close()

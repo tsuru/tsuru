@@ -5,7 +5,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -30,6 +29,7 @@ import (
 //   400: Invalid data
 //   401: Unauthorized
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	name := InputValue(r, "name")
 	file, _, err := r.FormFile("dockerfile_content")
 	if err != nil {
@@ -67,8 +67,8 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	}
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
-	ctx, cancel := evt.CancelableContext(context.Background())
-	err = servicemanager.Platform.Create(appTypes.PlatformOptions{
+	ctx, cancel := evt.CancelableContext(ctx)
+	err = servicemanager.Platform.Create(ctx, appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Data:   data,
@@ -92,6 +92,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	file, _, _ := r.FormFile("dockerfile_content")
 	if file != nil {
@@ -121,8 +122,8 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
-	ctx, cancel := evt.CancelableContext(context.Background())
-	err = servicemanager.Platform.Update(appTypes.PlatformOptions{
+	ctx, cancel := evt.CancelableContext(ctx)
+	err = servicemanager.Platform.Update(ctx, appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
 		Input:  file,
@@ -148,6 +149,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
@@ -164,7 +166,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.Platform.Remove(name)
+	err = servicemanager.Platform.Remove(ctx, name)
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -180,9 +182,10 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   204: No content
 //   401: Unauthorized
 func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 		permission.Check(t, permission.PermPlatformCreate)
-	platforms, err := servicemanager.Platform.List(!canUsePlat)
+	platforms, err := servicemanager.Platform.List(ctx, !canUsePlat)
 	if err != nil {
 		return err
 	}
@@ -203,13 +206,14 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
 		permission.Check(t, permission.PermPlatformRead)
 	if !canUsePlat {
 		return permission.ErrUnauthorized
 	}
-	platform, err := servicemanager.Platform.FindByName(name)
+	platform, err := servicemanager.Platform.FindByName(ctx, name)
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -238,6 +242,7 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	image := InputValue(r, "image")
 	if image == "" {
@@ -266,8 +271,8 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
-	ctx, cancel := evt.CancelableContext(context.Background())
-	err = servicemanager.Platform.Rollback(appTypes.PlatformOptions{
+	ctx, cancel := evt.CancelableContext(ctx)
+	err = servicemanager.Platform.Rollback(ctx, appTypes.PlatformOptions{
 		Name:      name,
 		ImageName: image,
 		Output:    evt,

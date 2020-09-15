@@ -170,6 +170,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   403: Pool still has apps
 //   404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPoolDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -177,7 +178,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	poolName := r.URL.Query().Get(":name")
 	filter := &app.Filter{}
 	filter.Pool = poolName
-	apps, err := app.List(appFilterByContext([]permTypes.PermissionContext{}, filter))
+	apps, err := app.List(ctx, appFilterByContext([]permTypes.PermissionContext{}, filter))
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,10 +33,10 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -52,7 +53,7 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
@@ -61,10 +62,10 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 
 func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -80,7 +81,7 @@ func (s *S) TestBuilderArchiveURLEmptyFile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `archive file is empty`)
 	c.Assert(version, check.IsNil)
@@ -90,10 +91,10 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -107,7 +108,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
@@ -116,10 +117,10 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 
 func (s *S) TestBuilderImageID(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
@@ -179,7 +180,7 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
@@ -196,10 +197,10 @@ func (s *S) TestBuilderImageID(c *check.C) {
 
 func (s *S) TestBuilderImageIDWithMoreThanOnePort(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage:test")
@@ -242,7 +243,7 @@ func (s *S) TestBuilderImageIDWithMoreThanOnePort(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	_, err = s.b.Build(s.provisioner, a, evt, &bopts)
+	_, err = s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 }
 
@@ -250,10 +251,10 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 2)
 	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage:latest")
@@ -296,7 +297,7 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().ExposedPorts, check.DeepEquals, []string{"80/tcp"})
@@ -304,10 +305,10 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 
 func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage:latest")
@@ -345,7 +346,7 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
@@ -356,10 +357,10 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 
 func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage")
@@ -402,7 +403,7 @@ func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
@@ -413,10 +414,10 @@ func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 
 func (s *S) TestBuilderImageIDWithTsuruYaml(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage:latest")
@@ -475,7 +476,7 @@ hooks:
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	customdata, err := version.TsuruYamlData()
@@ -499,10 +500,10 @@ hooks:
 
 func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s:v1", u.Host, "customimage")
@@ -577,7 +578,7 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -590,10 +591,10 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	stopCh := s.stopContainers(s.server.URL(), 2)
 	defer func() { <-stopCh }()
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -607,7 +608,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	err = version.CommitBaseImage()
@@ -629,17 +630,17 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	bopts = builder.BuildOpts{
 		Rebuild: true,
 	}
-	version, err = s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err = s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }
 
 func (s *S) TestBuilderImageBuilded(c *check.C) {
 	opts := provision.AddNodeOptions{Address: s.server.URL()}
-	err := s.provisioner.AddNode(opts)
+	err := s.provisioner.AddNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := &app.App{Name: "myapp", Platform: "whitespace", TeamOwner: s.team.Name}
-	err = app.CreateApp(a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	u, _ := url.Parse(s.server.URL())
 	imageName := fmt.Sprintf("%s/%s", u.Host, "customimage:latest")
@@ -682,7 +683,7 @@ func (s *S) TestBuilderImageBuilded(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: imageName,
 	}
-	version, err := s.b.Build(s.provisioner, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")

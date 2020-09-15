@@ -20,7 +20,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	logsInQueue.Set(0)
 	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := svc.Watch(appTypes.ListLogArgs{
+	listener, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp1",
 	})
 	c.Assert(err, check.IsNil)
@@ -34,7 +34,7 @@ func (s *S) TestLogDispatcherSend(c *check.C) {
 	}
 	dispatcher.send(&logMsg)
 	dispatcher.shutdown(context.Background())
-	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 1})
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp1", Limit: 1})
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []appTypes.Applog{logMsg})
 	err = dispatcher.send(&logMsg)
@@ -70,10 +70,10 @@ func (s *S) TestLogDispatcherSendConcurrent(c *check.C) {
 	}
 	wg.Wait()
 	dispatcher.shutdown(context.Background())
-	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: nConcurrent / 2})
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp1", Limit: nConcurrent / 2})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, nConcurrent/2)
-	logs, err = svc.List(appTypes.ListLogArgs{AppName: "myapp2", Limit: nConcurrent / 2})
+	logs, err = svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp2", Limit: nConcurrent / 2})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, nConcurrent/2)
 }
@@ -134,7 +134,7 @@ func (s *S) TestLogDispatcherSendDBFailure(c *check.C) {
 	var logsErr error
 loop:
 	for {
-		logs, logsErr = svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
+		logs, logsErr = svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
 		c.Assert(logsErr, check.IsNil)
 		if len(logs) == 2 {
 			break
@@ -181,7 +181,7 @@ func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 	defer config.Unset("log:app-log-rate-limit")
 	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := svc.Watch(appTypes.ListLogArgs{
+	listener, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp1",
 	})
 	c.Assert(err, check.IsNil)
@@ -196,7 +196,7 @@ func (s *S) TestLogDispatcherSendRateLimit(c *check.C) {
 	dispatcher.send(&logMsg)
 	dispatcher.send(&logMsg)
 	dispatcher.shutdown(context.Background())
-	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
 		logMsg,
@@ -214,7 +214,7 @@ func (s *S) TestLogDispatcherSendGlobalRateLimit(c *check.C) {
 	defer config.Unset("log:global-app-log-rate-limit")
 	svc, err := storageAppLogService()
 	c.Assert(err, check.IsNil)
-	listener, err := svc.Watch(appTypes.ListLogArgs{
+	listener, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp1",
 	})
 	c.Assert(err, check.IsNil)
@@ -229,7 +229,7 @@ func (s *S) TestLogDispatcherSendGlobalRateLimit(c *check.C) {
 	dispatcher.send(&logMsg)
 	dispatcher.send(&logMsg)
 	dispatcher.shutdown(context.Background())
-	logs, err := svc.List(appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp1", Limit: 2})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
 		logMsg,
