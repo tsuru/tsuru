@@ -548,12 +548,15 @@ type AutoScaleSpec struct {
 	Version    int    `json:"version"`
 }
 
-func (s AutoScaleSpec) Validate() error {
+func (s AutoScaleSpec) Validate(quotaLimit int) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
 	if s.MaxUnits < s.MinUnits {
 		return errors.New("maximum units must be greater than minimum units")
+	}
+	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
+		return errors.New("maximum units cannot be greater than quota limit")
 	}
 	_, err := resource.ParseQuantity(s.AverageCPU)
 	if err != nil {
