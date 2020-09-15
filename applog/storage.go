@@ -65,15 +65,15 @@ func (s *storageLogService) Add(appName, message, source, unit string) error {
 	return s.storage.InsertApp(appName, logs...)
 }
 
-func (s *storageLogService) List(filters appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (s *storageLogService) List(ctx context.Context, filters appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	if filters.Limit < 0 {
 		return []appTypes.Applog{}, nil
 	}
-	return s.storage.List(filters)
+	return s.storage.List(ctx, filters)
 }
 
-func (s *storageLogService) Watch(filters appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	return s.storage.Watch(filters)
+func (s *storageLogService) Watch(ctx context.Context, filters appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	return s.storage.Watch(ctx, filters)
 }
 
 func (s *storageLogService) Shutdown(ctx context.Context) error {

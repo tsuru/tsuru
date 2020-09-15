@@ -24,7 +24,7 @@ func (s *S) TestRoutesRebuildOrEnqueueNoError(c *check.C) {
 		Platform:  "static",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
@@ -40,7 +40,7 @@ func (s *S) TestRoutesRebuildOrEnqueueForceEnqueue(c *check.C) {
 		Platform:  "static",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	invalidAddr, err := url.Parse("http://invalid.addr")
 	c.Assert(err, check.IsNil)
@@ -62,7 +62,7 @@ func (s *S) TestRoutesRebuildOrEnqueueLocked(c *check.C) {
 		Platform:  "static",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(a, s.user)
+	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: a.Name},

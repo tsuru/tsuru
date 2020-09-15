@@ -46,9 +46,9 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 		Name: "p2",
 	})
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&app.App{Name: "myapp1", TeamOwner: team.Name, Pool: "p1"}, u)
+	err = app.CreateApp(context.TODO(), &app.App{Name: "myapp1", TeamOwner: team.Name, Pool: "p1"}, u)
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&app.App{Name: "myapp2", TeamOwner: team.Name, Pool: "p2"}, u)
+	err = app.CreateApp(context.TODO(), &app.App{Name: "myapp2", TeamOwner: team.Name, Pool: "p2"}, u)
 	c.Assert(err, check.IsNil)
 	RebuildRoutesPoolApps("p1")
 	rebuild.Shutdown(context.Background())

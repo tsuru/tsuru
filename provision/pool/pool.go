@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -306,7 +307,7 @@ func AddPool(opts AddPoolOptions) error {
 	return nil
 }
 
-func RenamePoolTeam(oldName, newName string) error {
+func RenamePoolTeam(ctx context.Context, oldName, newName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

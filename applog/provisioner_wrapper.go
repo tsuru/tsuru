@@ -5,6 +5,7 @@
 package applog
 
 import (
+	"context"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -44,12 +45,12 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 	return k.logService.Enqueue(entry)
 }
 
-func (k *provisionerWrapper) List(args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	a, err := servicemanager.App.GetByName(args.AppName)
 	if err != nil {
 		return nil, err
 	}
-	tsuruLogs, err := k.logService.List(args)
+	tsuruLogs, err := k.logService.List(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (k *provisionerWrapper) List(args appTypes.ListLogArgs) ([]appTypes.Applog,
 		return nil, err
 	}
 
-	logs, err := logsProvisioner.ListLogs(a, args)
+	logs, err := logsProvisioner.ListLogs(ctx, a, args)
 	if err == provision.ErrLogsUnavailable {
 		return tsuruLogs, nil
 	}
@@ -75,12 +76,12 @@ func (k *provisionerWrapper) List(args appTypes.ListLogArgs) ([]appTypes.Applog,
 	return logs, err
 }
 
-func (k *provisionerWrapper) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+func (k *provisionerWrapper) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	a, err := servicemanager.App.GetByName(args.AppName)
 	if err != nil {
 		return nil, err
 	}
-	tsuruWatcher, err := k.logService.Watch(args)
+	tsuruWatcher, err := k.logService.Watch(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func (k *provisionerWrapper) Watch(args appTypes.ListLogArgs) (appTypes.LogWatch
 		return nil, err
 	}
 
-	provisionerWatcher, err := logsProvisioner.WatchLogs(a, args)
+	provisionerWatcher, err := logsProvisioner.WatchLogs(ctx, a, args)
 	if err == provision.ErrLogsUnavailable {
 		return tsuruWatcher, nil
 	}

@@ -565,7 +565,7 @@ func appFinder(appName string) (rebuild.RebuildApp, error) {
 }
 
 func bindAppsLister() ([]bind.App, error) {
-	apps, err := app.List(nil)
+	apps, err := app.List(context.TODO(), nil)
 	if err != nil {
 		return nil, err
 	}

@@ -282,10 +282,10 @@ type InspectData struct {
 }
 
 type BuilderKubeClient interface {
-	BuildPod(App, *event.Event, io.Reader, appTypes.AppVersion) error
-	BuildImage(name string, images []string, inputStream io.Reader, output io.Writer, ctx context.Context) error
-	ImageTagPushAndInspect(App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
-	DownloadFromContainer(App, *event.Event, string) (io.ReadCloser, error)
+	BuildPod(context.Context, App, *event.Event, io.Reader, appTypes.AppVersion) error
+	BuildImage(ctx context.Context, name string, images []string, inputStream io.Reader, output io.Writer) error
+	ImageTagPushAndInspect(context.Context, App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
+	DownloadFromContainer(context.Context, App, *event.Event, string) (io.ReadCloser, error)
 }
 
 type DeployArgs struct {
@@ -297,7 +297,7 @@ type DeployArgs struct {
 
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
-	Deploy(DeployArgs) (string, error)
+	Deploy(context.Context, DeployArgs) (string, error)
 }
 
 type BuilderDeployDockerClient interface {
@@ -311,8 +311,8 @@ type BuilderDeployKubeClient interface {
 }
 
 type VersionsProvisioner interface {
-	ToggleRoutable(App, appTypes.AppVersion, bool) error
-	DeployedVersions(App) ([]int, error)
+	ToggleRoutable(context.Context, App, appTypes.AppVersion, bool) error
+	DeployedVersions(context.Context, App) ([]int, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -323,45 +323,45 @@ type Provisioner interface {
 	Named
 
 	// Provision is called when tsuru is creating the app.
-	Provision(App) error
+	Provision(context.Context, App) error
 
 	// Destroy is called when tsuru is destroying the app.
-	Destroy(App) error
+	Destroy(context.Context, App) error
 
 	// AddUnits adds units to an app. The first parameter is the app, the
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(App, uint, string, appTypes.AppVersion, io.Writer) error
+	AddUnits(context.Context, App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
-	RemoveUnits(App, uint, string, appTypes.AppVersion, io.Writer) error
+	RemoveUnits(context.Context, App, uint, string, appTypes.AppVersion, io.Writer) error
 
 	// Restart restarts the units of the application, with an optional
 	// string parameter represeting the name of the process to start. When
 	// the process is empty, Restart will restart all units of the
 	// application.
-	Restart(App, string, appTypes.AppVersion, io.Writer) error
+	Restart(context.Context, App, string, appTypes.AppVersion, io.Writer) error
 
 	// Start starts the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Start will start all units of the application.
-	Start(App, string, appTypes.AppVersion) error
+	Start(context.Context, App, string, appTypes.AppVersion) error
 
 	// Stop stops the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Stop will stop all units of the application.
-	Stop(App, string, appTypes.AppVersion) error
+	Stop(context.Context, App, string, appTypes.AppVersion) error
 
 	// Units returns information about units by App.
-	Units(...App) ([]Unit, error)
+	Units(context.Context, ...App) ([]Unit, error)
 
 	// RoutableAddresses returns the addresses used to access an application.
-	RoutableAddresses(App) ([]appTypes.RoutableAddresses, error)
+	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
 
 	// Register a unit after the container has been created or restarted.
-	RegisterUnit(App, string, map[string]interface{}) error
+	RegisterUnit(context.Context, App, string, map[string]interface{}) error
 }
 
 type ExecOptions struct {
@@ -382,8 +382,8 @@ type ExecutableProvisioner interface {
 
 // LogsProvisioner is a provisioner that is self responsible for storage logs.
 type LogsProvisioner interface {
-	ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
-	WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
+	ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
+	WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
 }
 
 // SleepableProvisioner is a provisioner that allows putting applications to
@@ -392,13 +392,13 @@ type SleepableProvisioner interface {
 	// Sleep puts the units of the application to sleep, with an optional string
 	// parameter representing the name of the process to sleep. When the
 	// process is empty, Sleep will put all units of the application to sleep.
-	Sleep(App, string, appTypes.AppVersion) error
+	Sleep(context.Context, App, string, appTypes.AppVersion) error
 }
 
 // UpdatableProvisioner is a provisioner that stores data about applications
 // and must be notified when they are updated
 type UpdatableProvisioner interface {
-	UpdateApp(old, new App, w io.Writer) error
+	UpdateApp(ctx context.Context, old, new App, w io.Writer) error
 }
 
 // InterAppProvisioner is a provisioner that allows an app to comunicate with each other
@@ -476,25 +476,25 @@ type NodeProvisioner interface {
 	Named
 
 	// ListNodes returns a list of all nodes registered in the provisioner.
-	ListNodes(addressFilter []string) ([]Node, error)
+	ListNodes(ctx context.Context, addressFilter []string) ([]Node, error)
 
 	// ListNodesByFilters returns a list of filtered nodes by filter.
-	ListNodesByFilter(filter *provTypes.NodeFilter) ([]Node, error)
+	ListNodesByFilter(ctx context.Context, filter *provTypes.NodeFilter) ([]Node, error)
 
 	// GetNode retrieves an existing node by its address.
-	GetNode(address string) (Node, error)
+	GetNode(ctx context.Context, address string) (Node, error)
 
 	// AddNode adds a new node in the provisioner.
-	AddNode(AddNodeOptions) error
+	AddNode(context.Context, AddNodeOptions) error
 
 	// RemoveNode removes an existing node.
-	RemoveNode(RemoveNodeOptions) error
+	RemoveNode(context.Context, RemoveNodeOptions) error
 
 	// UpdateNode can be used to enable/disable a node and update its metadata.
-	UpdateNode(UpdateNodeOptions) error
+	UpdateNode(context.Context, UpdateNodeOptions) error
 
 	// NodeForNodeData finds a node matching the received NodeStatusData.
-	NodeForNodeData(NodeStatusData) (Node, error)
+	NodeForNodeData(context.Context, NodeStatusData) (Node, error)
 }
 
 type RebalanceNodesOptions struct {
@@ -511,8 +511,8 @@ type NodeRebalanceProvisioner interface {
 }
 
 type NodeContainerProvisioner interface {
-	UpgradeNodeContainer(name string, pool string, writer io.Writer) error
-	RemoveNodeContainer(name string, pool string, writer io.Writer) error
+	UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
+	RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
 }
 
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit
@@ -527,12 +527,12 @@ type UnitFinderProvisioner interface {
 // AppFilterProvisioner is a provisioner that allows filtering apps by the
 // state of its units.
 type AppFilterProvisioner interface {
-	FilterAppsByUnitStatus([]App, []string) ([]App, error)
+	FilterAppsByUnitStatus(context.Context, []App, []string) ([]App, error)
 }
 
 type VolumeProvisioner interface {
-	IsVolumeProvisioned(volumeName, pool string) (bool, error)
-	DeleteVolume(volumeName, pool string) error
+	IsVolumeProvisioned(ctx context.Context, volumeName, pool string) (bool, error)
+	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }
 
 type CleanImageProvisioner interface {

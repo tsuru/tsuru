@@ -5,6 +5,7 @@
 package applog
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -50,7 +51,7 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 	})
 	c.Check(err, check.IsNil)
 
-	logs, err := s.provisionerWrapper.List(app.ListLogArgs{
+	logs, err := s.provisionerWrapper.List(context.TODO(), app.ListLogArgs{
 		AppName: "myapp",
 	})
 	sort.SliceStable(logs, func(i, j int) bool {
@@ -63,7 +64,7 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 }
 
 func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
-	watcher, err := s.provisionerWrapper.Watch(app.ListLogArgs{
+	watcher, err := s.provisionerWrapper.Watch(context.TODO(), app.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)

@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"context"
 	"errors"
 	"io"
 )
@@ -31,23 +32,23 @@ type ClusterHelpInfo struct {
 }
 
 type ClusterService interface {
-	Create(Cluster) error
-	Update(Cluster) error
-	List() ([]Cluster, error)
-	FindByName(string) (*Cluster, error)
-	FindByProvisioner(string) ([]Cluster, error)
-	FindByPool(string, string) (*Cluster, error)
-	FindByPools(string, []string) (map[string]Cluster, error)
-	Delete(Cluster) error
+	Create(context.Context, Cluster) error
+	Update(context.Context, Cluster) error
+	List(context.Context) ([]Cluster, error)
+	FindByName(context.Context, string) (*Cluster, error)
+	FindByProvisioner(context.Context, string) ([]Cluster, error)
+	FindByPool(context.Context, string, string) (*Cluster, error)
+	FindByPools(context.Context, string, []string) (map[string]Cluster, error)
+	Delete(context.Context, Cluster) error
 }
 
 type ClusterStorage interface {
-	Upsert(Cluster) error
-	FindAll() ([]Cluster, error)
-	FindByName(string) (*Cluster, error)
-	FindByProvisioner(string) ([]Cluster, error)
-	FindByPool(string, string) (*Cluster, error)
-	Delete(Cluster) error
+	Upsert(context.Context, Cluster) error
+	FindAll(context.Context) ([]Cluster, error)
+	FindByName(context.Context, string) (*Cluster, error)
+	FindByProvisioner(context.Context, string) ([]Cluster, error)
+	FindByPool(context.Context, string, string) (*Cluster, error)
+	Delete(context.Context, Cluster) error
 }
 
 func (c *Cluster) CleanUpSensitive() {

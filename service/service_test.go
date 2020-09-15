@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -584,7 +585,7 @@ func (s *S) TestRenameServiceTeam(c *check.C) {
 		err := s.conn.Services().Insert(&si)
 		c.Assert(err, check.IsNil)
 	}
-	err := RenameServiceTeam("team2", "team9000")
+	err := RenameServiceTeam(context.TODO(), "team2", "team9000")
 	c.Assert(err, check.IsNil)
 	var dbServices []Service
 	err = s.conn.Services().Find(nil).Sort("_id").All(&dbServices)

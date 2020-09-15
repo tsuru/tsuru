@@ -6,7 +6,10 @@
 // service.
 package bind
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
@@ -42,10 +45,10 @@ type App interface {
 	GetUnits() ([]Unit, error)
 
 	// AddInstance adds an instance to the application.
-	AddInstance(args AddInstanceArgs) error
+	AddInstance(ctx context.Context, args AddInstanceArgs) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(args RemoveInstanceArgs) error
+	RemoveInstance(ctx context.Context, args RemoveInstanceArgs) error
 }
 
 type SetEnvArgs struct {

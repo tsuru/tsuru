@@ -184,7 +184,7 @@ func (app *App) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return []provision.Unit{}, err
 	}
-	units, err := prov.Units(app)
+	units, err := prov.Units(context.TODO(), app)
 	if units == nil {
 		// This is unusual but was done because previously this method didn't
 		// return an error. This ensures we always return an empty list instead
@@ -270,7 +270,7 @@ func GetByName(name string) (*App, error) {
 //       1. Save the app in the database
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
-func CreateApp(app *App, user *auth.User) error {
+func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if _, err := GetByName(app.GetName()); err != appTypes.ErrAppNotFound {
 		if err != nil {
 			return errors.WithMessage(err, "unable to check if app already exists")
@@ -300,7 +300,7 @@ func CreateApp(app *App, user *auth.User) error {
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
 	if app.Platform != "" {
-		app.Platform, app.PlatformVersion, err = getPlatformNameAndVersion(app.Platform)
+		app.Platform, app.PlatformVersion, err = getPlatformNameAndVersion(ctx, app.Platform)
 		if err != nil {
 			return err
 		}
@@ -360,7 +360,7 @@ type UpdateAppArgs struct {
 }
 
 // Update changes informations of the application.
-func (app *App) Update(args UpdateAppArgs) (err error) {
+func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	description := args.UpdateData.Description
 	poolName := args.UpdateData.Pool
 	teamOwner := args.UpdateData.TeamOwner
@@ -412,7 +412,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 	if platform != "" {
 		var p, v string
-		p, v, err = getPlatformNameAndVersion(platform)
+		p, v, err = getPlatformNameAndVersion(ctx, platform)
 		if err != nil {
 			return err
 		}
@@ -466,9 +466,9 @@ func validateVolumes(app *App) error {
 	return nil
 }
 
-func getPlatformNameAndVersion(platform string) (string, string, error) {
+func getPlatformNameAndVersion(ctx context.Context, platform string) (string, string, error) {
 	repo, version := image.SplitImageName(platform)
-	p, err := servicemanager.Platform.FindByName(repo)
+	p, err := servicemanager.Platform.FindByName(ctx, repo)
 	if err != nil {
 		return "", "", err
 	}
@@ -554,7 +554,7 @@ func (app *App) unbindVolumes() error {
 }
 
 // Delete deletes an app.
-func Delete(app *App, evt *event.Event, requestID string) error {
+func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) error {
 	w := evt
 	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
 	if err != nil {
@@ -673,7 +673,7 @@ func Delete(app *App, evt *event.Event, requestID string) error {
 	// step of removal, we may give time enough to external components
 	// (e.g. tsuru/kubernetes-router) that depend on the provisioner's app info
 	// finish as expected.
-	err = prov.Destroy(app)
+	err = prov.Destroy(ctx, app)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
 	}
@@ -726,7 +726,7 @@ func (app *App) UnbindUnit(unit *provision.Unit) error {
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error {
+func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
@@ -739,7 +739,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 			return errors.New("Cannot add units to an app that has stopped or sleeping units")
 		}
 	}
-	version, err := app.getVersion(versionStr)
+	version, err := app.getVersion(ctx, versionStr)
 	if err != nil {
 		return err
 	}
@@ -761,17 +761,17 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 //
 //     1. Remove units from the provisioner
 //     2. Update quota
-func (app *App) RemoveUnits(n uint, process, versionStr string, w io.Writer) error {
+func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
 	w = app.withLogWriter(w)
-	version, err := app.getVersion(versionStr)
+	version, err := app.getVersion(ctx, versionStr)
 	if err != nil {
 		return err
 	}
-	err = prov.RemoveUnits(app, n, process, version, w)
+	err = prov.RemoveUnits(ctx, app, n, process, version, w)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	quotaErr := app.fixQuota()
 	if err != nil {
@@ -823,7 +823,7 @@ type UpdateUnitsResult struct {
 	Found bool
 }
 
-func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+func findNodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData) (provision.Node, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, err
@@ -833,9 +833,9 @@ func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, err
 		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
 			var node provision.Node
 			if len(nodeData.Addrs) == 1 {
-				node, err = nodeProv.GetNode(nodeData.Addrs[0])
+				node, err = nodeProv.GetNode(ctx, nodeData.Addrs[0])
 			} else {
-				node, err = nodeProv.NodeForNodeData(nodeData)
+				node, err = nodeProv.NodeForNodeData(ctx, nodeData)
 			}
 			if err == nil {
 				return node, nil
@@ -853,8 +853,8 @@ func findNodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, err
 
 // UpdateNodeStatus updates the status of the given node and its units,
 // returning a map which units were found during the update.
-func UpdateNodeStatus(nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
-	node, findNodeErr := findNodeForNodeData(nodeData)
+func UpdateNodeStatus(ctx context.Context, nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
+	node, findNodeErr := findNodeForNodeData(ctx, nodeData)
 	var nodeAddresses []string
 	if findNodeErr == nil {
 		nodeAddresses = []string{node.Address()}
@@ -1252,7 +1252,7 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
-func (app *App) Restart(process, versionStr string, w io.Writer) error {
+func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Writer) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("---- Restarting process %q ----", process)
 	if process == "" {
@@ -1267,7 +1267,7 @@ func (app *App) Restart(process, versionStr string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(app, process, version, w)
+	err = prov.Restart(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "restart")
@@ -1276,7 +1276,7 @@ func (app *App) Restart(process, versionStr string, w io.Writer) error {
 	return nil
 }
 
-func (app *App) Stop(w io.Writer, process, versionStr string) error {
+func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr string) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("\n ---> Stopping the process %q", process)
 	if process == "" {
@@ -1291,7 +1291,7 @@ func (app *App) Stop(w io.Writer, process, versionStr string) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Stop(app, process, version)
+	err = prov.Stop(ctx, app, process, version)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
@@ -1299,7 +1299,7 @@ func (app *App) Stop(w io.Writer, process, versionStr string) error {
 	return nil
 }
 
-func (app *App) Sleep(w io.Writer, process, versionStr string, proxyURL *url.URL) error {
+func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr string, proxyURL *url.URL) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -1343,7 +1343,7 @@ func (app *App) Sleep(w io.Writer, process, versionStr string, proxyURL *url.URL
 	if err != nil {
 		return err
 	}
-	err = sleepProv.Sleep(app, process, version)
+	err = sleepProv.Sleep(ctx, app, process, version)
 	if err != nil {
 		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
@@ -1519,7 +1519,7 @@ func (app *App) Envs() map[string]bind.EnvVar {
 }
 
 // SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
+func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
 	if len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -1545,14 +1545,14 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 		return err
 	}
 	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(setEnvs.Writer)
+		return app.restartIfUnits(ctx, setEnvs.Writer)
 	}
 	return nil
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
+func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
@@ -1572,12 +1572,12 @@ func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 		return err
 	}
 	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(unsetEnvs.Writer)
+		return app.restartIfUnits(ctx, unsetEnvs.Writer)
 	}
 	return nil
 }
 
-func (app *App) restartIfUnits(w io.Writer) error {
+func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
@@ -1593,7 +1593,7 @@ func (app *App) restartIfUnits(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(app, "", version, w)
+	err = prov.Restart(ctx, app, "", version, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "restart")
 	}
@@ -1658,7 +1658,7 @@ func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
 	}
 }
 
-func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
+func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -1676,12 +1676,12 @@ func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
 		return err
 	}
 	if addArgs.ShouldRestart {
-		return app.restartIfUnits(addArgs.Writer)
+		return app.restartIfUnits(ctx, addArgs.Writer)
 	}
 	return nil
 }
 
-func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
+func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstanceArgs) error {
 	lenBefore := len(app.ServiceEnvs)
 	for i := 0; i < len(app.ServiceEnvs); i++ {
 		se := app.ServiceEnvs[i]
@@ -1707,14 +1707,14 @@ func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 		return err
 	}
 	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(removeArgs.Writer)
+		return app.restartIfUnits(ctx, removeArgs.Writer)
 	}
 	return nil
 }
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
-func (app *App) LastLogs(logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (app *App) LastLogs(ctx context.Context, logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -1732,7 +1732,7 @@ func (app *App) LastLogs(logService appTypes.AppLogService, args appTypes.ListLo
 		}
 	}
 	args.AppName = app.Name
-	return logService.List(args)
+	return logService.List(ctx, args)
 }
 
 type Filter struct {
@@ -1820,7 +1820,7 @@ type AppUnitsResponse struct {
 	Err   error
 }
 
-func Units(apps []App) (map[string]AppUnitsResponse, error) {
+func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error) {
 	poolProvMap := map[string]provision.Provisioner{}
 	provMap := map[provision.Provisioner][]provision.App{}
 	for i, a := range apps {
@@ -1848,7 +1848,7 @@ func Units(apps []App) (map[string]AppUnitsResponse, error) {
 		provApps := provApps
 		go func() {
 			defer wg.Done()
-			units, err := prov.Units(provApps...)
+			units, err := prov.Units(ctx, provApps...)
 			rspCh <- parallelRsp{
 				units:    units,
 				err:      err,
@@ -1878,7 +1878,7 @@ func Units(apps []App) (map[string]AppUnitsResponse, error) {
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(filter *Filter) ([]App, error) {
+func List(ctx context.Context, filter *Filter) ([]App, error) {
 	apps := []App{}
 	query := filter.Query()
 	conn, err := db.Conn()
@@ -1908,7 +1908,7 @@ func List(filter *Filter) ([]App, error) {
 				return nil, err
 			}
 			if filterProv, ok := prov.(provision.AppFilterProvisioner); ok {
-				apps, err = filterProv.FilterAppsByUnitStatus(apps, filter.Statuses)
+				apps, err = filterProv.FilterAppsByUnitStatus(ctx, apps, filter.Statuses)
 				if err != nil {
 					return nil, err
 				}
@@ -1965,7 +1965,7 @@ func loadCachedAddrsInApps(apps []App) error {
 	return nil
 }
 
-func (app *App) hasMultipleVersions() (bool, error) {
+func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return false, err
@@ -1974,7 +1974,7 @@ func (app *App) hasMultipleVersions() (bool, error) {
 	if !isVersionProv {
 		return false, nil
 	}
-	versions, err := versionProv.DeployedVersions(app)
+	versions, err := versionProv.DeployedVersions(ctx, app)
 	if err != nil {
 		return false, err
 	}
@@ -1982,12 +1982,12 @@ func (app *App) hasMultipleVersions() (bool, error) {
 }
 
 // Swap calls the Router.Swap and updates the app.CName in the database.
-func Swap(app1, app2 *App, cnameOnly bool) error {
-	app1Multiple, err := app1.hasMultipleVersions()
+func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
+	app1Multiple, err := app1.hasMultipleVersions(ctx)
 	if err != nil {
 		return err
 	}
-	app2Multiple, err := app2.hasMultipleVersions()
+	app2Multiple, err := app2.hasMultipleVersions(ctx)
 	if err != nil {
 		return err
 	}
@@ -2038,7 +2038,7 @@ func Swap(app1, app2 *App, cnameOnly bool) error {
 
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
-func (app *App) Start(w io.Writer, process, versionStr string) error {
+func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr string) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("\n ---> Starting the process %q", process)
 	if process == "" {
@@ -2053,7 +2053,7 @@ func (app *App) Start(w io.Writer, process, versionStr string) error {
 	if err != nil {
 		return err
 	}
-	err = prov.Start(app, process, version)
+	err = prov.Start(ctx, app, process, version)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
@@ -2078,16 +2078,16 @@ func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
 }
 
-func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) error {
+func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[string]interface{}) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
-	err = prov.RegisterUnit(app, unitId, customData)
+	err = prov.RegisterUnit(ctx, app, unitId, customData)
 	if err != nil {
 		return err
 	}
-	units, err := prov.Units(app)
+	units, err := prov.Units(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -2414,12 +2414,12 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	return allCertificates, nil
 }
 
-func (app *App) RoutableAddresses() ([]appTypes.RoutableAddresses, error) {
+func (app *App) RoutableAddresses(ctx context.Context) ([]appTypes.RoutableAddresses, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
-	return prov.RoutableAddresses(app)
+	return prov.RoutableAddresses(ctx, app)
 }
 
 func (app *App) withLogWriter(w io.Writer) io.Writer {
@@ -2432,7 +2432,7 @@ func (app *App) withLogWriter(w io.Writer) io.Writer {
 	return w
 }
 
-func RenameTeam(oldName, newName string) error {
+func RenameTeam(ctx context.Context, oldName, newName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -2441,7 +2441,7 @@ func RenameTeam(oldName, newName string) error {
 	filter := &Filter{}
 	filter.ExtraIn("teams", oldName)
 	filter.ExtraIn("teamowner", oldName)
-	apps, err := List(filter)
+	apps, err := List(ctx, filter)
 	if err != nil {
 		return err
 	}
@@ -2506,7 +2506,7 @@ func validateEnv(envName string) error {
 	return nil
 }
 
-func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error {
+func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, isRoutable bool) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -2515,21 +2515,21 @@ func (app *App) SetRoutable(version appTypes.AppVersion, isRoutable bool) error 
 	if !ok {
 		return errors.Errorf("provisioner %v does not support setting versions routable", prov.GetName())
 	}
-	return rprov.ToggleRoutable(app, version, isRoutable)
+	return rprov.ToggleRoutable(ctx, app, version, isRoutable)
 }
 
-func (app *App) DeployedVersions() ([]int, error) {
+func (app *App) DeployedVersions(ctx context.Context) ([]int, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
 	if rprov, ok := prov.(provision.VersionsProvisioner); ok {
-		return rprov.DeployedVersions(app)
+		return rprov.DeployedVersions(ctx, app)
 	}
 	return nil, ErrNoVersionProvisioner
 }
 
-func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
+func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVersion, error) {
 	versionProv, v, err := app.explicitVersion(version)
 	if err != nil {
 		return nil, err
@@ -2538,7 +2538,7 @@ func (app *App) getVersion(version string) (appTypes.AppVersion, error) {
 		return v, nil
 	}
 
-	versions, err := versionProv.DeployedVersions(app)
+	versions, err := versionProv.DeployedVersions(ctx, app)
 	if err != nil {
 		return nil, err
 	}

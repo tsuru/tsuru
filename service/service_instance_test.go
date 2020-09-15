@@ -6,6 +6,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -826,7 +827,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -893,7 +894,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -969,7 +970,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -1235,7 +1236,7 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 		err := s.conn.ServiceInstances().Insert(&si)
 		c.Assert(err, check.IsNil)
 	}
-	err := RenameServiceInstanceTeam("team2", "team9000")
+	err := RenameServiceInstanceTeam(context.TODO(), "team2", "team9000")
 	c.Assert(err, check.IsNil)
 	var dbInstances []ServiceInstance
 	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)

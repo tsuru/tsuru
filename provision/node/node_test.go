@@ -5,6 +5,7 @@
 package node
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -32,28 +33,28 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TestFindNodeByAddrs(c *check.C) {
 	p := provisiontest.NewFakeProvisioner()
-	err := p.AddNode(provision.AddNodeOptions{
+	err := p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	n, err := FindNodeByAddrs(p, []string{"addr1", "notfound"})
+	n, err := FindNodeByAddrs(context.TODO(), p, []string{"addr1", "notfound"})
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr1")
-	_, err = FindNodeByAddrs(p, []string{"addr2"})
+	_, err = FindNodeByAddrs(context.TODO(), p, []string{"addr2"})
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
 func (s *S) TestFindNodeByAddrsAmbiguous(c *check.C) {
 	p := provisiontest.NewFakeProvisioner()
-	err := p.AddNode(provision.AddNodeOptions{
+	err := p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	err = p.AddNode(provision.AddNodeOptions{
+	err = p.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr2",
 	})
 	c.Assert(err, check.IsNil)
-	_, err = FindNodeByAddrs(p, []string{"addr1", "addr2"})
+	_, err = FindNodeByAddrs(context.TODO(), p, []string{"addr1", "addr2"})
 	c.Assert(err, check.ErrorMatches, `addrs match multiple nodes: \[addr1 addr2\]`)
 }
 
@@ -68,23 +69,23 @@ func (s *S) TestFindNode(c *check.C) {
 	})
 	defer provision.Unregister("fake1")
 	defer provision.Unregister("fake2")
-	err := p1.AddNode(provision.AddNodeOptions{
+	err := p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	err = p2.AddNode(provision.AddNodeOptions{
+	err = p2.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr2",
 	})
 	c.Assert(err, check.IsNil)
-	prov, n, err := FindNode("http://addr1")
+	prov, n, err := FindNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr1")
 	c.Assert(prov, check.Equals, p1)
-	prov, n, err = FindNode("http://addr2")
+	prov, n, err = FindNode(context.TODO(), "http://addr2")
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr2")
 	c.Assert(prov, check.Equals, p2)
-	_, _, err = FindNode("http://addr3")
+	_, _, err = FindNode(context.TODO(), "http://addr3")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
@@ -101,19 +102,19 @@ func (s *S) TestFindNodeSkipProvisioner(c *check.C) {
 	})
 	defer provision.Unregister("fake1")
 	defer provision.Unregister("fake2")
-	err := p1.AddNode(provision.AddNodeOptions{
+	err := p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	err = p2.AddNode(provision.AddNodeOptions{
+	err = p2.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr2",
 	})
 	c.Assert(err, check.IsNil)
-	prov, n, err := FindNodeSkipProvisioner("http://addr1", "fake1")
+	prov, n, err := FindNodeSkipProvisioner(context.TODO(), "http://addr1", "fake1")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	c.Assert(n, check.IsNil)
 	c.Assert(prov, check.IsNil)
-	prov, n, err = FindNodeSkipProvisioner("http://addr1", "fake2")
+	prov, n, err = FindNodeSkipProvisioner(context.TODO(), "http://addr1", "fake2")
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr1")
 	c.Assert(prov, check.Equals, p1)
@@ -130,20 +131,20 @@ func (s *S) TestFindNodeIgnoreErrorIfFound(c *check.C) {
 	})
 	defer provision.Unregister("fake1")
 	defer provision.Unregister("fake2")
-	err := p1.AddNode(provision.AddNodeOptions{
+	err := p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	err = p2.AddNode(provision.AddNodeOptions{
+	err = p2.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr2",
 	})
 	c.Assert(err, check.IsNil)
-	prov, n, err := FindNode("http://addr1")
+	prov, n, err := FindNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.IsNil)
 	c.Assert(n.Address(), check.Equals, "http://addr1")
 	c.Assert(prov, check.Equals, p1)
 	p2.PrepareFailure("GetNode", errors.New("get node error"))
-	_, _, err = FindNode("http://addr2")
+	_, _, err = FindNode(context.TODO(), "http://addr2")
 	c.Assert(err, check.ErrorMatches, `(?s)get node error.*`)
 }
 
@@ -225,22 +226,22 @@ func (s *S) TestRemoveNode(c *check.C) {
 		return p1, nil
 	})
 	defer provision.Unregister("fake1")
-	err := p1.AddNode(provision.AddNodeOptions{
+	err := p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode("http://addr1")
+	node, err := p1.GetNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.IsNil)
 	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
-	err = RemoveNode(RemoveNodeArgs{
+	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Address: "http://addr1",
 		Prov:    p1,
 	})
 	c.Assert(err, check.IsNil)
-	_, err = p1.GetNode("http://addr1")
+	_, err = p1.GetNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	_, err = healer.HealerInstance.GetNodeStatusData(node)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
@@ -256,21 +257,21 @@ func (s *S) TestRemoveNodeWithNodeInstance(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", factory)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
 	c.Assert(err, check.IsNil)
-	err = p1.AddNode(provision.AddNodeOptions{
+	err = p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: machine.Address,
 	})
 	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode(machine.Address)
+	node, err := p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.IsNil)
 	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
-	err = RemoveNode(RemoveNodeArgs{
+	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Node: node,
 	})
 	c.Assert(err, check.IsNil)
-	_, err = p1.GetNode(machine.Address)
+	_, err = p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	_, err = healer.HealerInstance.GetNodeStatusData(node)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
@@ -288,22 +289,22 @@ func (s *S) TestRemoveNodeWithNodeInstanceRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", factory)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
 	c.Assert(err, check.IsNil)
-	err = p1.AddNode(provision.AddNodeOptions{
+	err = p1.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: machine.Address,
 	})
 	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode(machine.Address)
+	node, err := p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.IsNil)
 	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
 		{Name: "x1", Successful: true},
 	})
 	c.Assert(err, check.IsNil)
-	err = RemoveNode(RemoveNodeArgs{
+	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Node:       node,
 		RemoveIaaS: true,
 	})
 	c.Assert(err, check.IsNil)
-	_, err = p1.GetNode(machine.Address)
+	_, err = p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	_, err = healer.HealerInstance.GetNodeStatusData(node)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)

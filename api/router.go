@@ -407,6 +407,7 @@ type setRoutableRequest struct {
 //   401: Not authorized
 //   404: App not found
 func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var args setRoutableRequest
 	err = ParseInput(r, &args)
 	if err != nil {
@@ -441,5 +442,5 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		}
 		return err
 	}
-	return a.SetRoutable(version, args.IsRoutable)
+	return a.SetRoutable(ctx, version, args.IsRoutable)
 }

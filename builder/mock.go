@@ -5,6 +5,8 @@
 package builder
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -19,21 +21,21 @@ type MockBuilder struct {
 	OnPlatformRemove func(string) error
 }
 
-func (b *MockBuilder) Build(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error) {
+func (b *MockBuilder) Build(ctx context.Context, p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error) {
 	if b.OnBuild == nil {
 		return nil, nil
 	}
 	return b.OnBuild(p, app, evt, opts)
 }
 
-func (b *MockBuilder) PlatformBuild(opts appTypes.PlatformOptions) error {
+func (b *MockBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
 	if b.OnPlatformBuild == nil {
 		return nil
 	}
 	return b.OnPlatformBuild(opts)
 }
 
-func (b *MockBuilder) PlatformRemove(name string) error {
+func (b *MockBuilder) PlatformRemove(ctx context.Context, name string) error {
 	if b.OnPlatformRemove == nil {
 		return nil
 	}

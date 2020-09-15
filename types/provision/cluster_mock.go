@@ -4,6 +4,8 @@
 
 package provision
 
+import "context"
+
 var _ ClusterStorage = &MockClusterStorage{}
 var _ ClusterService = &MockClusterService{}
 
@@ -17,42 +19,42 @@ type MockClusterStorage struct {
 	OnDelete            func(Cluster) error
 }
 
-func (m *MockClusterStorage) Upsert(c Cluster) error {
+func (m *MockClusterStorage) Upsert(ctx context.Context, c Cluster) error {
 	if m.OnUpsert == nil {
 		return nil
 	}
 	return m.OnUpsert(c)
 }
 
-func (m *MockClusterStorage) FindAll() ([]Cluster, error) {
+func (m *MockClusterStorage) FindAll(context.Context) ([]Cluster, error) {
 	if m.OnFindAll == nil {
 		return nil, nil
 	}
 	return m.OnFindAll()
 }
 
-func (m *MockClusterStorage) FindByName(name string) (*Cluster, error) {
+func (m *MockClusterStorage) FindByName(ctx context.Context, name string) (*Cluster, error) {
 	if m.OnFindByName == nil {
 		return nil, nil
 	}
 	return m.OnFindByName(name)
 }
 
-func (m *MockClusterStorage) FindByProvisioner(provisionerName string) ([]Cluster, error) {
+func (m *MockClusterStorage) FindByProvisioner(ctx context.Context, provisionerName string) ([]Cluster, error) {
 	if m.OnFindByProvisioner == nil {
 		return nil, nil
 	}
 	return m.OnFindByProvisioner(provisionerName)
 }
 
-func (m *MockClusterStorage) FindByPool(provisioner, pool string) (*Cluster, error) {
+func (m *MockClusterStorage) FindByPool(ctx context.Context, provisioner, pool string) (*Cluster, error) {
 	if m.OnFindByPool == nil {
 		return nil, nil
 	}
 	return m.OnFindByPool(provisioner, pool)
 }
 
-func (m *MockClusterStorage) Delete(c Cluster) error {
+func (m *MockClusterStorage) Delete(ctx context.Context, c Cluster) error {
 	if m.OnDelete == nil {
 		return nil
 	}
@@ -70,56 +72,56 @@ type MockClusterService struct {
 	OnDelete            func(Cluster) error
 }
 
-func (m *MockClusterService) Create(c Cluster) error {
+func (m *MockClusterService) Create(ctx context.Context, c Cluster) error {
 	if m.OnCreate == nil {
 		return nil
 	}
 	return m.OnCreate(c)
 }
 
-func (m *MockClusterService) Update(c Cluster) error {
+func (m *MockClusterService) Update(ctx context.Context, c Cluster) error {
 	if m.OnUpdate == nil {
 		return nil
 	}
 	return m.OnUpdate(c)
 }
 
-func (m *MockClusterService) List() ([]Cluster, error) {
+func (m *MockClusterService) List(context.Context) ([]Cluster, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 	return m.OnList()
 }
 
-func (m *MockClusterService) FindByName(name string) (*Cluster, error) {
+func (m *MockClusterService) FindByName(ctx context.Context, name string) (*Cluster, error) {
 	if m.OnFindByName == nil {
 		return nil, nil
 	}
 	return m.OnFindByName(name)
 }
 
-func (m *MockClusterService) FindByProvisioner(prov string) ([]Cluster, error) {
+func (m *MockClusterService) FindByProvisioner(ctx context.Context, prov string) ([]Cluster, error) {
 	if m.OnFindByProvisioner == nil {
 		return nil, nil
 	}
 	return m.OnFindByProvisioner(prov)
 }
 
-func (m *MockClusterService) FindByPool(prov, pool string) (*Cluster, error) {
+func (m *MockClusterService) FindByPool(ctx context.Context, prov, pool string) (*Cluster, error) {
 	if m.OnFindByPool == nil {
 		return nil, nil
 	}
 	return m.OnFindByPool(prov, pool)
 }
 
-func (m *MockClusterService) FindByPools(provisioner string, pool []string) (map[string]Cluster, error) {
+func (m *MockClusterService) FindByPools(ctx context.Context, provisioner string, pool []string) (map[string]Cluster, error) {
 	if m.OnFindByPools == nil {
 		return nil, nil
 	}
 	return m.OnFindByPools(provisioner, pool)
 }
 
-func (m *MockClusterService) Delete(c Cluster) error {
+func (m *MockClusterService) Delete(ctx context.Context, c Cluster) error {
 	if m.OnDelete == nil {
 		return nil
 	}

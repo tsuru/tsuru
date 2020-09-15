@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"io"
 
 	"github.com/tsuru/tsuru/action"
@@ -26,11 +27,11 @@ var provisionNewApp = action.Action{
 	Name: "provision-new-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		return nil, params.p.Provision(params.new)
+		return nil, params.p.Provision(context.TODO(), params.new)
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
-		if err := params.p.Destroy(params.new); err != nil {
+		if err := params.p.Destroy(context.TODO(), params.new); err != nil {
 			log.Errorf("failed to destroy new app: %v", err)
 		}
 	},
@@ -41,7 +42,7 @@ var restartApp = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
 		for _, v := range params.versions {
-			err := params.p.Restart(params.new, "", v, params.w)
+			err := params.p.Restart(context.TODO(), params.new, "", v, params.w)
 			if err != nil {
 				return nil, err
 			}
@@ -50,11 +51,11 @@ var restartApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
-		if err := backwardCR(params); err != nil {
+		if err := backwardCR(context.TODO(), params); err != nil {
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 			return
 		}
-		err := params.p.Restart(params.old, "", nil, params.w)
+		err := params.p.Restart(context.TODO(), params.old, "", nil, params.w)
 		if err != nil {
 			log.Errorf("BACKWARDS error restarting app: %v", err)
 		}
@@ -70,7 +71,7 @@ var rebuildAppRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
-		if err := backwardCR(params); err != nil {
+		if err := backwardCR(context.TODO(), params); err != nil {
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 			return
 		}
@@ -82,7 +83,7 @@ var destroyOldApp = action.Action{
 	Name: "destroy-old-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		err := params.p.Destroy(params.old)
+		err := params.p.Destroy(context.TODO(), params.old)
 		if err != nil {
 			log.Errorf("failed to destroy old app: %v", err)
 		}
@@ -94,7 +95,7 @@ var updateAppCR = action.Action{
 	Name: "update-app-custom-resource",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		client, err := clusterForPool(params.old.GetPool())
+		client, err := clusterForPool(context.TODO(), params.old.GetPool())
 		if err != nil {
 			return nil, err
 		}
@@ -102,14 +103,14 @@ var updateAppCR = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
-		if err := backwardCR(params); err != nil {
+		if err := backwardCR(context.TODO(), params); err != nil {
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 		}
 	},
 }
 
-func backwardCR(params updatePipelineParams) error {
-	client, err := clusterForPool(params.old.GetPool())
+func backwardCR(ctx context.Context, params updatePipelineParams) error {
+	client, err := clusterForPool(ctx, params.old.GetPool())
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ var removeOldAppResources = action.Action{
 	Name: "remove-old-app-resources",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		client, err := clusterForPool(params.old.GetPool())
+		client, err := clusterForPool(context.TODO(), params.old.GetPool())
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 			return nil, nil

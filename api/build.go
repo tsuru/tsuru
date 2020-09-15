@@ -32,6 +32,7 @@ import (
 //   403: Forbidden
 //   404: Not found
 func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	tag := InputValue(r, "tag")
 	if tag == "" {
 		return &tsuruErrors.HTTP{
@@ -89,7 +90,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()
 	opts.OutputStream = writer
-	imageID, err = app.Build(opts)
+	imageID, err = app.Build(ctx, opts)
 	if err == nil {
 		fmt.Fprintln(w, imageID)
 		fmt.Fprintln(w, "OK")

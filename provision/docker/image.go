@@ -5,6 +5,8 @@
 package docker
 
 import (
+	"context"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -24,7 +26,7 @@ func MigrateImages() error {
 	if repoNamespace == "" {
 		repoNamespace = "tsuru"
 	}
-	apps, err := app.List(nil)
+	apps, err := app.List(context.TODO(), nil)
 	if err != nil {
 		return err
 	}

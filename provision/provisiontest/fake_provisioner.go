@@ -35,13 +35,18 @@ var (
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
-	_ provision.NodeProvisioner      = &FakeProvisioner{}
-	_ provision.InterAppProvisioner  = &FakeProvisioner{}
-	_ provision.UpdatableProvisioner = &FakeProvisioner{}
-	_ provision.Provisioner          = &FakeProvisioner{}
-	_ provision.LogsProvisioner      = &FakeProvisioner{}
-	_ provision.App                  = &FakeApp{}
-	_ bind.App                       = &FakeApp{}
+	_ provision.Provisioner              = &FakeProvisioner{}
+	_ provision.NodeProvisioner          = &FakeProvisioner{}
+	_ provision.NodeContainerProvisioner = &FakeProvisioner{}
+	_ provision.InterAppProvisioner      = &FakeProvisioner{}
+	_ provision.UpdatableProvisioner     = &FakeProvisioner{}
+	_ provision.Provisioner              = &FakeProvisioner{}
+	_ provision.LogsProvisioner          = &FakeProvisioner{}
+	_ provision.VolumeProvisioner        = &FakeProvisioner{}
+	_ provision.SleepableProvisioner     = &FakeProvisioner{}
+	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
+	_ provision.App                      = &FakeApp{}
+	_ bind.App                           = &FakeApp{}
 )
 
 func init() {
@@ -195,7 +200,7 @@ func (a *FakeApp) GetServiceEnvs() []bind.ServiceEnvVar {
 	return a.serviceEnvs
 }
 
-func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
+func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	a.serviceEnvs = append(a.serviceEnvs, instanceArgs.Envs...)
@@ -205,7 +210,7 @@ func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
+func (a *FakeApp) RemoveInstance(ctx context.Context, instanceArgs bind.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	lenBefore := len(a.serviceEnvs)
@@ -484,7 +489,7 @@ func (n *FakeNode) SetHealth(failures int, hasSuccess bool) {
 	n.hasSuccess = hasSuccess
 }
 
-func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
+func (p *FakeProvisioner) AddNode(ctx context.Context, opts provision.AddNodeOptions) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	if err := p.getError("AddNode"); err != nil {
@@ -511,7 +516,7 @@ func (p *FakeProvisioner) AddNode(opts provision.AddNodeOptions) error {
 	return nil
 }
 
-func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
+func (p *FakeProvisioner) GetNode(ctx context.Context, address string) (provision.Node, error) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	if err := p.getError("GetNode"); err != nil {
@@ -523,7 +528,7 @@ func (p *FakeProvisioner) GetNode(address string) (provision.Node, error) {
 	return nil, provision.ErrNodeNotFound
 }
 
-func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
+func (p *FakeProvisioner) RemoveNode(ctx context.Context, opts provision.RemoveNodeOptions) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	if err := p.getError("RemoveNode"); err != nil {
@@ -546,7 +551,7 @@ func (p *FakeProvisioner) RemoveNode(opts provision.RemoveNodeOptions) error {
 	return nil
 }
 
-func (p *FakeProvisioner) UpdateNode(opts provision.UpdateNodeOptions) error {
+func (p *FakeProvisioner) UpdateNode(ctx context.Context, opts provision.UpdateNodeOptions) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	if err := p.getError("UpdateNode"); err != nil {
@@ -578,7 +583,7 @@ func (l nodeList) Len() int           { return len(l) }
 func (l nodeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l nodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
 
-func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, error) {
+func (p *FakeProvisioner) ListNodes(ctx context.Context, addressFilter []string) ([]provision.Node, error) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	if err := p.getError("ListNodes"); err != nil {
@@ -602,7 +607,7 @@ func (p *FakeProvisioner) ListNodes(addressFilter []string) ([]provision.Node, e
 	return result, nil
 }
 
-func (p *FakeProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]provision.Node, error) {
+func (p *FakeProvisioner) ListNodesByFilter(ctx context.Context, filter *provTypes.NodeFilter) ([]provision.Node, error) {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	if err := p.getError("ListNodesByFilter"); err != nil {
@@ -628,7 +633,7 @@ func (p *FakeProvisioner) ListNodesByFilter(filter *provTypes.NodeFilter) ([]pro
 	return result, nil
 }
 
-func (p *FakeProvisioner) NodeForNodeData(nodeData provision.NodeStatusData) (provision.Node, error) {
+func (p *FakeProvisioner) NodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData) (provision.Node, error) {
 	if err := p.getError("NodeForNodeData"); err != nil {
 		return nil, err
 	}
@@ -861,11 +866,11 @@ func (p *FakeProvisioner) Reset() {
 	}
 }
 
-func (p *FakeProvisioner) Swap(app1, app2 provision.App, cnameOnly bool) error {
+func (p *FakeProvisioner) Swap(ctx context.Context, app1, app2 provision.App, cnameOnly bool) error {
 	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
 }
 
-func (p *FakeProvisioner) Deploy(args provision.DeployArgs) (string, error) {
+func (p *FakeProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
 	if err := p.getError("Deploy"); err != nil {
 		return "", err
 	}
@@ -919,7 +924,7 @@ func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Provision(app provision.App) error {
+func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
 	}
@@ -938,7 +943,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Restart(app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+func (p *FakeProvisioner) Restart(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	if err := p.getError("Restart"); err != nil {
 		return err
 	}
@@ -956,7 +961,7 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, version app
 	return nil
 }
 
-func (p *FakeProvisioner) Start(app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Start(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -968,7 +973,7 @@ func (p *FakeProvisioner) Start(app provision.App, process string, version appTy
 	return nil
 }
 
-func (p *FakeProvisioner) Destroy(app provision.App) error {
+func (p *FakeProvisioner) Destroy(ctx context.Context, app provision.App) error {
 	if err := p.getError("Destroy"); err != nil {
 		return err
 	}
@@ -981,7 +986,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
+func (p *FakeProvisioner) AddUnits(ctx context.Context, app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	_, err := p.AddUnitsToNode(app, n, process, w, "")
 	return err
 }
@@ -1045,7 +1050,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
+func (p *FakeProvisioner) RemoveUnits(ctx context.Context, app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	if err := p.getError("RemoveUnits"); err != nil {
 		return err
 	}
@@ -1094,7 +1099,7 @@ func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 	p.apps[app.GetName()] = a
 }
 
-func (p *FakeProvisioner) Units(apps ...provision.App) ([]provision.Unit, error) {
+func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
 	if err := p.getError("Units"); err != nil {
 		return nil, err
 	}
@@ -1115,7 +1120,7 @@ func (p *FakeProvisioner) MockRoutableAddresses(app provision.App, addrs []appTy
 	p.apps[app.GetName()] = a
 }
 
-func (p *FakeProvisioner) RoutableAddresses(app provision.App) ([]appTypes.RoutableAddresses, error) {
+func (p *FakeProvisioner) RoutableAddresses(ctx context.Context, app provision.App) ([]appTypes.RoutableAddresses, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	a := p.apps[app.GetName()]
@@ -1217,7 +1222,7 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return false
 }
 
-func (p *FakeProvisioner) Stop(app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -1233,7 +1238,7 @@ func (p *FakeProvisioner) Stop(app provision.App, process string, version appTyp
 	return nil
 }
 
-func (p *FakeProvisioner) Sleep(app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Sleep(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -1249,7 +1254,7 @@ func (p *FakeProvisioner) Sleep(app provision.App, process string, version appTy
 	return nil
 }
 
-func (p *FakeProvisioner) RegisterUnit(a provision.App, unitId string, customData map[string]interface{}) error {
+func (p *FakeProvisioner) RegisterUnit(ctx context.Context, a provision.App, unitId string, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pa, ok := p.apps[a.GetName()]
@@ -1308,10 +1313,10 @@ func (p *FakeProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
 	return err
 }
 
-func (p *FakeProvisioner) FilterAppsByUnitStatus(apps []provision.App, status []string) ([]provision.App, error) {
+func (p *FakeProvisioner) FilterAppsByUnitStatus(ctx context.Context, apps []provision.App, status []string) ([]provision.App, error) {
 	filteredApps := []provision.App{}
 	for i := range apps {
-		units, _ := p.Units(apps[i])
+		units, _ := p.Units(ctx, apps[i])
 		for _, u := range units {
 			if stringInArray(u.Status.String(), status) {
 				filteredApps = append(filteredApps, apps[i])
@@ -1326,12 +1331,12 @@ func (p *FakeProvisioner) GetName() string {
 	return p.Name
 }
 
-func (p *FakeProvisioner) UpgradeNodeContainer(name string, pool string, writer io.Writer) error {
+func (p *FakeProvisioner) UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
 	p.nodeContainers[name+"-"+pool]++
 	return nil
 }
 
-func (p *FakeProvisioner) RemoveNodeContainer(name string, pool string, writer io.Writer) error {
+func (p *FakeProvisioner) RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
 	p.nodeContainers[name+"-"+pool] = 0
 	return nil
 }
@@ -1340,15 +1345,15 @@ func (p *FakeProvisioner) HasNodeContainer(name string, pool string) bool {
 	return p.nodeContainers[name+"-"+pool] > 0
 }
 
-func (p *FakeProvisioner) DeleteVolume(volName, pool string) error {
+func (p *FakeProvisioner) DeleteVolume(ctx context.Context, volName, pool string) error {
 	return nil
 }
 
-func (p *FakeProvisioner) IsVolumeProvisioned(name, pool string) (bool, error) {
+func (p *FakeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool string) (bool, error) {
 	return false, nil
 }
 
-func (p *FakeProvisioner) UpdateApp(old, new provision.App, w io.Writer) error {
+func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new provision.App, w io.Writer) error {
 	provApp := p.apps[old.GetName()]
 	provApp.app = new
 	p.apps[old.GetName()] = provApp
@@ -1371,7 +1376,7 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 
 }
 
-func (p *FakeProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (p *FakeProvisioner) ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	if !p.LogsEnabled {
 		return nil, provision.ErrLogsUnavailable
 	}
@@ -1382,7 +1387,7 @@ func (p *FakeProvisioner) ListLogs(app appTypes.App, args appTypes.ListLogArgs) 
 	}, nil
 }
 
-func (p *FakeProvisioner) WatchLogs(app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+func (p *FakeProvisioner) WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	if !p.LogsEnabled {
 		return nil, provision.ErrLogsUnavailable
 	}

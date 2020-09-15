@@ -74,7 +74,7 @@ type NodeHealerCustomData struct {
 	LastCheck *NodeChecks
 }
 
-func newNodeHealer(args nodeHealerArgs) *NodeHealer {
+func newNodeHealer(ctx context.Context, args nodeHealerArgs) *NodeHealer {
 	healer := &NodeHealer{
 		quit:                  make(chan bool),
 		disabledTime:          args.DisabledTime,
@@ -86,7 +86,7 @@ func newNodeHealer(args nodeHealerArgs) *NodeHealer {
 	go func() {
 		defer close(healer.quit)
 		for {
-			healer.runActiveHealing()
+			healer.runActiveHealing(ctx)
 			select {
 			case <-healer.quit:
 				return
@@ -97,10 +97,10 @@ func newNodeHealer(args nodeHealerArgs) *NodeHealer {
 	return healer
 }
 
-func removeNodeTryRebalance(node provision.Node, newAddr string) error {
+func removeNodeTryRebalance(ctx context.Context, node provision.Node, newAddr string) error {
 	var buf bytes.Buffer
 	addr := node.Address()
-	err := node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
+	err := node.Provisioner().RemoveNode(ctx, provision.RemoveNodeOptions{
 		Address:   addr,
 		Rebalance: true,
 		Writer:    &buf,
@@ -108,7 +108,7 @@ func removeNodeTryRebalance(node provision.Node, newAddr string) error {
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", addr, newAddr, err, buf.String())
 	}
-	err = node.Provisioner().RemoveNode(provision.RemoveNodeOptions{
+	err = node.Provisioner().RemoveNode(ctx, provision.RemoveNodeOptions{
 		Address: addr,
 	})
 	if err != nil && err != provision.ErrNodeNotFound {
@@ -119,7 +119,7 @@ func removeNodeTryRebalance(node provision.Node, newAddr string) error {
 	return nil
 }
 
-func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) {
+func (h *NodeHealer) healNode(ctx context.Context, node provision.Node) (*provision.NodeSpec, error) {
 	failingAddr := node.Address()
 	// Copy metadata to ensure underlying data structure is not modified.
 	newNodeMetadata := map[string]string{}
@@ -139,7 +139,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		}
 		return nil, errors.Wrapf(err, "Can't auto-heal after %d failures for node %s: error creating new machine", failures, failingHost)
 	}
-	err = node.Provisioner().UpdateNode(provision.UpdateNodeOptions{
+	err = node.Provisioner().UpdateNode(ctx, provision.UpdateNodeOptions{
 		Address: failingAddr,
 		Disable: true,
 	})
@@ -150,7 +150,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	newAddr := machine.FormatNodeAddress()
 	removeBefore := newAddr == failingAddr
 	if removeBefore {
-		removeNodeTryRebalance(node, newAddr)
+		removeNodeTryRebalance(ctx, node, newAddr)
 	}
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createOpts := provision.AddNodeOptions{
@@ -163,12 +163,12 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 		ClientCert: machine.ClientCert,
 		ClientKey:  machine.ClientKey,
 	}
-	err = node.Provisioner().AddNode(createOpts)
+	err = node.Provisioner().AddNode(ctx, createOpts)
 	if err != nil {
 		if isHealthNode {
 			healthNode.ResetFailures()
 		}
-		node.Provisioner().UpdateNode(provision.UpdateNodeOptions{Address: failingAddr, Enable: true})
+		node.Provisioner().UpdateNode(ctx, provision.UpdateNodeOptions{Address: failingAddr, Enable: true})
 		machine.Destroy(iaas.DestroyParams{})
 		return nil, errors.Wrapf(err, "Can't auto-heal after %d failures for node %s: error registering new node", failures, failingHost)
 	}
@@ -178,7 +178,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	nodeSpec.IaaSID = machine.Id
 	multiErr := tsuruErrors.NewMultiError()
 	if !removeBefore {
-		err = removeNodeTryRebalance(node, newAddr)
+		err = removeNodeTryRebalance(ctx, node, newAddr)
 		if err != nil {
 			multiErr.Add(err)
 		}
@@ -200,7 +200,7 @@ func (h *NodeHealer) healNode(node provision.Node) (*provision.NodeSpec, error) 
 	return &nodeSpec, multiErr.ToError()
 }
 
-func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastCheck *NodeChecks) error {
+func (h *NodeHealer) tryHealingNode(ctx context.Context, node provision.Node, reason string, lastCheck *NodeChecks) error {
 	_, hasIaas := node.MetadataNoPrefix()[provision.IaaSMetadataName]
 	if !hasIaas {
 		log.Debugf("node %q doesn't have IaaS information, healing (%s) won't run on it.", node.Address(), reason)
@@ -244,7 +244,7 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 			log.Errorf("error trying to update healing event for node %q: %s", node.Address(), updateErr)
 		}
 	}()
-	_, err = node.Provisioner().GetNode(node.Address())
+	_, err = node.Provisioner().GetNode(ctx, node.Address())
 	if err != nil {
 		if err == provision.ErrNodeNotFound {
 			return nil
@@ -261,11 +261,11 @@ func (h *NodeHealer) tryHealingNode(node provision.Node, reason string, lastChec
 		return nil
 	}
 	log.Errorf("initiating healing process for node %q due to: %s", node.Address(), reason)
-	createdNode, evtErr = h.healNode(node)
+	createdNode, evtErr = h.healNode(ctx, node)
 	return evtErr
 }
 
-func (h *NodeHealer) HandleError(node provision.NodeHealthChecker) time.Duration {
+func (h *NodeHealer) HandleError(ctx context.Context, node provision.NodeHealthChecker) time.Duration {
 	h.wg.Add(1)
 	defer h.wg.Done()
 	failures := node.FailureCount()
@@ -277,7 +277,7 @@ func (h *NodeHealer) HandleError(node provision.NodeHealthChecker) time.Duration
 		log.Debugf("Node %q has never been successfully reached, healing won't run on it.", node.Address())
 		return h.disabledTime
 	}
-	err := h.tryHealingNode(node, fmt.Sprintf("%d consecutive failures", failures), nil)
+	err := h.tryHealingNode(ctx, node, fmt.Sprintf("%d consecutive failures", failures), nil)
 	if err != nil {
 		log.Errorf("[node healer handle error] %s", err)
 	}
@@ -296,7 +296,7 @@ func (h *NodeHealer) String() string {
 	return "node healer"
 }
 
-func allNodes() ([]provision.Node, error) {
+func allNodes(ctx context.Context) ([]provision.Node, error) {
 	provs, err := provision.Registry()
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func allNodes() ([]provision.Node, error) {
 	for _, p := range provs {
 		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
 			var provNodes []provision.Node
-			provNodes, err = nodeProv.ListNodes(nil)
+			provNodes, err = nodeProv.ListNodes(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -474,8 +474,8 @@ func (h *NodeHealer) shouldHealNode(node provision.Node) (bool, error) {
 
 var localSkip uint64
 
-func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provision.Node, error) {
-	nodes, err := allNodes()
+func (h *NodeHealer) findNodesForHealing(ctx context.Context) ([]NodeStatusData, map[string]provision.Node, error) {
+	nodes, err := allNodes(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to retrieve nodes")
 	}
@@ -543,8 +543,8 @@ func (h *NodeHealer) findNodesForHealing() ([]NodeStatusData, map[string]provisi
 	return nodesStatus, nodesAddrMap, nil
 }
 
-func (h *NodeHealer) runActiveHealing() {
-	nodesStatus, nodesAddrMap, err := h.findNodesForHealing()
+func (h *NodeHealer) runActiveHealing(ctx context.Context) {
+	nodesStatus, nodesAddrMap, err := h.findNodesForHealing(ctx)
 	if err != nil {
 		log.Errorf("[node healer active] %s", err)
 		return
@@ -552,7 +552,7 @@ func (h *NodeHealer) runActiveHealing() {
 	for _, n := range nodesStatus {
 		sinceUpdate := time.Since(n.LastUpdate)
 		sinceSuccess := time.Since(n.LastSuccess)
-		err = h.tryHealingNode(nodesAddrMap[n.Address],
+		err = h.tryHealingNode(ctx, nodesAddrMap[n.Address],
 			fmt.Sprintf("last update %v ago, last success %v ago", sinceUpdate, sinceSuccess),
 			&n.Checks[len(n.Checks)-1],
 		)

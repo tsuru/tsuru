@@ -50,7 +50,7 @@ func (s *aggregatorLogService) Add(appName, message, source, unit string) error 
 	return s.base.Add(appName, message, source, unit)
 }
 
-func (s *aggregatorLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (s *aggregatorLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	requests, err := buildInstanceRequests(args, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "[aggregator service]")
@@ -91,7 +91,7 @@ func (s *aggregatorLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applo
 	return allLogs, nil
 }
 
-func (s *aggregatorLogService) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+func (s *aggregatorLogService) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	args.Limit = -1
 	requests, err := buildInstanceRequests(args, true)
 	if err != nil {

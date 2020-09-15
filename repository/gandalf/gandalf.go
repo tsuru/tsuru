@@ -11,6 +11,7 @@
 package gandalf
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -79,7 +80,7 @@ func Sync(w io.Writer) error {
 			return err
 		}
 	}
-	apps, err := app.List(nil)
+	apps, err := app.List(context.TODO(), nil)
 	if err != nil {
 		return err
 	}

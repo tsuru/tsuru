@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -27,7 +28,7 @@ func init() {
 	builder.Register("kubernetes", &kubernetesBuilder{})
 }
 
-func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+func (b *kubernetesBuilder) Build(ctx context.Context, prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	p, ok := prov.(provision.BuilderDeployKubeClient)
 	if !ok {
 		return nil, errors.New("provisioner not supported")
@@ -43,11 +44,11 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 		return nil, err
 	}
 	if opts.ImageID != "" {
-		return imageBuild(client, app, opts, evt)
+		return imageBuild(ctx, client, app, opts, evt)
 	}
 	if opts.Rebuild {
 		var tarFile io.ReadCloser
-		tarFile, err = downloadFromContainer(client, app, evt)
+		tarFile, err = downloadFromContainer(ctx, client, app, evt)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +63,7 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 	if err != nil {
 		return nil, err
 	}
-	err = client.BuildPod(app, evt, opts.ArchiveFile, newVersion)
+	err = client.BuildPod(ctx, app, evt, opts.ArchiveFile, newVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (b *kubernetesBuilder) Build(prov provision.BuilderDeploy, app provision.Ap
 	return newVersion, nil
 }
 
-func imageBuild(client provision.BuilderKubeClient, a provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
+func imageBuild(ctx context.Context, client provision.BuilderKubeClient, a provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
 	imageID := opts.ImageID
 	if !strings.Contains(imageID, ":") {
 		imageID = fmt.Sprintf("%s:latest", imageID)
@@ -87,7 +88,7 @@ func imageBuild(client provision.BuilderKubeClient, a provision.App, opts *build
 	if err != nil {
 		return nil, err
 	}
-	inspectData, err := client.ImageTagPushAndInspect(a, evt, imageID, newVersion)
+	inspectData, err := client.ImageTagPushAndInspect(ctx, a, evt, imageID, newVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -135,13 +136,13 @@ func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{}
 	}
 }
 
-func downloadFromContainer(client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
+func downloadFromContainer(ctx context.Context, client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Fprintln(evt, "---- Downloading archive from image ----")
-	archiveFile, err := client.DownloadFromContainer(app, evt, version.VersionInfo().DeployImage)
+	archiveFile, err := client.DownloadFromContainer(ctx, app, evt, version.VersionInfo().DeployImage)
 	if err != nil {
 		return nil, err
 	}

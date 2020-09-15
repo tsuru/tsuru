@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -19,6 +20,7 @@ import (
 )
 
 func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
+	ctx := context.TODO()
 	var nodes []cluster.Node
 	var nodeHosts []string
 	for i := 0; i < 6; i++ {
@@ -48,8 +50,8 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	for i := 0; i < maxContainers; i++ {
 		appName := fmt.Sprintf("myapp-%d", i)
 		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
-		defer p.Destroy(appInstance)
-		p.Provision(appInstance)
+		defer p.Destroy(ctx, appInstance)
+		p.Provision(ctx, appInstance)
 		var version appTypes.AppVersion
 		version, err = newSuccessfulVersionForApp(p, appInstance, nil)
 		c.Assert(err, check.IsNil)

@@ -5,6 +5,7 @@
 package api
 
 import (
+	stdContext "context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -954,11 +955,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(stdContext.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(stdContext.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	si := []service.ServiceInstance{
 		{
@@ -1057,11 +1058,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(stdContext.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(stdContext.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -1106,11 +1107,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(stdContext.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&a)
+	units, err := s.provisioner.Units(stdContext.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -1152,15 +1153,15 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(stdContext.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.CreateApp(&ab, s.user)
+	err = app.CreateApp(stdContext.TODO(), &ab, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(&ab, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(stdContext.TODO(), &ab, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(&ab)
+	units, err := s.provisioner.Units(stdContext.TODO(), &ab)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",

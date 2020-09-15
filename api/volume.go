@@ -108,6 +108,7 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   409: Volume already exists
 func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var inputVolume volume.Volume
 	err = ParseInput(r, &inputVolume)
 	if err != nil {
@@ -137,7 +138,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
 	}
-	err = inputVolume.Create()
+	err = inputVolume.Create(ctx)
 	if err != nil {
 		return err
 	}
@@ -154,6 +155,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   401: Unauthorized
 //   404: Volume not found
 func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var inputVolume volume.Volume
 	err = ParseInput(r, &inputVolume)
 	if err != nil {
@@ -184,7 +186,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return inputVolume.Update()
+	return inputVolume.Update(ctx)
 }
 
 // title: volume plan list
@@ -220,6 +222,7 @@ func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //   401: Unauthorized
 //   404: Volume not found
 func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	volumeName := r.URL.Query().Get(":name")
 	dbVolume, err := volume.Load(volumeName)
 	if err != nil {
@@ -243,7 +246,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return dbVolume.Delete()
+	return dbVolume.Delete(ctx)
 }
 
 // title: volume bind
@@ -256,6 +259,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Volume not found
 //   409: Volume bind already exists
 func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var bindInfo struct {
 		App        string
 		MountPoint string
@@ -308,7 +312,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart("", "", evt)
+	return a.Restart(ctx, "", "", evt)
 }
 
 // title: volume unbind
@@ -320,6 +324,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Volume not found
 func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var bindInfo struct {
 		App        string
 		MountPoint string
@@ -371,5 +376,5 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart("", "", evt)
+	return a.Restart(ctx, "", "", evt)
 }

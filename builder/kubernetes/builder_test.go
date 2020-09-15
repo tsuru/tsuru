@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -35,7 +36,7 @@ func (s *S) TestArchiveFile(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	img, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
 }
@@ -57,7 +58,7 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 		ArchiveSize: int64(buf.Len()),
 		Tag:         "mytag",
 	}
-	img, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:mytag")
 }
@@ -80,7 +81,7 @@ func (s *S) TestArchiveURL(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	img, err := s.b.Build(s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `build image from ArchiveURL is not yet supported by kubernetes builder`)
 	c.Assert(img, check.IsNil)
@@ -107,7 +108,7 @@ func (s *S) TestImageID(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -135,7 +136,7 @@ func (s *S) TestImageIDWithExposedPorts(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -165,7 +166,7 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -229,7 +230,7 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -302,7 +303,7 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
@@ -339,7 +340,7 @@ ignored docker push output
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	_, err = s.b.Build(s.p, a, evt, &bopts)
+	_, err = s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
 }
@@ -359,7 +360,7 @@ func (s *S) TestRebuild(c *check.C) {
 		ArchiveFile: ioutil.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	version, err := s.b.Build(s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(version.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
 	err = version.CommitBaseImage()
@@ -370,7 +371,7 @@ func (s *S) TestRebuild(c *check.C) {
 	bopts = builder.BuildOpts{
 		Rebuild: true,
 	}
-	version, err = s.b.Build(s.p, a, evt, &bopts)
+	version, err = s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.BuildImageName(), check.Equals, "tsuru/app-myapp:v2-builder")
 }

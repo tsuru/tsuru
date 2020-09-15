@@ -5,6 +5,7 @@
 package node
 
 import (
+	"context"
 	"io"
 	"sort"
 
@@ -29,9 +30,9 @@ func (l MetaWithFrequencyList) Less(i, j int) bool { return len(l[i].Nodes) < le
 
 type NodeList []provision.Node
 
-func FindNodeByAddrs(p provision.NodeProvisioner, addrs []string) (provision.Node, error) {
+func FindNodeByAddrs(ctx context.Context, p provision.NodeProvisioner, addrs []string) (provision.Node, error) {
 	nodeAddrMap := map[string]provision.Node{}
-	nodes, err := p.ListNodes(nil)
+	nodes, err := p.ListNodes(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func FindNodeByAddrs(p provision.NodeProvisioner, addrs []string) (provision.Nod
 	return node, nil
 }
 
-func FindNodeSkipProvisioner(address string, skipProv string) (provision.Provisioner, provision.Node, error) {
+func FindNodeSkipProvisioner(ctx context.Context, address string, skipProv string) (provision.Provisioner, provision.Node, error) {
 	provisioners, err := provision.Registry()
 	if err != nil {
 		return nil, nil, err
@@ -68,7 +69,7 @@ func FindNodeSkipProvisioner(address string, skipProv string) (provision.Provisi
 		if !ok {
 			continue
 		}
-		node, err := nodeProv.GetNode(address)
+		node, err := nodeProv.GetNode(ctx, address)
 		if err == provision.ErrNodeNotFound {
 			continue
 		}
@@ -84,8 +85,8 @@ func FindNodeSkipProvisioner(address string, skipProv string) (provision.Provisi
 	return nil, nil, provision.ErrNodeNotFound
 }
 
-func FindNode(address string) (provision.Provisioner, provision.Node, error) {
-	return FindNodeSkipProvisioner(address, "")
+func FindNode(ctx context.Context, address string) (provision.Provisioner, provision.Node, error) {
+	return FindNodeSkipProvisioner(ctx, address, "")
 }
 
 type RemoveNodeArgs struct {
@@ -97,27 +98,27 @@ type RemoveNodeArgs struct {
 	RemoveIaaS bool
 }
 
-func RemoveNode(args RemoveNodeArgs) error {
+func RemoveNode(ctx context.Context, args RemoveNodeArgs) error {
 	var err error
 	if args.Node == nil {
 		if args.Prov == nil {
 			return errors.New("arg Prov is required if Node is nil")
 		}
-		args.Node, err = args.Prov.GetNode(args.Address)
+		args.Node, err = args.Prov.GetNode(ctx, args.Address)
 		if err != nil {
 			return err
 		}
 	}
-	return removeNodeWithNode(args.Node, provision.RemoveNodeOptions{
+	return removeNodeWithNode(ctx, args.Node, provision.RemoveNodeOptions{
 		Address:   args.Node.Address(),
 		Rebalance: args.Rebalance,
 		Writer:    args.Writer,
 	}, args.RemoveIaaS)
 }
 
-func removeNodeWithNode(node provision.Node, opts provision.RemoveNodeOptions, removeIaaS bool) error {
+func removeNodeWithNode(ctx context.Context, node provision.Node, opts provision.RemoveNodeOptions, removeIaaS bool) error {
 	prov := node.Provisioner()
-	err := prov.RemoveNode(opts)
+	err := prov.RemoveNode(ctx, opts)
 	if err != nil {
 		return err
 	}

@@ -63,7 +63,7 @@ func newSuccessfulVersion(c *check.C, app appTypes.App, customData map[string]in
 func (s *S) TestBuildPod(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -101,7 +101,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 		CustomBuildTag: "mytag",
 	})
 	c.Assert(err, check.IsNil)
-	err = client.BuildPod(a, evt, ioutil.NopCloser(buf), version)
+	err = client.BuildPod(context.TODO(), a, evt, ioutil.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 }
 
@@ -110,7 +110,7 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err := s.p.Provision(a)
+	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var counter int32
 	nsName, err := s.client.AppNamespace(a)
@@ -158,7 +158,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 		CustomBuildTag: "mytag",
 	})
 	c.Assert(err, check.IsNil)
-	err = client.BuildPod(a, evt, ioutil.NopCloser(buf), version)
+	err = client.BuildPod(context.TODO(), a, evt, ioutil.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -177,7 +177,7 @@ func (s *S) TestImageTagPushAndInspect(c *check.C) {
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
 	version := newEmptyVersion(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
+	procData, err := client.ImageTagPushAndInspect(context.TODO(), a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")
@@ -211,7 +211,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
 	version := newEmptyVersion(c, a)
-	_, err = client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
+	_, err = client.ImageTagPushAndInspect(context.TODO(), a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -263,7 +263,7 @@ cat >/dev/null && /bin/deploy-agent`)
 
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "registry.example.com/tsuru/app-myapp:tag1", version)
+	procData, err := client.ImageTagPushAndInspect(context.TODO(), a, evt, "registry.example.com/tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")
@@ -285,7 +285,7 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
 	version := newEmptyVersion(c, a)
-	procData, err := client.ImageTagPushAndInspect(a, evt, "tsuru/app-myapp:tag1", version)
+	procData, err := client.ImageTagPushAndInspect(context.TODO(), a, evt, "tsuru/app-myapp:tag1", version)
 	c.Assert(err, check.IsNil)
 	c.Assert(procData.Image.ID, check.Equals, "1234")
 	c.Assert(procData.Procfile, check.Equals, "web: make run")
@@ -320,7 +320,7 @@ func (s *S) TestBuildImage(c *check.C) {
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
 	out := &safe.Buffer{}
-	err := client.BuildImage("myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out, context.Background())
+	err := client.BuildImage(context.TODO(), "myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out)
 	c.Assert(err, check.IsNil)
 }
 
@@ -352,7 +352,7 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
 	out := &safe.Buffer{}
-	err := client.BuildImage("myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out, context.Background())
+	err := client.BuildImage(context.Background(), "myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out)
 	c.Assert(err, check.IsNil)
 }
 
@@ -365,7 +365,7 @@ func (s *S) TestDownloadFromContainer(c *check.C) {
 	defer rollback()
 	client := KubeClient{}
 	evt := s.newTestEvent(c, a)
-	archiveReader, err := client.DownloadFromContainer(a, evt, "tsuru/app-myapp:tag1")
+	archiveReader, err := client.DownloadFromContainer(context.TODO(), a, evt, "tsuru/app-myapp:tag1")
 	c.Assert(err, check.IsNil)
 	c.Assert(archiveReader, check.NotNil)
 	archive, err := ioutil.ReadAll(archiveReader)

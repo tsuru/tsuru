@@ -71,7 +71,7 @@ type clusterController struct {
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
-	return forEachCluster(func(client *ClusterClient) error {
+	return forEachCluster(context.Background(), func(client *ClusterClient) error {
 		_, err := getClusterController(p, client)
 		return err
 	})

@@ -210,6 +210,7 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	poolName := r.URL.Query().Get("pool")
 	kill, _ := strconv.ParseBool(r.URL.Query().Get("kill"))
@@ -256,7 +257,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		if !ok {
 			continue
 		}
-		err = ncProv.RemoveNodeContainer(name, poolName, evt)
+		err = ncProv.RemoveNodeContainer(ctx, name, poolName, evt)
 		if err != nil {
 			allErrors = append(allErrors, err.Error())
 		}
@@ -278,6 +279,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: Not found
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
@@ -323,7 +325,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		if !ok {
 			continue
 		}
-		err = ncProv.UpgradeNodeContainer(name, poolName, evt)
+		err = ncProv.UpgradeNodeContainer(ctx, name, poolName, evt)
 		if err != nil {
 			allErrors = append(allErrors, err.Error())
 		}

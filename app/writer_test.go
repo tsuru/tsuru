@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -52,7 +53,7 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -72,7 +73,7 @@ func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -110,7 +111,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -151,7 +152,7 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 100,
 	})
 	c.Assert(err, check.IsNil)
@@ -200,7 +201,7 @@ func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -222,7 +223,7 @@ func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)

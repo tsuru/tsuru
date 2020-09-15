@@ -5,6 +5,7 @@
 package applog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -75,7 +76,7 @@ func (s *S) Test_Aggregator_List(c *check.C) {
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
-	logs, err := svc.List(appTypes.ListLogArgs{
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -100,7 +101,7 @@ func (s *S) Test_Aggregator_ListFilter(c *check.C) {
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
-	logs, err := svc.List(appTypes.ListLogArgs{
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
 		AppName:      "myapp",
 		Source:       "tsuru",
 		Units:        []string{"myunit", "otherunit"},
@@ -167,7 +168,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
-	logs, err := svc.List(appTypes.ListLogArgs{
+	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 		Limit:   1,
 	})
@@ -187,7 +188,7 @@ func (s *S) Test_Aggregator_List_WithError(c *check.C) {
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
-	_, err := svc.List(appTypes.ListLogArgs{
+	_, err := svc.List(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.ErrorMatches, `(?s)\[log instance .*\]: invalid status code 500:.*`)
@@ -203,7 +204,7 @@ func (s *S) Test_Aggregator_List_WithErrorSingleRequest(c *check.C) {
 	})
 	defer rollback()
 	svc := &aggregatorLogService{}
-	_, err := svc.List(appTypes.ListLogArgs{
+	_, err := svc.List(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.ErrorMatches, `(?s)\[log instance .*\]: invalid status code 500:.*`)
@@ -232,7 +233,7 @@ func (s *S) Test_Aggregator_Watch(c *check.C) {
 	_ = rollback
 	defer rollback()
 	svc := &aggregatorLogService{}
-	watcher, err := svc.Watch(appTypes.ListLogArgs{
+	watcher, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
@@ -290,7 +291,7 @@ func (s *S) Test_Aggregator_Watch_WithErrorAfterMessages(c *check.C) {
 	_ = rollback
 	defer rollback()
 	svc := &aggregatorLogService{}
-	watcher, err := svc.Watch(appTypes.ListLogArgs{
+	watcher, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)

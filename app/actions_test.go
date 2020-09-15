@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"io/ioutil"
 
 	"github.com/globalsign/mgo/bson"
@@ -143,7 +144,7 @@ func (s *S) TestInsertAppForwardInvalidValue(c *check.C) {
 
 func (s *S) TestInsertAppDuplication(c *check.C) {
 	app := App{Name: "come", Platform: "gotthard", TeamOwner: s.team.Name}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{
 		Params: []interface{}{&app},
@@ -159,7 +160,7 @@ func (s *S) TestInsertAppBackward(c *check.C) {
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	insertApp.Backward(ctx)
 	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
@@ -177,7 +178,7 @@ func (s *S) TestCreateAppTokenForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createAppToken.Forward(ctx)
@@ -194,7 +195,7 @@ func (s *S) TestCreateAppTokenBackward(c *check.C) {
 		Platform:  "opeth",
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	createAppToken.Backward(ctx)
@@ -211,7 +212,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.AppLogin(app.Name)
 	c.Assert(err, check.IsNil)
@@ -248,7 +249,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	token, err := nativeScheme.AppLogin(app.Name)
 	c.Assert(err, check.IsNil)
 	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
-	err = CreateApp(&app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
@@ -614,7 +615,7 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 		Platform:  "django",
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &app)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web", version}}
@@ -631,7 +632,7 @@ func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 		Platform:  "django",
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(&app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &app)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web", version}}
@@ -706,11 +707,11 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	err := pool.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
-	err = CreateApp(&app, s.user)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(1, "web", "", nil)
+	err = app.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)

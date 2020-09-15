@@ -95,7 +95,7 @@ func (s *S) TestClusterServiceCreateWithCreateData(c *check.C) {
 		},
 	}
 
-	err := cs.Create(kubeCluster)
+	err := cs.Create(context.TODO(), kubeCluster)
 	c.Assert(err, check.IsNil)
 }
 
@@ -109,7 +109,7 @@ func (s *S) TestClusterServiceCreateError(c *check.C) {
 		},
 	}
 
-	err := cs.Create(mycluster)
+	err := cs.Create(context.TODO(), mycluster)
 	c.Assert(err, check.NotNil)
 }
 
@@ -132,7 +132,7 @@ func (s *S) TestClusterServiceCreateNameValidation(c *check.C) {
 	}
 	for _, tt := range tests {
 		mycluster.Name = tt.name
-		err := cs.Create(mycluster)
+		err := cs.Create(context.TODO(), mycluster)
 		c.Check(err, check.ErrorMatches, tt.err)
 	}
 }
@@ -149,7 +149,7 @@ func (s *S) TestClusterServiceUpdate(c *check.C) {
 		},
 	}
 
-	err := cs.Update(mycluster)
+	err := cs.Update(context.TODO(), mycluster)
 	c.Assert(err, check.IsNil)
 }
 
@@ -163,7 +163,7 @@ func (s *S) TestClusterServiceUpdateError(c *check.C) {
 		},
 	}
 
-	err := cs.Update(mycluster)
+	err := cs.Update(context.TODO(), mycluster)
 	c.Assert(err, check.NotNil)
 }
 
@@ -232,7 +232,7 @@ func (s *S) TestClusterServiceUpdateValidationError(c *check.C) {
 		},
 	}
 	for _, tt := range tests {
-		err := cs.Update(tt.c)
+		err := cs.Update(context.TODO(), tt.c)
 		if len(tt.err) == 0 {
 			c.Check(err, check.IsNil)
 		} else {
@@ -251,7 +251,7 @@ func (s *S) TestClusterServiceList(c *check.C) {
 		},
 	}
 
-	result, err := cs.List()
+	result, err := cs.List(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, clusters)
 }
@@ -267,7 +267,7 @@ func (s *S) TestClusterServiceFindByName(c *check.C) {
 		},
 	}
 
-	result, err := cs.FindByName(cluster.Name)
+	result, err := cs.FindByName(context.TODO(), cluster.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.NotNil)
 	c.Assert(*result, check.DeepEquals, cluster)
@@ -282,7 +282,7 @@ func (s *S) TestClusterServiceFindByNameNotFound(c *check.C) {
 		},
 	}
 
-	result, err := cs.FindByName("unknown cluster")
+	result, err := cs.FindByName(context.TODO(), "unknown cluster")
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.ErrorMatches, "not found")
 }
@@ -298,7 +298,7 @@ func (s *S) TestClusterServiceFindByProvisioner(c *check.C) {
 		},
 	}
 
-	result, err := cs.FindByProvisioner("kubernetes")
+	result, err := cs.FindByProvisioner(context.TODO(), "kubernetes")
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, clusters)
 }
@@ -315,7 +315,7 @@ func (s *S) TestClusterServiceFindByPool(c *check.C) {
 		},
 	}
 
-	result, err := cs.FindByPool(cluster.Provisioner, cluster.Pools[0])
+	result, err := cs.FindByPool(context.TODO(), cluster.Provisioner, cluster.Pools[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.NotNil)
 	c.Assert(*result, check.DeepEquals, cluster)
@@ -330,7 +330,7 @@ func (s *S) TestClusterServiceFindByPoolNotFound(c *check.C) {
 		},
 	}
 
-	result, err := cs.FindByPool("unknown prov", "unknown pool")
+	result, err := cs.FindByPool(context.TODO(), "unknown prov", "unknown pool")
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.ErrorMatches, "not found")
 }
@@ -350,7 +350,7 @@ func (s *S) TestClusterServiceDelete(c *check.C) {
 		},
 	}
 
-	err := cs.Delete(cluster)
+	err := cs.Delete(context.TODO(), cluster)
 	c.Assert(err, check.IsNil)
 }
 
@@ -363,7 +363,7 @@ func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 		},
 	}
 
-	err := cs.Delete(provTypes.Cluster{})
+	err := cs.Delete(context.TODO(), provTypes.Cluster{})
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
@@ -400,7 +400,7 @@ func (s *S) TestClusterUpdateCallsProvInit(c *check.C) {
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{},
 	}
-	err := cs.Update(c1)
+	err := cs.Update(context.TODO(), c1)
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.DeepEquals, *inst.callCluster)
 }
@@ -420,7 +420,7 @@ func (s *S) TestFindByPools(c *check.C) {
 			},
 		},
 	}
-	result, err := cs.FindByPools(prov, []string{"poolA", "poolB", "poolC", "poolD", "poolA"})
+	result, err := cs.FindByPools(context.TODO(), prov, []string{"poolA", "poolB", "poolC", "poolD", "poolA"})
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]provTypes.Cluster{
 		"poolA": clusters[0],
@@ -444,7 +444,7 @@ func (s *S) TestFindByPoolsNotFound(c *check.C) {
 			},
 		},
 	}
-	_, err := cs.FindByPools(prov, []string{"poolA", "poolB", "poolC", "poolD"})
+	_, err := cs.FindByPools(context.TODO(), prov, []string{"poolA", "poolB", "poolC", "poolD"})
 	c.Assert(err, check.ErrorMatches, `unable to find cluster for pool "poolD"`)
 }
 
@@ -502,7 +502,7 @@ func (s *S) TestClusterServiceCreateProvisionCluster(c *check.C) {
 			},
 		},
 	}
-	err := cs.Create(myCluster)
+	err := cs.Create(context.TODO(), myCluster)
 	c.Assert(err, check.IsNil)
 	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"CreateCluster", "c1"}})
 }
@@ -538,7 +538,7 @@ func (s *S) TestClusterServiceUpdateProvisionCluster(c *check.C) {
 			},
 		},
 	}
-	err := cs.Update(myCluster)
+	err := cs.Update(context.TODO(), myCluster)
 	c.Assert(err, check.IsNil)
 	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"UpdateCluster", "c1"}})
 }
@@ -573,7 +573,7 @@ func (s *S) TestClusterServiceDeleteProvisionCluster(c *check.C) {
 			},
 		},
 	}
-	err := cs.Delete(provTypes.Cluster{Name: "c1"})
+	err := cs.Delete(context.TODO(), provTypes.Cluster{Name: "c1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"DeleteCluster", "c1"}})
 }
@@ -614,7 +614,7 @@ func (s *S) TestClusterServiceCreateProvisionClusterError(c *check.C) {
 			},
 		},
 	}
-	err := cs.Create(myCluster)
+	err := cs.Create(context.TODO(), myCluster)
 	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error")
 	c.Assert(deleteCall, check.Equals, true)
 }
@@ -650,6 +650,6 @@ func (s *S) TestClusterServiceCreateProvisionClusterErrorProvisionerAndDelete(c 
 			},
 		},
 	}
-	err := cs.Create(myCluster)
+	err := cs.Create(context.TODO(), myCluster)
 	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error - error deleting cluster: delete error")
 }

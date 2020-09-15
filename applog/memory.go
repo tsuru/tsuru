@@ -5,6 +5,7 @@
 package applog
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"time"
@@ -104,7 +105,7 @@ func (s *memoryLogService) Add(appName, message, source, unit string) error {
 	return nil
 }
 
-func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (s *memoryLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	if args.AppName == "" {
 		return nil, errors.New("app name required to list logs")
 	}
@@ -115,7 +116,7 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 	return buffer.list(args), nil
 }
 
-func (s *memoryLogService) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+func (s *memoryLogService) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	buffer := s.getAppBuffer(args.AppName)
 	watcher := &memoryWatcher{
 		buffer:     buffer,

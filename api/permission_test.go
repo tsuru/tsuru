@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -323,7 +324,7 @@ func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 	err = user.AddRole("test", s.team.Name)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	users, err := repositorytest.Granted("myapp")
 	c.Assert(err, check.IsNil)
@@ -404,7 +405,7 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 	err = user.AddRole("test", s.team.Name)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = repository.Manager().GrantAccess(a.Name, user.Email)
 	c.Assert(err, check.IsNil)
@@ -519,7 +520,7 @@ func (s *S) TestAssignRoleCheckGandalf(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myapp", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
@@ -646,7 +647,7 @@ func (s *S) TestDissociateRoleCheckGandalf(c *check.C) {
 	otherUser, err := auth.ConvertNewUser(otherToken.User())
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(&a, s.user)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = otherUser.AddRole(role.Name, "myapp")
 	c.Assert(err, check.IsNil)
@@ -826,7 +827,7 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 	c.StopTimer()
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)

@@ -5,13 +5,15 @@
 package servicecommon
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router/rebuild"
 )
 
 func RebuildRoutesPoolApps(pool string) {
-	apps, err := app.List(&app.Filter{Pool: pool})
+	apps, err := app.List(context.TODO(), &app.Filter{Pool: pool})
 	if err != nil {
 		log.Errorf("[rebuild pool apps] unable to list apps for pool %q: %v", pool, err)
 		return

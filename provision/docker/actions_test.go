@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -717,11 +718,12 @@ func (s *S) TestProvisionAddUnitsToHostName(c *check.C) {
 }
 
 func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
+	ctx := context.TODO()
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
-	defer p.Destroy(app)
-	p.Provision(app)
+	defer p.Destroy(ctx, app)
+	p.Provision(ctx, app)
 	coll := p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}})
@@ -750,11 +752,12 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 }
 
 func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
+	ctx := context.TODO()
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
-	defer p.Destroy(app)
-	p.Provision(app)
+	defer p.Destroy(ctx, app)
+	p.Provision(ctx, app)
 	coll := p.Collection()
 	defer coll.Close()
 	version, err := newVersionForApp(s.p, app, nil)
@@ -786,9 +789,10 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 }
 
 func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
+	ctx := context.TODO()
 	app := provisiontest.NewFakeApp("myapp-xxx-1", "python", 0)
-	defer s.p.Destroy(app)
-	s.p.Provision(app)
+	defer s.p.Destroy(ctx, app)
+	s.p.Provision(ctx, app)
 	_, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
 	coll := s.p.Collection()
@@ -965,6 +969,7 @@ func (s *S) TestBindAndHealthcheckName(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForward(c *check.C) {
+	ctx := context.TODO()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/x/y" {
 			w.WriteHeader(http.StatusOK)
@@ -983,8 +988,8 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1020,6 +1025,7 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
+	ctx := context.TODO()
 	appName := "my-fake-app"
 	customData := map[string]interface{}{
 		"processes": map[string]interface{}{
@@ -1028,8 +1034,8 @@ func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1069,6 +1075,7 @@ func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
+	ctx := context.TODO()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -1086,8 +1093,8 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1127,6 +1134,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
+	ctx := context.TODO()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -1144,8 +1152,8 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1185,6 +1193,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
+	ctx := context.TODO()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -1202,8 +1211,8 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1235,6 +1244,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
+	ctx := context.TODO()
 	s.server.CustomHandler("/exec/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"ID":"id","ExitCode":9}`))
@@ -1253,8 +1263,8 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		},
 	}
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, customData)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -1280,10 +1290,11 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
+	ctx := context.TODO()
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	s.p.Provision(fakeApp)
-	defer s.p.Destroy(fakeApp)
+	s.p.Provision(ctx, fakeApp)
+	defer s.p.Destroy(ctx, fakeApp)
 	version, err := newVersionForApp(s.p, fakeApp, nil)
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()

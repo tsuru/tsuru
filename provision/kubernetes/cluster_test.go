@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"math/rand"
 	"sort"
 	"time"
@@ -150,7 +151,7 @@ func (s *S) TestClusterAppNamespace(c *check.C) {
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err = s.p.Provision(a)
+	err = s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	ns, err := client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
@@ -312,7 +313,7 @@ func (s *S) TestClustersForApps(c *check.C) {
 	a3.Pool = "p2"
 	a4 := provisiontest.NewFakeApp("myapp4", "python", 0)
 	a4.Pool = "abc"
-	cApps, err := clustersForApps([]provision.App{a1, a2, a3, a4})
+	cApps, err := clustersForApps(context.TODO(), []provision.App{a1, a2, a3, a4})
 	c.Assert(err, check.IsNil)
 	c.Assert(cApps, check.HasLen, 2)
 	sort.Slice(cApps, func(i, j int) bool {

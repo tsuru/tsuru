@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -683,7 +684,7 @@ func (s *S) TestRenamePoolTeam(c *check.C) {
 		err := SetPoolConstraint(&constraint)
 		c.Assert(err, check.IsNil)
 	}
-	err := RenamePoolTeam("t2", "t9000")
+	err := RenamePoolTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var cs []PoolConstraint
 	err = coll.Find(nil).Sort("poolexpr").All(&cs)

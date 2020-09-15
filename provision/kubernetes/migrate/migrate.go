@@ -1,6 +1,8 @@
 package migrate
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -26,13 +28,13 @@ func MigrateAppsCRDs() error {
 			kubePools = append(kubePools, p.Name)
 		}
 	}
-	apps, err := app.List(&app.Filter{Pools: kubePools})
+	apps, err := app.List(context.TODO(), &app.Filter{Pools: kubePools})
 	if err != nil {
 		return errors.Wrap(err, "failed to list apps")
 	}
 	multiErr := tsuruerrors.NewMultiError()
 	for _, a := range apps {
-		errProv := prov.Provision(&a)
+		errProv := prov.Provision(context.TODO(), &a)
 		if errProv != nil {
 			multiErr.Add(errProv)
 		}

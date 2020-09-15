@@ -51,7 +51,7 @@ func (s *clusterStorage) GetStatus(name string) (string, error) {
 
 func (s *clusterStorage) Get(name string) (rcluster.Cluster, error) {
 	var c rcluster.Cluster
-	tc, err := s.storage.FindByName(name)
+	tc, err := s.storage.FindByName(context.Background(), name)
 	if err != nil {
 		return c, errors.WithStack(err)
 	}
@@ -71,7 +71,7 @@ func (s *clusterStorage) Get(name string) (rcluster.Cluster, error) {
 }
 
 func (s *clusterStorage) Remove(name string) error {
-	tCluster, err := s.storage.FindByName(name)
+	tCluster, err := s.storage.FindByName(context.Background(), name)
 	if err != nil {
 		return err
 	}
@@ -79,11 +79,11 @@ func (s *clusterStorage) Remove(name string) error {
 		tCluster.CreateData = map[string]string{}
 	}
 	tCluster.CreateData[kontainerDeletedCreateClusterKey] = "true"
-	return errors.WithStack(s.storage.Upsert(*tCluster))
+	return errors.WithStack(s.storage.Upsert(context.Background(), *tCluster))
 }
 
 func (s *clusterStorage) Store(c rcluster.Cluster) error {
-	tc, err := s.storage.FindByName(c.Name)
+	tc, err := s.storage.FindByName(context.Background(), c.Name)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -121,7 +121,7 @@ func (s *clusterStorage) Store(c rcluster.Cluster) error {
 	}
 	tc.CreateData[kontainerDataCreateClusterKey] = string(serialized)
 	delete(tc.CreateData, kontainerDeletedCreateClusterKey)
-	return errors.WithStack(s.storage.Upsert(*tc))
+	return errors.WithStack(s.storage.Upsert(context.Background(), *tc))
 }
 
 func (s *clusterStorage) PersistStatus(c rcluster.Cluster, status string) error {

@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -73,7 +74,7 @@ func limiter() provision.ActionLimiter {
 	return globalLimiter
 }
 
-func (b *dockerBuilder) Build(prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	p, ok := prov.(provision.BuilderDeployDockerClient)
 	if !ok {
 		return nil, errors.New("provisioner not supported: doesn't implement docker builder")
