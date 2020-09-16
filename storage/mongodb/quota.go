@@ -22,23 +22,6 @@ type quotaObject struct {
 	Quota quota.Quota
 }
 
-func (s *quotaStorage) Inc(name string, quantity int) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	_, err = s.Get(name)
-	if err != nil {
-		return err
-	}
-	err = conn.Collection(s.collection).Update(
-		s.query(name),
-		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
-	)
-	return err
-}
-
 func (s *quotaStorage) SetLimit(name string, limit int) error {
 	conn, err := db.Conn()
 	if err != nil {

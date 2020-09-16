@@ -36,29 +36,6 @@ func (s *AppQuotaSuite) TestGetNotFound(c *check.C) {
 	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }
 
-func (s *AppQuotaSuite) TestInc(c *check.C) {
-	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
-	s.AppStorage.Create(app)
-	err := s.AppQuotaStorage.Inc("myapp", 1)
-	c.Assert(err, check.IsNil)
-	quota, err := s.AppQuotaStorage.Get("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(quota.InUse, check.Equals, 1)
-	c.Assert(quota.Limit, check.Equals, 5)
-	err = s.AppQuotaStorage.Inc("myapp", 2)
-	c.Assert(err, check.IsNil)
-	quota, err = s.AppQuotaStorage.Get("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(quota.InUse, check.Equals, 3)
-	c.Assert(quota.Limit, check.Equals, 5)
-}
-
-func (s *AppQuotaSuite) TestIncNotFound(c *check.C) {
-	err := s.AppQuotaStorage.Inc("myapp", 1)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
-}
-
 func (s *AppQuotaSuite) TestSetLimit(c *check.C) {
 	app := &app.App{Name: "myapp", Quota: quota.Quota{Limit: 5, InUse: 0}}
 	s.AppStorage.Create(app)

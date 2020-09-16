@@ -207,10 +207,7 @@ var updateServices = &action.Action{
 			newLabelsMap[processName] = &labels
 			totalUnits += labels.realReplicas
 		}
-		err := args.app.SetQuotaInUse(totalUnits)
-		if err != nil {
-			return nil, err
-		}
+		var err error
 		for _, processName := range toDeployProcesses {
 			labels := newLabelsMap[processName]
 			ectx, cancel := args.event.CancelableContext(context.Background())

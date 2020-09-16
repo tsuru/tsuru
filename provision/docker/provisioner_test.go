@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
@@ -46,7 +45,6 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
@@ -266,12 +264,6 @@ func (s *S) TestDeploy(c *check.C) {
 	defer func() { <-stopCh }()
 	a := s.newApp("myapp")
 	err := app.CreateApp(context.TODO(), &a, s.user)
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, "myapp")
-		c.Assert(inUse, check.Equals, 1)
-		a.Quota.InUse = 1
-		return nil
-	}
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +294,6 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].IP)
-	c.Assert(a.Quota, check.DeepEquals, quota.Quota{Limit: -1, InUse: 1})
 	cont, err := s.p.Cluster().InspectContainer(units[0].GetID())
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Config.Cmd, check.DeepEquals, []string{
@@ -405,60 +396,6 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 	c.Assert(p.ActionLimiter().Len(hostAddr), check.Equals, 0)
 }
 
-func (s *S) TestDeployQuotaExceeded(c *check.C) {
-	stopCh := s.stopContainers(s.server.URL(), 1)
-	defer func() { <-stopCh }()
-	a := s.newApp("otherapp")
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
-		c.Assert(appName, check.Equals, "otherapp")
-		c.Assert(limit, check.Equals, 1)
-		a.Quota.Limit = 1
-		return nil
-	}
-	s.mockService.AppQuota.OnSet = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, "otherapp")
-		c.Assert(quantity, check.Equals, 2)
-		return &quota.QuotaExceededError{Available: 1, Requested: 2}
-	}
-	c.Assert(err, check.IsNil)
-	err = a.SetQuotaLimit(1)
-	c.Assert(err, check.IsNil)
-	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		serviceBodies = append(serviceBodies, string(data))
-		w.WriteHeader(http.StatusOK)
-	})
-	defer rollback()
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web":    "python myapp.py",
-			"worker": "python myworker.py",
-		},
-	}
-	version, err := newVersionForApp(s.p, &a, customData)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: "app", Value: a.Name},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	fakeServer := newFakeServer()
-	defer fakeServer.Close()
-	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: &a, Version: version, Event: evt})
-	c.Assert(err, check.NotNil)
-	compErr, ok := err.(*errors.CompositeError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(compErr.Message, check.Equals, "Cannot start application units")
-	e, ok := compErr.Base.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Available, check.Equals, uint(1))
-	c.Assert(e.Requested, check.Equals, uint(2))
-}
-
 func (s *S) TestDeployCanceledEvent(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app)
@@ -543,7 +480,6 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 
 func (s *S) TestRollbackDeploy(c *check.C) {
 	a := s.newApp("otherapp")
-	a.Quota = quota.UnlimitedQuota
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version, err := newSuccessfulVersionForApp(s.p, &a, nil)

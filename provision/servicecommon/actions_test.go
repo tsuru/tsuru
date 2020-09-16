@@ -323,7 +323,6 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 1, labels: newLabelsWeb},
 	})
-	c.Assert(fakeApp.Quota.InUse, check.Equals, 1)
 }
 
 func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
@@ -358,7 +357,6 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 		{action: "deploy", app: fakeApp, processName: "web", version: newVersion, replicas: 5, labels: labelsWeb},
 		{action: "deploy", app: fakeApp, processName: "worker2", version: newVersion, replicas: 1, labels: labelsWorker},
 	})
-	c.Assert(fakeApp.Quota.InUse, check.Equals, 6)
 }
 
 func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
@@ -540,7 +538,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 2)
-				c.Assert(a.Quota.InUse, check.Equals, 2)
 			},
 		},
 		{
@@ -550,7 +547,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 0)
 				c.Assert(ls.IsStopped(), check.Equals, true)
-				c.Assert(a.Quota.InUse, check.Equals, 0)
 			},
 		},
 		{

@@ -21,15 +21,23 @@ func (q *Quota) IsUnlimited() bool {
 	return -1 == q.Limit
 }
 
+type QuotaItem interface {
+	GetName() string
+}
+
+type QuotaItemInUse interface {
+	QuotaItem
+	GetQuotaInUse() (int, error)
+}
+
 type QuotaService interface {
-	Inc(name string, delta int) error
-	Set(name string, quantity int) error
-	SetLimit(name string, limit int) error
-	Get(name string) (*Quota, error)
+	Inc(item QuotaItem, delta int) error
+	Set(item QuotaItem, quantity int) error
+	SetLimit(item QuotaItem, limit int) error
+	Get(item QuotaItem) (*Quota, error)
 }
 
 type QuotaStorage interface {
-	Inc(name string, delta int) error
 	SetLimit(name string, limit int) error
 	Get(name string) (*Quota, error)
 	Set(name string, quantity int) error

@@ -103,7 +103,7 @@ func (s *S) TestDelete(c *check.C) {
 	_, err = GetByName(app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
-	err = servicemanager.UserQuota.Inc(s.user.Email, 1)
+	err = servicemanager.UserQuota.Inc(s.user, 1)
 	c.Assert(err, check.IsNil)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
@@ -275,8 +275,8 @@ func (s *S) TestCreateApp(c *check.C) {
 		TeamOwner: s.team.Name,
 		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
 	expectedHost := "localhost"
@@ -308,8 +308,8 @@ func (s *S) TestCreateAppAlreadyExists(c *check.C) {
 		TeamOwner: s.team.Name,
 		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
 	expectedHost := "localhost"
@@ -438,8 +438,8 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
 	)
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
@@ -736,9 +736,9 @@ func (s *S) TestAddUnitsQuota(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	var inUseNow int
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		inUseNow++
-		c.Assert(appName, check.Equals, app.Name)
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 1)
 		return nil
 	}
@@ -759,8 +759,8 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 		TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}},
 		Quota: quota.Quota{Limit: 7, InUse: 7},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -782,8 +782,8 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 		TeamOwner: s.team.Name,
 		Quota:     quota.Quota{Limit: 11, InUse: 0},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 10)
 		return nil
 	}
@@ -835,48 +835,33 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 		Name:      "ble",
 		TeamOwner: s.team.Name,
 	}
-	s.mockService.AppQuota.OnSetLimit = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnSetLimit = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 6)
-
 		return nil
 	}
-	setCalls := 0
-	s.mockService.AppQuota.OnSet = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, a.Name)
-		setCalls++
-		if setCalls == 1 {
-			c.Assert(quantity, check.Equals, 6)
-		} else {
-			c.Assert(quantity, check.Equals, 2)
-		}
-		return nil
-	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 4)
 		return nil
 	}
-	s.mockService.AppQuota.OnGet = func(appName string) (*quota.Quota, error) {
-		c.Assert(appName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, a.Name)
 		return &quota.Quota{Limit: 6, InUse: 2}, nil
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.SetQuotaLimit(6)
 	c.Assert(err, check.IsNil)
-	err = a.SetQuotaInUse(6)
-	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 6, "web", newSuccessfulAppVersion(c, &a), nil)
 	err = a.RemoveUnits(context.TODO(), 4, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	quota, err := servicemanager.AppQuota.Get(a.Name)
+	quota, err := servicemanager.AppQuota.Get(&a)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(2e9, func() bool {
 		return quota.InUse == 2
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(setCalls, check.Equals, 2)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
@@ -3860,69 +3845,14 @@ func (s *S) TestGetName(c *check.C) {
 }
 
 func (s *S) TestGetQuota(c *check.C) {
-	a := App{Name: "app1", Quota: quota.UnlimitedQuota}
-	c.Assert(a.GetQuota(), check.DeepEquals, quota.UnlimitedQuota)
-}
-
-func (s *S) TestSetQuotaInUse(c *check.C) {
-	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 5}}
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(inUse, check.Equals, 3)
-		return nil
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, "app1")
+		return &quota.Quota{InUse: 1, Limit: 2}, nil
 	}
-	err := app.SetQuotaInUse(3)
+	a := App{Name: "app1"}
+	q, err := a.GetQuota()
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestSetQuotaInUseNotFound(c *check.C) {
-	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 5}}
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(inUse, check.Equals, 3)
-		return appTypes.ErrAppNotFound
-	}
-	err := app.SetQuotaInUse(3)
-	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
-}
-
-func (s *S) TestSetQuotaInUseUnlimited(c *check.C) {
-	app := App{Name: "someapp", Quota: quota.UnlimitedQuota, TeamOwner: s.team.Name}
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(inUse, check.Equals, 3)
-		return nil
-	}
-	err := app.SetQuotaInUse(3)
-	c.Assert(err, check.IsNil)
-
-}
-
-func (s *S) TestSetQuotaInUseQuotaExceeded(c *check.C) {
-	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 3}}
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(inUse, check.Equals, 6)
-		return &quota.QuotaExceededError{Available: 5, Requested: 6}
-	}
-	err := app.SetQuotaInUse(6)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Available, check.Equals, uint(5))
-	c.Assert(e.Requested, check.Equals, uint(6))
-}
-
-func (s *S) TestSetQuotaInUseIsInvalid(c *check.C) {
-	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 3}}
-	s.mockService.AppQuota.OnSet = func(appName string, inUse int) error {
-		c.Assert(appName, check.Equals, app.Name)
-		c.Assert(inUse, check.Equals, -1)
-		return quota.ErrLessThanZero
-	}
-	err := app.SetQuotaInUse(-1)
-	c.Assert(err, check.NotNil)
-	c.Check(err, check.Equals, quota.ErrLessThanZero)
+	c.Assert(q, check.DeepEquals, &quota.Quota{InUse: 1, Limit: 2})
 }
 
 func (s *S) TestGetCname(c *check.C) {

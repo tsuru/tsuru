@@ -90,7 +90,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	err = servicemanager.UserQuota.SetLimit(user.Email, limit)
+	err = servicemanager.UserQuota.SetLimit(user, limit)
 	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,
@@ -118,7 +118,11 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(a.GetQuota())
+	quota, err := a.GetQuota()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(quota)
 }
 
 // title: update application quota

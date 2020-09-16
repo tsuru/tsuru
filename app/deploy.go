@@ -332,10 +332,6 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(ctx, &opts, opts.Event)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(opts.App.Name, opts.Event)
-	quotaErr := opts.App.fixQuota()
-	if quotaErr != nil {
-		log.Errorf("WARNING: unable to ensure quota is up-to-date after deploy: %v", quotaErr)
-	}
 	if err != nil {
 		return "", newErrorWithLog(err, opts.App, "deploy")
 	}
