@@ -121,23 +121,17 @@ func createApp(app *App) error {
 		return ErrAppAlreadyExists
 	}
 
-	logConn, err := db.LogConn()
-	if err == nil {
-		defer logConn.Close()
-		logConn.CreateAppLogCollection(app.Name)
+	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+		plog.Provision(app.Name)
 	}
 	return nil
 }
 
 func removeApp(app *App) error {
-	logConn, err := db.LogConn()
-	if err != nil {
-		log.Errorf("Could not connect to the log database: %s", err)
-	} else {
-		defer logConn.Close()
-		err = logConn.AppLogCollection(app.Name).DropCollection()
+	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+		err := plog.CleanUp(app.Name)
 		if err != nil {
-			log.Errorf("Unable to remove logs collection: %s", err)
+			log.Errorf("Unable to cleanup logs: %v", err)
 		}
 	}
 

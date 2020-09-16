@@ -33,11 +33,10 @@ import (
 )
 
 type EventSuite struct {
-	conn    *db.Storage
-	logConn *db.LogStorage
-	token   auth.Token
-	team    *authTypes.Team
-	user    *auth.User
+	conn  *db.Storage
+	token auth.Token
+	team  *authTypes.Team
+	user  *auth.User
 }
 
 var _ = check.Suite(&EventSuite{})
@@ -65,15 +64,11 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	s.logConn, err = db.LogConn()
-	c.Assert(err, check.IsNil)
 }
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
-	s.logConn.Close()
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {

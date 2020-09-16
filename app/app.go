@@ -652,14 +652,14 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to release app quota", err)
 	}
-	logConn, err := db.LogConn()
-	if err == nil {
-		defer logConn.Close()
-		err = logConn.AppLogCollection(appName).DropCollection()
+
+	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+		err = plog.CleanUp(app.Name)
+		if err != nil {
+			logErr("Unable to remove logs", err)
+		}
 	}
-	if err != nil {
-		logErr("Unable to remove logs collection", err)
-	}
+
 	conn, err := db.Conn()
 	if err == nil {
 		defer conn.Close()

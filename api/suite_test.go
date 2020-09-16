@@ -46,7 +46,6 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
-	logConn     *db.LogStorage
 	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
@@ -118,11 +117,6 @@ func (s *S) SetUpTest(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.logConn, err = db.LogConn()
-	c.Assert(err, check.IsNil)
-	appLogColl := s.logConn.AppLogCollection("myapp")
-	appLogColl.DropCollection()
-	dbtest.ClearAllCollections(appLogColl.Database)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.ProvisionerInstance
 	s.provisioner.Reset()
@@ -185,7 +179,6 @@ func (s *S) TearDownTest(c *check.C) {
 	}
 	s.provisioner.Reset()
 	s.conn.Close()
-	s.logConn.Close()
 	healer.HealerInstance = nil
 	queue.ResetQueue()
 	config.Unset("listen")
@@ -197,10 +190,6 @@ func (s *S) TearDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
-	logConn, err := db.LogConn()
-	c.Assert(err, check.IsNil)
-	defer logConn.Close()
-	logConn.AppLogCollection("myapp").Database.DropDatabase()
 }
 
 func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {

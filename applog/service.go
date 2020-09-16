@@ -18,13 +18,15 @@ const (
 func AppLogService() (appTypes.AppLogService, error) {
 	appLogSvc, _ := config.GetString("log:app-log-service")
 	if appLogSvc == "" {
-		appLogSvc = "storage"
+		appLogSvc = "memory-standalone"
 	}
 	var svc appTypes.AppLogService
 	var err error
 	switch appLogSvc {
 	case "storage":
 		svc, err = storageAppLogService()
+	case "memory-standalone":
+		svc, err = memoryAppLogService()
 	case "memory":
 		svc, err = aggregatorAppLogService()
 	default:

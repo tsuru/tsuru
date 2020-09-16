@@ -30,10 +30,6 @@ type Storage struct {
 	*storage.Storage
 }
 
-type LogStorage struct {
-	*storage.Storage
-}
-
 func init() {
 	hc.AddChecker("MongoDB", healthCheck)
 }
@@ -75,16 +71,6 @@ func Conn() (*Storage, error) {
 		err  error
 	)
 	url, dbname := DbConfig("")
-	strg.Storage, err = storage.Open(url, dbname)
-	return &strg, err
-}
-
-func LogConn() (*LogStorage, error) {
-	var (
-		strg LogStorage
-		err  error
-	)
-	url, dbname := DbConfig("logdb-")
 	strg.Storage, err = storage.Open(url, dbname)
 	return &strg, err
 }
@@ -148,27 +134,6 @@ func (s *Storage) SAMLRequests() *storage.Collection {
 	coll := s.Collection("saml_requests")
 	coll.EnsureIndex(id)
 	return coll
-}
-
-var logCappedInfo = mgo.CollectionInfo{
-	Capped:   true,
-	MaxBytes: 200 * 5000,
-	MaxDocs:  5000,
-}
-
-// AppLogCollection returns the logs collection for one app from MongoDB.
-func (s *LogStorage) AppLogCollection(appName string) *storage.Collection {
-	if appName == "" {
-		return nil
-	}
-	return s.Collection("logs_" + appName)
-}
-
-// CreateAppLogCollection creates a new capped collection to store logs for an app.
-func (s *LogStorage) CreateAppLogCollection(appName string) (*storage.Collection, error) {
-	c := s.AppLogCollection(appName)
-	err := c.Create(&logCappedInfo)
-	return c, err
 }
 
 func (s *Storage) Roles() *storage.Collection {

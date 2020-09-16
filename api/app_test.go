@@ -4500,21 +4500,13 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	c.Assert(logs[1].Unit, check.Equals, "caliban")
 }
 
-func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
+func (s *S) TestAppLogSelectByLinesShouldReturnTheLatestEntries(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	now := time.Now()
-	coll, err := s.logConn.CreateAppLogCollection(a.Name)
-	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		l := appTypes.Applog{
-			Date:    now.Add(time.Duration(i) * time.Hour),
-			Message: strconv.Itoa(i),
-			Source:  "source",
-			AppName: a.Name,
-		}
-		coll.Insert(l)
+		err = servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "unit")
+		c.Assert(err, check.IsNil)
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,

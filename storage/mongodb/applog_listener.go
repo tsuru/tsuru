@@ -11,14 +11,13 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type logListener struct {
 	c       <-chan appTypes.Applog
-	logConn *db.LogStorage
+	logConn *logStorage
 	quit    chan struct{}
 }
 
@@ -34,13 +33,13 @@ func isSessionClosed(r interface{}) bool {
 }
 
 func newLogListener(svc appTypes.AppLogStorage, args appTypes.ListLogArgs) (*logListener, error) {
-	conn, err := db.LogConn()
+	conn, err := logConn()
 	if err != nil {
 		return nil, err
 	}
 	c := make(chan appTypes.Applog, 10)
 	quit := make(chan struct{})
-	coll := conn.AppLogCollection(args.AppName)
+	coll := conn.appLogCollection(args.AppName)
 	var lastLog appTypes.Applog
 	err = coll.Find(nil).Sort("-_id").Limit(1).One(&lastLog)
 	if err == mgo.ErrNotFound {

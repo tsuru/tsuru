@@ -9,39 +9,12 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
-type WriterSuite struct {
-	conn *db.Storage
-}
-
-var _ = check.Suite(&WriterSuite{})
-
-func (s *WriterSuite) SetUpSuite(c *check.C) {
-	var err error
-	config.Set("log:disable-syslog", true)
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "tsuru_api_writer_test")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *WriterSuite) SetUpTest(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-}
-
-func (s *WriterSuite) TearDownSuite(c *check.C) {
-	s.conn.Apps().Database.DropDatabase()
-	s.conn.Close()
-}
-
-func (s *WriterSuite) TestLogWriter(c *check.C) {
+func (s *S) TestLogWriter(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -61,7 +34,7 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
 }
 
-func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
+func (s *S) TestLogWriterCustomSource(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -81,7 +54,7 @@ func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
 	c.Assert(logs[0].Source, check.Equals, "cool-test")
 }
 
-func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
+func (s *S) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -95,7 +68,7 @@ func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	c.Assert(n, check.Equals, len(data))
 }
 
-func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
+func (s *S) TestLogWriterAsync(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -119,7 +92,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
 }
 
-func (s *WriterSuite) TestLogWriterAsyncTimeout(c *check.C) {
+func (s *S) TestLogWriterAsyncTimeout(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -133,7 +106,7 @@ func (s *WriterSuite) TestLogWriterAsyncTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
+func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -163,7 +136,7 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 	}
 }
 
-func (s *WriterSuite) TestLogWriterAsyncCloseWritingStress(c *check.C) {
+func (s *S) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -185,7 +158,7 @@ func (s *WriterSuite) TestLogWriterAsyncCloseWritingStress(c *check.C) {
 	}
 }
 
-func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
+func (s *S) TestLogWriterAsyncWriteClosed(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -208,7 +181,7 @@ func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
 	c.Assert(logs, check.HasLen, 0)
 }
 
-func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
+func (s *S) TestLogWriterWriteClosed(c *check.C) {
 	a := App{Name: "down"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)

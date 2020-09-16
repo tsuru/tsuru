@@ -20,6 +20,8 @@ type storageLogService struct {
 	storage    appTypes.AppLogStorage
 }
 
+var _ appTypes.AppLogServiceProvision = &storageLogService{}
+
 func storageAppLogService() (appTypes.AppLogService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
@@ -78,4 +80,12 @@ func (s *storageLogService) Watch(ctx context.Context, filters appTypes.ListLogA
 
 func (s *storageLogService) Shutdown(ctx context.Context) error {
 	return s.dispatcher.shutdown(ctx)
+}
+
+func (s *storageLogService) Provision(appName string) error {
+	return s.storage.Provision(appName)
+}
+
+func (s *storageLogService) CleanUp(appName string) error {
+	return s.storage.CleanUp(appName)
 }

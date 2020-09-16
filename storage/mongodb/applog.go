@@ -8,9 +8,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/types/app"
 )
@@ -19,14 +21,49 @@ type applogStorage struct{}
 
 var _ app.AppLogStorage = &applogStorage{}
 
+type logStorage struct {
+	*storage.Storage
+}
+
+var logCappedInfo = mgo.CollectionInfo{
+	Capped:   true,
+	MaxBytes: 200 * 5000,
+	MaxDocs:  5000,
+}
+
+func logConn() (*logStorage, error) {
+	var (
+		strg logStorage
+		err  error
+	)
+	url, dbname := db.DbConfig("logdb-")
+	strg.Storage, err = storage.Open(url, dbname)
+	return &strg, err
+}
+
+// appLogCollection returns the logs collection for one app from MongoDB.
+func (s *logStorage) appLogCollection(appName string) *storage.Collection {
+	if appName == "" {
+		return nil
+	}
+	return s.Collection("logs_" + appName)
+}
+
+// createAppLogCollection creates a new capped collection to store logs for an app.
+func (s *logStorage) createAppLogCollection(appName string) (*storage.Collection, error) {
+	c := s.appLogCollection(appName)
+	err := c.Create(&logCappedInfo)
+	return c, err
+}
+
 func (s *applogStorage) InsertApp(appName string, msgs ...*app.Applog) error {
-	conn, err := db.LogConn()
+	conn, err := logConn()
 	if err != nil {
 		log.Errorf("[log insert] unable to connect to mongodb: %s", err)
 		return err
 	}
 	defer conn.Close()
-	coll, err := conn.CreateAppLogCollection(appName)
+	coll, err := conn.createAppLogCollection(appName)
 	if err != nil && !db.IsCollectionExistsError(err) {
 		log.Errorf("[log insert] unable to create collection in mongodb: %s", err)
 		return err
@@ -51,14 +88,14 @@ func (s *applogStorage) List(ctx context.Context, args app.ListLogArgs) ([]app.A
 	if args.AppName == "" {
 		return nil, errors.New("unable to list logs with empty app name")
 	}
-	conn, err := db.LogConn()
+	conn, err := logConn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	logs := []app.Applog{}
 	q := makeQuery(args)
-	err = conn.AppLogCollection(args.AppName).Find(q).Sort("-$natural").Limit(args.Limit).All(&logs)
+	err = conn.appLogCollection(args.AppName).Find(q).Sort("-$natural").Limit(args.Limit).All(&logs)
 	if err != nil {
 		return nil, err
 	}
@@ -90,4 +127,23 @@ func makeQuery(args app.ListLogArgs) bson.M {
 		q["unit"] = bson.M{"$in": args.Units}
 	}
 	return q
+}
+
+func (s *applogStorage) Provision(appName string) error {
+	conn, err := logConn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.createAppLogCollection(appName)
+	return err
+}
+
+func (s *applogStorage) CleanUp(appName string) error {
+	conn, err := logConn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.appLogCollection(appName).DropCollection()
 }

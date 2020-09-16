@@ -46,7 +46,6 @@ import (
 
 type DeploySuite struct {
 	conn        *db.Storage
-	logConn     *db.LogStorage
 	token       auth.Token
 	user        *auth.User
 	team        *authTypes.Team
@@ -92,8 +91,6 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	s.logConn, err = db.LogConn()
-	c.Assert(err, check.IsNil)
 	s.testServer = RunServer(true)
 }
 
@@ -101,9 +98,7 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool("pool1")
 	s.conn.Apps().Database.DropDatabase()
-	s.logConn.AppLogCollection("myapp").Database.DropDatabase()
 	s.conn.Close()
-	s.logConn.Close()
 	s.reset()
 }
 

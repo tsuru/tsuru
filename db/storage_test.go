@@ -142,15 +142,6 @@ func (s *S) TestServiceInstances(c *check.C) {
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
 }
 
-func (s *S) TestLogs(c *check.C) {
-	strg, err := LogConn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	logs := strg.AppLogCollection("myapp")
-	logsc := strg.Collection("logs_myapp")
-	c.Assert(logs, check.DeepEquals, logsc)
-}
-
 func (s *S) TestRoles(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
