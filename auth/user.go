@@ -403,3 +403,7 @@ func (u *User) AddRolesForEvent(roleEvent *permTypes.RoleEvent, contextValue str
 	}
 	return nil
 }
+
+func (u *User) GetName() string {
+	return u.Email
+}

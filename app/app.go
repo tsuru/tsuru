@@ -654,7 +654,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = servicemanager.UserQuota.Inc(owner.Email, -1)
+		err = servicemanager.UserQuota.Inc(owner, -1)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)
@@ -756,11 +756,10 @@ func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string
 		&provisionAddUnits,
 	).Execute(app, n, w, process, version)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-	quotaErr := app.fixQuota()
 	if err != nil {
 		return newErrorWithLog(err, app, "add units")
 	}
-	return quotaErr
+	return nil
 }
 
 // RemoveUnits removes n units from the app. It's a process composed of
@@ -780,27 +779,10 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 	}
 	err = prov.RemoveUnits(ctx, app, n, process, version, w)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-	quotaErr := app.fixQuota()
 	if err != nil {
 		return newErrorWithLog(err, app, "remove units")
 	}
-	return quotaErr
-}
-
-func (app *App) fixQuota() error {
-	units, err := app.Units()
-	if err != nil {
-		return err
-	}
-	var count int
-	for _, u := range units {
-		if u.Status == provision.StatusBuilding ||
-			u.Status == provision.StatusCreated {
-			continue
-		}
-		count++
-	}
-	return app.SetQuotaInUse(count)
+	return nil
 }
 
 // SetUnitStatus changes the status of the given unit.
@@ -1453,16 +1435,27 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuota() quota.Quota {
-	return app.Quota
+func (app *App) GetQuotaInUse() (int, error) {
+	units, err := app.Units()
+	if err != nil {
+		return 0, err
+	}
+	counter := 0
+	for _, u := range units {
+		switch u.Status {
+		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped, provision.StatusAsleep:
+			counter++
+		}
+	}
+	return counter, nil
 }
 
-func (app *App) SetQuotaInUse(inUse int) error {
-	return servicemanager.AppQuota.Set(app.Name, inUse)
+func (app *App) GetQuota() (*quota.Quota, error) {
+	return servicemanager.AppQuota.Get(app)
 }
 
 func (app *App) SetQuotaLimit(limit int) error {
-	return servicemanager.AppQuota.SetLimit(app.Name, limit)
+	return servicemanager.AppQuota.SetLimit(app, limit)
 }
 
 // GetCname returns the cnames of the app.

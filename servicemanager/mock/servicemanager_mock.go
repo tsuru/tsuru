@@ -107,14 +107,12 @@ func (m *MockService) ResetUserQuota() {
 	m.UserQuota.OnInc = nil
 	m.UserQuota.OnSet = nil
 	m.UserQuota.OnSetLimit = nil
-	m.UserQuota.OnGet = nil
 }
 
 func (m *MockService) ResetAppQuota() {
 	m.AppQuota.OnInc = nil
 	m.AppQuota.OnSet = nil
 	m.AppQuota.OnSetLimit = nil
-	m.AppQuota.OnGet = nil
 }
 
 func (m *MockService) ResetCluster() {

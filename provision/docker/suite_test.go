@@ -180,12 +180,12 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
 	}
-	s.mockService.UserQuota.OnGet = func(email string) (*quota.Quota, error) {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return &s.user.Quota, nil
 	}
-	s.mockService.UserQuota.OnInc = func(email string, n int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, n int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
 

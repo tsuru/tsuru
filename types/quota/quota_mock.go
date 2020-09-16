@@ -10,14 +10,9 @@ var (
 )
 
 type MockQuotaStorage struct {
-	OnInc      func(string, int) error
 	OnSet      func(string, int) error
 	OnSetLimit func(string, int) error
 	OnGet      func(string) (*Quota, error)
-}
-
-func (m *MockQuotaStorage) Inc(name string, quantity int) error {
-	return m.OnInc(name, quantity)
 }
 
 func (m *MockQuotaStorage) Set(name string, limit int) error {
@@ -33,36 +28,33 @@ func (m *MockQuotaStorage) Get(name string) (*Quota, error) {
 }
 
 type MockQuotaService struct {
-	OnInc      func(string, int) error
-	OnSet      func(string, int) error
-	OnSetLimit func(string, int) error
-	OnGet      func(string) (*Quota, error)
+	OnInc      func(QuotaItem, int) error
+	OnSet      func(QuotaItem, int) error
+	OnSetLimit func(QuotaItem, int) error
+	OnGet      func(QuotaItem) (*Quota, error)
 }
 
-func (m *MockQuotaService) Inc(name string, delta int) error {
+func (m *MockQuotaService) Inc(item QuotaItem, delta int) error {
 	if m.OnInc == nil {
 		return nil
 	}
-	return m.OnInc(name, delta)
+	return m.OnInc(item, delta)
 }
 
-func (m *MockQuotaService) SetLimit(name string, limit int) error {
+func (m *MockQuotaService) SetLimit(item QuotaItem, limit int) error {
 	if m.OnSetLimit == nil {
 		return nil
 	}
-	return m.OnSetLimit(name, limit)
+	return m.OnSetLimit(item, limit)
 }
 
-func (m *MockQuotaService) Set(name string, quantity int) error {
+func (m *MockQuotaService) Set(item QuotaItem, quantity int) error {
 	if m.OnSet == nil {
 		return nil
 	}
-	return m.OnSet(name, quantity)
+	return m.OnSet(item, quantity)
 }
 
-func (m *MockQuotaService) Get(name string) (*Quota, error) {
-	if m.OnGet == nil {
-		return nil, nil
-	}
-	return m.OnGet(name)
+func (m *MockQuotaService) Get(item QuotaItem) (*Quota, error) {
+	return m.OnGet(item)
 }

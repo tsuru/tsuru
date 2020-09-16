@@ -11,10 +11,17 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAddAutoScaleUnits(c *check.C) {
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, "myapp")
+		return &quota.Quota{
+			Limit: 10,
+		}, nil
+	}
 	provision.DefaultProvisioner = "autoscaleProv"
 	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
 		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil

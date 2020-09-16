@@ -165,16 +165,16 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
-	s.mockService.UserQuota.OnGet = func(email string) (*quota.Quota, error) {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return &s.user.Quota, nil
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, s.user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
 	clust := s.client.GetCluster()

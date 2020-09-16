@@ -357,8 +357,8 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
 	err := user.Create()
@@ -378,8 +378,8 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
 	err := user.Create()
@@ -399,8 +399,8 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
 	err := user.Create()
@@ -439,8 +439,8 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, user.Email)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := user.Create()
@@ -462,8 +462,8 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
-		c.Assert(email, check.Equals, user.Email)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
 	err := user.Create()
@@ -492,8 +492,8 @@ func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -511,8 +511,8 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 		Quota:    quota.UnlimitedQuota,
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 3)
 		return nil
 	}
@@ -530,8 +530,8 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 		Quota:    quota.Quota{Limit: 1, InUse: 1},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, 1)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
@@ -575,8 +575,8 @@ func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 		Quota:    quota.Quota{Limit: 5, InUse: 4},
 		Routers:  []appTypes.AppRouter{{Name: "fake"}},
 	}
-	s.mockService.AppQuota.OnInc = func(appName string, quantity int) error {
-		c.Assert(appName, check.Equals, app.Name)
+	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		c.Assert(item.GetName(), check.Equals, app.Name)
 		c.Assert(quantity, check.Equals, -3)
 		return nil
 	}

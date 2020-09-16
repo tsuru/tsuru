@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruHealer "github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
@@ -400,36 +399,15 @@ func (p *dockerProvisioner) deploy(a provision.App, version appTypes.AppVersion,
 			}
 			toAdd[processName].Quantity++
 		}
-		if err = setQuota(a, toAdd); err != nil {
-			return err
-		}
 		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, version)
 	} else {
 		toAdd := getContainersToAdd(processes, containers)
-		if err = setQuota(a, toAdd); err != nil {
-			return err
-		}
 		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, version)
 	}
 	if err != nil {
 		err = provision.ErrUnitStartup{Err: err}
 	}
 	return err
-}
-
-func setQuota(app provision.App, toAdd map[string]*containersToAdd) error {
-	var total int
-	for _, ct := range toAdd {
-		total += ct.Quantity
-	}
-	err := app.SetQuotaInUse(total)
-	if err != nil {
-		return &tsuruErrors.CompositeError{
-			Base:    err,
-			Message: "Cannot start application units",
-		}
-	}
-	return nil
 }
 
 func getContainersToAdd(processes map[string][]string, oldContainers []container.Container) map[string]*containersToAdd {

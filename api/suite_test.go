@@ -165,10 +165,10 @@ func (s *S) setupMocks() {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
 	}
-	s.mockService.UserQuota.OnInc = func(email string, q int) error {
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
 		return nil
 	}
-	s.mockService.UserQuota.OnGet = func(email string) (*quota.Quota, error) {
+	s.mockService.UserQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
 		return &s.user.Quota, nil
 	}
 }

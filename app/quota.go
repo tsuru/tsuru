@@ -18,5 +18,7 @@ func QuotaService() (quotaTypes.QuotaService, error) {
 			return nil, err
 		}
 	}
-	return &quota.QuotaService{Storage: dbDriver.AppQuotaStorage}, nil
+	return &quota.QuotaService{
+		Storage: dbDriver.AppQuotaStorage,
+	}, nil
 }

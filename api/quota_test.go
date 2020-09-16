@@ -143,8 +143,8 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.UserQuota.OnSetLimit = func(email string, limit int) error {
-		c.Assert(email, check.Equals, "radio@gaga.com")
+	s.mockService.UserQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
+		c.Assert(item.GetName(), check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
@@ -231,8 +231,8 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	s.mockService.UserQuota.OnSetLimit = func(email string, limit int) error {
-		c.Assert(email, check.Equals, "radio@gaga.com")
+	s.mockService.UserQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
+		c.Assert(item.GetName(), check.Equals, "radio@gaga.com")
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}
@@ -273,12 +273,15 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 }
 
 func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(item.GetName(), check.Equals, "civil")
+		return &quota.Quota{Limit: 4, InUse: 2}, nil
+	}
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	app := &app.App{
 		Name:  "civil",
-		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
 	err = conn.Apps().Insert(app)
@@ -298,7 +301,7 @@ func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
 	var qt quota.Quota
 	err = json.NewDecoder(recorder.Body).Decode(&qt)
 	c.Assert(err, check.IsNil)
-	c.Assert(qt, check.DeepEquals, app.Quota)
+	c.Assert(qt, check.DeepEquals, quota.Quota{Limit: 4, InUse: 2})
 }
 
 func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
@@ -349,8 +352,8 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
-		c.Assert(appName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
+		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
@@ -459,8 +462,8 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 		Quota: quota.Quota{Limit: 4, InUse: 2},
 		Teams: []string{s.team.Name},
 	}
-	s.mockService.AppQuota.OnSetLimit = func(appName string, limit int) error {
-		c.Assert(appName, check.Equals, a.Name)
+	s.mockService.AppQuota.OnSetLimit = func(item quota.QuotaItem, limit int) error {
+		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}
