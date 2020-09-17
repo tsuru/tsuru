@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,7 +29,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdate,
@@ -42,7 +43,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo()
+	spec, err := a.AutoScaleInfo(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.DeepEquals, []provision.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m"},
@@ -68,9 +69,9 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(&a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(provision.AutoScaleSpec{
+	err = a.AutoScale(context.TODO(), provision.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
@@ -87,7 +88,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo()
+	spec, err := a.AutoScaleInfo(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.IsNil)
 	c.Assert(eventtest.EventDesc{

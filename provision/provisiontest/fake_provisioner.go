@@ -1450,14 +1450,14 @@ type AutoScaleProvisioner struct {
 
 var _ provision.AutoScaleProvisioner = &AutoScaleProvisioner{}
 
-func (p *AutoScaleProvisioner) GetAutoScale(app provision.App) ([]provision.AutoScaleSpec, error) {
+func (p *AutoScaleProvisioner) GetAutoScale(ctx context.Context, app provision.App) ([]provision.AutoScaleSpec, error) {
 	if p.autoscales == nil {
 		return nil, nil
 	}
 	return p.autoscales[app.GetName()], nil
 }
 
-func (p *AutoScaleProvisioner) SetAutoScale(app provision.App, spec provision.AutoScaleSpec) error {
+func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app provision.App, spec provision.AutoScaleSpec) error {
 	if p.autoscales == nil {
 		p.autoscales = make(map[string][]provision.AutoScaleSpec)
 	}
@@ -1465,7 +1465,7 @@ func (p *AutoScaleProvisioner) SetAutoScale(app provision.App, spec provision.Au
 	return nil
 }
 
-func (p *AutoScaleProvisioner) RemoveAutoScale(app provision.App, process string) error {
+func (p *AutoScaleProvisioner) RemoveAutoScale(ctx context.Context, app provision.App, process string) error {
 	if p.autoscales == nil {
 		return nil
 	}

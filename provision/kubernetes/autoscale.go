@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -18,8 +20,8 @@ import (
 
 var errNoDeploy = errors.New("no routable version found for app, at least one deploy is required before configuring autoscale")
 
-func (p *kubernetesProvisioner) GetAutoScale(a provision.App) ([]provision.AutoScaleSpec, error) {
-	client, err := clusterForPool(a.GetPool())
+func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.App) ([]provision.AutoScaleSpec, error) {
+	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -76,8 +78,8 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpe
 	return spec
 }
 
-func (p *kubernetesProvisioner) RemoveAutoScale(a provision.App, process string) error {
-	client, err := clusterForPool(a.GetPool())
+func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision.App, process string) error {
+	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
 	}
@@ -92,8 +94,8 @@ func (p *kubernetesProvisioner) RemoveAutoScale(a provision.App, process string)
 	return nil
 }
 
-func (p *kubernetesProvisioner) SetAutoScale(a provision.App, spec provision.AutoScaleSpec) error {
-	client, err := clusterForPool(a.GetPool())
+func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.App, spec provision.AutoScaleSpec) error {
+	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
 	}
