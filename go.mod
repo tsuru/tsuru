@@ -105,7 +105,7 @@ require (
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
-	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528 // indirect
+	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528
 	gopkg.in/redis.v3 v3.6.4
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2

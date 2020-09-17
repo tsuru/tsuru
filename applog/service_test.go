@@ -433,7 +433,7 @@ func (s *ServiceSuite) Test_LogService_AddListConcurrent(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
+			_, err := s.svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
 			c.Assert(err, check.IsNil)
 		}()
 	}
