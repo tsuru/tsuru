@@ -22,6 +22,7 @@ var (
 	mongoSpanFind      mongoOperation = "Find"
 	mongoSpanFindID    mongoOperation = "FindID"
 	mongoSpanDelete    mongoOperation = "Delete"
+	mongoSpanInsert    mongoOperation = "Insert"
 )
 
 var (

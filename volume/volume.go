@@ -53,6 +53,8 @@ type Volume struct {
 	Status    string
 	Binds     []VolumeBind      `bson:"-"`
 	Opts      map[string]string `bson:",omitempty"`
+
+	ctx context.Context
 }
 
 func (v *Volume) UnmarshalPlan(result interface{}) error {
@@ -63,7 +65,7 @@ func (v *Volume) UnmarshalPlan(result interface{}) error {
 	return errors.WithStack(json.Unmarshal(jsonData, result))
 }
 
-func (v *Volume) validateNew() error {
+func (v *Volume) validateNew(ctx context.Context) error {
 	if v.Name == "" {
 		return errors.New("volume name cannot be empty")
 	}
@@ -73,11 +75,11 @@ func (v *Volume) validateNew() error {
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
-	return v.validate()
+	return v.validate(ctx)
 }
 
-func (v *Volume) validate() error {
-	p, err := pool.GetPoolByName(v.Pool)
+func (v *Volume) validate(ctx context.Context) error {
+	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -102,7 +104,7 @@ func (v *Volume) validate() error {
 }
 
 func (v *Volume) Create(ctx context.Context) error {
-	err := v.validateNew()
+	err := v.validateNew(ctx)
 	if err != nil {
 		return err
 	}
@@ -110,7 +112,7 @@ func (v *Volume) Create(ctx context.Context) error {
 }
 
 func (v *Volume) Update(ctx context.Context) error {
-	err := v.validate()
+	err := v.validate(ctx)
 	if err != nil {
 		return err
 	}
@@ -135,7 +137,7 @@ func (v *Volume) save(ctx context.Context) error {
 }
 
 func (v *Volume) isProvisioned(ctx context.Context) (bool, error) {
-	p, err := pool.GetPoolByName(v.Pool)
+	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -232,7 +234,7 @@ func (v *Volume) Delete(ctx context.Context) error {
 	if len(binds) > 0 {
 		return errors.New("cannot delete volume with existing binds")
 	}
-	p, err := pool.GetPoolByName(v.Pool)
+	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}

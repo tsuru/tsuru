@@ -150,6 +150,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   200: OK
 //   204: No content
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
 	var teams []string
 	var global bool
@@ -171,7 +172,7 @@ contexts:
 	if !global {
 		routersAllowed := make(map[string]struct{})
 		filteredRouters = []router.PlanRouter{}
-		pools, err := pool.ListPossiblePools(teams)
+		pools, err := pool.ListPossiblePools(ctx, teams)
 		if err != nil {
 			return err
 		}
@@ -213,6 +214,7 @@ contexts:
 //   404: App or router not found
 //   400: Invalid request
 func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var appRouter appTypes.AppRouter
 	err = ParseInput(r, &appRouter)
 	if err != nil {
@@ -237,7 +239,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 
-	p, err := pool.GetPoolByName(a.Pool)
+	p, err := pool.GetPoolByName(ctx, a.Pool)
 	if err != nil {
 		return err
 	}
@@ -272,6 +274,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   404: App or router not found
 //   400: Invalid request
 func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var appRouter appTypes.AppRouter
 	err = ParseInput(r, &appRouter)
 	if err != nil {
@@ -298,7 +301,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return permission.ErrUnauthorized
 	}
 
-	p, err := pool.GetPoolByName(a.Pool)
+	p, err := pool.GetPoolByName(ctx, a.Pool)
 	if err != nil {
 		return err
 	}

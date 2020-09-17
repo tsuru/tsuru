@@ -5,6 +5,7 @@
 package dockertest
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -164,7 +165,7 @@ func (s *S) TestMoveOneContainer(c *check.C) {
 	p.SetContainers("localhost", []container.Container{cont})
 	p.SetContainers("remotehost", []container.Container{{Container: types.Container{ID: "cont2"}}})
 	errors := make(chan error, 1)
-	result := p.MoveOneContainer(cont, "remotehost", errors, nil, nil, nil)
+	result := p.MoveOneContainer(context.TODO(), cont, "remotehost", errors, nil, nil, nil)
 	expected := container.Container{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}}
 	c.Assert(result, check.DeepEquals, expected)
 	select {
@@ -191,7 +192,7 @@ func (s *S) TestMoveOneContainerRecreate(c *check.C) {
 	p.SetContainers("localhost", []container.Container{cont})
 	p.SetContainers("remotehost", []container.Container{{Container: types.Container{ID: "cont2"}}})
 	errors := make(chan error, 1)
-	result := p.MoveOneContainer(cont, "", errors, nil, nil, nil)
+	result := p.MoveOneContainer(context.TODO(), cont, "", errors, nil, nil, nil)
 	expected := container.Container{Container: types.Container{ID: "cont1-moved", HostAddr: "remotehost"}}
 	c.Assert(result, check.DeepEquals, expected)
 	select {
@@ -216,7 +217,7 @@ func (s *S) TestMoveOneContainerNotFound(c *check.C) {
 	defer p.Destroy()
 	cont := container.Container{Container: types.Container{ID: "something", HostAddr: "localhost"}}
 	errors := make(chan error, 1)
-	result := p.MoveOneContainer(cont, "remotehost", errors, nil, nil, nil)
+	result := p.MoveOneContainer(context.TODO(), cont, "remotehost", errors, nil, nil, nil)
 	c.Assert(result, check.DeepEquals, container.Container{})
 	err = <-errors
 	c.Assert(err, check.NotNil)
@@ -232,7 +233,7 @@ func (s *S) TestMoveOneContainerNoActionNeeded(c *check.C) {
 	cont := container.Container{Container: types.Container{ID: "something"}}
 	p.SetContainers("localhost", []container.Container{cont})
 	errors := make(chan error, 1)
-	result := p.MoveOneContainer(cont, "localhost", errors, nil, nil, nil)
+	result := p.MoveOneContainer(context.TODO(), cont, "localhost", errors, nil, nil, nil)
 	cont.HostAddr = "localhost"
 	c.Assert(result, check.DeepEquals, cont)
 	select {
@@ -252,10 +253,10 @@ func (s *S) TestMoveOneContainerError(c *check.C) {
 	err2 := errors.New("error 2")
 	p.FailMove(err1, err2)
 	errors := make(chan error, 1)
-	result := p.MoveOneContainer(cont, "localhost", errors, nil, nil, nil)
+	result := p.MoveOneContainer(context.TODO(), cont, "localhost", errors, nil, nil, nil)
 	c.Assert(result.ID, check.Equals, "")
 	c.Assert(<-errors, check.Equals, err1)
-	result = p.MoveOneContainer(cont, "localhost", errors, nil, nil, nil)
+	result = p.MoveOneContainer(context.TODO(), cont, "localhost", errors, nil, nil, nil)
 	c.Assert(result.ID, check.Equals, "")
 	c.Assert(<-errors, check.Equals, err2)
 }

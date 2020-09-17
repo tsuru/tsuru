@@ -38,11 +38,11 @@ func (s *S) TestRebuildRoutesPoolApps(c *check.C) {
 		Scheme:  permission.PermAll,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name: "p2",
 	})
 	c.Assert(err, check.IsNil)

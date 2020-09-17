@@ -67,7 +67,7 @@ func (h *ContainerHealer) String() string {
 func (h *ContainerHealer) healContainer(cont container.Container) (container.Container, error) {
 	var buf bytes.Buffer
 	moveErrors := make(chan error, 1)
-	createdContainer := h.provisioner.MoveOneContainer(cont, "", moveErrors, nil, &buf, h.locker)
+	createdContainer := h.provisioner.MoveOneContainer(context.TODO(), cont, "", moveErrors, nil, &buf, h.locker)
 	close(moveErrors)
 	err := h.provisioner.HandleMoveErrors(moveErrors, &buf)
 	if err != nil {
@@ -118,7 +118,7 @@ func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error 
 		}
 		return errors.Wrapf(err, "Containers healing: unable to heal %q couldn't verify it still exists", cont.ID)
 	}
-	a, err := app.GetByName(cont.AppName)
+	a, err := app.GetByName(context.TODO(), cont.AppName)
 	if err != nil {
 		return errors.Wrapf(err, "Containers healing: unable to heal %q couldn't get app %q", cont.ID, cont.AppName)
 	}

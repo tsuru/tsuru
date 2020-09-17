@@ -5,6 +5,8 @@
 package kubernetes
 
 import (
+	"context"
+
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
@@ -14,6 +16,7 @@ type kubernetesNodeWrapper struct {
 	node    *apiv1.Node
 	prov    *kubernetesProvisioner
 	cluster *ClusterClient
+	ctx     context.Context
 }
 
 var (
@@ -84,7 +87,7 @@ func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return n.prov.podsToUnits(n.cluster, pods, nil, n.node)
+	return n.prov.podsToUnits(n.ctx, n.cluster, pods, nil, n.node)
 }
 
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {

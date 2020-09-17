@@ -38,7 +38,7 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -93,7 +93,7 @@ func (s *S) TestSchedulerScheduleFilteringNodes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -239,7 +239,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -290,10 +290,10 @@ func (s *S) TestSchedulerNoNodes(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
 	o := pool.AddPoolOptions{Name: "mypool"}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	o = pool.AddPoolOptions{Name: "mypool2"}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
 	schedOpts := &container.SchedulerOpts{AppName: app.Name, ProcessName: "web"}
@@ -319,7 +319,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		provisioner:         s.p,
 	}
 	o := pool.AddPoolOptions{Name: "mypool"}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -411,7 +411,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 		provisioner:         s.p,
 	}
 	o := pool.AddPoolOptions{Name: "mypool"}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -501,7 +501,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScaleDisabledForPool
 		provisioner:         s.p,
 	}
 	o := pool.AddPoolOptions{Name: "mypool"}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -917,7 +917,7 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",

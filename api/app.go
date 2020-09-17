@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	pkgErrors "github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
@@ -67,7 +66,7 @@ func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	var err error
 	a := context.GetApp(r)
 	if a == nil {
-		a, err = getApp(name)
+		a, err = getApp(r.Context(), name)
 		if err != nil {
 			return app.App{}, err
 		}
@@ -76,8 +75,8 @@ func getAppFromContext(name string, r *http.Request) (app.App, error) {
 	return *a, nil
 }
 
-func getApp(name string) (*app.App, error) {
-	a, err := app.GetByName(name)
+func getApp(ctx stdContext.Context, name string) (*app.App, error) {
+	a, err := app.GetByName(ctx, name)
 	if err != nil {
 		if err == appTypes.ErrAppNotFound {
 			return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
@@ -284,7 +283,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	err = a.FillInternalAddresses(r.Context())
+	err = a.FillInternalAddresses()
 	if err != nil {
 		return err
 	}
@@ -556,7 +555,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(ctx, app.UpdateAppArgs{
+	err = a.Update(app.UpdateAppArgs{
 		UpdateData:    updateData,
 		Writer:        evt,
 		ShouldRestart: !noRestart,
@@ -694,6 +693,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: App or unit not found
 func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	unitName := r.URL.Query().Get(":unit")
 	if unitName == "" {
 		return &errors.HTTP{
@@ -710,7 +710,7 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -1282,8 +1282,7 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 	}
 }
 
-func getServiceInstance(serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
-	var app app.App
+func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, nil, err
@@ -1293,12 +1292,18 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 	if err != nil {
 		return nil, nil, err
 	}
-	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
-	if err != nil {
+
+	app, err := app.GetByName(ctx, appName)
+
+	if err == appTypes.ErrAppNotFound {
 		err = &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 		return nil, nil, err
 	}
-	return instance, &app, nil
+	if err != nil {
+		return nil, nil, err
+
+	}
+	return instance, app, nil
 }
 
 // title: bind service instance
@@ -1312,6 +1317,7 @@ func getServiceInstance(serviceName, instanceName, appName string) (*service.Ser
 //   401: Unauthorized
 //   404: App not found
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	appName := r.URL.Query().Get(":app")
 	serviceName := r.URL.Query().Get(":service")
@@ -1323,7 +1329,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
-	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
+	instance, a, err := getServiceInstance(ctx, serviceName, instanceName, appName)
 	if err != nil {
 		return err
 	}
@@ -1398,11 +1404,12 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   404: App not found
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
 		r.URL.Query().Get(":service")
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
-	instance, a, err := getServiceInstance(serviceName, instanceName, appName)
+	instance, a, err := getServiceInstance(ctx, serviceName, instanceName, appName)
 	if err != nil {
 		return err
 	}
@@ -1572,7 +1579,8 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	a, err := app.GetByName(r.URL.Query().Get(":app"))
+	ctx := r.Context()
+	a, err := app.GetByName(ctx, r.URL.Query().Get(":app"))
 	if err != nil {
 		return err
 	}
@@ -1619,11 +1627,11 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
-	app1, err := getApp(app1Name)
+	app1, err := getApp(ctx, app1Name)
 	if err != nil {
 		return err
 	}
-	app2, err := getApp(app2Name)
+	app2, err := getApp(ctx, app2Name)
 	if err != nil {
 		return err
 	}
@@ -1793,7 +1801,7 @@ func isDeployAgentUA(r *http.Request) bool {
 func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return err
 	}

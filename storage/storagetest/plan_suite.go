@@ -5,6 +5,7 @@
 package storagetest
 
 import (
+	"context"
 	"sort"
 
 	"github.com/tsuru/tsuru/types/app"
@@ -33,9 +34,9 @@ func sortPlansByName(plans []app.Plan) []app.Plan {
 
 func (s *PlanSuite) TestInsertPlan(c *check.C) {
 	p := app.Plan{Name: "myplan", Default: true}
-	err := s.PlanStorage.Insert(p)
+	err := s.PlanStorage.Insert(context.TODO(), p)
 	c.Assert(err, check.IsNil)
-	plan, err := s.PlanStorage.FindByName(p.Name)
+	plan, err := s.PlanStorage.FindByName(context.TODO(), p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(plan.Name, check.Equals, p.Name)
 	c.Assert(plan.Default, check.Equals, p.Default)
@@ -43,9 +44,9 @@ func (s *PlanSuite) TestInsertPlan(c *check.C) {
 
 func (s *PlanSuite) TestInsertDuplicatePlan(c *check.C) {
 	p := app.Plan{Name: "myplan", Default: true}
-	err := s.PlanStorage.Insert(p)
+	err := s.PlanStorage.Insert(context.TODO(), p)
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Insert(p)
+	err = s.PlanStorage.Insert(context.TODO(), p)
 	c.Assert(err, check.Equals, app.ErrPlanAlreadyExists)
 }
 
@@ -53,11 +54,11 @@ func (s *PlanSuite) TestInsertDefaultPlan(c *check.C) {
 	p1 := app.Plan{Name: "plan1", Default: true}
 	p2 := app.Plan{Name: "plan2", Default: false}
 	p3 := app.Plan{Name: "plan3", Default: true}
-	err := s.PlanStorage.Insert(p1)
+	err := s.PlanStorage.Insert(context.TODO(), p1)
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Insert(p2)
+	err = s.PlanStorage.Insert(context.TODO(), p2)
 	c.Assert(err, check.IsNil)
-	plans, err := s.PlanStorage.FindAll()
+	plans, err := s.PlanStorage.FindAll(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.HasLen, 2)
 	sortedPlans := sortPlansByName(plans)
@@ -65,9 +66,9 @@ func (s *PlanSuite) TestInsertDefaultPlan(c *check.C) {
 	c.Assert(sortedPlans[0].Default, check.Equals, true)
 	c.Assert(sortedPlans[1].Name, check.Equals, p2.Name)
 	c.Assert(sortedPlans[1].Default, check.Equals, false)
-	err = s.PlanStorage.Insert(p3)
+	err = s.PlanStorage.Insert(context.TODO(), p3)
 	c.Assert(err, check.IsNil)
-	plans, err = s.PlanStorage.FindAll()
+	plans, err = s.PlanStorage.FindAll(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.HasLen, 3)
 	sortedPlans = sortPlansByName(plans)
@@ -80,11 +81,11 @@ func (s *PlanSuite) TestInsertDefaultPlan(c *check.C) {
 }
 
 func (s *PlanSuite) TestFindAllPlans(c *check.C) {
-	err := s.PlanStorage.Insert(app.Plan{Name: "plan1"})
+	err := s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan1"})
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Insert(app.Plan{Name: "plan2", Default: true})
+	err = s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan2", Default: true})
 	c.Assert(err, check.IsNil)
-	plans, err := s.PlanStorage.FindAll()
+	plans, err := s.PlanStorage.FindAll(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.HasLen, 2)
 	names := []string{plans[0].Name, plans[1].Name}
@@ -93,53 +94,53 @@ func (s *PlanSuite) TestFindAllPlans(c *check.C) {
 }
 
 func (s *PlanSuite) TestFindDefaultPlan(c *check.C) {
-	err := s.PlanStorage.Insert(app.Plan{Name: "plan1"})
+	err := s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan1"})
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Insert(app.Plan{Name: "plan2", Default: true})
+	err = s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan2", Default: true})
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Insert(app.Plan{Name: "plan3", Default: false})
+	err = s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan3", Default: false})
 	c.Assert(err, check.IsNil)
-	plan, err := s.PlanStorage.FindDefault()
+	plan, err := s.PlanStorage.FindDefault(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plan, check.NotNil)
 	c.Assert(plan.Name, check.Equals, "plan2")
 }
 
 func (s *PlanSuite) TestFindDefaultPlanNotFound(c *check.C) {
-	err := s.PlanStorage.Insert(app.Plan{Name: "plan1", Default: false})
+	err := s.PlanStorage.Insert(context.TODO(), app.Plan{Name: "plan1", Default: false})
 	c.Assert(err, check.IsNil)
-	plan, err := s.PlanStorage.FindDefault()
+	plan, err := s.PlanStorage.FindDefault(context.TODO())
 	c.Assert(err, check.Equals, app.ErrPlanDefaultNotFound)
 	c.Assert(plan, check.IsNil)
 }
 
 func (s *PlanSuite) TestFindPlanByName(c *check.C) {
 	p := app.Plan{Name: "myteam"}
-	err := s.PlanStorage.Insert(p)
+	err := s.PlanStorage.Insert(context.TODO(), p)
 	c.Assert(err, check.IsNil)
-	plan, err := s.PlanStorage.FindByName(p.Name)
+	plan, err := s.PlanStorage.FindByName(context.TODO(), p.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(plan.Name, check.Equals, p.Name)
 }
 
 func (s *PlanSuite) TestFindPlanByNameNotFound(c *check.C) {
-	plan, err := s.PlanStorage.FindByName("wat")
+	plan, err := s.PlanStorage.FindByName(context.TODO(), "wat")
 	c.Assert(err, check.Equals, app.ErrPlanNotFound)
 	c.Assert(plan, check.IsNil)
 }
 
 func (s *PlanSuite) TestDeletePlan(c *check.C) {
 	plan := app.Plan{Name: "myplan"}
-	err := s.PlanStorage.Insert(plan)
+	err := s.PlanStorage.Insert(context.TODO(), plan)
 	c.Assert(err, check.IsNil)
-	err = s.PlanStorage.Delete(plan)
+	err = s.PlanStorage.Delete(context.TODO(), plan)
 	c.Assert(err, check.IsNil)
-	p, err := s.PlanStorage.FindByName("myplan")
+	p, err := s.PlanStorage.FindByName(context.TODO(), "myplan")
 	c.Assert(err, check.Equals, app.ErrPlanNotFound)
 	c.Assert(p, check.IsNil)
 }
 
 func (s *PlanSuite) TestDeletePlanNotFound(c *check.C) {
-	err := s.PlanStorage.Delete(app.Plan{Name: "myteam"})
+	err := s.PlanStorage.Delete(context.TODO(), app.Plan{Name: "myteam"})
 	c.Assert(err, check.Equals, app.ErrPlanNotFound)
 }

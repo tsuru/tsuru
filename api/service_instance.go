@@ -208,6 +208,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	ignoreErrors := r.URL.Query().Get("ignoreerrors")
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
@@ -243,7 +244,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
 	if unbindAllBool {
 		for _, appName := range serviceInstance.Apps {
-			_, app, instErr := getServiceInstance(serviceInstance.ServiceName, serviceInstance.Name, appName)
+			_, app, instErr := getServiceInstance(ctx, serviceInstance.ServiceName, serviceInstance.Name, appName)
 			if instErr != nil {
 				return instErr
 			}

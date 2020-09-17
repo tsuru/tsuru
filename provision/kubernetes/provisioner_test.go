@@ -2016,11 +2016,11 @@ func (s *S) TestUpgradeNodeContainer(c *check.C) {
 			Binds:         []string{"/xyz:/abc:ro"},
 		},
 	}
-	err := pool.AddPool(pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
 	c.Assert(err, check.IsNil)
 
 	err = nodecontainer.AddNewContainer("", &c1)
@@ -2433,7 +2433,7 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 }
 
 func (s *S) TestProvisionerUpdateApp(c *check.C) {
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
@@ -2533,7 +2533,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
@@ -2595,7 +2595,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-pool-2",
 		Provisioner: "kubernetes",
 	})
@@ -2669,7 +2669,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	defer rollback1()
 
 	pool2 := client2.GetCluster().Pools[0]
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        pool2,
 		Provisioner: "kubernetes",
 	})
@@ -2741,7 +2741,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	defer rollback1()
 
 	pool2 := client2.GetCluster().Pools[0]
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        pool2,
 		Provisioner: "kubernetes",
 	})

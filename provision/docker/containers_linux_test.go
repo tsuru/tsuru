@@ -41,7 +41,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	p.cluster, err = cluster.New(p.scheduler, p.storage, "", nodes...)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)

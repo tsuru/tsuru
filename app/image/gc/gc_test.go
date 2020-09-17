@@ -75,7 +75,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	s.team = "myteam"
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name: "p1",
 	})
 	c.Assert(err, check.IsNil)

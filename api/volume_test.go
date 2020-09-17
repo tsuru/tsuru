@@ -59,7 +59,7 @@ func (s *S) TestVolumeList(c *check.C) {
 func (s *S) TestVolumeListPermissions(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	err := pool.AddPool(pool.AddPoolOptions{Name: "otherpool", Public: true})
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
 	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
 	err = v1.Create(context.TODO())

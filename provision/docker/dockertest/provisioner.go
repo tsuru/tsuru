@@ -5,6 +5,7 @@
 package dockertest
 
 import (
+	"context"
 	"io"
 	"strings"
 	"sync"
@@ -189,7 +190,7 @@ func (p *FakeDockerProvisioner) FailMove(errs ...error) {
 	}
 }
 
-func (p *FakeDockerProvisioner) MoveOneContainer(cont container.Container, toHost string, errors chan error, wg *sync.WaitGroup, w io.Writer, locker container.AppLocker) container.Container {
+func (p *FakeDockerProvisioner) MoveOneContainer(ctx context.Context, cont container.Container, toHost string, errors chan error, wg *sync.WaitGroup, w io.Writer, locker container.AppLocker) container.Container {
 	select {
 	case err := <-p.moveErrors:
 		errors <- err

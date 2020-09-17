@@ -120,7 +120,9 @@ type App struct {
 	// it is lazy generated on the first call to FillInternalAddresses
 	InternalAddresses []provision.AppInternalAddress `json:",omitempty" bson:"-"`
 
-	Quota       quota.Quota
+	Quota quota.Quota
+
+	ctx         context.Context
 	builder     builder.Builder
 	provisioner provision.Provisioner
 }
@@ -142,14 +144,14 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	return app.builder, err
 }
 
-func (app *App) FillInternalAddresses(ctx context.Context) error {
+func (app *App) FillInternalAddresses() error {
 	provisioner, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
 
 	if interAppProvisioner, ok := provisioner.(provision.InterAppProvisioner); ok {
-		app.InternalAddresses, err = interAppProvisioner.InternalAddresses(ctx, app)
+		app.InternalAddresses, err = interAppProvisioner.InternalAddresses(app.ctx, app)
 		if err != nil {
 			return err
 		}
@@ -173,7 +175,7 @@ func (app *App) CleanImage(img string) error {
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	var err error
 	if app.provisioner == nil {
-		app.provisioner, err = pool.GetProvisionerForPool(app.Pool)
+		app.provisioner, err = pool.GetProvisionerForPool(app.ctx, app.Pool)
 	}
 	return app.provisioner, err
 }
@@ -256,7 +258,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 
 // GetByName queries the database to find an app identified by the given
 // name.
-func GetByName(name string) (*App, error) {
+func GetByName(ctx context.Context, name string) (*App, error) {
 	var app App
 	conn, err := db.Conn()
 	if err != nil {
@@ -267,6 +269,7 @@ func GetByName(name string) (*App, error) {
 	if err == mgo.ErrNotFound {
 		return nil, appTypes.ErrAppNotFound
 	}
+	app.ctx = ctx
 	return &app, err
 }
 
@@ -278,7 +281,7 @@ func GetByName(name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(ctx context.Context, app *App, user *auth.User) error {
-	if _, err := GetByName(app.GetName()); err != appTypes.ErrAppNotFound {
+	if _, err := GetByName(ctx, app.GetName()); err != appTypes.ErrAppNotFound {
 		if err != nil {
 			return errors.WithMessage(err, "unable to check if app already exists")
 		}
@@ -287,9 +290,9 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	var plan *appTypes.Plan
 	var err error
 	if app.Plan.Name == "" {
-		plan, err = servicemanager.Plan.DefaultPlan()
+		plan, err = servicemanager.Plan.DefaultPlan(ctx)
 	} else {
-		plan, err = servicemanager.Plan.FindByName(app.Plan.Name)
+		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
 	if err != nil {
 		return err
@@ -312,7 +315,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 			return err
 		}
 	}
-	err = app.validateNew()
+	err = app.validateNew(ctx)
 	if err != nil {
 		return err
 	}
@@ -340,7 +343,7 @@ func (app *App) configureCreateRouters() error {
 	var err error
 	if app.Router == "" {
 		var appPool *pool.Pool
-		appPool, err = pool.GetPoolByName(app.GetPool())
+		appPool, err = pool.GetPoolByName(app.ctx, app.GetPool())
 		if err != nil {
 			return err
 		}
@@ -367,7 +370,7 @@ type UpdateAppArgs struct {
 }
 
 // Update changes informations of the application.
-func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
+func (app *App) Update(args UpdateAppArgs) (err error) {
 	description := args.UpdateData.Description
 	poolName := args.UpdateData.Pool
 	teamOwner := args.UpdateData.TeamOwner
@@ -395,7 +398,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 		return err
 	}
 	if args.UpdateData.Plan.Name != "" {
-		plan, errFind := servicemanager.Plan.FindByName(args.UpdateData.Plan.Name)
+		plan, errFind := servicemanager.Plan.FindByName(app.ctx, args.UpdateData.Plan.Name)
 		if errFind != nil {
 			return errFind
 		}
@@ -419,7 +422,7 @@ func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	}
 	if platform != "" {
 		var p, v string
-		p, v, err = getPlatformNameAndVersion(ctx, platform)
+		p, v, err = getPlatformNameAndVersion(app.ctx, platform)
 		if err != nil {
 			return err
 		}
@@ -1009,14 +1012,14 @@ func (app *App) SetPool() error {
 	}
 	if poolName == "" {
 		var p *pool.Pool
-		p, err = pool.GetDefaultPool()
+		p, err = pool.GetDefaultPool(app.ctx)
 		if err != nil {
 			return err
 		}
 		poolName = p.Name
 	}
 	app.Pool = poolName
-	p, err := pool.GetPoolByName(poolName)
+	p, err := pool.GetPoolByName(app.ctx, poolName)
 	if err != nil {
 		return err
 	}
@@ -1025,12 +1028,12 @@ func (app *App) SetPool() error {
 
 func (app *App) getPoolForApp(poolName string) (string, error) {
 	if poolName == "" {
-		pools, err := pool.ListPoolsForTeam(app.TeamOwner)
+		pools, err := pool.ListPoolsForTeam(app.ctx, app.TeamOwner)
 		if err != nil {
 			return "", err
 		}
 		if len(pools) > 1 {
-			publicPools, err := pool.ListPublicPools()
+			publicPools, err := pool.ListPublicPools(app.ctx)
 			if err != nil {
 				return "", err
 			}
@@ -1045,7 +1048,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		}
 		return pools[0].Name, nil
 	}
-	pool, err := pool.GetPoolByName(poolName)
+	pool, err := pool.GetPoolByName(app.ctx, poolName)
 	if err != nil {
 		return "", err
 	}
@@ -1073,7 +1076,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 }
 
 // validateNew checks app name format, pool and plan
-func (app *App) validateNew() error {
+func (app *App) validateNew(ctx context.Context) error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
@@ -1093,7 +1096,7 @@ func (app *App) validate() error {
 }
 
 func (app *App) validatePlan() error {
-	pool, err := pool.GetPoolByName(app.Pool)
+	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -1110,7 +1113,7 @@ func (app *App) validatePlan() error {
 }
 
 func (app *App) validatePool() error {
-	pool, err := pool.GetPoolByName(app.Pool)
+	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -1156,7 +1159,7 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 }
 
 func (app *App) ValidateService(services ...string) error {
-	pool, err := pool.GetPoolByName(app.Pool)
+	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
 	if err != nil {
 		return err
 	}

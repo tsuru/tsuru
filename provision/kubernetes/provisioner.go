@@ -437,7 +437,7 @@ var stateMap = map[apiv1.PodPhase]provision.Status{
 	apiv1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
 	var apps []provision.App
 	if baseApp != nil {
 		apps = append(apps, baseApp)
@@ -446,10 +446,10 @@ func (p *kubernetesProvisioner) podsToUnits(client *ClusterClient, pods []apiv1.
 	if baseNode != nil {
 		nodes = append(nodes, *baseNode)
 	}
-	return p.podsToUnitsMultiple(client, pods, apps, nodes)
+	return p.podsToUnitsMultiple(ctx, client, pods, apps, nodes)
 }
 
-func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App, baseNodes []apiv1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App, baseNodes []apiv1.Node) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
@@ -497,13 +497,13 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(client *ClusterClient, pods 
 		}
 		podApp, ok := appMap[l.AppName()]
 		if !ok {
-			podApp, err = app.GetByName(l.AppName())
+			podApp, err = app.GetByName(ctx, l.AppName())
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
 			appMap[podApp.GetName()] = podApp
 		}
-		wrapper := kubernetesNodeWrapper{node: node, prov: p}
+		wrapper := kubernetesNodeWrapper{node: node, prov: p, ctx: ctx}
 		u := &url.URL{
 			Scheme: "http",
 			Host:   wrapper.Address(),
@@ -621,7 +621,7 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 		if err != nil {
 			return nil, err
 		}
-		clusterUnits, err := p.podsToUnitsMultiple(cApp.client, pods, cApp.apps, nil)
+		clusterUnits, err := p.podsToUnitsMultiple(ctx, cApp.client, pods, cApp.apps, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -730,7 +730,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 			if version != 0 {
 				prefix = fmt.Sprintf("v%d.version", version)
 			}
-			rAddr, err = p.routableAddrForProcess(client, a, processName, prefix, version, svc)
+			rAddr, err = p.routableAddrForProcess(ctx, client, a, processName, prefix, version, svc)
 			if err != nil {
 				return nil, err
 			}
@@ -743,7 +743,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 		} else {
 			prefix = fmt.Sprintf("v%d.version.%s.process", version, processName)
 		}
-		rAddr, err = p.routableAddrForProcess(client, a, processName, prefix, version, svc)
+		rAddr, err = p.routableAddrForProcess(ctx, client, a, processName, prefix, version, svc)
 		if err != nil {
 			return nil, err
 		}
@@ -753,7 +753,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	return allAddrs, nil
 }
 
-func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a provision.App, processName, prefix string, version int, svc apiv1.Service) (appTypes.RoutableAddresses, error) {
+func (p *kubernetesProvisioner) routableAddrForProcess(ctx context.Context, client *ClusterClient, a provision.App, processName, prefix string, version int, svc apiv1.Service) (appTypes.RoutableAddresses, error) {
 	var routableAddrs appTypes.RoutableAddresses
 	var pubPort int32
 	if len(svc.Spec.Ports) > 0 {
@@ -768,7 +768,7 @@ func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a 
 	}
 	var addrs []*url.URL
 	if routerLocal {
-		addrs, err = p.addressesForApp(client, a, processName, pubPort, version)
+		addrs, err = p.addressesForApp(ctx, client, a, processName, pubPort, version)
 	} else {
 		addrs, err = p.addressesForPool(client, a.GetPool(), pubPort)
 	}
@@ -785,7 +785,7 @@ func (p *kubernetesProvisioner) routableAddrForProcess(client *ClusterClient, a 
 	}, nil
 }
 
-func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provision.App, processName string, pubPort int32, version int) ([]*url.URL, error) {
+func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *ClusterClient, a provision.App, processName string, pubPort int32, version int) ([]*url.URL, error) {
 	pods, err := p.podsForApps(client, []provision.App{a})
 	if err != nil {
 		return nil, err
@@ -815,7 +815,7 @@ func (p *kubernetesProvisioner) addressesForApp(client *ClusterClient, a provisi
 			if err != nil {
 				return nil, err
 			}
-			wrapper := kubernetesNodeWrapper{node: node, prov: p}
+			wrapper := kubernetesNodeWrapper{node: node, prov: p, ctx: ctx}
 			addrs = append(addrs, &url.URL{
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
@@ -869,7 +869,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 		}
 		return errors.WithStack(err)
 	}
-	units, err := p.podsToUnits(client, []apiv1.Pod{*pod}, a, nil)
+	units, err := p.podsToUnits(ctx, client, []apiv1.Pod{*pod}, a, nil)
 	if err != nil {
 		return err
 	}

@@ -151,7 +151,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
 	opts := pool.AddPoolOptions{Name: "test-default", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	s.conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 	s.logBuf = safe.NewBuffer(nil)

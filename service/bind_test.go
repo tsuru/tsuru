@@ -68,7 +68,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{Name: "metallica"}
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true, Provisioner: "fake"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {

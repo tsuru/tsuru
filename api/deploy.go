@@ -65,7 +65,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		commit = ""
 		userName = t.GetUserName()
 	}
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -152,12 +152,13 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 //   403: Forbidden
 //   404: Not found
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer writer.Stop()
 	fmt.Fprint(w, "Saving the difference between the old and new code\n")
 	appName := r.URL.Query().Get(":appname")
 	diff := InputValue(r, "customdata")
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -189,7 +190,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
@@ -291,6 +292,7 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	depID := r.URL.Query().Get(":deploy")
 	deploy, err := app.GetDeploy(depID)
 	if err != nil {
@@ -299,7 +301,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	dbApp, err := app.GetByName(deploy.App)
+	dbApp, err := app.GetByName(ctx, deploy.App)
 	if err != nil {
 		return err
 	}
@@ -324,7 +326,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
@@ -383,8 +385,9 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid data
 //   403: Forbidden
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,

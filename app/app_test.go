@@ -60,13 +60,13 @@ func (s *S) TestGetAppByName(c *check.C) {
 	newApp.Env = map[string]bind.EnvVar{}
 	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, check.IsNil)
-	myApp, err := GetByName("my-app")
+	myApp, err := GetByName(context.TODO(), "my-app")
 	c.Assert(err, check.IsNil)
 	c.Assert(myApp.Name, check.Equals, newApp.Name)
 }
 
 func (s *S) TestGetAppByNameNotFound(c *check.C) {
-	app, err := GetByName("wat")
+	app, err := GetByName(context.TODO(), "wat")
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(app, check.IsNil)
 }
@@ -80,7 +80,7 @@ func (s *S) TestDelete(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
+	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
@@ -100,7 +100,7 @@ func (s *S) TestDelete(c *check.C) {
 	err = Delete(context.TODO(), app, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
-	_, err = GetByName(app.Name)
+	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(s.user, 1)
@@ -124,7 +124,7 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
+	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	evt1, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -165,7 +165,7 @@ func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	app := App{Name: "x4", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(app.Name)
+	a, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -250,7 +250,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(a.Name, "/mnt2", false)
 	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
+	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -287,7 +287,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
-	retrievedApp, err := GetByName(a.Name)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Name, check.Equals, a.Name)
 	c.Assert(retrievedApp.Platform, check.Equals, a.Platform)
@@ -337,7 +337,7 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	retrievedApp, err := GetByName(a.Name)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, s.defaultPlan)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -362,7 +362,7 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	retrievedApp, err := GetByName(a.Name)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.GetRouters(), check.DeepEquals, []appTypes.AppRouter{{Name: "fake-tls", Opts: map[string]string{}}})
 }
@@ -394,7 +394,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	retrievedApp, err := GetByName(a.Name)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -518,7 +518,7 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	c.Assert(err, check.NotNil)
 	expected := `tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), check.Equals, expected)
-	_, err = GetByName(a.Name)
+	_, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.NotNil)
 }
 
@@ -826,7 +826,7 @@ func (s *S) TestAddUnitsIsAtomic(c *check.C) {
 	}
 	err := app.AddUnits(context.TODO(), 2, "web", "", nil)
 	c.Assert(err, check.NotNil)
-	_, err = GetByName(app.Name)
+	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 }
 
@@ -1326,7 +1326,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 		Writer:        &buf,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1379,7 +1379,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1429,7 +1429,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1521,7 +1521,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1565,7 +1565,7 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
@@ -1595,7 +1595,7 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	newApp, err := GetByName(a.Name)
+	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
@@ -1648,12 +1648,12 @@ func (s *S) TestAddCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	app, err = GetByName(app.Name)
+	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
 	err = app.AddCName("ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	app, err = GetByName(app.Name)
+	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"ktulu.mycompany.com", "ktulu2.mycompany.com"})
 }
@@ -1681,7 +1681,7 @@ func (s *S) TestAddCNameWithWildCard(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.AddCName("*.mycompany.com")
 	c.Assert(err, check.IsNil)
-	app, err = GetByName(app.Name)
+	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"*.mycompany.com"})
 }
@@ -1711,7 +1711,7 @@ func (s *S) TestAddCNamePartialUpdate(c *check.C) {
 	other := App{Name: a.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
 	err = other.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Platform, check.Equals, "puppet")
 	c.Assert(a.Name, check.Equals, "master")
@@ -1849,7 +1849,7 @@ func (s *S) TestRemoveCNameRemovesFromDatabase(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.RemoveCName("ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.CName, check.DeepEquals, []string{})
 }
@@ -1873,7 +1873,7 @@ func (s *S) TestRemoveMoreThanOneCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.RemoveCName("ktulu.mycompany.com", "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.CName, check.DeepEquals, []string{})
 }
@@ -1903,7 +1903,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	serviceEnv := allEnvs[TsuruServicesEnvVar]
@@ -1999,7 +1999,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	serviceEnv := allEnvs[TsuruServicesEnvVar]
@@ -2037,7 +2037,7 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	serviceEnv := allEnvs[TsuruServicesEnvVar]
@@ -2266,7 +2266,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
@@ -2300,7 +2300,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
@@ -2337,7 +2337,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
@@ -2366,7 +2366,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	a, err = GetByName(a.Name)
+	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
@@ -2435,7 +2435,7 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 	for _, d := range data {
 		a := App{Name: d.name, Plan: appTypes.Plan{Name: d.plan}, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
-		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
+		if valid := a.validateNew(context.TODO()); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
@@ -2607,7 +2607,7 @@ func (s *S) TestGetUnits(c *check.C) {
 func (s *S) TestAppMarshalJSON(c *check.C) {
 	repository.Manager().CreateRepository("name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:        "name",
@@ -2899,7 +2899,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 	repository.Manager().CreateRepository("name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:            "name",
@@ -3667,7 +3667,7 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 
 func (s *S) TestListFilteringByPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp",
@@ -3692,10 +3692,10 @@ func (s *S) TestListFilteringByPool(c *check.C) {
 
 func (s *S) TestListFilteringByPools(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test3", Default: false}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp",
@@ -3801,7 +3801,7 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test2", Default: false}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:  "testapp1",
@@ -4028,7 +4028,7 @@ func (s *S) TestAppSetUpdatePlatform(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	a.SetUpdatePlatform(true)
-	app, err := GetByName("someapp")
+	app, err := GetByName(context.TODO(), "someapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.UpdatePlatform, check.Equals, true)
 }
@@ -4168,7 +4168,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, pool.ErrPoolHasNoService)
 	opts := pool.AddPoolOptions{Name: "poolz"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app2 := App{Name: "nidalee", Platform: "python", TeamOwner: s.team.Name, Pool: "poolz"}
 	err = CreateApp(context.TODO(), &app2, s.user)
@@ -4199,7 +4199,7 @@ func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
@@ -4214,7 +4214,7 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 
 func (s *S) TestAppSetPoolDefault(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4227,12 +4227,12 @@ func (s *S) TestAppSetPoolDefault(c *check.C) {
 
 func (s *S) TestAppSetPoolByPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool2", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
@@ -4248,17 +4248,17 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 
 func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("pool2", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool3", Public: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4282,7 +4282,7 @@ func (s *S) TestAppSetPoolNoDefault(c *check.C) {
 
 func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
@@ -4298,7 +4298,7 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 
 func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "testapp",
@@ -4311,10 +4311,10 @@ func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 
 func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "nonpublic"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
@@ -4326,7 +4326,7 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	app, _ := GetByName(a.Name)
+	app, _ := GetByName(context.TODO(), a.Name)
 	c.Assert("nonpublic", check.Equals, app.Pool)
 }
 
@@ -4544,9 +4544,9 @@ func (s *S) TestUpdateAppWithInvalidName(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	updateData := App{Name: app.Name, Description: "bleble"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
@@ -4556,9 +4556,9 @@ func (s *S) TestUpdateDescription(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Description: "bleble"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 }
@@ -4568,9 +4568,9 @@ func (s *S) TestUpdateAppPlatform(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Platform: "heimerdinger"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Platform, check.Equals, updateData.Platform)
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
@@ -4581,9 +4581,9 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", Platform: "python:v3"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Platform, check.Equals, "python")
 	c.Assert(dbApp.PlatformVersion, check.Equals, "v3")
@@ -4603,9 +4603,9 @@ func (s *S) TestUpdateTeamOwner(c *check.C) {
 		return &authTypes.Team{Name: teamName}, nil
 	}
 	updateData := App{Name: "example", TeamOwner: teamName}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.TeamOwner, check.Equals, teamName)
 }
@@ -4615,22 +4615,22 @@ func (s *S) TestUpdateTeamOwnerNotExists(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "example", TeamOwner: "newowner"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "team not found")
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.TeamOwner, check.Equals, s.team.Name)
 }
 
 func (s *S) TestUpdatePool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -4639,9 +4639,9 @@ func (s *S) TestUpdatePool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
@@ -4659,10 +4659,10 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 		return p2, nil
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake2", Public: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -4678,9 +4678,9 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	c.Assert(p2.Provisioned(&app), check.Equals, false)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
 	prov, err = dbApp.getProvisioner()
@@ -4694,7 +4694,7 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 
 func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -4702,9 +4702,9 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Pool, check.Equals, "test")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
@@ -4722,10 +4722,10 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 		return p2, nil
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake2", Public: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
@@ -4749,7 +4749,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	c.Assert(p2.Provisioned(&app), check.Equals, false)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.ErrorMatches, "can't change the provisioner of an app with binded volumes")
 }
 
@@ -4760,10 +4760,10 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 		return p1, nil
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2", Provisioner: "fake1", Public: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
@@ -4785,7 +4785,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 	c.Assert(p1.GetUnits(&app), check.HasLen, 1)
 	c.Assert(p1.Provisioned(&app), check.Equals, true)
 	updateData := App{Name: "test", Pool: "test2"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
 }
 
@@ -4805,9 +4805,9 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
@@ -4829,9 +4829,9 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
@@ -4857,7 +4857,7 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.ErrorMatches, `App plan "something" is not allowed on pool "pool1"`)
 }
 
@@ -4876,9 +4876,9 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
@@ -4915,9 +4915,9 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
@@ -4945,7 +4945,7 @@ func (s *S) TestUpdatePlanNotFound(c *check.C) {
 		return nil, appTypes.ErrPlanNotFound
 	}
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "some-unknown-plan"}}
-	err := app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err := app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.Equals, appTypes.ErrPlanNotFound)
 }
 
@@ -4973,9 +4973,9 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(routertest.HCRouter.HasBackend(a.Name), check.Equals, false)
 	s.provisioner.PrepareFailure("Restart", fmt.Errorf("cannot restart app, I'm sorry"))
 	updateData := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake-hc"}}, Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.NotNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan.Name, check.Equals, "old")
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
@@ -5003,9 +5003,9 @@ func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Tags: []string{"tag2 ", "  tag3  ", "", " tag3", "  "}}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Tags, check.DeepEquals, []string{"tag2", "tag3"})
 }
@@ -5015,9 +5015,9 @@ func (s *S) TestUpdatePlatform(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{UpdatePlatform: true}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.UpdatePlatform, check.Equals, true)
 }
@@ -5027,9 +5027,9 @@ func (s *S) TestUpdateWithEmptyTagsRemovesAllTags(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Description: "ble", Tags: []string{}}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Tags, check.DeepEquals, []string{})
 }
@@ -5039,21 +5039,21 @@ func (s *S) TestUpdateWithoutTagsKeepsOriginalTags(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Description: "ble", Tags: nil}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(app.Name)
+	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Tags, check.DeepEquals, []string{"tag1", "tag2"})
 }
 
 func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -5070,9 +5070,9 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}, Description: "bleble", Pool: "test2"}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
+	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(dbApp.Description, check.Equals, "bleble")
@@ -5355,7 +5355,7 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 		return p1, nil
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -5364,7 +5364,7 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	err = app.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Description: "updated description"}
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: nil})
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: nil})
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -5403,7 +5403,7 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	optsPool2 := pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name, Public: true}
-	err = pool.AddPool(optsPool2)
+	err = pool.AddPool(context.TODO(), optsPool2)
 	c.Assert(err, check.IsNil)
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: optsPool2.Name,
@@ -5413,7 +5413,7 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 		},
 		Blacklist: true,
 	})
-	err = app.Update(context.TODO(), UpdateAppArgs{UpdateData: App{Pool: optsPool2.Name}, Writer: nil})
+	err = app.Update(UpdateAppArgs{UpdateData: App{Pool: optsPool2.Name}, Writer: nil})
 	c.Assert(err, check.NotNil)
 }
 
@@ -5435,7 +5435,7 @@ func (s *S) TestGetUUID(c *check.C) {
 
 func (s *S) TestFillInternalAddresses(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
-	err := app.FillInternalAddresses(context.Background())
+	err := app.FillInternalAddresses()
 	c.Assert(err, check.IsNil)
 	c.Assert(app.InternalAddresses, check.HasLen, 2)
 	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{

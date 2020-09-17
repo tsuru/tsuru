@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"net/url"
 )
 
@@ -35,5 +36,5 @@ type RoutableAddresses struct {
 }
 
 type AppService interface {
-	GetByName(name string) (App, error)
+	GetByName(ctx context.Context, name string) (App, error)
 }

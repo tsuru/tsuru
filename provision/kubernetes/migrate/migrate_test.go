@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -79,22 +80,22 @@ func (s *S) SetUpSuite(c *check.C) {
 	kubeProv.ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil
 	}
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-default",
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "kube",
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "kube-failed",
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "docker",
 		Provisioner: "docker",
 	})

@@ -486,7 +486,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	pools, err := pool.ListPoolsForTeam(team.Name)
+	pools, err := pool.ListPoolsForTeam(context.TODO(), team.Name)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

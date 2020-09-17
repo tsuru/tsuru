@@ -32,7 +32,7 @@ func setAllowed(evt *event.Event) (err error) {
 	switch evt.Target.Type {
 	case event.TargetTypeApp:
 		var a *app.App
-		a, err = app.GetByName(evt.Target.Value)
+		a, err = app.GetByName(context.TODO(), evt.Target.Value)
 		if err != nil {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
 			if evt.Cancelable {
@@ -94,10 +94,10 @@ func setAllowed(evt *event.Event) (err error) {
 		for _, p := range provisioners {
 			if finderProv, ok := p.(provision.UnitFinderProvisioner); ok {
 				var provApp provision.App
-				provApp, err = finderProv.GetAppFromUnitID(evt.Target.Value)
+				provApp, err = finderProv.GetAppFromUnitID(context.TODO(), evt.Target.Value)
 				_, isNotFound := err.(*provision.UnitNotFoundError)
 				if err == nil || !isNotFound {
-					a, err = app.GetByName(provApp.GetName())
+					a, err = app.GetByName(context.TODO(), provApp.GetName())
 					if err == nil {
 						break
 					}

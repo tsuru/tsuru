@@ -5,6 +5,7 @@
 package autoscale
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -29,6 +30,7 @@ type nodeMemoryData struct {
 }
 
 func (a *memoryScaler) nodesMemoryData(pool string, nodes []provision.Node) (map[string]*nodeMemoryData, error) {
+	ctx := context.TODO()
 	nodesMemoryData := make(map[string]*nodeMemoryData)
 	unitsMap, err := preciseUnitsByNode(pool, nodes)
 	if err != nil {
@@ -48,7 +50,7 @@ func (a *memoryScaler) nodesMemoryData(pool string, nodes []provision.Node) (map
 		}
 		nodesMemoryData[node.Address()] = data
 		for _, unit := range unitsMap[node.Address()] {
-			a, err := app.GetByName(unit.AppName)
+			a, err := app.GetByName(ctx, unit.AppName)
 			if err != nil {
 				return nil, errors.Wrapf(err, "couldn't find container app (%s)", unit.AppName)
 			}
@@ -85,7 +87,8 @@ func (a *memoryScaler) chooseNodeForRemoval(maxPlanMemory int64, pool string, no
 }
 
 func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult, error) {
-	plans, err := servicemanager.Plan.List()
+	ctx := context.TODO()
+	plans, err := servicemanager.Plan.List(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't list plans")
 	}
@@ -97,7 +100,7 @@ func (a *memoryScaler) scale(pool string, nodes []provision.Node) (*ScalerResult
 	}
 	if maxPlanMemory == 0 {
 		var defaultPlan *appTypes.Plan
-		defaultPlan, err = servicemanager.Plan.DefaultPlan()
+		defaultPlan, err = servicemanager.Plan.DefaultPlan(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't get default plan")
 		}

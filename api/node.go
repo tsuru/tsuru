@@ -135,7 +135,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	p, err := pool.GetPoolByName(params.Pool)
+	p, err := pool.GetPoolByName(ctx, params.Pool)
 	if err != nil {
 		return err
 	}
@@ -424,8 +424,9 @@ func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //   401: Unauthorized
 //   404: Not found
 func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
-	a, err := app.GetByName(appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		if err == appTypes.ErrAppNotFound {
 			return &tsuruErrors.HTTP{
@@ -573,6 +574,7 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   400: Invalid data
 //   401: Unauthorized
 func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var params provision.RebalanceNodesOptions
 	err = ParseInput(r, &params)
 	if err != nil {
@@ -618,7 +620,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if params.Pool != "" {
 		var p *pool.Pool
 		var prov provision.Provisioner
-		p, err = pool.GetPoolByName(params.Pool)
+		p, err = pool.GetPoolByName(ctx, params.Pool)
 		if err != nil {
 			return err
 		}

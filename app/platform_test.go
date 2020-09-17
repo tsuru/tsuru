@@ -250,7 +250,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
 }
@@ -286,7 +286,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
 }
@@ -323,7 +323,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithoutDockerfile(c *check.
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, false)
 }
@@ -359,7 +359,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
 }
@@ -395,7 +395,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, false)
 }
@@ -431,7 +431,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfileContent(c
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("")})
 	c.Assert(err, check.Equals, appTypes.ErrMissingFileContent)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, false)
 }
@@ -473,7 +473,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
-	a, err := GetByName(appName)
+	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(a.UpdatePlatform, check.Equals, true)
 }

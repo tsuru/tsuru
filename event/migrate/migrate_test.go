@@ -68,7 +68,7 @@ func (s *S) SetUpTest(c *check.C) {
 	provision.DefaultProvisioner = "fake"
 	provisiontest.ProvisionerInstance.Reset()
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{*s.team}, nil

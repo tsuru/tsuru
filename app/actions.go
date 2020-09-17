@@ -154,7 +154,7 @@ var createAppToken = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be *App.")
 		}
-		app, err := GetByName(app.Name)
+		app, err := GetByName(context.TODO(), app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +186,7 @@ var exportEnvironmentsAction = action.Action{
 	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
-		app, err := GetByName(app.Name)
+		app, err := GetByName(context.TODO(), app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		app, err := GetByName(app.Name)
+		app, err := GetByName(context.TODO(), app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
 			app.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
@@ -379,7 +379,7 @@ var reserveUnitsToAdd = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app, err = GetByName(app.Name)
+		app, err = GetByName(context.TODO(), app.Name)
 		if err != nil {
 			return nil, appTypes.ErrAppNotFound
 		}

@@ -261,9 +261,9 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 		return p1, nil
 	})
 	defer provision.Unregister(p1.Name)
-	err := pool.AddPool(pool.AddPoolOptions{Name: "pool1", Provisioner: p1.Name})
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Provisioner: p1.Name})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name})
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name})
 	c.Assert(err, check.IsNil)
 	app1 := &app.App{Name: "myapp", TeamOwner: s.team.Name, Platform: "python", Pool: "pool1"}
 	err = app.CreateApp(context.TODO(), app1, s.user)

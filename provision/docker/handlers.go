@@ -92,7 +92,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	_, err = mainDockerProvisioner.moveContainer(contId, to, evt)
+	_, err = mainDockerProvisioner.moveContainer(context.TODO(), contId, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move container")
 	}

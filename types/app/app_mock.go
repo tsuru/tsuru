@@ -4,6 +4,8 @@
 
 package app
 
+import "context"
+
 type MockApp struct {
 	Name, TeamOwner, Platform, PlatformVersion, Pool string
 	Deploys                                          uint
@@ -44,7 +46,7 @@ type MockAppService struct {
 	Apps []App
 }
 
-func (m *MockAppService) GetByName(name string) (App, error) {
+func (m *MockAppService) GetByName(ctx context.Context, name string) (App, error) {
 	for _, app := range m.Apps {
 		if app.GetName() == name {
 			return app, nil

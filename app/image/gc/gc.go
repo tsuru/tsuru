@@ -237,6 +237,7 @@ func runPeriodicGC() (err error) {
 }
 
 func markOldImages() error {
+	ctx := context.TODO()
 	gcExecutionsTotal.WithLabelValues("mark").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("mark"))
 	defer timer.ObserveDuration()
@@ -255,7 +256,7 @@ func markOldImages() error {
 		}
 
 		log.Debugf("[image gc] processing %d versions for app %q", len(appVersions.Versions), appVersions.AppName)
-		a, err := app.GetByName(appVersions.AppName)
+		a, err := app.GetByName(ctx, appVersions.AppName)
 		if err != nil && err != appTypes.ErrAppNotFound {
 			multi.Add(err)
 			continue
@@ -395,6 +396,7 @@ func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.App
 }
 
 func sweepOldImages() error {
+	ctx := context.TODO()
 	gcExecutionsTotal.WithLabelValues("sweep").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("sweep"))
 	defer timer.ObserveDuration()
@@ -432,7 +434,7 @@ func sweepOldImages() error {
 	}
 
 	for appName, versions := range versionsToRemove {
-		a, err := app.GetByName(appName)
+		a, err := app.GetByName(ctx, appName)
 		if err == appTypes.ErrAppNotFound {
 			// in the next mark process will be removed
 			continue

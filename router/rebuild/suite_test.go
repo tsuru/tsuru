@@ -5,6 +5,7 @@
 package rebuild_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -64,7 +65,7 @@ func (s *S) TearDownSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		a, err := app.GetByName(appName)
+		a, err := app.GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
@@ -81,7 +82,7 @@ func (s *S) SetUpTest(c *check.C) {
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "admin"}
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "p1",
 		Default:     true,
 		Provisioner: "fake",

@@ -695,12 +695,12 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 }
 
 // GetAppFromUnitID returns app from unit id
-func (p *dockerProvisioner) GetAppFromUnitID(unitID string) (provision.App, error) {
+func (p *dockerProvisioner) GetAppFromUnitID(ctx context.Context, unitID string) (provision.App, error) {
 	cnt, err := p.GetContainer(unitID)
 	if err != nil {
 		return nil, err
 	}
-	a, err := app.GetByName(cnt.AppName)
+	a, err := app.GetByName(ctx, cnt.AppName)
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +913,7 @@ func (n *clusterNodeWrapper) Units() ([]provision.Unit, error) {
 	}
 	units := make([]provision.Unit, len(conts))
 	for i, c := range conts {
-		a, err := app.GetByName(c.AppName)
+		a, err := app.GetByName(context.TODO(), c.AppName)
 		if err != nil {
 			return nil, err
 		}

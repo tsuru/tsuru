@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -27,13 +28,14 @@ import (
 //   404: Not found
 //   401: Unauthorized
 func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	poolName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermPoolRead,
 		permission.Context(permTypes.CtxPool, poolName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	retrievedPool, err := pool.GetPoolByName(poolName)
+	retrievedPool, err := pool.GetPoolByName(ctx, poolName)
 	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -72,17 +74,17 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var pools []pool.Pool
 	var err error
 	if isGlobal {
-		pools, err = pool.ListAllPools()
+		pools, err = pool.ListAllPools(context.TODO())
 		if err != nil {
 			return err
 		}
 	} else {
-		pools, err = pool.ListPossiblePools(teams)
+		pools, err = pool.ListPossiblePools(context.TODO(), teams)
 		if err != nil {
 			return err
 		}
 		if len(poolNames) > 0 {
-			namedPools, err := pool.ListPools(poolNames...)
+			namedPools, err := pool.ListPools(context.TODO(), poolNames...)
 			if err != nil {
 				return err
 			}
@@ -142,7 +144,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = pool.AddPool(addOpts)
+	err = pool.AddPool(context.TODO(), addOpts)
 	if err == pool.ErrDefaultPoolAlreadyExists || err == pool.ErrPoolAlreadyExists {
 		return &terrors.HTTP{
 			Code:    http.StatusConflict,
@@ -287,6 +289,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 //   404: Pool not found
 //   409: Default pool already defined
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPoolUpdate)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -308,7 +311,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	err = pool.PoolUpdate(poolName, updateOpts)
+	err = pool.PoolUpdate(ctx, poolName, updateOpts)
 	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

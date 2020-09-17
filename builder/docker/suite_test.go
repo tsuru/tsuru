@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -80,7 +81,7 @@ func (s *S) SetUpTest(c *check.C) {
 	rand.Seed(0)
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "thepool",
 		Default:     true,
 		Provisioner: "fake",

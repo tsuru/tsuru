@@ -27,6 +27,7 @@ import (
 //   401: Unauthorized
 //   409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	cpuShare, _ := strconv.Atoi(InputValue(r, "cpushare"))
 	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
 	memory := getSize(InputValue(r, "memory"))
@@ -53,7 +54,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.Plan.Create(plan)
+	err = servicemanager.Plan.Create(ctx, plan)
 	if err == appTypes.ErrPlanAlreadyExists {
 		return &errors.HTTP{
 			Code:    http.StatusConflict,
@@ -80,7 +81,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   200: OK
 //   204: No content
 func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	plans, err := servicemanager.Plan.List()
+	plans, err := servicemanager.Plan.List(r.Context())
 	if err != nil {
 		return err
 	}
@@ -100,6 +101,7 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Plan not found
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPlanDelete)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -116,7 +118,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.Plan.Remove(planName)
+	err = servicemanager.Plan.Remove(ctx, planName)
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,

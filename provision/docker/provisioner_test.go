@@ -780,7 +780,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -849,7 +849,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -917,7 +917,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
@@ -969,7 +969,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -1014,7 +1014,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p := pool.Pool{Name: "pool1"}
 	o := pool.AddPoolOptions{Name: p.Name}
-	err = pool.AddPool(o)
+	err = pool.AddPool(context.TODO(), o)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool(p.Name, []string{
 		"tsuruteam",
@@ -1731,7 +1731,7 @@ func (s *S) TestProvisionerGetAppFromUnitID(c *check.C) {
 		},
 	)
 	c.Assert(err, check.IsNil)
-	a, err := s.p.GetAppFromUnitID("9930c24f1c4f")
+	a, err := s.p.GetAppFromUnitID(context.TODO(), "9930c24f1c4f")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.GetName(), check.Equals, a.GetName())
 }
@@ -1754,12 +1754,12 @@ func (s *S) TestProvisionerGetAppFromUnitIDAppNotFound(c *check.C) {
 		},
 	)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.GetAppFromUnitID("9930c24f1c4f")
+	_, err = s.p.GetAppFromUnitID(context.TODO(), "9930c24f1c4f")
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestProvisionerGetAppFromUnitIDContainerNotFound(c *check.C) {
-	_, err := s.p.GetAppFromUnitID("not found")
+	_, err := s.p.GetAppFromUnitID(context.TODO(), "not found")
 	c.Assert(err, check.NotNil)
 }
 

@@ -98,12 +98,12 @@ func (s *S) SetUpTest(c *check.C) {
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	provisiontest.ProvisionerInstance.Reset()
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "mypool",
 		Provisioner: "fake",
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "otherpool",
 		Provisioner: "fake",
 	})
@@ -158,13 +158,13 @@ volume-plans:
 		Plugin       string
 		StorageClass string `json:"storage-class"`
 	}
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "mypool2",
 		Provisioner: "other",
 	})
 	c.Assert(err, check.IsNil)
 	v1 := Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}
-	err = v1.validate()
+	err = v1.validate(context.TODO())
 	c.Assert(err, check.IsNil)
 	var resultFake fakePlan
 	err = v1.UnmarshalPlan(&resultFake)
@@ -176,7 +176,7 @@ volume-plans:
 		},
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.validate()
+	err = v1.validate(context.TODO())
 	c.Assert(err, check.IsNil)
 	resultFake = fakePlan{}
 	err = v1.UnmarshalPlan(&resultFake)
@@ -186,7 +186,7 @@ volume-plans:
 	})
 	v1.Plan.Name = "nfs"
 	v1.Pool = "mypool2"
-	err = v1.validate()
+	err = v1.validate(context.TODO())
 	c.Assert(err, check.IsNil)
 	var resultFakeOther fakeOtherPlan
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -195,7 +195,7 @@ volume-plans:
 		Plugin: "nfs",
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.validate()
+	err = v1.validate(context.TODO())
 	c.Assert(err, check.IsNil)
 	resultFakeOther = fakeOtherPlan{}
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -531,7 +531,7 @@ volume-plans:
 		return &volumeProv, nil
 	})
 	defer provision.Unregister("volumeprov")
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "volumepool",
 		Provisioner: "volumeprov",
 	})
@@ -561,7 +561,7 @@ volume-plans:
 		return &volumeProv, nil
 	})
 	defer provision.Unregister("volumeprov")
-	err := pool.AddPool(pool.AddPoolOptions{
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "volumepool",
 		Provisioner: "volumeprov",
 	})
@@ -653,7 +653,7 @@ func (s *S) TestVolumeValidateNew(c *check.C) {
 	}
 	for _, t := range tt {
 		vol.Name = t.name
-		c.Check(errors.Cause(vol.validateNew()), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
+		c.Check(errors.Cause(vol.validateNew(context.TODO())), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
 	}
 }
 
@@ -684,7 +684,7 @@ volume-plans:
 		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {
-		c.Check(errors.Cause(t.volume.validate()), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
+		c.Check(errors.Cause(t.volume.validate(context.TODO())), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }
 

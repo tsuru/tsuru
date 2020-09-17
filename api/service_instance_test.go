@@ -948,7 +948,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	}
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app-instance",
@@ -1051,7 +1051,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -1100,7 +1100,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app1",
@@ -1141,7 +1141,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	s.pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(stdContext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "app",

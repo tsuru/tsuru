@@ -5,13 +5,15 @@
 package app
 
 import (
+	"context"
+
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type appService struct{}
 
-func (a *appService) GetByName(name string) (appTypes.App, error) {
-	return GetByName(name)
+func (a *appService) GetByName(ctx context.Context, name string) (appTypes.App, error) {
+	return GetByName(ctx, name)
 }
 
 func AppService() (appTypes.AppService, error) {

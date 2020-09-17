@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -170,7 +171,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost string, errCh chan error, wg *sync.WaitGroup, writer io.Writer, locker container.AppLocker) container.Container {
+func (p *dockerProvisioner) MoveOneContainer(ctx context.Context, c container.Container, toHost string, errCh chan error, wg *sync.WaitGroup, writer io.Writer, locker container.AppLocker) container.Container {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -180,7 +181,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 		return container.Container{}
 	}
 	defer locker.Unlock(c.AppName)
-	a, err := app.GetByName(c.AppName)
+	a, err := app.GetByName(ctx, c.AppName)
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,
@@ -233,7 +234,7 @@ func (p *dockerProvisioner) MoveOneContainer(c container.Container, toHost strin
 	return addedContainers[0]
 }
 
-func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer io.Writer) (container.Container, error) {
+func (p *dockerProvisioner) moveContainer(ctx context.Context, contId string, toHost string, writer io.Writer) (container.Container, error) {
 	cont, err := p.GetContainer(contId)
 	if err != nil {
 		return container.Container{}, err
@@ -242,7 +243,7 @@ func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer i
 	wg.Add(1)
 	moveErrors := make(chan error, 1)
 	locker := &appLocker{}
-	createdContainer := p.MoveOneContainer(*cont, toHost, moveErrors, &wg, writer, locker)
+	createdContainer := p.MoveOneContainer(ctx, *cont, toHost, moveErrors, &wg, writer, locker)
 	close(moveErrors)
 	return createdContainer, p.HandleMoveErrors(moveErrors, writer)
 }
@@ -253,7 +254,7 @@ func (p *dockerProvisioner) moveContainerList(containers []container.Container, 
 	wg := sync.WaitGroup{}
 	wg.Add(len(containers))
 	for _, c := range containers {
-		go p.MoveOneContainer(c, toHost, moveErrors, &wg, writer, locker)
+		go p.MoveOneContainer(context.TODO(), c, toHost, moveErrors, &wg, writer, locker)
 	}
 	go func() {
 		wg.Wait()

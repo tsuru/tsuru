@@ -44,7 +44,7 @@ func (s *S) TestValidateNodeAddress(c *check.C) {
 
 func (s *S) TestAddNodeHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
@@ -99,7 +99,7 @@ func (s *S) TestAddNodeHandlerExistingInDifferentProvisioner(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.AddNodeOptions{
@@ -126,7 +126,7 @@ func (s *S) TestAddNodeHandlerExistingInDifferentProvisioner(c *check.C) {
 
 func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	serverAddr := "http://mysrv1"
@@ -162,7 +162,7 @@ func (s *S) TestAddNodeHandlerExisting(c *check.C) {
 func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.AddNodeOptions{
@@ -209,7 +209,7 @@ func (s *S) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 
 func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -245,7 +245,7 @@ func (s *S) TestAddNodeHandlerWithoutAddress(c *check.C) {
 
 func (s *S) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	params := provision.AddNodeOptions{
 		Register: true,
@@ -665,7 +665,7 @@ func (s *S) TestUpdateNodeHandler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	params := provision.UpdateNodeOptions{
 		Address: "localhost:1999",
@@ -731,7 +731,7 @@ func (s *S) TestUpdateNodeHandlerNodeDoesNotExist(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
@@ -769,7 +769,7 @@ func (s *S) TestUpdateNodeDisableNodeHandler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
@@ -799,7 +799,7 @@ func (s *S) TestUpdateNodeEnableNodeHandler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
@@ -829,7 +829,7 @@ func (s *S) TestUpdateNodeEnableAndDisableCantBeDone(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "pool1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	defer pool.RemovePool("pool1")
 	params := provision.UpdateNodeOptions{
@@ -1073,7 +1073,7 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 
 func (s *S) TestNodeRebalanceFilters(c *check.C) {
 	poolOpts := pool.AddPoolOptions{Name: "pool1"}
-	err := pool.AddPool(poolOpts)
+	err := pool.AddPool(context.TODO(), poolOpts)
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
 		Address: "n1",

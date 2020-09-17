@@ -4,6 +4,8 @@
 
 package app
 
+import "context"
+
 var _ PlanStorage = &MockPlanStorage{}
 
 // MockPlanStorage implements PlanStorage interface
@@ -15,23 +17,23 @@ type MockPlanStorage struct {
 	OnDelete      func(Plan) error
 }
 
-func (m *MockPlanStorage) Insert(p Plan) error {
+func (m *MockPlanStorage) Insert(ctx context.Context, p Plan) error {
 	return m.OnInsert(p)
 }
 
-func (m *MockPlanStorage) FindAll() ([]Plan, error) {
+func (m *MockPlanStorage) FindAll(ctx context.Context) ([]Plan, error) {
 	return m.OnFindAll()
 }
 
-func (m *MockPlanStorage) FindDefault() (*Plan, error) {
+func (m *MockPlanStorage) FindDefault(ctx context.Context) (*Plan, error) {
 	return m.OnFindDefault()
 }
 
-func (m *MockPlanStorage) FindByName(name string) (*Plan, error) {
+func (m *MockPlanStorage) FindByName(ctx context.Context, name string) (*Plan, error) {
 	return m.OnFindByName(name)
 }
 
-func (m *MockPlanStorage) Delete(p Plan) error {
+func (m *MockPlanStorage) Delete(ctx context.Context, p Plan) error {
 	return m.OnDelete(p)
 }
 
@@ -44,35 +46,35 @@ type MockPlanService struct {
 	OnRemove      func(string) error
 }
 
-func (m *MockPlanService) Create(plan Plan) error {
+func (m *MockPlanService) Create(ctx context.Context, plan Plan) error {
 	if m.OnCreate == nil {
 		return nil
 	}
 	return m.OnCreate(plan)
 }
 
-func (m *MockPlanService) List() ([]Plan, error) {
+func (m *MockPlanService) List(ctx context.Context) ([]Plan, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}
 	return m.OnList()
 }
 
-func (m *MockPlanService) FindByName(name string) (*Plan, error) {
+func (m *MockPlanService) FindByName(ctx context.Context, name string) (*Plan, error) {
 	if m.OnFindByName == nil {
 		return nil, nil
 	}
 	return m.OnFindByName(name)
 }
 
-func (m *MockPlanService) DefaultPlan() (*Plan, error) {
+func (m *MockPlanService) DefaultPlan(ctx context.Context) (*Plan, error) {
 	if m.OnDefaultPlan == nil {
 		return nil, nil
 	}
 	return m.OnDefaultPlan()
 }
 
-func (m *MockPlanService) Remove(name string) error {
+func (m *MockPlanService) Remove(ctx context.Context, name string) error {
 	if m.OnRemove == nil {
 		return nil
 	}

@@ -71,7 +71,7 @@ func (s *S) TestInsertAppForward(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
-	gotApp, err := GetByName(app.Name)
+	gotApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Quota, check.DeepEquals, quota.UnlimitedQuota)
 }
@@ -93,7 +93,7 @@ func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
 	c.Assert(a.Quota, check.DeepEquals, expected)
-	gotApp, err := GetByName(app.Name)
+	gotApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Quota, check.DeepEquals, expected)
 }
@@ -109,7 +109,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(a.Platform, check.Equals, app.Platform)
-	_, err = GetByName(app.Name)
+	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -201,7 +201,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.FitsTypeOf, &app)
 	c.Assert(result.(*App).Name, check.Equals, app.Name)
-	gotApp, err := GetByName(app.Name)
+	gotApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	appEnv := gotApp.Envs()
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
@@ -233,7 +233,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
-	copy, err := GetByName(app.Name)
+	copy, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	for _, name := range envNames {
 		if _, ok := copy.Env[name]; ok {
@@ -684,7 +684,7 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 		return p1, nil
 	})
 	opts := pool.AddPoolOptions{Name: "test", Provisioner: "fake1", Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{Name: "myapp", Platform: "django", Pool: "test", TeamOwner: s.team.Name}
 	err = CreateApp(context.TODO(), &app, s.user)

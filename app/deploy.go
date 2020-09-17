@@ -462,7 +462,7 @@ func deployDataToEvent(data *DeployData) error {
 		{Message: data.Log},
 	}
 	evt.RemoveDate = data.RemoveDate
-	a, err := GetByName(data.App)
+	a, err := GetByName(context.TODO(), data.App)
 	if err == nil {
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
 			permission.Context(permTypes.CtxApp, a.Name),

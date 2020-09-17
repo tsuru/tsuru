@@ -264,7 +264,7 @@ func poolBelongsToCluster(cluster *provTypes.Cluster, poolName string) (bool, er
 	if poolName == "" {
 		return true, nil
 	}
-	poolData, err := pool.GetPoolByName(poolName)
+	poolData, err := pool.GetPoolByName(context.TODO(), poolName)
 	if err != nil {
 		if err == pool.ErrPoolNotFound {
 			return false, nil

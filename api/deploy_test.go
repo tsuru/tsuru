@@ -113,7 +113,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	user, err := s.token.User()
 	c.Assert(err, check.IsNil)

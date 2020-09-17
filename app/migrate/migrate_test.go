@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -64,13 +65,13 @@ func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = MigrateAppPlanRouterToRouter()
 	c.Assert(err, check.IsNil)
-	a, err = app.GetByName("with-plan-router")
+	a, err = app.GetByName(context.TODO(), "with-plan-router")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Router, check.Equals, "planb")
-	a, err = app.GetByName("without-plan-router")
+	a, err = app.GetByName(context.TODO(), "without-plan-router")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Router, check.Equals, "galeb")
-	a, err = app.GetByName("with-router")
+	a, err = app.GetByName(context.TODO(), "with-router")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Router, check.Equals, "hipache")
 }
@@ -218,7 +219,7 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 	var resultApps []app.App
 	var dbApp *app.App
 	for _, tt := range tests {
-		dbApp, err = app.GetByName(tt.app.Name)
+		dbApp, err = app.GetByName(context.TODO(), tt.app.Name)
 		c.Assert(err, check.IsNil)
 		resultApps = append(resultApps, *dbApp)
 		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
@@ -242,7 +243,7 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 	err = MigrateAppTsuruServicesVarToServiceEnvs()
 	c.Assert(err, check.IsNil)
 	for i, tt := range tests {
-		dbApp, err = app.GetByName(tt.app.Name)
+		dbApp, err = app.GetByName(context.TODO(), tt.app.Name)
 		c.Assert(err, check.IsNil)
 		c.Assert(dbApp, check.DeepEquals, &resultApps[i])
 	}
@@ -264,10 +265,10 @@ func (s *S) TestMigrateAppPlanIDToPlanName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = MigrateAppPlanIDToPlanName()
 	c.Assert(err, check.IsNil)
-	a, err = app.GetByName("app-with-plan-name")
+	a, err = app.GetByName(context.TODO(), "app-with-plan-name")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Plan.Name, check.Equals, "plan-name")
-	a, err = app.GetByName("app-with-plan-id")
+	a, err = app.GetByName(context.TODO(), "app-with-plan-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Plan.Name, check.Equals, "plan-id")
 }

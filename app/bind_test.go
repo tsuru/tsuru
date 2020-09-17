@@ -40,7 +40,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
+	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt, err := event.New(&event.Opts{

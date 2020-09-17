@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -52,7 +53,7 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts *docker.CreateCo
 	if appName == "" {
 		return s.scheduleAnyNode(c, filterNodesMap)
 	}
-	a, _ := app.GetByName(schedOpts.AppName)
+	a, _ := app.GetByName(context.TODO(), schedOpts.AppName)
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
 		return cluster.Node{}, &container.SchedulerError{Base: err}
@@ -112,6 +113,7 @@ func (s *segregatedScheduler) updateContainerName(opts *docker.CreateContainerOp
 }
 
 func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, TotalMemoryMetadata string) ([]cluster.Node, error) {
+	ctx := context.TODO()
 	if maxMemoryRatio == 0 || TotalMemoryMetadata == "" {
 		return nodes, nil
 	}
@@ -125,7 +127,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	}
 	hostReserved := make(map[string]int64)
 	for _, cont := range containers {
-		contApp, err := app.GetByName(cont.AppName)
+		contApp, err := app.GetByName(ctx, cont.AppName)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +222,8 @@ func (s *segregatedScheduler) aggregateContainersByHostAppProcess(hosts []string
 }
 
 func (s *segregatedScheduler) GetRemovableContainer(appName string, process string) (string, error) {
-	a, err := app.GetByName(appName)
+	ctx := context.TODO()
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return "", err
 	}

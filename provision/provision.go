@@ -520,7 +520,7 @@ type NodeContainerProvisioner interface {
 // provisioner.
 type UnitFinderProvisioner interface {
 	// GetAppFromUnitID returns an app from unit id
-	GetAppFromUnitID(string) (App, error)
+	GetAppFromUnitID(context.Context, string) (App, error)
 }
 
 // AppFilterProvisioner is a provisioner that allows filtering apps by the

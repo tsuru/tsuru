@@ -315,7 +315,7 @@ func (s *HandlersSuite) TestDockerLogsUpdateHandlerWithRestartSomeApps(c *check.
 	defer storage.Close()
 	for _, appPool := range appPools {
 		opts := pool.AddPoolOptions{Name: appPool[1]}
-		pool.AddPool(opts)
+		pool.AddPool(context.TODO(), opts)
 		appInstance := provisiontest.NewFakeApp(appPool[0], "python", 0)
 		_, err = newSuccessfulVersionForApp(s.p, appInstance, nil)
 		c.Assert(err, check.IsNil)

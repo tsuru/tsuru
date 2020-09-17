@@ -64,7 +64,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 	}
 	for _, poolName := range provCluster.Pools {
-		_, err = pool.GetPoolByName(poolName)
+		_, err = pool.GetPoolByName(ctx, poolName)
 		if err != nil {
 			if err == pool.ErrPoolNotFound {
 				return &tsuruErrors.HTTP{
@@ -135,7 +135,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	for _, poolName := range provCluster.Pools {
-		_, err = pool.GetPoolByName(poolName)
+		_, err = pool.GetPoolByName(ctx, poolName)
 		if err != nil {
 			if err == pool.ErrPoolNotFound {
 				return &tsuruErrors.HTTP{

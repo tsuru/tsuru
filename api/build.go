@@ -58,7 +58,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	} else {
 		userName = t.GetUserName()
 	}
-	instance, err := app.GetByName(appName)
+	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

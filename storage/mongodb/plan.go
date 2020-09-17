@@ -5,12 +5,16 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/types/app"
 )
+
+const plansCollectionName = "plans"
 
 var _ app.PlanStorage = &PlanStorage{}
 
@@ -27,34 +31,45 @@ type plan struct {
 }
 
 func plansCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("plans")
+	return conn.Collection(plansCollectionName)
 }
 
-func (s *PlanStorage) Insert(p app.Plan) error {
+func (s *PlanStorage) Insert(ctx context.Context, p app.Plan) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	if p.Default {
-		_, err = plansCollection(conn).UpdateAll(bson.M{"default": true}, bson.M{"$unset": bson.M{"default": false}})
+		query := bson.M{"default": true}
+		span := newMongoDBSpan(ctx, mongoSpanUpdateAll, plansCollectionName)
+		span.SetQueryStatement(query)
+		defer span.Finish()
+
+		_, err = plansCollection(conn).UpdateAll(query, bson.M{"$unset": bson.M{"default": false}})
 		if err != nil {
+			span.SetError(err)
 			return err
 		}
 	}
+
+	span := newMongoDBSpan(ctx, mongoSpanInsert, plansCollectionName)
+	defer span.Finish()
+
 	err = plansCollection(conn).Insert(plan(p))
 	if err != nil && mgo.IsDup(err) {
 		return app.ErrPlanAlreadyExists
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *PlanStorage) FindAll() ([]app.Plan, error) {
-	return s.findByQuery(nil)
+func (s *PlanStorage) FindAll(ctx context.Context) ([]app.Plan, error) {
+	return s.findByQuery(ctx, nil)
 }
 
-func (s *PlanStorage) FindDefault() (*app.Plan, error) {
-	plans, err := s.findByQuery(bson.M{"default": true})
+func (s *PlanStorage) FindDefault(ctx context.Context) (*app.Plan, error) {
+	plans, err := s.findByQuery(ctx, bson.M{"default": true})
 	if err != nil {
 		return nil, err
 	}
@@ -67,15 +82,21 @@ func (s *PlanStorage) FindDefault() (*app.Plan, error) {
 	return &plans[0], nil
 }
 
-func (s *PlanStorage) findByQuery(query bson.M) ([]app.Plan, error) {
+func (s *PlanStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Plan, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFind, plansCollectionName)
+	span.SetQueryStatement(query)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	var plans []plan
 	err = plansCollection(conn).Find(query).All(&plans)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	appPlans := make([]app.Plan, len(plans))
@@ -85,15 +106,21 @@ func (s *PlanStorage) findByQuery(query bson.M) ([]app.Plan, error) {
 	return appPlans, nil
 }
 
-func (s *PlanStorage) FindByName(name string) (*app.Plan, error) {
+func (s *PlanStorage) FindByName(ctx context.Context, name string) (*app.Plan, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFind, plansCollectionName)
+	span.SetMongoID(name)
+	defer span.Finish()
+
 	var p plan
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	err = plansCollection(conn).FindId(name).One(&p)
 	if err != nil {
+		span.SetError(err)
 		if err == mgo.ErrNotFound {
 			err = app.ErrPlanNotFound
 		}
@@ -103,9 +130,14 @@ func (s *PlanStorage) FindByName(name string) (*app.Plan, error) {
 	return &plan, nil
 }
 
-func (s *PlanStorage) Delete(p app.Plan) error {
+func (s *PlanStorage) Delete(ctx context.Context, p app.Plan) error {
+	span := newMongoDBSpan(ctx, mongoSpanDelete, plansCollectionName)
+	span.SetMongoID(p.Name)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
@@ -113,5 +145,6 @@ func (s *PlanStorage) Delete(p app.Plan) error {
 	if err == mgo.ErrNotFound {
 		return app.ErrPlanNotFound
 	}
+	span.SetError(err)
 	return err
 }

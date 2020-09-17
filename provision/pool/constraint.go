@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"regexp"
 	"sort"
 	"strings"
@@ -168,8 +169,8 @@ func removePoolConstraint(poolExpr string, field poolConstraintType, values ...s
 	return conn.PoolsConstraints().Update(bson.M{"poolexpr": poolExpr, "field": field}, bson.M{"$pullAll": bson.M{"values": values}})
 }
 
-func getPoolsSatisfyConstraints(exactCheck bool, field poolConstraintType, values ...string) ([]Pool, error) {
-	pools, err := listPools(nil)
+func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field poolConstraintType, values ...string) ([]Pool, error) {
+	pools, err := listPools(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

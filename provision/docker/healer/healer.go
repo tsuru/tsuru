@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -144,7 +145,7 @@ func healingEventToEvent(data *types.HealingEvent) error {
 		evt.Target = event.Target{Type: event.TargetTypeContainer, Value: data.FailingContainer.ID}
 		startOpts = data.FailingContainer
 		endOpts = data.CreatedContainer
-		a, err := app.GetByName(data.FailingContainer.AppName)
+		a, err := app.GetByName(context.TODO(), data.FailingContainer.AppName)
 		if err == nil {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
 				permission.Context(permTypes.CtxApp, a.Name),

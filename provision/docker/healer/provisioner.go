@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"context"
 	"io"
 	"sync"
 
@@ -18,7 +19,7 @@ type DockerProvisioner interface {
 	ClusterClient() provision.BuilderDockerClient
 	Cluster() *cluster.Cluster
 	ActionLimiter() provision.ActionLimiter
-	MoveOneContainer(container.Container, string, chan error, *sync.WaitGroup, io.Writer, container.AppLocker) container.Container
+	MoveOneContainer(context.Context, container.Container, string, chan error, *sync.WaitGroup, io.Writer, container.AppLocker) container.Container
 	MoveContainers(fromHost, toHost string, w io.Writer) error
 	HandleMoveErrors(errors chan error, w io.Writer) error
 	GetContainer(id string) (*container.Container, error)

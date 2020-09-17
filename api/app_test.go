@@ -303,7 +303,7 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 		{Name: "pool2", Default: false, Public: true},
 	}
 	for _, opt := range opts {
-		err := pool.AddPool(opt)
+		err := pool.AddPool(context.TODO(), opt)
 		c.Assert(err, check.IsNil)
 	}
 	app1 := app.App{Name: "app1", Platform: "zend", Pool: opts[0].Name, TeamOwner: s.team.Name, Tags: []string{"mytag"}}
@@ -446,7 +446,7 @@ func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
 func (s *S) TestSimplifiedAppList(c *check.C) {
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -497,7 +497,7 @@ func (s *S) TestSimplifiedAppList(c *check.C) {
 func (s *S) TestAppList(c *check.C) {
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -565,7 +565,7 @@ func (s *S) TestAppListAfterAppInfoHasAddr(c *check.C) {
 	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -613,7 +613,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	}
 	p := pool.Pool{Name: "pool1"}
 	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app1 := app.App{
 		Name:      "app1",
@@ -738,7 +738,7 @@ func (s *S) TestDelete(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), myApp, s.user)
 	c.Assert(err, check.IsNil)
-	myApp, err = app.GetByName(myApp.Name)
+	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
@@ -799,7 +799,7 @@ func (s *S) TestDeleteAdminAuthorized(c *check.C) {
 	}
 	err := app.CreateApp(context.TODO(), myApp, s.user)
 	c.Assert(err, check.IsNil)
-	myApp, err = app.GetByName(myApp.Name)
+	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
@@ -1260,7 +1260,7 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 func (s *S) TestCreateAppWithPool(c *check.C) {
 	platName := "zend"
 	s.setupMockForCreateApp(c, platName)
-	err := pool.AddPool(pool.AddPoolOptions{Name: "mypool1", Public: true})
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "mypool1", Public: true})
 	c.Assert(err, check.IsNil)
 	appName := "someapp"
 	data, err := url.QueryUnescape(fmt.Sprintf("name=%s&platform=%s&pool=mypool1", appName, platName))
@@ -1761,7 +1761,7 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "test"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -1780,7 +1780,7 @@ func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "test"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -1800,7 +1800,7 @@ func (s *S) TestUpdateAppPoolForbiddenIfTheUserDoesNotHaveAccess(c *check.C) {
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "test"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdatePool,
@@ -1838,7 +1838,7 @@ func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fake1"}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("fakepool", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
@@ -1884,7 +1884,7 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Plan, check.DeepEquals, plans[0])
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
@@ -1950,7 +1950,7 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 		recorder := httptest.NewRecorder()
 		s.testServer.ServeHTTP(recorder, request)
 		c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %v", recorder.Body.String()))
-		dbApp, err := app.GetByName(a.Name)
+		dbApp, err := app.GetByName(context.TODO(), a.Name)
 		c.Assert(err, check.IsNil)
 		c.Assert(dbApp.GetMemory(), check.Equals, tt.memory)
 		c.Assert(dbApp.GetSwap(), check.Equals, tt.swap)
@@ -2115,7 +2115,7 @@ func (s *S) TestAddUnits(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -2147,7 +2147,7 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -2225,7 +2225,7 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -2301,7 +2301,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -2378,7 +2378,7 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -2620,7 +2620,7 @@ func (s *S) TestAddTeamToTheApp(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Teams, check.HasLen, 2)
 	c.Assert(app.Teams[1], check.Equals, s.team.Name)
@@ -2739,7 +2739,7 @@ func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Teams, check.HasLen, 1)
 	c.Assert(app.Teams[0], check.Equals, "abcd")
@@ -3288,7 +3288,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("black-dog")
+	app, err := app.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
@@ -3333,7 +3333,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("black-dog")
+	app, err := app.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
 		Name:   "DATABASE_HOST",
@@ -3387,7 +3387,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("black-dog")
+	app, err := app.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
@@ -3462,7 +3462,7 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("black-dog")
+	app, err := app.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
@@ -3509,7 +3509,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("vigil")
+	app, err := app.GetByName(context.TODO(), "vigil")
 	c.Assert(err, check.IsNil)
 	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
@@ -3563,7 +3563,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	a, err = app.GetByName("losers")
+	a, err = app.GetByName(context.TODO(), "losers")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	delete(envs, app.TsuruServicesEnvVar)
@@ -3611,7 +3611,7 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("black-dog")
+	app, err := app.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
@@ -3747,7 +3747,7 @@ func (s *S) TestUnsetEnv(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("swift")
+	app, err := app.GetByName(context.TODO(), "swift")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
@@ -3788,7 +3788,7 @@ func (s *S) TestUnsetEnvNoRestart(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("swift")
+	app, err := app.GetByName(context.TODO(), "swift")
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Env, check.DeepEquals, expected)
 	c.Assert(recorder.Body.String(), check.Matches,
@@ -3827,7 +3827,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("let-it-be")
+	app, err := app.GetByName(context.TODO(), "let-it-be")
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_PASSWORD": {
@@ -3870,7 +3870,7 @@ func (s *S) TestUnsetHandlerRemovesPrivateVariables(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName("letitbe")
+	app, err := app.GetByName(context.TODO(), "letitbe")
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{}
 	c.Assert(app.Env, check.DeepEquals, expected)
@@ -3940,7 +3940,7 @@ func (s *S) TestAddCName(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"leper.secretcompany.com", "blog.tsuru.com"})
 	c.Assert(eventtest.EventDesc{
@@ -3967,7 +3967,7 @@ func (s *S) TestAddCNameAcceptsWildCard(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"*.leper.secretcompany.com"})
 	c.Assert(eventtest.EventDesc{
@@ -4095,7 +4095,7 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
@@ -4128,7 +4128,7 @@ func (s *S) TestRemoveCNameTwoCnames(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app, err := app.GetByName(a.Name)
+	app, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
@@ -5082,7 +5082,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(a.Name)
+	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
 		EnvVar: bind.EnvVar{
@@ -5105,7 +5105,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(a.Name)
+	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{
 		Name:  "MY_VAR",
@@ -5180,7 +5180,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(a.Name)
+	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
 		EnvVar: bind.EnvVar{
@@ -5203,7 +5203,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(a.Name)
+	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{
 		Name:  "MY_VAR",
@@ -5278,7 +5278,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(a.Name)
+	otherApp, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
 		EnvVar: bind.EnvVar{
@@ -5311,7 +5311,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(a.Name)
+	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := bind.EnvVar{
 		Name:  "MY_VAR",
@@ -5822,7 +5822,7 @@ func (s *S) TestGetApp(c *check.C) {
 	a := app.App{Name: "testapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	expected, err := app.GetByName(a.Name)
+	expected, err := app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	r, err := http.NewRequest(http.MethodGet, "", nil)
 	c.Assert(err, check.IsNil)

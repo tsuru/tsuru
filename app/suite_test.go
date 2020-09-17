@@ -135,7 +135,7 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.OptsRouter.Reset()
 	pool.ResetCache()
 	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
-		a, err := GetByName(appName)
+		a, err := GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
@@ -156,7 +156,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	s.builder = &builder.MockBuilder{}

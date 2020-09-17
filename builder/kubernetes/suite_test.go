@@ -122,7 +122,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
-	err = pool.AddPool(pool.AddPoolOptions{
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-default",
 		Default:     true,
 		Provisioner: "kubernetes",

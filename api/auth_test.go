@@ -99,7 +99,7 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.team2 = &authTypes.Team{Name: "tsuruteam2"}
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 }
 

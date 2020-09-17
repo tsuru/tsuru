@@ -46,7 +46,7 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 }
 
 func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	a, err := servicemanager.App.GetByName(args.AppName)
+	a, err := servicemanager.App.GetByName(ctx, args.AppName)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs
 	if err != nil {
 		return nil, err
 	}
-	logsProvisioner, err := k.provisionerGetter(a)
+	logsProvisioner, err := k.provisionerGetter(ctx, a)
 	if err == provision.ErrLogsUnavailable {
 		return tsuruLogs, nil
 	}
@@ -77,7 +77,7 @@ func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs
 }
 
 func (k *provisionerWrapper) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	a, err := servicemanager.App.GetByName(args.AppName)
+	a, err := servicemanager.App.GetByName(ctx, args.AppName)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (k *provisionerWrapper) Watch(ctx context.Context, args appTypes.ListLogArg
 		return nil, err
 	}
 
-	logsProvisioner, err := k.provisionerGetter(a)
+	logsProvisioner, err := k.provisionerGetter(ctx, a)
 	if err == provision.ErrLogsUnavailable {
 		return tsuruWatcher, nil
 	}
@@ -113,10 +113,10 @@ func (k *provisionerWrapper) Instance() appTypes.AppLogService {
 	return k.logService
 }
 
-type logsProvisionerGetter func(a appTypes.App) (provision.LogsProvisioner, error)
+type logsProvisionerGetter func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error)
 
-var defaultLogsProvisionerGetter = func(a appTypes.App) (provision.LogsProvisioner, error) {
-	provisioner, err := pool.GetProvisionerForPool(a.GetPool())
+var defaultLogsProvisionerGetter = func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+	provisioner, err := pool.GetProvisionerForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
 	}

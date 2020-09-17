@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	stdcontext "context"
 	"math/rand"
 	"net/http"
@@ -126,7 +127,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	s.setupMocks()

@@ -179,6 +179,7 @@ func (s *clusterStorage) Delete(ctx context.Context, c provision.Cluster) error 
 
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
