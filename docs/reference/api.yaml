@@ -3365,8 +3365,10 @@ definitions:
       owner:
         type: string
       autoscale:
-        type: object
-        $ref: "#/definitions/AutoScaleSpec"
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AutoScaleSpec"
   UpdateApp:
     type: object
     properties:
