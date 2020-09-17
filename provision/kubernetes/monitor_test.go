@@ -47,7 +47,9 @@ func (s *S) TestNewClusterController(c *check.C) {
 	}
 	c.Assert(err, check.IsNil)
 	defer rebuild.Shutdown(context.Background())
-	_, err = getClusterController(s.p, s.clusterClient)
+	ctr, err := getClusterController(s.p, s.clusterClient)
+	c.Assert(err, check.IsNil)
+	_, err = ctr.getPodInformerWait(true)
 	c.Assert(err, check.IsNil)
 
 	basePod := &apiv1.Pod{
