@@ -1,5 +1,5 @@
 name: ci
-on: [push, pull_request_target]
+on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -169,6 +169,7 @@ jobs:
     - validate-api-spec
     - verify-codegen
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     steps:
     - uses: actions/checkout@v2
     - uses: docker/setup-buildx-action@v1
