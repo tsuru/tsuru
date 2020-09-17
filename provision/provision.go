@@ -564,9 +564,9 @@ func (s AutoScaleSpec) Validate(quotaLimit int) error {
 }
 
 type AutoScaleProvisioner interface {
-	GetAutoScale(a App) ([]AutoScaleSpec, error)
-	SetAutoScale(a App, spec AutoScaleSpec) error
-	RemoveAutoScale(a App, process string) error
+	GetAutoScale(ctx context.Context, a App) ([]AutoScaleSpec, error)
+	SetAutoScale(ctx context.Context, a App, spec AutoScaleSpec) error
+	RemoveAutoScale(ctx context.Context, a App, process string) error
 }
 
 type Node interface {
