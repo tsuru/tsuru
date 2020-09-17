@@ -2749,8 +2749,8 @@ paths:
         minLength: 1
         description: App name.
     post:
-      operationId: AutoScaleSet
-      description: Set new unit autoscale spec.
+      operationId: AutoScaleAdd
+      description: Add new unit autoscale spec.
       parameters:
         - name: autoScaleSpec
           in: body
@@ -2778,6 +2778,31 @@ paths:
         - app
       security:
         - Bearer: []
+    delete:
+      operationId: AutoScaleRemove
+      description: Remove unit autoscale spec.
+      parameters:
+        - name: process
+          required: true
+          in: query
+          type: string
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: AutoScale removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
@@ -2791,6 +2816,8 @@ definitions:
         type: integer
       averageCPU:
         type: string
+      version:
+        type: integer
   DynamicRouter:
     description: Dynamic router
     type: object
@@ -3337,6 +3364,9 @@ definitions:
         type: string
       owner:
         type: string
+      autoscale:
+        type: object
+        $ref: "#/definitions/AutoScaleSpec"
   UpdateApp:
     type: object
     properties:
