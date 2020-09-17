@@ -417,3 +417,24 @@ func (s *ServiceSuite) TestWatchNotifySendOnClosedChannel(c *check.C) {
 	l.Close()
 	addLog(c, s.svc, "fade", "Something went wrong. Check it out:", "tsuru", "")
 }
+
+func (s *ServiceSuite) Test_LogService_AddListConcurrent(c *check.C) {
+	wg := sync.WaitGroup{}
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := s.svc.Add("myapp", "last log msg", "tsuru", "outermachine")
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := s.svc.List(appTypes.ListLogArgs{AppName: "myapp"})
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	wg.Wait()
+}

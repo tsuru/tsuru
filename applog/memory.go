@@ -112,28 +112,7 @@ func (s *memoryLogService) List(args appTypes.ListLogArgs) ([]appTypes.Applog, e
 		return []appTypes.Applog{}, nil
 	}
 	buffer := s.getAppBuffer(args.AppName)
-	if buffer.length == 0 {
-		return []appTypes.Applog{}, nil
-	}
-	if args.Limit == 0 || buffer.length < args.Limit {
-		args.Limit = buffer.length
-	}
-	logs := make([]appTypes.Applog, args.Limit)
-	var count int
-	unitsSet := set.FromSlice(args.Units)
-	for current := buffer.end; count < args.Limit; {
-		if (args.Source == "" || (args.Source == current.log.Source) != args.InvertSource) &&
-			(len(args.Units) == 0 || unitsSet.Includes(current.log.Unit)) {
-
-			logs[len(logs)-count-1] = *current.log
-			count++
-		}
-		current = current.prev
-		if current == buffer.end {
-			break
-		}
-	}
-	return logs[len(logs)-count:], nil
+	return buffer.list(args), nil
 }
 
 func (s *memoryLogService) Watch(args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
@@ -185,7 +164,7 @@ type ringEntry struct {
 }
 
 type appLogBuffer struct {
-	mu              sync.Mutex
+	mu              sync.RWMutex
 	appName         string
 	size            uint
 	length          int
@@ -197,6 +176,33 @@ type appLogBuffer struct {
 	droppedCounter  prometheus.Counter
 	sizeGauge       prometheus.Gauge
 	lengthGauge     prometheus.Gauge
+}
+
+func (b *appLogBuffer) list(args appTypes.ListLogArgs) []appTypes.Applog {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.length == 0 {
+		return []appTypes.Applog{}
+	}
+	if args.Limit == 0 || b.length < args.Limit {
+		args.Limit = b.length
+	}
+	logs := make([]appTypes.Applog, args.Limit)
+	var count int
+	unitsSet := set.FromSlice(args.Units)
+	for current := b.end; count < args.Limit; {
+		if (args.Source == "" || (args.Source == current.log.Source) != args.InvertSource) &&
+			(len(args.Units) == 0 || unitsSet.Includes(current.log.Unit)) {
+
+			logs[len(logs)-count-1] = *current.log
+			count++
+		}
+		current = current.prev
+		if current == b.end {
+			break
+		}
+	}
+	return logs[len(logs)-count:]
 }
 
 func (b *appLogBuffer) add(entry *appTypes.Applog) {
