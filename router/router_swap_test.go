@@ -45,7 +45,7 @@ func (s *ExternalSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {

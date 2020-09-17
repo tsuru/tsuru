@@ -92,7 +92,7 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 }
 

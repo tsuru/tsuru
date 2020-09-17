@@ -39,7 +39,7 @@ func (s *PlatformSuite) SetUpSuite(c *check.C) {
 
 func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *PlatformSuite) SetUpTest(c *check.C) {

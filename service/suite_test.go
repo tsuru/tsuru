@@ -87,6 +87,6 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.conn.Services().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Services().Database)
 	s.conn.Close()
 }

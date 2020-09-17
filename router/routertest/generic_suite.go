@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -105,7 +106,7 @@ func (s *RouterSuite) TearDownSuite(c *check.C) {
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
 		defer conn.Close()
-		conn.Apps().Database.DropDatabase()
+		dbtest.ClearAllCollections(conn.Apps().Database)
 	}
 }
 

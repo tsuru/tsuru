@@ -87,11 +87,6 @@ func (s *Storage) Database(name string) *mgo.Database {
 	return s.session.DB(name)
 }
 
-// DropDatabase drop database of any given name
-func (s *Storage) DropDatabase(name string) error {
-	return s.session.DB(name).DropDatabase()
-}
-
 // Collection returns a collection by its name.
 //
 // If the collection does not exist, MongoDB will create it.

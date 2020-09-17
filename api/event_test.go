@@ -67,7 +67,7 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 }
 

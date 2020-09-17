@@ -87,7 +87,7 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 }
 
 func (s *SyncSuite) TearDownSuite(c *check.C) {
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 }
 

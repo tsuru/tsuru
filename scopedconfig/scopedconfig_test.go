@@ -38,7 +38,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	s.storage.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.storage.Apps().Database)
 	s.storage.Close()
 }
 

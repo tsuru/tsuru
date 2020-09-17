@@ -59,7 +59,7 @@ func (s *GandalfSuite) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *GandalfSuite) TearDownTest(c *check.C) {

@@ -130,7 +130,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = conn.Volumes().Database.DropDatabase()
+	err = dbtest.ClearAllCollections(conn.Volumes().Database)
 	c.Assert(err, check.IsNil)
 }
 

@@ -72,7 +72,7 @@ func (s *InstanceSuite) SetUpTest(c *check.C) {
 }
 
 func (s *InstanceSuite) TearDownSuite(c *check.C) {
-	s.conn.ServiceInstances().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.ServiceInstances().Database)
 	s.conn.Close()
 }
 

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db/dbtest"
 	check "gopkg.in/check.v1"
 )
 
@@ -37,7 +38,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	coll, err := collection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	coll.Database.DropDatabase()
+	dbtest.ClearAllCollections(coll.Database)
 }
 
 type TestIaaS struct {

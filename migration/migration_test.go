@@ -43,7 +43,7 @@ func (s *Suite) TearDownTest(c *check.C) {
 }
 
 func (s *Suite) TearDownSuite(c *check.C) {
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *Suite) TestRun(c *check.C) {

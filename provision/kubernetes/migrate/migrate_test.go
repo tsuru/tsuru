@@ -102,7 +102,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := s.conn.Apps().DropCollection()
+	_, err := s.conn.Apps().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

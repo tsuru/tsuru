@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storage"
 	check "gopkg.in/check.v1"
 )
@@ -60,7 +61,7 @@ func (s *S) TearDownSuite(c *check.C) {
 	defer strg.Close()
 	config.Unset("database:url")
 	config.Unset("database:name")
-	strg.Collection("apps").Database.DropDatabase()
+	dbtest.ClearAllCollections(strg.Apps().Database)
 }
 
 func (s *S) TestHealthCheck(c *check.C) {

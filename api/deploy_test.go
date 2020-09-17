@@ -97,7 +97,7 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	config.Unset("docker:router")
 	pool.RemovePool("pool1")
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 	s.reset()
 }

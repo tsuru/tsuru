@@ -82,7 +82,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 func (s *AuthSuite) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
 	s.server.Stop()
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {

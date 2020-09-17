@@ -29,7 +29,7 @@ import (
 )
 
 func (s *S) TestAddRole(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	role := bytes.NewBufferString("name=test&context=global")
 	req, err := http.NewRequest(http.MethodPost, "/roles", role)
 	c.Assert(err, check.IsNil)
@@ -108,7 +108,7 @@ func (s *S) TestAddRoleNameAlreadyExists(c *check.C) {
 }
 
 func (s *S) TestRemoveRole(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	_, err := permission.NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test", nil)
@@ -137,7 +137,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 }
 
 func (s *S) TestRemoveRoleWithUsers(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	_, err := permission.NewRole("test", "app", "")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/roles/test", nil)
@@ -180,7 +180,7 @@ func (s *S) TestRemoveRoleUnauthorized(c *check.C) {
 }
 
 func (s *S) TestListRoles(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles", nil)
 	c.Assert(err, check.IsNil)
@@ -197,7 +197,7 @@ func (s *S) TestListRoles(c *check.C) {
 }
 
 func (s *S) TestRoleInfoNotFound(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles/xpto.update", nil)
 	c.Assert(err, check.IsNil)
@@ -212,7 +212,7 @@ func (s *S) TestRoleInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestRoleInfo(c *check.C) {
-	s.conn.Roles().DropCollection()
+	s.conn.Roles().RemoveAll(nil)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest(http.MethodGet, "/roles/majortomrole.update", nil)
 	c.Assert(err, check.IsNil)

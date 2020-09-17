@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	check "gopkg.in/check.v1"
 )
 
@@ -31,7 +32,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
-	s.conn.InstallHosts().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.InstallHosts().Database)
 }
 
 func (s *S) TearDownTest(c *check.C) {

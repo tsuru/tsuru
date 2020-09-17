@@ -47,7 +47,7 @@ func (t *mongodbBaseTest) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = conn.Storage.DropDatabase(t.dbName())
+	err = dbtest.ClearAllCollections(conn.Storage.Database(t.dbName()))
 	c.Assert(err, check.IsNil)
 }
 

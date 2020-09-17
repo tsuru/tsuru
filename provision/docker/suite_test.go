@@ -214,9 +214,9 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(conn.Apps().Database)
 	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
-	conn.Apps().Database.Session.DB(clusterDbName).DropDatabase()
+	dbtest.ClearAllCollections(conn.Apps().Database.Session.DB(clusterDbName))
 }
 
 func clearClusterStorage(sess *mgo.Session) error {

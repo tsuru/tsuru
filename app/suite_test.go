@@ -115,7 +115,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
-	s.conn.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *S) SetUpTest(c *check.C) {

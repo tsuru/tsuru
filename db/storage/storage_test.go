@@ -21,7 +21,6 @@ func (s *S) TearDownSuite(c *check.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, check.IsNil)
 	defer storage.session.Close()
-	storage.session.DB("tsuru_storage_test").DropDatabase()
 }
 
 func (s *S) TearDownTest(c *check.C) {

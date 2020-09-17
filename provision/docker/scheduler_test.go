@@ -1070,7 +1070,7 @@ func (s *S) TestChooseContainerToBeRemovedTable(c *check.C) {
 	for i, tt := range tests {
 		scheduler := segregatedScheduler{provisioner: s.p}
 		contColl := s.p.Collection()
-		contColl.DropCollection()
+		contColl.RemoveAll(nil)
 		for j, cont := range tt.conts {
 			cont.ID = fmt.Sprintf("id-%d", j)
 			contColl.Insert(cont)

@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -44,7 +45,7 @@ func (s *S) SetUpTest(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	s.storage.Apps().Database.DropDatabase()
+	dbtest.ClearAllCollections(s.storage.Apps().Database)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
