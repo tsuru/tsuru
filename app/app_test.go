@@ -2695,7 +2695,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 
 	repository.Manager().CreateRepository("name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false, Provisioner: "autoscaleProv"}
-	err := pool.AddPool(opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:        "name",
