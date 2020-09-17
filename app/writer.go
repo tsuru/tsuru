@@ -13,6 +13,10 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 )
 
+// TestLogWriterWaitOnClose should only be set when running tests to avoid
+// different test cases interacting.
+var TestLogWriterWaitOnClose = false
+
 type LogWriter struct {
 	AppName string
 	Source  string
@@ -42,6 +46,9 @@ func (w *LogWriter) Close() {
 	w.closed = true
 	if w.msgCh != nil {
 		close(w.msgCh)
+	}
+	if TestLogWriterWaitOnClose {
+		w.Wait(10 * time.Second)
 	}
 }
 

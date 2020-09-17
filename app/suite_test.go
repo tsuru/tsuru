@@ -93,6 +93,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 var nativeScheme = auth.Scheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	TestLogWriterWaitOnClose = true
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
 	config.Set("log:disable-syslog", true)

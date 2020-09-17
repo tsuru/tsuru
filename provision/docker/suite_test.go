@@ -77,6 +77,7 @@ var _ = check.Suite(&S{})
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	app.TestLogWriterWaitOnClose = true
 	s.collName = "docker_unit"
 	s.imageCollName = "docker_image"
 	s.repoNamespace = "tsuru"
