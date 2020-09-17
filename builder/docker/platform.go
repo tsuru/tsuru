@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"errors"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -27,12 +28,12 @@ func (b *dockerBuilder) PlatformBuild(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts)
 }
 
-func (b *dockerBuilder) PlatformRemove(name string) error {
+func (b *dockerBuilder) PlatformRemove(ctx context.Context, name string) error {
 	client, err := getDockerClient()
 	if err != nil {
 		return err
 	}
-	imgs, err := servicemanager.PlatformImage.ListImages(name)
+	imgs, err := servicemanager.PlatformImage.ListImages(ctx, name)
 	if err != nil {
 		return err
 	}

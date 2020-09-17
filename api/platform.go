@@ -220,7 +220,7 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	images, err := servicemanager.PlatformImage.ListImagesOrDefault(name)
+	images, err := servicemanager.PlatformImage.ListImagesOrDefault(ctx, name)
 	if err != nil {
 		return err
 	}

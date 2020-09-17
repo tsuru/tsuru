@@ -5,6 +5,7 @@
 package image
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -32,16 +33,16 @@ func PlatformImageService() (imageTypes.PlatformImageService, error) {
 	}, nil
 }
 
-func (s *platformImageService) NewImage(platformName string) (string, error) {
-	p, err := s.storage.Upsert(platformName)
+func (s *platformImageService) NewImage(ctx context.Context, platformName string) (string, error) {
+	p, err := s.storage.Upsert(ctx, platformName)
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s/%s:v%d", basicImageName("tsuru"), platformName, p.Count), nil
 }
 
-func (s *platformImageService) CurrentImage(platformName string) (string, error) {
-	img, err := s.storage.FindByName(platformName)
+func (s *platformImageService) CurrentImage(ctx context.Context, platformName string) (string, error) {
+	img, err := s.storage.FindByName(ctx, platformName)
 	if err != nil {
 		log.Errorf("Couldn't find images for platform %q, fallback to default image name. Error: %s", platformName, err)
 		return platformBasicImageName(platformName), nil
@@ -56,20 +57,20 @@ func (s *platformImageService) CurrentImage(platformName string) (string, error)
 	return img.Images[len(img.Images)-1], nil
 }
 
-func (s *platformImageService) AppendImage(platformName, imageID string) error {
-	return s.storage.Append(platformName, imageID)
+func (s *platformImageService) AppendImage(ctx context.Context, platformName, imageID string) error {
+	return s.storage.Append(ctx, platformName, imageID)
 }
 
-func (s *platformImageService) DeleteImages(platformName string) error {
-	err := s.storage.Delete(platformName)
+func (s *platformImageService) DeleteImages(ctx context.Context, platformName string) error {
+	err := s.storage.Delete(ctx, platformName)
 	if err != nil && err != imageTypes.ErrPlatformImageNotFound {
 		return err
 	}
 	return nil
 }
 
-func (s *platformImageService) ListImages(platformName string) ([]string, error) {
-	img, err := s.storage.FindByName(platformName)
+func (s *platformImageService) ListImages(ctx context.Context, platformName string) ([]string, error) {
+	img, err := s.storage.FindByName(ctx, platformName)
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +79,16 @@ func (s *platformImageService) ListImages(platformName string) ([]string, error)
 
 // PlatformListImagesOrDefault returns basicImageName when platform is empty
 // for backwards compatibility
-func (s *platformImageService) ListImagesOrDefault(platformName string) ([]string, error) {
-	imgs, err := s.ListImages(platformName)
+func (s *platformImageService) ListImagesOrDefault(ctx context.Context, platformName string) ([]string, error) {
+	imgs, err := s.ListImages(ctx, platformName)
 	if err != nil && err == imageTypes.ErrPlatformImageNotFound {
 		return []string{platformBasicImageName(platformName)}, nil
 	}
 	return imgs, err
 }
 
-func (s *platformImageService) FindImage(platformName, image string) (string, error) {
-	imgs, err := s.ListImages(platformName)
+func (s *platformImageService) FindImage(ctx context.Context, platformName, image string) (string, error) {
+	imgs, err := s.ListImages(ctx, platformName)
 	if err != nil {
 		return "", err
 	}

@@ -5,6 +5,7 @@
 package image
 
 import (
+	"context"
 	"errors"
 )
 
@@ -15,20 +16,20 @@ type PlatformImage struct {
 }
 
 type PlatformImageService interface {
-	NewImage(string) (string, error)
-	CurrentImage(string) (string, error)
-	AppendImage(string, string) error
-	DeleteImages(string) error
-	ListImages(string) ([]string, error)
-	ListImagesOrDefault(string) ([]string, error)
-	FindImage(string, string) (string, error)
+	NewImage(context.Context, string) (string, error)
+	CurrentImage(context.Context, string) (string, error)
+	AppendImage(context.Context, string, string) error
+	DeleteImages(context.Context, string) error
+	ListImages(context.Context, string) ([]string, error)
+	ListImagesOrDefault(context.Context, string) ([]string, error)
+	FindImage(context.Context, string, string) (string, error)
 }
 
 type PlatformImageStorage interface {
-	Upsert(string) (*PlatformImage, error)
-	FindByName(string) (*PlatformImage, error)
-	Append(string, string) error
-	Delete(string) error
+	Upsert(context.Context, string) (*PlatformImage, error)
+	FindByName(context.Context, string) (*PlatformImage, error)
+	Append(context.Context, string, string) error
+	Delete(context.Context, string) error
 }
 
 var (

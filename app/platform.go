@@ -52,13 +52,13 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 	if err != nil {
 		return err
 	}
-	opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
+	opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
 	err = builder.PlatformBuild(ctx, opts)
 	if err != nil {
-		if imgErr := servicemanager.PlatformImage.DeleteImages(opts.Name); imgErr != nil {
+		if imgErr := servicemanager.PlatformImage.DeleteImages(ctx, opts.Name); imgErr != nil {
 			log.Errorf("unable to remove platform images: %s", imgErr)
 		}
 		dbErr := s.storage.Delete(p)
@@ -70,7 +70,7 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 		}
 		return err
 	}
-	return servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
+	return servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
 }
 
 // List implements List method of PlatformService interface
@@ -113,7 +113,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 			return appTypes.ErrMissingFileContent
 		}
 		opts.Data = data
-		opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
+		opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		if err != nil {
 			return err
 		}
-		err = servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
+		err = servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
 		if err != nil {
 			return err
 		}
@@ -162,7 +162,7 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	if err != nil {
 		log.Errorf("Failed to remove platform from builder: %s", err)
 	}
-	images, err := servicemanager.PlatformImage.ListImagesOrDefault(name)
+	images, err := servicemanager.PlatformImage.ListImagesOrDefault(ctx, name)
 	if err == nil {
 		for _, img := range images {
 			if regErr := registry.RemoveImage(img); regErr != nil {
@@ -172,7 +172,7 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	} else {
 		log.Errorf("Failed to retrieve platform images from storage: %s", err)
 	}
-	err = servicemanager.PlatformImage.DeleteImages(name)
+	err = servicemanager.PlatformImage.DeleteImages(ctx, name)
 	if err != nil {
 		log.Errorf("Failed to remove platform images from storage: %s", err)
 	}
@@ -191,7 +191,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if err != nil {
 		return err
 	}
-	image, err := servicemanager.PlatformImage.FindImage(opts.Name, opts.ImageName)
+	image, err := servicemanager.PlatformImage.FindImage(ctx, opts.Name, opts.ImageName)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 		return fmt.Errorf("Image %s not found in platform %q", opts.ImageName, opts.Name)
 	}
 	opts.Data = []byte("FROM " + image)
-	opts.ImageName, err = servicemanager.PlatformImage.NewImage(opts.Name)
+	opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if err != nil {
 		return err
 	}
-	err = servicemanager.PlatformImage.AppendImage(opts.Name, opts.ImageName)
+	err = servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
 	if err != nil {
 		return err
 	}

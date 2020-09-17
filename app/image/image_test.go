@@ -5,6 +5,8 @@
 package image_test
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -106,7 +108,7 @@ func (s *S) TestGetBuildImage(c *check.C) {
 			err = version.CommitSuccessful()
 			c.Assert(err, check.IsNil)
 		}
-		img, err := image.GetBuildImage(&tt.app)
+		img, err := image.GetBuildImage(context.TODO(), &tt.app)
 		c.Assert(err, check.IsNil)
 		c.Check(img, check.Equals, tt.expectedImage)
 	}

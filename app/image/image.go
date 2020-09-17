@@ -5,6 +5,7 @@
 package image
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -80,13 +81,13 @@ func basicImageName(repoName string) string {
 // * the container have an empty image name;
 // * the deploy number is multiple of 10.
 // in all other cases the app image name will be returned.
-func GetBuildImage(app appTypes.App) (string, error) {
+func GetBuildImage(ctx context.Context, app appTypes.App) (string, error) {
 	if usePlatformImage(app) {
-		return getPlatformImage(app)
+		return getPlatformImage(ctx, app)
 	}
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
 	if err != nil {
-		return getPlatformImage(app)
+		return getPlatformImage(ctx, app)
 	}
 	return version.VersionInfo().DeployImage, nil
 }
@@ -100,10 +101,10 @@ func usePlatformImage(app appTypes.App) bool {
 	return deploys%maxLayers == 0 || app.GetUpdatePlatform()
 }
 
-func getPlatformImage(app appTypes.App) (string, error) {
+func getPlatformImage(ctx context.Context, app appTypes.App) (string, error) {
 	version := app.GetPlatformVersion()
 	if version != "latest" {
-		return servicemanager.PlatformImage.FindImage(app.GetPlatform(), version)
+		return servicemanager.PlatformImage.FindImage(ctx, app.GetPlatform(), version)
 	}
-	return servicemanager.PlatformImage.CurrentImage(app.GetPlatform())
+	return servicemanager.PlatformImage.CurrentImage(ctx, app.GetPlatform())
 }

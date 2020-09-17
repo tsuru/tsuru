@@ -176,7 +176,7 @@ func (s *S) TestPlatformRemove(c *check.C) {
 		c.Assert(name, check.Equals, "test")
 		return []string{"localhost:3030/tsuru/test:v1"}, nil
 	}
-	err = b.PlatformRemove("test")
+	err = b.PlatformRemove(context.TODO(), "test")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(requests) >= 4, check.Equals, true)
 	requests = requests[len(requests)-4:]
@@ -195,7 +195,7 @@ func (s *S) TestPlatformRemoveProvisionerError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var b dockerBuilder
-	err = b.PlatformRemove("test")
+	err = b.PlatformRemove(context.TODO(), "test")
 	c.Assert(err, check.ErrorMatches, "(?m).*No node found.*")
 }
 
@@ -215,6 +215,6 @@ func (s *S) TestPlatformRemoveNoProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var b dockerBuilder
-	err = b.PlatformRemove("test")
+	err = b.PlatformRemove(context.TODO(), "test")
 	c.Assert(err, check.ErrorMatches, "No Docker nodes available")
 }

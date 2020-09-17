@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -30,7 +31,7 @@ const (
 	archiveFileName = "archive.tar.gz"
 )
 
-func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+func (b *dockerBuilder) buildPipeline(ctx context.Context, p provision.BuilderDeployDockerClient, client provision.BuilderDockerClient, app provision.App, tarFile io.Reader, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 	actions := []*action.Action{
 		&createContainer,
 		&uploadToContainer,
@@ -39,7 +40,7 @@ func (b *dockerBuilder) buildPipeline(p provision.BuilderDeployDockerClient, cli
 		&updateAppBuilderImage,
 	}
 	pipeline := action.NewPipeline(actions...)
-	imageName, err := image.GetBuildImage(app)
+	imageName, err := image.GetBuildImage(ctx, app)
 	if err != nil {
 		return nil, log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
 	}

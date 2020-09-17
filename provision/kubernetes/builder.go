@@ -27,7 +27,7 @@ func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKub
 type KubeClient struct{}
 
 func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.Event, archiveFile io.Reader, version appTypes.AppVersion) error {
-	baseImage, err := image.GetBuildImage(a)
+	baseImage, err := image.GetBuildImage(ctx, a)
 	if err != nil {
 		return errors.WithStack(err)
 	}

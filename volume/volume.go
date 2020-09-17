@@ -53,8 +53,6 @@ type Volume struct {
 	Status    string
 	Binds     []VolumeBind      `bson:"-"`
 	Opts      map[string]string `bson:",omitempty"`
-
-	ctx context.Context
 }
 
 func (v *Volume) UnmarshalPlan(result interface{}) error {

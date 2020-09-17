@@ -484,7 +484,7 @@ func getPlatformNameAndVersion(ctx context.Context, platform string) (string, st
 	}
 
 	if version != "latest" {
-		_, err := servicemanager.PlatformImage.FindImage(p.Name, version)
+		_, err := servicemanager.PlatformImage.FindImage(ctx, p.Name, version)
 		if err != nil {
 			return p.Name, "", err
 		}

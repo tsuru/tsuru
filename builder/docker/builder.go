@@ -108,7 +108,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 		return nil, errors.New("no valid files found")
 	}
 	defer tarFile.Close()
-	img, err := b.buildPipeline(p, client, app, tarFile, evt, opts)
+	img, err := b.buildPipeline(ctx, p, client, app, tarFile, evt, opts)
 	if err != nil {
 		return nil, err
 	}

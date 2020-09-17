@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"net/url"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -46,7 +47,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 		Value: "val1",
 	})
 	c.Assert(err, check.IsNil)
-	buildImg, err := image.GetBuildImage(app)
+	buildImg, err := image.GetBuildImage(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	cont := container.Container{Container: types.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
 	args := runContainerActionsArgs{

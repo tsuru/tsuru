@@ -20,6 +20,7 @@ var (
 	mongoSpanUpdateAll mongoOperation = "UpdateAll"
 	mongoSpanUpsert    mongoOperation = "Upsert"
 	mongoSpanFind      mongoOperation = "Find"
+	mongoSpanFindOne   mongoOperation = "FindOne"
 	mongoSpanFindID    mongoOperation = "FindID"
 	mongoSpanDelete    mongoOperation = "Delete"
 	mongoSpanInsert    mongoOperation = "Insert"

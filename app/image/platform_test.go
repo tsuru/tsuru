@@ -5,6 +5,8 @@
 package image
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	imageTypes "github.com/tsuru/tsuru/types/app/image"
 	check "gopkg.in/check.v1"
@@ -26,13 +28,13 @@ func (s *S) TestPlatformNewImage(c *check.C) {
 			},
 		},
 	}
-	img1, err := service.NewImage("myplatform")
+	img1, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "tsuru/myplatform:v1")
-	img2, err := service.NewImage("myplatform")
+	img2, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "tsuru/myplatform:v2")
-	img3, err := service.NewImage("myplatform")
+	img3, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img3, check.Equals, "tsuru/myplatform:v3")
 }
@@ -51,13 +53,13 @@ func (s *S) TestPlatformNewImageWithRegistry(c *check.C) {
 			},
 		},
 	}
-	img1, err := service.NewImage("myplatform")
+	img1, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img1, check.Equals, "localhost:3030/tsuru/myplatform:v1")
-	img2, err := service.NewImage("myplatform")
+	img2, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img2, check.Equals, "localhost:3030/tsuru/myplatform:v2")
-	img3, err := service.NewImage("myplatform")
+	img3, err := service.NewImage(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
 	c.Assert(img3, check.Equals, "localhost:3030/tsuru/myplatform:v3")
 }
@@ -73,7 +75,7 @@ func (s *S) TestPlatformCurrentImage(c *check.C) {
 		c.Assert(n, check.Equals, platformName)
 		return &imageTypes.PlatformImage{Name: n, Images: []string{"tsuru/" + platformName + ":v1"}}, nil
 	}
-	img, err := service.CurrentImage(platformName)
+	img, err := service.CurrentImage(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/myplatform:v1")
 
@@ -83,7 +85,7 @@ func (s *S) TestPlatformCurrentImage(c *check.C) {
 			"tsuru/" + platformName + ":v2",
 		}}, nil
 	}
-	img, err = service.CurrentImage(platformName)
+	img, err = service.CurrentImage(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/myplatform:v2")
 
@@ -94,14 +96,14 @@ func (s *S) TestPlatformCurrentImage(c *check.C) {
 			"tsuru/" + platformName + ":v3",
 		}}, nil
 	}
-	img, err = service.CurrentImage(platformName)
+	img, err = service.CurrentImage(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/myplatform:v3")
 
 	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
 		return nil, imageTypes.ErrPlatformImageNotFound
 	}
-	img, err = service.CurrentImage(platformName)
+	img, err = service.CurrentImage(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/myplatform:latest")
 }
@@ -119,7 +121,7 @@ func (s *S) TestPlatformListImages(c *check.C) {
 			"tsuru/" + platformName + ":v2",
 		}}, nil
 	}
-	images, err := service.ListImages(platformName)
+	images, err := service.ListImages(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/myplatform:v1", "tsuru/myplatform:v2"})
 
@@ -127,7 +129,7 @@ func (s *S) TestPlatformListImages(c *check.C) {
 		c.Assert(n, check.Equals, platformName)
 		return nil, imageTypes.ErrPlatformImageNotFound
 	}
-	images, err = service.ListImages(platformName)
+	images, err = service.ListImages(context.TODO(), platformName)
 	c.Assert(err, check.Equals, imageTypes.ErrPlatformImageNotFound)
 	c.Assert(images, check.IsNil)
 }
@@ -145,7 +147,7 @@ func (s *S) TestPlatformListImagesOrDefault(c *check.C) {
 			"tsuru/" + platformName + ":v2",
 		}}, nil
 	}
-	images, err := service.ListImagesOrDefault(platformName)
+	images, err := service.ListImagesOrDefault(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/myplatform:v1", "tsuru/myplatform:v2"})
 
@@ -153,7 +155,7 @@ func (s *S) TestPlatformListImagesOrDefault(c *check.C) {
 		c.Assert(n, check.Equals, platformName)
 		return nil, imageTypes.ErrPlatformImageNotFound
 	}
-	images, err = service.ListImagesOrDefault(platformName)
+	images, err = service.ListImagesOrDefault(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/myplatform:latest"})
 }
@@ -168,14 +170,14 @@ func (s *S) TestPlatformDeleteImages(c *check.C) {
 		c.Assert(n, check.Equals, platformName)
 		return nil
 	}
-	err := service.DeleteImages(platformName)
+	err := service.DeleteImages(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 
 	storage.OnDelete = func(n string) error {
 		c.Assert(n, check.Equals, platformName)
 		return imageTypes.ErrPlatformImageNotFound
 	}
-	err = service.DeleteImages(platformName)
+	err = service.DeleteImages(context.TODO(), platformName)
 	c.Assert(err, check.IsNil)
 }
 
@@ -191,7 +193,7 @@ func (s *S) TestPlatformAppendImage(c *check.C) {
 		c.Assert(image, check.Equals, imageName)
 		return nil
 	}
-	err := service.AppendImage(platformName, imageName)
+	err := service.AppendImage(context.TODO(), platformName, imageName)
 	c.Assert(err, check.IsNil)
 }
 
@@ -209,15 +211,15 @@ func (s *S) TestPlatformFindImage(c *check.C) {
 			"tsuru/" + platformName + ":v2",
 		}}, nil
 	}
-	image, err := service.FindImage(platformName, imageName)
+	image, err := service.FindImage(context.TODO(), platformName, imageName)
 	c.Assert(err, check.IsNil)
 	c.Assert(image, check.Equals, imageName)
 
-	image, err = service.FindImage(platformName, ":v1")
+	image, err = service.FindImage(context.TODO(), platformName, ":v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(image, check.Equals, imageName)
 
-	image, err = service.FindImage(platformName, "v2")
+	image, err = service.FindImage(context.TODO(), platformName, "v2")
 	c.Assert(err, check.IsNil)
 	c.Assert(image, check.Equals, "tsuru/"+platformName+":v2")
 
@@ -227,7 +229,7 @@ func (s *S) TestPlatformFindImage(c *check.C) {
 			"tsuru/" + platformName + ":v2",
 		}}, nil
 	}
-	image, err = service.FindImage(platformName, imageName)
+	image, err = service.FindImage(context.TODO(), platformName, imageName)
 	c.Assert(err, check.Equals, imageTypes.ErrPlatformImageNotFound)
 	c.Assert(image, check.Equals, "")
 
@@ -235,7 +237,7 @@ func (s *S) TestPlatformFindImage(c *check.C) {
 		c.Assert(n, check.Equals, platformName)
 		return nil, imageTypes.ErrPlatformImageNotFound
 	}
-	image, err = service.FindImage(platformName, imageName)
+	image, err = service.FindImage(context.TODO(), platformName, imageName)
 	c.Assert(err, check.NotNil)
 	c.Assert(image, check.Equals, "")
 }
