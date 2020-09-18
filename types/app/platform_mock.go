@@ -21,27 +21,27 @@ type MockPlatformStorage struct {
 	OnDelete      func(Platform) error
 }
 
-func (m *MockPlatformStorage) Insert(p Platform) error {
+func (m *MockPlatformStorage) Insert(ctx context.Context, p Platform) error {
 	return m.OnInsert(p)
 }
 
-func (m *MockPlatformStorage) FindByName(name string) (*Platform, error) {
+func (m *MockPlatformStorage) FindByName(ctx context.Context, name string) (*Platform, error) {
 	return m.OnFindByName(name)
 }
 
-func (m *MockPlatformStorage) FindAll() ([]Platform, error) {
+func (m *MockPlatformStorage) FindAll(ctx context.Context) ([]Platform, error) {
 	return m.OnFindAll()
 }
 
-func (m *MockPlatformStorage) FindEnabled() ([]Platform, error) {
+func (m *MockPlatformStorage) FindEnabled(ctx context.Context) ([]Platform, error) {
 	return m.OnFindEnabled()
 }
 
-func (m *MockPlatformStorage) Update(p Platform) error {
+func (m *MockPlatformStorage) Update(ctx context.Context, p Platform) error {
 	return m.OnUpdate(p)
 }
 
-func (m *MockPlatformStorage) Delete(p Platform) error {
+func (m *MockPlatformStorage) Delete(ctx context.Context, p Platform) error {
 	return m.OnDelete(p)
 }
 

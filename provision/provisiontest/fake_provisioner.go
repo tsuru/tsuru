@@ -44,6 +44,7 @@ var (
 	_ provision.VolumeProvisioner        = &FakeProvisioner{}
 	_ provision.SleepableProvisioner     = &FakeProvisioner{}
 	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
+	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
 	_ provision.App                      = &FakeApp{}
 	_ bind.App                           = &FakeApp{}
 )
@@ -1255,7 +1256,7 @@ func (p *FakeProvisioner) RegisterUnit(ctx context.Context, a provision.App, uni
 	return &provision.UnitNotFoundError{ID: unitId}
 }
 
-func (p *FakeProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
+func (p *FakeProvisioner) ExecuteCommand(ctx context.Context, opts provision.ExecOptions) error {
 	p.execsMut.Lock()
 	defer p.execsMut.Unlock()
 	var err error

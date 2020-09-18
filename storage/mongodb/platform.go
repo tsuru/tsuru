@@ -5,6 +5,8 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
@@ -14,6 +16,8 @@ import (
 
 var _ app.PlatformStorage = &PlatformStorage{}
 
+const platformsCollectionName = "platforms"
+
 type PlatformStorage struct{}
 
 type platform struct {
@@ -22,26 +26,35 @@ type platform struct {
 }
 
 func platformsCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("platforms")
+	return conn.Collection(platformsCollectionName)
 }
 
-func (s *PlatformStorage) Insert(p app.Platform) error {
+func (s *PlatformStorage) Insert(ctx context.Context, p app.Platform) error {
+	span := newMongoDBSpan(ctx, mongoSpanInsert, platformsCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = platformsCollection(conn).Insert(platform(p))
+	span.SetError(err)
 	if mgo.IsDup(err) {
 		return app.ErrDuplicatePlatform
 	}
 	return err
 }
 
-func (s *PlatformStorage) FindByName(name string) (*app.Platform, error) {
+func (s *PlatformStorage) FindByName(ctx context.Context, name string) (*app.Platform, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFindID, platformsCollectionName)
+	defer span.Finish()
+
 	var p platform
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
@@ -50,30 +63,37 @@ func (s *PlatformStorage) FindByName(name string) (*app.Platform, error) {
 		if err == mgo.ErrNotFound {
 			err = app.ErrPlatformNotFound
 		}
+		span.SetError(err)
 		return nil, err
 	}
 	platform := app.Platform(p)
 	return &platform, nil
 }
 
-func (s *PlatformStorage) FindAll() ([]app.Platform, error) {
-	return s.findByQuery(nil)
+func (s *PlatformStorage) FindAll(ctx context.Context) ([]app.Platform, error) {
+	return s.findByQuery(ctx, nil)
 }
 
-func (s *PlatformStorage) FindEnabled() ([]app.Platform, error) {
+func (s *PlatformStorage) FindEnabled(ctx context.Context) ([]app.Platform, error) {
 	query := bson.M{"$or": []bson.M{{"disabled": false}, {"disabled": bson.M{"$exists": false}}}}
-	return s.findByQuery(query)
+	return s.findByQuery(ctx, query)
 }
 
-func (s *PlatformStorage) findByQuery(query bson.M) ([]app.Platform, error) {
+func (s *PlatformStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Platform, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFindID, platformsCollectionName)
+	span.SetQueryStatement(query)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	var platforms []platform
 	err = platformsCollection(conn).Find(query).All(&platforms)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	appPlatforms := make([]app.Platform, len(platforms))
@@ -83,26 +103,39 @@ func (s *PlatformStorage) findByQuery(query bson.M) ([]app.Platform, error) {
 	return appPlatforms, nil
 }
 
-func (s *PlatformStorage) Update(p app.Platform) error {
+func (s *PlatformStorage) Update(ctx context.Context, p app.Platform) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, platformsCollectionName)
+	span.SetMongoID(p.Name)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
-	return platformsCollection(conn).Update(
+	err = platformsCollection(conn).Update(
 		bson.M{"_id": p.Name},
 		bson.M{"$set": bson.M{"disabled": p.Disabled}},
 	)
+	span.SetError(err)
+	return err
 }
 
-func (s *PlatformStorage) Delete(p app.Platform) error {
+func (s *PlatformStorage) Delete(ctx context.Context, p app.Platform) error {
+	span := newMongoDBSpan(ctx, mongoSpanDeleteID, platformsCollectionName)
+	span.SetMongoID(p.Name)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = platformsCollection(conn).RemoveId(p.Name)
 	if err == mgo.ErrNotFound {
+		span.SetError(err)
 		return app.ErrPlatformNotFound
 	}
 	return err

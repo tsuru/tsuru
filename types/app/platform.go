@@ -35,10 +35,10 @@ type PlatformService interface {
 }
 
 type PlatformStorage interface {
-	Insert(Platform) error
-	FindByName(string) (*Platform, error)
-	FindAll() ([]Platform, error)
-	FindEnabled() ([]Platform, error)
-	Update(Platform) error
-	Delete(Platform) error
+	Insert(context.Context, Platform) error
+	FindByName(context.Context, string) (*Platform, error)
+	FindAll(context.Context) ([]Platform, error)
+	FindEnabled(context.Context) ([]Platform, error)
+	Update(context.Context, Platform) error
+	Delete(context.Context, Platform) error
 }

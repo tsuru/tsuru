@@ -48,7 +48,7 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 	if err := s.validate(p); err != nil {
 		return err
 	}
-	err := s.storage.Insert(p)
+	err := s.storage.Insert(ctx, p)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 		if imgErr := servicemanager.PlatformImage.DeleteImages(ctx, opts.Name); imgErr != nil {
 			log.Errorf("unable to remove platform images: %s", imgErr)
 		}
-		dbErr := s.storage.Delete(p)
+		dbErr := s.storage.Delete(ctx, p)
 		if dbErr != nil {
 			return tsuruErrors.NewMultiError(
 				errors.Wrapf(dbErr, "unable to rollback platform add"),
@@ -76,14 +76,14 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 // List implements List method of PlatformService interface
 func (s *platformService) List(ctx context.Context, enabledOnly bool) ([]appTypes.Platform, error) {
 	if enabledOnly {
-		return s.storage.FindEnabled()
+		return s.storage.FindEnabled(ctx)
 	}
-	return s.storage.FindAll()
+	return s.storage.FindAll(ctx)
 }
 
 // FindByName implements FindByName method of PlatformService interface
 func (s *platformService) FindByName(ctx context.Context, name string) (*appTypes.Platform, error) {
-	p, err := s.storage.FindByName(name)
+	p, err := s.storage.FindByName(ctx, name)
 	if err != nil {
 		return nil, appTypes.ErrInvalidPlatform
 	}
@@ -139,7 +139,7 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 		if err != nil {
 			return err
 		}
-		return s.storage.Update(appTypes.Platform{Name: opts.Name, Disabled: disableBool})
+		return s.storage.Update(ctx, appTypes.Platform{Name: opts.Name, Disabled: disableBool})
 	}
 	return nil
 }
@@ -176,7 +176,7 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	if err != nil {
 		log.Errorf("Failed to remove platform images from storage: %s", err)
 	}
-	return s.storage.Delete(appTypes.Platform{Name: name})
+	return s.storage.Delete(ctx, appTypes.Platform{Name: name})
 }
 
 // Rollback implements Rollback method of PlatformService interface
