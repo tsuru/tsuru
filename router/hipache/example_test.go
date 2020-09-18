@@ -5,6 +5,7 @@
 package hipache_test
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func Example() {
-	router, err := router.Get("hipache")
+	router, err := router.Get(context.TODO(), "hipache")
 	if err != nil {
 		panic(err)
 	}

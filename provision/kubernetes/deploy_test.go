@@ -737,9 +737,9 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
 		waitDep()
 		tt.fn(dep)
-		err = cleanupDeployment(s.clusterClient, a, "p1", version.Version())
+		err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version.Version())
 		c.Assert(err, check.IsNil)
-		err = cleanupDeployment(s.clusterClient, a, "p2", version.Version())
+		err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p2", version.Version())
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -2977,7 +2977,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
-	err = cleanupDeployment(s.clusterClient, a, "p1", version1.Version())
+	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3161,7 +3161,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
-	err = cleanupDeployment(s.clusterClient, a, "p1", version1.Version())
+	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3380,7 +3380,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = m.RemoveService(a, "p1", version.Version())
+	err = m.RemoveService(context.TODO(), a, "p1", version.Version())
 	c.Assert(err, check.IsNil)
 	deps, err = s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -3418,7 +3418,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	s.client.PrependReactor("delete", "deployments", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, errors.New("my dep err")
 	})
-	err = m.RemoveService(a, "p1", version.Version())
+	err = m.RemoveService(context.TODO(), a, "p1", version.Version())
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)

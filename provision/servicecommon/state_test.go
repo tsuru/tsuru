@@ -5,6 +5,8 @@
 package servicecommon
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	check "gopkg.in/check.v1"
@@ -21,14 +23,14 @@ func (s *S) TestChangeAppState(c *check.C) {
 	})
 	err := ChangeAppState(m, fakeApp, "", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb.SetRestarts(1)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker",
 		Version: 1,
@@ -43,7 +45,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 	m.reset()
 	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
-	labelsWeb, err = provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err = provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,
@@ -68,13 +70,13 @@ func (s *S) TestChangeUnits(c *check.C) {
 	})
 	err := ChangeUnits(m, fakeApp, 1, "worker", latestVersion)
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker",
 		Version: 1,
@@ -100,7 +102,7 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 	})
 	err := ChangeUnits(m, fakeApp, 1, "", latestVersion)
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,

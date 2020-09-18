@@ -532,8 +532,8 @@ func cleanupReplicas(client *ClusterClient, dep *appsv1.Deployment) error {
 	return cleanupPods(client, listOpts, dep)
 }
 
-func baseVersionForApp(client *ClusterClient, a provision.App) (int, error) {
-	depData, err := deploymentsDataForApp(client, a)
+func baseVersionForApp(ctx context.Context, client *ClusterClient, a provision.App) (int, error) {
+	depData, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return 0, err
 	}
@@ -545,16 +545,16 @@ func baseVersionForApp(client *ClusterClient, a provision.App) (int, error) {
 	return depData.base.version, nil
 }
 
-func allDeploymentsForApp(client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
+func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
-	return allDeploymentsForAppNS(client, ns, a)
+	return allDeploymentsForAppNS(ctx, client, ns, a)
 }
 
-func allDeploymentsForAppNS(client *ClusterClient, ns string, a provision.App) ([]appsv1.Deployment, error) {
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func allDeploymentsForAppNS(ctx context.Context, client *ClusterClient, ns string, a provision.App) ([]appsv1.Deployment, error) {
+	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix: tsuruLabelPrefix,
@@ -573,16 +573,16 @@ func allDeploymentsForAppNS(client *ClusterClient, ns string, a provision.App) (
 	return deps.Items, nil
 }
 
-func allServicesForApp(client *ClusterClient, a provision.App) ([]apiv1.Service, error) {
+func allServicesForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]apiv1.Service, error) {
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
-	return allServicesForAppNS(client, ns, a)
+	return allServicesForAppNS(ctx, client, ns, a)
 }
 
-func allServicesForAppNS(client *ClusterClient, ns string, a provision.App) ([]apiv1.Service, error) {
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func allServicesForAppNS(ctx context.Context, client *ClusterClient, ns string, a provision.App) ([]apiv1.Service, error) {
+	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix: tsuruLabelPrefix,
@@ -601,8 +601,8 @@ func allServicesForAppNS(client *ClusterClient, ns string, a provision.App) ([]a
 	return filterTsuruControlledServices(svcs.Items), nil
 }
 
-func allServicesForAppInformer(informer v1informers.ServiceInformer, ns string, a provision.App) ([]apiv1.Service, error) {
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+func allServicesForAppInformer(ctx context.Context, informer v1informers.ServiceInformer, ns string, a provision.App) ([]apiv1.Service, error) {
+	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix: tsuruLabelPrefix,
@@ -638,13 +638,13 @@ svcsLoop:
 	return result
 }
 
-func allDeploymentsForAppProcess(client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
+func allDeploymentsForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
 
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -682,16 +682,16 @@ type deploymentInfo struct {
 	replicas   int
 }
 
-func deploymentsDataForProcess(client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
-	deps, err := allDeploymentsForAppProcess(client, a, process)
+func deploymentsDataForProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) (groupedDeployments, error) {
+	deps, err := allDeploymentsForAppProcess(ctx, client, a, process)
 	if err != nil {
 		return groupedDeployments{}, err
 	}
 	return groupDeployments(deps), nil
 }
 
-func deploymentsDataForApp(client *ClusterClient, a provision.App) (groupedDeployments, error) {
-	deps, err := allDeploymentsForApp(client, a)
+func deploymentsDataForApp(ctx context.Context, client *ClusterClient, a provision.App) (groupedDeployments, error) {
+	deps, err := allDeploymentsForApp(ctx, client, a)
 	if err != nil {
 		return groupedDeployments{}, err
 	}
@@ -741,8 +741,8 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 	return result
 }
 
-func deploymentForVersion(client *ClusterClient, a provision.App, process string, versionNumber int) (*appsv1.Deployment, error) {
-	groupedDeps, err := deploymentsDataForProcess(client, a, process)
+func deploymentForVersion(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) (*appsv1.Deployment, error) {
+	groupedDeps, err := deploymentsDataForProcess(ctx, client, a, process)
 	if err != nil {
 		return nil, err
 	}
@@ -773,8 +773,8 @@ func cleanupSingleDeployment(client *ClusterClient, dep *appsv1.Deployment) erro
 	return cleanupReplicas(client, dep)
 }
 
-func cleanupDeployment(client *ClusterClient, a provision.App, process string, versionNumber int) error {
-	dep, err := deploymentForVersion(client, a, process, versionNumber)
+func cleanupDeployment(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) error {
+	dep, err := deploymentForVersion(ctx, client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil
@@ -792,13 +792,13 @@ func cleanupDeployment(client *ClusterClient, a provision.App, process string, v
 	return cleanupReplicas(client, dep)
 }
 
-func allServicesForAppProcess(client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
+func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
 
-	svcLabels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	svcLabels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -820,13 +820,13 @@ func allServicesForAppProcess(client *ClusterClient, a provision.App, process st
 	return svcs.Items, nil
 }
 
-func cleanupServices(client *ClusterClient, a provision.App, process string, versionNumber int) error {
-	svcs, err := allServicesForAppProcess(client, a, process)
+func cleanupServices(ctx context.Context, client *ClusterClient, a provision.App, process string, versionNumber int) error {
+	svcs, err := allServicesForAppProcess(ctx, client, a, process)
 	if err != nil {
 		return err
 	}
 
-	deps, err := allDeploymentsForAppProcess(client, a, process)
+	deps, err := allDeploymentsForAppProcess(ctx, client, a, process)
 	if err != nil {
 		return err
 	}

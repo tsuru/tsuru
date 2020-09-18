@@ -5,6 +5,7 @@
 package migrate
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -27,7 +28,7 @@ type PlanWithRouter struct {
 }
 
 func MigrateAppPlanRouterToRouter() error {
-	defaultRouter, err := router.Default()
+	defaultRouter, err := router.Default(context.TODO())
 	if err != nil {
 		if err == router.ErrDefaultRouterNotFound {
 			fmt.Println("A default router must be configured in order to run this migration.")

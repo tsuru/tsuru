@@ -116,7 +116,7 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 	}
 	constraint := constraints[ConstraintTypeRouter]
 	if constraint == nil || len(constraint.Values) == 0 {
-		return router.Default()
+		return router.Default(p.ctx)
 	}
 	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
 		var allowed map[poolConstraintType][]string
@@ -127,9 +127,9 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 		if len(allowed[ConstraintTypeRouter]) == 1 {
 			return allowed[ConstraintTypeRouter][0], nil
 		}
-		return router.Default()
+		return router.Default(p.ctx)
 	}
-	routers, err := routersNames()
+	routers, err := routersNames(p.ctx)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +138,7 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 			return r, nil
 		}
 	}
-	return router.Default()
+	return router.Default(p.ctx)
 }
 
 func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
@@ -165,7 +165,7 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	routers, err := routersNames()
+	routers, err := routersNames(p.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +200,8 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 	return resolved, nil
 }
 
-func routersNames() ([]string, error) {
-	routers, err := router.List()
+func routersNames(ctx context.Context) ([]string, error) {
+	routers, err := router.List(ctx)
 	if err != nil {
 		return nil, err
 	}

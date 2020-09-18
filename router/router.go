@@ -7,6 +7,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"sort"
@@ -61,8 +62,8 @@ func Unregister(name string) {
 	delete(routers, name)
 }
 
-func Type(name string) (string, error) {
-	dr, err := servicemanager.DynamicRouter.Get(name)
+func Type(ctx context.Context, name string) (string, error) {
+	dr, err := servicemanager.DynamicRouter.Get(ctx, name)
 	if err != nil && err != router.ErrDynamicRouterNotFound {
 		return "", err
 	}
@@ -88,8 +89,8 @@ func configType(name string) (string, string, error) {
 }
 
 // Get gets the named router from the registry.
-func Get(name string) (Router, error) {
-	dr, err := servicemanager.DynamicRouter.Get(name)
+func Get(ctx context.Context, name string) (Router, error) {
+	dr, err := servicemanager.DynamicRouter.Get(ctx, name)
 	if err != nil && err != router.ErrDynamicRouterNotFound {
 		return nil, err
 	}
@@ -118,8 +119,8 @@ func Get(name string) (Router, error) {
 }
 
 // Default returns the default router
-func Default() (string, error) {
-	plans, err := List()
+func Default(ctx context.Context) (string, error) {
+	plans, err := List(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -434,8 +435,8 @@ type PlanRouter struct {
 	Default bool                   `json:"default"`
 }
 
-func ListWithInfo() ([]PlanRouter, error) {
-	routers, err := List()
+func ListWithInfo(ctx context.Context) ([]PlanRouter, error) {
+	routers, err := List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -445,7 +446,7 @@ func ListWithInfo() ([]PlanRouter, error) {
 		i := i
 		go func() {
 			defer wg.Done()
-			info, infoErr := fetchRouterInfo(routers[i].Name)
+			info, infoErr := fetchRouterInfo(ctx, routers[i].Name)
 			if infoErr != nil {
 				routers[i].Info = map[string]string{"error": infoErr.Error()}
 			} else {
@@ -457,8 +458,8 @@ func ListWithInfo() ([]PlanRouter, error) {
 	return routers, nil
 }
 
-func fetchRouterInfo(name string) (map[string]string, error) {
-	r, err := Get(name)
+func fetchRouterInfo(ctx context.Context, name string) (map[string]string, error) {
+	r, err := Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -468,12 +469,12 @@ func fetchRouterInfo(name string) (map[string]string, error) {
 	return nil, nil
 }
 
-func List() ([]PlanRouter, error) {
+func List(ctx context.Context) ([]PlanRouter, error) {
 	allRouters, err := listConfigRouters()
 	if err != nil {
 		return nil, err
 	}
-	dynamicRouters, err := servicemanager.DynamicRouter.List()
+	dynamicRouters, err := servicemanager.DynamicRouter.List(ctx)
 	if err != nil {
 		return nil, err
 	}

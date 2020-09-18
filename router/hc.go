@@ -5,6 +5,8 @@
 package router
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/hc"
 )
 
@@ -15,6 +17,7 @@ import (
 // all custom routers).
 func BuildHealthCheck(routerName string) func() error {
 	return func() error {
+		ctx := context.Background() // TODO add context on healthcheck calls
 		configRouters, err := listConfigRouters()
 		if err != nil {
 			return hc.ErrDisabledComponent
@@ -25,7 +28,7 @@ func BuildHealthCheck(routerName string) func() error {
 				continue
 			}
 			checkCount++
-			err := healthCheck(r.Name)
+			err := healthCheck(ctx, r.Name)
 			if err != nil {
 				return err
 			}
@@ -37,8 +40,8 @@ func BuildHealthCheck(routerName string) func() error {
 	}
 }
 
-func healthCheck(name string) error {
-	router, err := Get(name)
+func healthCheck(ctx context.Context, name string) error {
+	router, err := Get(ctx, name)
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -21,18 +22,18 @@ type DynamicRouter struct {
 }
 
 type DynamicRouterService interface {
-	Get(name string) (*DynamicRouter, error)
-	List() ([]DynamicRouter, error)
-	Remove(name string) error
-	Create(DynamicRouter) error
-	Update(DynamicRouter) error
+	Get(ctx context.Context, name string) (*DynamicRouter, error)
+	List(context.Context) ([]DynamicRouter, error)
+	Remove(ctx context.Context, name string) error
+	Create(context.Context, DynamicRouter) error
+	Update(context.Context, DynamicRouter) error
 }
 
 type DynamicRouterStorage interface {
-	Save(DynamicRouter) error
-	Get(name string) (*DynamicRouter, error)
-	List() ([]DynamicRouter, error)
-	Remove(name string) error
+	Save(context.Context, DynamicRouter) error
+	Get(ctx context.Context, name string) (*DynamicRouter, error)
+	List(context.Context) ([]DynamicRouter, error)
+	Remove(ctx context.Context, name string) error
 }
 
 type HealthcheckData struct {

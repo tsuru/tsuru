@@ -132,7 +132,7 @@ var removeOldAppResources = action.Action{
 			return nil, nil
 		}
 		oldAppCR.Spec.NamespaceName = client.PoolNamespace(params.old.GetPool())
-		err = params.p.removeResources(client, oldAppCR, params.old)
+		err = params.p.removeResources(context.TODO(), client, oldAppCR, params.old)
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 		}

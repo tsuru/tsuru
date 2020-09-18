@@ -5,6 +5,7 @@
 package router_test
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/tsuru/config"
@@ -51,7 +52,7 @@ func (s *ExternalSuite) TearDownSuite(c *check.C) {
 func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 	backend1 := "bx1"
 	backend2 := "bx2"
-	r, err := router.Get("fake")
+	r, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
 	cnameRouter, ok := r.(router.CNameRouter)
 	c.Assert(ok, check.Equals, true)
@@ -101,7 +102,7 @@ func (s *ExternalSuite) TestSwapCnameOnly(c *check.C) {
 func (s *ExternalSuite) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"
-	r, err := router.Get("fake")
+	r, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
 	r.AddBackend(routertest.FakeApp{Name: backend1})
 	addr1, _ := url.Parse("http://127.0.0.1")
@@ -130,9 +131,9 @@ func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	config.Set("hipache:redis-db", 5)
 	backend1 := "bb1"
 	backend2 := "bb2"
-	r1, err := router.Get("fake")
+	r1, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
-	r2, err := router.Get("hipache")
+	r2, err := router.Get(context.TODO(), "hipache")
 	c.Assert(err, check.IsNil)
 	err = r1.AddBackend(routertest.FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)

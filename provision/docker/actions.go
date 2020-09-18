@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -430,7 +431,7 @@ var bindAndHealthcheck = action.Action{
 
 type inRouterFn func(router.Router) error
 
-func runInRouters(app provision.App, fn inRouterFn, rollback inRouterFn) (err error) {
+func runInRouters(ctx context.Context, app provision.App, fn inRouterFn, rollback inRouterFn) (err error) {
 	var toRollback []router.Router
 	defer func() {
 		if err == nil || rollback == nil {
@@ -444,7 +445,7 @@ func runInRouters(app provision.App, fn inRouterFn, rollback inRouterFn) (err er
 		}
 	}()
 	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(appRouter.Name)
+		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return err
 		}
@@ -460,6 +461,7 @@ func runInRouters(app provision.App, fn inRouterFn, rollback inRouterFn) (err er
 var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		stdCtx := context.TODO()
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
@@ -489,7 +491,7 @@ var addNewRoutes = action.Action{
 		if len(routesToAdd) == 0 {
 			return newContainers, nil
 		}
-		err = runInRouters(args.app, func(r router.Router) error {
+		err = runInRouters(stdCtx, args.app, func(r router.Router) error {
 			return r.AddRoutes(args.app.GetName(), routesToAdd)
 		}, func(r router.Router) error {
 			return r.RemoveRoutes(args.app.GetName(), routesToAdd)
@@ -521,7 +523,7 @@ var addNewRoutes = action.Action{
 		if len(routesToRemove) == 0 {
 			return
 		}
-		err := runInRouters(args.app, func(r router.Router) error {
+		err := runInRouters(context.TODO(), args.app, func(r router.Router) error {
 			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
 		}, nil)
 		if err != nil {
@@ -563,7 +565,7 @@ var setRouterHealthcheck = action.Action{
 			msg = fmt.Sprintf("%s, Body: %s", msg, newHCData.Body)
 		}
 		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
-		err = runInRouters(args.app, func(r router.Router) error {
+		err = runInRouters(context.TODO(), args.app, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {
 				return nil
@@ -606,7 +608,7 @@ var setRouterHealthcheck = action.Action{
 			}
 		}
 		hcData := yamlData.ToRouterHC()
-		err = runInRouters(args.app, func(r router.Router) error {
+		err = runInRouters(context.TODO(), args.app, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {
 				return nil
@@ -669,7 +671,7 @@ var removeOldRoutes = action.Action{
 		if len(routesToRemove) == 0 {
 			return result, nil
 		}
-		err = runInRouters(args.app, func(r router.Router) error {
+		err = runInRouters(context.TODO(), args.app, func(r router.Router) error {
 			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
 		}, func(r router.Router) error {
 			if args.appDestroy {
@@ -703,7 +705,7 @@ var removeOldRoutes = action.Action{
 		if len(routesToAdd) == 0 {
 			return
 		}
-		err := runInRouters(args.app, func(r router.Router) error {
+		err := runInRouters(context.TODO(), args.app, func(r router.Router) error {
 			return r.AddRoutes(args.app.GetName(), routesToAdd)
 		}, nil)
 		if err != nil {

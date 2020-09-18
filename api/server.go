@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tsuru/config"
@@ -579,6 +580,10 @@ func bindAppsLister() ([]bind.App, error) {
 }
 
 func startServer(handler http.Handler) error {
+	span, ctx := opentracing.StartSpanFromContext(
+		context.Background(), "StartServer")
+	defer span.Finish()
+
 	srvConf, err := createServers(handler)
 	if err != nil {
 		return err
@@ -598,13 +603,13 @@ func startServer(handler http.Handler) error {
 	if err != nil {
 		return err
 	}
-	routers, err := router.List()
+	routers, err := router.List(ctx)
 	if err != nil {
 		return err
 	}
 	for _, routerDesc := range routers {
 		var r router.Router
-		r, err = router.Get(routerDesc.Name)
+		r, err = router.Get(ctx, routerDesc.Name)
 		if err != nil {
 			return err
 		}
@@ -617,7 +622,7 @@ func startServer(handler http.Handler) error {
 		}
 		fmt.Println()
 	}
-	defaultRouter, _ := router.Default()
+	defaultRouter, _ := router.Default(ctx)
 	fmt.Printf("Default router is %q.\n", defaultRouter)
 	repoManager, err := config.GetString("repo-manager")
 	if err != nil {

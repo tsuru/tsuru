@@ -31,6 +31,7 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+var _ ServiceManager = &recordManager{}
 
 func Test(t *testing.T) {
 	check.TestingT(t)
@@ -101,7 +102,7 @@ func (m *recordManager) reset() {
 	m.calls = nil
 }
 
-func (m *recordManager) CurrentLabels(a provision.App, processName string, versionNumber int) (ls *provision.LabelSet, rep *int32, err error) {
+func (m *recordManager) CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (ls *provision.LabelSet, rep *int32, err error) {
 	key := fmt.Sprintf("%s-v%d", processName, versionNumber)
 	if m.lastLabels != nil {
 		ls = m.lastLabels[key]
@@ -129,7 +130,7 @@ func (m *recordManager) DeployService(ctx context.Context, a provision.App, proc
 	return nil
 }
 
-func (m *recordManager) CleanupServices(a provision.App, versionNumber int, preserveVersions bool) error {
+func (m *recordManager) CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveVersions bool) error {
 	call := managerCall{
 		action:           "cleanup",
 		app:              a,
@@ -140,7 +141,7 @@ func (m *recordManager) CleanupServices(a provision.App, versionNumber int, pres
 	return nil
 }
 
-func (m *recordManager) RemoveService(a provision.App, processName string, versionNumber int) error {
+func (m *recordManager) RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error {
 	call := managerCall{
 		action:        "remove",
 		processName:   processName,
@@ -200,13 +201,13 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 		"worker2": ProcessState{},
 	})
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker2",
 		Version: 2,
@@ -241,13 +242,13 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 		Version: newVersion,
 	}, nil)
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker2",
 		Version: 2,
@@ -278,14 +279,14 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 		"web": ProcessState{Restart: true},
 	})
 	c.Assert(err, check.IsNil)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,
 	})
 	c.Assert(err, check.IsNil)
 	labelsWeb.SetRestarts(1)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker1",
 		Version: 1,
@@ -314,7 +315,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}})
-	newLabelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	newLabelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
@@ -341,13 +342,13 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}, "worker2": {}})
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker2",
 		Version: 2,
@@ -361,7 +362,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 
 func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp("myapp", "whitespace", 1)
-	labelsWebOld, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWebOld, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,
@@ -388,14 +389,14 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 	}
 	_, err = updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
 
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker2",
 		Version: 2,
@@ -426,13 +427,13 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 	}
 	_, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 2,
 	})
 	c.Assert(err, check.IsNil)
-	labelsWorker, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWorker, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "worker2",
 		Version: 2,
@@ -459,7 +460,7 @@ func (s *S) TestActionUpdateServicesBackward(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	labelsWeb, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
 		Process: "web",
 		Version: 1,

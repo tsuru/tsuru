@@ -554,7 +554,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	routers := appInstance.GetRouters()
-	r, err := router.Get(routers[0].Name)
+	r, err := router.Get(context.TODO(), routers[0].Name)
 	c.Assert(err, check.IsNil)
 	beforeRoutes, err := r.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)

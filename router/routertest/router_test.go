@@ -5,6 +5,7 @@
 package routertest
 
 import (
+	"context"
 	"net/url"
 	"testing"
 
@@ -75,10 +76,10 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
-	r, err := router.Get("fake")
+	r, err := router.Get(context.TODO(), "fake")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.FitsTypeOf, &fakeRouter{})
-	r, err = router.Get("fake-hc")
+	r, err = router.Get(context.TODO(), "fake-hc")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.FitsTypeOf, &hcRouter{})
 }

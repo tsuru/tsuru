@@ -6,6 +6,7 @@ package container
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -119,7 +120,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 	sort.Strings(container.Config.Env)
-	expectedLabels, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
+	expectedLabels, err := provision.ProcessLabels(context.TODO(), provision.ProcessLabelsOpts{
 		App:         app,
 		Process:     "myprocess1",
 		Provisioner: "docker",

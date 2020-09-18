@@ -5,6 +5,8 @@
 package router
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/storage"
@@ -28,8 +30,8 @@ func DynamicRouterService() (routerTypes.DynamicRouterService, error) {
 	}, nil
 }
 
-func (s *dynamicRouterService) Update(dr routerTypes.DynamicRouter) error {
-	existing, err := s.storage.Get(dr.Name)
+func (s *dynamicRouterService) Update(ctx context.Context, dr routerTypes.DynamicRouter) error {
+	existing, err := s.storage.Get(ctx, dr.Name)
 	if err != nil {
 		return err
 	}
@@ -49,15 +51,15 @@ func (s *dynamicRouterService) Update(dr routerTypes.DynamicRouter) error {
 		}
 	}
 
-	return s.storage.Save(*existing)
+	return s.storage.Save(ctx, *existing)
 }
 
-func (s *dynamicRouterService) Create(dr routerTypes.DynamicRouter) error {
+func (s *dynamicRouterService) Create(ctx context.Context, dr routerTypes.DynamicRouter) error {
 	err := s.validate(dr)
 	if err != nil {
 		return err
 	}
-	return s.storage.Save(dr)
+	return s.storage.Save(ctx, dr)
 }
 
 func (s *dynamicRouterService) validate(dr routerTypes.DynamicRouter) error {
@@ -73,14 +75,14 @@ func (s *dynamicRouterService) validate(dr routerTypes.DynamicRouter) error {
 	return nil
 }
 
-func (s *dynamicRouterService) Get(name string) (*routerTypes.DynamicRouter, error) {
-	return s.storage.Get(name)
+func (s *dynamicRouterService) Get(ctx context.Context, name string) (*routerTypes.DynamicRouter, error) {
+	return s.storage.Get(ctx, name)
 }
 
-func (s *dynamicRouterService) List() ([]routerTypes.DynamicRouter, error) {
-	return s.storage.List()
+func (s *dynamicRouterService) List(ctx context.Context) ([]routerTypes.DynamicRouter, error) {
+	return s.storage.List(ctx)
 }
 
-func (s *dynamicRouterService) Remove(name string) error {
-	return s.storage.Remove(name)
+func (s *dynamicRouterService) Remove(ctx context.Context, name string) error {
+	return s.storage.Remove(ctx, name)
 }

@@ -25,16 +25,16 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	if err != nil {
 		return nil, err
 	}
-	return getAutoScale(client, a, "")
+	return getAutoScale(ctx, client, a, "")
 }
 
-func getAutoScale(client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
+func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
 	}
 
-	ls, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
@@ -99,11 +99,11 @@ func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.Ap
 	if err != nil {
 		return err
 	}
-	return setAutoScale(client, a, spec)
+	return setAutoScale(ctx, client, a, spec)
 }
 
-func setAutoScale(client *ClusterClient, a provision.App, spec provision.AutoScaleSpec) error {
-	depGroups, err := deploymentsDataForApp(client, a)
+func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, spec provision.AutoScaleSpec) error {
+	depGroups, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func setAutoScale(client *ClusterClient, a provision.App, spec provision.AutoSca
 		return errNoDeploy
 	}
 
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: depInfo.process,
 		Version: minRoutableVersion,
@@ -206,8 +206,8 @@ func setAutoScale(client *ClusterClient, a provision.App, spec provision.AutoSca
 	return nil
 }
 
-func ensureAutoScale(client *ClusterClient, a provision.App, process string) error {
-	autoScaleSpecs, err := getAutoScale(client, a, process)
+func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+	autoScaleSpecs, err := getAutoScale(ctx, client, a, process)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func ensureAutoScale(client *ClusterClient, a provision.App, process string) err
 
 	multiErr := tsuruErrors.NewMultiError()
 	for _, spec := range autoScaleSpecs {
-		err = setAutoScale(client, a, spec)
+		err = setAutoScale(ctx, client, a, spec)
 		if err != nil && err != errNoDeploy {
 			multiErr.Add(err)
 		}

@@ -19,10 +19,12 @@ type mongoOperation string
 var (
 	mongoSpanUpdateAll mongoOperation = "UpdateAll"
 	mongoSpanUpsert    mongoOperation = "Upsert"
+	mongoSpanUpsertID  mongoOperation = "UpsertID"
 	mongoSpanFind      mongoOperation = "Find"
 	mongoSpanFindOne   mongoOperation = "FindOne"
 	mongoSpanFindID    mongoOperation = "FindID"
 	mongoSpanDelete    mongoOperation = "Delete"
+	mongoSpanDeleteID  mongoOperation = "DeleteID"
 	mongoSpanInsert    mongoOperation = "Insert"
 )
 

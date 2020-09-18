@@ -5,6 +5,8 @@
 package provision_test
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -59,7 +61,7 @@ func (s *S) TestProcessLabels(c *check.C) {
 		Process:     "p1",
 		Provisioner: "kubernetes",
 	}
-	ls, err := provision.ProcessLabels(opts)
+	ls, err := provision.ProcessLabels(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
@@ -96,7 +98,7 @@ func (s *S) TestServiceLabels(c *check.C) {
 			Builder:     "docker",
 		},
 	}
-	ls, err := provision.ServiceLabels(opts)
+	ls, err := provision.ServiceLabels(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		RawLabels: map[string]string{

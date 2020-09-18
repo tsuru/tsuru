@@ -336,7 +336,7 @@ func (p *dockerProvisioner) runCommandInContainer(version appTypes.AppVersion, a
 	for _, e := range provision.EnvsForApp(app, "", false, version) {
 		envs = append(envs, fmt.Sprintf("%s=%s", e.Name, e.Value))
 	}
-	labelSet, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labelSet, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App: app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Provisioner:   provisionerName,

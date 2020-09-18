@@ -63,7 +63,7 @@ func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App
 		return provision.InspectData{}, err
 	}
 	deployPodName := deployPodNameForApp(a, version)
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			IsBuild:     true,

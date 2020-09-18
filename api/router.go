@@ -28,6 +28,7 @@ import (
 //   400: Invalid router
 //   409: Router already exists
 func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var dynamicRouter routerTypes.DynamicRouter
 	err = ParseInput(r, &dynamicRouter)
 	if err != nil {
@@ -39,7 +40,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return permission.ErrUnauthorized
 	}
 
-	_, err = servicemanager.DynamicRouter.Get(dynamicRouter.Name)
+	_, err = servicemanager.DynamicRouter.Get(ctx, dynamicRouter.Name)
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "dynamic router already exists"}
 	}
@@ -55,7 +56,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.DynamicRouter.Create(dynamicRouter)
+	err = servicemanager.DynamicRouter.Create(ctx, dynamicRouter)
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -70,6 +71,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //   400: Invalid router
 //   404: Router not found
 func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var dynamicRouter routerTypes.DynamicRouter
 
 	routerName := r.URL.Query().Get(":name")
@@ -96,7 +98,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	defer func() { evt.Done(err) }()
 
-	err = servicemanager.DynamicRouter.Update(dynamicRouter)
+	err = servicemanager.DynamicRouter.Update(ctx, dynamicRouter)
 	if err != nil {
 		if err == routerTypes.ErrDynamicRouterNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -113,6 +115,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   200: OK
 //   404: Router not found
 func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	routerName := r.URL.Query().Get(":name")
 
 	allowed := permission.Check(t, permission.PermRouterDelete, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName})
@@ -132,7 +135,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	defer func() { evt.Done(err) }()
 
-	err = servicemanager.DynamicRouter.Remove(routerName)
+	err = servicemanager.DynamicRouter.Remove(ctx, routerName)
 	if err != nil {
 		if err == routerTypes.ErrDynamicRouterNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -164,7 +167,7 @@ contexts:
 			teams = append(teams, c.Value)
 		}
 	}
-	routers, err := router.ListWithInfo()
+	routers, err := router.ListWithInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -225,7 +228,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	_, err = router.Get(appRouter.Name)
+	_, err = router.Get(ctx, appRouter.Name)
 	if err != nil {
 		if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -287,7 +290,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	_, err = router.Get(appRouter.Name)
+	_, err = router.Get(ctx, appRouter.Name)
 	if err != nil {
 		if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

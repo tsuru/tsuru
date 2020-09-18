@@ -153,7 +153,7 @@ func (c *Container) Create(args *CreateArgs) error {
 	if err != nil {
 		return err
 	}
-	labelSet, err := provision.ProcessLabels(provision.ProcessLabelsOpts{
+	labelSet, err := provision.ProcessLabels(context.TODO(), provision.ProcessLabelsOpts{
 		App:         args.App,
 		Process:     c.ProcessName,
 		Provisioner: "docker",

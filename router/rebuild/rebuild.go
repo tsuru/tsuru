@@ -98,7 +98,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 		b.w = ioutil.Discard
 	}
 	fmt.Fprintf(b.w, "\n---- Updating router [%s] ----\n", appRouter.Name)
-	r, err := router.Get(appRouter.Name)
+	r, err := router.Get(ctx, appRouter.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@
 package provision
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -419,8 +420,8 @@ func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 	set.Labels[labelBuilder] = opts.Builder
 }
 
-func ServiceLabels(opts ServiceLabelsOpts) (*LabelSet, error) {
-	set, err := ProcessLabels(ProcessLabelsOpts{
+func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, error) {
+	set, err := ProcessLabels(ctx, ProcessLabelsOpts{
 		App:      opts.App,
 		Process:  opts.Process,
 		IsDeploy: opts.IsDeploy,
@@ -472,10 +473,10 @@ type ProcessLabelsOpts struct {
 	IsDeploy    bool
 }
 
-func ProcessLabels(opts ProcessLabelsOpts) (*LabelSet, error) {
+func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, error) {
 	var routerNames, routerTypes []string
 	for _, appRouter := range opts.App.GetRouters() {
-		routerType, err := router.Type(appRouter.Name)
+		routerType, err := router.Type(ctx, appRouter.Name)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

@@ -349,7 +349,7 @@ func (app *App) configureCreateRouters() error {
 		}
 		app.Router, err = appPool.GetDefaultRouter()
 	} else {
-		_, err = router.Get(app.Router)
+		_, err = router.Get(app.ctx, app.Router)
 	}
 	if err != nil {
 		return err
@@ -630,7 +630,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	routers := app.GetRouters()
 	for _, appRouter := range routers {
 		var r router.Router
-		r, err = router.Get(appRouter.Name)
+		r, err = router.Get(ctx, appRouter.Name)
 		if err == nil {
 			err = r.RemoveBackend(app.Name)
 		}
@@ -1309,7 +1309,7 @@ func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr stri
 	routers := app.GetRouters()
 	for _, appRouter := range routers {
 		var r router.Router
-		r, err = router.Get(appRouter.Name)
+		r, err = router.Get(ctx, appRouter.Name)
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
@@ -2002,11 +2002,11 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	if len(a1Routers) != 1 || len(a2Routers) != 1 {
 		return errors.New("swapping apps with multiple routers is not supported")
 	}
-	r1, err := router.Get(a1Routers[0].Name)
+	r1, err := router.Get(ctx, a1Routers[0].Name)
 	if err != nil {
 		return err
 	}
-	r2, err := router.Get(a2Routers[0].Name)
+	r2, err := router.Get(ctx, a2Routers[0].Name)
 	if err != nil {
 		return err
 	}
@@ -2105,7 +2105,7 @@ func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[
 
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	defer rebuild.RoutesRebuildOrEnqueue(app.Name)
-	r, err := router.Get(appRouter.Name)
+	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
 		return err
 	}
@@ -2141,7 +2141,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if existing == nil {
 		return &router.ErrRouterNotFound{Name: appRouter.Name}
 	}
-	r, err := router.Get(appRouter.Name)
+	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
 		return err
 	}
@@ -2181,7 +2181,7 @@ func (app *App) RemoveRouter(name string) error {
 	if !removed {
 		return &router.ErrRouterNotFound{Name: name}
 	}
-	r, err := router.Get(name)
+	r, err := router.Get(app.ctx, name)
 	if err != nil {
 		return err
 	}
@@ -2235,7 +2235,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 	multi := tsuruErrors.NewMultiError()
 	for i := range routers {
 		routerName := routers[i].Name
-		r, err := router.Get(routerName)
+		r, err := router.Get(app.ctx, routerName)
 		if err != nil {
 			multi.Add(err)
 			continue
@@ -2267,7 +2267,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			Value: addr,
 		})
 		routers[i].Address = addr
-		rType, _ := router.Type(routerName)
+		rType, _ := router.Type(app.ctx, routerName)
 		routers[i].Type = rType
 	}
 	return routers, multi.ToError()
@@ -2320,7 +2320,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 	}
 	addedAny := false
 	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(appRouter.Name)
+		r, err := router.Get(app.ctx, appRouter.Name)
 		if err != nil {
 			return err
 		}
@@ -2347,7 +2347,7 @@ func (app *App) RemoveCertificate(name string) error {
 	}
 	removedAny := false
 	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(appRouter.Name)
+		r, err := router.Get(app.ctx, appRouter.Name)
 		if err != nil {
 			return err
 		}
@@ -2394,7 +2394,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	allCertificates := make(map[string]map[string]string)
 	for _, appRouter := range app.GetRouters() {
 		certificates := make(map[string]string)
-		r, err := router.Get(appRouter.Name)
+		r, err := router.Get(app.ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
 		}

@@ -284,7 +284,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		if len(params.cmds) != 3 {
 			return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 		}
-		pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+		pod, err := newDeployAgentPod(ctx, params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
 			name:              params.mainContainer,
 			image:             kubeConf.DeploySidecarImage,
 			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
@@ -697,8 +697,8 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) CleanupServices(a provision.App, deployedVersion int, preserveOldVersions bool) error {
-	depGroups, err := deploymentsDataForApp(m.client, a)
+func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, deployedVersion int, preserveOldVersions bool) error {
+	depGroups, err := deploymentsDataForApp(ctx, m.client, a)
 	if err != nil {
 		return err
 	}
@@ -731,7 +731,7 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion int, p
 		}
 	}
 
-	svcs, err := allServicesForApp(m.client, a)
+	svcs, err := allServicesForApp(ctx, m.client, a)
 	if err != nil {
 		multiErrors.Add(err)
 	}
@@ -759,21 +759,21 @@ func (m *serviceManager) CleanupServices(a provision.App, deployedVersion int, p
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) RemoveService(a provision.App, process string, versionNumber int) error {
+func (m *serviceManager) RemoveService(ctx context.Context, a provision.App, process string, versionNumber int) error {
 	multiErrors := tsuruErrors.NewMultiError()
-	err := cleanupDeployment(m.client, a, process, versionNumber)
+	err := cleanupDeployment(ctx, m.client, a, process, versionNumber)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(err)
 	}
-	err = cleanupServices(m.client, a, process, versionNumber)
+	err = cleanupServices(ctx, m.client, a, process, versionNumber)
 	if err != nil {
 		multiErrors.Add(err)
 	}
 	return multiErrors.ToError()
 }
 
-func (m *serviceManager) CurrentLabels(a provision.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
-	dep, err := deploymentForVersion(m.client, a, process, versionNumber)
+func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
+	dep, err := deploymentForVersion(ctx, m.client, a, process, versionNumber)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return nil, nil, nil
@@ -1034,7 +1034,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		Prefix:      tsuruLabelPrefix,
 	})
 
-	depArgs, err := m.baseDeploymentArgs(a, process, labels, version, preserveVersions)
+	depArgs, err := m.baseDeploymentArgs(ctx, a, process, labels, version, preserveVersions)
 	if err != nil {
 		return err
 	}
@@ -1098,12 +1098,12 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
-	err = m.ensureServices(a, process, labels, annotations)
+	err = m.ensureServices(ctx, a, process, labels, annotations)
 	if err != nil {
 		return err
 	}
 
-	err = ensureAutoScale(m.client, a, process)
+	err = ensureAutoScale(ctx, m.client, a, process)
 	if err != nil {
 		return errors.Wrap(err, "unable to ensure auto scale is configured")
 	}
@@ -1118,7 +1118,7 @@ type baseDepArgs struct {
 	baseDep  *deploymentInfo
 }
 
-func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
+func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, version appTypes.AppVersion, preserveVersions bool) (baseDepArgs, error) {
 	var result baseDepArgs
 	if !preserveVersions {
 		labels.SetIsRoutable()
@@ -1127,7 +1127,7 @@ func (m *serviceManager) baseDeploymentArgs(a provision.App, process string, lab
 		return result, nil
 	}
 
-	depData, err := deploymentsDataForProcess(m.client, a, process)
+	depData, err := deploymentsDataForProcess(ctx, m.client, a, process)
 	if err != nil {
 		return result, err
 	}
@@ -1177,7 +1177,7 @@ type svcCreateData struct {
 	ports    []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(a provision.App, process string, labels, annotations *provision.LabelSet) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels, annotations *provision.LabelSet) error {
 	ns, err := m.client.AppNamespace(a)
 	if err != nil {
 		return err
@@ -1197,7 +1197,7 @@ func (m *serviceManager) ensureServices(a provision.App, process string, labels,
 
 	versionLabels := labels.WithoutRoutable()
 
-	depData, err := deploymentsDataForProcess(m.client, a, process)
+	depData, err := deploymentsDataForProcess(ctx, m.client, a, process)
 	if err != nil {
 		return err
 	}
@@ -1231,7 +1231,7 @@ func (m *serviceManager) ensureServices(a provision.App, process string, labels,
 		}
 
 		if len(svcPorts) == 0 {
-			err = cleanupServices(m.client, a, process, version.Version())
+			err = cleanupServices(ctx, m.client, a, process, version.Version())
 			if err != nil {
 				return err
 			}
@@ -1525,7 +1525,7 @@ type inspectParams struct {
 func runInspectSidecar(ctx context.Context, params inspectParams) error {
 	inspectContainer := "inspect-cont"
 	kubeConf := getKubeConfig()
-	pod, err := newDeployAgentPod(params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+	pod, err := newDeployAgentPod(ctx, params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
 		name:              inspectContainer,
 		image:             kubeConf.DeployInspectImage,
 		cmd:               "cat >/dev/null && /bin/deploy-agent",
@@ -1602,7 +1602,7 @@ type deployAgentConfig struct {
 	dockerfileBuild   bool
 }
 
-func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
+func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
@@ -1614,7 +1614,7 @@ func newDeployAgentPod(client *ClusterClient, sourceImage string, app provision.
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			IsBuild:     true,

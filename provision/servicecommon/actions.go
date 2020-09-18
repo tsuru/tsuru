@@ -48,10 +48,10 @@ type labelReplicas struct {
 }
 
 type ServiceManager interface {
-	RemoveService(a provision.App, processName string, versionNumber int) error
-	CurrentLabels(a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
+	RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error
+	CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
 	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error
-	CleanupServices(a provision.App, versionNumber int, preserveOldVersions bool) error
+	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool) error
 }
 
 // RunServicePipeline runs a pipeline for deploy a service with multiple
@@ -96,11 +96,11 @@ func RunServicePipeline(manager ServiceManager, oldVersionNumber int, args provi
 	})
 }
 
-func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelReplicas) error {
+func rollbackAddedProcesses(ctx context.Context, args *pipelineArgs, processes map[string]*labelReplicas) error {
 	errors := tsuruErrors.NewMultiError()
 	for processName, oldLabels := range processes {
 		if oldLabels.labels == nil {
-			if err := args.manager.RemoveService(args.app, processName, args.newVersion.Version()); err != nil {
+			if err := args.manager.RemoveService(ctx, args.app, processName, args.newVersion.Version()); err != nil {
 				errors.Add(fmt.Errorf("error removing service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.newVersion.Version(), err))
 			}
 			continue
@@ -117,11 +117,11 @@ func rollbackAddedProcesses(args *pipelineArgs, processes map[string]*labelRepli
 	return errors.ToError()
 }
 
-func rawLabelsAndReplicas(args *pipelineArgs, processName string, versionNumber int) (*labelReplicas, error) {
+func rawLabelsAndReplicas(ctx context.Context, args *pipelineArgs, processName string, versionNumber int) (*labelReplicas, error) {
 	if versionNumber == 0 {
 		return &labelReplicas{}, nil
 	}
-	labels, replicas, err := args.manager.CurrentLabels(args.app, processName, versionNumber)
+	labels, replicas, err := args.manager.CurrentLabels(ctx, args.app, processName, versionNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func rawLabelsAndReplicas(args *pipelineArgs, processName string, versionNumber 
 	return lr, nil
 }
 
-func labelsForService(args *pipelineArgs, oldLabels labelReplicas, newVersion appTypes.AppVersion, processName string, pState ProcessState) (labelReplicas, error) {
+func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelReplicas, newVersion appTypes.AppVersion, processName string, pState ProcessState) (labelReplicas, error) {
 	restartCount := 0
 	isStopped := false
 	isAsleep := false
@@ -157,7 +157,7 @@ func labelsForService(args *pipelineArgs, oldLabels labelReplicas, newVersion ap
 		isStopped = false
 		isAsleep = false
 	}
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     args.app,
 		Process: processName,
 		Version: newVersion.Version(),
@@ -183,6 +183,7 @@ func labelsForService(args *pipelineArgs, oldLabels labelReplicas, newVersion ap
 var updateServices = &action.Action{
 	Name: "update-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		stdCtx := context.TODO()
 		args := ctx.Params[0].(*pipelineArgs)
 		var toDeployProcesses []string
 		deployedProcesses := map[string]*labelReplicas{}
@@ -195,12 +196,12 @@ var updateServices = &action.Action{
 		oldLabelsMap := map[string]*labelReplicas{}
 		newLabelsMap := map[string]*labelReplicas{}
 		for _, processName := range toDeployProcesses {
-			oldLabels, err := rawLabelsAndReplicas(args, processName, args.oldVersionNumber)
+			oldLabels, err := rawLabelsAndReplicas(stdCtx, args, processName, args.oldVersionNumber)
 			if err != nil {
 				return nil, err
 			}
 			oldLabelsMap[processName] = oldLabels
-			labels, err := labelsForService(args, *oldLabels, args.newVersion, processName, args.newVersionSpec[processName])
+			labels, err := labelsForService(stdCtx, args, *oldLabels, args.newVersion, processName, args.newVersionSpec[processName])
 			if err != nil {
 				return nil, err
 			}
@@ -221,7 +222,7 @@ var updateServices = &action.Action{
 		errs := tsuruErrors.NewMultiError()
 		if err != nil {
 			errs.Add(err)
-			if nerr := rollbackAddedProcesses(args, deployedProcesses); nerr != nil {
+			if nerr := rollbackAddedProcesses(stdCtx, args, deployedProcesses); nerr != nil {
 				errs.Add(nerr)
 			}
 		}
@@ -230,7 +231,7 @@ var updateServices = &action.Action{
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(*pipelineArgs)
 		deployedProcesses := ctx.FWResult.(map[string]*labelReplicas)
-		rollbackAddedProcesses(args, deployedProcesses)
+		rollbackAddedProcesses(context.TODO(), args, deployedProcesses)
 	},
 }
 
@@ -250,11 +251,11 @@ var removeOldServices = &action.Action{
 	Name: "remove-old-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		err := removeOld(args)
+		err := removeOld(context.TODO(), args)
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		err = args.manager.CleanupServices(args.app, args.newVersion.Version(), args.preserveVersions)
+		err = args.manager.CleanupServices(context.TODO(), args.app, args.newVersion.Version(), args.preserveVersions)
 		if err != nil {
 			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}
@@ -262,7 +263,7 @@ var removeOldServices = &action.Action{
 	},
 }
 
-func removeOld(args *pipelineArgs) error {
+func removeOld(ctx context.Context, args *pipelineArgs) error {
 	if args.oldVersion == nil {
 		return nil
 	}
@@ -274,7 +275,7 @@ func removeOld(args *pipelineArgs) error {
 	new := set.FromMap(args.newVersionSpec)
 	errs := tsuruErrors.NewMultiError()
 	for processName := range old.Difference(new) {
-		err = args.manager.RemoveService(args.app, processName, args.oldVersion.Version())
+		err = args.manager.RemoveService(ctx, args.app, processName, args.oldVersion.Version())
 		if err != nil {
 			errs.Add(err)
 		}

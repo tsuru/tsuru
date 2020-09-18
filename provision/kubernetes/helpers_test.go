@@ -498,7 +498,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = cleanupDeployment(s.clusterClient, a, "p1", version.Version())
+	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version.Version())
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

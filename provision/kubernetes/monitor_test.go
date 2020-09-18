@@ -27,7 +27,7 @@ func (s *S) TestNewClusterController(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	labels, err := provision.ServiceLabels(provision.ServiceLabelsOpts{
+	labels, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     a,
 		Process: "p1",
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{

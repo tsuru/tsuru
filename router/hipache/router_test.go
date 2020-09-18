@@ -5,6 +5,7 @@
 package hipache
 
 import (
+	"context"
 	"net/url"
 	"reflect"
 	"sync"
@@ -164,7 +165,7 @@ func (s *S) TestConnectWhenConnIsNilAndCannotConnect(c *check.C) {
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
-	r, err := router.Get("hipache")
+	r, err := router.Get(context.TODO(), "hipache")
 	c.Assert(err, check.IsNil)
 	_, ok := r.(*hipacheRouter)
 	c.Assert(ok, check.Equals, true)
@@ -173,7 +174,7 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 func (s *S) TestShouldBeRegisteredAsPlanb(c *check.C) {
 	config.Set("routers:myplanb:type", "planb")
 	defer config.Unset("routers:myplanb:type")
-	r, err := router.Get("myplanb")
+	r, err := router.Get(context.TODO(), "myplanb")
 	c.Assert(err, check.IsNil)
 	_, ok := r.(*planbRouter)
 	c.Assert(ok, check.Equals, true)
@@ -184,9 +185,9 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	config.Set("routers:inst2:type", "hipache")
 	defer config.Unset("routers:inst1:type")
 	defer config.Unset("routers:inst2:type")
-	got1, err := router.Get("inst1")
+	got1, err := router.Get(context.TODO(), "inst1")
 	c.Assert(err, check.IsNil)
-	got2, err := router.Get("inst2")
+	got2, err := router.Get(context.TODO(), "inst2")
 	c.Assert(err, check.IsNil)
 	r1, ok := got1.(*hipacheRouter)
 	c.Assert(ok, check.Equals, true)
