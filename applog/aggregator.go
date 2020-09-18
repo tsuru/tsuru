@@ -51,7 +51,7 @@ func (s *aggregatorLogService) Add(appName, message, source, unit string) error 
 }
 
 func (s *aggregatorLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	requests, err := buildInstanceRequests(args, false)
+	requests, err := buildInstanceRequests(ctx, args, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "[aggregator service]")
 	}
@@ -93,7 +93,7 @@ func (s *aggregatorLogService) List(ctx context.Context, args appTypes.ListLogAr
 
 func (s *aggregatorLogService) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	args.Limit = -1
-	requests, err := buildInstanceRequests(args, true)
+	requests, err := buildInstanceRequests(ctx, args, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "[aggregator service]")
 	}
@@ -198,8 +198,8 @@ func listRequest(req *http.Request) ([]appTypes.Applog, error) {
 	return logs, nil
 }
 
-func buildInstanceRequests(args appTypes.ListLogArgs, follow bool) ([]*http.Request, error) {
-	instances, err := servicemanager.InstanceTracker.LiveInstances()
+func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follow bool) ([]*http.Request, error) {
+	instances, err := servicemanager.InstanceTracker.LiveInstances(ctx)
 	if err != nil {
 		return nil, err
 	}

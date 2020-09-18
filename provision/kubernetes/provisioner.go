@@ -1251,8 +1251,8 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
 		}
-		ctx, cancel := args.Event.CancelableContext(context.Background())
-		err = createDeployPod(ctx, params)
+		cancelableCtx, cancel := args.Event.CancelableContext(ctx)
+		err = createDeployPod(cancelableCtx, params)
 		cancel()
 		if err != nil {
 			return "", err

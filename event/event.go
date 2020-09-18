@@ -959,7 +959,7 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 	} else {
 		id.Target = opts.Target
 	}
-	instance, err := servicemanager.InstanceTracker.CurrentInstance()
+	instance, err := servicemanager.InstanceTracker.CurrentInstance(context.TODO())
 	if err != nil {
 		return nil, err
 	}

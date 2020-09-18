@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/shutdown"
@@ -55,10 +56,12 @@ type instanceTracker struct {
 func (t *instanceTracker) start() {
 	defer close(t.done)
 	for {
-		err := t.notify()
+		span, ctx := opentracing.StartSpanFromContext(context.Background(), "InstanceTracker notify")
+		err := t.notify(ctx)
 		if err != nil {
 			log.Errorf("[instance-tracker] unable to track instance: %v", err)
 		}
+		span.Finish()
 
 		var updateInterval time.Duration
 		updateIntervalSeconds, _ := config.GetFloat("tracker:update-interval")
@@ -75,12 +78,12 @@ func (t *instanceTracker) start() {
 	}
 }
 
-func (t *instanceTracker) notify() error {
+func (t *instanceTracker) notify(ctx context.Context) error {
 	instance, err := t.getInstance(true)
 	if err != nil {
 		return err
 	}
-	return t.storage.Notify(instance)
+	return t.storage.Notify(ctx, instance)
 }
 
 func (t *instanceTracker) getInstance(update bool) (trackerTypes.TrackedInstance, error) {
@@ -161,11 +164,11 @@ func (t *instanceTracker) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (t *instanceTracker) CurrentInstance() (trackerTypes.TrackedInstance, error) {
+func (t *instanceTracker) CurrentInstance(ctx context.Context) (trackerTypes.TrackedInstance, error) {
 	return t.getInstance(false)
 }
 
-func (t *instanceTracker) LiveInstances() ([]trackerTypes.TrackedInstance, error) {
+func (t *instanceTracker) LiveInstances(ctx context.Context) ([]trackerTypes.TrackedInstance, error) {
 	var staleTimeout time.Duration
 	staleTimeoutSeconds, _ := config.GetFloat("tracker:stale-timeout")
 	if staleTimeoutSeconds != 0 {
@@ -173,7 +176,7 @@ func (t *instanceTracker) LiveInstances() ([]trackerTypes.TrackedInstance, error
 	} else {
 		staleTimeout = defaultStaleTimeout
 	}
-	return t.storage.List(staleTimeout)
+	return t.storage.List(ctx, staleTimeout)
 }
 
 func getInterface() (net.Interface, error) {

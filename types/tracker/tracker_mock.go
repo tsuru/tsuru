@@ -4,6 +4,8 @@
 
 package tracker
 
+import "context"
+
 var _ InstanceService = &MockInstanceService{}
 
 // MockInstanceService implements InstanceService interface
@@ -12,14 +14,14 @@ type MockInstanceService struct {
 	OnCurrentInstance func() (TrackedInstance, error)
 }
 
-func (m *MockInstanceService) LiveInstances() ([]TrackedInstance, error) {
+func (m *MockInstanceService) LiveInstances(ctx context.Context) ([]TrackedInstance, error) {
 	if m.OnLiveInstances != nil {
 		return m.OnLiveInstances()
 	}
 	return []TrackedInstance{}, nil
 }
 
-func (m *MockInstanceService) CurrentInstance() (TrackedInstance, error) {
+func (m *MockInstanceService) CurrentInstance(ctx context.Context) (TrackedInstance, error) {
 	if m.OnCurrentInstance != nil {
 		return m.OnCurrentInstance()
 	}

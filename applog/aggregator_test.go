@@ -25,11 +25,11 @@ type mockInstanceService struct {
 	instances []tracker.TrackedInstance
 }
 
-func (m *mockInstanceService) LiveInstances() ([]tracker.TrackedInstance, error) {
+func (m *mockInstanceService) LiveInstances(ctx context.Context) ([]tracker.TrackedInstance, error) {
 	return m.instances, nil
 }
 
-func (m *mockInstanceService) CurrentInstance() (tracker.TrackedInstance, error) {
+func (m *mockInstanceService) CurrentInstance(ctx context.Context) (tracker.TrackedInstance, error) {
 	return tracker.TrackedInstance{}, nil
 }
 

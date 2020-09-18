@@ -4,7 +4,10 @@
 
 package tracker
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type TrackedInstance struct {
 	Name       string
@@ -15,11 +18,11 @@ type TrackedInstance struct {
 }
 
 type InstanceService interface {
-	LiveInstances() ([]TrackedInstance, error)
-	CurrentInstance() (TrackedInstance, error)
+	LiveInstances(context.Context) ([]TrackedInstance, error)
+	CurrentInstance(context.Context) (TrackedInstance, error)
 }
 
 type InstanceStorage interface {
-	Notify(TrackedInstance) error
-	List(maxStale time.Duration) ([]TrackedInstance, error)
+	Notify(context.Context, TrackedInstance) error
+	List(ctx context.Context, maxStale time.Duration) ([]TrackedInstance, error)
 }

@@ -5,6 +5,7 @@
 package storagetest
 
 import (
+	"context"
 	"time"
 
 	"github.com/tsuru/tsuru/types/tracker"
@@ -18,12 +19,12 @@ type InstanceTrackerSuite struct {
 
 func (s *InstanceTrackerSuite) Test_Notify_List(c *check.C) {
 	t0 := time.Now().Truncate(time.Millisecond)
-	err := s.InstanceTrackerStorage.Notify(tracker.TrackedInstance{
+	err := s.InstanceTrackerStorage.Notify(context.TODO(), tracker.TrackedInstance{
 		Name:      "host1",
 		Addresses: []string{"10.0.0.1", "10.0.0.2"},
 	})
 	c.Assert(err, check.IsNil)
-	instances, err := s.InstanceTrackerStorage.List(500 * time.Millisecond)
+	instances, err := s.InstanceTrackerStorage.List(context.TODO(), 500*time.Millisecond)
 	c.Assert(err, check.IsNil)
 	c.Assert(instances, check.HasLen, 1)
 	c.Assert(instances[0].LastUpdate.After(t0) || instances[0].LastUpdate.Equal(t0), check.Equals, true)
@@ -35,42 +36,42 @@ func (s *InstanceTrackerSuite) Test_Notify_List(c *check.C) {
 }
 
 func (s *InstanceTrackerSuite) Test_Notify_UpdateAddrs(c *check.C) {
-	err := s.InstanceTrackerStorage.Notify(tracker.TrackedInstance{
+	err := s.InstanceTrackerStorage.Notify(context.TODO(), tracker.TrackedInstance{
 		Name:      "host1",
 		Addresses: []string{"10.0.0.1", "10.0.0.2"},
 	})
 	c.Assert(err, check.IsNil)
-	instances, err := s.InstanceTrackerStorage.List(500 * time.Millisecond)
+	instances, err := s.InstanceTrackerStorage.List(context.TODO(), 500*time.Millisecond)
 	c.Assert(err, check.IsNil)
 	c.Assert(instances, check.HasLen, 1)
 	c.Assert(instances[0].Addresses, check.DeepEquals, []string{"10.0.0.1", "10.0.0.2"})
-	err = s.InstanceTrackerStorage.Notify(tracker.TrackedInstance{
+	err = s.InstanceTrackerStorage.Notify(context.TODO(), tracker.TrackedInstance{
 		Name:      "host1",
 		Addresses: []string{"192.168.1.2"},
 	})
 	c.Assert(err, check.IsNil)
-	instances, err = s.InstanceTrackerStorage.List(500 * time.Millisecond)
+	instances, err = s.InstanceTrackerStorage.List(context.TODO(), 500*time.Millisecond)
 	c.Assert(err, check.IsNil)
 	c.Assert(instances, check.HasLen, 1)
 	c.Assert(instances[0].Addresses, check.DeepEquals, []string{"192.168.1.2"})
 }
 
 func (s *InstanceTrackerSuite) Test_Notify_List_StaleEntry(c *check.C) {
-	err := s.InstanceTrackerStorage.Notify(tracker.TrackedInstance{
+	err := s.InstanceTrackerStorage.Notify(context.TODO(), tracker.TrackedInstance{
 		Name:      "host1",
 		Addresses: []string{"10.0.0.1", "10.0.0.2"},
 	})
 	c.Assert(err, check.IsNil)
 	time.Sleep(time.Second)
-	instances, err := s.InstanceTrackerStorage.List(500 * time.Millisecond)
+	instances, err := s.InstanceTrackerStorage.List(context.TODO(), 500*time.Millisecond)
 	c.Assert(err, check.IsNil)
 	c.Assert(instances, check.HasLen, 0)
-	err = s.InstanceTrackerStorage.Notify(tracker.TrackedInstance{
+	err = s.InstanceTrackerStorage.Notify(context.TODO(), tracker.TrackedInstance{
 		Name:      "host1",
 		Addresses: []string{"10.0.0.1", "10.0.0.2"},
 	})
 	c.Assert(err, check.IsNil)
-	instances, err = s.InstanceTrackerStorage.List(500 * time.Millisecond)
+	instances, err = s.InstanceTrackerStorage.List(context.TODO(), 500*time.Millisecond)
 	c.Assert(err, check.IsNil)
 	c.Assert(instances, check.HasLen, 1)
 }
