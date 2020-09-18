@@ -161,8 +161,9 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					NodeSelector: map[string]string{
 						"tsuru.io/pool": "test-default",
 					},
-					RestartPolicy: "Always",
-					Subdomain:     "myapp-p1-units",
+					RestartPolicy:                 "Always",
+					Subdomain:                     "myapp-p1-units",
+					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
@@ -191,6 +192,13 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
+							},
+							Lifecycle: &apiv1.Lifecycle{
+								PreStop: &apiv1.Handler{
+									Exec: &apiv1.ExecAction{
+										Command: []string{"sh", "-c", "sleep 10 || true"},
+									},
+								},
 							},
 						},
 					},
@@ -765,7 +773,6 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		hc                provTypes.TsuruYamlHealthcheck
 		expectedLiveness  *apiv1.Probe
 		expectedReadiness *apiv1.Probe
-		expectedLifecycle *apiv1.Lifecycle
 	}{
 		{},
 		{
@@ -954,12 +961,10 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, tt.expectedReadiness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, tt.expectedLiveness)
-		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLifecycle)
 		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p2", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.IsNil)
-		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.IsNil)
 	}
 }
 
@@ -1000,6 +1005,11 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		PostStart: &apiv1.Handler{
 			Exec: &apiv1.ExecAction{
 				Command: []string{"sh", "-c", "after cmd1 && after cmd2"},
+			},
+		},
+		PreStop: &apiv1.Handler{
+			Exec: &apiv1.ExecAction{
+				Command: []string{"sh", "-c", "sleep 10 || true"},
 			},
 		},
 	}
@@ -1998,8 +2008,9 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 					NodeSelector: map[string]string{
 						"tsuru.io/pool": "test-default",
 					},
-					RestartPolicy: "Always",
-					Subdomain:     "myapp-p1-units",
+					RestartPolicy:                 "Always",
+					Subdomain:                     "myapp-p1-units",
+					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1-v2",
@@ -2028,6 +2039,13 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
+							},
+							Lifecycle: &apiv1.Lifecycle{
+								PreStop: &apiv1.Handler{
+									Exec: &apiv1.ExecAction{
+										Command: []string{"sh", "-c", "sleep 10 || true"},
+									},
+								},
 							},
 						},
 					},
@@ -3828,8 +3846,9 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 					NodeSelector: map[string]string{
 						"tsuru.io/pool": "test-default",
 					},
-					RestartPolicy: "Always",
-					Subdomain:     "myapp-p1-units",
+					RestartPolicy:                 "Always",
+					Subdomain:                     "myapp-p1-units",
+					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
@@ -3857,6 +3876,13 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 							},
 							Ports: []apiv1.ContainerPort{
 								{ContainerPort: 8888},
+							},
+							Lifecycle: &apiv1.Lifecycle{
+								PreStop: &apiv1.Handler{
+									Exec: &apiv1.ExecAction{
+										Command: []string{"sh", "-c", "sleep 10 || true"},
+									},
+								},
 							},
 						},
 					},
