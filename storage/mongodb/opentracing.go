@@ -36,14 +36,11 @@ type mongoDBSpan struct {
 }
 
 func newMongoDBSpan(ctx context.Context, operation mongoOperation, collection string) *mongoDBSpan {
-	options := []opentracing.StartSpanOption{
+	span, _ := opentracing.StartSpanFromContext(
+		ctx, string(operation)+" "+collection,
 		opentracingExt.SpanKindRPCClient,
 		opentracingComponent,
 		opentracingDBType,
-	}
-	span, _ := opentracing.StartSpanFromContext(
-		ctx, string(operation)+" "+collection,
-		options...,
 	)
 
 	return &mongoDBSpan{span}

@@ -396,10 +396,6 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defaultPool, err := pool.GetDefaultPool(context.TODO())
 	c.Assert(err, check.IsNil)
-	expected := []pool.Pool{
-		*defaultPool,
-		{Name: "pool1"},
-	}
 	token := userWithPermission(c)
 	req, err := http.NewRequest(http.MethodGet, "/pools", nil)
 	c.Assert(err, check.IsNil)
@@ -409,7 +405,11 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, expected)
+	c.Assert(pools, check.HasLen, 2)
+	c.Assert(pools[0].Name, check.Equals, defaultPool.Name)
+	c.Assert(pools[0].Default, check.Equals, true)
+	c.Assert(pools[1].Name, check.Equals, "pool1")
+	c.Assert(pools[1].Default, check.Equals, false)
 }
 
 func (s *S) TestPoolListHandler(c *check.C) {
@@ -432,10 +432,6 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defaultPool, err := pool.GetDefaultPool(context.TODO())
 	c.Assert(err, check.IsNil)
-	expected := []pool.Pool{
-		*defaultPool,
-		{Name: "pool1"},
-	}
 	req, err := http.NewRequest(http.MethodGet, "/pools", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
@@ -444,7 +440,11 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	var pools []pool.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, expected)
+	c.Assert(pools, check.HasLen, 2)
+	c.Assert(pools[0].Name, check.DeepEquals, defaultPool.Name)
+	c.Assert(pools[0].Default, check.Equals, true)
+	c.Assert(pools[1].Name, check.DeepEquals, "pool1")
+	c.Assert(pools[1].Default, check.Equals, false)
 }
 
 func (s *S) TestPoolListEmptyHandler(c *check.C) {
