@@ -57,6 +57,7 @@ const (
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
+	defaultPreStopSleepSeconds                 = 10
 )
 
 var defaultEphemeralStorageLimit = resource.MustParse("100Mi")

@@ -46,6 +46,7 @@ const (
 	maxUnavailableKey      = "max-unavailable"
 	singlePoolKey          = "single-pool"
 	ephemeralStorageKey    = "ephemeral-storage"
+	preStopSleepKey        = "pre-stop-sleep"
 
 	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
 	defaultLogsFromAPIServer   = false
@@ -69,6 +70,7 @@ var (
 		maxUnavailableKey:      "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
 		singlePoolKey:          "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
 		ephemeralStorageKey:    fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
+		preStopSleepKey:        fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
 
 		enableLogsFromAPIServerKey: "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}
@@ -231,6 +233,21 @@ func (c *ClusterClient) Namespace() string {
 		return c.CustomData[namespaceClusterKey]
 	}
 	return "tsuru"
+}
+
+func (c *ClusterClient) preStopSleepSeconds(pool string) int {
+	if c.CustomData == nil {
+		return defaultPreStopSleepSeconds
+	}
+	sleepRaw := c.configForContext(pool, preStopSleepKey)
+	if sleepRaw == "" {
+		return defaultPreStopSleepSeconds
+	}
+	sleep, err := strconv.Atoi(sleepRaw)
+	if err != nil {
+		return defaultPreStopSleepSeconds
+	}
+	return sleep
 }
 
 func (c *ClusterClient) ephemeralStorage(pool string) (resource.Quantity, error) {
