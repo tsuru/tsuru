@@ -38,6 +38,9 @@ type mongoDBSpan struct {
 }
 
 func newMongoDBSpan(ctx context.Context, operation mongoOperation, collection string) *mongoDBSpan {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	span, _ := opentracing.StartSpanFromContext(
 		ctx, string(operation)+" "+collection,
 		opentracingExt.SpanKindRPCClient,

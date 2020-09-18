@@ -114,8 +114,6 @@ func (s *clusterStorage) FindByProvisioner(ctx context.Context, provisioner stri
 }
 
 func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool string) (*provision.Cluster, error) {
-	span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
-	defer span.Finish()
 
 	conn, err := db.Conn()
 	if err != nil {
@@ -126,16 +124,27 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 	var c cluster
 	if pool != "" {
 		query := bson.M{"provisioner": provisioner, "pools": pool}
+
+		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
 		span.SetQueryStatement(query)
+
 		err = coll.Find(query).One(&c)
+		if err != mgo.ErrNotFound {
+			span.SetError(err)
+		}
 	}
+
 	if pool == "" || err == mgo.ErrNotFound {
 		query := bson.M{"provisioner": provisioner, "default": true}
+
+		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
 		span.SetQueryStatement(query)
+
 		err = coll.Find(query).One(&c)
+		span.SetError(err)
+		span.Finish()
 	}
 	if err != nil {
-		span.SetError(err)
 		if err == mgo.ErrNotFound {
 			return nil, provision.ErrNoCluster
 		}
