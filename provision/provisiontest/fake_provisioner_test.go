@@ -705,7 +705,7 @@ func (s *S) TestExecuteCommand(c *check.C) {
 	units := p.GetUnits(app)
 	p.PrepareOutput(output)
 	p.PrepareOutput(output)
-	err = p.ExecuteCommand(provision.ExecOptions{
+	err = p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		Stdout: &buf,
 		App:    app,
 		Cmds:   []string{"ls", "-l"},
@@ -735,7 +735,7 @@ func (s *S) TestExecuteCommandFailureNoOutput(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
-	err = p.ExecuteCommand(provision.ExecOptions{
+	err = p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:   app,
 		Cmds:  []string{"ls", "-l"},
 		Units: []string{units[0].ID},
@@ -755,7 +755,7 @@ func (s *S) TestExecuteCommandWithOutputAndFailure(c *check.C) {
 	units := p.GetUnits(app)
 	p.PrepareFailure("ExecuteCommand", errors.New("Failed to run command."))
 	p.PrepareOutput([]byte("myoutput!"))
-	err = p.ExecuteCommand(provision.ExecOptions{
+	err = p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    app,
 		Stderr: &buf,
 		Cmds:   []string{"ls", "-l"},
@@ -774,7 +774,7 @@ func (s *S) TestExecuteComandTimeout(c *check.C) {
 	err = p.AddUnits(context.TODO(), app, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
-	err = p.ExecuteCommand(provision.ExecOptions{
+	err = p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:   app,
 		Cmds:  []string{"ls", "-l"},
 		Units: []string{units[0].ID},
@@ -789,7 +789,7 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	app := NewFakeApp("grand-designs", "rush", 1)
 	p := NewFakeProvisioner()
 	p.PrepareOutput(output)
-	err := p.ExecuteCommand(provision.ExecOptions{
+	err := p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    app,
 		Stdout: &buf,
 		Cmds:   []string{"ls", "-l"},
