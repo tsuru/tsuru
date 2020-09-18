@@ -85,7 +85,7 @@ func GetBuildImage(ctx context.Context, app appTypes.App) (string, error) {
 	if usePlatformImage(app) {
 		return getPlatformImage(ctx, app)
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil {
 		return getPlatformImage(ctx, app)
 	}

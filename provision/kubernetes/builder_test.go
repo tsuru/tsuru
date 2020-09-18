@@ -28,7 +28,7 @@ import (
 )
 
 func newEmptyVersion(c *check.C, app appTypes.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -96,7 +96,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	client := KubeClient{}
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            a,
 		CustomBuildTag: "mytag",
 	})
@@ -153,7 +153,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	client := KubeClient{}
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            a,
 		CustomBuildTag: "mytag",
 	})

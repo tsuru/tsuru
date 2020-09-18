@@ -376,7 +376,7 @@ type ExecOptions struct {
 }
 
 type ExecutableProvisioner interface {
-	ExecuteCommand(opts ExecOptions) error
+	ExecuteCommand(ctx context.Context, opts ExecOptions) error
 }
 
 // LogsProvisioner is a provisioner that is self responsible for storage logs.

@@ -122,7 +122,7 @@ func (s *S) TestDeployPodNameForApp(c *check.C) {
 	}
 	for i, tt := range tests {
 		fakeApp := provisiontest.NewFakeApp(tt.name, "python", 0)
-		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: fakeApp,
 		})
 		c.Assert(err, check.IsNil)

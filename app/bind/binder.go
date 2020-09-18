@@ -7,7 +7,6 @@
 package bind
 
 import (
-	"context"
 	"io"
 )
 
@@ -45,10 +44,10 @@ type App interface {
 	GetUnits() ([]Unit, error)
 
 	// AddInstance adds an instance to the application.
-	AddInstance(ctx context.Context, args AddInstanceArgs) error
+	AddInstance(args AddInstanceArgs) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(ctx context.Context, args RemoveInstanceArgs) error
+	RemoveInstance(args RemoveInstanceArgs) error
 }
 
 type SetEnvArgs struct {

@@ -189,7 +189,7 @@ func (p *dockerProvisioner) MoveOneContainer(ctx context.Context, c container.Co
 		}
 		return container.Container{}
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil {
 		errCh <- &tsuruErrors.CompositeError{
 			Base:    err,

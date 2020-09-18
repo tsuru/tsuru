@@ -196,7 +196,7 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
 		}
-		err = app.SetEnvs(context.TODO(), bind.SetEnvArgs{
+		err = app.SetEnvs(bind.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
@@ -210,7 +210,7 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(context.TODO(), app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
+			app.UnsetEnvs(bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
@@ -546,7 +546,7 @@ var provisionAppAddUnits = action.Action{
 			if processData.version > 0 {
 				version = strconv.Itoa(processData.version)
 			}
-			err = app.AddUnits(context.TODO(), count, processData.process, version, w)
+			err = app.AddUnits(count, processData.process, version, w)
 			if err != nil {
 				return nil, err
 			}

@@ -300,7 +300,7 @@ func newVersionForApp(c *check.C, client *docker.Client, a provision.App, custom
 			},
 		}
 	}
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
 	c.Assert(err, check.IsNil)

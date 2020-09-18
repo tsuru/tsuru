@@ -5,6 +5,7 @@
 package version
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -23,7 +24,7 @@ func (s *S) TestNewAppVersion(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	version, err := svc.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            &appTypes.MockApp{Name: "myapp"},
 		EventID:        "myevtid",
 		CustomBuildTag: "mybuildtag",
@@ -42,7 +43,7 @@ func (s *S) TestNewAppVersion(c *check.C) {
 		EventID:        "myevtid",
 	})
 
-	version, err = svc.NewAppVersion(appTypes.NewVersionArgs{
+	version, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: &appTypes.MockApp{Name: "myapp"},
 	})
 	c.Assert(err, check.IsNil)
@@ -61,34 +62,34 @@ func (s *S) TestAppVersionService_LatestSuccessfulVersion(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.LatestSuccessfulVersion(app)
+	_, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	version, err := svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = svc.LatestSuccessfulVersion(app)
+	_, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
-	_, err = svc.LatestSuccessfulVersion(app)
+	_, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	err = version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
-	version, err = svc.LatestSuccessfulVersion(app)
+	version, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 
-	newVersion, err := svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	newVersion, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	version, err = svc.LatestSuccessfulVersion(app)
+	version, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 
 	err = newVersion.CommitSuccessful()
 	c.Assert(err, check.IsNil)
-	version, err = svc.LatestSuccessfulVersion(app)
+	version, err = svc.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 2)
 }
@@ -98,14 +99,14 @@ func (s *S) TestAppVersionService_AppVersions(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.AppVersions(app)
+	_, err = svc.AppVersions(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	versions, err := svc.AppVersions(app)
+	versions, err := svc.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		v.CreatedAt = time.Time{}
@@ -125,16 +126,16 @@ func (s *S) TestAppVersionService_DeleteVersions(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.AppVersions(app)
+	_, err = svc.AppVersions(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
-	err = svc.DeleteVersions(app.Name)
+	err = svc.DeleteVersions(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	err = svc.DeleteVersions(app.Name)
+	err = svc.DeleteVersions(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	appVersion, err := svc.AppVersions(app)
+	appVersion, err := svc.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
@@ -142,16 +143,16 @@ func (s *S) TestAppVersionService_DeleteVersions(c *check.C) {
 func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
-	allVersions, err := svc.AllAppVersions()
+	allVersions, err := svc.AllAppVersions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(allVersions, check.HasLen, 0)
 	app1 := &appTypes.MockApp{Name: "myapp1"}
 	app2 := &appTypes.MockApp{Name: "myapp2"}
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app1})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app1})
 	c.Assert(err, check.IsNil)
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app2})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app2})
 	c.Assert(err, check.IsNil)
-	allVersions, err = svc.AllAppVersions()
+	allVersions, err = svc.AllAppVersions(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Slice(allVersions, func(i, j int) bool {
 		return allVersions[i].AppName < allVersions[j].AppName
@@ -183,19 +184,19 @@ func (s *S) TestAppVersionService_DeleteVersionIDs(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	err = svc.DeleteVersionIDs(app.Name, []int{1})
+	err = svc.DeleteVersionIDs(context.TODO(), app.Name, []int{1})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	err = svc.DeleteVersionIDs(app.Name, []int{9})
+	err = svc.DeleteVersionIDs(context.TODO(), app.Name, []int{9})
 	c.Assert(err, check.IsNil)
 
-	err = svc.DeleteVersionIDs(app.Name, []int{1})
+	err = svc.DeleteVersionIDs(context.TODO(), app.Name, []int{1})
 	c.Assert(err, check.IsNil)
-	versions, err := svc.AppVersions(app)
+	versions, err := svc.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		v.CreatedAt = time.Time{}
@@ -214,15 +215,15 @@ func (s *S) TestAppVersionService_VersionByPendingImage(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.VersionByPendingImage(app, "something/invalid")
+	_, err = svc.VersionByPendingImage(context.TODO(), app, "something/invalid")
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	_, err = svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = svc.VersionByPendingImage(app, "something/invalid")
+	_, err = svc.VersionByPendingImage(context.TODO(), app, "something/invalid")
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	version, err := svc.VersionByPendingImage(app, "tsuru/app-myapp:v1")
+	version, err := svc.VersionByPendingImage(context.TODO(), app, "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 }
@@ -232,17 +233,17 @@ func (s *S) TestAppVersionService_VersionByImageOrVersion(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
 
-	_, err = svc.VersionByImageOrVersion(app, "invalid")
+	_, err = svc.VersionByImageOrVersion(context.TODO(), app, "invalid")
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	newVersion, err := svc.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	newVersion, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = svc.VersionByImageOrVersion(app, "invalid")
+	_, err = svc.VersionByImageOrVersion(context.TODO(), app, "invalid")
 	c.Assert(err, check.Equals, appTypes.ErrInvalidVersion{
 		Version: "invalid",
 	})
 
-	_, err = svc.VersionByImageOrVersion(app, "tsuru/app-myapp:v1")
+	_, err = svc.VersionByImageOrVersion(context.TODO(), app, "tsuru/app-myapp:v1")
 	c.Assert(err, check.Equals, appTypes.ErrInvalidVersion{
 		Version: "tsuru/app-myapp:v1",
 	})
@@ -251,15 +252,15 @@ func (s *S) TestAppVersionService_VersionByImageOrVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = newVersion.CommitSuccessful()
 	c.Assert(err, check.IsNil)
-	version, err := svc.VersionByImageOrVersion(app, "tsuru/app-myapp:v1")
+	version, err := svc.VersionByImageOrVersion(context.TODO(), app, "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 
-	version, err = svc.VersionByImageOrVersion(app, "1")
+	version, err = svc.VersionByImageOrVersion(context.TODO(), app, "1")
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 
-	version, err = svc.VersionByImageOrVersion(app, "v1")
+	version, err = svc.VersionByImageOrVersion(context.TODO(), app, "v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.Equals, 1)
 }

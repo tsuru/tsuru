@@ -99,7 +99,7 @@ func (s *S) TestGetBuildImage(c *check.C) {
 		config.Set("docker:registry", tt.registry)
 		tt.app.Name = "myapp"
 		if tt.successfulVersion {
-			version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+			version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 				App: &appTypes.MockApp{Name: "myapp"},
 			})
 			c.Assert(err, check.IsNil)

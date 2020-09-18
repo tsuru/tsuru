@@ -598,7 +598,6 @@ func numberOfUnits(r *http.Request) (uint, error) {
 //   401: Unauthorized
 //   404: App not found
 func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -632,7 +631,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.AddUnits(ctx, n, processName, version, evt)
+	return a.AddUnits(n, processName, version, evt)
 }
 
 // title: remove units
@@ -959,7 +958,6 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //   401: Unauthorized
 //   404: App not found
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
 	if err != nil {
@@ -1013,7 +1011,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(ctx, bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          variables,
 		ShouldRestart: !e.NoRestart,
 		Writer:        evt,
@@ -1034,7 +1032,6 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -1073,7 +1070,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
+	return a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
 		Writer:        evt,

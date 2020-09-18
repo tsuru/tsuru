@@ -57,8 +57,8 @@ type ServiceManager interface {
 // RunServicePipeline runs a pipeline for deploy a service with multiple
 // processes. oldVersion is an int instead of a AppVersion because it may not
 // exist in our data store anymore.
-func RunServicePipeline(manager ServiceManager, oldVersionNumber int, args provision.DeployArgs, updateSpec ProcessSpec) error {
-	oldVersion, err := servicemanager.AppVersion.VersionByImageOrVersion(args.App, strconv.Itoa(oldVersionNumber))
+func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionNumber int, args provision.DeployArgs, updateSpec ProcessSpec) error {
+	oldVersion, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, args.App, strconv.Itoa(oldVersionNumber))
 	if err != nil {
 		if !appTypes.IsInvalidVersionError(err) {
 			return errors.WithStack(err)

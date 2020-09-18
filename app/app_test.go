@@ -84,7 +84,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -110,7 +110,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
-	appVersion, err := servicemanager.AppVersion.AppVersions(app)
+	appVersion, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Count, check.Not(check.Equals), 0)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
@@ -645,12 +645,12 @@ func (s *S) TestAddUnits(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 5, "web", "", nil)
+	err = app.AddUnits(5, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 5)
-	err = app.AddUnits(context.TODO(), 2, "worker", "", nil)
+	err = app.AddUnits(2, "worker", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err = app.Units()
 	c.Assert(err, check.IsNil)
@@ -674,11 +674,11 @@ func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.Stop(context.TODO(), nil, "web", "")
 	c.Assert(err, check.IsNil)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
 	units, err := a.Units()
@@ -695,11 +695,11 @@ func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.Sleep(context.TODO(), nil, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
 	c.Assert(err, check.IsNil)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
 	units, err := a.Units()
@@ -717,7 +717,7 @@ func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 2, "web", "", &buf)
+	err = app.AddUnits(2, "web", "", &buf)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
 	c.Assert(err, check.IsNil)
@@ -745,7 +745,7 @@ func (s *S) TestAddUnitsQuota(c *check.C) {
 	newSuccessfulAppVersion(c, &app)
 	otherApp := App{Name: "warpaint"}
 	for i := 1; i <= 7; i++ {
-		err = otherApp.AddUnits(context.TODO(), 1, "web", "", nil)
+		err = otherApp.AddUnits(1, "web", "", nil)
 		c.Assert(err, check.IsNil)
 		c.Assert(inUseNow, check.Equals, i)
 		units := s.provisioner.GetUnits(&app)
@@ -767,7 +767,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = app.AddUnits(1, "web", "", nil)
 	e, ok := pkgErrors.Cause(err).(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(0))
@@ -790,7 +790,7 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 10, "web", "", nil)
+	err = app.AddUnits(10, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, check.HasLen, 10)
@@ -798,7 +798,7 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 
 func (s *S) TestAddZeroUnits(c *check.C) {
 	app := App{Name: "warpaint", Platform: "ruby"}
-	err := app.AddUnits(context.TODO(), 0, "web", "", nil)
+	err := app.AddUnits(0, "web", "", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add zero units.")
 }
@@ -814,7 +814,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 2, "web", "", nil)
+	err = app.AddUnits(2, "web", "", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "(?s).*App is not provisioned.*")
 }
@@ -824,7 +824,7 @@ func (s *S) TestAddUnitsIsAtomic(c *check.C) {
 		Name: "warpaint", Platform: "golang",
 		Quota: quota.UnlimitedQuota,
 	}
-	err := app.AddUnits(context.TODO(), 2, "web", "", nil)
+	err := app.AddUnits(2, "web", "", nil)
 	c.Assert(err, check.NotNil)
 	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
@@ -890,11 +890,11 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 2, "web", "", nil)
+	err = app.AddUnits(2, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = app.AddUnits(context.TODO(), 2, "worker", "", nil)
+	err = app.AddUnits(2, "worker", "", nil)
 	c.Assert(err, check.IsNil)
-	err = app.AddUnits(context.TODO(), 2, "web", "", nil)
+	err = app.AddUnits(2, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	err = app.RemoveUnits(context.TODO(), 2, "worker", "", buf)
@@ -1305,7 +1305,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	envs := []bind.EnvVar{
 		{
@@ -1320,7 +1320,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 		},
 	}
 	var buf bytes.Buffer
-	err = a.SetEnvs(context.TODO(), bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: true,
 		Writer:        &buf,
@@ -1374,7 +1374,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.SetEnvs(context.TODO(), bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: false,
 	})
@@ -1424,7 +1424,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 			Public: true,
 		},
 	}
-	err = a.SetEnvs(context.TODO(), bind.SetEnvArgs{
+	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          envs,
 		ShouldRestart: true,
 	})
@@ -1477,7 +1477,7 @@ func (s *S) TestSetEnvsValidation(c *check.C) {
 				Value: "any value",
 			},
 		}
-		err = a.SetEnvs(context.TODO(), bind.SetEnvArgs{Envs: envs})
+		err = a.SetEnvs(bind.SetEnvArgs{Envs: envs})
 		if test.isValid {
 			c.Check(err, check.IsNil)
 		} else {
@@ -1514,9 +1514,9 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: true,
 	})
@@ -1558,9 +1558,9 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: false,
 	})
@@ -1590,7 +1590,7 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.UnsetEnvs(context.TODO(), bind.UnsetEnvArgs{
+	err = a.UnsetEnvs(bind.UnsetEnvArgs{
 		VariableNames: []string{"DATABASE_HOST", "DATABASE_PASSWORD"},
 		ShouldRestart: true,
 	})
@@ -1894,7 +1894,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 			{EnvVar: bind.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1949,7 +1949,7 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	a := &App{Name: "sith", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
@@ -1957,7 +1957,7 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	// inserts duplicated
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "8.8.8.8"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
@@ -1990,9 +1990,9 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -2028,9 +2028,9 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -2065,21 +2065,21 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host3"}, InstanceName: "instance3", ServiceName: "mongodb"},
 		},
@@ -2119,14 +2119,14 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	a := &App{Name: "fuchsia", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
@@ -2152,7 +2152,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 			}},
 		},
 	})
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "instance2",
 		ShouldRestart: true,
@@ -2179,14 +2179,14 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2213,13 +2213,13 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "ourdb"}, InstanceName: "ourdb", ServiceName: "mysql"},
 	}
 	for _, env := range toAdd {
-		err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+		err = a.AddInstance(bind.AddInstanceArgs{
 			Envs:          []bind.ServiceEnvVar{env},
 			ShouldRestart: false,
 		})
 		c.Assert(err, check.IsNil)
 	}
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "hisdb",
 		ShouldRestart: true,
@@ -2255,12 +2255,12 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "yourdb",
 		ShouldRestart: true,
@@ -2289,12 +2289,12 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mongodb",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2324,14 +2324,14 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2353,14 +2353,14 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = a.RemoveInstance(bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: false,
@@ -3740,7 +3740,7 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 		err := CreateApp(context.TODO(), &a, s.user)
 		c.Assert(err, check.IsNil)
 		newSuccessfulAppVersion(c, &a)
-		err = a.AddUnits(context.TODO(), 1, "", "", nil)
+		err = a.AddUnits(1, "", "", nil)
 		c.Assert(err, check.IsNil)
 		apps = append(apps, &a)
 	}
@@ -4668,7 +4668,7 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	prov, err := app.getProvisioner()
 	c.Assert(err, check.IsNil)
@@ -4739,7 +4739,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(app.Name, "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = app.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	prov, err := app.getProvisioner()
 	c.Assert(err, check.IsNil)
@@ -4777,7 +4777,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v1.BindApp(app.Name, "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = app.AddUnits(context.TODO(), 1, "", "", nil)
+	err = app.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	prov, err := app.getProvisioner()
 	c.Assert(err, check.IsNil)
@@ -5361,7 +5361,7 @@ func (s *S) TestUpdateAppUpdatableProvisioner(c *check.C) {
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(context.TODO(), 1, "web", "", nil)
+	err = app.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "test", Description: "updated description"}
 	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: nil})

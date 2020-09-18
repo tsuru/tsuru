@@ -112,7 +112,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -143,7 +143,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -165,7 +165,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -195,7 +195,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 2, "", "", nil)
+	err = a.AddUnits(2, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -291,7 +291,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -342,7 +342,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	units, err := a.GetUnits()
 	c.Assert(err, check.IsNil)
@@ -379,9 +379,9 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 2, "", "", nil)
+	err = a.AddUnits(2, "", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
@@ -433,7 +433,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
@@ -466,9 +466,9 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(context.TODO(), 1, "", "", nil)
+	err = a.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
@@ -523,7 +523,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 }
 
 func newVersionForApp(c *check.C, a appTypes.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
 	c.Assert(err, check.IsNil)

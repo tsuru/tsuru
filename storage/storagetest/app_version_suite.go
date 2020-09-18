@@ -1,6 +1,7 @@
 package storagetest
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -14,20 +15,20 @@ type AppVersionSuite struct {
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersion(c *check.C) {
-	err := s.AppVersionStorage.UpdateVersion("myapp", &appTypes.AppVersionInfo{Disabled: true})
+	err := s.AppVersionStorage.UpdateVersion(context.TODO(), "myapp", &appTypes.AppVersionInfo{Disabled: true})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	app := &appTypes.MockApp{Name: "myapp"}
-	vi1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	vi1, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	vi2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	vi2, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
 	vi1.Disabled = true
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	err = s.AppVersionStorage.UpdateVersion("myapp", vi1)
+	err = s.AppVersionStorage.UpdateVersion(context.TODO(), "myapp", vi1)
 	c.Assert(err, check.IsNil)
-	updatedVersions, err := s.AppVersionStorage.AppVersions(app)
+	updatedVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedVersions.UpdatedHash, check.Not(check.Equals), versions.UpdatedHash)
 	c.Assert(updatedVersions.Versions[vi1.Version].Disabled, check.Equals, true)
@@ -36,20 +37,20 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersion(c *check.C) {
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C) {
-	err := s.AppVersionStorage.UpdateVersionSuccess("myapp", &appTypes.AppVersionInfo{DeploySuccessful: true})
+	err := s.AppVersionStorage.UpdateVersionSuccess(context.TODO(), "myapp", &appTypes.AppVersionInfo{DeploySuccessful: true})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
 	app := &appTypes.MockApp{Name: "myapp"}
-	vi1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	vi1, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	vi2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	vi2, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	vi1.DeploySuccessful = true
-	err = s.AppVersionStorage.UpdateVersionSuccess("myapp", vi1)
+	err = s.AppVersionStorage.UpdateVersionSuccess(context.TODO(), "myapp", vi1)
 	c.Assert(err, check.IsNil)
-	updatedVersions, err := s.AppVersionStorage.AppVersions(app)
+	updatedVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedVersions.UpdatedHash, check.Not(check.Equals), versions.UpdatedHash)
 	c.Assert(updatedVersions.LastSuccessfulVersion, check.Equals, vi1.Version)
@@ -60,7 +61,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_UpdateVersionSuccess(c *check.C)
 
 func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
-	vi, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{
+	vi, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            app,
 		EventID:        "myevtid",
 		CustomBuildTag: "mybuildtag",
@@ -69,7 +70,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(vi.CreatedAt.IsZero(), check.Equals, false)
 	c.Assert(vi.UpdatedAt.IsZero(), check.Equals, false)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(versions.UpdatedAt.Unix(), check.Equals, vi.UpdatedAt.Unix())
 	c.Assert(versions.UpdatedHash, check.Not(check.Equals), "")
@@ -82,7 +83,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 		EventID:        "myevtid",
 	})
 
-	vi, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{
+	vi, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: &appTypes.MockApp{Name: "myapp"},
 	})
 	c.Assert(err, check.IsNil)
@@ -97,15 +98,15 @@ func (s *AppVersionSuite) TestAppVersionStorage_NewAppVersion(c *check.C) {
 
 func (s *AppVersionSuite) TestAppVersionStorage_AppVersions(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
-	_, err := s.AppVersionStorage.AppVersions(app)
+	_, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
 
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		v.CreatedAt = time.Time{}
@@ -123,31 +124,31 @@ func (s *AppVersionSuite) TestAppVersionStorage_AppVersions(c *check.C) {
 func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersions(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
 
-	_, err := s.AppVersionStorage.AppVersions(app)
+	_, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
-	err = s.AppVersionStorage.DeleteVersions(app.Name)
+	err = s.AppVersionStorage.DeleteVersions(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	err = s.AppVersionStorage.DeleteVersions(app.Name)
+	err = s.AppVersionStorage.DeleteVersions(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	appVersion, err := s.AppVersionStorage.AppVersions(app)
+	appVersion, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
 func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
-	allVersions, err := s.AppVersionStorage.AllAppVersions()
+	allVersions, err := s.AppVersionStorage.AllAppVersions(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(allVersions, check.HasLen, 0)
 	app1 := &appTypes.MockApp{Name: "myapp1"}
 	app2 := &appTypes.MockApp{Name: "myapp2"}
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app1})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app1})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app2})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app2})
 	c.Assert(err, check.IsNil)
-	allVersions, err = s.AppVersionStorage.AllAppVersions()
+	allVersions, err = s.AppVersionStorage.AllAppVersions(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Slice(allVersions, func(i, j int) bool {
 		return allVersions[i].AppName < allVersions[j].AppName
@@ -178,21 +179,21 @@ func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
 func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersionIDs(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp"}
 
-	err := s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1})
+	err := s.AppVersionStorage.DeleteVersionIDs(context.TODO(), app.Name, []int{1})
 	c.Assert(err, check.Equals, appTypes.ErrNoVersionsAvailable)
 
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{9})
+	err = s.AppVersionStorage.DeleteVersionIDs(context.TODO(), app.Name, []int{9})
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1})
+	err = s.AppVersionStorage.DeleteVersionIDs(context.TODO(), app.Name, []int{1})
 	c.Assert(err, check.IsNil)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		v.CreatedAt = time.Time{}
@@ -212,23 +213,23 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersionIDs(c *check.C) {
 func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeletes(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp-concurrent"}
 
-	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.DeleteVersionIDs(context.TODO(), app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.DeleteVersionIDs(app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.DeleteVersionIDs(context.TODO(), app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
 	c.Check(versions.Count, check.DeepEquals, 2)
@@ -246,23 +247,23 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeletes(c *check.C) {
 func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyMarkToRemoval(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp-concurrent"}
 
-	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.MarkVersionsToRemoval(app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.MarkVersionsToRemoval(context.TODO(), app.Name, []int{2}, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.MarkVersionsToRemoval(app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.MarkVersionsToRemoval(context.TODO(), app.Name, []int{1}, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
 	c.Check(versions.Count, check.DeepEquals, 2)
@@ -282,25 +283,25 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyMarkToRemoval(c *chec
 func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersion(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp-concurrent"}
 
-	v1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	v1, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	v2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	v2, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	v1.DeploySuccessful = true
-	err = s.AppVersionStorage.UpdateVersion(app.Name, v1, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.UpdateVersion(context.TODO(), app.Name, v1, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
 
 	v2.DeploySuccessful = true
-	err = s.AppVersionStorage.UpdateVersion(app.Name, v2, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.UpdateVersion(context.TODO(), app.Name, v2, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
 	c.Check(versions.Count, check.DeepEquals, 2)
@@ -320,24 +321,24 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersion(c *chec
 func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersionSuccess(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp-concurrent"}
 
-	v1, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	v1, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	v2, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	v2, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
 	v1.DeploySuccessful = true
-	err = s.AppVersionStorage.UpdateVersionSuccess(app.Name, v1, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.UpdateVersionSuccess(context.TODO(), app.Name, v1, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.UpdateVersionSuccess(app.Name, v2, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.UpdateVersionSuccess(context.TODO(), app.Name, v2, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
-	versions, err := s.AppVersionStorage.AppVersions(app)
+	versions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Check(versions.AppName, check.DeepEquals, "myapp-concurrent")
 	c.Check(versions.Count, check.DeepEquals, 2)
@@ -357,23 +358,23 @@ func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyUpdateVersionSuccess(
 func (s *AppVersionSuite) TestAppVersionStorage_ConcurrencyDeleteVersions(c *check.C) {
 	app := &appTypes.MockApp{Name: "myapp-concurrent"}
 
-	_, err := s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err := s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	_, err = s.AppVersionStorage.NewAppVersion(appTypes.NewVersionArgs{App: app})
+	_, err = s.AppVersionStorage.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: app})
 	c.Assert(err, check.IsNil)
-	oldVersions, err := s.AppVersionStorage.AppVersions(app)
+	oldVersions, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 
-	err = s.AppVersionStorage.DeleteVersions(app.Name, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.DeleteVersions(context.TODO(), app.Name, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: "invalid-updated-hash",
 	})
 	c.Check(err, check.Equals, appTypes.ErrTransactionCancelledByChange)
 
-	err = s.AppVersionStorage.DeleteVersions(app.Name, &appTypes.AppVersionWriteOptions{
+	err = s.AppVersionStorage.DeleteVersions(context.TODO(), app.Name, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: oldVersions.UpdatedHash,
 	})
 	c.Assert(err, check.IsNil)
-	appVersion, err := s.AppVersionStorage.AppVersions(app)
+	appVersion, err := s.AppVersionStorage.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }

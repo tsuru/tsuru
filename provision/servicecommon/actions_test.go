@@ -156,7 +156,7 @@ func (m *recordManager) RemoveService(ctx context.Context, a provision.App, proc
 }
 
 func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -193,7 +193,7 @@ func (s *S) TestRunServicePipeline(c *check.C) {
 			"worker2": "python worker2",
 		},
 	})
-	err := RunServicePipeline(m, oldVersion.Version(), provision.DeployArgs{
+	err := RunServicePipeline(context.TODO(), m, oldVersion.Version(), provision.DeployArgs{
 		App:     fakeApp,
 		Version: newVersion,
 	}, ProcessSpec{
@@ -237,7 +237,7 @@ func (s *S) TestRunServicePipelineNilSpec(c *check.C) {
 			"worker2": "python worker2",
 		},
 	})
-	err := RunServicePipeline(m, oldVersion.Version(), provision.DeployArgs{
+	err := RunServicePipeline(context.TODO(), m, oldVersion.Version(), provision.DeployArgs{
 		App:     fakeApp,
 		Version: newVersion,
 	}, nil)
@@ -272,7 +272,7 @@ func (s *S) TestRunServicePipelineSingleProcess(c *check.C) {
 			"worker1": "python worker1",
 		},
 	})
-	err := RunServicePipeline(m, 0, provision.DeployArgs{
+	err := RunServicePipeline(context.TODO(), m, 0, provision.DeployArgs{
 		App:     fakeApp,
 		Version: version,
 	}, ProcessSpec{
@@ -623,7 +623,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		c.Logf("test %d", i)
 		for _, s := range tt.states {
 			m.reset()
-			err := RunServicePipeline(m, newVersion.Version(), provision.DeployArgs{
+			err := RunServicePipeline(context.TODO(), m, newVersion.Version(), provision.DeployArgs{
 				App:     a,
 				Version: newVersion,
 			}, ProcessSpec{

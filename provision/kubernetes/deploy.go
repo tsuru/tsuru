@@ -1202,7 +1202,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		return err
 	}
 
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -1223,7 +1223,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		if !ok {
 			return errors.Errorf("no version data found for %v", versionNumber)
 		}
-		version := servicemanager.AppVersion.AppVersionFromInfo(a, vInfo)
+		version := servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
 		var svcPorts []apiv1.ServicePort
 		svcPorts, err = loadServicePorts(version, process)
 		if err != nil {

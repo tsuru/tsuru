@@ -564,11 +564,11 @@ func (s *S) TestRemoveOldRoutesForward(c *check.C) {
 
 func (s *S) TestRemoveOldRoutesForwardNoImageData(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppVersion.DeleteVersionIDs(app.GetName(), []int{version.Version()})
+	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), app.GetName(), []int{version.Version()})
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app)
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())

@@ -6,7 +6,6 @@ package service
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -440,7 +439,7 @@ func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
-	err := a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err := a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
@@ -765,7 +764,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = a.AddInstance(bind.AddInstanceArgs{
 		Envs: []bind.ServiceEnvVar{
 			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},

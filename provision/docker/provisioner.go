@@ -654,7 +654,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	return p.checkContainer(cont)
 }
 
-func (p *dockerProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
+func (p *dockerProvisioner) ExecuteCommand(ctx context.Context, opts provision.ExecOptions) error {
 	if opts.Term != "" {
 		opts.Cmds = append([]string{"/usr/bin/env", "TERM=" + opts.Term}, opts.Cmds...)
 	}
@@ -664,7 +664,7 @@ func (p *dockerProvisioner) ExecuteCommand(opts provision.ExecOptions) error {
 		Term:   opts.Term,
 	}
 	if len(opts.Units) == 0 {
-		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(opts.App)
+		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, opts.App)
 		if err != nil {
 			return err
 		}
@@ -726,7 +726,7 @@ func (p *dockerProvisioner) Units(ctx context.Context, apps ...provision.App) ([
 }
 
 func (p *dockerProvisioner) RoutableAddresses(ctx context.Context, app provision.App) ([]appTypes.RoutableAddresses, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return nil, err
 	}
@@ -758,7 +758,7 @@ func (p *dockerProvisioner) RegisterUnit(ctx context.Context, a provision.App, u
 	if cont.Status == provision.StatusBuilding.String() {
 		if cont.BuildingImage != "" && customData != nil {
 			var version appTypes.AppVersion
-			version, err = servicemanager.AppVersion.VersionByPendingImage(a, cont.BuildingImage)
+			version, err = servicemanager.AppVersion.VersionByPendingImage(ctx, a, cont.BuildingImage)
 			if err != nil {
 				return err
 			}

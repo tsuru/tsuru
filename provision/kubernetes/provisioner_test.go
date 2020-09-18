@@ -1027,7 +1027,7 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
-	version, err = servicemanager.AppVersion.VersionByPendingImage(a, version.BaseImageName())
+	version, err = servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, version.BaseImageName())
 	c.Assert(err, check.IsNil)
 	procs, err := version.Processes()
 	c.Assert(err, check.IsNil)

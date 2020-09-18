@@ -5,6 +5,7 @@
 package dockercommon_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -82,7 +83,7 @@ func (s *S) TestDeployCmds(c *check.C) {
 }
 
 func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)

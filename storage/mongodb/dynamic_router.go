@@ -60,10 +60,10 @@ func (s *dynamicRouterStorage) Get(ctx context.Context, name string) (*router.Dy
 	var dr dynamicRouter
 	err = s.coll(conn).FindId(name).One(&dr)
 	if err != nil {
-		span.SetError(err)
 		if err == mgo.ErrNotFound {
 			return nil, router.ErrDynamicRouterNotFound
 		}
+		span.SetError(err)
 		return nil, err
 	}
 	result := router.DynamicRouter(dr)

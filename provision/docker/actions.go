@@ -543,6 +543,7 @@ var setRouterHealthcheck = action.Action{
 	Name:    "set-router-healthcheck",
 	OnError: rollbackNotice,
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		stdCtx := context.TODO()
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
@@ -565,7 +566,7 @@ var setRouterHealthcheck = action.Action{
 			msg = fmt.Sprintf("%s, Body: %s", msg, newHCData.Body)
 		}
 		fmt.Fprintf(writer, "\n---- Setting router healthcheck (%s) ----\n", msg)
-		err = runInRouters(context.TODO(), args.app, func(r router.Router) error {
+		err = runInRouters(stdCtx, args.app, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {
 				return nil
@@ -577,7 +578,7 @@ var setRouterHealthcheck = action.Action{
 				return nil
 			}
 			var oldVersion appTypes.AppVersion
-			oldVersion, err = servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
+			oldVersion, err = servicemanager.AppVersion.LatestSuccessfulVersion(stdCtx, args.app)
 			if err != nil {
 				if err == appTypes.ErrNoVersionsAvailable {
 					return nil
@@ -593,9 +594,10 @@ var setRouterHealthcheck = action.Action{
 		return newContainers, err
 	},
 	Backward: func(ctx action.BWContext) {
+		stdCtx := context.TODO()
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		var yamlData provTypes.TsuruYamlData
-		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
+		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(stdCtx, args.app)
 		if err != nil && err != appTypes.ErrNoVersionsAvailable {
 			log.Errorf("[set-router-healthcheck:Backward] Error getting old version: %s", err)
 			return
@@ -608,7 +610,7 @@ var setRouterHealthcheck = action.Action{
 			}
 		}
 		hcData := yamlData.ToRouterHC()
-		err = runInRouters(context.TODO(), args.app, func(r router.Router) error {
+		err = runInRouters(stdCtx, args.app, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {
 				return nil
@@ -645,7 +647,7 @@ var removeOldRoutes = action.Action{
 		if len(args.toRemove) > 0 {
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
-		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(args.app)
+		oldVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), args.app)
 		if err != nil && err != appTypes.ErrNoVersionsAvailable {
 			log.Errorf("[WARNING] cannot get the old version for route removal: %s", err)
 			return

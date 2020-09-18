@@ -348,7 +348,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 
 	var versions []appTypes.AppVersion
 	for v := range versionSet {
-		version, err := servicemanager.AppVersion.VersionByImageOrVersion(a, strconv.Itoa(v))
+		version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, a, strconv.Itoa(v))
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +379,7 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 
 	var multiErr tsuruErrors.MultiError
 	for _, v := range versions {
-		err = servicecommon.ChangeAppState(&serviceManager{
+		err = servicecommon.ChangeAppState(ctx, &serviceManager{
 			client: client,
 			writer: w,
 		}, a, process, state, v)
@@ -399,7 +399,7 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	return servicecommon.ChangeUnits(&serviceManager{
+	return servicecommon.ChangeUnits(ctx, &serviceManager{
 		client: client,
 		writer: w,
 	}, a, units, processName, version)
@@ -683,7 +683,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil {
 		if err != appTypes.ErrNoVersionsAvailable {
 			return nil, err
@@ -884,7 +884,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 	if buildingImage == "" {
 		return nil
 	}
-	version, err := servicemanager.AppVersion.VersionByPendingImage(a, buildingImage)
+	version, err := servicemanager.AppVersion.VersionByPendingImage(ctx, a, buildingImage)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1273,7 +1273,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 			return "", err
 		}
 	}
-	err = servicecommon.RunServicePipeline(manager, oldVersionNumber, args, nil)
+	err = servicecommon.RunServicePipeline(ctx, manager, oldVersionNumber, args, nil)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -1352,7 +1352,7 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 	}
 	var version appTypes.AppVersion
 	if opts.image == "" {
-		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(opts.app)
+		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(ctx, opts.app)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -1549,7 +1549,7 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
 
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return nil, err
 	}

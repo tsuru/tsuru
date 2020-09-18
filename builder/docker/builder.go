@@ -92,7 +92,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 		tarFile = dockercommon.AddDeployTarFile(opts.ArchiveFile, opts.ArchiveSize, defaultArchiveName)
 	} else if opts.Rebuild {
 		var rcont *docker.Container
-		tarFile, rcont, err = downloadFromContainer(client, app, archiveFullPath)
+		tarFile, rcont, err = downloadFromContainer(ctx, client, app, archiveFullPath)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 			return nil, err
 		}
 	} else if opts.ImageID != "" {
-		return imageBuild(client, app, opts, evt)
+		return imageBuild(ctx, client, app, opts, evt)
 	} else {
 		return nil, errors.New("no valid files found")
 	}
@@ -115,7 +115,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 	return img, nil
 }
 
-func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
+func imageBuild(ctx context.Context, client provision.BuilderDockerClient, app provision.App, opts *builder.BuildOpts, evt *event.Event) (appTypes.AppVersion, error) {
 	repo, tag := image.SplitImageName(opts.ImageID)
 	imageID := fmt.Sprintf("%s:%s", repo, tag)
 	fmt.Fprintln(evt, "---- Getting process from image ----")
@@ -156,7 +156,7 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	if err != nil {
 		return nil, err
 	}
-	newVersion, err := pushImageToRegistry(client, app, imageID, evt, opts.Message)
+	newVersion, err := pushImageToRegistry(ctx, client, app, imageID, evt, opts.Message)
 	if err != nil {
 		return nil, err
 	}
@@ -178,8 +178,8 @@ func imageBuild(client provision.BuilderDockerClient, app provision.App, opts *b
 	return newVersion, nil
 }
 
-func pushImageToRegistry(client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, message string) (appTypes.AppVersion, error) {
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+func pushImageToRegistry(ctx context.Context, client provision.BuilderDockerClient, app provision.App, imageID string, evt *event.Event, message string) (appTypes.AppVersion, error) {
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, appTypes.NewVersionArgs{
 		App:         app,
 		EventID:     evt.UniqueID.Hex(),
 		Description: message,
@@ -314,8 +314,8 @@ func removeContainer(client provision.BuilderDockerClient, containerID string) e
 	return client.RemoveContainer(opts)
 }
 
-func downloadFromContainer(client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+func downloadFromContainer(ctx context.Context, client provision.BuilderDockerClient, app provision.App, filePath string) (io.ReadCloser, *docker.Container, error) {
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil {
 		return nil, nil, err
 	}

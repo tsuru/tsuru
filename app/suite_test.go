@@ -201,7 +201,7 @@ func setupMocks(s *S) {
 		return &s.defaultPlan, nil
 	}
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
-		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: app,
 		})
 		if err != nil {

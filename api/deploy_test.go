@@ -140,7 +140,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 }
 
 func newAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -1388,7 +1388,7 @@ func (s *DeploySuite) TestRollbackUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	versions, err := servicemanager.AppVersion.AppVersions(&fakeApp)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), &fakeApp)
 	c.Assert(err, check.IsNil)
 	disabledVersion := versions.Versions[version.Version()]
 	c.Assert(disabledVersion.Disabled, check.Equals, true)

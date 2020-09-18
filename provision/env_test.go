@@ -5,6 +5,8 @@
 package provision_test
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/version"
@@ -65,7 +67,7 @@ func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 
 	svc, err := version.AppVersionService()
 	c.Assert(err, check.IsNil)
-	version, err := svc.NewAppVersion(appTypes.NewVersionArgs{App: a})
+	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{App: a})
 	c.Assert(err, check.IsNil)
 
 	envs := provision.EnvsForApp(a, "p1", false, version)

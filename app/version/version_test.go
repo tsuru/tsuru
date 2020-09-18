@@ -5,6 +5,8 @@
 package version
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -238,7 +240,7 @@ func (s *S) TestAppVersionImpl_AddData(c *check.C) {
 	for _, tt := range tests {
 		func() {
 			c.Log("test", tt.name)
-			version, err := svc.NewAppVersion(appTypes.NewVersionArgs{
+			version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 				App: &appTypes.MockApp{Name: "myapp"},
 			})
 			c.Assert(err, check.IsNil)
@@ -293,8 +295,8 @@ func (s *S) TestAppVersionImpl_WebProcess(c *check.C) {
 	}
 	for i, tt := range tests {
 		c.Logf("test %d", i)
-		svc.DeleteVersions("myapp")
-		version, err := svc.NewAppVersion(appTypes.NewVersionArgs{
+		svc.DeleteVersions(context.TODO(), "myapp")
+		version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: &appTypes.MockApp{Name: "myapp"},
 		})
 		c.Assert(err, check.IsNil)
@@ -311,7 +313,7 @@ func (s *S) TestAppVersionImpl_WebProcess(c *check.C) {
 func (s *S) TestAppVersionImpl_ToggleEnabled(c *check.C) {
 	svc, err := AppVersionService()
 	c.Assert(err, check.IsNil)
-	version, err := svc.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := svc.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: &appTypes.MockApp{Name: "myapp"},
 	})
 	c.Assert(err, check.IsNil)

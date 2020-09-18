@@ -44,7 +44,7 @@ func (b *dockerBuilder) buildPipeline(ctx context.Context, p provision.BuilderDe
 	if err != nil {
 		return nil, log.WrapError(errors.Errorf("error getting base image name for app %s", app.GetName()))
 	}
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, appTypes.NewVersionArgs{
 		App:            app,
 		EventID:        evt.UniqueID.Hex(),
 		CustomBuildTag: opts.Tag,

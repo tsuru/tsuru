@@ -21,7 +21,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 			"worker": "python worker1",
 		},
 	})
-	err := ChangeAppState(m, fakeApp, "", ProcessState{Restart: true}, latestVersion)
+	err := ChangeAppState(context.TODO(), m, fakeApp, "", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -43,7 +43,7 @@ func (s *S) TestChangeAppState(c *check.C) {
 		{action: "cleanup", app: fakeApp, versionNumber: latestVersion.Version(), preserveVersions: true},
 	})
 	m.reset()
-	err = ChangeAppState(m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion)
+	err = ChangeAppState(context.TODO(), m, fakeApp, "worker", ProcessState{Restart: true}, latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err = provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -68,7 +68,7 @@ func (s *S) TestChangeUnits(c *check.C) {
 			"worker": "python worker1",
 		},
 	})
-	err := ChangeUnits(m, fakeApp, 1, "worker", latestVersion)
+	err := ChangeUnits(context.TODO(), m, fakeApp, 1, "worker", latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -87,7 +87,7 @@ func (s *S) TestChangeUnits(c *check.C) {
 		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
 		{action: "cleanup", app: fakeApp, versionNumber: latestVersion.Version(), preserveVersions: true},
 	})
-	err = ChangeUnits(m, fakeApp, 1, "", latestVersion)
+	err = ChangeUnits(context.TODO(), m, fakeApp, 1, "", latestVersion)
 	c.Assert(err, check.ErrorMatches, "process error: no process name specified and more than one declared in Procfile")
 }
 
@@ -100,7 +100,7 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 			"web": "python web1",
 		},
 	})
-	err := ChangeUnits(m, fakeApp, 1, "", latestVersion)
+	err := ChangeUnits(context.TODO(), m, fakeApp, 1, "", latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,

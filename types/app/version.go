@@ -5,6 +5,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -98,27 +99,27 @@ type AppVersionWriteOptions struct {
 }
 
 type AppVersionService interface {
-	AllAppVersions() ([]AppVersions, error)
-	AppVersions(app App) (AppVersions, error)
-	VersionByPendingImage(app App, imageID string) (AppVersion, error)
-	VersionByImageOrVersion(app App, image string) (AppVersion, error)
-	LatestSuccessfulVersion(app App) (AppVersion, error)
-	NewAppVersion(args NewVersionArgs) (AppVersion, error)
-	DeleteVersions(appName string, opts ...*AppVersionWriteOptions) error
-	DeleteVersionIDs(appName string, versions []int, opts ...*AppVersionWriteOptions) error
-	AppVersionFromInfo(App, AppVersionInfo) AppVersion
-	MarkToRemoval(appName string, opts ...*AppVersionWriteOptions) error
-	MarkVersionsToRemoval(appName string, versions []int, opts ...*AppVersionWriteOptions) error
+	AllAppVersions(ctx context.Context) ([]AppVersions, error)
+	AppVersions(ctx context.Context, app App) (AppVersions, error)
+	VersionByPendingImage(ctx context.Context, app App, imageID string) (AppVersion, error)
+	VersionByImageOrVersion(ctx context.Context, app App, image string) (AppVersion, error)
+	LatestSuccessfulVersion(ctx context.Context, app App) (AppVersion, error)
+	NewAppVersion(ctx context.Context, args NewVersionArgs) (AppVersion, error)
+	DeleteVersions(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error
+	DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*AppVersionWriteOptions) error
+	AppVersionFromInfo(context.Context, App, AppVersionInfo) AppVersion
+	MarkToRemoval(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error
+	MarkVersionsToRemoval(ctx context.Context, appName string, versions []int, opts ...*AppVersionWriteOptions) error
 }
 
 type AppVersionStorage interface {
-	UpdateVersion(appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
-	UpdateVersionSuccess(appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
-	NewAppVersion(args NewVersionArgs) (*AppVersionInfo, error)
-	DeleteVersions(appName string, opts ...*AppVersionWriteOptions) error
-	AllAppVersions() ([]AppVersions, error)
-	AppVersions(app App) (AppVersions, error)
-	DeleteVersionIDs(appName string, versions []int, opts ...*AppVersionWriteOptions) error
-	MarkToRemoval(appName string, opts ...*AppVersionWriteOptions) error
-	MarkVersionsToRemoval(appName string, versions []int, opts ...*AppVersionWriteOptions) error
+	UpdateVersion(ctx context.Context, appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
+	UpdateVersionSuccess(ctx context.Context, appName string, vi *AppVersionInfo, opts ...*AppVersionWriteOptions) error
+	NewAppVersion(ctx context.Context, args NewVersionArgs) (*AppVersionInfo, error)
+	DeleteVersions(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error
+	AllAppVersions(ctx context.Context) ([]AppVersions, error)
+	AppVersions(ctx context.Context, app App) (AppVersions, error)
+	DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*AppVersionWriteOptions) error
+	MarkToRemoval(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error
+	MarkVersionsToRemoval(ctx context.Context, appName string, versions []int, opts ...*AppVersionWriteOptions) error
 }

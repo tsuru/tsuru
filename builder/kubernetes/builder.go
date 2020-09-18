@@ -54,7 +54,7 @@ func (b *kubernetesBuilder) Build(ctx context.Context, prov provision.BuilderDep
 		}
 		opts.ArchiveFile = tarFile
 	}
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, appTypes.NewVersionArgs{
 		App:            app,
 		EventID:        evt.UniqueID.Hex(),
 		CustomBuildTag: opts.Tag,
@@ -80,7 +80,7 @@ func imageBuild(ctx context.Context, client provision.BuilderKubeClient, a provi
 		imageID = fmt.Sprintf("%s:latest", imageID)
 	}
 	fmt.Fprintln(evt, "---- Pulling image to tsuru ----")
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, appTypes.NewVersionArgs{
 		App:         a,
 		EventID:     evt.UniqueID.Hex(),
 		Description: opts.Message,
@@ -137,7 +137,7 @@ func tsuruYamlToCustomData(yaml *provTypes.TsuruYamlData) map[string]interface{}
 }
 
 func downloadFromContainer(ctx context.Context, client provision.BuilderKubeClient, app provision.App, evt *event.Event) (io.ReadCloser, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil {
 		return nil, err
 	}

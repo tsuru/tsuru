@@ -142,7 +142,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		c.Assert(opts.Tag, check.Equals, "mytag")
-		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:            app,
 			CustomBuildTag: opts.Tag,
 		})
@@ -202,7 +202,7 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
-		version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:            app,
 			CustomBuildTag: opts.Tag,
 		})

@@ -5,7 +5,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -323,11 +322,11 @@ var setBoundEnvsAction = &action.Action{
 			ShouldRestart: args.shouldRestart,
 			Writer:        args.writer,
 		}
-		return addArgs, args.app.AddInstance(context.TODO(), addArgs)
+		return addArgs, args.app.AddInstance(addArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		err := args.app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+		err := args.app.RemoveInstance(bind.RemoveInstanceArgs{
 			ServiceName:   args.serviceInstance.ServiceName,
 			InstanceName:  args.serviceInstance.Name,
 			ShouldRestart: args.shouldRestart,
@@ -514,7 +513,7 @@ var removeBoundEnvs = action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
 		si := args.serviceInstance
-		return nil, args.app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+		return nil, args.app.RemoveInstance(bind.RemoveInstanceArgs{
 			ServiceName:   si.ServiceName,
 			InstanceName:  si.Name,
 			ShouldRestart: args.shouldRestart,

@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -99,7 +100,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 
-	versions, err := storage.AppVersions(&appTypes.MockApp{Name: "myapp"})
+	versions, err := storage.AppVersions(context.TODO(), &appTypes.MockApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		c.Assert(v.CreatedAt.IsZero(), check.Equals, false)
@@ -309,7 +310,7 @@ func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
 	err = dataColl.Insert(imageData...)
 	c.Assert(err, check.IsNil)
 
-	versions, err := storage.AppVersions(&appTypes.MockApp{Name: "myapp"})
+	versions, err := storage.AppVersions(context.TODO(), &appTypes.MockApp{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	for k, v := range versions.Versions {
 		c.Assert(v.CreatedAt.IsZero(), check.Equals, false)

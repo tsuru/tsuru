@@ -599,7 +599,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	}
 	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
 		var versions appTypes.AppVersions
-		versions, err = servicemanager.AppVersion.AppVersions(app)
+		versions, err = servicemanager.AppVersion.AppVersions(ctx, app)
 		if err != nil {
 			log.Errorf("failed to list versions for app %s: %s", appName, err)
 		}
@@ -619,7 +619,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 			}
 		}
 	}
-	err = servicemanager.AppVersion.DeleteVersions(appName)
+	err = servicemanager.AppVersion.DeleteVersions(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
@@ -736,7 +736,7 @@ func (app *App) UnbindUnit(unit *provision.Unit) error {
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
+func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
@@ -749,7 +749,7 @@ func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string
 			return errors.New("Cannot add units to an app that has stopped or sleeping units")
 		}
 	}
-	version, err := app.getVersion(ctx, versionStr)
+	version, err := app.getVersion(app.ctx, versionStr)
 	if err != nil {
 		return err
 	}
@@ -1240,7 +1240,7 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 			opts.Units = append(opts.Units, u.ID)
 		}
 	}
-	return execProv.ExecuteCommand(opts)
+	return execProv.ExecuteCommand(app.ctx, opts)
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
@@ -1522,7 +1522,7 @@ func (app *App) Envs() map[string]bind.EnvVar {
 }
 
 // SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
+func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -1548,14 +1548,14 @@ func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
 		return err
 	}
 	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(ctx, setEnvs.Writer)
+		return app.restartIfUnits(setEnvs.Writer)
 	}
 	return nil
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) error {
+func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
@@ -1575,12 +1575,12 @@ func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) erro
 		return err
 	}
 	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(ctx, unsetEnvs.Writer)
+		return app.restartIfUnits(unsetEnvs.Writer)
 	}
 	return nil
 }
 
-func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
+func (app *App) restartIfUnits(w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {
 		return err
@@ -1592,11 +1592,11 @@ func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(ctx, app, "", version, w)
+	err = prov.Restart(app.ctx, app, "", version, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "restart")
 	}
@@ -1661,7 +1661,7 @@ func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
 	}
 }
 
-func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
+func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -1679,12 +1679,12 @@ func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) e
 		return err
 	}
 	if addArgs.ShouldRestart {
-		return app.restartIfUnits(ctx, addArgs.Writer)
+		return app.restartIfUnits(addArgs.Writer)
 	}
 	return nil
 }
 
-func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstanceArgs) error {
+func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 	lenBefore := len(app.ServiceEnvs)
 	for i := 0; i < len(app.ServiceEnvs); i++ {
 		se := app.ServiceEnvs[i]
@@ -1710,7 +1710,7 @@ func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstan
 		return err
 	}
 	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(ctx, removeArgs.Writer)
+		return app.restartIfUnits(removeArgs.Writer)
 	}
 	return nil
 }
@@ -2298,7 +2298,7 @@ func (app *App) Shell(opts provision.ExecOptions) error {
 	}
 	opts.App = app
 	opts.Cmds = cmdsForExec("bash -l")
-	return execProv.ExecuteCommand(opts)
+	return execProv.ExecuteCommand(app.ctx, opts)
 }
 
 func (app *App) SetCertificate(name, certificate, key string) error {
@@ -2477,7 +2477,7 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 }
 
 func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
 	if err != nil {
 		if err == appTypes.ErrNoVersionsAvailable {
 			err = nil
@@ -2521,13 +2521,13 @@ func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, is
 	return rprov.ToggleRoutable(ctx, app, version, isRoutable)
 }
 
-func (app *App) DeployedVersions(ctx context.Context) ([]int, error) {
+func (app *App) DeployedVersions() ([]int, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
 	if rprov, ok := prov.(provision.VersionsProvisioner); ok {
-		return rprov.DeployedVersions(ctx, app)
+		return rprov.DeployedVersions(app.ctx, app)
 	}
 	return nil, ErrNoVersionProvisioner
 }
@@ -2546,13 +2546,13 @@ func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVer
 		return nil, err
 	}
 	if len(versions) == 0 {
-		return servicemanager.AppVersion.LatestSuccessfulVersion(app)
+		return servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
 	}
 	if len(versions) > 1 {
 		return nil, errors.Errorf("more than one version deployed, you must select one")
 	}
 
-	return servicemanager.AppVersion.VersionByImageOrVersion(app, strconv.Itoa(versions[0]))
+	return servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, strconv.Itoa(versions[0]))
 }
 
 func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) {
@@ -2568,12 +2568,12 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
 
 	if !isVersionProv {
-		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
 		if err != nil {
 			return nil, nil, err
 		}
 		if version != "" && version != "0" {
-			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, version)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2585,7 +2585,7 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 	}
 
 	if version != "" && version != "0" {
-		v, err := servicemanager.AppVersion.VersionByImageOrVersion(app, version)
+		v, err := servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, version)
 		return versionProv, v, err
 	}
 

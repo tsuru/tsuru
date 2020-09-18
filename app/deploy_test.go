@@ -138,7 +138,7 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 }
 
 func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -152,7 +152,7 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 }
 
 func newUnsuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
 	c.Assert(err, check.IsNil)
@@ -1155,23 +1155,23 @@ func (s *S) TestRollbackUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &app)
 
-	err = RollbackUpdate(&app, fmt.Sprintf("v%d", version.Version()), "my reason", true)
+	err = RollbackUpdate(context.TODO(), &app, fmt.Sprintf("v%d", version.Version()), "my reason", true)
 	c.Assert(err, check.IsNil)
 
-	versions, err := servicemanager.AppVersion.AppVersions(&app)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	c.Assert(versions.Versions[version.Version()].Disabled, check.Equals, true)
 	c.Assert(versions.Versions[version.Version()].DisabledReason, check.Equals, "my reason")
 
-	err = RollbackUpdate(&app, fmt.Sprintf("v%d", version.Version()), "", false)
+	err = RollbackUpdate(context.TODO(), &app, fmt.Sprintf("v%d", version.Version()), "", false)
 	c.Assert(err, check.IsNil)
 
-	versions, err = servicemanager.AppVersion.AppVersions(&app)
+	versions, err = servicemanager.AppVersion.AppVersions(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	c.Assert(versions.Versions[version.Version()].Disabled, check.Equals, false)
 	c.Assert(versions.Versions[version.Version()].DisabledReason, check.Equals, "")
 
-	err = RollbackUpdate(&app, "v20", "", false)
+	err = RollbackUpdate(context.TODO(), &app, "v20", "", false)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "Invalid version: v20")
 }
@@ -1184,7 +1184,7 @@ func (s *S) TestRollbackUpdateInvalidApp(c *check.C) {
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err := RollbackUpdate(&invalidApp, "v1", "", false)
+	err := RollbackUpdate(context.TODO(), &invalidApp, "v1", "", false)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "no versions available for app")
 }

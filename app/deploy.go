@@ -61,10 +61,10 @@ type DeployData struct {
 	Message     string
 }
 
-func findValidImages(apps ...App) (set.Set, error) {
+func findValidImages(ctx context.Context, apps ...App) (set.Set, error) {
 	validImages := set.Set{}
 	for _, a := range apps {
-		versions, err := servicemanager.AppVersion.AppVersions(&a)
+		versions, err := servicemanager.AppVersion.AppVersions(ctx, &a)
 		if err != nil && err != appTypes.ErrNoVersionsAvailable {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 	if err != nil {
 		return nil, err
 	}
-	validImages, err := findValidImages(appsList...)
+	validImages, err := findValidImages(ctx, appsList...)
 	if err != nil {
 		return nil, err
 	}
@@ -349,8 +349,8 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	return imageID, nil
 }
 
-func RollbackUpdate(app *App, imageID, reason string, disableRollback bool) error {
-	version, err := servicemanager.AppVersion.VersionByImageOrVersion(app, imageID)
+func RollbackUpdate(ctx context.Context, app *App, imageID, reason string, disableRollback bool) error {
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, imageID)
 	if err != nil {
 		return err
 	}
@@ -376,7 +376,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 	var version appTypes.AppVersion
 	if opts.Kind == DeployRollback {
-		version, err = servicemanager.AppVersion.VersionByImageOrVersion(opts.App, opts.Image)
+		version, err = servicemanager.AppVersion.VersionByImageOrVersion(ctx, opts.App, opts.Image)
 		if err != nil {
 			return "", err
 		}

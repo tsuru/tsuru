@@ -98,7 +98,7 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	dockerContainer, err = s.p.Cluster().InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	err = s.p.Restart(context.TODO(), app, "", version, nil)
 	c.Assert(err, check.IsNil)
@@ -150,7 +150,7 @@ func (s *S) TestProvisionerRestartStoppedContainer(c *check.C) {
 	dockerContainer, err = s.p.Cluster().InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	err = s.p.Restart(context.TODO(), app, "", version, nil)
 	c.Assert(err, check.IsNil)
@@ -208,7 +208,7 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	dockerContainer, err = s.p.Cluster().InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	err = s.p.Restart(context.TODO(), app, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -595,7 +595,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	latestVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(&a)
+	latestVersion, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
 	c.Assert(latestVersion.VersionInfo().Processes, check.DeepEquals, expectedProcesses)
@@ -640,7 +640,7 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 	s.p.Provision(context.TODO(), a)
 	_, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -660,7 +660,7 @@ func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
 	s.p.Provision(context.TODO(), a)
 	_, err := s.newContainer(&newContainerOpts{AppName: a.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(context.TODO(), a, 3, "bogus", version, nil)
 	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
@@ -685,7 +685,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	coll.Insert(container.Container{Container: types.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"}})
 	_, err := newSuccessfulVersionForApp(s.p, a, nil)
 	c.Assert(err, check.IsNil)
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(context.TODO(), a, 3, "web", version, nil)
 	c.Assert(err, check.ErrorMatches, `.*API error \(500\).*`)
@@ -703,7 +703,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	coll := s.p.Collection()
 	defer coll.Close()
 	coll.Insert(container.Container{Container: types.Container{ID: "c-89320", AppName: a.GetName(), Version: "a345fe", Image: "tsuru/python:latest"}})
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(a)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	err = s.p.AddUnits(context.TODO(), a, 0, "web", version, nil)
 	c.Assert(err, check.NotNil)
@@ -821,7 +821,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 		err = papp.BindUnit(&units[i])
 		c.Assert(err, check.IsNil)
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(papp)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), papp)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(context.TODO(), papp, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
@@ -891,7 +891,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	routertest.FakeRouter.FailForIp(conts[2].Address().String())
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(papp)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), papp)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(context.TODO(), papp, 2, "web", version, nil)
 	c.Assert(err, check.ErrorMatches, "error removing routes, units weren't removed: Forced failure")
@@ -1210,7 +1210,7 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 		executed = true
 	})
 	var stdout, stderr bytes.Buffer
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    a,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -1233,7 +1233,7 @@ func (s *S) TestProvisionerExecuteCommandSingleContainer(c *check.C) {
 	s.server.PrepareExec("*", func() {
 		executed = true
 	})
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    a,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -1284,7 +1284,7 @@ func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 		fmt.Fprintf(errStream, "errtest")
 		conn.Close()
 	}))
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    a,
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -1303,7 +1303,7 @@ func (s *S) TestProvisionerExecuteCommandNoUnitsNoImage(c *check.C) {
 	}))
 	a := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := s.p.ExecuteCommand(provision.ExecOptions{
+	err := s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    a,
 		Stdout: &buf,
 		Stderr: &buf,
@@ -1923,7 +1923,7 @@ func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py"}
 	err = s.p.RegisterUnit(context.TODO(), a, container.ID, data)
 	c.Assert(err, check.IsNil)
-	deployingVersion, err := servicemanager.AppVersion.VersionByPendingImage(a, container.BuildingImage)
+	deployingVersion, err := servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(deployingVersion.VersionInfo().CustomData["mydata"], check.DeepEquals, data["mydata"])
 	expectedProcesses := map[string][]string{"web": {"python myapp.py"}}
@@ -1951,7 +1951,7 @@ func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
 	}
 	err = s.p.RegisterUnit(context.TODO(), a, container.ID, data)
 	c.Assert(err, check.IsNil)
-	deployingVersion, err := servicemanager.AppVersion.VersionByPendingImage(a, container.BuildingImage)
+	deployingVersion, err := servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, container.BuildingImage)
 	c.Assert(err, check.IsNil)
 	c.Assert(deployingVersion.VersionInfo().CustomData["mydata"], check.DeepEquals, data["mydata"])
 	expectedProcesses := map[string][]string{"web": {"python web.py"}, "worker": {"python worker.py"}}
@@ -2033,7 +2033,7 @@ func (s *S) TestExecuteCommandStdin(c *check.C) {
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.ExecuteCommand(provision.ExecOptions{
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
 		App:    a,
 		Stdout: conn,
 		Stderr: conn,
@@ -2185,7 +2185,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	c.Assert(routes, check.DeepEquals, []appTypes.RoutableAddresses{{Addresses: []*url.URL{}}})
 	version, err := newSuccessfulVersionForApp(s.p, fakeApp, nil)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppVersion.DeleteVersionIDs(fakeApp.GetName(), []int{version.Version()})
+	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), fakeApp.GetName(), []int{version.Version()})
 	c.Assert(err, check.IsNil)
 	routes, err = s.p.RoutableAddresses(context.TODO(), fakeApp)
 	c.Assert(err, check.IsNil)

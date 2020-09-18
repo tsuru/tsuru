@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"context"
 	"net/url"
 	"sort"
 
@@ -64,7 +65,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	}
 	fakeApp := provisiontest.NewFakeApp(container.AppName, "python", 0)
 	if imageID == "" {
-		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(fakeApp)
+		version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), fakeApp)
 		if err == appTypes.ErrNoVersionsAvailable {
 			version, err = newSuccessfulVersionForApp(p, fakeApp, customData)
 		}
@@ -146,7 +147,7 @@ func newVersionForApp(p *dockerProvisioner, a provision.App, customData map[stri
 			},
 		}
 	}
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
 	if err != nil {

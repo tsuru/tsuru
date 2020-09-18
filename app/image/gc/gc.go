@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -237,14 +238,16 @@ func runPeriodicGC() (err error) {
 }
 
 func markOldImages() error {
-	ctx := context.TODO()
+	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC markOldImages")
+	defer span.Finish()
+
 	gcExecutionsTotal.WithLabelValues("mark").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("mark"))
 	defer timer.ObserveDuration()
 
 	log.Debugf("[image gc] starting gc process to select old images")
 	defer log.Debugf("[image gc] finished gc process to select old images")
-	allAppVersions, err := servicemanager.AppVersion.AllAppVersions()
+	allAppVersions, err := servicemanager.AppVersion.AllAppVersions(ctx)
 	if err != nil {
 		return err
 	}
@@ -263,7 +266,7 @@ func markOldImages() error {
 		}
 		if a == nil {
 			log.Debugf("[image gc] app %q not found, mark everything to removal", appVersions.AppName)
-			err = servicemanager.AppVersion.MarkToRemoval(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+			err = servicemanager.AppVersion.MarkToRemoval(ctx, appVersions.AppName, &appTypes.AppVersionWriteOptions{
 				PreviousUpdatedHash: appVersions.UpdatedHash,
 			})
 
@@ -273,7 +276,7 @@ func markOldImages() error {
 			continue
 		}
 
-		requireExclusiveLock, err := markOldImagesForAppVersion(a, appVersions, historySize, false)
+		requireExclusiveLock, err := markOldImagesForAppVersion(ctx, a, appVersions, historySize, false)
 		if err != nil {
 			multi.Add(err)
 			continue
@@ -296,7 +299,7 @@ func markOldImages() error {
 			continue
 		}
 
-		_, err = markOldImagesForAppVersion(a, appVersions, historySize, true)
+		_, err = markOldImagesForAppVersion(ctx, a, appVersions, historySize, true)
 		if err != nil {
 			multi.Add(err)
 		}
@@ -305,8 +308,8 @@ func markOldImages() error {
 	return multi.ToError()
 }
 
-func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
-	deployedVersions, err := a.DeployedVersions(context.TODO())
+func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
+	deployedVersions, err := a.DeployedVersions()
 	if err == app.ErrNoVersionProvisioner {
 		deployedVersions = []int{appVersions.LastSuccessfulVersion}
 	} else if err != nil {
@@ -344,7 +347,7 @@ func markOldImagesForAppVersion(a *app.App, appVersions appTypes.AppVersions, hi
 		versionIDs = append(versionIDs, version.Version)
 	}
 
-	err = servicemanager.AppVersion.MarkVersionsToRemoval(a.Name, versionIDs, &appTypes.AppVersionWriteOptions{
+	err = servicemanager.AppVersion.MarkVersionsToRemoval(ctx, a.Name, versionIDs, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: appVersions.UpdatedHash,
 	})
 
@@ -396,7 +399,9 @@ func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.App
 }
 
 func sweepOldImages() error {
-	ctx := context.TODO()
+	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC sweedOldImages")
+	defer span.Finish()
+
 	gcExecutionsTotal.WithLabelValues("sweep").Inc()
 	timer := prometheus.NewTimer(executionDuration.WithLabelValues("sweep"))
 	defer timer.ObserveDuration()
@@ -404,7 +409,7 @@ func sweepOldImages() error {
 	log.Debugf("[image gc] starting gc process to sweep old images")
 	defer log.Debugf("[image gc] finished gc process to sweep old images")
 
-	allAppVersions, err := servicemanager.AppVersion.AllAppVersions()
+	allAppVersions, err := servicemanager.AppVersion.AllAppVersions(ctx)
 	if err != nil {
 		return err
 	}
@@ -415,7 +420,7 @@ func sweepOldImages() error {
 	mapAppVersions := map[string]appTypes.AppVersions{}
 	for _, appVersions := range allAppVersions {
 		if appVersions.MarkedToRemoval {
-			err := pruneAllVersionsByApp(appVersions)
+			err := pruneAllVersionsByApp(ctx, appVersions)
 			if err != nil {
 				multi.Add(err)
 			}
@@ -457,7 +462,7 @@ func sweepOldImages() error {
 			versionsToRemove = append(versionsToRemove, version.Version)
 		}
 
-		err = pruneVersionFromStorage(mapAppVersions[appName], versionsToRemove)
+		err = pruneVersionFromStorage(ctx, mapAppVersions[appName], versionsToRemove)
 		if err != nil {
 			multi.Add(err)
 			continue
@@ -511,14 +516,14 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 	return selection
 }
 
-func pruneAllVersionsByApp(appVersions appTypes.AppVersions) error {
+func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions) error {
 	multi := tsuruErrors.NewMultiError()
 
 	err := registry.RemoveAppImages(appVersions.AppName)
 	if err != nil {
 		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
 	}
-	err = servicemanager.AppVersion.DeleteVersions(appVersions.AppName, &appTypes.AppVersionWriteOptions{
+	err = servicemanager.AppVersion.DeleteVersions(ctx, appVersions.AppName, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: appVersions.UpdatedHash,
 	})
 	if err != nil && err != appTypes.ErrTransactionCancelledByChange {
@@ -596,12 +601,12 @@ func pruneImageFromProvisioner(a *app.App, image string) error {
 	return nil
 }
 
-func pruneVersionFromStorage(appVersions appTypes.AppVersions, versions []int) error {
+func pruneVersionFromStorage(ctx context.Context, appVersions appTypes.AppVersions, versions []int) error {
 	storagePruneTotal.Inc()
 	timer := prometheus.NewTimer(storagePruneDuration)
 	defer timer.ObserveDuration()
 
-	err := servicemanager.AppVersion.DeleteVersionIDs(appVersions.AppName, versions, &appTypes.AppVersionWriteOptions{
+	err := servicemanager.AppVersion.DeleteVersionIDs(ctx, appVersions.AppName, versions, &appTypes.AppVersionWriteOptions{
 		PreviousUpdatedHash: appVersions.UpdatedHash,
 	})
 	if err != nil && err != appTypes.ErrTransactionCancelledByChange {

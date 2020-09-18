@@ -69,7 +69,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			"p2": "cmd2",
 		},
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -377,7 +377,7 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 		"processes": processes,
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -401,7 +401,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 		Processes:    map[string][]string{"p1": {"cmd1"}},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -538,7 +538,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -569,7 +569,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -597,7 +597,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -721,7 +721,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 	for i, tt := range tests {
 		c.Logf("test %d", i)
 		for _, s := range tt.states {
-			err = servicecommon.RunServicePipeline(&m, version.Version(), provision.DeployArgs{
+			err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 				App:     a,
 				Version: version,
 			}, servicecommon.ProcessSpec{
@@ -929,7 +929,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 			"healthcheck": tt.hc,
 		})
 		c.Assert(err, check.IsNil)
-		err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+		err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 			App:     a,
 			Version: version,
 		}, servicecommon.ProcessSpec{
@@ -973,7 +973,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1050,7 +1050,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1163,7 +1163,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPortsDuplicatedProcess(
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1195,7 +1195,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1234,7 +1234,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1325,7 +1325,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1388,7 +1388,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 		Event:   evt,
@@ -1430,7 +1430,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 		Event:   evt,
@@ -1458,7 +1458,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 		Event:   evt,
@@ -1497,7 +1497,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1533,7 +1533,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1557,7 +1557,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1589,7 +1589,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1629,7 +1629,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1671,7 +1671,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1779,7 +1779,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 		}
 		s.clusterClient.CustomData[tt.key] = tt.value
 		m := serviceManager{client: s.clusterClient}
-		err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+		err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 			App:     a,
 			Version: version,
 		}, servicecommon.ProcessSpec{
@@ -1809,7 +1809,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1843,7 +1843,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -1876,7 +1876,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		},
 	})
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -1885,7 +1885,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version2,
 		PreserveVersions: true,
@@ -2070,7 +2070,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	}
 	c.Assert(v2Svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Svc, expectedSvc), "\n")))
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version2,
 		PreserveVersions: true,
@@ -2107,7 +2107,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 
 	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version,
 		PreserveVersions: true,
@@ -2186,7 +2186,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 
 	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version1)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
 		Version:          version2,
 		PreserveVersions: true,
@@ -2306,7 +2306,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -2316,7 +2316,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	err = servicemanager.AppVersion.DeleteVersionIDs(a.Name, []int{version1.Version()})
+	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), a.Name, []int{version1.Version()})
 	c.Assert(err, check.IsNil)
 
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -2332,7 +2332,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p2-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -2865,7 +2865,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = v.BindApp(a.GetName(), "/mnt", false)
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -2920,7 +2920,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -2954,7 +2954,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -2988,7 +2988,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		Message: "my evt message",
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -3059,7 +3059,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 		}
 	}()
 
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -3095,7 +3095,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -3147,7 +3147,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -3172,7 +3172,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		Message: "my evt message",
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -3204,7 +3204,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 			"p1": "cmd1",
 		},
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -3239,7 +3239,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version2,
 	}, servicecommon.ProcessSpec{
@@ -3307,7 +3307,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		})
 		return false, nil, nil
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -3331,7 +3331,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 			"p1": "cm1",
 		},
 	})
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, nil)
@@ -3409,7 +3409,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, nil)
@@ -3519,7 +3519,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 	}, servicecommon.ProcessSpec{
@@ -3616,7 +3616,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	a.Plan = appTypes.Plan{Memory: 1024}
 	manager := &serviceManager{client: s.clusterClient}
 	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1", "p2": "cm2"}})
-	err = servicecommon.RunServicePipeline(manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
+	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -3635,7 +3635,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 			"processes": map[string]interface{}{"p1": "CM1", "p2": "CM2"},
 		}),
 	}
-	err = servicecommon.RunServicePipeline(manager, firstVersion.Version(), args, nil)
+	err = servicecommon.RunServicePipeline(context.TODO(), manager, firstVersion.Version(), args, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, `(?s).*deployment \"myapp-p2\" exceeded its progress deadline.*`)
 	c.Assert(err.Error(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\] \[version 1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
@@ -3695,7 +3695,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	a.Plan = appTypes.Plan{Memory: 1024}
 	manager := &serviceManager{client: s.clusterClient}
 	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1"}})
-	err = servicecommon.RunServicePipeline(manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
+	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
@@ -3714,7 +3714,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 			"processes": map[string]interface{}{"p1": "CM1"},
 		}),
 	}
-	err = servicecommon.RunServicePipeline(manager, firstVersion.Version(), args, nil)
+	err = servicecommon.RunServicePipeline(context.TODO(), manager, firstVersion.Version(), args, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, `(?s).*deployment \"myapp-p1\" exceeded its progress deadline.*`)
 	ns, err := s.client.AppNamespace(a)

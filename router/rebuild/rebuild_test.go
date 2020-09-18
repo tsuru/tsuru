@@ -21,7 +21,7 @@ import (
 )
 
 func newVersion(c *check.C, a appTypes.App) appTypes.AppVersion {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})
 	c.Assert(err, check.IsNil)
@@ -282,7 +282,7 @@ func (s *S) TestRebuildRoutesSetsHealthcheck(c *check.C) {
 	a := app.App{Name: "my-test-app", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: &a,
 	})
 	c.Assert(err, check.IsNil)

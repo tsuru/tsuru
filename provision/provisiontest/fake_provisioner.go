@@ -182,7 +182,7 @@ func (a *FakeApp) GetServiceEnvs() []bind.ServiceEnvVar {
 	return a.serviceEnvs
 }
 
-func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstanceArgs) error {
+func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	a.serviceEnvs = append(a.serviceEnvs, instanceArgs.Envs...)
@@ -192,7 +192,7 @@ func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstance
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(ctx context.Context, instanceArgs bind.RemoveInstanceArgs) error {
+func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	lenBefore := len(a.serviceEnvs)

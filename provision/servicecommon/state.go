@@ -5,13 +5,15 @@
 package servicecommon
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-func ChangeAppState(manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion) error {
+func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion) error {
 	var (
 		processes []string
 		err       error
@@ -32,14 +34,14 @@ func ChangeAppState(manager ServiceManager, a provision.App, process string, sta
 	for _, procName := range processes {
 		spec[procName] = state
 	}
-	err = RunServicePipeline(manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
+	err = RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func ChangeUnits(manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion) error {
+func ChangeUnits(ctx context.Context, manager ServiceManager, a provision.App, units int, processName string, version appTypes.AppVersion) error {
 	if a.GetDeploys() == 0 {
 		return errors.New("units can only be modified after the first deploy")
 	}
@@ -56,7 +58,7 @@ func ChangeUnits(manager ServiceManager, a provision.App, units int, processName
 			return errors.WithStack(err)
 		}
 	}
-	err = RunServicePipeline(manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
+	err = RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
 		processName: ProcessState{Increment: units},
 	})
 	if err != nil {

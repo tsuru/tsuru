@@ -106,7 +106,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int) {
-	version, err := servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App:            a,
 		EventID:        bson.NewObjectId().Hex(),
 		CustomBuildTag: "my-custom-tag",
@@ -117,7 +117,7 @@ func insertTestVersions(c *check.C, a provision.App, desiredNumberOfVersions int
 	err = version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
 	for i := 1; i <= desiredNumberOfVersions; i++ {
-		version, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		version, err = servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:     a,
 			EventID: bson.NewObjectId().Hex(),
 		})
@@ -192,7 +192,7 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v10-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11-builder",
 	})
-	versions, err := servicemanager.AppVersion.AppVersions(fakeApp)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), fakeApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(versions.Versions), check.Equals, 0)
 }
@@ -244,7 +244,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
 	})
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var appImgs, builderImgs []string
 	var markedVersionsToRemoval []int
@@ -361,7 +361,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 		c.Assert(err, check.IsNil)
 
 		var appVersion appTypes.AppVersion
-		appVersion, err = servicemanager.AppVersion.NewAppVersion(appTypes.NewVersionArgs{
+		appVersion, err = servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App:     a,
 			EventID: evt.UniqueID.Hex(),
 		})
@@ -377,7 +377,7 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	gc.start()
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var imgs []string
 	var markedVersionsToRemoval []int
@@ -440,7 +440,7 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 	evts = filterGCEvents(evts)
 	c.Assert(evts, check.HasLen, 0)
 
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Check(len(versions.Versions), check.Equals, 11)
 }
@@ -483,7 +483,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 		fmt.Println(evts[0].Error)
 	}
 
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Check(len(versions.Versions), check.Equals, 12)
 }
@@ -532,7 +532,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	// must never delete an image from registry when use dryRun
 	c.Check(regDeleteCalls, check.DeepEquals, []string(nil))
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var appImgs, builderImgs []string
 	var markedVersionsToRemoval []int
@@ -642,7 +642,7 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 	c.Check(regDeleteCalls, check.Equals, 0)
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Check(versions.Versions, check.HasLen, 6)
 
@@ -690,7 +690,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		}()
 	}
 	wg.Wait()
-	versions, err := servicemanager.AppVersion.AppVersions(a)
+	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var appImgs, builderImgs []string
 	var markedVersionsToRemoval []int
