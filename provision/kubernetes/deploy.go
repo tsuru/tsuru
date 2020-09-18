@@ -534,17 +534,26 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 			return nil, nil, nil, err
 		}
 	}
-	var lifecycle *apiv1.Lifecycle
+	terminationGracePeriod := int64(40)
+	lifecycle := &apiv1.Lifecycle{
+		PreStop: &apiv1.Handler{
+			Exec: &apiv1.ExecAction{
+				// Allow some time for endpoints controller and kube-proxy to
+				// remove the endpoints for the pods before sending SIGTERM to
+				// app. This should reduce the number of failed connections due
+				// to pods stopping while their endpoints are still active.
+				Command: []string{"sh", "-c", "sleep 10 || true"},
+			},
+		},
+	}
 	if yamlData.Hooks != nil && len(yamlData.Hooks.Restart.After) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
 			strings.Join(yamlData.Hooks.Restart.After, " && "),
 		}
-		lifecycle = &apiv1.Lifecycle{
-			PostStart: &apiv1.Handler{
-				Exec: &apiv1.ExecAction{
-					Command: hookCmds,
-				},
+		lifecycle.PostStart = &apiv1.Handler{
+			Exec: &apiv1.ExecAction{
+				Command: hookCmds,
 			},
 		}
 	}
@@ -641,9 +650,10 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 					Annotations: annotations.ToLabels(),
 				},
 				Spec: apiv1.PodSpec{
-					EnableServiceLinks: &serviceLinks,
-					ImagePullSecrets:   pullSecrets,
-					ServiceAccountName: serviceAccountNameForApp(a),
+					TerminationGracePeriodSeconds: &terminationGracePeriod,
+					EnableServiceLinks:            &serviceLinks,
+					ImagePullSecrets:              pullSecrets,
+					ServiceAccountName:            serviceAccountNameForApp(a),
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
