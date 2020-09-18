@@ -534,18 +534,23 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 			return nil, nil, nil, err
 		}
 	}
-	terminationGracePeriod := int64(40)
-	lifecycle := &apiv1.Lifecycle{
-		PreStop: &apiv1.Handler{
+
+	sleepSec := client.preStopSleepSeconds(a.GetPool())
+	terminationGracePeriod := int64(30 + sleepSec)
+
+	var lifecycle apiv1.Lifecycle
+	if sleepSec > 0 {
+		lifecycle.PreStop = &apiv1.Handler{
 			Exec: &apiv1.ExecAction{
 				// Allow some time for endpoints controller and kube-proxy to
 				// remove the endpoints for the pods before sending SIGTERM to
 				// app. This should reduce the number of failed connections due
 				// to pods stopping while their endpoints are still active.
-				Command: []string{"sh", "-c", "sleep 10 || true"},
+				Command: []string{"sh", "-c", fmt.Sprintf("sleep %d || true", sleepSec)},
 			},
-		},
+		}
 	}
+
 	if yamlData.Hooks != nil && len(yamlData.Hooks.Restart.After) > 0 {
 		hookCmds := []string{
 			"sh", "-c",
@@ -675,7 +680,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 							},
 							VolumeMounts: mounts,
 							Ports:        containerPorts,
-							Lifecycle:    lifecycle,
+							Lifecycle:    &lifecycle,
 						},
 					},
 				},

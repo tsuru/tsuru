@@ -1025,6 +1025,84 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc2$`)
 }
 
+func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
+	tests := []struct {
+		value         string
+		expectedLife  *apiv1.Lifecycle
+		expectedGrace int64
+	}{
+		{
+			value:         "",
+			expectedGrace: 40,
+			expectedLife: &apiv1.Lifecycle{
+				PreStop: &apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{"sh", "-c", "sleep 10 || true"},
+					},
+				},
+			},
+		},
+		{
+			value:         "invalid",
+			expectedGrace: 40,
+			expectedLife: &apiv1.Lifecycle{
+				PreStop: &apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{"sh", "-c", "sleep 10 || true"},
+					},
+				},
+			},
+		},
+		{
+			value:         "7",
+			expectedGrace: 37,
+			expectedLife: &apiv1.Lifecycle{
+				PreStop: &apiv1.Handler{
+					Exec: &apiv1.ExecAction{
+						Command: []string{"sh", "-c", "sleep 7 || true"},
+					},
+				},
+			},
+		},
+		{
+			value:         "0",
+			expectedGrace: 30,
+			expectedLife:  &apiv1.Lifecycle{},
+		},
+	}
+
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "proc1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(a)
+	c.Assert(err, check.IsNil)
+
+	for _, tt := range tests {
+		s.clusterClient.CustomData[preStopSleepKey] = tt.value
+		err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+			App:     a,
+			Version: version,
+		}, servicecommon.ProcessSpec{
+			"web": servicecommon.ProcessState{Start: true},
+		})
+		c.Assert(err, check.IsNil)
+		waitDep()
+		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLife)
+		c.Assert(dep.Spec.Template.Spec.TerminationGracePeriodSeconds, check.DeepEquals, &tt.expectedGrace)
+	}
+}
+
 func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
