@@ -43,7 +43,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo(context.TODO())
+	spec, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.DeepEquals, []provision.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m"},
@@ -71,7 +71,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(context.TODO(), provision.AutoScaleSpec{
+	err = a.AutoScale(provision.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
@@ -88,7 +88,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	spec, err := a.AutoScaleInfo(context.TODO())
+	spec, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
 	c.Assert(spec, check.IsNil)
 	c.Assert(eventtest.EventDesc{

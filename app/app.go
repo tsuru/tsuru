@@ -243,7 +243,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
 	}
-	autoscale, err := app.AutoScaleInfo(context.TODO())
+	autoscale, err := app.AutoScaleInfo()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
 	}
@@ -2596,7 +2596,7 @@ func (app *App) ListTags() []string {
 	return app.Tags
 }
 
-func (app *App) AutoScaleInfo(ctx context.Context) ([]provision.AutoScaleSpec, error) {
+func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2605,10 +2605,10 @@ func (app *App) AutoScaleInfo(ctx context.Context) ([]provision.AutoScaleSpec, e
 	if !ok {
 		return nil, nil
 	}
-	return autoscaleProv.GetAutoScale(ctx, app)
+	return autoscaleProv.GetAutoScale(app.ctx, app)
 }
 
-func (app *App) AutoScale(ctx context.Context, spec provision.AutoScaleSpec) error {
+func (app *App) AutoScale(spec provision.AutoScaleSpec) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -2617,10 +2617,10 @@ func (app *App) AutoScale(ctx context.Context, spec provision.AutoScaleSpec) err
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
-	return autoscaleProv.SetAutoScale(ctx, app, spec)
+	return autoscaleProv.SetAutoScale(app.ctx, app, spec)
 }
 
-func (app *App) RemoveAutoScale(ctx context.Context, process string) error {
+func (app *App) RemoveAutoScale(process string) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -2629,5 +2629,5 @@ func (app *App) RemoveAutoScale(ctx context.Context, process string) error {
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
-	return autoscaleProv.RemoveAutoScale(ctx, app, process)
+	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
 }

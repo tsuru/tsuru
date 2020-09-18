@@ -21,7 +21,6 @@ import (
 //   401: Unauthorized
 //   404: App not found
 func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -63,7 +62,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.AutoScale(ctx, spec)
+	return a.AutoScale(spec)
 }
 
 // title: remove unit auto scale
@@ -75,7 +74,6 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //   401: Unauthorized
 //   404: App not found
 func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	process := InputValue(r, "process")
 	a, err := getAppFromContext(appName, r)
@@ -99,5 +97,5 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.RemoveAutoScale(ctx, process)
+	return a.RemoveAutoScale(process)
 }
