@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	tsuruTest "github.com/tsuru/tsuru/test"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -192,7 +193,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		PlanName:    "small",
@@ -221,7 +222,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		PlanName:    "small",
@@ -300,7 +301,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "")
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       []string{"tsuruteam"},
@@ -345,7 +346,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
@@ -451,7 +452,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		PlanName:    "small",
@@ -483,7 +484,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		PlanName:    "small",
@@ -549,7 +550,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       si.Teams,
@@ -597,7 +598,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       append(si.Teams, t.Name),
@@ -644,7 +645,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       si.Teams,
@@ -691,7 +692,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       si.Teams,
@@ -821,7 +822,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       si.Teams,
@@ -863,7 +864,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
-	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
+	c.Assert(instance, tsuruTest.JSONEquals, &service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
 		Teams:       si.Teams,
