@@ -169,8 +169,6 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 			fwCtx.Context = ctx
 			r, err = a.Forward(fwCtx)
 
-			span.Finish()
-
 			a.rMutex.Lock()
 			a.result = r
 			a.rMutex.Unlock()
