@@ -39,6 +39,7 @@ type DbDriver struct {
 	AppVersionStorage                app.AppVersionStorage
 	DynamicRouterStorage             router.DynamicRouterStorage
 	AuthGroupStorage                 auth.GroupStorage
+	PoolStorage                      provision.PoolStorage
 }
 
 var (

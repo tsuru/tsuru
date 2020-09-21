@@ -27,6 +27,7 @@ func init() {
 		AppVersionStorage:                &appVersionStorage{},
 		DynamicRouterStorage:             &dynamicRouterStorage{},
 		AuthGroupStorage:                 &authGroupStorage{},
+		PoolStorage:                      &PoolStorage{},
 	}
 	storage.RegisterDbDriver("mongodb", mongodbDriver)
 }
