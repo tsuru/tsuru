@@ -1075,7 +1075,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
+	err := app.CreateApp(a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
@@ -1088,7 +1088,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 
 	for _, tt := range tests {
 		s.clusterClient.CustomData[preStopSleepKey] = tt.value
-		err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		err = servicecommon.RunServicePipeline(&m, 0, provision.DeployArgs{
 			App:     a,
 			Version: version,
 		}, servicecommon.ProcessSpec{
