@@ -210,7 +210,7 @@ func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, e
 	}
 	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(service, *si, updateData, evt, requestID)
+	return pipeline.Execute(si.ctx, service, *si, updateData, evt, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
@@ -240,7 +240,7 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 		bindUnitsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(&args)
+	return pipeline.Execute(si.ctx, &args)
 }
 
 // BindUnit makes the bind between the binder and an unit.
@@ -323,7 +323,7 @@ func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
 		&removeBoundEnvs,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(&args)
+	return pipeline.Execute(si.ctx, &args)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
@@ -460,7 +460,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 	return err
 }
 
-func CreateServiceInstance(instance ServiceInstance, service *Service, evt *event.Event, requestID string) error {
+func CreateServiceInstance(ctx context.Context, instance ServiceInstance, service *Service, evt *event.Event, requestID string) error {
 	err := validateServiceInstance(instance, service)
 	if err != nil {
 		return err
@@ -470,7 +470,7 @@ func CreateServiceInstance(instance ServiceInstance, service *Service, evt *even
 	instance.Tags = processTags(instance.Tags)
 	actions := []*action.Action{&notifyCreateServiceInstance, &createServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(*service, &instance, evt, requestID)
+	return pipeline.Execute(ctx, *service, &instance, evt, requestID)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {

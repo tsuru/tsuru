@@ -5,7 +5,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -50,7 +49,7 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("RequestID should be a string.")
 		}
-		err = endpoint.Create(context.TODO(), instance, evt, requestID)
+		err = endpoint.Create(ctx.Context, instance, evt, requestID)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +76,7 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return
 		}
-		endpoint.Destroy(context.TODO(), instance, evt, requestID)
+		endpoint.Destroy(ctx.Context, instance, evt, requestID)
 	},
 	MinParams: 3,
 }
@@ -205,7 +204,7 @@ var notifyUpdateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("RequestID should be a string.")
 		}
-		err = endpoint.Update(context.TODO(), &instance, evt, requestID)
+		err = endpoint.Update(ctx.Context, &instance, evt, requestID)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +264,7 @@ var bindAppEndpointAction = &action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
-		s, err := Get(context.TODO(), args.serviceInstance.ServiceName)
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
 			return nil, err
 		}
@@ -273,11 +272,11 @@ var bindAppEndpointAction = &action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return endpoint.BindApp(context.TODO(), args.serviceInstance, args.app, args.params, args.event, args.requestID)
+		return endpoint.BindApp(ctx.Context, args.serviceInstance, args.app, args.params, args.event, args.requestID)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		s, err := Get(context.TODO(), args.serviceInstance.ServiceName)
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
 			log.Errorf("[bind-app-endpoint backward] could not service from instance: %s", err)
 			return
@@ -287,7 +286,7 @@ var bindAppEndpointAction = &action.Action{
 			log.Errorf("[bind-app-endpoint backward] could not get endpoint: %s", err)
 			return
 		}
-		err = endpoint.UnbindApp(context.TODO(), args.serviceInstance, args.app, args.event, args.requestID)
+		err = endpoint.UnbindApp(ctx.Context, args.serviceInstance, args.app, args.event, args.requestID)
 		if err != nil {
 			log.Errorf("[bind-app-endpoint backward] failed to unbind unit: %s", err)
 		}
@@ -469,12 +468,12 @@ var unbindAppEndpoint = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
 		}
-		s, err := Get(context.TODO(), args.serviceInstance.ServiceName)
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
 			return nil, err
 		}
 		if endpoint, err := s.getClient("production"); err == nil {
-			err := endpoint.UnbindApp(context.TODO(), args.serviceInstance, args.app, args.event, args.requestID)
+			err := endpoint.UnbindApp(ctx.Context, args.serviceInstance, args.app, args.event, args.requestID)
 			if err != nil && err != ErrInstanceNotFoundInAPI {
 				if args.forceRemove {
 					msg := fmt.Sprintf("[unbind-app-endpoint] ignored error due to force: %v", err.Error())
@@ -491,13 +490,13 @@ var unbindAppEndpoint = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		s, err := Get(context.TODO(), args.serviceInstance.ServiceName)
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
 			log.Errorf("[unbind-app-endpoint backward] failed to rebind app in endpoint: %s", err)
 			return
 		}
 		if endpoint, err := s.getClient("production"); err == nil {
-			_, err := endpoint.BindApp(context.TODO(), args.serviceInstance, args.app, args.params, args.event, args.requestID)
+			_, err := endpoint.BindApp(ctx.Context, args.serviceInstance, args.app, args.params, args.event, args.requestID)
 			if err != nil {
 				log.Errorf("[unbind-app-endpoint backward] failed to rebind app in endpoint: %s", err)
 			}

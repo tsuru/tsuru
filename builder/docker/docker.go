@@ -71,7 +71,7 @@ func (b *dockerBuilder) buildPipeline(ctx context.Context, p provision.BuilderDe
 		tarFile:     tarFile,
 		isDeploy:    true,
 	}
-	err = container.RunPipelineWithRetry(pipeline, args)
+	err = container.RunPipelineWithRetry(ctx, pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute build pipeline for app %s - %s", app.GetName(), err)
 		return nil, err

@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -72,7 +73,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, version appTypes.A
 		event:         evt,
 		version:       version,
 	}
-	err := container.RunPipelineWithRetry(pipeline, args)
+	err := container.RunPipelineWithRetry(context.TODO(), pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
@@ -122,7 +123,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		exposedPort:      exposedPort,
 		version:          version,
 	}
-	err = container.RunPipelineWithRetry(pipeline, args)
+	err = container.RunPipelineWithRetry(context.TODO(), pipeline, args)
 	if err != nil {
 		return nil, err
 	}

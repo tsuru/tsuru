@@ -137,7 +137,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 			&provisionUnbindOldUnits,
 		)
 	}
-	err := pipeline.Execute(args)
+	err := pipeline.Execute(context.TODO(), args)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		&setRouterHealthcheck,
 		&updateAppImage,
 	)
-	err := pipeline.Execute(args)
+	err := pipeline.Execute(context.TODO(), args)
 	if err != nil {
 		return nil, err
 	}

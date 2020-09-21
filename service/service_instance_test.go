@@ -453,7 +453,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1", "tag2"}}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -474,7 +474,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTeamOwner(c *check.C) 
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: "unknown", Tags: []string{"tag1", "tag2"}}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
@@ -495,7 +495,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	for _, service := range srv {
 		err := s.conn.Services().Insert(&service)
 		c.Assert(err, check.IsNil)
-		err = CreateServiceInstance(instance, &service, evt, "")
+		err = CreateServiceInstance(context.TODO(), instance, &service, evt, "")
 		c.Assert(err, check.IsNil)
 	}
 	si, err := GetServiceInstance(context.TODO(), "mongodb3", "instance")
@@ -506,7 +506,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 	c.Assert(si.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(si.Name, check.Equals, "instance")
 	c.Assert(si.ServiceName, check.Equals, "mongodb3")
-	err = CreateServiceInstance(instance, &srv[0], evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv[0], evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -527,7 +527,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: team.Name}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -545,7 +545,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceNoTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small"}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.Equals, ErrTeamMandatory)
 }
 
@@ -559,9 +559,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *check.C) 
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", TeamOwner: s.team.Name}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -575,7 +575,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance"}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.NotNil)
 	count, err := s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).Count()
 	c.Assert(err, check.IsNil)
@@ -606,7 +606,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *check.C) {
 	evt := createEvt(c)
 	for _, t := range tests {
 		instance := ServiceInstance{Name: t.input, TeamOwner: s.team.Name}
-		err := CreateServiceInstance(instance, &srv, evt, "")
+		err := CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 		c.Check(err, check.Equals, t.err, check.Commentf(t.input))
 	}
 }
@@ -623,7 +623,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"", "  tag1 ", "tag1", "  "}}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
@@ -675,7 +675,7 @@ func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) 
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{Name: "instance", ServiceName: "mongodb", PlanName: "small", TeamOwner: s.team.Name, Tags: []string{"tag1"}}
 	evt := createEvt(c)
-	err = CreateServiceInstance(instance, &srv, evt, "")
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
 	var si ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)

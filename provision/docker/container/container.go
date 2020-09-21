@@ -79,12 +79,12 @@ const (
 	maxStartRetries = 4
 )
 
-func RunPipelineWithRetry(pipe *action.Pipeline, args interface{}) error {
+func RunPipelineWithRetry(ctx context.Context, pipe *action.Pipeline, args interface{}) error {
 	retryCount := maxStartRetries
 	multi := tsuruErrors.NewMultiError()
 	var err error
 	for ; retryCount >= 0; retryCount-- {
-		err = pipe.Execute(args)
+		err = pipe.Execute(ctx, args)
 		if err == nil {
 			break
 		}

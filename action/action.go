@@ -5,10 +5,12 @@
 package action
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 	"sync"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
 )
@@ -34,6 +36,7 @@ type OnErrorFunc func(FWContext, error)
 
 // FWContext is the context used in calls to Forward functions (forward phase).
 type FWContext struct {
+	Context context.Context
 	// Result of the previous action.
 	Previous Result
 
@@ -44,6 +47,7 @@ type FWContext struct {
 // BWContext is the context used in calls to Backward functions (backward
 // phase).
 type BWContext struct {
+	Context context.Context
 	// Result of the forward phase (for the current action).
 	FWResult Result
 
@@ -134,7 +138,7 @@ func (p *Pipeline) Result() Result {
 //
 // After rolling back all completed actions, it returns the original error
 // returned by the action that failed.
-func (p *Pipeline) Execute(params ...interface{}) (err error) {
+func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err error) {
 	var r Result
 	if len(p.actions) == 0 {
 		return ErrPipelineNoActions
@@ -151,41 +155,59 @@ func (p *Pipeline) Execute(params ...interface{}) (err error) {
 			if a.OnError != nil {
 				a.OnError(fwCtx, err)
 			}
-			p.rollback(i-1, params)
+			p.rollback(ctx, i-1, params)
 		}
 	}()
 	for i, a = range p.actions {
 		log.Debugf("[pipeline] running the Forward for the %s action", a.Name)
+		span, ctx := opentracing.StartSpanFromContext(ctx, "Action forward "+a.Name)
 		if a.Forward == nil {
 			err = ErrPipelineForwardMissing
 		} else if len(fwCtx.Params) < a.MinParams {
 			err = ErrPipelineFewParameters
 		} else {
+			fwCtx.Context = ctx
 			r, err = a.Forward(fwCtx)
+
+			span.Finish()
+
 			a.rMutex.Lock()
 			a.result = r
 			a.rMutex.Unlock()
 			fwCtx.Previous = r
 		}
+
 		if err != nil {
+			span.SetTag("error", true)
+			span.SetTag("error.object", err.Error())
+			span.Finish()
+
 			log.Errorf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
 			if a.OnError != nil {
 				a.OnError(fwCtx, err)
 			}
-			p.rollback(i-1, params)
+			p.rollback(ctx, i-1, params)
 			return err
 		}
+		span.Finish()
 	}
 	return nil
 }
 
-func (p *Pipeline) rollback(index int, params []interface{}) {
+func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}) {
+
 	bwCtx := BWContext{Params: params}
 	for i := index; i >= 0; i-- {
+
 		log.Debugf("[pipeline] running Backward for %s action", p.actions[i].Name)
 		if p.actions[i].Backward != nil {
+			span, ctx := opentracing.StartSpanFromContext(ctx, "Action backward "+p.actions[i].Name)
+			bwCtx.Context = ctx
+
 			bwCtx.FWResult = p.actions[i].result
 			p.actions[i].Backward(bwCtx)
+
+			span.Finish()
 		}
 	}
 }

@@ -97,7 +97,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	defer func() { evt.Done(err) }()
 	requestID := requestIDHeader(r)
-	err = service.CreateServiceInstance(instance, &srv, evt, requestID)
+	err = service.CreateServiceInstance(ctx, instance, &srv, evt, requestID)
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,

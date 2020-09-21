@@ -1466,7 +1466,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			&rebuildAppRoutes,
 			&destroyOldApp,
 		}
-		return action.NewPipeline(actions...).Execute(params)
+		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
 	if sameNamespace {
@@ -1478,7 +1478,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&rebuildAppRoutes,
 		&removeOldAppResources,
 	}
-	return action.NewPipeline(actions...).Execute(params)
+	return action.NewPipeline(actions...).Execute(context.TODO(), params)
 }
 
 func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {

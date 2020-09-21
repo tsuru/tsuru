@@ -547,7 +547,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 		&setRouterHealthcheck,
 		&updateAppImage,
 	)
-	err = pipeline.Execute(args)
+	err = pipeline.Execute(context.TODO(), args)
 	c.Assert(err, check.IsNil)
 	appStruct := s.newAppFromFake(appInstance)
 	appStruct.Pool = "test-default"

@@ -5,9 +5,11 @@
 package action
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"github.com/opentracing/opentracing-go"
 	check "gopkg.in/check.v1"
 )
 
@@ -17,19 +19,27 @@ func Test(t *testing.T) {
 
 type S struct{}
 
+var ctx = context.TODO()
 var _ = check.Suite(&S{})
 
 func (s *S) TestSuccessAndParameters(c *check.C) {
+	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
+	defer parentSpan.Finish()
+
 	actions := []*Action{
 		{
 			Forward: func(ctx FWContext) (Result, error) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello"})
+
+				currentSpan := opentracing.SpanFromContext(ctx.Context)
+				c.Assert(currentSpan, check.Not(check.IsNil))
 				return "ok", nil
 			},
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute("hello")
+
+	err := pipeline.Execute(parentCtx, "hello")
 	c.Assert(err, check.IsNil)
 }
 
@@ -43,13 +53,19 @@ func (s *S) TestRollback(c *check.C) {
 			Backward: func(ctx BWContext) {
 				c.Assert(ctx.Params, check.DeepEquals, []interface{}{"hello", "world"})
 				c.Assert(ctx.FWResult, check.DeepEquals, "ok")
+
+				currentSpan := opentracing.SpanFromContext(ctx.Context)
+				c.Assert(currentSpan, check.Not(check.IsNil))
+
 				backwardCalled = true
 			},
 		},
 		&errorAction,
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute("hello", "world")
+	parentSpan, parentCtx := opentracing.StartSpanFromContext(ctx, "parent operation")
+	defer parentSpan.Finish()
+	err := pipeline.Execute(parentCtx, "hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
 	c.Assert(backwardCalled, check.Equals, true)
@@ -71,7 +87,7 @@ func (s *S) TestRollbackOnPanic(c *check.C) {
 		&panicAction,
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute("hello", "world")
+	err := pipeline.Execute(ctx, "hello", "world")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `panic running.*`)
 	c.Assert(backwardCalled, check.Equals, true)
@@ -84,14 +100,14 @@ func (s *S) TestRollbackUnrollbackableAction(c *check.C) {
 		&errorAction,
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute("hello")
+	err := pipeline.Execute(ctx, "hello")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to execute.")
 }
 
 func (s *S) TestExecuteNoActions(c *check.C) {
 	pipeline := NewPipeline()
-	err := pipeline.Execute()
+	err := pipeline.Execute(ctx)
 	c.Assert(err, check.Equals, ErrPipelineNoActions)
 }
 
@@ -112,7 +128,7 @@ func (s *S) TestExecuteActionWithNilForward(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute()
+	err := pipeline.Execute(ctx)
 	c.Assert(err, check.Equals, ErrPipelineForwardMissing)
 	c.Assert(executed, check.Equals, true)
 }
@@ -137,7 +153,7 @@ func (s *S) TestExecuteMinParams(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute()
+	err := pipeline.Execute(ctx)
 	c.Assert(err, check.Equals, ErrPipelineFewParameters)
 	c.Assert(executed, check.Equals, true)
 }
@@ -153,7 +169,7 @@ func (s *S) TestResult(c *check.C) {
 		},
 	}
 	pipeline := NewPipeline(actions...)
-	err := pipeline.Execute()
+	err := pipeline.Execute(ctx)
 	c.Assert(err, check.IsNil)
 	r := pipeline.Result()
 	c.Assert(r, check.Equals, "ok")
@@ -168,10 +184,10 @@ func (s *S) TestDoesntOverwriteResult(c *check.C) {
 		},
 	}
 	pipeline1 := NewPipeline(&myAction)
-	err := pipeline1.Execute("result1")
+	err := pipeline1.Execute(ctx, "result1")
 	c.Assert(err, check.IsNil)
 	pipeline2 := NewPipeline(&myAction)
-	err = pipeline2.Execute("result2")
+	err = pipeline2.Execute(ctx, "result2")
 	c.Assert(err, check.IsNil)
 	r1 := pipeline1.Result()
 	c.Assert(r1, check.Equals, "result1")
@@ -194,7 +210,7 @@ func (s *S) TestActionOnError(c *check.C) {
 		},
 	}
 	pipeline1 := NewPipeline(&myAction)
-	err := pipeline1.Execute(expectedParam)
+	err := pipeline1.Execute(ctx, expectedParam)
 	c.Assert(err, check.Equals, returnedErr)
 	c.Assert(called, check.Equals, true)
 }

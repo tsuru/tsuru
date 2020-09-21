@@ -1055,7 +1055,7 @@ func (s *S) TestRunPipelineWithRetry(c *check.C) {
 	}
 	pipe := action.NewPipeline(testAction)
 	expectedArgs := "test"
-	err := RunPipelineWithRetry(pipe, expectedArgs)
+	err := RunPipelineWithRetry(context.TODO(), pipe, expectedArgs)
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.Equals, 1)
 	c.Assert(params, check.DeepEquals, []interface{}{
@@ -1072,7 +1072,7 @@ func (s *S) TestRunPipelineWithRetryUnknownError(c *check.C) {
 		},
 	}
 	pipe := action.NewPipeline(testAction)
-	err := RunPipelineWithRetry(pipe, nil)
+	err := RunPipelineWithRetry(context.TODO(), pipe, nil)
 	c.Assert(err, check.ErrorMatches, "my err")
 	c.Assert(calls, check.Equals, 1)
 }
@@ -1086,7 +1086,7 @@ func (s *S) TestRunPipelineWithRetryStartError(c *check.C) {
 		},
 	}
 	pipe := action.NewPipeline(testAction)
-	err := RunPipelineWithRetry(pipe, nil)
+	err := RunPipelineWithRetry(context.TODO(), pipe, nil)
 	c.Assert(err, check.ErrorMatches, `(?s)multiple errors reported \(5\):.*my err.*`)
 	c.Assert(calls, check.Equals, maxStartRetries+1)
 }
@@ -1103,7 +1103,7 @@ func (s *S) TestRunPipelineWithRetryStartErrorWithSuccess(c *check.C) {
 		},
 	}
 	pipe := action.NewPipeline(testAction)
-	err := RunPipelineWithRetry(pipe, nil)
+	err := RunPipelineWithRetry(context.TODO(), pipe, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.Equals, 3)
 }

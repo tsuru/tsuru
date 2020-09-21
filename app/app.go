@@ -329,7 +329,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		&addRouterBackend,
 	}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, user)
+	err = pipeline.Execute(ctx, app, user)
 	if err != nil {
 		return &appTypes.AppCreationError{App: app.Name, Err: err}
 	}
@@ -462,7 +462,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	} else if app.Pool != oldApp.Pool {
 		actions = append(actions, &restartApp)
 	}
-	return action.NewPipeline(actions...).Execute(app, &oldApp, args.Writer)
+	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }
 
 func validateVolumes(app *App) error {
@@ -757,7 +757,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 	err = action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-	).Execute(app, n, w, process, version)
+	).Execute(app.ctx, app, n, w, process, version)
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "add units")
@@ -1614,7 +1614,7 @@ func (app *App) AddCName(cnames ...string) error {
 		&saveCNames,
 		&updateApp,
 	}
-	err := action.NewPipeline(actions...).Execute(app, cnames)
+	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err
 }
@@ -1626,7 +1626,7 @@ func (app *App) RemoveCName(cnames ...string) error {
 		&removeCNameFromDatabase,
 		&removeCNameFromApp,
 	}
-	err := action.NewPipeline(actions...).Execute(app, cnames)
+	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err
 }

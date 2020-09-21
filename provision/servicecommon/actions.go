@@ -84,7 +84,7 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		updateImageInDB,
 		removeOldServices,
 	)
-	return pipeline.Execute(&pipelineArgs{
+	return pipeline.Execute(ctx, &pipelineArgs{
 		manager:          manager,
 		app:              args.App,
 		preserveVersions: args.PreserveVersions,
@@ -183,7 +183,6 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 var updateServices = &action.Action{
 	Name: "update-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		stdCtx := context.TODO()
 		args := ctx.Params[0].(*pipelineArgs)
 		var toDeployProcesses []string
 		deployedProcesses := map[string]*labelReplicas{}
@@ -196,12 +195,12 @@ var updateServices = &action.Action{
 		oldLabelsMap := map[string]*labelReplicas{}
 		newLabelsMap := map[string]*labelReplicas{}
 		for _, processName := range toDeployProcesses {
-			oldLabels, err := rawLabelsAndReplicas(stdCtx, args, processName, args.oldVersionNumber)
+			oldLabels, err := rawLabelsAndReplicas(ctx.Context, args, processName, args.oldVersionNumber)
 			if err != nil {
 				return nil, err
 			}
 			oldLabelsMap[processName] = oldLabels
-			labels, err := labelsForService(stdCtx, args, *oldLabels, args.newVersion, processName, args.newVersionSpec[processName])
+			labels, err := labelsForService(ctx.Context, args, *oldLabels, args.newVersion, processName, args.newVersionSpec[processName])
 			if err != nil {
 				return nil, err
 			}
@@ -222,7 +221,7 @@ var updateServices = &action.Action{
 		errs := tsuruErrors.NewMultiError()
 		if err != nil {
 			errs.Add(err)
-			if nerr := rollbackAddedProcesses(stdCtx, args, deployedProcesses); nerr != nil {
+			if nerr := rollbackAddedProcesses(ctx.Context, args, deployedProcesses); nerr != nil {
 				errs.Add(nerr)
 			}
 		}
@@ -231,7 +230,7 @@ var updateServices = &action.Action{
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(*pipelineArgs)
 		deployedProcesses := ctx.FWResult.(map[string]*labelReplicas)
-		rollbackAddedProcesses(context.TODO(), args, deployedProcesses)
+		rollbackAddedProcesses(ctx.Context, args, deployedProcesses)
 	},
 }
 
@@ -251,11 +250,11 @@ var removeOldServices = &action.Action{
 	Name: "remove-old-services",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(*pipelineArgs)
-		err := removeOld(context.TODO(), args)
+		err := removeOld(ctx.Context, args)
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		err = args.manager.CleanupServices(context.TODO(), args.app, args.newVersion.Version(), args.preserveVersions)
+		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions)
 		if err != nil {
 			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}
