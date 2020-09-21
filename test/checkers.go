@@ -17,12 +17,12 @@ func (*jsonEquals) Info() *check.CheckerInfo {
 
 func (*jsonEquals) Check(params []interface{}, names []string) (result bool, error string) {
 	data0, err := json.Marshal(params[0])
-	if err != err {
+	if err != nil {
 		return false, err.Error()
 	}
 
 	data1, err := json.Marshal(params[1])
-	if err != err {
+	if err != nil {
 		return false, err.Error()
 	}
 
