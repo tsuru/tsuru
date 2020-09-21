@@ -160,13 +160,13 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 	}()
 	for i, a = range p.actions {
 		log.Debugf("[pipeline] running the Forward for the %s action", a.Name)
-		span, ctx := opentracing.StartSpanFromContext(ctx, "Action forward "+a.Name)
+		span, actionCtx := opentracing.StartSpanFromContext(ctx, "Action forward "+a.Name)
 		if a.Forward == nil {
 			err = ErrPipelineForwardMissing
 		} else if len(fwCtx.Params) < a.MinParams {
 			err = ErrPipelineFewParameters
 		} else {
-			fwCtx.Context = ctx
+			fwCtx.Context = actionCtx
 			r, err = a.Forward(fwCtx)
 
 			a.rMutex.Lock()
@@ -199,8 +199,8 @@ func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}
 
 		log.Debugf("[pipeline] running Backward for %s action", p.actions[i].Name)
 		if p.actions[i].Backward != nil {
-			span, ctx := opentracing.StartSpanFromContext(ctx, "Action backward "+p.actions[i].Name)
-			bwCtx.Context = ctx
+			span, actionCtx := opentracing.StartSpanFromContext(ctx, "Action backward "+p.actions[i].Name)
+			bwCtx.Context = actionCtx
 
 			bwCtx.FWResult = p.actions[i].result
 			p.actions[i].Backward(bwCtx)
