@@ -5,6 +5,7 @@
 package storagetest
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -18,12 +19,12 @@ type CacheSuite struct {
 }
 
 func (s *CacheSuite) TestCachePut(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(context.TODO(), cache.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	})
 	c.Assert(err, check.IsNil)
-	entry, err := s.CacheStorage.Get("k1")
+	entry, err := s.CacheStorage.Get(context.TODO(), "k1")
 	c.Assert(err, check.IsNil)
 	c.Assert(entry, check.DeepEquals, cache.CacheEntry{
 		Key:   "k1",
@@ -32,28 +33,28 @@ func (s *CacheSuite) TestCachePut(c *check.C) {
 }
 
 func (s *CacheSuite) TestCacheGetNotFound(c *check.C) {
-	entry, err := s.CacheStorage.Get("k1")
+	entry, err := s.CacheStorage.Get(context.TODO(), "k1")
 	c.Assert(err, check.Equals, cache.ErrEntryNotFound)
 	c.Assert(entry, check.DeepEquals, cache.CacheEntry{})
 }
 
 func (s *CacheSuite) TestCacheGetAll(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(context.TODO(), cache.CacheEntry{
 		Key:   "k1",
 		Value: "v1",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.CacheStorage.Put(cache.CacheEntry{
+	err = s.CacheStorage.Put(context.TODO(), cache.CacheEntry{
 		Key:   "k2",
 		Value: "v2",
 	})
 	c.Assert(err, check.IsNil)
-	err = s.CacheStorage.Put(cache.CacheEntry{
+	err = s.CacheStorage.Put(context.TODO(), cache.CacheEntry{
 		Key:   "k3",
 		Value: "v3",
 	})
 	c.Assert(err, check.IsNil)
-	entries, err := s.CacheStorage.GetAll("k1", "k3")
+	entries, err := s.CacheStorage.GetAll(context.TODO(), "k1", "k3")
 	c.Assert(err, check.IsNil)
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Key < entries[j].Key
@@ -62,24 +63,24 @@ func (s *CacheSuite) TestCacheGetAll(c *check.C) {
 		{Key: "k1", Value: "v1"},
 		{Key: "k3", Value: "v3"},
 	})
-	entries, err = s.CacheStorage.GetAll("kx")
+	entries, err = s.CacheStorage.GetAll(context.TODO(), "kx")
 	c.Assert(err, check.IsNil)
 	c.Assert(entries, check.HasLen, 0)
 }
 
 func (s *CacheSuite) TestCacheExpiration(c *check.C) {
-	err := s.CacheStorage.Put(cache.CacheEntry{
+	err := s.CacheStorage.Put(context.TODO(), cache.CacheEntry{
 		Key:      "k1",
 		Value:    "v1",
 		ExpireAt: time.Now().Add(time.Second),
 	})
 	c.Assert(err, check.IsNil)
-	entry, err := s.CacheStorage.Get("k1")
+	entry, err := s.CacheStorage.Get(context.TODO(), "k1")
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Value, check.Equals, "v1")
 	timeout := time.After(70 * time.Second)
 	for {
-		_, err = s.CacheStorage.Get("k1")
+		_, err = s.CacheStorage.Get(context.TODO(), "k1")
 		if err != nil {
 			c.Assert(err, check.Equals, cache.ErrEntryNotFound)
 			break

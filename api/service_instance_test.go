@@ -190,7 +190,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -219,7 +219,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -298,7 +298,7 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(recorder.Body.String(), check.Equals, "")
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -343,7 +343,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 	recorder, request := makeRequestToCreateServiceInstance(params, c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -449,7 +449,7 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -481,7 +481,7 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -547,7 +547,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -595,7 +595,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -642,7 +642,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -689,7 +689,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -773,7 +773,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 			{"name": "plan", "value": "newplan"},
 		},
 	}, eventtest.HasEvent)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.PlanName, check.Equals, "newplan")
 }
@@ -819,7 +819,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -861,7 +861,7 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	instance, err := service.GetServiceInstance("mysql", "brainsql")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance, check.DeepEquals, &service.ServiceInstance{
 		Name:        "brainsql",
@@ -920,7 +920,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceServiceInstance(c *check.C) {
 	var msg io.SimpleJsonMessage
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(msg.Message, check.Matches, ".*service instance successfully removed\n")
-	_, err = service.GetServiceInstance("foo", "foo-instance")
+	_, err = service.GetServiceInstance(stdContext.TODO(), "foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("foo", "foo-instance"),
@@ -986,7 +986,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	expected := ""
 	expected += `{"Message":".*service instance successfully removed\\n","Timestamp":".*"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Matches, expected)
-	instance, err := service.GetServiceInstance("foo", "foo-instance")
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, nil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{"app-instance"})
 	recorder, request = makeRequestToRemoveServiceInstanceWithUnbind("foo", "foo-instance", c)
@@ -997,7 +997,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	expected += `{"Message":".*\\n.*Instance \\"foo-instance\\" is not bound to the app \\"app-instance\\" anymore.\\n","Timestamp":".*"}` + "\n"
 	expected += `{"Message":".*service instance successfully removed\\n","Timestamp":".*"}` + "\n"
 	c.Assert(recorder.Body.String(), check.Matches, expected)
-	_, err = service.GetServiceInstance("foo", "foo-instance")
+	_, err = service.GetServiceInstance(stdContext.TODO(), "foo", "foo-instance")
 	c.Assert(err, check.DeepEquals, service.ErrServiceInstanceNotFound)
 }
 
@@ -1044,7 +1044,7 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 		}
 	}))
 	defer ts.Close()
-	srv, err := service.Get(s.service.Name)
+	srv, err := service.Get(stdContext.TODO(), s.service.Name)
 	c.Assert(err, check.IsNil)
 	srv.Endpoint["production"] = ts.URL
 	err = service.Update(srv)
@@ -1910,7 +1910,7 @@ func (s *ServiceInstanceSuite) TestGetServiceInstanceOrError(c *check.C) {
 	si := service.ServiceInstance{Name: "foo", ServiceName: "foo-service", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	rSi, err := getServiceInstanceOrError("foo-service", "foo")
+	rSi, err := getServiceInstanceOrError(stdContext.TODO(), "foo-service", "foo")
 	c.Assert(err, check.IsNil)
 	c.Assert(rSi.Name, check.Equals, si.Name)
 }
@@ -2318,14 +2318,14 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 			{"name": ":team", "value": "test"},
 		},
 	}, eventtest.HasEvent)
-	sinst, err := service.GetServiceInstance(si.ServiceName, si.Name)
+	sinst, err := service.GetServiceInstance(stdContext.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name, teamName})
 	request, err = http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	err = serviceInstanceRevokeTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	sinst, err = service.GetServiceInstance(si.ServiceName, si.Name)
+	sinst, err = service.GetServiceInstance(stdContext.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
@@ -2365,17 +2365,17 @@ func (s *ServiceInstanceSuite) TestGrantRevokeServiceToTeamWithManyInstanceName(
 	recorder := httptest.NewRecorder()
 	err = serviceInstanceGrantTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	sinst, err := service.GetServiceInstance(si2.ServiceName, si2.Name)
+	sinst, err := service.GetServiceInstance(stdContext.TODO(), si2.ServiceName, si2.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name, teamName})
-	sinst, err = service.GetServiceInstance(si.ServiceName, si.Name)
+	sinst, err = service.GetServiceInstance(stdContext.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name})
 	request, err = http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	err = serviceInstanceRevokeTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	sinst, err = service.GetServiceInstance(si2.ServiceName, si2.Name)
+	sinst, err = service.GetServiceInstance(stdContext.TODO(), si2.ServiceName, si2.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name})
 }

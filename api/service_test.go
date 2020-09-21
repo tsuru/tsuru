@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -740,7 +741,7 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	recorder, request := s.makeRequest(http.MethodPut, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	se, err = service.Get("my-service")
+	se, err = service.Get(context.TODO(), "my-service")
 	c.Assert(err, check.IsNil)
 	c.Assert(*t, HasAccessTo, se)
 	c.Assert(eventtest.EventDesc{
@@ -822,7 +823,7 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	recorder, request := s.makeRequest(http.MethodDelete, u, "", c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	se, err = service.Get("my-service")
+	se, err = service.Get(context.TODO(), "my-service")
 	c.Assert(err, check.IsNil)
 	c.Assert(*s.team, check.Not(HasAccessTo), se)
 	c.Assert(eventtest.EventDesc{

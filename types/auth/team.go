@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -18,21 +19,21 @@ type Team struct {
 }
 
 type TeamService interface {
-	Create(string, []string, *User) error
-	Update(string, []string) error
-	List() ([]Team, error)
-	FindByName(string) (*Team, error)
-	FindByNames([]string) ([]Team, error)
-	Remove(string) error
+	Create(context.Context, string, []string, *User) error
+	Update(context.Context, string, []string) error
+	List(context.Context) ([]Team, error)
+	FindByName(context.Context, string) (*Team, error)
+	FindByNames(context.Context, []string) ([]Team, error)
+	Remove(context.Context, string) error
 }
 
 type TeamStorage interface {
-	Insert(Team) error
-	Update(Team) error
-	FindAll() ([]Team, error)
-	FindByName(string) (*Team, error)
-	FindByNames([]string) ([]Team, error)
-	Delete(Team) error
+	Insert(context.Context, Team) error
+	Update(context.Context, Team) error
+	FindAll(context.Context) ([]Team, error)
+	FindByName(context.Context, string) (*Team, error)
+	FindByNames(context.Context, []string) ([]Team, error)
+	Delete(context.Context, Team) error
 }
 
 var (

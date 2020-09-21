@@ -1069,7 +1069,7 @@ func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
 	resultContainers := result.([]container.Container)
 	c.Assert(resultContainers, check.DeepEquals, containers)
 	c.Assert(atomic.LoadInt32(&bindCounter), check.Equals, int32(3))
-	si, err := service.GetServiceInstance("mysql", "my-mysql")
+	si, err := service.GetServiceInstance(ctx, "mysql", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.BoundUnits, check.HasLen, 1)
 }

@@ -5,12 +5,16 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/types/auth"
 )
+
+const teamsCollectionName = "teams"
 
 type TeamStorage struct{}
 
@@ -23,43 +27,59 @@ type team struct {
 }
 
 func teamsCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection("teams")
+	return conn.Collection(teamsCollectionName)
 }
 
-func (s *TeamStorage) Insert(t auth.Team) error {
+func (s *TeamStorage) Insert(ctx context.Context, t auth.Team) error {
+	span := newMongoDBSpan(ctx, mongoSpanInsert, teamsCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = teamsCollection(conn).Insert(team(t))
 	if mgo.IsDup(err) {
-		return auth.ErrTeamAlreadyExists
+		err = auth.ErrTeamAlreadyExists
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *TeamStorage) Update(t auth.Team) error {
+func (s *TeamStorage) Update(ctx context.Context, t auth.Team) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpdateID, teamsCollectionName)
+	span.SetMongoID(t.Name)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = teamsCollection(conn).UpdateId(t.Name, t)
 	if err == mgo.ErrNotFound {
-		return auth.ErrTeamNotFound
+		err = auth.ErrTeamNotFound
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *TeamStorage) FindAll() ([]auth.Team, error) {
-	return s.findByQuery(nil)
+func (s *TeamStorage) FindAll(ctx context.Context) ([]auth.Team, error) {
+	return s.findByQuery(ctx, nil)
 }
 
-func (s *TeamStorage) FindByName(name string) (*auth.Team, error) {
+func (s *TeamStorage) FindByName(ctx context.Context, name string) (*auth.Team, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFindID, teamsCollectionName)
+	span.SetMongoID(name)
+	defer span.Finish()
+
 	var t team
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
@@ -68,26 +88,33 @@ func (s *TeamStorage) FindByName(name string) (*auth.Team, error) {
 		if err == mgo.ErrNotFound {
 			err = auth.ErrTeamNotFound
 		}
+		span.SetError(err)
 		return nil, err
 	}
 	team := auth.Team(t)
 	return &team, nil
 }
 
-func (s *TeamStorage) FindByNames(names []string) ([]auth.Team, error) {
+func (s *TeamStorage) FindByNames(ctx context.Context, names []string) ([]auth.Team, error) {
 	query := bson.M{"_id": bson.M{"$in": names}}
-	return s.findByQuery(query)
+	return s.findByQuery(ctx, query)
 }
 
-func (s *TeamStorage) findByQuery(query bson.M) ([]auth.Team, error) {
+func (s *TeamStorage) findByQuery(ctx context.Context, query bson.M) ([]auth.Team, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFind, teamsCollectionName)
+	span.SetQueryStatement(query)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	var teams []team
 	err = teamsCollection(conn).Find(query).All(&teams)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	authTeams := make([]auth.Team, len(teams))
@@ -97,15 +124,21 @@ func (s *TeamStorage) findByQuery(query bson.M) ([]auth.Team, error) {
 	return authTeams, nil
 }
 
-func (s *TeamStorage) Delete(t auth.Team) error {
+func (s *TeamStorage) Delete(ctx context.Context, t auth.Team) error {
+	span := newMongoDBSpan(ctx, mongoSpanDeleteID, teamsCollectionName)
+	span.SetMongoID(t.Name)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = teamsCollection(conn).RemoveId(t.Name)
 	if err == mgo.ErrNotFound {
-		return auth.ErrTeamNotFound
+		err = auth.ErrTeamNotFound
 	}
+	span.SetError(err)
 	return err
 }

@@ -5,6 +5,7 @@
 package cache
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,13 +22,13 @@ type CacheEntry struct {
 }
 
 type AppCacheService interface {
-	Create(entry CacheEntry) error
-	List(keys ...string) ([]CacheEntry, error)
-	FindByName(key string) (CacheEntry, error)
+	Create(ctx context.Context, entry CacheEntry) error
+	List(ctx context.Context, keys ...string) ([]CacheEntry, error)
+	FindByName(ctx context.Context, key string) (CacheEntry, error)
 }
 
 type CacheStorage interface {
-	GetAll(keys ...string) ([]CacheEntry, error)
-	Get(key string) (CacheEntry, error)
-	Put(entry CacheEntry) error
+	GetAll(ctx context.Context, keys ...string) ([]CacheEntry, error)
+	Get(ctx context.Context, key string) (CacheEntry, error)
+	Put(ctx context.Context, entry CacheEntry) error
 }

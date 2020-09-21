@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"regexp"
 	"strings"
 
@@ -36,7 +37,7 @@ func TeamService() (authTypes.TeamService, error) {
 	}, nil
 }
 
-func (t *teamService) Create(name string, tags []string, user *authTypes.User) error {
+func (t *teamService) Create(ctx context.Context, name string, tags []string, user *authTypes.User) error {
 	if user == nil {
 		return errors.New("user cannot be null")
 	}
@@ -49,7 +50,7 @@ func (t *teamService) Create(name string, tags []string, user *authTypes.User) e
 	if err := t.validate(team); err != nil {
 		return err
 	}
-	err := t.storage.Insert(team)
+	err := t.storage.Insert(ctx, team)
 	if err != nil {
 		return err
 	}
@@ -61,28 +62,28 @@ func (t *teamService) Create(name string, tags []string, user *authTypes.User) e
 	return nil
 }
 
-func (t *teamService) Update(name string, tags []string) error {
-	team, err := t.storage.FindByName(name)
+func (t *teamService) Update(ctx context.Context, name string, tags []string) error {
+	team, err := t.storage.FindByName(ctx, name)
 	if err != nil {
 		return err
 	}
 	team.Tags = processTags(tags)
-	return t.storage.Update(*team)
+	return t.storage.Update(ctx, *team)
 }
 
-func (t *teamService) List() ([]authTypes.Team, error) {
-	return t.storage.FindAll()
+func (t *teamService) List(ctx context.Context) ([]authTypes.Team, error) {
+	return t.storage.FindAll(ctx)
 }
 
-func (t *teamService) FindByName(name string) (*authTypes.Team, error) {
-	return t.storage.FindByName(name)
+func (t *teamService) FindByName(ctx context.Context, name string) (*authTypes.Team, error) {
+	return t.storage.FindByName(ctx, name)
 }
 
-func (t *teamService) FindByNames(names []string) ([]authTypes.Team, error) {
-	return t.storage.FindByNames(names)
+func (t *teamService) FindByNames(ctx context.Context, names []string) ([]authTypes.Team, error) {
+	return t.storage.FindByNames(ctx, names)
 }
 
-func (t *teamService) Remove(teamName string) error {
+func (t *teamService) Remove(ctx context.Context, teamName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -104,7 +105,7 @@ func (t *teamService) Remove(teamName string) error {
 	if len(serviceInstances) > 0 {
 		return &authTypes.ErrTeamStillUsed{ServiceInstances: serviceInstances}
 	}
-	return t.storage.Delete(authTypes.Team{Name: teamName})
+	return t.storage.Delete(ctx, authTypes.Team{Name: teamName})
 }
 
 func (t *teamService) validate(team authTypes.Team) error {

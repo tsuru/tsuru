@@ -1012,7 +1012,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
@@ -1032,7 +1032,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	t, err := servicemanager.TeamToken.FindByTokenID(teamToken.TokenID)
+	t, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), teamToken.TokenID)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.DeepEquals, []authTypes.RoleInstance{
 		{Name: "newrole", ContextValue: "myapp"},
@@ -1050,7 +1050,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 }
 
 func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
@@ -1086,7 +1086,7 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
@@ -1109,11 +1109,11 @@ func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
 func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.TeamToken.AddRole(teamToken.TokenID, "newrole", "myapp")
+	err = servicemanager.TeamToken.AddRole(context.TODO(), teamToken.TokenID, "newrole", "myapp")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("/1.6/roles/newrole/token/%s?context=myapp", teamToken.TokenID),
@@ -1132,7 +1132,7 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	t, err := servicemanager.TeamToken.FindByTokenID(teamToken.TokenID)
+	t, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), teamToken.TokenID)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
@@ -1150,11 +1150,11 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.TeamToken.AddRole(teamToken.TokenID, "newrole", "myapp")
+	err = servicemanager.TeamToken.AddRole(context.TODO(), teamToken.TokenID, "newrole", "myapp")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("/1.6/roles/rolenotfound/token/%s?context=myapp", teamToken.TokenID),
@@ -1173,7 +1173,7 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	t, err := servicemanager.TeamToken.FindByTokenID(teamToken.TokenID)
+	t, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), teamToken.TokenID)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
@@ -1192,11 +1192,11 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	teamToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.TeamToken.AddRole(teamToken.TokenID, "newrole", "myapp")
+	err = servicemanager.TeamToken.AddRole(context.TODO(), teamToken.TokenID, "newrole", "myapp")
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete,
 		fmt.Sprintf("/1.6/roles/rolenotfound/token/%s?context=myapp", teamToken.TokenID),
@@ -1213,7 +1213,7 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
-	t, err := servicemanager.TeamToken.FindByTokenID(teamToken.TokenID)
+	t, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), teamToken.TokenID)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 1)
 }

@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo/bson"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
@@ -25,7 +27,7 @@ func (s *S) TestTeamServiceCreate(c *check.C) {
 		},
 	}
 
-	err := ts.Create(teamName, tags, &one)
+	err := ts.Create(context.TODO(), teamName, tags, &one)
 	c.Assert(err, check.IsNil)
 }
 
@@ -46,7 +48,7 @@ func (s *S) TestTeamServiceUpdate(c *check.C) {
 			},
 		},
 	}
-	err := ts.Update(teamName, tags)
+	err := ts.Update(context.TODO(), teamName, tags)
 	c.Assert(err, check.IsNil)
 }
 
@@ -64,7 +66,7 @@ func (s *S) TestTeamServiceCreateDuplicate(c *check.C) {
 			},
 		},
 	}
-	err := ts.Create("pos", tags, &u)
+	err := ts.Create(context.TODO(), "pos", tags, &u)
 	c.Assert(err, check.Equals, authTypes.ErrTeamAlreadyExists)
 }
 
@@ -79,7 +81,7 @@ func (s *S) TestTeamServiceCreateTrimsName(c *check.C) {
 		},
 	}
 
-	err := ts.Create("pos", nil, &u)
+	err := ts.Create(context.TODO(), "pos", nil, &u)
 	c.Assert(err, check.IsNil)
 }
 
@@ -113,7 +115,7 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 	}
 
 	for _, t := range tests {
-		err := ts.Create(t.input, nil, &u)
+		err := ts.Create(context.TODO(), t.input, nil, &u)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %v. Got %v.", t.input, t.err, err)
 		}
@@ -131,7 +133,7 @@ func (s *S) TestTeamServiceRemove(c *check.C) {
 		},
 	}
 
-	err := ts.Remove(teamName)
+	err := ts.Remove(context.TODO(), teamName)
 	c.Assert(err, check.IsNil)
 }
 
@@ -148,7 +150,7 @@ func (s *S) TestTeamServiceRemoveWithApps(c *check.C) {
 
 	err := s.conn.Apps().Insert(bson.M{"name": "leto", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = ts.Remove(teamName)
+	err = ts.Remove(context.TODO(), teamName)
 	c.Assert(err, check.ErrorMatches, "Apps: leto")
 }
 
@@ -165,7 +167,7 @@ func (s *S) TestTeamServiceRemoveWithServiceInstances(c *check.C) {
 
 	err := s.conn.ServiceInstances().Insert(bson.M{"name": "vladimir", "teams": []string{teamName}})
 	c.Assert(err, check.IsNil)
-	err = ts.Remove(teamName)
+	err = ts.Remove(context.TODO(), teamName)
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
 }
 
@@ -182,7 +184,7 @@ func (s *S) TestTeamServiceList(c *check.C) {
 		},
 	}
 
-	result, err := ts.List()
+	result, err := ts.List(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, teams)
 }

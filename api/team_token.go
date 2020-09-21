@@ -26,7 +26,8 @@ import (
 //   204: No content
 //   401: Unauthorized
 func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	tokens, err := servicemanager.TeamToken.FindByUserToken(t)
+	ctx := r.Context()
+	tokens, err := servicemanager.TeamToken.FindByUserToken(ctx, t)
 	if err != nil {
 		return err
 	}
@@ -46,13 +47,14 @@ func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   200: Get token
 //   401: Unauthorized
 func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	tokenID := r.URL.Query().Get(":token_id")
 	if tokenID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil
 	}
 
-	teamToken, err := servicemanager.TeamToken.Info(tokenID, t)
+	teamToken, err := servicemanager.TeamToken.Info(ctx, tokenID, t)
 	if err == authTypes.ErrTeamTokenNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -82,13 +84,14 @@ func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   409: Token already exists
 func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var args authTypes.TeamTokenCreateArgs
 	err = ParseInput(r, &args)
 	if err != nil {
 		return err
 	}
 	if args.Team == "" {
-		args.Team, err = autoTeamOwner(t, permission.PermTeamTokenCreate)
+		args.Team, err = autoTeamOwner(ctx, t, permission.PermTeamTokenCreate)
 		if err != nil {
 			return err
 		}
@@ -110,7 +113,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	token, err := servicemanager.TeamToken.Create(args, t)
+	token, err := servicemanager.TeamToken.Create(ctx, args, t)
 	if err != nil {
 		return err
 	}
@@ -136,13 +139,14 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Token not found
 func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var args authTypes.TeamTokenUpdateArgs
 	err = ParseInput(r, &args)
 	if err != nil {
 		return err
 	}
 	args.TokenID = r.URL.Query().Get(":token_id")
-	teamToken, err := servicemanager.TeamToken.FindByTokenID(args.TokenID)
+	teamToken, err := servicemanager.TeamToken.FindByTokenID(ctx, args.TokenID)
 	if err != nil {
 		if err == authTypes.ErrTeamTokenNotFound {
 			return &errors.HTTP{
@@ -169,7 +173,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	teamToken, err = servicemanager.TeamToken.Update(args, t)
+	teamToken, err = servicemanager.TeamToken.Update(ctx, args, t)
 	if err == authTypes.ErrTeamTokenNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -191,8 +195,9 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //   401: Unauthorized
 //   404: Token not found
 func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	tokenID := r.URL.Query().Get(":token_id")
-	teamToken, err := servicemanager.TeamToken.FindByTokenID(tokenID)
+	teamToken, err := servicemanager.TeamToken.FindByTokenID(ctx, tokenID)
 	if err != nil {
 		if err == authTypes.ErrTeamTokenNotFound {
 			return &errors.HTTP{
@@ -220,7 +225,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = servicemanager.TeamToken.Delete(tokenID)
+	err = servicemanager.TeamToken.Delete(ctx, tokenID)
 	if err == authTypes.ErrTeamTokenNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,

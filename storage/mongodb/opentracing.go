@@ -27,6 +27,7 @@ var (
 	mongoSpanDeleteID  mongoOperation = "DeleteID"
 	mongoSpanInsert    mongoOperation = "Insert"
 	mongoSpanUpdate    mongoOperation = "Update"
+	mongoSpanUpdateID  mongoOperation = "UpdateID"
 )
 
 var (

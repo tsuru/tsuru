@@ -58,6 +58,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Limit lower than allocated value
 //   404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	email := r.URL.Query().Get(":email")
 	allowed := permission.Check(t, permission.PermUserUpdateQuota)
 	if !allowed {
@@ -90,7 +91,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 			Message: "Invalid limit",
 		}
 	}
-	err = servicemanager.UserQuota.SetLimit(user, limit)
+	err = servicemanager.UserQuota.SetLimit(ctx, user, limit)
 	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,

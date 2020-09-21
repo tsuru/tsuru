@@ -4,6 +4,8 @@
 
 package service
 
+import "context"
+
 var _ ServiceBrokerCatalogCacheService = &MockServiceBrokerCatalogCacheService{}
 
 // MockServiceBrokerCatalogCacheService implements ServiceBrokerCatalogCacheService interface
@@ -12,14 +14,14 @@ type MockServiceBrokerCatalogCacheService struct {
 	OnLoad func(string) (*BrokerCatalog, error)
 }
 
-func (m *MockServiceBrokerCatalogCacheService) Save(brokerName string, catalog BrokerCatalog) error {
+func (m *MockServiceBrokerCatalogCacheService) Save(ctx context.Context, brokerName string, catalog BrokerCatalog) error {
 	if m.OnSave == nil {
 		return nil
 	}
 	return m.OnSave(brokerName, catalog)
 }
 
-func (m *MockServiceBrokerCatalogCacheService) Load(brokerName string) (*BrokerCatalog, error) {
+func (m *MockServiceBrokerCatalogCacheService) Load(ctx context.Context, brokerName string) (*BrokerCatalog, error) {
 	if m.OnLoad == nil {
 		return nil, nil
 	}

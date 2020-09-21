@@ -79,19 +79,20 @@ func webhookInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   400: Invalid webhook
 //   409: Webhook already exists
 func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var webhook eventTypes.Webhook
 	err := ParseInput(r, &webhook)
 	if err != nil {
 		return err
 	}
 	if webhook.TeamOwner == "" {
-		webhook.TeamOwner, err = autoTeamOwner(t, permission.PermWebhookCreate)
+		webhook.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermWebhookCreate)
 		if err != nil {
 			return err
 		}
 	}
-	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookCreate, ctx) {
+	permCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
+	if !permission.Check(t, permission.PermWebhookCreate, permCtx) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
@@ -99,7 +100,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
+		Allowed:    event.Allowed(permission.PermWebhookReadEvents, permCtx),
 	})
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@
 package quota
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -42,9 +43,9 @@ func (s *S) TestInc(c *check.C) {
 		},
 	}
 	expected := quota.Quota{Limit: 7, InUse: 6}
-	err := qs.Inc(namedItem("myname"), 6)
+	err := qs.Inc(context.TODO(), namedItem("myname"), 6)
 	c.Assert(err, check.IsNil)
-	quota, err := qs.Get(namedItem("myname"))
+	quota, err := qs.Get(context.TODO(), namedItem("myname"))
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)
 }
@@ -59,7 +60,7 @@ func (s *S) TestIncAppNotFound(c *check.C) {
 			},
 		},
 	}
-	err := qs.Inc(namedItem("myname"), -6)
+	err := qs.Inc(context.TODO(), namedItem("myname"), -6)
 	c.Assert(err, check.Equals, myerr)
 }
 
@@ -77,7 +78,7 @@ func (s *S) TestIncQuotaExceeded(c *check.C) {
 			},
 		},
 	}
-	err := qs.Inc(namedItem("myname"), 2)
+	err := qs.Inc(context.TODO(), namedItem("myname"), 2)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
@@ -103,9 +104,9 @@ func (s *S) TestIncUnlimitedQuota(c *check.C) {
 		},
 	}
 	expected := quota.Quota{Limit: -1, InUse: 10}
-	err := qs.Inc(namedItem("myname"), 10)
+	err := qs.Inc(context.TODO(), namedItem("myname"), 10)
 	c.Assert(err, check.IsNil)
-	quota, err := qs.Get(namedItem("myname"))
+	quota, err := qs.Get(context.TODO(), namedItem("myname"))
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)
 }
@@ -127,9 +128,9 @@ func (s *S) TestIncNegative(c *check.C) {
 		},
 	}
 	expected := quota.Quota{Limit: 7, InUse: 1}
-	err := qs.Inc(namedItem("myname"), -6)
+	err := qs.Inc(context.TODO(), namedItem("myname"), -6)
 	c.Assert(err, check.IsNil)
-	quota, err := qs.Get(namedItem("myname"))
+	quota, err := qs.Get(context.TODO(), namedItem("myname"))
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)
 }
@@ -143,7 +144,7 @@ func (s *S) TestIncNegativeTooLarge(c *check.C) {
 			},
 		},
 	}
-	err := qs.Inc(namedItem("myname"), -8)
+	err := qs.Inc(context.TODO(), namedItem("myname"), -8)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, quota.ErrNotEnoughReserved)
 }
@@ -157,7 +158,7 @@ func (s *S) TestIncNegativeAppNotFound(c *check.C) {
 			},
 		},
 	}
-	err := qs.Inc(namedItem("myname"), -6)
+	err := qs.Inc(context.TODO(), namedItem("myname"), -6)
 	c.Assert(err, check.Equals, myerr)
 }
 
@@ -178,9 +179,9 @@ func (s *S) TestSetLimit(c *check.C) {
 		},
 	}
 	expected := quota.Quota{Limit: 30, InUse: 3}
-	err := qs.SetLimit(namedItem("myname"), 30)
+	err := qs.SetLimit(context.TODO(), namedItem("myname"), 30)
 	c.Assert(err, check.IsNil)
-	quota, err := qs.Get(namedItem("myname"))
+	quota, err := qs.Get(context.TODO(), namedItem("myname"))
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)
 }
@@ -202,9 +203,9 @@ func (s *S) TestSetLimitToUnlimited(c *check.C) {
 		},
 	}
 	expected := quota.Quota{Limit: -1, InUse: 2}
-	err := qs.SetLimit(namedItem("myname"), -5)
+	err := qs.SetLimit(context.TODO(), namedItem("myname"), -5)
 	c.Assert(err, check.IsNil)
-	quota, err := qs.Get(namedItem("myname"))
+	quota, err := qs.Get(context.TODO(), namedItem("myname"))
 	c.Assert(err, check.IsNil)
 	c.Assert(*quota, check.DeepEquals, expected)
 }
@@ -218,7 +219,7 @@ func (s *S) TestSetLimitAppNotFound(c *check.C) {
 			},
 		},
 	}
-	err := qs.SetLimit(namedItem("myname"), 20)
+	err := qs.SetLimit(context.TODO(), namedItem("myname"), 20)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, myerr)
 }

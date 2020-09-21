@@ -97,7 +97,7 @@ func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
 	si := &ServiceInstance{Name: "MySQL", ServiceName: "mongodb"}
 	s.conn.ServiceInstances().Insert(&si)
 	evt := createEvt(c)
-	err = DeleteInstance(si, evt, "")
+	err = DeleteInstance(context.TODO(), si, evt, "")
 	c.Assert(err, check.IsNil)
 	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
@@ -123,7 +123,7 @@ func (s *InstanceSuite) TestDeleteServiceInstanceWithForceRemoveEnabled(c *check
 	s.conn.ServiceInstances().Insert(&si)
 	evt := createEvt(c)
 	si.ForceRemove = true
-	err = DeleteInstance(si, evt, "")
+	err = DeleteInstance(context.TODO(), si, evt, "")
 	c.Assert(err, check.IsNil)
 	query := bson.M{"name": si.Name}
 	qtd, err := s.conn.ServiceInstances().Find(query).Count()
@@ -420,7 +420,7 @@ func (s *InstanceSuite) TestDeleteInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = DeleteInstance(&si, evt, "")
+	err = DeleteInstance(context.TODO(), &si, evt, "")
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -437,7 +437,7 @@ func (s *InstanceSuite) TestDeleteInstanceWithApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 	evt := createEvt(c)
-	err = DeleteInstance(&si, evt, "")
+	err = DeleteInstance(context.TODO(), &si, evt, "")
 	c.Assert(err, check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
@@ -455,7 +455,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *check.C) {
 	evt := createEvt(c)
 	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
-	si, err := GetServiceInstance("mongodb", "instance")
+	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.PlanName, check.Equals, "small")
@@ -498,7 +498,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceWithSameInstanceName(c *check.C
 		err = CreateServiceInstance(instance, &service, evt, "")
 		c.Assert(err, check.IsNil)
 	}
-	si, err := GetServiceInstance("mongodb3", "instance")
+	si, err := GetServiceInstance(context.TODO(), "mongodb3", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(3))
 	c.Assert(si.PlanName, check.Equals, "small")
@@ -529,7 +529,7 @@ func (s *InstanceSuite) TestCreateSpecifyOwner(c *check.C) {
 	evt := createEvt(c)
 	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
-	si, err := GetServiceInstance("mongodb", "instance")
+	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.TeamOwner, check.Equals, team.Name)
@@ -625,7 +625,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	evt := createEvt(c)
 	err = CreateServiceInstance(instance, &srv, evt, "")
 	c.Assert(err, check.IsNil)
-	si, err := GetServiceInstance("mongodb", "instance")
+	si, err := GetServiceInstance(context.TODO(), "mongodb", "instance")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag1"})
@@ -731,15 +731,15 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 		ServiceInstance{Name: "mongo-4", ServiceName: "mongodb", Teams: []string{s.team.Name}},
 		ServiceInstance{Name: "mongo-5", ServiceName: "mongodb"},
 	)
-	instance, err := GetServiceInstance("mongodb", "mongo-1")
+	instance, err := GetServiceInstance(context.TODO(), "mongodb", "mongo-1")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "mongo-1")
 	c.Assert(instance.ServiceName, check.Equals, "mongodb")
 	c.Assert(instance.Teams, check.DeepEquals, []string{s.team.Name})
-	instance, err = GetServiceInstance("mongodb", "mongo-6")
+	instance, err = GetServiceInstance(context.TODO(), "mongodb", "mongo-6")
 	c.Assert(instance, check.IsNil)
 	c.Assert(err, check.Equals, ErrServiceInstanceNotFound)
-	instance, err = GetServiceInstance("mongodb", "mongo-5")
+	instance, err = GetServiceInstance(context.TODO(), "mongodb", "mongo-5")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Name, check.Equals, "mongo-5")
 }
@@ -772,7 +772,7 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
 	sInstance.Grant(team.Name)
-	si, err := GetServiceInstance("mysql", "j4sql")
+	si, err := GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 }
@@ -796,11 +796,11 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	si, err := GetServiceInstance("mysql", "j4sql")
+	si, err := GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
 	sInstance.Revoke(team.Name)
-	si, err = GetServiceInstance("mysql", "j4sql")
+	si, err = GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{})
 }
@@ -861,7 +861,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[4].Method, check.Equals, "DELETE")
 	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	siDB, err := GetServiceInstance("mysql", si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), "mysql", si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{})
@@ -934,7 +934,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(reqs[5].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[6].Method, check.Equals, "POST")
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{
@@ -1006,7 +1006,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[4].Method, check.Equals, "DELETE")
 	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
 	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{})
@@ -1068,7 +1068,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[7].Method, check.Equals, "POST")
 	c.Assert(reqs[7].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 }
@@ -1109,7 +1109,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	c.Assert(reqs[2].Method, check.Equals, "POST")
 	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{
@@ -1163,7 +1163,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 300)
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, expectedNames)
@@ -1204,7 +1204,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		err = si.BindApp(app, nil, true, &buf, evt, "")
 		c.Assert(err, check.IsNil)
 	}
-	siDB, err := GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	for _, app := range apps {
@@ -1220,7 +1220,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	}
 	wg.Wait()
 	c.Assert(reqs, check.HasLen, 120)
-	siDB, err = GetServiceInstance(si.ServiceName, si.Name)
+	siDB, err = GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
@@ -1290,7 +1290,7 @@ func (s *S) TestProxyInstance(c *check.C) {
 		request, err := http.NewRequest(tt.method, "", nil)
 		c.Assert(err, check.IsNil)
 		recorder := httptest.NewRecorder()
-		err = ProxyInstance(&sInstance, tt.path, evt, "", recorder, request)
+		err = ProxyInstance(context.TODO(), &sInstance, tt.path, evt, "", recorder, request)
 		if tt.err == "" {
 			c.Assert(err, check.IsNil)
 			c.Assert(recorder.Code, check.Equals, http.StatusNoContent)

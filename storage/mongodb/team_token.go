@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -13,6 +14,8 @@ import (
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/types/auth"
 )
+
+const teamsTokensCollectionName = "team_tokens"
 
 type teamTokenStorage struct{}
 
@@ -31,27 +34,32 @@ type teamToken struct {
 var _ auth.TeamTokenStorage = &teamTokenStorage{}
 
 func teamTokensCollection(conn *db.Storage) *dbStorage.Collection {
-	c := conn.Collection("team_tokens")
+	c := conn.Collection(teamsTokensCollectionName)
 	c.EnsureIndex(mgo.Index{Key: []string{"token"}, Unique: true})
 	c.EnsureIndex(mgo.Index{Key: []string{"token_id"}, Unique: true})
 	return c
 }
 
-func (s *teamTokenStorage) Insert(t auth.TeamToken) error {
+func (s *teamTokenStorage) Insert(ctx context.Context, t auth.TeamToken) error {
+	span := newMongoDBSpan(ctx, mongoSpanInsert, teamsTokensCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = teamTokensCollection(conn).Insert(teamToken(t))
 	if mgo.IsDup(err) {
-		return auth.ErrTeamTokenAlreadyExists
+		err = auth.ErrTeamTokenAlreadyExists
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *teamTokenStorage) findOne(query bson.M) (*auth.TeamToken, error) {
-	results, err := s.findByQuery(query)
+func (s *teamTokenStorage) findOne(ctx context.Context, query bson.M) (*auth.TeamToken, error) {
+	results, err := s.findByQuery(ctx, query)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			err = auth.ErrTeamTokenNotFound
@@ -64,31 +72,36 @@ func (s *teamTokenStorage) findOne(query bson.M) (*auth.TeamToken, error) {
 	return &results[0], nil
 }
 
-func (s *teamTokenStorage) FindByToken(token string) (*auth.TeamToken, error) {
-	return s.findOne(bson.M{"token": token})
+func (s *teamTokenStorage) FindByToken(ctx context.Context, token string) (*auth.TeamToken, error) {
+	return s.findOne(ctx, bson.M{"token": token})
 }
 
-func (s *teamTokenStorage) FindByTokenID(tokenID string) (*auth.TeamToken, error) {
-	return s.findOne(bson.M{"token_id": tokenID})
+func (s *teamTokenStorage) FindByTokenID(ctx context.Context, tokenID string) (*auth.TeamToken, error) {
+	return s.findOne(ctx, bson.M{"token_id": tokenID})
 }
 
-func (s *teamTokenStorage) FindByTeams(teamNames []string) ([]auth.TeamToken, error) {
+func (s *teamTokenStorage) FindByTeams(ctx context.Context, teamNames []string) ([]auth.TeamToken, error) {
 	query := bson.M{}
 	if teamNames != nil {
 		query["team"] = bson.M{"$in": teamNames}
 	}
-	return s.findByQuery(query)
+	return s.findByQuery(ctx, query)
 }
 
-func (s *teamTokenStorage) findByQuery(query bson.M) ([]auth.TeamToken, error) {
+func (s *teamTokenStorage) findByQuery(ctx context.Context, query bson.M) ([]auth.TeamToken, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFind, teamsTokensCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	var tokens []teamToken
 	err = teamTokensCollection(conn).Find(query).All(&tokens)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	authTeams := make([]auth.TeamToken, len(tokens))
@@ -98,9 +111,13 @@ func (s *teamTokenStorage) findByQuery(query bson.M) ([]auth.TeamToken, error) {
 	return authTeams, nil
 }
 
-func (s *teamTokenStorage) UpdateLastAccess(token string) error {
+func (s *teamTokenStorage) UpdateLastAccess(ctx context.Context, token string) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, teamsTokensCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
@@ -112,12 +129,17 @@ func (s *teamTokenStorage) UpdateLastAccess(token string) error {
 	if err == mgo.ErrNotFound {
 		err = auth.ErrTeamTokenNotFound
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *teamTokenStorage) Update(token auth.TeamToken) error {
+func (s *teamTokenStorage) Update(ctx context.Context, token auth.TeamToken) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpdate, teamsTokensCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
@@ -125,18 +147,24 @@ func (s *teamTokenStorage) Update(token auth.TeamToken) error {
 	if err == mgo.ErrNotFound {
 		err = auth.ErrTeamTokenNotFound
 	}
+	span.SetError(err)
 	return err
 }
 
-func (s *teamTokenStorage) Delete(token string) error {
+func (s *teamTokenStorage) Delete(ctx context.Context, token string) error {
+	span := newMongoDBSpan(ctx, mongoSpanDelete, teamsTokensCollectionName)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	err = teamTokensCollection(conn).Remove(bson.M{"token_id": token})
 	if err == mgo.ErrNotFound {
-		return auth.ErrTeamTokenNotFound
+		err = auth.ErrTeamTokenNotFound
 	}
+	span.SetError(err)
 	return err
 }

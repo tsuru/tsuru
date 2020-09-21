@@ -45,7 +45,7 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 	if err != nil {
 		t, err = auth.APIAuth(token)
 		if err != nil {
-			t, err = servicemanager.TeamToken.Authenticate(token)
+			t, err = servicemanager.TeamToken.Authenticate(r.Context(), token)
 			if err != nil {
 				return nil, err
 			}

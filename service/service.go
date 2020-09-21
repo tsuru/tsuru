@@ -31,22 +31,25 @@ type Service struct {
 	Teams        []string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
+
+	ctx context.Context
 }
 
 type BindAppParameters map[string]interface{}
 
+// TODO: use requestID inside the context
 type ServiceClient interface {
-	Create(instance *ServiceInstance, evt *event.Event, requestID string) error
-	Update(instance *ServiceInstance, evt *event.Event, requestID string) error
-	Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error
-	BindApp(instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
-	BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error
-	UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
-	UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error
-	Status(instance *ServiceInstance, requestID string) (string, error)
-	Info(instance *ServiceInstance, requestID string) ([]map[string]string, error)
-	Plans(requestID string) ([]Plan, error)
-	Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error
+	Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
+	Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
+	Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
+	BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
+	BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
+	UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
+	UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
+	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
+	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)
+	Plans(ctx context.Context, requestID string) ([]Plan, error)
+	Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error
 }
 
 var (
@@ -56,9 +59,9 @@ var (
 	schemeRegexp = regexp.MustCompile("^https?://")
 )
 
-func Get(service string) (Service, error) {
+func Get(ctx context.Context, service string) (Service, error) {
 	if isBrokeredService(service) {
-		return getBrokeredService(service)
+		return getBrokeredService(ctx, service)
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -72,6 +75,7 @@ func Get(service string) (Service, error) {
 		}
 		return Service{}, err
 	}
+	s.ctx = ctx
 	return s, nil
 }
 
@@ -123,11 +127,11 @@ func Delete(s Service) error {
 	return err
 }
 
-func GetServices() ([]Service, error) {
-	return getServicesByFilter(nil)
+func GetServices(ctx context.Context) ([]Service, error) {
+	return getServicesByFilter(ctx, nil)
 }
 
-func GetServicesByTeamsAndServices(teams []string, services []string) ([]Service, error) {
+func GetServicesByTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter bson.M
 	if teams != nil || services != nil {
 		filter = bson.M{
@@ -138,10 +142,10 @@ func GetServicesByTeamsAndServices(teams []string, services []string) ([]Service
 			},
 		}
 	}
-	return getServicesByFilter(filter)
+	return getServicesByFilter(ctx, filter)
 }
 
-func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Service, error) {
+func GetServicesByOwnerTeamsAndServices(ctx context.Context, teams []string, services []string) ([]Service, error) {
 	var filter bson.M
 	if teams != nil || services != nil {
 		filter = bson.M{
@@ -151,7 +155,7 @@ func GetServicesByOwnerTeamsAndServices(teams []string, services []string) ([]Se
 			},
 		}
 	}
-	return getServicesByFilter(filter)
+	return getServicesByFilter(ctx, filter)
 }
 
 func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
@@ -170,7 +174,7 @@ func RenameServiceTeam(ctx context.Context, oldName, newName string) error {
 	return err
 }
 
-func getServicesByFilter(filter bson.M) ([]Service, error) {
+func getServicesByFilter(ctx context.Context, filter bson.M) ([]Service, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -181,7 +185,7 @@ func getServicesByFilter(filter bson.M) ([]Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	brokerServices, err := getBrokeredServices()
+	brokerServices, err := getBrokeredServices(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +275,7 @@ func (s *Service) validateOwnerTeams() error {
 	if len(s.OwnerTeams) == 0 {
 		return fmt.Errorf("At least one service team owner is required")
 	}
-	teams, err := servicemanager.Team.FindByNames(s.OwnerTeams)
+	teams, err := servicemanager.Team.FindByNames(s.ctx, s.OwnerTeams)
 	if err != nil {
 		return nil
 	}
@@ -298,10 +302,10 @@ type ServiceModel struct {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func Proxy(service *Service, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func Proxy(ctx context.Context, service *Service, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	endpoint, err := service.getClient("production")
 	if err != nil {
 		return err
 	}
-	return endpoint.Proxy(path, evt, requestID, w, r)
+	return endpoint.Proxy(ctx, path, evt, requestID, w, r)
 }

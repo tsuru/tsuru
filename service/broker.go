@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -116,8 +117,8 @@ func convertCatalogToResponse(catalog serviceTypes.BrokerCatalog) osb.CatalogRes
 	return cat
 }
 
-func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
-	_, s, err := b.getService(b.service, instance.Name)
+func (b *brokerClient) Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
+	_, s, err := b.getService(ctx, b.service, instance.Name)
 	if err != nil {
 		return err
 	}
@@ -173,11 +174,11 @@ func (b *brokerClient) Create(instance *ServiceInstance, evt *event.Event, reque
 	return nil
 }
 
-func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (b *brokerClient) Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	if instance.BrokerData == nil {
 		return ErrInvalidBrokerData
 	}
-	_, s, err := b.getService(b.service, instance.Name)
+	_, s, err := b.getService(ctx, b.service, instance.Name)
 	if err != nil {
 		return err
 	}
@@ -222,7 +223,7 @@ func (b *brokerClient) Update(instance *ServiceInstance, evt *event.Event, reque
 	return updateBrokerData(instance)
 }
 
-func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (b *brokerClient) Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	if instance.BrokerData == nil {
 		return nil
 	}
@@ -248,7 +249,7 @@ func (b *brokerClient) Destroy(instance *ServiceInstance, evt *event.Event, requ
 	return err
 }
 
-func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+func (b *brokerClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	if instance.BrokerData == nil {
 		return nil, ErrInvalidBrokerData
 	}
@@ -316,7 +317,7 @@ func (b *brokerClient) BindApp(instance *ServiceInstance, app bind.App, params B
 	return envs, updateBrokerData(instance)
 }
 
-func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+func (b *brokerClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	if instance.BrokerData == nil {
 		return ErrInvalidBrokerData
 	}
@@ -348,7 +349,7 @@ func (b *brokerClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *e
 	return err
 }
 
-func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (string, error) {
+func (b *brokerClient) Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error) {
 	if instance.BrokerData == nil {
 		return "", ErrInvalidBrokerData
 	}
@@ -379,7 +380,7 @@ func (b *brokerClient) Status(instance *ServiceInstance, requestID string) (stri
 	return output, nil
 }
 
-func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
+func (b *brokerClient) Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	var params []map[string]string
 	for k, v := range instance.Parameters {
 		params = append(params, map[string]string{
@@ -390,8 +391,8 @@ func (b *brokerClient) Info(instance *ServiceInstance, requestID string) ([]map[
 	return params, nil
 }
 
-func (b *brokerClient) Plans(_ string) ([]Plan, error) {
-	_, s, err := b.getService(b.service, b.broker.Name)
+func (b *brokerClient) Plans(ctx context.Context, _ string) ([]Plan, error) {
+	_, s, err := b.getService(ctx, b.service, b.broker.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -407,29 +408,29 @@ func (b *brokerClient) Plans(_ string) ([]Plan, error) {
 }
 
 // Proxy is not implemented for OSB API implementations
-func (b *brokerClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func (b *brokerClient) Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("service proxy is not available for broker services")
 }
 
 // UnbindUnit is a no-op for OSB API implementations
-func (b *brokerClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (b *brokerClient) UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	return nil
 }
 
 // UnbindUnit is a no-op for OSB API implementations
-func (b *brokerClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (b *brokerClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	return nil
 }
 
-func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
-	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(name)
+func (b *brokerClient) getCatalog(ctx context.Context, name string) (*osb.CatalogResponse, error) {
+	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(ctx, name)
 	if err != nil || catalog == nil {
 		response, err := b.client.GetCatalog()
 		if err != nil {
 			return nil, err
 		}
 		cat := convertResponseToCatalog(*response)
-		err = servicemanager.ServiceBrokerCatalogCache.Save(name, cat)
+		err = servicemanager.ServiceBrokerCatalogCache.Save(ctx, name, cat)
 		if err != nil {
 			log.Errorf("[Broker=%v] error caching catalog: %v.", name, err)
 		}
@@ -440,8 +441,8 @@ func (b *brokerClient) getCatalog(name string) (*osb.CatalogResponse, error) {
 	return &cat, nil
 }
 
-func (b *brokerClient) getService(name, catalogName string) (Service, osb.Service, error) {
-	cat, err := b.getCatalog(catalogName)
+func (b *brokerClient) getService(ctx context.Context, name, catalogName string) (Service, osb.Service, error) {
+	cat, err := b.getCatalog(ctx, catalogName)
 	if err != nil {
 		return Service{}, osb.Service{}, err
 	}

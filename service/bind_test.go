@@ -255,7 +255,7 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 		Value:  "val2",
 		Public: false,
 	})
-	dbI1, err := service.GetServiceInstance(instance1.ServiceName, instance1.Name)
+	dbI1, err := service.GetServiceInstance(context.TODO(), instance1.ServiceName, instance1.Name)
 	c.Assert(err, check.IsNil)
 	err = dbI1.UnbindApp(service.UnbindAppArgs{
 		App:     a,

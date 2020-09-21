@@ -3,6 +3,8 @@
 // license that can be found in the LICENSE file.
 package service
 
+import "context"
+
 // BrokerCatalog contains the data required to request services to a
 // Service Broker API.
 // Most of the fields are copied from osb client definition.
@@ -37,6 +39,6 @@ type BrokerPlan struct {
 }
 
 type ServiceBrokerCatalogCacheService interface {
-	Save(string, BrokerCatalog) error
-	Load(string) (*BrokerCatalog, error)
+	Save(context.Context, string, BrokerCatalog) error
+	Load(context.Context, string) (*BrokerCatalog, error)
 }

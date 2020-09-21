@@ -5,6 +5,7 @@
 package api
 
 import (
+	stdContext "context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -43,8 +44,9 @@ func serviceIntancePermName(serviceName, instanceName string) string {
 //   401: Unauthorized
 //   409: Service already exists
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
-	srv, err := getService(serviceName)
+	srv, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -124,6 +126,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
 	updateData := struct {
@@ -139,11 +142,11 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	tags, _ := InputValues(r, "tag")
 	updateData.Tags = append(updateData.Tags, tags...) // for compatibility
-	srv, err := getService(serviceName)
+	srv, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
-	si, err := getServiceInstanceOrError(serviceName, instanceName)
+	si, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -213,7 +216,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	unbindAll := r.URL.Query().Get("unbindall")
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -261,14 +264,14 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			}
 			fmt.Fprintf(evt, "\nInstance %q is not bound to the app %q anymore.\n", serviceInstance.Name, app.GetName())
 		}
-		serviceInstance, err = getServiceInstanceOrError(serviceName, instanceName)
+		serviceInstance, err = getServiceInstanceOrError(ctx, serviceName, instanceName)
 		if err != nil {
 			return err
 		}
 	}
 	ignoreErrorsBool, _ := strconv.ParseBool(ignoreErrors)
 	serviceInstance.ForceRemove = ignoreErrorsBool
-	err = service.DeleteInstance(serviceInstance, evt, requestID)
+	err = service.DeleteInstance(ctx, serviceInstance, evt, requestID)
 	if err != nil {
 		if err == service.ErrServiceInstanceBound {
 			return &tsuruErrors.HTTP{
@@ -323,9 +326,9 @@ func filtersForServiceList(t auth.Token, contexts []permTypes.PermissionContext)
 	return teams, serviceNames
 }
 
-func readableServices(t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
+func readableServices(ctx stdContext.Context, t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
 	teams, serviceNames := filtersForServiceList(t, contexts)
-	return service.GetServicesByTeamsAndServices(teams, serviceNames)
+	return service.GetServicesByTeamsAndServices(ctx, teams, serviceNames)
 }
 
 // title: service instance list
@@ -337,6 +340,7 @@ func readableServices(t auth.Token, contexts []permTypes.PermissionContext) ([]s
 //   204: No content
 //   401: Unauthorized
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	appName := r.URL.Query().Get("app")
 	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
 	instances, err := readableInstances(t, contexts, appName, "")
@@ -344,7 +348,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return err
 	}
 	contexts = permission.ContextsForPermission(t, permission.PermServiceRead)
-	services, err := readableServices(t, contexts)
+	services, err := readableServices(ctx, t, contexts)
 	if err != nil {
 		return err
 	}
@@ -387,9 +391,10 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -429,13 +434,14 @@ type serviceInstanceInfo struct {
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
-	svc, err := getService(serviceName)
+	svc, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -450,7 +456,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	plan, err := service.GetPlanByServiceAndPlanName(svc, serviceInstance.PlanName, requestID)
+	plan, err := service.GetPlanByServiceAndPlanName(ctx, svc, serviceInstance.PlanName, requestID)
 	if err != nil {
 		return err
 	}
@@ -476,8 +482,9 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // responses:
 //   200: OK
 func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
-	_, err := getService(serviceName)
+	_, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -505,8 +512,9 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -522,8 +530,8 @@ func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-func getServiceInstanceOrError(serviceName string, instanceName string) (*service.ServiceInstance, error) {
-	serviceInstance, err := service.GetServiceInstance(serviceName, instanceName)
+func getServiceInstanceOrError(ctx stdContext.Context, serviceName string, instanceName string) (*service.ServiceInstance, error) {
+	serviceInstance, err := service.GetServiceInstance(ctx, serviceName, instanceName)
 	if err != nil {
 		switch err {
 		case service.ErrServiceInstanceNotFound:
@@ -547,8 +555,9 @@ func getServiceInstanceOrError(serviceName string, instanceName string) (*servic
 //   401: Unauthorized
 //   404: Service not found
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -561,7 +570,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	requestID := requestIDHeader(r)
-	plans, err := service.GetPlansByService(s, requestID)
+	plans, err := service.GetPlansByService(ctx, s, requestID)
 	if err != nil {
 		return err
 	}
@@ -576,9 +585,10 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Instance not found
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
 	instanceName := r.URL.Query().Get(":instance")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -607,7 +617,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		}
 		defer func() { evt.Done(err) }()
 	}
-	return service.ProxyInstance(serviceInstance, path, evt, requestIDHeader(r), w, r)
+	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
 
 // title: grant access to service instance
@@ -619,9 +629,10 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -655,9 +666,10 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 //   401: Unauthorized
 //   404: Service instance not found
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
 	serviceName := r.URL.Query().Get(":service")
-	serviceInstance, err := getServiceInstanceOrError(serviceName, instanceName)
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return err
 	}

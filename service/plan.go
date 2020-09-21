@@ -5,6 +5,8 @@
 package service
 
 import (
+	"context"
+
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
@@ -15,20 +17,20 @@ type Plan struct {
 	Schemas     *osb.Schemas `json:",omitempty"`
 }
 
-func GetPlansByService(svc Service, requestID string) ([]Plan, error) {
+func GetPlansByService(ctx context.Context, svc Service, requestID string) ([]Plan, error) {
 	endpoint, err := svc.getClient("production")
 	if err != nil {
 		return []Plan{}, nil
 	}
-	plans, err := endpoint.Plans(requestID)
+	plans, err := endpoint.Plans(ctx, requestID)
 	if err != nil {
 		return nil, err
 	}
 	return plans, nil
 }
 
-func GetPlanByServiceAndPlanName(svc Service, planName, requestID string) (Plan, error) {
-	plans, err := GetPlansByService(svc, requestID)
+func GetPlanByServiceAndPlanName(ctx context.Context, svc Service, planName, requestID string) (Plan, error) {
+	plans, err := GetPlansByService(ctx, svc, requestID)
 	if err != nil {
 		return Plan{}, err
 	}

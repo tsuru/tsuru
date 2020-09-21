@@ -5,6 +5,7 @@
 package api
 
 import (
+	stdContext "context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -266,7 +267,7 @@ func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *check.C) {
 }
 
 func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
-	token, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	token, err := servicemanager.TeamToken.Create(stdContext.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)

@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
@@ -43,7 +44,7 @@ func (s *S) TestCacheSaveDefaultExpiration(c *check.C) {
 			},
 		},
 	}
-	err := service.Save("my-catalog", catalog)
+	err := service.Save(context.TODO(), "my-catalog", catalog)
 	c.Assert(err, check.IsNil)
 }
 
@@ -75,7 +76,7 @@ func (s *S) TestCacheSaveNegativeExpiration(c *check.C) {
 			},
 		},
 	}
-	err := service.Save("my-catalog", catalog)
+	err := service.Save(context.TODO(), "my-catalog", catalog)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
@@ -107,7 +108,7 @@ func (s *S) TestCacheSaveCustomExpiration(c *check.C) {
 			},
 		},
 	}
-	err := service.Save("my-catalog", catalog)
+	err := service.Save(context.TODO(), "my-catalog", catalog)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
@@ -135,7 +136,7 @@ func (s *S) TestCacheLoad(c *check.C) {
 			},
 		},
 	}
-	cat, err := service.Load("my-catalog")
+	cat, err := service.Load(context.TODO(), "my-catalog")
 	c.Assert(err, check.IsNil)
 	c.Assert(cat, check.NotNil)
 	c.Assert(*cat, check.DeepEquals, catalog)
@@ -150,7 +151,7 @@ func (s *S) TestCacheLoadNotFound(c *check.C) {
 			},
 		},
 	}
-	cat, err := service.Load("unknown-catalog")
+	cat, err := service.Load(context.TODO(), "unknown-catalog")
 	c.Assert(err, check.NotNil)
 	c.Assert(cat, check.IsNil)
 }

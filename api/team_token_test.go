@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -33,12 +34,12 @@ func normalizeTimestamps(c *check.C, v []authTypes.TeamToken) []authTypes.TeamTo
 }
 
 func (s *S) TestTeamTokenList(c *check.C) {
-	teamToken1, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken1, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,
 		TokenID: "id1",
 	}, s.token)
 	c.Assert(err, check.IsNil)
-	teamToken2, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	teamToken2, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,
 		TokenID: "id2",
 	}, s.token)
@@ -158,7 +159,7 @@ func (s *S) TestTeamTokenCreateNoPermission(c *check.C) {
 }
 
 func (s *S) TestTeamTokenDelete(c *check.C) {
-	_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	_, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,
 		TokenID: "id1",
 	}, s.token)
@@ -178,7 +179,7 @@ func (s *S) TestTeamTokenDelete(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 
-	_, err = servicemanager.TeamToken.FindByTokenID("id1")
+	_, err = servicemanager.TeamToken.FindByTokenID(context.TODO(), "id1")
 	c.Assert(err, check.Equals, authTypes.ErrTeamTokenNotFound)
 	c.Assert(eventtest.EventDesc{
 		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
@@ -195,7 +196,7 @@ func (s *S) TestTeamTokenDeleteNoPermission(c *check.C) {
 		Scheme:  permission.PermTeamTokenDelete,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
-	_, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	_, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,
 		TokenID: "id1",
 	}, s.token)
@@ -209,7 +210,7 @@ func (s *S) TestTeamTokenDeleteNoPermission(c *check.C) {
 }
 
 func (s *S) TestTeamTokenUpdate(c *check.C) {
-	originalToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	originalToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:    s.team.Name,
 		TokenID: "id1",
 	}, s.token)
@@ -224,7 +225,7 @@ func (s *S) TestTeamTokenUpdate(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	newToken, err := servicemanager.TeamToken.FindByTokenID("id1")
+	newToken, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), "id1")
 	c.Assert(err, check.IsNil)
 	c.Assert(originalToken.Token, check.Not(check.Equals), newToken.Token)
 
@@ -240,7 +241,7 @@ func (s *S) TestTeamTokenUpdate(c *check.C) {
 }
 
 func (s *S) TestTeamTokenInfo(c *check.C) {
-	newToken, err := servicemanager.TeamToken.Create(authTypes.TeamTokenCreateArgs{
+	newToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team:        s.team.Name,
 		Description: "desc",
 		TokenID:     "id1",

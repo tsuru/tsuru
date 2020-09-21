@@ -305,7 +305,7 @@ type inputApp struct {
 	PlanOverride appTypes.PlanOverride
 }
 
-func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, error) {
+func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
 	team, err := permission.TeamForPermission(t, perm)
 	if err == nil {
 		return team, nil
@@ -313,7 +313,7 @@ func autoTeamOwner(t auth.Token, perm *permission.PermissionScheme) (string, err
 	if err != permission.ErrTooManyTeams {
 		return "", err
 	}
-	teams, listErr := servicemanager.Team.List()
+	teams, listErr := servicemanager.Team.List(ctx)
 	if listErr != nil {
 		return "", listErr
 	}
@@ -356,7 +356,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	tags, _ := InputValues(r, "tag")
 	a.Tags = append(a.Tags, tags...) // for compatibility
 	if a.TeamOwner == "" {
-		a.TeamOwner, err = autoTeamOwner(t, permission.PermAppCreate)
+		a.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
 		if err != nil {
 			return err
 		}
@@ -766,6 +766,7 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: App or team not found
 //   409: Grant already exists
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	a, err := getAppFromContext(appName, r)
@@ -789,7 +790,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -809,6 +810,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   403: Forbidden
 //   404: App or team not found
 func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	teamName := r.URL.Query().Get(":team")
 	a, err := getAppFromContext(appName, r)
@@ -832,7 +834,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
@@ -1285,7 +1287,7 @@ func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appNa
 		return nil, nil, err
 	}
 	defer conn.Close()
-	instance, err := getServiceInstanceOrError(serviceName, instanceName)
+	instance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1426,7 +1428,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return permission.ErrUnauthorized
 	}
 	if force {
-		s, errGet := service.Get(instance.ServiceName)
+		s, errGet := service.Get(ctx, instance.ServiceName)
 		if errGet != nil {
 			return errGet
 		}

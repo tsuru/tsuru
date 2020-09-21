@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -36,25 +37,25 @@ type TeamToken struct {
 }
 
 type TeamTokenStorage interface {
-	Insert(TeamToken) error
-	FindByTokenID(tokenID string) (*TeamToken, error)
-	FindByToken(token string) (*TeamToken, error)
-	FindByTeams(teams []string) ([]TeamToken, error)
-	UpdateLastAccess(token string) error
-	Update(TeamToken) error
-	Delete(tokenID string) error
+	Insert(context.Context, TeamToken) error
+	FindByTokenID(ctx context.Context, tokenID string) (*TeamToken, error)
+	FindByToken(ctx context.Context, token string) (*TeamToken, error)
+	FindByTeams(ctx context.Context, teams []string) ([]TeamToken, error)
+	UpdateLastAccess(ctx context.Context, token string) error
+	Update(context.Context, TeamToken) error
+	Delete(ctx context.Context, tokenID string) error
 }
 
 type TeamTokenService interface {
-	Create(args TeamTokenCreateArgs, token Token) (TeamToken, error)
-	Info(tokenID string, token Token) (TeamToken, error)
-	Update(args TeamTokenUpdateArgs, token Token) (TeamToken, error)
-	Delete(tokenID string) error
-	Authenticate(header string) (Token, error)
-	FindByTokenID(tokenID string) (TeamToken, error)
-	FindByUserToken(t Token) ([]TeamToken, error)
-	AddRole(tokenID string, roleName, contextValue string) error
-	RemoveRole(tokenID string, roleName, contextValue string) error
+	Create(ctx context.Context, args TeamTokenCreateArgs, token Token) (TeamToken, error)
+	Info(ctx context.Context, tokenID string, token Token) (TeamToken, error)
+	Update(ctx context.Context, args TeamTokenUpdateArgs, token Token) (TeamToken, error)
+	Delete(ctx context.Context, tokenID string) error
+	Authenticate(ctx context.Context, header string) (Token, error)
+	FindByTokenID(ctx context.Context, tokenID string) (TeamToken, error)
+	FindByUserToken(ctx context.Context, t Token) ([]TeamToken, error)
+	AddRole(ctx context.Context, tokenID string, roleName, contextValue string) error
+	RemoveRole(ctx context.Context, tokenID string, roleName, contextValue string) error
 }
 
 var (

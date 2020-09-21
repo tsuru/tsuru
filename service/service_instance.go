@@ -58,6 +58,8 @@ type ServiceInstance struct {
 	// ForceRemove indicates whether service instance should be removed even the
 	// related call to service API fails.
 	ForceRemove bool `bson:"-" json:"-"`
+
+	ctx context.Context
 }
 
 type BrokerInstanceData struct {
@@ -94,11 +96,11 @@ func (bu Unit) GetIp() string {
 }
 
 // DeleteInstance deletes the service instance from the database.
-func DeleteInstance(si *ServiceInstance, evt *event.Event, requestID string) error {
+func DeleteInstance(ctx context.Context, si *ServiceInstance, evt *event.Event, requestID string) error {
 	if len(si.Apps) > 0 {
 		return ErrServiceInstanceBound
 	}
-	s, err := Get(si.ServiceName)
+	s, err := Get(ctx, si.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func DeleteInstance(si *ServiceInstance, evt *event.Event, requestID string) err
 	if err != nil {
 		return err
 	}
-	err = endpoint.Destroy(si, evt, requestID)
+	err = endpoint.Destroy(ctx, si, evt, requestID)
 	if err != nil {
 		if !si.ForceRemove {
 			return err
@@ -159,7 +161,7 @@ func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
 }
 
 func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
-	s, err := Get(si.ServiceName)
+	s, err := Get(si.ctx, si.ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	result, err := endpoint.Info(si, requestID)
+	result, err := endpoint.Info(si.ctx, si, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +245,7 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 
 // BindUnit makes the bind between the binder and an unit.
 func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
-	s, err := Get(si.ServiceName)
+	s, err := Get(si.ctx, si.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -272,7 +274,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 		}
 		return err
 	}
-	err = endpoint.BindUnit(si, app, unit)
+	err = endpoint.BindUnit(si.ctx, si, app, unit)
 	if err != nil {
 		updateOp = bson.M{
 			"$pull": bson.M{
@@ -326,7 +328,7 @@ func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
 
 // UnbindUnit makes the unbind between the service instance and an unit.
 func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
-	s, err := Get(si.ServiceName)
+	s, err := Get(si.ctx, si.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -355,7 +357,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 		}
 		return err
 	}
-	err = endpoint.UnbindUnit(si, app, unit)
+	err = endpoint.UnbindUnit(si.ctx, si, app, unit)
 	if err != nil {
 		updateOp = bson.M{
 			"$addToSet": bson.M{
@@ -377,7 +379,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 
 // Status returns the service instance status.
 func (si *ServiceInstance) Status(requestID string) (string, error) {
-	s, err := Get(si.ServiceName)
+	s, err := Get(si.ctx, si.ServiceName)
 	if err != nil {
 		return "", err
 	}
@@ -385,11 +387,11 @@ func (si *ServiceInstance) Status(requestID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return endpoint.Status(si, requestID)
+	return endpoint.Status(si.ctx, si, requestID)
 }
 
 func (si *ServiceInstance) Grant(teamName string) error {
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(si.ctx, teamName)
 	if err != nil {
 		return err
 	}
@@ -397,7 +399,7 @@ func (si *ServiceInstance) Grant(teamName string) error {
 }
 
 func (si *ServiceInstance) Revoke(teamName string) error {
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(si.ctx, teamName)
 	if err != nil {
 		return err
 	}
@@ -451,7 +453,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 	if si.TeamOwner == "" {
 		return ErrTeamMandatory
 	}
-	_, err := servicemanager.Team.FindByName(si.TeamOwner)
+	_, err := servicemanager.Team.FindByName(si.ctx, si.TeamOwner)
 	if err == authTypes.ErrTeamNotFound {
 		return fmt.Errorf("Team owner doesn't exist")
 	}
@@ -510,7 +512,7 @@ func GetServicesInstancesByTeamsAndNames(teams []string, names []string, appName
 	return instances, err
 }
 
-func GetServiceInstance(serviceName string, instanceName string) (*ServiceInstance, error) {
+func GetServiceInstance(ctx context.Context, serviceName string, instanceName string) (*ServiceInstance, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -521,6 +523,7 @@ func GetServiceInstance(serviceName string, instanceName string) (*ServiceInstan
 	if err != nil {
 		return nil, ErrServiceInstanceNotFound
 	}
+	instance.ctx = ctx
 	return &instance, nil
 }
 
@@ -571,8 +574,8 @@ func RenameServiceInstanceTeam(ctx context.Context, oldName, newName string) err
 
 // ProxyInstance is a proxy between tsuru and the service instance.
 // This method allow customized service instance methods.
-func ProxyInstance(instance *ServiceInstance, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
-	service, err := Get(instance.ServiceName)
+func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+	service, err := Get(ctx, instance.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -589,5 +592,5 @@ func ProxyInstance(instance *ServiceInstance, path string, evt *event.Event, req
 			}
 		}
 	}
-	return endpoint.Proxy(fmt.Sprintf("%s%s", prefix, path), evt, requestID, w, r)
+	return endpoint.Proxy(ctx, fmt.Sprintf("%s%s", prefix, path), evt, requestID, w, r)
 }

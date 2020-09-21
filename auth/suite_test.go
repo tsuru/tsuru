@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -70,7 +71,7 @@ func (s *S) SetUpTest(c *check.C) {
 	u := authTypes.User(*s.user)
 	svc, err := TeamService()
 	c.Assert(err, check.IsNil)
-	err = svc.Create(s.team.Name, nil, &u)
+	err = svc.Create(context.TODO(), s.team.Name, nil, &u)
 	c.Assert(err, check.IsNil)
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)

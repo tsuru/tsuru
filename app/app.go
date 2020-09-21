@@ -406,7 +406,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 	app.Plan.MergeOverride(args.UpdateData.Plan.Override)
 	if teamOwner != "" {
-		team, errTeam := servicemanager.Team.FindByName(teamOwner)
+		team, errTeam := servicemanager.Team.FindByName(app.ctx, teamOwner)
 		if errTeam != nil {
 			return errTeam
 		}
@@ -657,7 +657,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
-		err = servicemanager.UserQuota.Inc(owner, -1)
+		err = servicemanager.UserQuota.Inc(ctx, owner, -1)
 	}
 	if err != nil {
 		logErr("Unable to release app quota", err)
@@ -1001,7 +1001,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []authTypes.Team {
-	t, _ := servicemanager.Team.FindByNames(app.Teams)
+	t, _ := servicemanager.Team.FindByNames(app.ctx, app.Teams)
 	return t
 }
 
@@ -1140,7 +1140,7 @@ func (app *App) validatePool() error {
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {
-	_, err := servicemanager.Team.FindByName(app.TeamOwner)
+	_, err := servicemanager.Team.FindByName(app.ctx, app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -1454,11 +1454,11 @@ func (app *App) GetQuotaInUse() (int, error) {
 }
 
 func (app *App) GetQuota() (*quota.Quota, error) {
-	return servicemanager.AppQuota.Get(app)
+	return servicemanager.AppQuota.Get(app.ctx, app)
 }
 
 func (app *App) SetQuotaLimit(limit int) error {
-	return servicemanager.AppQuota.SetLimit(app, limit)
+	return servicemanager.AppQuota.SetLimit(app.ctx, app, limit)
 }
 
 // GetCname returns the cnames of the app.
@@ -1923,7 +1923,7 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 		}
 		apps = apps[:len(provisionApps)]
 	}
-	err = loadCachedAddrsInApps(apps)
+	err = loadCachedAddrsInApps(ctx, apps)
 	if err != nil {
 		return nil, err
 	}
@@ -1934,7 +1934,7 @@ func appRouterAddrKey(appName, routerName string) string {
 	return strings.Join([]string{"app-router-addr", appName, routerName}, "\x00")
 }
 
-func loadCachedAddrsInApps(apps []App) error {
+func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 	keys := make([]string, 0, len(apps))
 	for i := range apps {
 		a := &apps[i]
@@ -1943,7 +1943,7 @@ func loadCachedAddrsInApps(apps []App) error {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
 	}
-	entries, err := servicemanager.AppCache.List(keys...)
+	entries, err := servicemanager.AppCache.List(ctx, keys...)
 	if err != nil {
 		return err
 	}
@@ -2262,7 +2262,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			}
 			routers[i].Addresses = addrs
 		}
-		servicemanager.AppCache.Create(cache.CacheEntry{
+		servicemanager.AppCache.Create(app.ctx, cache.CacheEntry{
 			Key:   appRouterAddrKey(app.Name, routerName),
 			Value: addr,
 		})

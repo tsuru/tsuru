@@ -161,7 +161,7 @@ func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
 }
 
 func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
-	teams, err := teamsNames()
+	teams, err := teamsNames(p.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	services, err := servicesNames()
+	services, err := servicesNames(p.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +212,8 @@ func routersNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func teamsNames() ([]string, error) {
-	teams, err := servicemanager.Team.List()
+func teamsNames(ctx context.Context) ([]string, error) {
+	teams, err := servicemanager.Team.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -224,8 +224,8 @@ func teamsNames() ([]string, error) {
 	return names, nil
 }
 
-func servicesNames() ([]string, error) {
-	services, err := service.GetServices()
+func servicesNames(ctx context.Context) ([]string, error) {
+	services, err := service.GetServices(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,9 +24,9 @@ func serviceTarget(name string) event.Target {
 	return event.Target{Type: event.TargetTypeService, Value: name}
 }
 
-func provisionReadableServices(t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
+func provisionReadableServices(ctx context.Context, t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
 	teams, serviceNames := filtersForServiceList(t, contexts)
-	return service.GetServicesByOwnerTeamsAndServices(teams, serviceNames)
+	return service.GetServicesByOwnerTeamsAndServices(ctx, teams, serviceNames)
 }
 
 // title: service list
@@ -37,8 +38,9 @@ func provisionReadableServices(t auth.Token, contexts []permTypes.PermissionCont
 //   204: No content
 //   401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
-	services, err := provisionReadableServices(t, contexts)
+	services, err := provisionReadableServices(ctx, t, contexts)
 	if err != nil {
 		return err
 	}
@@ -135,6 +137,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   403: Forbidden (team is not the owner)
 //   404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	d := service.Service{
 		Username: InputValue(r, "username"),
 		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
@@ -142,7 +145,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Name:     r.URL.Query().Get(":name"),
 	}
 	team := InputValue(r, "team")
-	s, err := getService(d.Name)
+	s, err := getService(ctx, d.Name)
 	if err != nil {
 		return err
 	}
@@ -182,7 +185,8 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   403: Forbidden (team is not the owner or service with instances)
 //   404: Service not found
 func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	s, err := getService(r.URL.Query().Get(":name"))
+	ctx := r.Context()
+	s, err := getService(ctx, r.URL.Query().Get(":name"))
 	if err != nil {
 		return err
 	}
@@ -222,8 +226,9 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   401: Unauthorized
 //   404: Service not found
 func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -251,7 +256,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		defer func() { evt.Done(err) }()
 	}
 	path := r.URL.Query().Get("callback")
-	return service.Proxy(&s, path, evt, requestIDHeader(r), w, r)
+	return service.Proxy(ctx, &s, path, evt, requestIDHeader(r), w, r)
 }
 
 // title: grant access to a service
@@ -264,8 +269,9 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   404: Service not found
 //   409: Team already has access to this service
 func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -276,7 +282,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
@@ -311,8 +317,9 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //   404: Service not found
 //   409: Team does not has access to this service
 func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -323,7 +330,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return permission.ErrUnauthorized
 	}
 	teamName := r.URL.Query().Get(":team")
-	team, err := servicemanager.Team.FindByName(teamName)
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		if err == authTypes.ErrTeamNotFound {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: "Team not found"}
@@ -361,8 +368,9 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 //   401: Unauthorized
 //   403: Forbidden (team is not the owner or service with instances)
 func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
-	s, err := getService(serviceName)
+	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
@@ -387,8 +395,8 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	return service.Update(s)
 }
 
-func getService(name string) (service.Service, error) {
-	s, err := service.Get(name)
+func getService(ctx context.Context, name string) (service.Service, error) {
+	s, err := service.Get(ctx, name)
 	if err == service.ErrServiceNotFound {
 		return s, &errors.HTTP{Code: http.StatusNotFound, Message: "Service not found"}
 	}

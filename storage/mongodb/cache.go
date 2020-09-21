@@ -5,6 +5,7 @@
 package mongodb
 
 import (
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo"
@@ -32,15 +33,23 @@ func (s *cacheStorage) cacheCollection(conn *db.Storage) *dbStorage.Collection {
 	return c
 }
 
-func (s *cacheStorage) GetAll(keys ...string) ([]cache.CacheEntry, error) {
+func (s *cacheStorage) GetAll(ctx context.Context, keys ...string) ([]cache.CacheEntry, error) {
+	query := bson.M{"_id": bson.M{"$in": keys}}
+
+	span := newMongoDBSpan(ctx, mongoSpanFind, s.collection)
+	span.SetQueryStatement(query)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	var dbEntries []mongoCacheEntry
-	err = s.cacheCollection(conn).Find(bson.M{"_id": bson.M{"$in": keys}}).All(&dbEntries)
+	err = s.cacheCollection(conn).Find(query).All(&dbEntries)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	entries := make([]cache.CacheEntry, len(dbEntries))
@@ -50,9 +59,14 @@ func (s *cacheStorage) GetAll(keys ...string) ([]cache.CacheEntry, error) {
 	return entries, nil
 }
 
-func (s *cacheStorage) Get(key string) (cache.CacheEntry, error) {
+func (s *cacheStorage) Get(ctx context.Context, key string) (cache.CacheEntry, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFindID, s.collection)
+	span.SetMongoID(key)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return cache.CacheEntry{}, err
 	}
 	defer conn.Close()
@@ -62,17 +76,24 @@ func (s *cacheStorage) Get(key string) (cache.CacheEntry, error) {
 		if err == mgo.ErrNotFound {
 			return cache.CacheEntry{}, cache.ErrEntryNotFound
 		}
+		span.SetError(err)
 		return cache.CacheEntry{}, err
 	}
 	return cache.CacheEntry(dbEntry), nil
 }
 
-func (s *cacheStorage) Put(entry cache.CacheEntry) error {
+func (s *cacheStorage) Put(ctx context.Context, entry cache.CacheEntry) error {
+	span := newMongoDBSpan(ctx, mongoSpanUpsertID, s.collection)
+	span.SetMongoID(entry.Key)
+	defer span.Finish()
+
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return err
 	}
 	defer conn.Close()
 	_, err = s.cacheCollection(conn).UpsertId(entry.Key, mongoCacheEntry(entry))
+	span.SetError(err)
 	return err
 }

@@ -5,6 +5,8 @@
 package storagetest
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -25,14 +27,14 @@ type UserQuotaSuite struct {
 func (s *UserQuotaSuite) TestGet(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: quota.UnlimitedQuota}
 	s.UserStorage.Create(user)
-	quota, err := s.UserQuotaStorage.Get("example@example.com")
+	quota, err := s.UserQuotaStorage.Get(context.TODO(), "example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, -1)
 }
 
 func (s *UserQuotaSuite) TestGetNotFound(c *check.C) {
-	_, err := s.UserQuotaStorage.Get("myapp")
+	_, err := s.UserQuotaStorage.Get(context.TODO(), "myapp")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }
@@ -40,16 +42,16 @@ func (s *UserQuotaSuite) TestGetNotFound(c *check.C) {
 func (s *UserQuotaSuite) TestSetLimit(c *check.C) {
 	user := &auth.User{Email: "example@example.com", Quota: quota.Quota{Limit: 5}}
 	s.UserStorage.Create(user)
-	err := s.UserQuotaStorage.SetLimit("example@example.com", 1)
+	err := s.UserQuotaStorage.SetLimit(context.TODO(), "example@example.com", 1)
 	c.Assert(err, check.IsNil)
-	quota, err := s.UserQuotaStorage.Get("example@example.com")
+	quota, err := s.UserQuotaStorage.Get(context.TODO(), "example@example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(quota.InUse, check.Equals, 0)
 	c.Assert(quota.Limit, check.Equals, 1)
 }
 
 func (s *UserQuotaSuite) TestSetLimitNotFound(c *check.C) {
-	err := s.UserQuotaStorage.SetLimit("myapp", 1)
+	err := s.UserQuotaStorage.SetLimit(context.TODO(), "myapp", 1)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, quota.ErrQuotaNotFound)
 }

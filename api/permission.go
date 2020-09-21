@@ -697,6 +697,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Role or team token not found
 func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
@@ -718,7 +719,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	err = servicemanager.TeamToken.AddRole(tokenID, roleName, contextValue)
+	err = servicemanager.TeamToken.AddRole(ctx, tokenID, roleName, contextValue)
 	if err == authTypes.ErrTeamTokenNotFound {
 		w.WriteHeader(http.StatusNotFound)
 		return nil
@@ -735,6 +736,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //   401: Unauthorized
 //   404: Role or team token not found
 func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
@@ -756,7 +758,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
-	err = servicemanager.TeamToken.RemoveRole(tokenID, roleName, contextValue)
+	err = servicemanager.TeamToken.RemoveRole(ctx, tokenID, roleName, contextValue)
 	if err == authTypes.ErrTeamTokenNotFound {
 		w.WriteHeader(http.StatusNotFound)
 		return nil

@@ -81,7 +81,7 @@ func (v *Volume) validate(ctx context.Context) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = servicemanager.Team.FindByName(v.TeamOwner)
+	_, err = servicemanager.Team.FindByName(ctx, v.TeamOwner)
 	if err != nil {
 		return errors.WithStack(err)
 	}

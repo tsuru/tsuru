@@ -23,6 +23,7 @@ func MigrateRCEvents() error {
 }
 
 func setAllowed(evt *event.Event) (err error) {
+	ctx := context.TODO()
 	defer func() {
 		if err != nil {
 			fmt.Printf("setting global context to evt %q: %s\n", evt.String(), err)
@@ -32,7 +33,7 @@ func setAllowed(evt *event.Event) (err error) {
 	switch evt.Target.Type {
 	case event.TargetTypeApp:
 		var a *app.App
-		a, err = app.GetByName(context.TODO(), evt.Target.Value)
+		a, err = app.GetByName(ctx, evt.Target.Value)
 		if err != nil {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
 			if evt.Cancelable {
@@ -51,7 +52,7 @@ func setAllowed(evt *event.Event) (err error) {
 	case event.TargetTypeTeam:
 		evt.Allowed = event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, evt.Target.Value))
 	case event.TargetTypeService:
-		s, errGet := service.Get(evt.Target.Value)
+		s, errGet := service.Get(ctx, evt.Target.Value)
 		if errGet != nil {
 			evt.Allowed = event.Allowed(permission.PermServiceReadEvents)
 			return errGet
@@ -68,7 +69,7 @@ func setAllowed(evt *event.Event) (err error) {
 			return nil
 		}
 		var si *service.ServiceInstance
-		si, err = service.GetServiceInstance(v[0], v[1])
+		si, err = service.GetServiceInstance(ctx, v[0], v[1])
 		if err != nil {
 			evt.Allowed = event.Allowed(permission.PermServiceInstanceReadEvents)
 			return err

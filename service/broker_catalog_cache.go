@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -34,7 +35,7 @@ func CatalogCacheService() (service.ServiceBrokerCatalogCacheService, error) {
 	return &serviceBrokerCatalogCacheService{dbDriver.ServiceBrokerCatalogCacheStorage}, nil
 }
 
-func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog service.BrokerCatalog) error {
+func (s *serviceBrokerCatalogCacheService) Save(ctx context.Context, brokerName string, catalog service.BrokerCatalog) error {
 	b, err := json.Marshal(catalog)
 	if err != nil {
 		return err
@@ -44,11 +45,11 @@ func (s *serviceBrokerCatalogCacheService) Save(brokerName string, catalog servi
 		Value:    string(b),
 		ExpireAt: s.expirationTime(brokerName),
 	}
-	return s.storage.Put(entry)
+	return s.storage.Put(ctx, entry)
 }
 
-func (s *serviceBrokerCatalogCacheService) Load(brokerName string) (*service.BrokerCatalog, error) {
-	entry, err := s.storage.Get(brokerName)
+func (s *serviceBrokerCatalogCacheService) Load(ctx context.Context, brokerName string) (*service.BrokerCatalog, error) {
+	entry, err := s.storage.Get(ctx, brokerName)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -29,7 +30,7 @@ func (s *S) TestGetPlansByServiceName(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	plans, err := GetPlansByService(srvc, "")
+	plans, err := GetPlansByService(context.TODO(), srvc, "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
 		{Name: "ignite", Description: "some value"},
@@ -47,7 +48,7 @@ func (s *S) TestGetPlanByServiceNameAndPlanName(c *check.C) {
 	srvc := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	plan, err := GetPlanByServiceAndPlanName(srvc, "small", "")
+	plan, err := GetPlanByServiceAndPlanName(context.TODO(), srvc, "small", "")
 	c.Assert(err, check.IsNil)
 	expected := Plan{
 		Name:        "small",
@@ -60,7 +61,7 @@ func (s *S) TestGetPlansByServiceNameWithoutEndpoint(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	plans, err := GetPlansByService(srvc, "")
+	plans, err := GetPlansByService(context.TODO(), srvc, "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{}
 	c.Assert(plans, check.DeepEquals, expected)

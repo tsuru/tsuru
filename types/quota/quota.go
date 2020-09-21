@@ -5,6 +5,7 @@
 package quota
 
 import (
+	"context"
 	"errors"
 	"fmt"
 )
@@ -31,16 +32,16 @@ type QuotaItemInUse interface {
 }
 
 type QuotaService interface {
-	Inc(item QuotaItem, delta int) error
-	Set(item QuotaItem, quantity int) error
-	SetLimit(item QuotaItem, limit int) error
-	Get(item QuotaItem) (*Quota, error)
+	Inc(ctx context.Context, item QuotaItem, delta int) error
+	Set(ctx context.Context, item QuotaItem, quantity int) error
+	SetLimit(ctx context.Context, item QuotaItem, limit int) error
+	Get(ctx context.Context, item QuotaItem) (*Quota, error)
 }
 
 type QuotaStorage interface {
-	SetLimit(name string, limit int) error
-	Get(name string) (*Quota, error)
-	Set(name string, quantity int) error
+	SetLimit(ctx context.Context, name string, limit int) error
+	Get(ctx context.Context, name string) (*Quota, error)
+	Set(ctx context.Context, name string, quantity int) error
 }
 
 type QuotaExceededError struct {

@@ -103,7 +103,7 @@ func (s *S) TestDelete(c *check.C) {
 	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
-	err = servicemanager.UserQuota.Inc(s.user, 1)
+	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
@@ -856,7 +856,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	s.provisioner.AddUnits(context.TODO(), &a, 6, "web", newSuccessfulAppVersion(c, &a), nil)
 	err = a.RemoveUnits(context.TODO(), 4, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	quota, err := servicemanager.AppQuota.Get(&a)
+	quota, err := servicemanager.AppQuota.Get(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(2e9, func() bool {
 		return quota.InUse == 2

@@ -4,6 +4,8 @@
 
 package quota
 
+import "context"
+
 var (
 	_ QuotaStorage = &MockQuotaStorage{}
 	_ QuotaService = &MockQuotaService{}
@@ -15,15 +17,15 @@ type MockQuotaStorage struct {
 	OnGet      func(string) (*Quota, error)
 }
 
-func (m *MockQuotaStorage) Set(name string, limit int) error {
+func (m *MockQuotaStorage) Set(ctx context.Context, name string, limit int) error {
 	return m.OnSet(name, limit)
 }
 
-func (m *MockQuotaStorage) SetLimit(name string, limit int) error {
+func (m *MockQuotaStorage) SetLimit(ctx context.Context, name string, limit int) error {
 	return m.OnSetLimit(name, limit)
 }
 
-func (m *MockQuotaStorage) Get(name string) (*Quota, error) {
+func (m *MockQuotaStorage) Get(ctx context.Context, name string) (*Quota, error) {
 	return m.OnGet(name)
 }
 
@@ -34,27 +36,27 @@ type MockQuotaService struct {
 	OnGet      func(QuotaItem) (*Quota, error)
 }
 
-func (m *MockQuotaService) Inc(item QuotaItem, delta int) error {
+func (m *MockQuotaService) Inc(ctx context.Context, item QuotaItem, delta int) error {
 	if m.OnInc == nil {
 		return nil
 	}
 	return m.OnInc(item, delta)
 }
 
-func (m *MockQuotaService) SetLimit(item QuotaItem, limit int) error {
+func (m *MockQuotaService) SetLimit(ctx context.Context, item QuotaItem, limit int) error {
 	if m.OnSetLimit == nil {
 		return nil
 	}
 	return m.OnSetLimit(item, limit)
 }
 
-func (m *MockQuotaService) Set(item QuotaItem, quantity int) error {
+func (m *MockQuotaService) Set(ctx context.Context, item QuotaItem, quantity int) error {
 	if m.OnSet == nil {
 		return nil
 	}
 	return m.OnSet(item, quantity)
 }
 
-func (m *MockQuotaService) Get(item QuotaItem) (*Quota, error) {
+func (m *MockQuotaService) Get(ctx context.Context, item QuotaItem) (*Quota, error) {
 	return m.OnGet(item)
 }

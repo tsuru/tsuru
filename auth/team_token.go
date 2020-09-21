@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"crypto"
 	"fmt"
 	"time"
@@ -70,12 +71,12 @@ func TeamTokenService() (authTypes.TeamTokenService, error) {
 	}, nil
 }
 
-func (s *teamTokenService) Authenticate(header string) (authTypes.Token, error) {
+func (s *teamTokenService) Authenticate(ctx context.Context, header string) (authTypes.Token, error) {
 	tokenStr, err := ParseToken(header)
 	if err != nil {
 		return nil, err
 	}
-	storedToken, err := s.storage.FindByToken(tokenStr)
+	storedToken, err := s.storage.FindByToken(ctx, tokenStr)
 	if err != nil {
 		if err == authTypes.ErrTeamTokenNotFound {
 			err = ErrInvalidToken
@@ -86,7 +87,7 @@ func (s *teamTokenService) Authenticate(header string) (authTypes.Token, error) 
 	if !storedToken.ExpiresAt.IsZero() && storedToken.ExpiresAt.Before(now) {
 		return nil, authTypes.ErrTeamTokenExpired
 	}
-	err = s.storage.UpdateLastAccess(tokenStr)
+	err = s.storage.UpdateLastAccess(ctx, tokenStr)
 	if err != nil {
 		return nil, err
 	}
@@ -94,16 +95,16 @@ func (s *teamTokenService) Authenticate(header string) (authTypes.Token, error) 
 	return &token, nil
 }
 
-func (s *teamTokenService) Delete(tokenID string) error {
-	return s.storage.Delete(tokenID)
+func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
+	return s.storage.Delete(ctx, tokenID)
 }
 
-func (s *teamTokenService) Create(args authTypes.TeamTokenCreateArgs, token authTypes.Token) (authTypes.TeamToken, error) {
+func (s *teamTokenService) Create(ctx context.Context, args authTypes.TeamTokenCreateArgs, token authTypes.Token) (authTypes.TeamToken, error) {
 	u, err := token.User()
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
-	_, err = servicemanager.Team.FindByName(args.Team)
+	_, err = servicemanager.Team.FindByName(ctx, args.Team)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -125,27 +126,27 @@ func (s *teamTokenService) Create(args authTypes.TeamTokenCreateArgs, token auth
 	if !validation.ValidateName(resultToken.TokenID) {
 		return authTypes.TeamToken{}, errors.New("invalid token_id")
 	}
-	err = s.storage.Insert(resultToken)
+	err = s.storage.Insert(ctx, resultToken)
 	return resultToken, err
 }
 
-func (s *teamTokenService) AddRole(tokenID string, roleName, contextValue string) error {
+func (s *teamTokenService) AddRole(ctx context.Context, tokenID string, roleName, contextValue string) error {
 	_, err := permission.FindRole(roleName)
 	if err != nil {
 		return err
 	}
-	token, err := s.storage.FindByTokenID(tokenID)
+	token, err := s.storage.FindByTokenID(ctx, tokenID)
 	if err != nil {
 		return err
 	}
 	token.Roles = append(token.Roles, authTypes.RoleInstance{
 		Name: roleName, ContextValue: contextValue,
 	})
-	return s.storage.Update(*token)
+	return s.storage.Update(ctx, *token)
 }
 
-func (s *teamTokenService) RemoveRole(tokenID string, roleName, contextValue string) error {
-	token, err := s.storage.FindByTokenID(tokenID)
+func (s *teamTokenService) RemoveRole(ctx context.Context, tokenID string, roleName, contextValue string) error {
+	token, err := s.storage.FindByTokenID(ctx, tokenID)
 	if err != nil {
 		return err
 	}
@@ -156,11 +157,11 @@ func (s *teamTokenService) RemoveRole(tokenID string, roleName, contextValue str
 			i--
 		}
 	}
-	return s.storage.Update(*token)
+	return s.storage.Update(ctx, *token)
 }
 
-func (s *teamTokenService) FindByTokenID(tokenID string) (authTypes.TeamToken, error) {
-	t, err := s.storage.FindByTokenID(tokenID)
+func (s *teamTokenService) FindByTokenID(ctx context.Context, tokenID string) (authTypes.TeamToken, error) {
+	t, err := s.storage.FindByTokenID(ctx, tokenID)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -182,8 +183,8 @@ func getTokenTeams(t Token) []string {
 	return teams
 }
 
-func (s *teamTokenService) Update(args authTypes.TeamTokenUpdateArgs, t authTypes.Token) (authTypes.TeamToken, error) {
-	token, err := s.storage.FindByTokenID(args.TokenID)
+func (s *teamTokenService) Update(ctx context.Context, args authTypes.TeamTokenUpdateArgs, t authTypes.Token) (authTypes.TeamToken, error) {
+	token, err := s.storage.FindByTokenID(ctx, args.TokenID)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -198,7 +199,7 @@ func (s *teamTokenService) Update(args authTypes.TeamTokenUpdateArgs, t authType
 	if args.Regenerate {
 		token.Token = generateToken(token.Team, crypto.SHA256)
 	}
-	err = s.storage.Update(*token)
+	err = s.storage.Update(ctx, *token)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -216,8 +217,8 @@ func (s *teamTokenService) Update(args authTypes.TeamTokenUpdateArgs, t authType
 	return *token, nil
 }
 
-func (s *teamTokenService) Info(tokenID string, t authTypes.Token) (authTypes.TeamToken, error) {
-	token, err := s.storage.FindByTokenID(tokenID)
+func (s *teamTokenService) Info(ctx context.Context, tokenID string, t authTypes.Token) (authTypes.TeamToken, error) {
+	token, err := s.storage.FindByTokenID(ctx, tokenID)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -235,8 +236,8 @@ func (s *teamTokenService) Info(tokenID string, t authTypes.Token) (authTypes.Te
 	return *token, nil
 }
 
-func (s *teamTokenService) FindByUserToken(t authTypes.Token) ([]authTypes.TeamToken, error) {
-	teamTokens, err := s.storage.FindByTeams(getTokenTeams(t))
+func (s *teamTokenService) FindByUserToken(ctx context.Context, t authTypes.Token) ([]authTypes.TeamToken, error) {
+	teamTokens, err := s.storage.FindByTeams(ctx, getTokenTeams(t))
 	if err != nil {
 		return nil, err
 	}

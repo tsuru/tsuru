@@ -138,12 +138,12 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	shutdown.Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
-	instance, err = service.GetServiceInstance("mysql", "my-mysql")
+	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
 		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
 	})
-	instance, err = service.GetServiceInstance("mysql2", "my-mysql")
+	instance, err = service.GetServiceInstance(context.TODO(), "mysql2", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
 		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
@@ -227,7 +227,7 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	shutdown.Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
-	instance, err = service.GetServiceInstance("mysql", "my-mysql")
+	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
 	c.Assert(err, check.IsNil)
 	sort.Slice(instance.BoundUnits, func(i int, j int) bool {
 		return instance.BoundUnits[i].ID < instance.BoundUnits[j].ID
@@ -314,13 +314,13 @@ func (s *SyncSuite) TestBindSyncerError(c *check.C) {
 	shutdown.Do(ctx, ioutil.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
-	instance, err = service.GetServiceInstance("mysql", "my-mysql")
+	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{
 		{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()},
 		{AppName: a.Name, ID: "wrong", IP: "wrong"},
 	})
-	instance, err = service.GetServiceInstance("mysql2", "my-mysql")
+	instance, err = service.GetServiceInstance(context.TODO(), "mysql2", "my-mysql")
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.BoundUnits, check.DeepEquals, []service.Unit{})
 	evts, err := event.All()

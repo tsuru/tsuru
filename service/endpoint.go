@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ type endpointClient struct {
 	password    string
 }
 
-func (c *endpointClient) Create(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	var err error
 	var resp *http.Response
 	params := map[string][]string{
@@ -90,7 +91,7 @@ func (c *endpointClient) Create(instance *ServiceInstance, evt *event.Event, req
 	return log.WrapError(err)
 }
 
-func (c *endpointClient) Update(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call update of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
 		"description": {instance.Description},
@@ -115,7 +116,7 @@ func (c *endpointClient) Update(instance *ServiceInstance, evt *event.Event, req
 	return err
 }
 
-func (c *endpointClient) Destroy(instance *ServiceInstance, evt *event.Event, requestID string) error {
+func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error {
 	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	params := map[string][]string{
 		"user":    {evt.Owner.Name},
@@ -135,7 +136,7 @@ func (c *endpointClient) Destroy(instance *ServiceInstance, evt *event.Event, re
 	return err
 }
 
-func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
@@ -182,7 +183,7 @@ func (c *endpointClient) BindApp(instance *ServiceInstance, app bind.App, bindPa
 	return nil, log.WrapError(err)
 }
 
-func (c *endpointClient) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -214,7 +215,7 @@ func (c *endpointClient) BindUnit(instance *ServiceInstance, app bind.App, unit 
 	return nil
 }
 
-func (c *endpointClient) UnbindApp(instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
+func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -244,7 +245,7 @@ func (c *endpointClient) UnbindApp(instance *ServiceInstance, app bind.App, evt 
 	return err
 }
 
-func (c *endpointClient) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+func (c *endpointClient) UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
@@ -272,7 +273,7 @@ func (c *endpointClient) UnbindUnit(instance *ServiceInstance, app bind.App, uni
 	return err
 }
 
-func (c *endpointClient) Status(instance *ServiceInstance, requestID string) (string, error) {
+func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error) {
 	log.Debugf("Attempting to call status of service instance %q at %q api", instance.Name, instance.ServiceName)
 	var (
 		resp *http.Response
@@ -304,7 +305,7 @@ func (c *endpointClient) Status(instance *ServiceInstance, requestID string) (st
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/<name>
-func (c *endpointClient) Info(instance *ServiceInstance, requestID string) ([]map[string]string, error) {
+func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
 	resp, err := c.issueRequest(url, "GET", nil, requestID)
@@ -327,7 +328,7 @@ func (c *endpointClient) Info(instance *ServiceInstance, requestID string) ([]ma
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/plans
-func (c *endpointClient) Plans(requestID string) ([]Plan, error) {
+func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, error) {
 	url := "/resources/plans"
 	resp, err := c.issueRequest(url, "GET", nil, requestID)
 	if err != nil {
@@ -347,7 +348,7 @@ func (c *endpointClient) Plans(requestID string) ([]Plan, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *endpointClient) Proxy(path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	delete(q, "callback")
 	delete(q, ":service")           // injected as named param by DelayedRouter

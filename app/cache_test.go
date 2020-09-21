@@ -5,6 +5,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/types/cache"
 	check "gopkg.in/check.v1"
 )
@@ -22,7 +24,7 @@ func (s *S) TestCacheCreate(c *check.C) {
 			},
 		},
 	}
-	err := service.Create(e)
+	err := service.Create(context.TODO(), e)
 	c.Assert(err, check.IsNil)
 }
 
@@ -37,7 +39,7 @@ func (s *S) TestCacheList(c *check.C) {
 			},
 		},
 	}
-	cs, err := service.List("k1", "k2")
+	cs, err := service.List(context.TODO(), "k1", "k2")
 	c.Assert(err, check.IsNil)
 	c.Assert(cs, check.HasLen, 2)
 }
@@ -54,7 +56,7 @@ func (s *S) TestCacheFindByName(c *check.C) {
 			},
 		},
 	}
-	entry, err := service.FindByName("k1")
+	entry, err := service.FindByName(context.TODO(), "k1")
 	c.Assert(err, check.IsNil)
 	c.Assert(entry.Key, check.Equals, "k1")
 	c.Assert(entry.Value, check.Equals, "v1")

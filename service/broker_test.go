@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 
@@ -30,7 +31,7 @@ func (s *S) TestBrokerClientPlans(c *check.C) {
 	ClientFactory = osbfake.NewFakeClientFunc(config)
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
-	plans, err := client.Plans("")
+	plans, err := client.Plans(context.TODO(), "")
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []Plan{
 		{Name: "plan1", Description: "First plan"},
@@ -93,12 +94,12 @@ func (s *S) TestBrokerClientCreate(c *check.C) {
 	}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
-	err = client.Create(&instance, ev, "request-id")
+	err = client.Create(context.TODO(), &instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(provisioned, check.DeepEquals, true)
 	provisioned = false
 	instance.PlanName = "premium"
-	err = client.Create(&instance, ev, "request-id")
+	err = client.Create(context.TODO(), &instance, ev, "request-id")
 	c.Assert(err, check.ErrorMatches, `invalid plan: premium`)
 	c.Assert(provisioned, check.DeepEquals, false)
 }
@@ -149,7 +150,7 @@ func (s *S) TestBrokerClientStatus(c *check.C) {
 	instance := createTestInstance()
 	instance.PlanName = "plan2"
 	instance.BrokerData.PlanID = "p2"
-	status, err := client.Status(&instance, "req-id")
+	status, err := client.Status(context.TODO(), &instance, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.DeepEquals, "succeeded - last operation done!")
 }
@@ -193,7 +194,7 @@ func (s *S) TestBrokerClientDestroy(c *check.C) {
 	client, err := newClient(serviceTypes.Broker{Name: "broker"}, "service")
 	c.Assert(err, check.IsNil)
 	instance := createTestInstance()
-	err = client.Destroy(&instance, ev, "req-id")
+	err = client.Destroy(context.TODO(), &instance, ev, "req-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, 1)
 }
@@ -273,14 +274,14 @@ func (s *S) TestBrokerClientBindApp(c *check.C) {
 	params := BindAppParameters(map[string]interface{}{
 		"param1": "val1",
 	})
-	envs, err := client.BindApp(&instance, a, params, ev, "request-id")
+	envs, err := client.BindApp(context.TODO(), &instance, a, params, ev, "request-id")
 	c.Assert(err, check.IsNil)
 	c.Assert(envs, check.DeepEquals, map[string]string{
 		"env1": "val1",
 		"env2": "val2",
 		"env3": "3",
 	})
-	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	storedInstance, err := GetServiceInstance(context.TODO(), instance.ServiceName, instance.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
 		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
@@ -344,9 +345,9 @@ func (s *S) TestBrokerClientUnbindApp(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("theapp", "python", 1)
-	err = client.UnbindApp(&instance, a, ev, "request-id")
+	err = client.UnbindApp(context.TODO(), &instance, a, ev, "request-id")
 	c.Assert(err, check.IsNil)
-	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	storedInstance, err := GetServiceInstance(context.TODO(), instance.ServiceName, instance.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
 		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
@@ -408,9 +409,9 @@ func (s *S) TestBrokerClientUpdate(c *check.C) {
 	instance.Parameters = map[string]interface{}{
 		"param1": "val1",
 	}
-	err = client.Update(&instance, ev, "request-id")
+	err = client.Update(context.TODO(), &instance, ev, "request-id")
 	c.Assert(err, check.IsNil)
-	storedInstance, err := GetServiceInstance(instance.ServiceName, instance.Name)
+	storedInstance, err := GetServiceInstance(context.TODO(), instance.ServiceName, instance.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(storedInstance.BrokerData, check.DeepEquals, &BrokerInstanceData{
 		UUID:             "e7252f14-54be-45df-bd40-e988a0e41059",
@@ -433,7 +434,7 @@ func (s *S) TestBrokerClientInfo(c *check.C) {
 			"param2": 4,
 		},
 	}
-	info, err := client.Info(&instance, "")
+	info, err := client.Info(context.TODO(), &instance, "")
 	c.Assert(err, check.IsNil)
 	sort.Slice(info, func(i int, j int) bool {
 		return info[i]["label"] < info[j]["label"]

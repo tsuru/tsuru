@@ -5,6 +5,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/storage"
 	"github.com/tsuru/tsuru/types/cache"
 )
@@ -26,14 +28,14 @@ func CacheService() (cache.AppCacheService, error) {
 	return &cacheService{dbDriver.AppCacheStorage}, nil
 }
 
-func (s *cacheService) Create(entry cache.CacheEntry) error {
-	return s.storage.Put(entry)
+func (s *cacheService) Create(ctx context.Context, entry cache.CacheEntry) error {
+	return s.storage.Put(ctx, entry)
 }
 
-func (s *cacheService) List(keys ...string) ([]cache.CacheEntry, error) {
-	return s.storage.GetAll(keys...)
+func (s *cacheService) List(ctx context.Context, keys ...string) ([]cache.CacheEntry, error) {
+	return s.storage.GetAll(ctx, keys...)
 }
 
-func (s *cacheService) FindByName(key string) (cache.CacheEntry, error) {
-	return s.storage.Get(key)
+func (s *cacheService) FindByName(ctx context.Context, key string) (cache.CacheEntry, error) {
+	return s.storage.Get(ctx, key)
 }

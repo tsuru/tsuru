@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -58,7 +59,7 @@ func (b *brokerService) List() ([]serviceTypes.Broker, error) {
 	return b.storage.FindAll()
 }
 
-func getBrokeredServices() ([]Service, error) {
+func getBrokeredServices(ctx context.Context) ([]Service, error) {
 	brokerService, err := BrokerService()
 	if err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func getBrokeredServices() ([]Service, error) {
 			log.Errorf("[Broker=%v] error creating broker client: %v.", b.Name, err)
 			continue
 		}
-		cat, err := c.getCatalog(b.Name)
+		cat, err := c.getCatalog(ctx, b.Name)
 		if err != nil {
 			log.Errorf("[Broker=%v] error getting catalog: %v.", b.Name, err)
 			continue
@@ -88,7 +89,7 @@ func getBrokeredServices() ([]Service, error) {
 
 // getBrokeredService retrieves the service information from a service that is
 // offered by a broker. name is in the format "<broker>serviceNameBrokerSep<service>".
-func getBrokeredService(name string) (Service, error) {
+func getBrokeredService(ctx context.Context, name string) (Service, error) {
 	catalogName, serviceName, err := splitBrokerService(name)
 	if err != nil {
 		return Service{}, err
@@ -97,7 +98,7 @@ func getBrokeredService(name string) (Service, error) {
 	if err != nil {
 		return Service{}, err
 	}
-	s, _, err := client.getService(serviceName, catalogName)
+	s, _, err := client.getService(ctx, serviceName, catalogName)
 	return s, err
 }
 
