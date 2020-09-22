@@ -582,6 +582,10 @@ func PoolService() (provisionTypes.PoolService, error) {
 	return &poolService{storage: poolStorage}, nil
 }
 
+func (s *poolService) FindByName(ctx context.Context, name string) (*provisionTypes.Pool, error) {
+	return s.storage.FindByName(ctx, name)
+}
+
 func (s *poolService) List(ctx context.Context) ([]provisionTypes.Pool, error) {
 	return s.storage.FindAll(ctx)
 }

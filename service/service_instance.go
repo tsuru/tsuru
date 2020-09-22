@@ -27,16 +27,17 @@ import (
 )
 
 var (
-	ErrServiceInstanceNotFound   = errors.New("service instance not found")
-	ErrInvalidInstanceName       = errors.New("invalid service instance name")
-	ErrInstanceNameAlreadyExists = errors.New("instance name already exists.")
-	ErrAccessNotAllowed          = errors.New("user does not have access to this service instance")
-	ErrTeamMandatory             = errors.New("please specify the team that owns the service instance")
-	ErrAppAlreadyBound           = errors.New("app is already bound to this service instance")
-	ErrAppNotBound               = errors.New("app is not bound to this service instance")
-	ErrUnitNotBound              = errors.New("unit is not bound to this service instance")
-	ErrServiceInstanceBound      = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
-	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
+	ErrServiceInstanceNotFound         = errors.New("service instance not found")
+	ErrInvalidInstanceName             = errors.New("invalid service instance name")
+	ErrInstanceNameAlreadyExists       = errors.New("instance name already exists.")
+	ErrAccessNotAllowed                = errors.New("user does not have access to this service instance")
+	ErrTeamMandatory                   = errors.New("please specify the team that owns the service instance")
+	ErrAppAlreadyBound                 = errors.New("app is already bound to this service instance")
+	ErrAppNotBound                     = errors.New("app is not bound to this service instance")
+	ErrUnitNotBound                    = errors.New("unit is not bound to this service instance")
+	ErrServiceInstanceBound            = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	ErrMultiClusterServiceRequiresPool = errors.New("multi-cluster service instance requires a pool")
+	instanceNameRegexp                 = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -51,6 +52,12 @@ type ServiceInstance struct {
 	Description string                 `json:"description"`
 	Tags        []string               `json:"tags"`
 	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	// Pool is the pool name which the Service Instance should run into.
+	// This field is mandatory iff the parent Service is running in
+	// multi-cluster mode (see Service.IsMultiCluster field)
+	//
+	// NOTE: after the service instance is created, this field turns immutable.
+	Pool string `json:"pool,omitempty"`
 
 	// BrokerData stores data used by Instances provisioned by Brokers
 	BrokerData *BrokerInstanceData `json:"broker_data,omitempty" bson:"broker_data"`
@@ -421,12 +428,16 @@ func genericServiceInstancesFilter(services interface{}, teams []string) bson.M 
 	return query
 }
 
-func validateServiceInstance(si ServiceInstance, s *Service) error {
+func validateServiceInstance(ctx context.Context, si ServiceInstance, s *Service) error {
 	err := validateServiceInstanceName(s.Name, si.Name)
 	if err != nil {
 		return err
 	}
-	return validateServiceInstanceTeamOwner(si)
+	err = validateServiceInstanceTeamOwner(si)
+	if err != nil {
+		return err
+	}
+	return validateMultiCluster(ctx, s, si)
 }
 
 func validateServiceInstanceName(service, instance string) error {
@@ -461,7 +472,7 @@ func validateServiceInstanceTeamOwner(si ServiceInstance) error {
 }
 
 func CreateServiceInstance(ctx context.Context, instance ServiceInstance, service *Service, evt *event.Event, requestID string) error {
-	err := validateServiceInstance(instance, service)
+	err := validateServiceInstance(ctx, instance, service)
 	if err != nil {
 		return err
 	}
@@ -593,4 +604,18 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 		}
 	}
 	return endpoint.Proxy(ctx, fmt.Sprintf("%s%s", prefix, path), evt, requestID, w, r)
+}
+
+func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) error {
+	if s == nil || !s.IsMultiCluster {
+		return nil
+	}
+	if si.Pool == "" {
+		return ErrMultiClusterServiceRequiresPool
+	}
+	_, err := servicemanager.Pool.FindByName(ctx, si.Pool)
+	if err != nil {
+		return err
+	}
+	return nil
 }
