@@ -54,7 +54,7 @@ var _ = check.Suite(&BuildSuite{})
 func (s *BuildSuite) createUserAndTeam(c *check.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.token = userWithPermission(c, permission.Permission{

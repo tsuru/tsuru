@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -45,9 +46,9 @@ func (s *HandlerSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
 }
@@ -292,7 +293,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *check.C) {
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
-	token, err := nativeScheme.AppLogin("my-app")
+	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
@@ -307,7 +308,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *check.C) {
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *check.C) {
-	token, err := nativeScheme.AppLogin("my-app")
+	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
@@ -322,7 +323,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *check.C) {
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *check.C) {
-	token, err := nativeScheme.AppLogin("my-app")
+	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
 	c.Assert(err, check.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -354,7 +355,7 @@ func migrateBSEnvs() error {
 	if err != nil {
 		return err
 	}
-	_, err = nodecontainer.InitializeBS(app.AuthScheme, app.InternalAppName)
+	_, err = nodecontainer.InitializeBS(context.Background(), app.AuthScheme, app.InternalAppName)
 	if err != nil {
 		return err
 	}

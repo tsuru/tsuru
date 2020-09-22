@@ -5,6 +5,8 @@
 package native
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -26,7 +28,12 @@ func init() {
 	auth.RegisterScheme("native", NativeScheme{})
 }
 
-func (s NativeScheme) Login(params map[string]string) (auth.Token, error) {
+var (
+	_ auth.Scheme        = &NativeScheme{}
+	_ auth.ManagedScheme = &NativeScheme{}
+)
+
+func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	email, ok := params["email"]
 	if !ok {
 		return nil, ErrMissingEmailError
@@ -46,23 +53,23 @@ func (s NativeScheme) Login(params map[string]string) (auth.Token, error) {
 	return token, nil
 }
 
-func (s NativeScheme) Auth(token string) (auth.Token, error) {
+func (s NativeScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return getToken(token)
 }
 
-func (s NativeScheme) Logout(token string) error {
+func (s NativeScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
 }
 
-func (s NativeScheme) AppLogin(appName string) (auth.Token, error) {
+func (s NativeScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
 	return createApplicationToken(appName)
 }
 
-func (s NativeScheme) AppLogout(token string) error {
-	return s.Logout(token)
+func (s NativeScheme) AppLogout(ctx context.Context, token string) error {
+	return s.Logout(ctx, token)
 }
 
-func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
+func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
 	if !validation.ValidateEmail(user.Email) {
 		return nil, ErrInvalidEmail
 	}
@@ -81,7 +88,7 @@ func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
 	return user, nil
 }
 
-func (s NativeScheme) ChangePassword(token auth.Token, oldPassword string, newPassword string) error {
+func (s NativeScheme) ChangePassword(ctx context.Context, token auth.Token, oldPassword string, newPassword string) error {
 	user, err := auth.ConvertNewUser(token.User())
 	if err != nil {
 		return err
@@ -97,7 +104,7 @@ func (s NativeScheme) ChangePassword(token auth.Token, oldPassword string, newPa
 	return user.Update()
 }
 
-func (s NativeScheme) StartPasswordReset(user *auth.User) error {
+func (s NativeScheme) StartPasswordReset(ctx context.Context, user *auth.User) error {
 	passToken, err := createPasswordToken(user)
 	if err != nil {
 		return err
@@ -109,7 +116,7 @@ func (s NativeScheme) StartPasswordReset(user *auth.User) error {
 // ResetPassword actually resets the password of the user. It needs the token
 // string. The new password will be a random string, that will be then sent to
 // the user email.
-func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
+func (s NativeScheme) ResetPassword(ctx context.Context, user *auth.User, resetToken string) error {
 	if resetToken == "" {
 		return auth.ErrInvalidToken
 	}
@@ -134,7 +141,7 @@ func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
 	return user.Update()
 }
 
-func (s NativeScheme) Remove(u *auth.User) error {
+func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
 	err := deleteAllTokens(u.Email)
 	if err != nil {
 		return err
@@ -146,6 +153,6 @@ func (s NativeScheme) Name() string {
 	return "native"
 }
 
-func (s NativeScheme) Info() (auth.SchemeInfo, error) {
+func (s NativeScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	return nil, nil
 }

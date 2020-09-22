@@ -98,7 +98,7 @@ func (s *oAuthScheme) loadConfig() (oauth2.Config, error) {
 	}, nil
 }
 
-func (s *oAuthScheme) Login(params map[string]string) (auth.Token, error) {
+func (s *oAuthScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	conf, err := s.loadConfig()
 	if err != nil {
 		return nil, err
@@ -173,25 +173,25 @@ func (s *oAuthScheme) handleToken(t *oauth2.Token) (*tokenWrapper, error) {
 	return &token, nil
 }
 
-func (s *oAuthScheme) AppLogin(appName string) (auth.Token, error) {
+func (s *oAuthScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
 	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogin(appName)
+	return nativeScheme.AppLogin(ctx, appName)
 }
 
-func (s *oAuthScheme) AppLogout(token string) error {
+func (s *oAuthScheme) AppLogout(ctx context.Context, token string) error {
 	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogout(token)
+	return nativeScheme.AppLogout(ctx, token)
 }
 
-func (s *oAuthScheme) Logout(token string) error {
+func (s *oAuthScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
 }
 
-func (s *oAuthScheme) Auth(header string) (auth.Token, error) {
+func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, error) {
 	token, err := getToken(header)
 	if err != nil {
 		nativeScheme := native.NativeScheme{}
-		token, nativeErr := nativeScheme.Auth(header)
+		token, nativeErr := nativeScheme.Auth(ctx, header)
 		if nativeErr == nil && token.IsAppToken() {
 			return token, nil
 		}
@@ -207,7 +207,7 @@ func (s *oAuthScheme) Name() string {
 	return "oauth"
 }
 
-func (s *oAuthScheme) Info() (auth.SchemeInfo, error) {
+func (s *oAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	config, err := s.loadConfig()
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (s *oAuthScheme) parse(infoResponse *http.Response) (userData, error) {
 	return user, nil
 }
 
-func (s *oAuthScheme) Create(user *auth.User) (*auth.User, error) {
+func (s *oAuthScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
 	user.Password = ""
 	err := user.Create()
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *oAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	return user, nil
 }
 
-func (s *oAuthScheme) Remove(u *auth.User) error {
+func (s *oAuthScheme) Remove(ctx context.Context, u *auth.User) error {
 	err := deleteAllTokens(u.Email)
 	if err != nil {
 		return err

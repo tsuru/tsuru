@@ -5,6 +5,7 @@
 package main
 
 import (
+	stdContext "context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -57,7 +58,7 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 			return errors.New("Passwords didn't match.")
 		}
 	}
-	user, err = app.AuthScheme.Create(&auth.User{
+	user, err = app.AuthScheme.Create(stdContext.Background(), &auth.User{
 		Email:    email,
 		Password: password,
 	})
@@ -110,7 +111,7 @@ func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	t, err := app.AuthScheme.AppLogin(app.InternalAppName)
+	t, err := app.AuthScheme.AppLogin(stdContext.TODO(), app.InternalAppName)
 	if err != nil {
 		return err
 	}

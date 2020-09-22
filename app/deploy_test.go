@@ -222,7 +222,7 @@ func normalizeTS(deploys []DeployData) {
 func (s *S) TestListAllDeploysSkipAndLimit(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
 	AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := &authTypes.Team{Name: "team"}
 	c.Assert(err, check.IsNil)

@@ -646,7 +646,7 @@ func startServer(handler http.Handler) error {
 		return err
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
-	_, err = nodecontainer.InitializeBS(app.AuthScheme, app.InternalAppName)
+	_, err = nodecontainer.InitializeBS(ctx, app.AuthScheme, app.InternalAppName)
 	if err != nil {
 		return err
 	}

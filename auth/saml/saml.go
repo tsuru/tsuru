@@ -5,6 +5,7 @@
 package saml
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -47,8 +48,8 @@ func init() {
 	auth.RegisterScheme("saml", &SAMLAuthScheme{})
 }
 
-func (s SAMLAuthScheme) AppLogout(token string) error {
-	return s.Logout(token)
+func (s SAMLAuthScheme) AppLogout(ctx context.Context, token string) error {
+	return s.Logout(ctx, token)
 }
 
 // This method loads basic config and returns a copy of the
@@ -132,7 +133,7 @@ func Metadata() (string, error) {
 	return md, nil
 }
 
-func (s *SAMLAuthScheme) Login(params map[string]string) (auth.Token, error) {
+func (s *SAMLAuthScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	_, err := s.loadConfig()
 	if err != nil {
 		return nil, err
@@ -237,16 +238,16 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	return nil
 }
 
-func (s *SAMLAuthScheme) AppLogin(appName string) (auth.Token, error) {
+func (s *SAMLAuthScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
 	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogin(appName)
+	return nativeScheme.AppLogin(ctx, appName)
 }
 
-func (s *SAMLAuthScheme) Logout(token string) error {
+func (s *SAMLAuthScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
 }
 
-func (s *SAMLAuthScheme) Auth(token string) (auth.Token, error) {
+func (s *SAMLAuthScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return getToken(token)
 }
 
@@ -304,7 +305,7 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error) {
 	return &sp, nil
 }
 
-func (s *SAMLAuthScheme) Info() (auth.SchemeInfo, error) {
+func (s *SAMLAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	authnRequestData, err := s.generateAuthnRequest()
 	if err != nil {
 		return nil, err
@@ -350,7 +351,7 @@ func (s *SAMLAuthScheme) Parse(xml string) (*saml.Response, error) {
 	return response, nil
 }
 
-func (s *SAMLAuthScheme) Create(user *auth.User) (*auth.User, error) {
+func (s *SAMLAuthScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
 	user.Password = ""
 	if err := user.Create(); err != nil {
 		return nil, err
@@ -358,7 +359,7 @@ func (s *SAMLAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	return user, nil
 }
 
-func (s *SAMLAuthScheme) Remove(u *auth.User) error {
+func (s *SAMLAuthScheme) Remove(ctx context.Context, u *auth.User) error {
 	if err := deleteAllTokens(u.Email); err != nil {
 		return err
 	}

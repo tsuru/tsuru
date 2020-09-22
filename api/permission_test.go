@@ -319,7 +319,7 @@ func (s *S) TestAddPermissionsToARoleSyncGitRepository(c *check.C) {
 	_, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "userWithRole@groundcontrol.com", Password: "123456"}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	err = user.AddRole("test", s.team.Name)
 	c.Assert(err, check.IsNil)
@@ -400,7 +400,7 @@ func (s *S) TestRemovePermissionsFromRoleSyncGitRepository(c *check.C) {
 	err = r.AddPermissions("app.deploy")
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "userWithRole@groundcontrol.com", Password: "123456"}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	err = user.AddRole("test", s.team.Name)
 	c.Assert(err, check.IsNil)
@@ -839,7 +839,7 @@ func (s *S) benchmarkAddPermissionToRole(c *check.C, body string) []string {
 		email := fmt.Sprintf("user-%d@somewhere.com", i)
 		userEmails = append(userEmails, email)
 		user := &auth.User{Email: email, Password: "123456"}
-		_, err = nativeScheme.Create(user)
+		_, err = nativeScheme.Create(context.TODO(), user)
 		c.Assert(err, check.IsNil)
 		err = user.AddRole("test", s.team.Name)
 		c.Assert(err, check.IsNil)

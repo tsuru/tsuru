@@ -5,6 +5,7 @@
 package permissiontest
 
 import (
+	"context"
 	"strings"
 
 	"github.com/tsuru/tsuru/auth"
@@ -15,13 +16,13 @@ import (
 
 func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, perm ...permission.Permission) (*auth.User, auth.Token) {
 	user := &auth.User{Email: baseName + "@groundcontrol.com", Password: "123456", Quota: quota.UnlimitedQuota}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	return user, ExistingUserWithPermission(c, scheme, user, perm...)
 }
 
 func ExistingUserWithPermission(c *check.C, scheme auth.Scheme, user *auth.User, perm ...permission.Permission) auth.Token {
-	token, err := scheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := scheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	for _, p := range perm {
 		baseName := user.Email

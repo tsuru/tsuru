@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,10 +44,10 @@ var _ = check.Suite(&PlatformSuite{})
 
 func createToken(c *check.C) auth.Token {
 	user := &auth.User{Email: "platform-admin" + "@groundcontrol.com", Password: "123456", Quota: quota.UnlimitedQuota}
-	nativeScheme.Remove(user)
-	_, err := nativeScheme.Create(user)
+	nativeScheme.Remove(context.TODO(), user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	role, err := permission.NewRole("platform-admin", string(permTypes.CtxGlobal), "")
 	c.Assert(err, check.IsNil)

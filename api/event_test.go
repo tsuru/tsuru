@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,7 +45,7 @@ var _ = check.Suite(&EventSuite{})
 func (s *EventSuite) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(s.user)
+	_, err := nativeScheme.Create(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.token = userWithPermission(c, permission.Permission{

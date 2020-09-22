@@ -5,6 +5,7 @@
 package native
 
 import (
+	"context"
 	"crypto"
 	"encoding/json"
 	"fmt"
@@ -199,7 +200,7 @@ func (s *S) TestRemoveOldWithoutSetting(c *check.C) {
 
 func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *check.C) {
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	_, err = createToken(&u, "123456")
@@ -213,7 +214,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *check.C) {
 func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 	config.Set("auth:max-simultaneous-sessions", 2)
 	u := auth.User{Email: "para@xmen.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
@@ -249,7 +250,7 @@ func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer config.Set("auth:hash-cost", bcrypt.MinCost)
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
-	_, err = nativeScheme.Create(&u)
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	cost = 0
@@ -267,7 +268,7 @@ func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDef
 
 func (s *S) TestCreateTokenShouldValidateThePassword(c *check.C) {
 	u := auth.User{Email: "me@gmail.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	_, err = createToken(&u, "123")

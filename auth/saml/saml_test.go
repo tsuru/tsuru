@@ -6,6 +6,7 @@ package saml
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"io"
 	"os"
@@ -26,8 +27,8 @@ func (s *S) TestSamlAuthLoginWithEmptyRequestId(c *check.C) {
 	params := make(map[string]string)
 	params["nononono"] = "fakevalue"
 	scheme := SAMLAuthScheme{}
-	scheme.Login(params)
-	_, err := scheme.Login(params)
+	scheme.Login(context.TODO(), params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, errors.ErrMissingRequestIdError)
 }
 
@@ -35,8 +36,8 @@ func (s *S) TestSamlAuthLoginWithInvalidRequestId(c *check.C) {
 	params := make(map[string]string)
 	params["request_id"] = "0123456789"
 	scheme := SAMLAuthScheme{}
-	scheme.Login(params)
-	_, err := scheme.Login(params)
+	scheme.Login(context.TODO(), params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrRequestNotFound)
 }
 
@@ -55,7 +56,7 @@ func (s *S) TestSamlAuthLoginWithExpiredRequest(c *check.C) {
 	params["callback"] = "true"
 	params["xml"] = xml
 	scheme := SAMLAuthScheme{}
-	_, err = scheme.Login(params)
+	_, err = scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrRequestNotFound)
 }
 
@@ -392,11 +393,11 @@ func (s *S) TestSamlCallbackDecodeXml(c *check.C) {
 
 func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
 	scheme := SAMLAuthScheme{}
-	info, err := scheme.Info()
+	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	params := make(map[string]string)
 	params["request_id"] = info["request_id"].(string)
-	_, err = scheme.Login(params)
+	_, err = scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, errors.ErrRequestWaitingForCredentials)
 }
 
@@ -404,8 +405,8 @@ func (s *S) TestSamlCallbackWithEmptyResponse(c *check.C) {
 	params := make(map[string]string)
 	params["callback"] = "true"
 	scheme := SAMLAuthScheme{}
-	scheme.Login(params)
-	_, err := scheme.Login(params)
+	scheme.Login(context.TODO(), params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, errors.ErrMissingFormValueError)
 }
 
@@ -414,8 +415,8 @@ func (s *S) TestSamlCallbackWithInvalidResponse(c *check.C) {
 	params["callback"] = "true"
 	params["xml"] = "<? invalid xml response from idp ?>"
 	scheme := SAMLAuthScheme{}
-	scheme.Login(params)
-	_, err := scheme.Login(params)
+	scheme.Login(context.TODO(), params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, errors.ErrParseResponseError)
 }
 
@@ -434,7 +435,7 @@ func (s *S) TestSamlAuthName(c *check.C) {
 
 func (s *S) TestSamlAuthInfo(c *check.C) {
 	scheme := SAMLAuthScheme{}
-	info, err := scheme.Info()
+	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(info["request_id"], check.NotNil)
 	c.Assert(info["saml_request"], check.NotNil)
@@ -446,7 +447,7 @@ func (s *S) TestSamlAuth(c *check.C) {
 	user := auth.User{Email: "x@x.com"}
 	token, _ := createToken(&user)
 	scheme := SAMLAuthScheme{}
-	strtoken, err := scheme.Auth("bearer " + token.GetValue())
+	strtoken, err := scheme.Auth(context.TODO(), "bearer "+token.GetValue())
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Equals, strtoken.GetValue())
 }
@@ -461,7 +462,7 @@ func (s *S) TestSamlParseXml(c *check.C) {
 
 func (s *S) TestSamlAppLogin(c *check.C) {
 	scheme := SAMLAuthScheme{}
-	token, err := scheme.AppLogin("myApp")
+	token, err := scheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	c.Assert(token.IsAppToken(), check.Equals, true)
 	c.Assert(token.GetAppName(), check.Equals, "myApp")
@@ -469,9 +470,9 @@ func (s *S) TestSamlAppLogin(c *check.C) {
 
 func (s *S) TestSamlAuthWithAppToken(c *check.C) {
 	scheme := SAMLAuthScheme{}
-	appToken, err := scheme.AppLogin("myApp")
+	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
-	token, err := scheme.Auth("bearer " + appToken.GetValue())
+	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)
 	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.IsAppToken(), check.Equals, true)
@@ -482,7 +483,7 @@ func (s *S) TestSamlAuthWithAppToken(c *check.C) {
 func (s *S) TestSamlCreate(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	user := auth.User{Email: "x@x.com"}
-	_, err := scheme.Create(&user)
+	_, err := scheme.Create(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	dbUser, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)

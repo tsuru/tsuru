@@ -72,10 +72,11 @@ func teamTarget(t string) event.Target {
 //   403: Forbidden
 //   409: User already exists
 func createUser(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
 	if !registrationEnabled {
 		token := r.Header.Get("Authorization")
-		t, err := app.AuthScheme.Auth(token)
+		t, err := app.AuthScheme.Auth(ctx, token)
 		if err != nil {
 			return createDisabledErr
 		}
@@ -100,7 +101,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		Email:    email,
 		Password: password,
 	}
-	_, err = app.AuthScheme.Create(&u)
+	_, err = app.AuthScheme.Create(ctx, &u)
 	if err != nil {
 		return handleAuthError(err)
 	}
@@ -120,6 +121,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 //   403: Forbidden
 //   404: Not found
 func login(w http.ResponseWriter, r *http.Request) (err error) {
+	ctx := r.Context()
 	params := map[string]string{
 		"email": r.URL.Query().Get(":email"),
 	}
@@ -127,7 +129,7 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 	for key, values := range fields {
 		params[key] = values[0]
 	}
-	token, err := app.AuthScheme.Login(params)
+	token, err := app.AuthScheme.Login(ctx, params)
 	if err != nil {
 		return handleAuthError(err)
 	}
@@ -140,7 +142,7 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 // responses:
 //   200: Ok
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	return app.AuthScheme.Logout(t.GetValue())
+	return app.AuthScheme.Logout(r.Context(), t.GetValue())
 }
 
 // title: change password
@@ -154,6 +156,7 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   403: Forbidden
 //   404: Not found
 func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
@@ -183,7 +186,7 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "New password and password confirmation didn't match.",
 		}
 	}
-	err = managed.ChangePassword(t, oldPassword, newPassword)
+	err = managed.ChangePassword(ctx, t, oldPassword, newPassword)
 	if err != nil {
 		return handleAuthError(err)
 	}
@@ -200,6 +203,7 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   403: Forbidden
 //   404: Not found
 func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
+	ctx := r.Context()
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
@@ -225,9 +229,9 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		return err
 	}
 	if token == "" {
-		return managed.StartPasswordReset(u)
+		return managed.StartPasswordReset(ctx, u)
 	}
-	return managed.ResetPassword(u, token)
+	return managed.ResetPassword(ctx, u, token)
 }
 
 var teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
@@ -669,6 +673,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Not found
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	email := r.URL.Query().Get("user")
 	if email == "" {
 		email = t.GetUserName()
@@ -705,7 +710,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err := manager.RemoveUser(u.Email); err != nil {
 		log.Errorf("Failed to remove user from repository manager: %s", err)
 	}
-	return app.AuthScheme.Remove(u)
+	return app.AuthScheme.Remove(ctx, u)
 }
 
 type schemeData struct {
@@ -720,7 +725,7 @@ type schemeData struct {
 // responses:
 //   200: OK
 func authScheme(w http.ResponseWriter, r *http.Request) error {
-	info, err := app.AuthScheme.Info()
+	info, err := app.AuthScheme.Info(r.Context())
 	if err != nil {
 		return err
 	}

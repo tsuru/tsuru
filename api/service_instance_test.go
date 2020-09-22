@@ -1374,7 +1374,7 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesReturnsOnlyServicesThatTh
 	err := s.conn.Services().RemoveId(s.service.Name)
 	c.Assert(err, check.IsNil)
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
-	_, err = nativeScheme.Create(u)
+	_, err = nativeScheme.Create(stdContext.TODO(), u)
 	c.Assert(err, check.IsNil)
 	srv := service.Service{Name: "redis", IsRestricted: true, Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err = s.conn.Services().Insert(srv)

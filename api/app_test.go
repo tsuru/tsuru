@@ -2053,9 +2053,9 @@ func (s *S) TestUpdateAppTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.UnlimitedQuota}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("teamOwner=newowner")
 	req, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -2483,7 +2483,7 @@ func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
 }
 
 func (s *S) TestSetNodeStatus(c *check.C) {
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -2535,7 +2535,7 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 }
 
 func (s *S) TestSetNodeStatusNotFound(c *check.C) {
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -3245,7 +3245,7 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(a.Name)
+	token, err := nativeScheme.AppLogin(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	recorder := httptest.NewRecorder()

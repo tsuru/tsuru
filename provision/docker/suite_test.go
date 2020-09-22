@@ -119,7 +119,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nScheme
-	_, err = nScheme.Create(s.user)
+	_, err = nScheme.Create(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
 	s.token = permissiontest.ExistingUserWithPermission(c, nativeScheme, s.user, permission.Permission{
 		Scheme:  permission.PermAll,

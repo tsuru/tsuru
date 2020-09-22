@@ -60,7 +60,7 @@ var _ = check.Suite(&DeploySuite{})
 func (s *DeploySuite) createUserAndTeam(c *check.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	s.token = userWithPermission(c, permission.Permission{
@@ -468,7 +468,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
@@ -565,7 +565,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
@@ -614,7 +614,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
@@ -710,9 +710,9 @@ func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check
 
 func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	user := &auth.User{Email: "someone@tsuru.io", Password: "123456"}
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -736,7 +736,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 	app2 := app.App{Name: "superapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(app2.Name)
+	token, err := nativeScheme.AppLogin(context.TODO(), app2.Name)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", app1.Name, app2.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
@@ -754,7 +754,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
@@ -853,7 +853,7 @@ func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
 func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "newteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -1059,9 +1059,9 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
@@ -1094,7 +1094,7 @@ func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *check.C) {
 func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
 	app.AuthScheme = nativeScheme
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	team := authTypes.Team{Name: "team"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -1103,7 +1103,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", TeamOwner: team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
@@ -1300,9 +1300,9 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	`
 
 	user1 := &auth.User{Email: "someone@tsuru.io", Password: "user123"}
-	_, err := nativeScheme.Create(user1)
+	_, err := nativeScheme.Create(context.TODO(), user1)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": user1.Email, "password": "user123"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user1.Email, "password": "user123"})
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)

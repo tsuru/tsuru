@@ -451,9 +451,9 @@ func (s *S) TestPoolListEmptyHandler(c *check.C) {
 	_, err := s.conn.Pools().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
 	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
-	_, err = nativeScheme.Create(&u)
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodGet, "/pools", nil)
 	c.Assert(err, check.IsNil)

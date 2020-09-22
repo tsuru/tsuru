@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -89,7 +90,7 @@ func (s *QuotaSuite) TestGetUserQuota(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
 	request, err := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
@@ -113,7 +114,7 @@ func (s *QuotaSuite) TestGetUserQuotaRequiresPermission(c *check.C) {
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
 	}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
@@ -148,7 +149,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 		c.Assert(limit, check.Equals, 40)
 		return nil
 	}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
 	body := bytes.NewBufferString("limit=40")
@@ -177,7 +178,7 @@ func (s *QuotaSuite) TestChangeUserQuotaRequiresPermission(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	body := bytes.NewBufferString("limit=40")
@@ -196,7 +197,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 		Password: "qwe123",
 		Quota:    quota.Quota{Limit: 4, InUse: 2},
 	}
-	_, err := nativeScheme.Create(user)
+	_, err := nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	values := []string{"four", ""}
 	for _, value := range values {
@@ -236,7 +237,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 		c.Assert(limit, check.Equals, 3)
 		return quota.ErrLimitLowerThanAllocated
 	}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
 	body := bytes.NewBufferString("limit=3")
@@ -319,10 +320,10 @@ func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *check.C) {
 		Email:    "radio@gaga.com",
 		Password: "qwe123",
 	}
-	_, err = nativeScheme.Create(user)
+	_, err = nativeScheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "qwe123"})
 	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("GET", "/apps/shangrila/quota", nil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())

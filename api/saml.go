@@ -45,6 +45,7 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 //   200: Ok
 //   400: Invalid data
 func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
 	if app.AuthScheme.Name() != "saml" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -60,7 +61,7 @@ func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	params["xml"] = content
 	//Get saml.SAMLAuthScheme, error already treated on first check
 	scheme, _ := auth.GetScheme("saml")
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(ctx, params)
 	if err != nil {
 		msg := fmt.Sprintf(cmd.SamlCallbackFailureMessage(), err.Error())
 		fmt.Fprint(w, msg)

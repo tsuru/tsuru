@@ -5,6 +5,7 @@
 package native
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -48,9 +49,9 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
-	_, err := nativeScheme.Create(s.user)
+	_, err := nativeScheme.Create(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "cobrateam"}
 }

@@ -158,7 +158,7 @@ var createAppToken = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t, err := AuthScheme.AppLogin(app.Name)
+		t, err := AuthScheme.AppLogin(ctx.Context, app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -174,7 +174,7 @@ var createAppToken = action.Action{
 			}
 		}
 		if tokenValue != "" {
-			AuthScheme.Logout(tokenValue)
+			AuthScheme.Logout(ctx.Context, tokenValue)
 		}
 	},
 	MinParams: 1,

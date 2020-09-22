@@ -6,6 +6,7 @@ package native
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ import (
 func (s *S) TestNativeLoginWithoutEmail(c *check.C) {
 	scheme := NativeScheme{}
 	params := make(map[string]string)
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrMissingEmailError)
 }
 
@@ -29,7 +30,7 @@ func (s *S) TestNativeLoginWithoutPassword(c *check.C) {
 	scheme := NativeScheme{}
 	params := make(map[string]string)
 	params["email"] = "a@a.com"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrMissingPasswordError)
 }
 
@@ -38,7 +39,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 	params := make(map[string]string)
 	params["email"] = "timeredbull@globo.com"
 	params["password"] = "123456"
-	token, err := scheme.Login(params)
+	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetAppName(), check.Equals, "")
 	c.Assert(token.GetValue(), check.Not(check.Equals), "")
@@ -53,7 +54,7 @@ func (s *S) TestNativeLoginWrongPassword(c *check.C) {
 	params := make(map[string]string)
 	params["email"] = "timeredbull@globo.com"
 	params["password"] = "xxxxxx"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.NotNil)
 	_, isAuthFail := err.(auth.AuthenticationFailure)
 	c.Assert(isAuthFail, check.Equals, true)
@@ -64,28 +65,28 @@ func (s *S) TestNativeLoginInvalidUser(c *check.C) {
 	params := make(map[string]string)
 	params["email"] = "xxxxxxx@globo.com"
 	params["password"] = "xxxxxx"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
 func (s *S) TestNativeCreateNoPassword(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.Equals, ErrInvalidPassword)
 }
 
 func (s *S) TestNativeCreateNoEmail(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Password: "123455"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.Equals, ErrInvalidEmail)
 }
 
 func (s *S) TestNativeCreateInvalidPassword(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.Equals, ErrInvalidPassword)
 }
 
@@ -94,14 +95,14 @@ func (s *S) TestNativeCreateExistingEmail(c *check.C) {
 	existingUser.Create()
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.Equals, ErrEmailRegistered)
 }
 
 func (s *S) TestNativeCreate(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
-	retUser, err := scheme.Create(user)
+	retUser, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
 	c.Assert(retUser, check.Equals, user)
 	dbUser, err := auth.GetUserByEmail(user.Email)
@@ -114,24 +115,24 @@ func (s *S) TestNativeCreate(c *check.C) {
 func (s *S) TestChangePasswordMissmatch(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := scheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := scheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	err = scheme.ChangePassword(token, "1234567", "999999")
+	err = scheme.ChangePassword(context.TODO(), token, "1234567", "999999")
 	c.Assert(err, check.Equals, ErrPasswordMismatch)
 }
 
 func (s *S) TestChangePassword(c *check.C) {
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
-	_, err := scheme.Create(user)
+	_, err := scheme.Create(context.TODO(), user)
 	c.Assert(err, check.IsNil)
-	token, err := scheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	token, err := scheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	err = scheme.ChangePassword(token, "123456", "999999")
+	err = scheme.ChangePassword(context.TODO(), token, "123456", "999999")
 	c.Assert(err, check.IsNil)
-	_, err = scheme.Login(map[string]string{"email": user.Email, "password": "999999"})
+	_, err = scheme.Login(context.TODO(), map[string]string{"email": user.Email, "password": "999999"})
 	c.Assert(err, check.IsNil)
 }
 
@@ -142,7 +143,7 @@ func (s *S) TestStartPasswordReset(c *check.C) {
 	defer conn.Close()
 	defer s.server.Reset()
 	u := auth.User{Email: "thank@alanis.com"}
-	err = scheme.StartPasswordReset(&u)
+	err = scheme.StartPasswordReset(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	var token passwordToken
 	err = conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
@@ -177,7 +178,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	p := u.Password
-	err = scheme.StartPasswordReset(&u)
+	err = scheme.StartPasswordReset(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(time.Second, func() bool {
 		s.server.RLock()
@@ -188,7 +189,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	var token passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, check.IsNil)
-	err = scheme.ResetPassword(&u, token.Token)
+	err = scheme.ResetPassword(context.TODO(), &u, token.Token)
 	c.Assert(err, check.IsNil)
 	u2, _ := auth.GetUserByEmail(u.Email)
 	c.Assert(u2.Password, check.Not(check.Equals), p)
@@ -229,14 +230,14 @@ func (s *S) TestResetPasswordThirdToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})
 	u2 := auth.User{Email: "tsuru@globo.com"}
-	err = scheme.ResetPassword(&u2, t.Token)
+	err = scheme.ResetPassword(context.TODO(), &u2, t.Token)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestResetPasswordEmptyToken(c *check.C) {
 	scheme := NativeScheme{}
 	u := auth.User{Email: "presto@rush.com"}
-	err := scheme.ResetPassword(&u, "")
+	err := scheme.ResetPassword(context.TODO(), &u, "")
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
@@ -245,11 +246,11 @@ func (s *S) TestNativeRemove(c *check.C) {
 	params := make(map[string]string)
 	params["email"] = "timeredbull@globo.com"
 	params["password"] = "123456"
-	token, err := scheme.Login(params)
+	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = scheme.Remove(u)
+	err = scheme.Remove(context.TODO(), u)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

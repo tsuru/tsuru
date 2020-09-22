@@ -5,6 +5,7 @@
 package nodecontainer
 
 import (
+	"context"
 	"runtime"
 	"sync"
 
@@ -21,7 +22,7 @@ func (s *S) TestInitializeBS(c *check.C) {
 	defer config.Unset("host")
 	defer config.Unset("docker:bs:image")
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	initialized, err := InitializeBS(nativeScheme, "tsr")
+	initialized, err := InitializeBS(context.TODO(), nativeScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	c.Assert(initialized, check.Equals, true)
 	nodeContainer, err := LoadNodeContainer("", BsDefaultName)
@@ -45,7 +46,7 @@ func (s *S) TestInitializeBS(c *check.C) {
 			Binds:         []string{"/proc:/prochost:ro"},
 		},
 	})
-	initialized, err = InitializeBS(nativeScheme, "tsr")
+	initialized, err = InitializeBS(context.TODO(), nativeScheme, "tsr")
 	c.Assert(err, check.IsNil)
 	c.Assert(initialized, check.Equals, false)
 }
@@ -61,7 +62,7 @@ func (s *S) TestInitializeBSStress(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			initialized, err := InitializeBS(nativeScheme, "tsr")
+			initialized, err := InitializeBS(context.TODO(), nativeScheme, "tsr")
 			c.Assert(err, check.IsNil)
 			initializedCh <- initialized
 		}()

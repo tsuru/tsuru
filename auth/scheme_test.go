@@ -4,35 +4,41 @@
 
 package auth
 
-import check "gopkg.in/check.v1"
+import (
+	"context"
+
+	check "gopkg.in/check.v1"
+)
 
 type TestScheme struct{}
 
-func (t TestScheme) AppLogin(appName string) (Token, error) {
+var _ Scheme = &TestScheme{}
+
+func (t TestScheme) AppLogin(ctx context.Context, appName string) (Token, error) {
 	return nil, nil
 }
-func (t TestScheme) AppLogout(token string) error {
+func (t TestScheme) AppLogout(ctx context.Context, token string) error {
 	return nil
 }
-func (t TestScheme) Login(params map[string]string) (Token, error) {
+func (t TestScheme) Login(ctx context.Context, params map[string]string) (Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Logout(token string) error {
+func (t TestScheme) Logout(ctx context.Context, token string) error {
 	return nil
 }
-func (t TestScheme) Auth(token string) (Token, error) {
+func (t TestScheme) Auth(ctx context.Context, token string) (Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info() (SchemeInfo, error) {
+func (t TestScheme) Info(ctx context.Context) (SchemeInfo, error) {
 	return nil, nil
 }
 func (t TestScheme) Name() string {
 	return "test"
 }
-func (t TestScheme) Create(u *User) (*User, error) {
+func (t TestScheme) Create(ctx context.Context, u *User) (*User, error) {
 	return nil, nil
 }
-func (t TestScheme) Remove(u *User) error {
+func (t TestScheme) Remove(ctx context.Context, u *User) error {
 	return nil
 }
 

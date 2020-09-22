@@ -6,6 +6,7 @@ package oauth
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -24,7 +25,7 @@ func (s *S) TestOAuthLoginWithoutCode(c *check.C) {
 	scheme := oAuthScheme{}
 	params := make(map[string]string)
 	params["redirectUrl"] = "http://localhost"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrMissingCodeError)
 }
 
@@ -32,7 +33,7 @@ func (s *S) TestOAuthLoginWithoutRedirectUrl(c *check.C) {
 	scheme := oAuthScheme{}
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrMissingCodeRedirectURL)
 }
 
@@ -43,7 +44,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
-	token, err := scheme.Login(params)
+	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Equals, "my_token")
 	c.Assert(token.GetUserName(), check.Equals, "rand@althor.com")
@@ -71,7 +72,7 @@ func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
 
@@ -81,7 +82,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.ErrorMatches, `.*missing access_token.*`)
 	c.Assert(s.reqs, check.HasLen, 1)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
@@ -94,7 +95,7 @@ func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
-	_, err := scheme.Login(params)
+	_, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, ErrEmptyUserEmail)
 	c.Assert(s.reqs, check.HasLen, 2)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
@@ -109,7 +110,7 @@ func (s *S) TestOAuthName(c *check.C) {
 
 func (s *S) TestOAuthInfo(c *check.C) {
 	scheme := oAuthScheme{}
-	info, err := scheme.Info()
+	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(info["authorizeUrl"], check.Matches, s.server.URL+"/auth.*")
 	c.Assert(info["authorizeUrl"], check.Matches, ".*client_id=clientid.*")
@@ -121,7 +122,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 	config.Set("auth:oauth:callback-port", 9009)
 	defer config.Set("auth:oauth:callback-port", nil)
 	scheme := oAuthScheme{}
-	info, err := scheme.Info()
+	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(info["port"], check.Equals, "9009")
 }
@@ -165,7 +166,7 @@ func (s *S) TestOAuthAuth(c *check.C) {
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	scheme := oAuthScheme{}
-	token, err := scheme.Auth("bearer myvalidtoken")
+	token, err := scheme.Auth(context.TODO(), "bearer myvalidtoken")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.GetValue(), check.Equals, "myvalidtoken")
@@ -182,14 +183,14 @@ func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
 	err := token.save()
 	c.Assert(err, check.IsNil)
 	scheme := oAuthScheme{}
-	_, err = scheme.Auth("bearer myexpiredtoken")
+	_, err = scheme.Auth(context.TODO(), "bearer myexpiredtoken")
 	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestOAuthAppLogin(c *check.C) {
 	scheme := oAuthScheme{}
-	token, err := scheme.AppLogin("myApp")
+	token, err := scheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	c.Assert(token.IsAppToken(), check.Equals, true)
 	c.Assert(token.GetAppName(), check.Equals, "myApp")
@@ -197,9 +198,9 @@ func (s *S) TestOAuthAppLogin(c *check.C) {
 
 func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
 	scheme := oAuthScheme{}
-	appToken, err := scheme.AppLogin("myApp")
+	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
-	token, err := scheme.Auth("bearer " + appToken.GetValue())
+	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)
 	c.Assert(s.reqs, check.HasLen, 0)
 	c.Assert(token.IsAppToken(), check.Equals, true)
@@ -210,7 +211,7 @@ func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
 func (s *S) TestOAuthCreate(c *check.C) {
 	scheme := oAuthScheme{}
 	user := auth.User{Email: "x@x.com", Password: "something"}
-	_, err := scheme.Create(&user)
+	_, err := scheme.Create(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	dbUser, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)
@@ -226,11 +227,11 @@ func (s *S) TestOAuthRemove(c *check.C) {
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
-	token, err := scheme.Login(params)
+	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
 	u, err := auth.ConvertNewUser(token.User())
 	c.Assert(err, check.IsNil)
-	err = scheme.Remove(u)
+	err = scheme.Remove(context.TODO(), u)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

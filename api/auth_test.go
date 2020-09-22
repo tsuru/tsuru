@@ -228,9 +228,9 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *check.C) {
 
 func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *check.C) {
 	simpleUser := &auth.User{Email: "my@common.user", Password: "123456"}
-	_, err := nativeScheme.Create(simpleUser)
+	_, err := nativeScheme.Create(context.TODO(), simpleUser)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": simpleUser.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": simpleUser.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest(http.MethodPost, "/users", b)
@@ -277,7 +277,7 @@ func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
 
 func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *check.C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("password=123456")
 	request, err := http.NewRequest(http.MethodPost, "/users/nobody@globo.com/tokens", b)
@@ -320,7 +320,7 @@ func (s *AuthSuite) TestLoginUserDoesNotExist(c *check.C) {
 
 func (s *AuthSuite) TestLoginPasswordDoesNotMatch(c *check.C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("password=1234567")
 	request, err := http.NewRequest(http.MethodPost, "/users/nobody@globo.com/tokens", b)
@@ -346,7 +346,7 @@ func (s *AuthSuite) TestLoginEmailIsNotValid(c *check.C) {
 func (s *AuthSuite) TestLoginPasswordIsInvalid(c *check.C) {
 	passwords := []string{"123", strings.Join(make([]string, 52), "-")}
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
-	_, err := nativeScheme.Create(u)
+	_, err := nativeScheme.Create(context.TODO(), u)
 	c.Assert(err, check.IsNil)
 	for _, password := range passwords {
 		b := strings.NewReader("password=" + password)
@@ -361,14 +361,14 @@ func (s *AuthSuite) TestLoginPasswordIsInvalid(c *check.C) {
 }
 
 func (s *AuthSuite) TestLogout(c *check.C) {
-	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodDelete, "/users/tokens", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = logout(recorder, request, token)
 	c.Assert(err, check.IsNil)
-	_, err = nativeScheme.Auth(token.GetValue())
+	_, err = nativeScheme.Auth(context.TODO(), token.GetValue())
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
@@ -588,9 +588,9 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 		return []authTypes.Team{{Name: s.team.Name}, {Name: s.team2.Name}}, nil
 	}
 	u := auth.User{Email: "cruiser@gotthard.com", Password: "234567"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "234567"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "234567"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/teams", nil)
 	c.Assert(err, check.IsNil)
@@ -726,11 +726,11 @@ func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
 
 func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
-	_, err := nativeScheme.Create(u)
+	_, err := nativeScheme.Create(context.TODO(), u)
 	c.Assert(err, check.IsNil)
-	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	t, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	defer nativeScheme.Logout(t.GetValue())
+	defer nativeScheme.Logout(context.TODO(), t.GetValue())
 	b := strings.NewReader("name=the-key&key=my-key")
 	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -832,9 +832,9 @@ func (s *AuthSuite) TestListKeysKeyManagerDisabled(c *check.C) {
 
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodDelete, "/users", nil)
 	c.Assert(err, check.IsNil)
@@ -856,9 +856,9 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 
 func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodDelete, "/users?user="+u.Email, nil)
 	c.Assert(err, check.IsNil)
@@ -883,7 +883,7 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 
 func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodDelete, "/users?user="+u.Email, nil)
 	c.Assert(err, check.IsNil)
@@ -910,7 +910,7 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 func (s *AuthSuite) TestRemoveAnotherUserNoPermission(c *check.C) {
 	token := userWithPermission(c)
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodDelete, "/users?user="+s.user.Email, nil)
 	c.Assert(err, check.IsNil)
@@ -924,10 +924,10 @@ func (s *AuthSuite) TestRemoveAnotherUserNoPermission(c *check.C) {
 
 func (s *AuthSuite) TestChangePassword(c *check.C) {
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
-	_, err := nativeScheme.Create(u)
+	_, err := nativeScheme.Create(context.TODO(), u)
 	c.Assert(err, check.IsNil)
 	oldPassword := u.Password
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("old=123456&new=654321&confirm=654321")
 	request, err := http.NewRequest(http.MethodPut, "/users/password", body)
@@ -949,9 +949,9 @@ func (s *AuthSuite) TestChangePassword(c *check.C) {
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.C) {
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
-	_, err := nativeScheme.Create(u)
+	_, err := nativeScheme.Create(context.TODO(), u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("old=123456&new=1234&confirm=1234")
 	request, err := http.NewRequest(http.MethodPut, "/users/password", body)
@@ -967,9 +967,9 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *check.
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordAndConfirmPasswordDidntMatch(c *check.C) {
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
-	_, err := nativeScheme.Create(u)
+	_, err := nativeScheme.Create(context.TODO(), u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("old=123456&new=12345678&confirm=1234567810")
 	request, err := http.NewRequest(http.MethodPut, "/users/password", body)
@@ -1069,7 +1069,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 	err := user.Create()
 	c.Assert(err, check.IsNil)
 	oldPassword := user.Password
-	err = nativeScheme.StartPasswordReset(&user)
+	err = nativeScheme.StartPasswordReset(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	var t map[string]interface{}
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)
@@ -1095,31 +1095,35 @@ func (s *AuthSuite) TestResetPasswordStep2(c *check.C) {
 
 type TestScheme native.NativeScheme
 
-func (t TestScheme) AppLogin(appName string) (auth.Token, error) {
+var (
+	_ auth.Scheme = &TestScheme{}
+)
+
+func (t TestScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
 	return nil, nil
 }
-func (t TestScheme) AppLogout(token string) error {
+func (t TestScheme) AppLogout(ctx context.Context, token string) error {
 	return nil
 }
-func (t TestScheme) Login(params map[string]string) (auth.Token, error) {
+func (t TestScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Logout(token string) error {
+func (t TestScheme) Logout(ctx context.Context, token string) error {
 	return nil
 }
-func (t TestScheme) Auth(token string) (auth.Token, error) {
+func (t TestScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info() (auth.SchemeInfo, error) {
+func (t TestScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	return auth.SchemeInfo{"foo": "bar", "foo2": "bar2"}, nil
 }
 func (t TestScheme) Name() string {
 	return "test"
 }
-func (t TestScheme) Create(u *auth.User) (*auth.User, error) {
+func (t TestScheme) Create(ctx context.Context, u *auth.User) (*auth.User, error) {
 	return nil, nil
 }
-func (t TestScheme) Remove(u *auth.User) error {
+func (t TestScheme) Remove(ctx context.Context, u *auth.User) error {
 	return nil
 }
 
@@ -1142,9 +1146,9 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodPost, "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
@@ -1168,7 +1172,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *check.C) {
 	u := auth.User{Email: "leto@arrakis.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token := s.token
 	c.Assert(err, check.IsNil)
@@ -1195,9 +1199,9 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 
 func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *check.C) {
 	u := auth.User{Email: "user@example.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodPost, "/users/api-key?user=myadmin@arrakis.com", nil)
 	c.Assert(err, check.IsNil)
@@ -1209,9 +1213,9 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *che
 
 func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
@@ -1228,9 +1232,9 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
-	_, err := nativeScheme.Create(&u)
+	_, err := nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/users/api-key", nil)
 	c.Assert(err, check.IsNil)
@@ -1251,7 +1255,7 @@ func (s *AuthSuite) TestShowAPITokenOtherUserAndIsAdminUser(c *check.C) {
 		Password: "123456",
 		APIKey:   "334hd23ubd923hd923j9d23ndibdf",
 	}
-	_, err := nativeScheme.Create(&user)
+	_, err := nativeScheme.Create(context.TODO(), &user)
 	c.Assert(err, check.IsNil)
 	token := s.token
 	request, err := http.NewRequest(http.MethodGet, "/users/api-key?user=user@example.com", nil)
@@ -1279,7 +1283,7 @@ func (s *AuthSuite) TestShowAPITokenOtherUserWithoutPermission(c *check.C) {
 		},
 	}
 	for _, u := range users {
-		_, err := nativeScheme.Create(&u)
+		_, err := nativeScheme.Create(context.TODO(), &u)
 		c.Assert(err, check.IsNil)
 	}
 	token := userWithPermission(c)
@@ -1372,7 +1376,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndContext(c *check.C) {
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
 	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
-	_, err = nativeScheme.Create(otherUser)
+	_, err = nativeScheme.Create(context.TODO(), otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)
 	url := fmt.Sprintf("/users?role=%s&context=%s", expectedRole, s.team2.Name)
@@ -1403,7 +1407,7 @@ func (s *AuthSuite) TestListUsersFilterByRoleAndInvalidContext(c *check.C) {
 	userRoles := expectedUser.Roles
 	expectedRole := userRoles[1].Name
 	otherUser := &auth.User{Email: "groundcontrol@majortom.com", Password: "123456", Quota: quota.UnlimitedQuota}
-	_, err = nativeScheme.Create(otherUser)
+	_, err = nativeScheme.Create(context.TODO(), otherUser)
 	c.Assert(err, check.IsNil)
 	otherUser.AddRole(expectedRole, s.team.Name)
 	url := fmt.Sprintf("/users?role=%s&context=%s", expectedRole, "blablabla")

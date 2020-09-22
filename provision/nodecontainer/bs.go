@@ -5,6 +5,7 @@
 package nodecontainer
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -19,7 +20,7 @@ const (
 	bsHostProc         = "/prochost"
 )
 
-func InitializeBS(authScheme auth.Scheme, appUser string) (bool, error) {
+func InitializeBS(ctx context.Context, authScheme auth.Scheme, appUser string) (bool, error) {
 	bsNodeContainer, err := LoadNodeContainer("", BsDefaultName)
 	if err != nil {
 		return false, err
@@ -27,7 +28,7 @@ func InitializeBS(authScheme auth.Scheme, appUser string) (bool, error) {
 	if len(bsNodeContainer.Config.Env) > 0 {
 		return false, nil
 	}
-	tokenData, err := authScheme.AppLogin(appUser)
+	tokenData, err := authScheme.AppLogin(ctx, appUser)
 	if err != nil {
 		return false, err
 	}
@@ -38,7 +39,7 @@ func InitializeBS(authScheme auth.Scheme, appUser string) (bool, error) {
 	})
 	if !isSet {
 		// Already set by someone else, just bail out.
-		authScheme.Logout(token)
+		authScheme.Logout(ctx, token)
 		return false, nil
 	}
 	bsNodeContainer, err = LoadNodeContainer("", BsDefaultName)

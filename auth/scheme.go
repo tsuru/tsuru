@@ -4,27 +4,32 @@
 
 package auth
 
-import "github.com/pkg/errors"
+import (
+	"context"
+
+	"github.com/pkg/errors"
+)
 
 type SchemeInfo map[string]interface{}
 
 type Scheme interface {
-	AppLogin(appName string) (Token, error)
-	AppLogout(token string) error
-	Login(params map[string]string) (Token, error)
-	Logout(token string) error
-	Auth(token string) (Token, error)
-	Info() (SchemeInfo, error)
 	Name() string
-	Create(user *User) (*User, error)
-	Remove(user *User) error
+
+	AppLogin(ctx context.Context, appName string) (Token, error)
+	AppLogout(ctx context.Context, token string) error
+	Login(ctx context.Context, params map[string]string) (Token, error)
+	Logout(ctx context.Context, token string) error
+	Auth(ctx context.Context, token string) (Token, error)
+	Info(ctx context.Context) (SchemeInfo, error)
+	Create(ctx context.Context, user *User) (*User, error)
+	Remove(ctx context.Context, user *User) error
 }
 
 type ManagedScheme interface {
 	Scheme
-	StartPasswordReset(user *User) error
-	ResetPassword(user *User, resetToken string) error
-	ChangePassword(token Token, oldPassword string, newPassword string) error
+	StartPasswordReset(ctx context.Context, user *User) error
+	ResetPassword(ctx context.Context, user *User, resetToken string) error
+	ChangePassword(ctx context.Context, token Token, oldPassword string, newPassword string) error
 }
 
 type AuthenticationFailure struct {

@@ -179,7 +179,7 @@ func (s *S) TestCreateAppTokenBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	createAppToken.Backward(ctx)
-	t, err := nativeScheme.Auth(app.Envs()["TSURU_APP_TOKEN"].Value)
+	t, err := nativeScheme.Auth(context.TODO(), app.Envs()["TSURU_APP_TOKEN"].Value)
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.NotNil)
 }
@@ -194,7 +194,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(app.Name)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &token}
 	result, err := exportEnvironmentsAction.Forward(ctx)
@@ -226,7 +226,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
 		app.Env[name] = envVar
 	}
-	token, err := nativeScheme.AppLogin(app.Name)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
 	err = CreateApp(context.TODO(), &app, s.user)

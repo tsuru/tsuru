@@ -62,7 +62,7 @@ func (s *S) SetUpTest(c *check.C) {
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	s.user = &auth.User{Email: "me@me.com", Password: "123456"}
-	_, err = nativeScheme.Create(s.user)
+	_, err = nativeScheme.Create(context.TODO(), s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &authTypes.Team{Name: "angra"}
 	provision.DefaultProvisioner = "fake"

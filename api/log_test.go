@@ -58,7 +58,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "appname": "myapp2", "unit": "unit4"}
 	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "appname": "myapp1", "unit": "unit3"}
 	`
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
@@ -136,7 +136,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
 	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
 	`
-	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
 	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
