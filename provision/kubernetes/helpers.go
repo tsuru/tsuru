@@ -1088,7 +1088,6 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	if err != nil {
 		return err
 	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(args.labels)
 	var tty bool
 	if args.stdin == nil {
 		args.cmds = append([]string{"sh", "-c", "cat >/dev/null && exec $0 \"$@\""}, args.cmds...)
@@ -1101,10 +1100,9 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	}
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        args.name,
-			Namespace:   ns,
-			Labels:      labels.ToLabels(),
-			Annotations: annotations.ToLabels(),
+			Name:      args.name,
+			Namespace: ns,
+			Labels:    args.labels.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
 			ImagePullSecrets:   pullSecrets,

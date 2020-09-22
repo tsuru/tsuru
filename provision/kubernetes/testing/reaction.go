@@ -480,9 +480,6 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 			c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
 		}
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
-		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
-		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-type"], check.Equals, "fake")
-		c.Assert(pod.ObjectMeta.Annotations["tsuru.io/router-name"], check.Equals, "fake")
 		if !strings.HasSuffix(pod.Name, "-deploy") {
 			return false, nil, nil
 		}
@@ -581,6 +578,9 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			return false, nil, nil
 		}
 		dep := action.(ktesting.CreateAction).GetObject().(*appsv1.Deployment)
+		if dep.Annotations == nil {
+			dep.Annotations = make(map[string]string)
+		}
 		var specReplicas int32
 		if dep.Spec.Replicas != nil {
 			specReplicas = *dep.Spec.Replicas
@@ -595,8 +595,8 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			defer wg.Done()
 
 			var revision int
-			if dep.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] != "" {
-				revision, _ = strconv.Atoi(dep.ObjectMeta.Annotations["deployment.kubernetes.io/revision"])
+			if dep.Annotations["deployment.kubernetes.io/revision"] != "" {
+				revision, _ = strconv.Atoi(dep.Annotations["deployment.kubernetes.io/revision"])
 			}
 			revision++
 

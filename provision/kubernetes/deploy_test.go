@@ -108,10 +108,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "1"
 	podLabels["version"] = "v1"
-	annotations := map[string]string{
-		"tsuru.io/router-type": "fake",
-		"tsuru.io/router-name": "fake",
-	}
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
@@ -119,7 +115,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:        "myapp-p1",
 			Namespace:   nsName,
 			Labels:      depLabels,
-			Annotations: annotations,
+			Annotations: map[string]string{},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -145,8 +141,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: annotations,
+					Labels: podLabels,
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -223,10 +218,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/provisioner":  "kubernetes",
 				"tsuru.io/builder":      "",
 			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
-			},
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
@@ -268,10 +259,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/provisioner":     "kubernetes",
 				"tsuru.io/builder":         "",
 				"version":                  "v1",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -315,10 +302,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/app-pool":            "test-default",
 				"tsuru.io/provisioner":         "kubernetes",
 				"tsuru.io/builder":             "",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -439,10 +422,6 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/provisioner":  "kubernetes",
 				"tsuru.io/builder":      "",
 			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
-			},
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
@@ -489,10 +468,6 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/app-pool":            "test-default",
 				"tsuru.io/provisioner":         "kubernetes",
 				"tsuru.io/builder":             "",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -1463,7 +1438,9 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 			rev++
-			dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+			dep.Annotations = map[string]string{
+				replicaDepRevision: strconv.Itoa(rev),
+			}
 			dep.Status.UnavailableReplicas = 1
 			deployCreated <- struct{}{}
 		}
@@ -1533,7 +1510,9 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		if dep, ok := obj.(*appsv1.Deployment); ok {
 			rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 			rev++
-			dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+			dep.Annotations = map[string]string{
+				replicaDepRevision: strconv.Itoa(rev),
+			}
 			dep.Status.UnavailableReplicas = 1
 			deployCreated <- struct{}{}
 		}
@@ -2017,10 +1996,6 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "2"
 	podLabels["version"] = "v2"
-	annotations := map[string]string{
-		"tsuru.io/router-type": "fake",
-		"tsuru.io/router-name": "fake",
-	}
 	nsName, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	one := int32(1)
@@ -2033,7 +2008,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			Name:        "myapp-p1-v2",
 			Namespace:   nsName,
 			Labels:      depLabels,
-			Annotations: annotations,
+			Annotations: map[string]string{},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -2060,8 +2035,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: annotations,
+					Labels: podLabels,
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2138,10 +2112,6 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 				"tsuru.io/provisioner":             "kubernetes",
 				"tsuru.io/builder":                 "",
 				"version":                          "v2",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -2568,8 +2538,6 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
-				"tsuru.io/router-name": "fake",
-				"tsuru.io/router-type": "fake",
 			},
 		},
 		Spec: apiv1.PodSpec{
@@ -2691,8 +2659,6 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
-				"tsuru.io/router-name": "fake",
-				"tsuru.io/router-type": "fake",
 			},
 		},
 		Spec: apiv1.PodSpec{
@@ -3037,7 +3003,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 		dep.Status.UnavailableReplicas = 2
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
-		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+		dep.Annotations = map[string]string{
+			replicaDepRevision: strconv.Itoa(rev),
+		}
 		return false, nil, nil
 	}
 	s.client.PrependReactor("create", "deployments", reaction)
@@ -3206,7 +3174,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		dep := obj.(*appsv1.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
-		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+		dep.Annotations = map[string]string{
+			replicaDepRevision: strconv.Itoa(rev),
+		}
 		dep.Status.UnavailableReplicas = 2
 		labelsCp := make(map[string]string, len(dep.Labels))
 		for k, v := range dep.Spec.Template.Labels {
@@ -3313,7 +3283,9 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 		dep := obj.(*appsv1.Deployment)
 		rev, _ := strconv.Atoi(dep.Annotations[replicaDepRevision])
 		rev++
-		dep.Annotations[replicaDepRevision] = strconv.Itoa(rev)
+		dep.Annotations = map[string]string{
+			replicaDepRevision: strconv.Itoa(rev),
+		}
 		dep.Status.UnavailableReplicas = 2
 		dep.Status.ObservedGeneration = 12
 		labelsCp := make(map[string]string, len(dep.Labels))
@@ -3649,10 +3621,6 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 				"tsuru.io/provisioner":  "kubernetes",
 				"tsuru.io/builder":      "",
 			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
-			},
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector: map[string]string{
@@ -3854,10 +3822,6 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	for k, v := range depLabels {
 		podLabels[k] = v
 	}
-	annotations := map[string]string{
-		"tsuru.io/router-type": "fake",
-		"tsuru.io/router-name": "fake",
-	}
 	ns, err := s.client.AppNamespace(a)
 	c.Assert(err, check.IsNil)
 	legacyDep := &appsv1.Deployment{
@@ -3865,7 +3829,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 			Name:        "myapp-p1",
 			Namespace:   ns,
 			Labels:      depLabels,
-			Annotations: annotations,
+			Annotations: map[string]string{},
 		},
 		Status: appsv1.DeploymentStatus{
 			UpdatedReplicas: 1,
@@ -3891,8 +3855,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: annotations,
+					Labels: podLabels,
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -3965,10 +3928,6 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 				"tsuru.io/app-pool":        "test-default",
 				"tsuru.io/provisioner":     "kubernetes",
 				"tsuru.io/builder":         "",
-			},
-			Annotations: map[string]string{
-				"tsuru.io/router-type": "fake",
-				"tsuru.io/router-name": "fake",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
