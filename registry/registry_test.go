@@ -5,6 +5,7 @@
 package registry
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -48,34 +49,34 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestRegistryRemoveAppImagesErrorImageNotFound(c *check.C) {
-	err := RemoveAppImages("teste")
+	err := RemoveAppImages(context.TODO(), "test")
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestRegistryRemoveAppImagesErrorErrDeleteDisabled(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 	s.server.SetStorageDelete(false)
-	err := RemoveAppImages("teste")
+	err := RemoveAppImages(context.TODO(), "test")
 	c.Assert(errors.Cause(err), check.Equals, ErrDeleteDisabled)
 }
 
 func (s *S) TestRegistryRemoveAppImages(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveAppImages("teste")
+	err := RemoveAppImages(context.TODO(), "test")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
 }
 
 func (s *S) TestRegistryRemoveImage(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
@@ -86,10 +87,10 @@ func (s *S) TestRegistryRemoveImageWithAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "pwd")
 	defer config.Unset("docker:registry-auth:password")
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
@@ -100,49 +101,49 @@ func (s *S) TestRegistryRemoveImageWithAuthBadCredentials(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "wrong-pwd")
 	defer config.Unset("docker:registry-auth:password")
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg", "v2": "hijklmn"}, Username: "user", Password: "pwd"})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
-	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v1")
 	c.Assert(err, check.NotNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 2)
 }
 
 func (s *S) TestRegistryRemoveImageNoRegistry(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
-	err := RemoveImage("tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), "tsuru/app-test:v1")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 0)
 }
 
 func (s *S) TestRegistryRemoveImageUnknownRegistry(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
-	err := RemoveImage("fake-registry:5000/tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), "fake-registry:5000/tsuru/app-test:v1")
 	c.Assert(err, check.ErrorMatches, `.*failed to get digest for image.*`)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
 func (s *S) TestRegistryRemoveImageUnknownTag(c *check.C) {
-	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-teste", Tags: map[string]string{"v1": "abcdefg"}})
+	s.server.AddRepo(registrytest.Repository{Name: "tsuru/app-test", Tags: map[string]string{"v1": "abcdefg"}})
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
-	err := RemoveImage(s.server.Addr() + "/tsuru/app-teste:v0")
+	err := RemoveImage(context.TODO(), s.server.Addr()+"/tsuru/app-test:v0")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "failed to get digest for image "+s.server.Addr()+"/tsuru/app-teste:v0 on registry: digest not found")
+	c.Assert(err.Error(), check.Equals, "failed to get digest for image "+s.server.Addr()+"/tsuru/app-test:v0 on registry: digest not found")
 	c.Assert(errors.Cause(err), check.Equals, ErrDigestNotFound)
 	c.Assert(s.server.Repos, check.HasLen, 1)
 	c.Assert(s.server.Repos[0].Tags, check.HasLen, 1)
 }
 
 func (s *S) TestRegistryRemoveImageEmpty(c *check.C) {
-	err := RemoveImage("")
+	err := RemoveImage(context.TODO(), "")
 	c.Assert(err, check.ErrorMatches, `empty image.*`)
 }
 
@@ -155,7 +156,7 @@ func (s *S) TestRegistryRemoveImageDigestNotFound(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	u, _ := url.Parse(srv.URL)
-	err := RemoveImage(u.Host + "/tsuru/app-teste:v1")
+	err := RemoveImage(context.TODO(), u.Host+"/tsuru/app-test:v1")
 	c.Assert(err, check.ErrorMatches, `failed to remove image .* on registry: image not found`)
 	c.Assert(errors.Cause(err), check.Equals, ErrImageNotFound)
 }
@@ -165,8 +166,8 @@ func (s *S) TestRegistryRemoveImageEmptyDigest(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	u, _ := url.Parse(srv.URL)
-	err := RemoveImage(u.Host + "/tsuru/app-teste:v1")
-	c.Assert(err, check.ErrorMatches, `.*empty digest returned for image tsuru/app-teste:v1.*`)
+	err := RemoveImage(context.TODO(), u.Host+"/tsuru/app-test:v1")
+	c.Assert(err, check.ErrorMatches, `.*empty digest returned for image tsuru/app-test:v1.*`)
 }
 
 func (s *S) TestParseImage(c *check.C) {
@@ -203,7 +204,7 @@ func (s *S) TestDockerRegistryDoRequest(c *check.C) {
 		server: srv.URL,
 		client: srv.Client(),
 	}
-	rsp, err := r.doRequest("GET", "/", nil)
+	rsp, err := r.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 }
@@ -217,7 +218,7 @@ func (s *S) TestDockerRegistryDoRequestTLS(c *check.C) {
 		server: srv.URL,
 		client: srv.Client(),
 	}
-	rsp, err := r.doRequest("GET", "/", nil)
+	rsp, err := r.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 }

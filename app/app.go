@@ -593,7 +593,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		return err
 	}
-	err = registry.RemoveAppImages(appName)
+	err = registry.RemoveAppImages(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}

@@ -453,7 +453,7 @@ func sweepOldImages() error {
 		for _, version := range versions {
 			pruneVersionFromProvisioner(a, version)
 
-			err = pruneVersionFromRegistry(version)
+			err = pruneVersionFromRegistry(ctx, version)
 			if err != nil {
 				multi.Add(err)
 				continue
@@ -519,7 +519,7 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions) error {
 	multi := tsuruErrors.NewMultiError()
 
-	err := registry.RemoveAppImages(appVersions.AppName)
+	err := registry.RemoveAppImages(ctx, appVersions.AppName)
 	if err != nil {
 		multi.Add(errors.Wrapf(err, "could not remove images from registry, app: %q", appVersions.AppName))
 	}
@@ -533,18 +533,18 @@ func pruneAllVersionsByApp(ctx context.Context, appVersions appTypes.AppVersions
 	return multi.ToError()
 }
 
-func pruneVersionFromRegistry(version appTypes.AppVersionInfo) error {
+func pruneVersionFromRegistry(ctx context.Context, version appTypes.AppVersionInfo) error {
 	multi := tsuruErrors.NewMultiError()
 
 	if version.DeployImage != "" {
-		err := pruneImageFromRegistry(version.DeployImage)
+		err := pruneImageFromRegistry(ctx, version.DeployImage)
 		if err != nil {
 			multi.Add(err)
 		}
 	}
 
 	if version.BuildImage != "" {
-		err := pruneImageFromRegistry(version.BuildImage)
+		err := pruneImageFromRegistry(ctx, version.BuildImage)
 		if err != nil {
 			multi.Add(err)
 		}
@@ -553,12 +553,12 @@ func pruneVersionFromRegistry(version appTypes.AppVersionInfo) error {
 	return multi.ToError()
 }
 
-func pruneImageFromRegistry(image string) error {
+func pruneImageFromRegistry(ctx context.Context, image string) error {
 	registryPruneTotal.Inc()
 	timer := prometheus.NewTimer(registryPruneDuration)
 	defer timer.ObserveDuration()
 
-	if err := registry.RemoveImageIgnoreNotFound(image); err != nil {
+	if err := registry.RemoveImageIgnoreNotFound(ctx, image); err != nil {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
 		log.Errorf("[image gc] %s", err.Error())
 		registryPruneFailuresTotal.Inc()

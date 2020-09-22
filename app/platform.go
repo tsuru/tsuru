@@ -165,7 +165,7 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	images, err := servicemanager.PlatformImage.ListImagesOrDefault(ctx, name)
 	if err == nil {
 		for _, img := range images {
-			if regErr := registry.RemoveImage(img); regErr != nil {
+			if regErr := registry.RemoveImage(ctx, img); regErr != nil {
 				log.Errorf("Failed to remove platform image from registry: %s", regErr)
 			}
 		}

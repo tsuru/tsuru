@@ -5,6 +5,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -31,8 +32,8 @@ var (
 	ErrDeleteDisabled = errors.New("delete disabled")
 )
 
-func RemoveImageIgnoreNotFound(imageName string) error {
-	err := RemoveImage(imageName)
+func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
+	err := RemoveImage(ctx, imageName)
 	if err != nil {
 		cause := errors.Cause(err)
 		if cause != ErrDeleteDisabled && cause != ErrDigestNotFound && cause != ErrImageNotFound {
@@ -45,7 +46,7 @@ func RemoveImageIgnoreNotFound(imageName string) error {
 
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
 // in case of failure.
-func RemoveImage(imageName string) error {
+func RemoveImage(ctx context.Context, imageName string) error {
 	registry, image, tag := parseImage(imageName)
 	if registry == "" {
 		registry, _ = config.GetString("docker:registry")
@@ -58,11 +59,11 @@ func RemoveImage(imageName string) error {
 		return errors.Errorf("empty image after parsing %q", imageName)
 	}
 	r := &dockerRegistry{server: registry}
-	digest, err := r.getDigest(image, tag)
+	digest, err := r.getDigest(ctx, image, tag)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag)
 	}
-	err = r.removeImage(image, digest)
+	err = r.removeImage(ctx, image, digest)
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest)
 	}
@@ -71,7 +72,7 @@ func RemoveImage(imageName string) error {
 
 // RemoveAppImages removes all app images from a remote registry v2 server, returning an error
 // in case of failure.
-func RemoveAppImages(appName string) error {
+func RemoveAppImages(ctx context.Context, appName string) error {
 	registry, _ := config.GetString("docker:registry")
 	if registry == "" {
 		// Nothing to do if no registry is set
@@ -79,18 +80,18 @@ func RemoveAppImages(appName string) error {
 	}
 	r := &dockerRegistry{server: registry}
 	image := fmt.Sprintf("tsuru/app-%s", appName)
-	tags, err := r.getImageTags(image)
+	tags, err := r.getImageTags(ctx, image)
 	if err != nil {
 		return err
 	}
 	multi := tsuruErrors.NewMultiError()
 	for _, tag := range tags {
-		digest, err := r.getDigest(image, tag)
+		digest, err := r.getDigest(ctx, image, tag)
 		if err != nil {
 			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag))
 			continue
 		}
-		err = r.removeImage(image, digest)
+		err = r.removeImage(ctx, image, digest)
 		if err != nil {
 			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest))
 			if errors.Cause(err) == ErrDeleteDisabled {
@@ -101,9 +102,9 @@ func RemoveAppImages(appName string) error {
 	return multi.ToError()
 }
 
-func (r dockerRegistry) getDigest(image, tag string) (string, error) {
+func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (string, error) {
 	path := fmt.Sprintf("/v2/%s/manifests/%s", image, tag)
-	resp, err := r.doRequest("HEAD", path, map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json"})
+	resp, err := r.doRequest(ctx, "HEAD", path, map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json"})
 	if err != nil {
 		return "", err
 	}
@@ -123,9 +124,9 @@ type imageTags struct {
 	Tags []string
 }
 
-func (r dockerRegistry) getImageTags(image string) ([]string, error) {
+func (r dockerRegistry) getImageTags(ctx context.Context, image string) ([]string, error) {
 	path := fmt.Sprintf("/v2/%s/tags/list", image)
-	resp, err := r.doRequest("GET", path, nil)
+	resp, err := r.doRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +141,9 @@ func (r dockerRegistry) getImageTags(image string) ([]string, error) {
 	return it.Tags, nil
 }
 
-func (r dockerRegistry) removeImage(image, digest string) error {
+func (r dockerRegistry) removeImage(ctx context.Context, image, digest string) error {
 	path := fmt.Sprintf("/v2/%s/manifests/%s", image, digest)
-	resp, err := r.doRequest("DELETE", path, nil)
+	resp, err := r.doRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
 	}
@@ -160,7 +161,7 @@ func (r dockerRegistry) removeImage(image, digest string) error {
 	return nil
 }
 
-func (r *dockerRegistry) doRequest(method, path string, headers map[string]string) (resp *http.Response, err error) {
+func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, headers map[string]string) (resp *http.Response, err error) {
 	u, _ := url.Parse(r.server)
 	server := r.server
 	if u != nil && u.Host != "" {
