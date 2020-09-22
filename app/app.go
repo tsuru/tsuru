@@ -2235,7 +2235,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 	multi := tsuruErrors.NewMultiError()
 	for i := range routers {
 		routerName := routers[i].Name
-		r, err := router.Get(app.ctx, routerName)
+		r, routerType, err := router.GetWithType(app.ctx, routerName)
 		if err != nil {
 			multi.Add(err)
 			continue
@@ -2267,8 +2267,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			Value: addr,
 		})
 		routers[i].Address = addr
-		rType, _ := router.Type(app.ctx, routerName)
-		routers[i].Type = rType
+		routers[i].Type = routerType
 	}
 	return routers, multi.ToError()
 }
