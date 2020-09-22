@@ -100,7 +100,7 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	defer dbtest.ClearAllCollections(conn.Apps().Database)
-	var manager gandalfManager
+	manager := newManager()
 	user1 := auth.User{Email: "user1@company.com"}
 	user2 := auth.User{Email: "user2@company.com"}
 	err = conn.Users().Insert(user1, user2)
@@ -163,7 +163,7 @@ Syncing app "hisapp"... OK
 }
 
 func (s *GandalfSuite) TestCreateUser(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myself@tsuru.io")
 	c.Assert(err, check.IsNil)
 	users := s.server.Users()
@@ -171,7 +171,7 @@ func (s *GandalfSuite) TestCreateUser(c *check.C) {
 }
 
 func (s *GandalfSuite) TestCreateUserAlreadyExists(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myself@tsuru.io")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser("myself@tsuru.io")
@@ -179,7 +179,7 @@ func (s *GandalfSuite) TestCreateUserAlreadyExists(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveUser(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myself@tsuru.io")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser("theirself@tsuru.io")
@@ -190,13 +190,13 @@ func (s *GandalfSuite) TestRemoveUser(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveUserNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.RemoveUser("myself@tsuru.io")
 	c.Assert(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (s *GandalfSuite) TestCreateRepository(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser("user2")
@@ -211,7 +211,7 @@ func (s *GandalfSuite) TestCreateRepository(c *check.C) {
 }
 
 func (s *GandalfSuite) TestCreateRepositoryDuplicate(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -221,7 +221,7 @@ func (s *GandalfSuite) TestCreateRepositoryDuplicate(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveRepository(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -236,13 +236,13 @@ func (s *GandalfSuite) TestRemoveRepository(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveRepositoryNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.RemoveRepository("myrepo")
 	c.Assert(err, check.Equals, repository.ErrRepositoryNotFound)
 }
 
 func (s *GandalfSuite) TestGetRepository(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -254,13 +254,13 @@ func (s *GandalfSuite) TestGetRepository(c *check.C) {
 }
 
 func (s *GandalfSuite) TestGetRepositoryNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	_, err := manager.GetRepository("myrepo")
 	c.Assert(err, check.Equals, repository.ErrRepositoryNotFound)
 }
 
 func (s *GandalfSuite) TestGrantAccess(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -275,7 +275,7 @@ func (s *GandalfSuite) TestGrantAccess(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRevokeAccess(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -296,7 +296,7 @@ func (s *GandalfSuite) TestRevokeAccess(c *check.C) {
 }
 
 func (s *GandalfSuite) TestAddKey(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
@@ -308,7 +308,7 @@ func (s *GandalfSuite) TestAddKey(c *check.C) {
 }
 
 func (s *GandalfSuite) TestAddKeyDuplicate(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
@@ -318,7 +318,7 @@ func (s *GandalfSuite) TestAddKeyDuplicate(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveKey(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
@@ -331,13 +331,13 @@ func (s *GandalfSuite) TestRemoveKey(c *check.C) {
 }
 
 func (s *GandalfSuite) TestRemoveKeyUserNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.RemoveKey("myuser", repository.Key{Name: "mykey"})
 	c.Assert(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (s *GandalfSuite) TestRemoveKeyNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.RemoveKey("myuser", repository.Key{Name: "mykey"})
@@ -345,7 +345,7 @@ func (s *GandalfSuite) TestRemoveKeyNotFound(c *check.C) {
 }
 
 func (s *GandalfSuite) TestUpdateKey(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
@@ -359,13 +359,13 @@ func (s *GandalfSuite) TestUpdateKey(c *check.C) {
 }
 
 func (s *GandalfSuite) TestUpdateKeyUserNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.UpdateKey("myuser", repository.Key{Name: "mykey", Body: otherPublicKey})
 	c.Assert(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (s *GandalfSuite) TestUpdateKeyNotFound(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.UpdateKey("myuser", repository.Key{Name: "mykey", Body: otherPublicKey})
@@ -373,7 +373,7 @@ func (s *GandalfSuite) TestUpdateKeyNotFound(c *check.C) {
 }
 
 func (s *GandalfSuite) TestListKeys(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
 	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
@@ -385,7 +385,7 @@ func (s *GandalfSuite) TestListKeys(c *check.C) {
 }
 
 func (s *GandalfSuite) TestDiff(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
@@ -397,7 +397,7 @@ func (s *GandalfSuite) TestDiff(c *check.C) {
 }
 
 func (s *GandalfSuite) TestCommitMessages(c *check.C) {
-	var manager gandalfManager
+	manager := newManager()
 	err := manager.CreateUser("user1")
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository("myrepo", []string{"user1"})
