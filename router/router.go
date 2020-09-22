@@ -62,18 +62,6 @@ func Unregister(name string) {
 	delete(routers, name)
 }
 
-func Type(ctx context.Context, name string) (string, error) {
-	dr, err := servicemanager.DynamicRouter.Get(ctx, name)
-	if err != nil && err != router.ErrDynamicRouterNotFound {
-		return "", err
-	}
-	if dr != nil {
-		return dr.Type, nil
-	}
-	rType, _, err := configType(name)
-	return rType, err
-}
-
 func configType(name string) (string, string, error) {
 	prefix := "routers:" + name
 	routerType, err := config.GetString(prefix + ":type")
@@ -90,9 +78,14 @@ func configType(name string) (string, string, error) {
 
 // Get gets the named router from the registry.
 func Get(ctx context.Context, name string) (Router, error) {
+	r, _, err := GetWithType(ctx, name)
+	return r, err
+}
+
+func GetWithType(ctx context.Context, name string) (Router, string, error) {
 	dr, err := servicemanager.DynamicRouter.Get(ctx, name)
 	if err != nil && err != router.ErrDynamicRouterNotFound {
-		return nil, err
+		return nil, "", err
 	}
 	var routerType string
 	var config ConfigGetter
@@ -103,19 +96,19 @@ func Get(ctx context.Context, name string) (Router, error) {
 		var prefix string
 		routerType, prefix, err = configType(name)
 		if err != nil {
-			return nil, &ErrRouterNotFound{Name: name}
+			return nil, "", &ErrRouterNotFound{Name: name}
 		}
 		config = ConfigGetterFromPrefix(prefix)
 	}
 	factory, ok := routers[routerType]
 	if !ok {
-		return nil, errors.Errorf("unknown router: %q.", routerType)
+		return nil, "", errors.Errorf("unknown router: %q.", routerType)
 	}
 	r, err := factory(name, config)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return r, nil
+	return r, routerType, nil
 }
 
 // Default returns the default router
