@@ -25,7 +25,40 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	if err != nil {
 		return nil, err
 	}
-	return getAutoScale(ctx, client, a, "")
+	controller, err := getClusterController(p, client)
+	if err != nil {
+		return nil, err
+	}
+	hpaInformer, err := controller.getHPAInformer()
+	if err != nil {
+		return nil, err
+	}
+
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+	hpas, err := hpaInformer.Lister().HorizontalPodAutoscalers(ns).List(labels.SelectorFromSet(labels.Set(ls.ToHPASelector())))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var specs []provision.AutoScaleSpec
+	for _, hpa := range hpas {
+		specs = append(specs, hpaToSpec(*hpa))
+	}
+	return specs, nil
 }
 
 func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
