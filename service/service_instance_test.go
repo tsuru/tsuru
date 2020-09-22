@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -27,9 +28,11 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -629,6 +632,111 @@ func (s *InstanceSuite) TestCreateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	c.Assert(si.Tags, check.DeepEquals, []string{"tag1"})
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterInstanceWithoutPool(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Fail()
+	}))
+	defer ts.Close()
+	srv := Service{
+		Name:           "multicluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: true,
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "instance",
+		TeamOwner: s.team.Name,
+	}
+	evt := createEvt(c)
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
+	c.Assert(err, check.Equals, ErrMultiClusterServiceRequiresPool)
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExist(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Fail()
+	}))
+	defer ts.Close()
+	srv := Service{
+		Name:           "multicluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: true,
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	instance := ServiceInstance{
+		Name:      "instance",
+		TeamOwner: s.team.Name,
+		Pool:      "not-found-pool",
+	}
+	evt := createEvt(c)
+	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "pool not found")
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header["X-Tsuru-Pool-Name"], check.DeepEquals, []string{"my-pool"})
+		c.Assert(r.Header["X-Tsuru-Pool-Provisioner"], check.DeepEquals, []string{"kubernetes"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Name"], check.DeepEquals, []string{"cluster-name"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Provisioner"], check.DeepEquals, []string{"kubernetes"})
+		c.Assert(r.Header["X-Tsuru-Cluster-Addresses"], check.DeepEquals, []string{"https://my-kubernetes.example.com"})
+		atomic.AddInt32(&requests, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	srv := Service{
+		Name:           "multicluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: true,
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	servicemanager.Pool = &provTypes.MockPoolService{
+		OnFindByName: func(name string) (*provTypes.Pool, error) {
+			if name != "my-pool" {
+				return nil, errors.New("pool not found")
+			}
+			return &provTypes.Pool{
+				Name:        "my-pool",
+				Provisioner: "kubernetes",
+			}, nil
+		},
+	}
+	servicemanager.Cluster = &provTypes.MockClusterService{
+		OnFindByPool: func(provisioner, name string) (*provTypes.Cluster, error) {
+			if name != "my-pool" || provisioner != "kubernetes" {
+				return nil, errors.New("pool does not exist")
+			}
+			return &provTypes.Cluster{
+				Name:        "cluster-name",
+				Addresses:   []string{"https://my-kubernetes.example.com"},
+				Provisioner: "kubernetes",
+				Pools:       []string{"my-pool"},
+			}, nil
+		},
+	}
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "instance",
+		TeamOwner: s.team.Name,
+		Pool:      "my-pool",
+	}
+	err = CreateServiceInstance(context.TODO(), instance, &srv, createEvt(c), "")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.Equals, int32(1))
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {

@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/servicemanager"
 )
 
 var (
@@ -77,7 +78,11 @@ func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, 
 	}
 	addParameters(params, instance.Parameters)
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
-	resp, err = c.issueRequest(ctx, "/resources", "POST", params, requestID)
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return err
+	}
+	resp, err = c.issueRequest(ctx, "/resources", "POST", params, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode < 300 {
@@ -102,7 +107,11 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 		"eventid":     {evt.UniqueID.Hex()},
 	}
 	addParameters(params, instance.Parameters)
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "PUT", params, requestID)
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return err
+	}
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "PUT", params, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -122,7 +131,11 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 		"user":    {evt.Owner.Name},
 		"eventid": {evt.UniqueID.Hex()},
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "DELETE", params, requestID)
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return err
+	}
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "DELETE", params, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -153,13 +166,17 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, requestID)
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, header)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, requestID)
+		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, header)
 	}
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
@@ -197,7 +214,11 @@ func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, "")
+	header, err := baseHeader(ctx, nil, instance, "")
+	if err != nil {
+		return err
+	}
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, header)
 	if err != nil {
 		return log.WrapError(errors.Wrapf(err, `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp()))
 	}
@@ -231,7 +252,11 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(ctx, url, "DELETE", params, requestID)
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return err
+	}
+	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -259,7 +284,11 @@ func (c *endpointClient) UnbindUnit(ctx context.Context, instance *ServiceInstan
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(ctx, url, "DELETE", params, "")
+	header, err := baseHeader(ctx, nil, instance, "")
+	if err != nil {
+		return err
+	}
+	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -279,8 +308,12 @@ func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, 
 		resp *http.Response
 		err  error
 	)
+	header, err := baseHeader(ctx, nil, instance, requestID)
+	if err != nil {
+		return "", err
+	}
 	url := "/resources/" + instance.GetIdentifier() + "/status"
-	if resp, err = c.issueRequest(ctx, url, "GET", nil, requestID); err == nil {
+	if resp, err = c.issueRequest(ctx, url, "GET", nil, header); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
@@ -307,8 +340,12 @@ func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, 
 // GET /resources/<name>
 func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
+	header, err := baseHeader(ctx, nil, instance, requestID)
+	if err != nil {
+		return nil, err
+	}
 	url := "/resources/" + instance.GetIdentifier()
-	resp, err := c.issueRequest(ctx, url, "GET", nil, requestID)
+	resp, err := c.issueRequest(ctx, url, "GET", nil, header)
 	if err != nil {
 		return nil, err
 	}
@@ -329,8 +366,12 @@ func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, re
 // like below:
 // GET /resources/plans
 func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, error) {
+	header, err := baseHeader(ctx, nil, nil, requestID)
+	if err != nil {
+		return nil, err
+	}
 	url := "/resources/plans"
-	resp, err := c.issueRequest(ctx, url, "GET", nil, requestID)
+	resp, err := c.issueRequest(ctx, url, "GET", nil, header)
 	if err != nil {
 		return nil, err
 	}
@@ -365,15 +406,15 @@ func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Even
 		log.Errorf("Got error while creating service proxy url %s: %s", rawurl, err)
 		return err
 	}
+	header, err := baseHeader(ctx, evt, nil, requestID)
+	if err != nil {
+		return err
+	}
+	for k, v := range header {
+		r.Header[k] = v
+	}
 	director := func(req *http.Request) {
-		if evt != nil {
-			req.Header.Set("X-Tsuru-User", evt.Owner.Name)
-			req.Header.Set("X-Tsuru-Eventid", evt.UniqueID.Hex())
-		}
-		requestIDHeader, err := config.GetString("request-id-header")
-		if err == nil && requestID != "" && requestIDHeader != "" {
-			req.Header.Set(requestIDHeader, requestID)
-		}
+		req.Header = r.Header
 		req.SetBasicAuth(c.username, c.password)
 		req.Host = url.Host
 		req.URL = url
@@ -397,7 +438,7 @@ func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error
 	return nil
 }
 
-func (c *endpointClient) issueRequest(ctx context.Context, path, method string, params map[string][]string, requestID string) (*http.Response, error) {
+func (c *endpointClient) issueRequest(ctx context.Context, path, method string, params map[string][]string, header http.Header) (*http.Response, error) {
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -415,11 +456,10 @@ func (c *endpointClient) issueRequest(ctx context.Context, path, method string, 
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Accept", "application/json")
-	requestIDHeader, err := config.GetString("request-id-header")
-	if err == nil && requestID != "" && requestIDHeader != "" {
-		req.Header.Add(requestIDHeader, requestID)
+	req.Header = header
+	req.Header.Set("Accept", "application/json")
+	if method != "GET" && method != "HEAD" && method != "OPTIONS" {
+		header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 	req.SetBasicAuth(c.username, c.password)
 	req.Close = true
@@ -453,4 +493,42 @@ func addParameters(dst url.Values, params map[string]interface{}) {
 	for key, value := range encoded {
 		dst["parameters."+key] = value
 	}
+}
+
+func baseHeader(ctx context.Context, evt *event.Event, si *ServiceInstance, requestID string) (http.Header, error) {
+	header := make(http.Header)
+	if evt != nil {
+		header.Set("X-Tsuru-User", evt.Owner.Name)
+		header.Set("X-Tsuru-Eventid", evt.UniqueID.Hex())
+	}
+	requestIDHeader, _ := config.GetString("request-id-header")
+	if requestIDHeader != "" && requestID != "" {
+		header.Set(requestIDHeader, requestID)
+	}
+	return multiClusterHeader(ctx, si, header)
+}
+
+func multiClusterHeader(ctx context.Context, si *ServiceInstance, header http.Header) (http.Header, error) {
+	if header == nil {
+		header = http.Header{}
+	}
+	if si == nil || si.Pool == "" {
+		return header, nil
+	}
+	p, err := servicemanager.Pool.FindByName(ctx, si.Pool)
+	if err != nil {
+		return header, err
+	}
+	header.Set("X-Tsuru-Pool-Name", p.Name)
+	header.Set("X-Tsuru-Pool-Provisioner", p.Provisioner)
+	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
+	if err != nil {
+		return header, err
+	}
+	header.Set("X-Tsuru-Cluster-Name", c.Name)
+	header.Set("X-Tsuru-Cluster-Provisioner", c.Provisioner)
+	for _, addr := range c.Addresses {
+		header.Add("X-Tsuru-Cluster-Addresses", addr)
+	}
+	return header, nil
 }
