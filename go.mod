@@ -28,6 +28,7 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/exoscale/egoscale v0.9.31 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/felixge/fgprof v0.9.1
 	github.com/fsouza/go-dockerclient v0.0.0-20180427001620-3a206030a28a
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
@@ -98,7 +99,7 @@ require (
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20190801041406-cbf593c0f2f3
+	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	google.golang.org/api v0.7.0 // indirect
 	gopkg.in/ahmetb/go-linq.v3 v3.0.0-00010101000000-000000000000 // indirect

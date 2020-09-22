@@ -11,6 +11,7 @@ import (
 	"fmt"
 	stdLog "log"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/felixge/fgprof"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -395,15 +397,16 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.9", "Delete", "/roles/{name}/group/{group_name}", AuthorizationRequiredHandler(dissociateRoleFromGroup))
 
 	m.Add("1.0", "Get", "/debug/goroutines", AuthorizationRequiredHandler(dumpGoroutines))
-	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(indexHandler))
-	m.Add("1.0", "Get", "/debug/pprof/cmdline", AuthorizationRequiredHandler(cmdlineHandler))
-	m.Add("1.0", "Get", "/debug/pprof/profile", AuthorizationRequiredHandler(profileHandler))
-	m.Add("1.0", "Get", "/debug/pprof/symbol", AuthorizationRequiredHandler(symbolHandler))
-	m.Add("1.0", "Get", "/debug/pprof/heap", AuthorizationRequiredHandler(indexHandler))
-	m.Add("1.0", "Get", "/debug/pprof/goroutine", AuthorizationRequiredHandler(indexHandler))
-	m.Add("1.0", "Get", "/debug/pprof/threadcreate", AuthorizationRequiredHandler(indexHandler))
-	m.Add("1.0", "Get", "/debug/pprof/block", AuthorizationRequiredHandler(indexHandler))
-	m.Add("1.0", "Get", "/debug/pprof/trace", AuthorizationRequiredHandler(traceHandler))
+	m.Add("1.0", "Get", "/debug/pprof/", AuthorizationRequiredHandler(debugHandler(pprof.Index)))
+	m.Add("1.0", "Get", "/debug/pprof/cmdline", AuthorizationRequiredHandler(debugHandler(pprof.Cmdline)))
+	m.Add("1.0", "Get", "/debug/pprof/profile", AuthorizationRequiredHandler(debugHandler(pprof.Profile)))
+	m.Add("1.0", "Get", "/debug/pprof/symbol", AuthorizationRequiredHandler(debugHandler(pprof.Symbol)))
+	m.Add("1.0", "Get", "/debug/pprof/heap", AuthorizationRequiredHandler(debugHandler(pprof.Index)))
+	m.Add("1.0", "Get", "/debug/pprof/goroutine", AuthorizationRequiredHandler(debugHandler(pprof.Index)))
+	m.Add("1.0", "Get", "/debug/pprof/threadcreate", AuthorizationRequiredHandler(debugHandler(pprof.Index)))
+	m.Add("1.0", "Get", "/debug/pprof/block", AuthorizationRequiredHandler(debugHandler(pprof.Index)))
+	m.Add("1.0", "Get", "/debug/pprof/trace", AuthorizationRequiredHandler(debugHandler(pprof.Trace)))
+	m.Add("1.9", "Get", "/debug/fgprof", AuthorizationRequiredHandler(debugHandlerInt(fgprof.Handler())))
 
 	m.Add("1.3", "GET", "/node/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	m.Add("1.3", "GET", "/node/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
