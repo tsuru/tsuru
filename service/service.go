@@ -31,6 +31,12 @@ type Service struct {
 	Teams        []string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
+	// IsMultiCluster indicates whether Service Instances (children of this Service)
+	// run within the user's Cluster (same pool of Tsuru Apps). When enabled, creating
+	// a Service Instance must require a valid Pool.
+	//
+	// This field is immutable (after creating Service).
+	IsMultiCluster bool `bson:"is_multi_cluster"`
 
 	ctx context.Context
 }
