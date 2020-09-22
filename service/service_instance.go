@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
@@ -37,6 +38,7 @@ var (
 	ErrUnitNotBound                    = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound            = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
 	ErrMultiClusterServiceRequiresPool = errors.New("multi-cluster service instance requires a pool")
+	ErrMultiClusterPoolDoesNotMatch    = errors.New("pools between app and multi-cluster service instance does not match")
 	instanceNameRegexp                 = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
@@ -231,6 +233,9 @@ func (si *ServiceInstance) updateData(update bson.M) error {
 
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
+	if err := validateMultiClusterAppBind(si.ctx, si, app); err != nil {
+		return err
+	}
 	args := bindPipelineArgs{
 		serviceInstance: si,
 		app:             app,
@@ -616,6 +621,24 @@ func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) e
 	_, err := servicemanager.Pool.FindByName(ctx, si.Pool)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateMultiClusterAppBind(ctx context.Context, si *ServiceInstance, app bind.App) error {
+	if si == nil || si.Pool == "" {
+		return nil
+	}
+	a, ok := app.(appTypes.App)
+	if !ok {
+		var err error
+		a, err = servicemanager.App.GetByName(ctx, app.GetName())
+		if err != nil {
+			return err
+		}
+	}
+	if a.GetPool() != si.Pool {
+		return ErrMultiClusterPoolDoesNotMatch
 	}
 	return nil
 }

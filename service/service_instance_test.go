@@ -1277,6 +1277,33 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	c.Assert(siDB.Apps, check.DeepEquals, expectedNames)
 }
 
+func (s *InstanceSuite) TestBindAppMultiClusterInstancePoolDoesNotMatchWithAppPool(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Fail()
+	}))
+	defer ts.Close()
+	err := s.conn.Services().Insert(Service{
+		Name:       "multi-cluster-service",
+		Username:   "user",
+		Password:   "s3cr3t",
+		Endpoint:   map[string]string{"production": ts.URL},
+		OwnerTeams: []string{s.team.Name},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Insert(ServiceInstance{
+		Name:        "my-instance",
+		ServiceName: "multi-cluster-service",
+		Teams:       []string{s.team.Name},
+		Pool:        "pool-A",
+	})
+	c.Assert(err, check.IsNil)
+	si, err := GetServiceInstance(context.TODO(), "multi-cluster-service", "my-instance")
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeAppWithPool("myapp", "python", "pool-B", 1)
+	err = si.BindApp(a, BindAppParameters{}, true, nil, nil, "")
+	c.Assert(err, check.Equals, ErrMultiClusterPoolDoesNotMatch)
+}
+
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	originalMaxProcs := runtime.GOMAXPROCS(4)
 	defer runtime.GOMAXPROCS(originalMaxProcs)
