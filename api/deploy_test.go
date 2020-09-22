@@ -139,6 +139,10 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	}
 }
 
+func (s *DeploySuite) TearDownTest(c *check.C) {
+	app.GetAppRouterUpdater().Shutdown(context.Background())
+}
+
 func newAppVersion(c *check.C, app provision.App) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
