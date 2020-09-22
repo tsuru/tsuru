@@ -20,7 +20,9 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -553,4 +555,33 @@ func exprAsGlobPattern(expr string) string {
 		parts[i] = regexp.QuoteMeta(parts[i])
 	}
 	return fmt.Sprintf("^%s$", strings.Join(parts, ".*"))
+}
+
+type poolService struct {
+	storage provisionTypes.PoolStorage
+}
+
+var _ provisionTypes.PoolService = &poolService{}
+
+func PoolStorage() (provisionTypes.PoolStorage, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dbDriver.PoolStorage, nil
+}
+
+func PoolService() (provisionTypes.PoolService, error) {
+	poolStorage, err := PoolStorage()
+	if err != nil {
+		return nil, err
+	}
+	return &poolService{storage: poolStorage}, nil
+}
+
+func (s *poolService) List(ctx context.Context) ([]provisionTypes.Pool, error) {
+	return s.storage.FindAll(ctx)
 }

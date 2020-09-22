@@ -36,4 +36,5 @@ var (
 	AppVersion                app.AppVersionService
 	DynamicRouter             router.DynamicRouterService
 	AuthGroup                 auth.GroupService
+	Pool                      provision.PoolService
 )

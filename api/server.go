@@ -49,6 +49,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
@@ -170,7 +171,14 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.AuthGroup, err = auth.GroupService()
-	return err
+	if err != nil {
+		return err
+	}
+	servicemanager.Pool, err = pool.PoolService()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func InitializeDBServices() error {
