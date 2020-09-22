@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -81,6 +82,10 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Username: InputValue(r, "username"),
 		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
 		Password: InputValue(r, "password"),
+	}
+	multiCluster, err := strconv.ParseBool(InputValue(r, "multi-cluster"))
+	if err == nil {
+		s.IsMultiCluster = multiCluster
 	}
 	team := InputValue(r, "team")
 	if team == "" {

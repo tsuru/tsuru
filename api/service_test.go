@@ -169,6 +169,7 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
 	c.Assert(rService.OwnerTeams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(rService.IsMultiCluster, check.Equals, false)
 	c.Assert(eventtest.EventDesc{
 		Target: serviceTarget("some-service"),
 		Owner:  s.token.GetUserName(),
@@ -209,6 +210,7 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeam(c *check.C) {
 	c.Assert(rService.Endpoint["production"], check.Equals, "someservices.com")
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
+	c.Assert(rService.IsMultiCluster, check.Equals, false)
 }
 
 func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions(c *check.C) {
@@ -267,6 +269,27 @@ func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutId(c *check.C)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "Service id is required\n")
+}
+
+func (s *ProvisionSuite) TestServiceCreateWithMultiClusterEnabled(c *check.C) {
+	v := url.Values{}
+	v.Set("id", "multi-cluster-service")
+	v.Set("username", "user")
+	v.Set("password", "password")
+	v.Set("endpoint", "http://multicluster.service.example.com")
+	v.Set("multi-cluster", "true")
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	query := bson.M{"_id": "multi-cluster-service"}
+	var rService service.Service
+	err := s.conn.Services().Find(query).One(&rService)
+	c.Assert(err, check.IsNil)
+	c.Assert(rService.Endpoint["production"], check.Equals, "http://multicluster.service.example.com")
+	c.Assert(rService.Username, check.Equals, "user")
+	c.Assert(rService.Password, check.Equals, "password")
+	c.Assert(rService.IsMultiCluster, check.Equals, true)
 }
 
 func (s *ProvisionSuite) TestServiceUpdate(c *check.C) {
