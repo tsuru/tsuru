@@ -14,6 +14,7 @@
 package hipache
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -34,6 +35,13 @@ const routerType = "hipache"
 var (
 	redisClients    = map[string]tsuruRedis.Client{}
 	redisClientsMut sync.RWMutex
+)
+
+var (
+	_ router.Router        = &hipacheRouter{}
+	_ router.HealthChecker = &hipacheRouter{}
+	_ router.CNameRouter   = &hipacheRouter{}
+	_ router.TLSRouter     = &planbRouter{}
 )
 
 func init() {
@@ -95,7 +103,7 @@ func (r *hipacheRouter) GetName() string {
 	return r.routerName
 }
 
-func (r *hipacheRouter) AddBackend(app router.App) (err error) {
+func (r *hipacheRouter) AddBackend(ctx context.Context, app router.App) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -124,7 +132,7 @@ func (r *hipacheRouter) AddBackend(app router.App) (err error) {
 	return router.Store(name, name, routerType)
 }
 
-func (r *hipacheRouter) RemoveBackend(name string) (err error) {
+func (r *hipacheRouter) RemoveBackend(ctx context.Context, name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -177,7 +185,7 @@ func (r *hipacheRouter) RemoveBackend(name string) (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+func (r *hipacheRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -191,7 +199,7 @@ func (r *hipacheRouter) AddRoutes(name string, addresses []*url.URL) (err error)
 		log.Errorf("error on getting hipache domain in add route for %s - %v", backendName, addresses)
 		return &router.RouterError{Op: "add", Err: err}
 	}
-	routes, err := r.Routes(name)
+	routes, err := r.Routes(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -244,7 +252,7 @@ func (r *hipacheRouter) addRoutes(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+func (r *hipacheRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -283,7 +291,7 @@ func (r *hipacheRouter) RemoveRoutes(name string, addresses []*url.URL) (err err
 	return nil
 }
 
-func (r *hipacheRouter) HealthCheck() (err error) {
+func (r *hipacheRouter) HealthCheck(ctx context.Context) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -302,7 +310,7 @@ func (r *hipacheRouter) HealthCheck() (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) CNames(name string) (urls []*url.URL, err error) {
+func (r *hipacheRouter) CNames(ctx context.Context, name string) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -330,7 +338,7 @@ func (r *hipacheRouter) getCNames(name string) ([]string, error) {
 	return cnames, nil
 }
 
-func (r *hipacheRouter) SetCName(cname, name string) (err error) {
+func (r *hipacheRouter) SetCName(ctx context.Context, cname, name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -406,7 +414,7 @@ func (r *hipacheRouter) SetCName(cname, name string) (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) UnsetCName(cname, name string) (err error) {
+func (r *hipacheRouter) UnsetCName(ctx context.Context, cname, name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -444,7 +452,7 @@ func (r *hipacheRouter) UnsetCName(cname, name string) (err error) {
 	return nil
 }
 
-func (r *hipacheRouter) Addr(name string) (addr string, err error) {
+func (r *hipacheRouter) Addr(ctx context.Context, name string) (addr string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -472,7 +480,7 @@ func (r *hipacheRouter) Addr(name string) (addr string, err error) {
 	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }
 
-func (r *hipacheRouter) Routes(name string) (urls []*url.URL, err error) {
+func (r *hipacheRouter) Routes(ctx context.Context, name string) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -525,12 +533,12 @@ func (r *hipacheRouter) removeElements(name string, addresses []string) error {
 	return nil
 }
 
-func (r *hipacheRouter) Swap(backend1, backend2 string, cnameOnly bool) (err error) {
+func (r *hipacheRouter) Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return router.Swap(r, backend1, backend2, cnameOnly)
+	return router.Swap(ctx, r, backend1, backend2, cnameOnly)
 }
 
 func (r *hipacheRouter) StartupMessage() (string, error) {
@@ -541,7 +549,7 @@ func (r *hipacheRouter) StartupMessage() (string, error) {
 	return fmt.Sprintf("hipache router %q with redis at %q.", domain, "TODO"), nil
 }
 
-func (r *hipacheRouter) SetHealthcheck(name string, data routerTypes.HealthcheckData) (err error) {
+func (r *hipacheRouter) SetHealthcheck(ctx context.Context, name string, data routerTypes.HealthcheckData) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -574,9 +582,7 @@ type planbRouter struct {
 	hipacheRouter
 }
 
-var _ router.TLSRouter = &planbRouter{}
-
-func (r *planbRouter) AddCertificate(_ router.App, cname, cert, key string) (err error) {
+func (r *planbRouter) AddCertificate(ctx context.Context, _ router.App, cname, cert, key string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -595,7 +601,7 @@ func (r *planbRouter) AddCertificate(_ router.App, cname, cert, key string) (err
 	return nil
 }
 
-func (r *planbRouter) RemoveCertificate(_ router.App, cname string) (err error) {
+func (r *planbRouter) RemoveCertificate(ctx context.Context, _ router.App, cname string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -611,7 +617,7 @@ func (r *planbRouter) RemoveCertificate(_ router.App, cname string) (err error) 
 	return nil
 }
 
-func (r *planbRouter) GetCertificate(_ router.App, cname string) (cert string, err error) {
+func (r *planbRouter) GetCertificate(ctx context.Context, _ router.App, cname string) (cert string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

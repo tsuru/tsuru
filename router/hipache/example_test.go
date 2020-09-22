@@ -15,11 +15,12 @@ import (
 )
 
 func Example() {
-	router, err := router.Get(context.TODO(), "hipache")
+	ctx := context.TODO()
+	router, err := router.Get(ctx, "hipache")
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddBackend(routertest.FakeApp{Name: "myapp"})
+	err = router.AddBackend(ctx, routertest.FakeApp{Name: "myapp"})
 	if err != nil {
 		panic(err)
 	}
@@ -27,17 +28,17 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddRoutes("myapp", []*url.URL{u})
+	err = router.AddRoutes(ctx, "myapp", []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}
-	addr, _ := router.Addr("myapp")
+	addr, _ := router.Addr(ctx, "myapp")
 	fmt.Println("Please access:", addr)
-	err = router.RemoveRoutes("myapp", []*url.URL{u})
+	err = router.RemoveRoutes(ctx, "myapp", []*url.URL{u})
 	if err != nil {
 		panic(err)
 	}
-	err = router.RemoveBackend("myapp")
+	err = router.RemoveBackend(ctx, "myapp")
 	if err != nil {
 		panic(err)
 	}

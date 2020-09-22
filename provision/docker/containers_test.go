@@ -556,7 +556,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	routers := appInstance.GetRouters()
 	r, err := router.Get(context.TODO(), routers[0].Name)
 	c.Assert(err, check.IsNil)
-	beforeRoutes, err := r.Routes(appStruct.Name)
+	beforeRoutes, err := r.Routes(context.TODO(), appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(beforeRoutes, check.HasLen, 5)
 	var serviceCalled bool
@@ -574,7 +574,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.HasLen, 5)
 	c.Assert(c2, check.HasLen, 0)
-	routes, err := r.Routes(appStruct.Name)
+	routes, err := r.Routes(context.TODO(), appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, beforeRoutes)
 	c.Assert(serviceCalled, check.Equals, false)

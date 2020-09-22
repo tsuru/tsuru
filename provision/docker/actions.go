@@ -491,9 +491,9 @@ var addNewRoutes = action.Action{
 			return newContainers, nil
 		}
 		err = runInRouters(ctx.Context, args.app, func(r router.Router) error {
-			return r.AddRoutes(args.app.GetName(), routesToAdd)
+			return r.AddRoutes(ctx.Context, args.app.GetName(), routesToAdd)
 		}, func(r router.Router) error {
-			return r.RemoveRoutes(args.app.GetName(), routesToAdd)
+			return r.RemoveRoutes(ctx.Context, args.app.GetName(), routesToAdd)
 		})
 		if err != nil {
 			return nil, err
@@ -523,7 +523,7 @@ var addNewRoutes = action.Action{
 			return
 		}
 		err := runInRouters(ctx.Context, args.app, func(r router.Router) error {
-			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
+			return r.RemoveRoutes(ctx.Context, args.app.GetName(), routesToRemove)
 		}, nil)
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error removing route for [%v]: %s", routesToRemove, err)
@@ -569,7 +569,7 @@ var setRouterHealthcheck = action.Action{
 			if !ok {
 				return nil
 			}
-			return hcRouter.SetHealthcheck(args.app.GetName(), newHCData)
+			return hcRouter.SetHealthcheck(ctx.Context, args.app.GetName(), newHCData)
 		}, func(r router.Router) error {
 			hcRouter, ok := r.(router.CustomHealthcheckRouter)
 			if !ok {
@@ -587,7 +587,7 @@ var setRouterHealthcheck = action.Action{
 			if err != nil {
 				return err
 			}
-			return hcRouter.SetHealthcheck(args.app.GetName(), yamlData.ToRouterHC())
+			return hcRouter.SetHealthcheck(ctx.Context, args.app.GetName(), yamlData.ToRouterHC())
 		})
 		return newContainers, err
 	},
@@ -612,7 +612,7 @@ var setRouterHealthcheck = action.Action{
 			if !ok {
 				return nil
 			}
-			return hcRouter.SetHealthcheck(args.app.GetName(), hcData)
+			return hcRouter.SetHealthcheck(ctx.Context, args.app.GetName(), hcData)
 		}, nil)
 		if err != nil {
 			log.Errorf("[set-router-healthcheck:Backward] Error setting healthcheck: %s", err)
@@ -671,12 +671,12 @@ var removeOldRoutes = action.Action{
 			return result, nil
 		}
 		err = runInRouters(ctx.Context, args.app, func(r router.Router) error {
-			return r.RemoveRoutes(args.app.GetName(), routesToRemove)
+			return r.RemoveRoutes(ctx.Context, args.app.GetName(), routesToRemove)
 		}, func(r router.Router) error {
 			if args.appDestroy {
 				return nil
 			}
-			return r.AddRoutes(args.app.GetName(), routesToRemove)
+			return r.AddRoutes(ctx.Context, args.app.GetName(), routesToRemove)
 		})
 		if err != nil {
 			return nil, err
@@ -705,7 +705,7 @@ var removeOldRoutes = action.Action{
 			return
 		}
 		err := runInRouters(ctx.Context, args.app, func(r router.Router) error {
-			return r.AddRoutes(args.app.GetName(), routesToAdd)
+			return r.AddRoutes(ctx.Context, args.app.GetName(), routesToAdd)
 		}, nil)
 		if err != nil {
 			log.Errorf("[remove-old-routes:Backward] Error adding back route for [%v]: %s", routesToAdd, err)

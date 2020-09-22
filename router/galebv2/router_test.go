@@ -5,6 +5,7 @@
 package galebv2
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -476,7 +477,7 @@ func (s *S) TestAddBackendPartialFailure(c *check.C) {
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
 	fakeServer.prepareError("POST", "/api/rule", "error on AddRuleToPool")
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.ErrorMatches, "(?s)POST /rule: invalid response code: 500: error on AddRuleToPool.*")
 	c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
@@ -493,10 +494,10 @@ func (s *S) TestAddBackendPartialFailureExisting(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
 	fakeServer.prepareError("POST", "/api/rule", "error on AddRuleToPool")
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.ErrorMatches, "(?s)POST /rule: invalid response code: 500: error on AddRuleToPool.*")
 	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
@@ -513,7 +514,7 @@ func (s *S) TestAddBackendPartialFailureInFirstResource(c *check.C) {
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
 	fakeServer.prepareError("POST", "/api/pool", "error in pool create")
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.ErrorMatches, "(?s)POST /pool: invalid response code: 500: error in pool create.*")
 	c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
 	c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
@@ -530,10 +531,10 @@ func (s *S) TestAddBackendPartialFailureInFirstResourceExisting(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
 	fakeServer.prepareError("POST", "/api/pool", "error in pool create")
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.ErrorMatches, "(?s)POST /pool: invalid response code: 500: error in pool create.*")
 	c.Check(fakeServer.pools, check.Not(check.DeepEquals), map[string]interface{}{})
 	c.Check(fakeServer.virtualhosts, check.Not(check.DeepEquals), map[string]interface{}{})
@@ -549,7 +550,7 @@ func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
 	var addrs []*url.URL
 	for i := 0; i < 20; i++ {
@@ -560,7 +561,7 @@ func (s *S) TestRouteAddRoutesPartialFailure(c *check.C) {
 	}
 	fakeServer.prepareError("POST", "/api/target", "error for http://10.10.10.5:8080")
 	sort.Sort(routertest.URLList(addrs))
-	err = gRouter.AddRoutes("backend1", addrs)
+	err = gRouter.AddRoutes(context.TODO(), "backend1", addrs)
 	c.Assert(err, check.ErrorMatches, `(?s)POST /target: invalid response code: 500: error for http://10.10.10.5:8080.*`)
 	c.Check(fakeServer.targets["http://10.10.10.5:8080"], check.IsNil)
 }
@@ -573,9 +574,9 @@ func (s *S) TestSetHealthcheck(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
-	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck("backend1", routerTypes.HealthcheckData{
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), "backend1", routerTypes.HealthcheckData{
 		Path: "/",
 	})
 	c.Assert(err, check.IsNil)
@@ -592,9 +593,9 @@ func (s *S) TestSetHealthcheckTCPOnly(c *check.C) {
 	config.Set("routers:galeb:api-url", server.URL+"/api")
 	gRouter, err := createRouter("galeb", router.ConfigGetterFromPrefix("routers:galeb"))
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddBackend(routertest.FakeApp{Name: "backend1"})
+	err = gRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend1"})
 	c.Assert(err, check.IsNil)
-	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck("backend1", routerTypes.HealthcheckData{
+	err = gRouter.(router.CustomHealthcheckRouter).SetHealthcheck(context.TODO(), "backend1", routerTypes.HealthcheckData{
 		TCPOnly: true,
 	})
 	c.Assert(err, check.IsNil)

@@ -632,7 +632,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		var r router.Router
 		r, err = router.Get(ctx, appRouter.Name)
 		if err == nil {
-			err = r.RemoveBackend(app.Name)
+			err = r.RemoveBackend(ctx, app.Name)
 		}
 		if err != nil {
 			logErr("Failed to remove router backend", err)
@@ -1315,17 +1315,17 @@ func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr stri
 			return err
 		}
 		var oldRoutes []*url.URL
-		oldRoutes, err = r.Routes(app.GetName())
+		oldRoutes, err = r.Routes(app.ctx, app.GetName())
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
 		}
-		err = r.RemoveRoutes(app.GetName(), oldRoutes)
+		err = r.RemoveRoutes(app.ctx, app.GetName(), oldRoutes)
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
 		}
-		err = r.AddRoutes(app.GetName(), []*url.URL{proxyURL})
+		err = r.AddRoutes(app.ctx, app.GetName(), []*url.URL{proxyURL})
 		if err != nil {
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
@@ -2016,7 +2016,7 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 		app1.GetRoutersWithAddr()
 		app2.GetRoutersWithAddr()
 	}(app1, app2)
-	err = r1.Swap(app1.Name, app2.Name, cnameOnly)
+	err = r1.Swap(ctx, app1.Name, app2.Name, cnameOnly)
 	if err != nil {
 		return err
 	}
@@ -2110,9 +2110,9 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(app, appRouter.Opts)
+		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
 	} else {
-		err = r.AddBackend(app)
+		err = r.AddBackend(app.ctx, app)
 	}
 	if err != nil {
 		return err
@@ -2120,7 +2120,7 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	routers := append(app.GetRouters(), appRouter)
 	err = app.updateRoutersDB(routers)
 	if err != nil {
-		rollbackErr := r.RemoveBackend(appRouter.Name)
+		rollbackErr := r.RemoveBackend(app.ctx, appRouter.Name)
 		if rollbackErr != nil {
 			log.Errorf("unable to remove router backend rolling back add router: %v", rollbackErr)
 		}
@@ -2155,7 +2155,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
-	err = optsRouter.UpdateBackendOpts(app, appRouter.Opts)
+	err = optsRouter.UpdateBackendOpts(app.ctx, app, appRouter.Opts)
 	if err != nil {
 		existing.Opts = oldOpts
 		rollbackErr := app.updateRoutersDB(routers)
@@ -2189,7 +2189,7 @@ func (app *App) RemoveRouter(name string) error {
 	if err != nil {
 		return err
 	}
-	err = r.RemoveBackend(app.Name)
+	err = r.RemoveBackend(app.ctx, app.Name)
 	if err != nil {
 		log.Errorf("unable to remove router backend: %v", err)
 	}
@@ -2240,13 +2240,13 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			multi.Add(err)
 			continue
 		}
-		addr, err := r.Addr(app.Name)
+		addr, err := r.Addr(app.ctx, app.Name)
 		if err != nil {
 			multi.Add(err)
 			continue
 		}
 		if statusRouter, ok := r.(router.StatusRouter); ok {
-			status, detail, stErr := statusRouter.GetBackendStatus(app.Name)
+			status, detail, stErr := statusRouter.GetBackendStatus(app.ctx, app.Name)
 			if stErr != nil {
 				multi.Add(err)
 				continue
@@ -2255,7 +2255,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			routers[i].StatusDetail = detail
 		}
 		if prefixRouter, ok := r.(router.PrefixRouter); ok {
-			addrs, aErr := prefixRouter.Addresses(app.Name)
+			addrs, aErr := prefixRouter.Addresses(app.ctx, app.Name)
 			if aErr != nil {
 				multi.Add(aErr)
 				continue
@@ -2329,7 +2329,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 			continue
 		}
 		addedAny = true
-		err = tlsRouter.AddCertificate(app, name, certificate, key)
+		err = tlsRouter.AddCertificate(app.ctx, app, name, certificate, key)
 		if err != nil {
 			return err
 		}
@@ -2356,7 +2356,7 @@ func (app *App) RemoveCertificate(name string) error {
 			continue
 		}
 		removedAny = true
-		err = tlsRouter.RemoveCertificate(app, name)
+		err = tlsRouter.RemoveCertificate(app.ctx, app, name)
 		if err != nil {
 			return err
 		}
@@ -2403,7 +2403,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 			continue
 		}
 		for _, n := range names {
-			cert, err := tlsRouter.GetCertificate(app, n)
+			cert, err := tlsRouter.GetCertificate(app.ctx, app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}

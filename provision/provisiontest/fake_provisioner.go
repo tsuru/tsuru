@@ -99,7 +99,7 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 		units:           make([]provision.Unit, units),
 		Pool:            pool,
 	}
-	routertest.FakeRouter.AddBackend(&app)
+	routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
@@ -339,7 +339,7 @@ func (app *FakeApp) GetRouters() []appTypes.AppRouter {
 }
 
 func (app *FakeApp) GetAddresses() ([]string, error) {
-	addr, err := routertest.FakeRouter.Addr(app.GetName())
+	addr, err := routertest.FakeRouter.Addr(context.TODO(), app.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -850,7 +850,7 @@ func (p *FakeProvisioner) Reset() {
 }
 
 func (p *FakeProvisioner) Swap(ctx context.Context, app1, app2 provision.App, cnameOnly bool) error {
-	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName(), cnameOnly)
+	return routertest.FakeRouter.Swap(ctx, app1.GetName(), app2.GetName(), cnameOnly)
 }
 
 func (p *FakeProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
@@ -1020,7 +1020,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
 	}
-	err := routertest.FakeRouter.AddRoutes(name, addresses)
+	err := routertest.FakeRouter.AddRoutes(context.TODO(), name, addresses)
 	if err != nil {
 		return nil, err
 	}
@@ -1057,7 +1057,7 @@ func (p *FakeProvisioner) RemoveUnits(ctx context.Context, app provision.App, n 
 		}
 		newUnits = append(newUnits, u)
 	}
-	err := routertest.FakeRouter.RemoveRoutes(app.GetName(), addresses)
+	err := routertest.FakeRouter.RemoveRoutes(ctx, app.GetName(), addresses)
 	if err != nil {
 		return err
 	}
@@ -1160,7 +1160,7 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
-	return routertest.FakeRouter.Addr(app.GetName())
+	return routertest.FakeRouter.Addr(context.TODO(), app.GetName())
 }
 
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
@@ -1175,7 +1175,7 @@ func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
 	}
 	pApp.cnames = append(pApp.cnames, cname)
 	p.apps[app.GetName()] = pApp
-	return routertest.FakeRouter.SetCName(cname, app.GetName())
+	return routertest.FakeRouter.SetCName(context.TODO(), cname, app.GetName())
 }
 
 func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
@@ -1190,7 +1190,7 @@ func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
 	}
 	pApp.cnames = []string{}
 	p.apps[app.GetName()] = pApp
-	return routertest.FakeRouter.UnsetCName(cname, app.GetName())
+	return routertest.FakeRouter.UnsetCName(context.TODO(), cname, app.GetName())
 }
 
 func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {

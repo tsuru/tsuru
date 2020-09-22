@@ -86,75 +86,75 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 
 func (s *S) TestAddBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "foo"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "foo"})
 	c.Assert(err, check.IsNil)
-	defer r.RemoveBackend("foo")
+	defer r.RemoveBackend(context.TODO(), "foo")
 	c.Assert(r.HasBackend("foo"), check.Equals, true)
 }
 
 func (s *S) TestAddDuplicateBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "foo"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "foo"})
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend(FakeApp{Name: "foo"})
+	err = r.AddBackend(context.TODO(), FakeApp{Name: "foo"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Backend already exists")
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "bar"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "bar"})
 	c.Assert(err, check.IsNil)
-	err = r.RemoveBackend("bar")
+	err = r.RemoveBackend(context.TODO(), "bar")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasBackend("bar"), check.Equals, false)
 }
 
 func (s *S) TestRemoveUnknownBackend(c *check.C) {
 	r := newFakeRouter()
-	err := r.RemoveBackend("bar")
+	err := r.RemoveBackend(context.TODO(), "bar")
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestAddRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasRoute("name", s.localhost.String()), check.Equals, true)
 }
 
 func (s *S) TestAddRouteBackendNotFound(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddRoutes("name", []*url.URL{s.localhost})
+	err := r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	err = r.RemoveRoutes("name", []*url.URL{s.localhost})
+	err = r.RemoveRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasRoute("name", s.localhost.String()), check.Equals, false)
 }
 
 func (s *S) TestRemoveRouteBackendNotFound(c *check.C) {
 	r := newFakeRouter()
-	err := r.RemoveRoutes("name", []*url.URL{s.localhost})
+	err := r.RemoveRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestSetCName(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	err = r.SetCName("myapp.com", "name")
+	err = r.SetCName(context.TODO(), "myapp.com", "name")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasCName("myapp.com"), check.Equals, true)
 	c.Assert(r.HasRoute("myapp.com", s.localhost.String()), check.Equals, true)
@@ -162,27 +162,27 @@ func (s *S) TestSetCName(c *check.C) {
 
 func (s *S) TestUnsetCName(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	err = r.SetCName("myapp.com", "name")
+	err = r.SetCName(context.TODO(), "myapp.com", "name")
 	c.Assert(err, check.IsNil)
-	err = r.UnsetCName("myapp.com", "name")
+	err = r.UnsetCName(context.TODO(), "myapp.com", "name")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.HasCName("myapp.com"), check.Equals, false)
 }
 
 func (s *S) TestAddr(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	addr, err := r.Addr("name")
+	addr, err := r.Addr(context.TODO(), "name")
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "name.fakerouter.com")
-	addr, err = r.Addr("unknown")
+	addr, err = r.Addr(context.TODO(), "unknown")
 	c.Assert(addr, check.Equals, "")
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
@@ -190,23 +190,23 @@ func (s *S) TestAddr(c *check.C) {
 func (s *S) TestAddrHCRouter(c *check.C) {
 	r := newFakeRouter()
 	hcr := hcRouter{fakeRouter: r}
-	err := hcr.AddBackend(FakeApp{Name: "name"})
+	err := hcr.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = hcr.AddRoutes("name", []*url.URL{s.localhost})
+	err = hcr.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	addr, err := hcr.Addr("name")
+	addr, err := hcr.Addr(context.TODO(), "name")
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "name.fakehcrouter.com")
-	addr, err = hcr.Addr("unknown")
+	addr, err = hcr.Addr(context.TODO(), "unknown")
 	c.Assert(addr, check.Equals, "")
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestReset(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
 	r.Reset()
 	c.Assert(r.HasBackend("name"), check.Equals, false)
@@ -214,11 +214,11 @@ func (s *S) TestReset(c *check.C) {
 
 func (s *S) TestRoutes(c *check.C) {
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: "name"})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: "name"})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes("name", []*url.URL{s.localhost})
+	err = r.AddRoutes(context.TODO(), "name", []*url.URL{s.localhost})
 	c.Assert(err, check.IsNil)
-	routes, err := r.Routes("name")
+	routes, err := r.Routes(context.TODO(), "name")
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{s.localhost})
 }
@@ -229,13 +229,13 @@ func (s *S) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"
 	r := newFakeRouter()
-	err := r.AddBackend(FakeApp{Name: backend1})
+	err := r.AddBackend(context.TODO(), FakeApp{Name: backend1})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes(backend1, []*url.URL{instance1})
+	err = r.AddRoutes(context.TODO(), backend1, []*url.URL{instance1})
 	c.Assert(err, check.IsNil)
-	err = r.AddBackend(FakeApp{Name: backend2})
+	err = r.AddBackend(context.TODO(), FakeApp{Name: backend2})
 	c.Assert(err, check.IsNil)
-	err = r.AddRoutes(backend2, []*url.URL{instance2})
+	err = r.AddRoutes(context.TODO(), backend2, []*url.URL{instance2})
 	c.Assert(err, check.IsNil)
 	retrieved1, err := router.Retrieve(backend1)
 	c.Assert(err, check.IsNil)
@@ -243,12 +243,12 @@ func (s *S) TestSwap(c *check.C) {
 	retrieved2, err := router.Retrieve(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved2, check.Equals, backend2)
-	err = r.Swap(backend1, backend2, false)
+	err = r.Swap(context.TODO(), backend1, backend2, false)
 	c.Assert(err, check.IsNil)
-	routes, err := r.Routes(backend2)
+	routes, err := r.Routes(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{instance2})
-	routes, err = r.Routes(backend1)
+	routes, err = r.Routes(context.TODO(), backend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{instance1})
 	retrieved1, err = router.Retrieve(backend1)
@@ -257,17 +257,17 @@ func (s *S) TestSwap(c *check.C) {
 	retrieved2, err = router.Retrieve(backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved2, check.Equals, backend1)
-	addr, err := r.Addr(backend1)
+	addr, err := r.Addr(context.TODO(), backend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "b2.fakerouter.com")
-	addr, err = r.Addr(backend2)
+	addr, err = r.Addr(context.TODO(), backend2)
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "b1.fakerouter.com")
 }
 
 func (s *S) TestAddCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", "cert", "key")
+	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.DeepEquals, "cert")
 	c.Assert(r.Keys["example.com"], check.DeepEquals, "key")
@@ -275,9 +275,9 @@ func (s *S) TestAddCertificate(c *check.C) {
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	r := TLSRouter
-	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", "cert", "key")
+	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", "cert", "key")
 	c.Assert(err, check.IsNil)
-	err = r.RemoveCertificate(FakeApp{Name: "myapp"}, "example.com")
+	err = r.RemoveCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Certs["example.com"], check.Equals, "")
 	c.Assert(r.Keys["example.com"], check.Equals, "")
@@ -307,23 +307,23 @@ Wx1oQV8UD5KLQQRy9Xew/KRHVzOpdkK66/i/hgV7GdREy4aKNAEBRpheOzjLDQyG
 YRLI1QVj1Q==
 -----END CERTIFICATE-----`
 	r := TLSRouter
-	err := r.AddCertificate(FakeApp{Name: "myapp"}, "example.com", testCert, "key")
+	err := r.AddCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com", testCert, "key")
 	c.Assert(err, check.IsNil)
-	cert, err := r.GetCertificate(FakeApp{Name: "myapp"}, "example.com")
+	cert, err := r.GetCertificate(context.TODO(), FakeApp{Name: "myapp"}, "example.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(cert, check.DeepEquals, testCert)
 }
 
 func (s *S) TestAddBackendOpts(c *check.C) {
 	r := OptsRouter
-	err := r.AddBackendOpts(FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
+	err := r.AddBackendOpts(context.TODO(), FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }
 
 func (s *S) TestUpdateBackendOpts(c *check.C) {
 	r := OptsRouter
-	err := r.UpdateBackendOpts(FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
+	err := r.UpdateBackendOpts(context.TODO(), FakeApp{Name: "myapp"}, map[string]string{"opt1": "val1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(r.Opts["myapp"], check.DeepEquals, map[string]string{"opt1": "val1"})
 }

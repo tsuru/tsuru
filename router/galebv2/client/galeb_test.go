@@ -5,6 +5,7 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -230,7 +231,7 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
 	}
-	fullId, err := s.client.AddBackendPool("myname", true)
+	fullId, err := s.client.AddBackendPool(context.TODO(), "myname", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool", "/api/target/3"})
@@ -245,7 +246,7 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
 	s.handler.RspCode = http.StatusOK
 	s.handler.Content = "invalid content"
-	fullId, err := s.client.AddBackendPool("", true)
+	fullId, err := s.client.AddBackendPool(context.TODO(), "", true)
 	c.Assert(err, check.ErrorMatches,
 		"POST /pool: invalid response code: 200: invalid content - PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
@@ -254,7 +255,7 @@ func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
 func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = "invalid content"
-	fullId, err := s.client.AddBackendPool("", true)
+	fullId, err := s.client.AddBackendPool(context.TODO(), "", true)
 	c.Assert(err, check.ErrorMatches,
 		"POST /pool: empty location header. PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
@@ -286,7 +287,7 @@ func (s *S) TestUpdatePoolPropertiesNoChanges(c *check.C) {
 		HcBody:           "",
 		HcHTTPStatusCode: "200",
 	}
-	err := s.client.UpdatePoolProperties("mypool", props)
+	err := s.client.UpdatePoolProperties(context.TODO(), "mypool", props)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
@@ -331,7 +332,7 @@ func (s *S) TestUpdatePoolProperties(c *check.C) {
 		HcBody:           "",
 		HcHTTPStatusCode: "200",
 	}
-	err := s.client.UpdatePoolProperties("mypool", props)
+	err := s.client.UpdatePoolProperties(context.TODO(), "mypool", props)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
@@ -348,7 +349,7 @@ func (s *S) TestGalebAddVirtualHost(c *check.C) {
 	}
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/virtualhost/999", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
-	fullId, err := s.client.AddVirtualHost("myvirtualhost.com", true)
+	fullId, err := s.client.AddVirtualHost(context.TODO(), "myvirtualhost.com", true)
 	c.Assert(err, check.IsNil)
 	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/virtualhost/999", s.client.ApiURL))
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
@@ -411,7 +412,7 @@ func (s *S) TestGalebAddRuleToPool(c *check.C) {
 		Matching:           "/",
 		Project:            "proj1",
 	}
-	fullId, err := s.client.AddRuleToPool("myrule", "mypool")
+	fullId, err := s.client.AddRuleToPool(context.TODO(), "myrule", "mypool")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool/search/findByName?name=mypool", "/api/rule"})
@@ -431,7 +432,7 @@ func (s *S) TestGalebRemoveBackendByID(c *check.C) {
 		"204", "",
 	}
 	s.handler.RspCode = http.StatusNoContent
-	err := s.client.RemoveResourceByID("/target/mybackendID")
+	err := s.client.RemoveResourceByID(context.TODO(), "/target/mybackendID")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/target/mybackendID", "/api/target/mybackendID"})
@@ -439,7 +440,7 @@ func (s *S) TestGalebRemoveBackendByID(c *check.C) {
 
 func (s *S) TestGalebRemoveBackendByIDError(c *check.C) {
 	s.handler.RspCode = http.StatusBadRequest
-	err := s.client.RemoveResourceByID("/target/mybackendID")
+	err := s.client.RemoveResourceByID(context.TODO(), "/target/mybackendID")
 	c.Assert(err, check.ErrorMatches, `.*invalid response code: 400.*`)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/target/mybackendID"})
@@ -460,7 +461,7 @@ func (s *S) TestGalebRemoveBackendPool(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)}
-	_ = s.client.RemoveBackendPool("mypool")
+	_ = s.client.RemoveBackendPool(context.TODO(), "mypool")
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool/search/findByName?name=mypool", "/api/target/10"})
 }
@@ -480,7 +481,7 @@ func (s *S) TestGalebRemoveVirtualHost(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)}
-	_ = s.client.RemoveVirtualHost("myvh.com")
+	_ = s.client.RemoveVirtualHost(context.TODO(), "myvh.com")
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/virtualhost/search/findByName?name=myvh.com", "/api/virtualhost/10"})
 }
@@ -500,14 +501,14 @@ func (s *S) TestGalebRemoveRule(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)}
-	_ = s.client.RemoveRule("myrule")
+	_ = s.client.RemoveRule(context.TODO(), "myrule")
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "DELETE"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/rule/search/findByName?name=myrule", "/api/rule/10"})
 }
 
 func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
 	s.handler.RspCode = http.StatusOK
-	_ = s.client.RemoveResourceByID("/target/11")
+	_ = s.client.RemoveResourceByID(context.TODO(), "/target/11")
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
 }
 
@@ -543,7 +544,7 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 			]
 		}
 	}`, s.client.ApiURL)}
-	_ = s.client.SetRuleVirtualHost("myrule", "myvh", true)
+	_ = s.client.SetRuleVirtualHost(context.TODO(), "myrule", "myvh", true)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
@@ -592,7 +593,7 @@ func (s *S) TestFindTargetsByPool(c *check.C) {
 		}
 	}`}
 	s.handler.RspCode = http.StatusOK
-	targets, err := s.client.FindTargetsByPool("mypool")
+	targets, err := s.client.FindTargetsByPool(context.TODO(), "mypool")
 	c.Assert(err, check.IsNil)
 	c.Assert(targets, check.DeepEquals, []Target{
 		{
@@ -622,7 +623,7 @@ func (s *S) TestFindTargetsByPool(c *check.C) {
 func (s *S) TestHealthcheck(c *check.C) {
 	s.handler.ConditionalContent["/api/healthcheck"] = "WORKING"
 	s.handler.RspCode = 200
-	err := s.client.Healthcheck()
+	err := s.client.Healthcheck(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{
@@ -640,7 +641,7 @@ func (s *S) TestGalebAddBackendPoolPendingTimeout(c *check.C) {
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
 	}
-	_, err := s.client.AddBackendPool("myname", true)
+	_, err := s.client.AddBackendPool(context.TODO(), "myname", true)
 	c.Assert(err, check.ErrorMatches, `GET /target/3: timeout after [0-9]+ms waiting for status change from {"1":"PENDING"}`)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET", "GET"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/pool", "/api/target/3", "/api/target/3"})
@@ -672,7 +673,7 @@ func (s *S) TestGalebAddBackends(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	url2, _ := url.Parse("http://10.0.0.2:8080")
-	err := s.client.AddBackends([]*url.URL{
+	err := s.client.AddBackends(context.TODO(), []*url.URL{
 		url1,
 		url2,
 	}, "mypool", true)
@@ -705,7 +706,7 @@ func (s *S) TestGalebAddBackendsWithMaxRequests(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	url2, _ := url.Parse("http://10.0.0.2:8080")
-	err := s.client.AddBackends([]*url.URL{
+	err := s.client.AddBackends(context.TODO(), []*url.URL{
 		url1,
 		url2,
 	}, "mypool", true)
@@ -733,7 +734,7 @@ func (s *S) TestGalebAddBackendsNoWait(c *check.C) {
 	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiURL))
 	s.handler.RspCode = http.StatusCreated
 	url1, _ := url.Parse("http://10.0.0.1:8080")
-	err := s.client.AddBackends([]*url.URL{
+	err := s.client.AddBackends(context.TODO(), []*url.URL{
 		url1,
 	}, "mypool", false)
 	c.Assert(err, check.IsNil)

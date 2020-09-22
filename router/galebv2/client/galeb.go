@@ -260,7 +260,7 @@ func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHost) {
 	}
 }
 
-func (c *GalebClient) AddVirtualHost(addr string, wait bool) (string, error) {
+func (c *GalebClient) AddVirtualHost(ctx context.Context, addr string, wait bool) (string, error) {
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
@@ -278,12 +278,12 @@ func (c *GalebClient) AddVirtualHost(addr string, wait bool) (string, error) {
 	return resource, nil
 }
 
-func (c *GalebClient) getVirtualHostWithGroup(addr string, virtualHostWithGroup string) (VirtualHost, error) {
-	virtualHostID, err := c.findItemByName("virtualhost", virtualHostWithGroup)
+func (c *GalebClient) getVirtualHostWithGroup(ctx context.Context, addr string, virtualHostWithGroup string) (VirtualHost, error) {
+	virtualHostID, err := c.findItemByName(ctx, "virtualhost", virtualHostWithGroup)
 	if err != nil {
 		return VirtualHost{}, err
 	}
-	virtualhostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
+	virtualhostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(ctx, virtualHostID)
 	if err != nil {
 		return VirtualHost{}, err
 	}
@@ -295,8 +295,8 @@ func (c *GalebClient) getVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	return params, nil
 }
 
-func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup string, wait bool) (string, error) {
-	params, err := c.getVirtualHostWithGroup(addr, virtualHostWithGroup)
+func (c *GalebClient) AddVirtualHostWithGroup(ctx context.Context, addr string, virtualHostWithGroup string, wait bool) (string, error) {
+	params, err := c.getVirtualHostWithGroup(ctx, addr, virtualHostWithGroup)
 	if err != nil {
 		return "", err
 	}
@@ -310,12 +310,12 @@ func (c *GalebClient) AddVirtualHostWithGroup(addr string, virtualHostWithGroup 
 	return resource, err
 }
 
-func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGroup string, wait bool) error {
-	virtualHostFullID, virtualHostID, err := c.findItemIDsByName("virtualhost", addr)
+func (c *GalebClient) UpdateVirtualHostWithGroup(ctx context.Context, addr string, virtualHostWithGroup string, wait bool) error {
+	virtualHostFullID, virtualHostID, err := c.findItemIDsByName(ctx, "virtualhost", addr)
 	if err != nil {
 		return err
 	}
-	params, err := c.getVirtualHostWithGroup(addr, virtualHostWithGroup)
+	params, err := c.getVirtualHostWithGroup(ctx, addr, virtualHostWithGroup)
 	if err != nil {
 		return err
 	}
@@ -336,7 +336,7 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(addr string, virtualHostWithGro
 	return nil
 }
 
-func (c *GalebClient) AddBackendPool(name string, wait bool) (string, error) {
+func (c *GalebClient) AddBackendPool(ctx context.Context, name string, wait bool) (string, error) {
 	var params Pool
 	c.fillDefaultPoolValues(&params)
 	params.Name = name
@@ -357,8 +357,8 @@ func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolHealthCheck, 
 	return pool.BackendPoolHealthCheck, err
 }
 
-func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPoolHealthCheck) error {
-	poolID, err := c.findItemByName("pool", poolName)
+func (c *GalebClient) UpdatePoolProperties(ctx context.Context, poolName string, properties BackendPoolHealthCheck) error {
+	poolID, err := c.findItemByName(ctx, "pool", poolName)
 	if err != nil {
 		return err
 	}
@@ -386,8 +386,8 @@ func (c *GalebClient) UpdatePoolProperties(poolName string, properties BackendPo
 	return c.waitStatusOK(poolID)
 }
 
-func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait bool) error {
-	poolID, err := c.findItemByName("pool", poolName)
+func (c *GalebClient) AddBackends(ctx context.Context, backends []*url.URL, poolName string, wait bool) error {
+	poolID, err := c.findItemByName(ctx, "pool", poolName)
 	if err != nil {
 		return err
 	}
@@ -413,8 +413,8 @@ func (c *GalebClient) AddBackends(backends []*url.URL, poolName string, wait boo
 	})
 }
 
-func (c *GalebClient) AddRuleToPool(name, poolName string) (string, error) {
-	id, err := c.findItemByName("pool", poolName)
+func (c *GalebClient) AddRuleToPool(ctx context.Context, name, poolName string) (string, error) {
+	id, err := c.findItemByName(ctx, "pool", poolName)
 	if err != nil {
 		return "", err
 	}
@@ -429,8 +429,8 @@ func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
 	return c.doCreateResource("/rule", &params)
 }
 
-func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait bool) error {
-	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
+func (c *GalebClient) setRuleVirtualHostIDs(ctx context.Context, ruleID, virtualHostID string, wait bool) error {
+	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(ctx, virtualHostID)
 	if err != nil {
 		return err
 	}
@@ -450,19 +450,19 @@ func (c *GalebClient) setRuleVirtualHostIDs(ruleID, virtualHostID string, wait b
 	return nil
 }
 
-func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string, wait bool) error {
-	ruleID, err := c.findItemByName("rule", ruleName)
+func (c *GalebClient) SetRuleVirtualHost(ctx context.Context, ruleName, virtualHostName string, wait bool) error {
+	ruleID, err := c.findItemByName(ctx, "rule", ruleName)
 	if err != nil {
 		return err
 	}
-	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
+	virtualHostID, err := c.findItemByName(ctx, "virtualhost", virtualHostName)
 	if err != nil {
 		return err
 	}
-	return c.setRuleVirtualHostIDs(ruleID, virtualHostID, wait)
+	return c.setRuleVirtualHostIDs(ctx, ruleID, virtualHostID, wait)
 }
 
-func (c *GalebClient) RemoveResourceByID(resourceID string) error {
+func (c *GalebClient) RemoveResourceByID(ctx context.Context, resourceID string) error {
 	resource, err := c.removeResource(resourceID)
 	if err != nil {
 		return err
@@ -471,7 +471,7 @@ func (c *GalebClient) RemoveResourceByID(resourceID string) error {
 	return err
 }
 
-func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string, wait bool) error {
+func (c *GalebClient) RemoveResourcesByIDs(ctx context.Context, resourceIDs []string, wait bool) error {
 	return DoLimited(context.Background(), c.MaxRequests, len(resourceIDs), func(i int) error {
 		resource, err := c.removeResource(resourceIDs[i])
 		if err != nil {
@@ -484,32 +484,32 @@ func (c *GalebClient) RemoveResourcesByIDs(resourceIDs []string, wait bool) erro
 	})
 }
 
-func (c *GalebClient) RemoveBackendPool(poolName string) error {
-	id, err := c.findItemByName("pool", poolName)
+func (c *GalebClient) RemoveBackendPool(ctx context.Context, poolName string) error {
+	id, err := c.findItemByName(ctx, "pool", poolName)
 	if err != nil {
 		return err
 	}
-	return c.RemoveResourceByID(id)
+	return c.RemoveResourceByID(ctx, id)
 }
 
-func (c *GalebClient) RemoveVirtualHost(virtualHostName string) error {
-	id, err := c.findItemByName("virtualhost", virtualHostName)
+func (c *GalebClient) RemoveVirtualHost(ctx context.Context, virtualHostName string) error {
+	id, err := c.findItemByName(ctx, "virtualhost", virtualHostName)
 	if err != nil {
 		return err
 	}
-	return c.RemoveResourceByID(id)
+	return c.RemoveResourceByID(ctx, id)
 }
 
-func (c *GalebClient) RemoveRule(ruleName string) error {
-	ruleID, err := c.findItemByName("rule", ruleName)
+func (c *GalebClient) RemoveRule(ctx context.Context, ruleName string) error {
+	ruleID, err := c.findItemByName(ctx, "rule", ruleName)
 	if err != nil {
 		return err
 	}
-	return c.RemoveResourceByID(ruleID)
+	return c.RemoveResourceByID(ctx, ruleID)
 }
 
-func (c *GalebClient) RemoveRulesOrderedByRule(ruleName string) error {
-	_, ruleID, err := c.findItemIDsByName("rule", ruleName)
+func (c *GalebClient) RemoveRulesOrderedByRule(ctx context.Context, ruleName string) error {
+	_, ruleID, err := c.findItemIDsByName(ctx, "rule", ruleName)
 	if err != nil {
 		return err
 	}
@@ -525,7 +525,7 @@ func (c *GalebClient) RemoveRulesOrderedByRule(ruleName string) error {
 	}
 	for _, ruleOrdered := range rspObj.Embedded.RuleOrdered {
 		fullID := ruleOrdered.FullId()
-		err = c.RemoveResourceByID(fullID)
+		err = c.RemoveResourceByID(ctx, fullID)
 		if err != nil {
 			return err
 		}
@@ -533,7 +533,7 @@ func (c *GalebClient) RemoveRulesOrderedByRule(ruleName string) error {
 	return nil
 }
 
-func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) (int, error) {
+func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(ctx context.Context, virtualHostId string) (int, error) {
 	path := fmt.Sprintf("%s/virtualhostgroup", strings.TrimPrefix(virtualHostId, c.ApiURL))
 	var rspObj struct {
 		VirtualHostGroupId int `json:"id"`
@@ -545,7 +545,7 @@ func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(virtualHostId string) 
 	return rspObj.VirtualHostGroupId, nil
 }
 
-func (c *GalebClient) FindAllTargetsByPoolPrefix(poolNamePrefix string) (map[string][]Target, error) {
+func (c *GalebClient) FindAllTargetsByPoolPrefix(ctx context.Context, poolNamePrefix string) (map[string][]Target, error) {
 	pools, err := c.findItemIDsByNameContaining("pool", poolNamePrefix)
 	if err != nil {
 		return nil, err
@@ -571,8 +571,8 @@ func (c *GalebClient) FindAllTargetsByPoolPrefix(poolNamePrefix string) (map[str
 	return result, nil
 }
 
-func (c *GalebClient) FindTargetsByPool(poolName string) ([]Target, error) {
-	_, poolID, err := c.findItemIDsByName("pool", poolName)
+func (c *GalebClient) FindTargetsByPool(ctx context.Context, poolName string) ([]Target, error) {
+	_, poolID, err := c.findItemIDsByName(ctx, "pool", poolName)
 	if err != nil {
 		return nil, err
 	}
@@ -589,12 +589,12 @@ func (c *GalebClient) FindTargetsByPool(poolName string) ([]Target, error) {
 	return rspObj.Embedded.Targets, nil
 }
 
-func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]VirtualHost, error) {
-	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
+func (c *GalebClient) FindVirtualHostsByGroup(ctx context.Context, virtualHostName string) ([]VirtualHost, error) {
+	virtualHostID, err := c.findItemByName(ctx, "virtualhost", virtualHostName)
 	if err != nil {
 		return nil, err
 	}
-	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(virtualHostID)
+	virtualHostGroupId, err := c.FindVirtualHostGroupByVirtualHostId(ctx, virtualHostID)
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +612,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(virtualHostName string) ([]Virtual
 
 }
 
-func (c *GalebClient) Healthcheck() error {
+func (c *GalebClient) Healthcheck(ctx context.Context) error {
 	rsp, err := c.doRequest(http.MethodGet, "/healthcheck", nil)
 	if err != nil {
 		return err
@@ -644,8 +644,8 @@ func (c *GalebClient) removeResource(resourceURI string) (string, error) {
 	return path, nil
 }
 
-func (c *GalebClient) findItemByName(item, name string) (string, error) {
-	idStr, _, err := c.findItemIDsByName(item, name)
+func (c *GalebClient) findItemByName(ctx context.Context, item, name string) (string, error) {
+	idStr, _, err := c.findItemIDsByName(ctx, item, name)
 	return idStr, err
 }
 
@@ -661,7 +661,7 @@ func (c *GalebClient) findItemIDsByNameContaining(item, name string) ([]commonPo
 	return rspObj.Embedded[item], nil
 }
 
-func (c *GalebClient) findItemIDsByName(item, name string) (string, int, error) {
+func (c *GalebClient) findItemIDsByName(ctx context.Context, item, name string) (string, int, error) {
 	path := fmt.Sprintf("/%s/search/findByName?name=%s", item, name)
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`

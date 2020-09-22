@@ -2489,7 +2489,7 @@ func (s *S) TestSleep(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	routertest.FakeRouter.AddBackend(&a)
+	routertest.FakeRouter.AddBackend(context.TODO(), &a)
 	var b bytes.Buffer
 	err = a.Start(context.TODO(), &b, "", "")
 	c.Assert(err, check.IsNil)
@@ -2500,7 +2500,7 @@ func (s *S) TestSleep(c *check.C) {
 	sleeps := s.provisioner.Sleeps(&a, "")
 	c.Assert(sleeps, check.Equals, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, proxyURL.String()), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 }
@@ -2630,7 +2630,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			},
 		},
 	}
-	err = routertest.FakeRouter.AddBackend(&app)
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":       "name",
@@ -2720,7 +2720,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	}
 	err = app.AutoScale(provision.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddBackend(&app)
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":       "name",
@@ -2792,7 +2792,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
 		Tags:        []string{},
 	}
-	err := routertest.FakeRouter.AddBackend(&app)
+	err := routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2846,7 +2846,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		Name:    "name",
 		Routers: []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
 	}
-	err := routertest.FakeRouter.AddBackend(&app)
+	err := routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -2916,7 +2916,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
 	}
-	err = routertest.FakeRouter.AddBackend(&app)
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
 		"name":        "name",
@@ -3515,7 +3515,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	err = routertest.FakeRouter.AddBackend(&a)
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &a)
 	c.Assert(err, check.IsNil)
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
@@ -3990,7 +3990,7 @@ func (s *S) TestStartAsleepApp(c *check.C) {
 	}
 	err = a.Start(context.TODO(), &b, "web", "")
 	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
@@ -4012,7 +4012,7 @@ func (s *S) TestRestartAsleepApp(c *check.C) {
 	}
 	err = a.Restart(context.TODO(), "web", "", &b)
 	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(a.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.HasLen, 1)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
@@ -4383,7 +4383,7 @@ func (s *S) TestShellNoUnits(c *check.C) {
 
 func (s *S) TestSetCertificateForApp(c *check.C) {
 	cname := "app.io"
-	routertest.TLSRouter.SetBackendAddr("my-test-app", cname)
+	routertest.TLSRouter.SetBackendAddr(context.TODO(), "my-test-app", cname)
 	cert, err := ioutil.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
 	key, err := ioutil.ReadFile("testdata/private.key")
@@ -4451,7 +4451,7 @@ func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
 
 func (s *S) TestRemoveCertificate(c *check.C) {
 	cname := "app.io"
-	routertest.TLSRouter.SetBackendAddr("my-test-app", cname)
+	routertest.TLSRouter.SetBackendAddr(context.TODO(), "my-test-app", cname)
 	cert, err := ioutil.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
 	key, err := ioutil.ReadFile("testdata/private.key")
@@ -4883,7 +4883,7 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {
@@ -4922,7 +4922,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {
@@ -4981,7 +4981,7 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(dbApp.Name), check.Equals, false)
-	routes, err := routertest.FakeRouter.Routes(dbApp.Name)
+	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp.Name)
 	c.Assert(err, check.IsNil)
 	routesStr := make([]string, len(routes))
 	for i, route := range routes {

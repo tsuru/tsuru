@@ -46,7 +46,7 @@ func healthCheck(ctx context.Context, name string) error {
 		return err
 	}
 	if hrouter, ok := router.(HealthChecker); ok {
-		return hrouter.HealthCheck()
+		return hrouter.HealthCheck(ctx)
 	}
 	return hc.ErrDisabledComponent
 }

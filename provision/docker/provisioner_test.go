@@ -398,8 +398,8 @@ func (s *S) TestDeployWithLimiterGlobalActive(c *check.C) {
 
 func (s *S) TestDeployCanceledEvent(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	routertest.FakeRouter.AddBackend(app)
-	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(context.TODO(), app)
+	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: "app", Value: "myapp"},
 		Kind:          permission.PermAppDeploy,
@@ -467,8 +467,8 @@ func (s *S) TestDeployRegisterRace(c *check.C) {
 			app := provisiontest.NewFakeApp(name, "python", 1)
 			version, err := newVersionForApp(&p, app, nil)
 			c.Assert(err, check.IsNil)
-			routertest.FakeRouter.AddBackend(app)
-			defer routertest.FakeRouter.RemoveBackend(app.GetName())
+			routertest.FakeRouter.AddBackend(context.TODO(), app)
+			defer routertest.FakeRouter.RemoveBackend(context.TODO(), app.GetName())
 			img, err := p.deployPipeline(app, version, []string{"/bin/test"}, nil)
 			c.Assert(err, check.IsNil)
 			c.Assert(img, check.Equals, "localhost:3030/tsuru/app-"+name+":v1")
@@ -816,7 +816,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
 	for i := range conts {
-		err = routertest.FakeRouter.AddRoutes(a1.Name, []*url.URL{conts[i].Address()})
+		err = routertest.FakeRouter.AddRoutes(context.TODO(), a1.Name, []*url.URL{conts[i].Address()})
 		c.Assert(err, check.IsNil)
 		err = papp.BindUnit(&units[i])
 		c.Assert(err, check.IsNil)
@@ -885,7 +885,7 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	conts := []container.Container{cont1, cont2, cont3}
 	units := []provision.Unit{cont1.AsUnit(papp), cont2.AsUnit(papp), cont3.AsUnit(papp)}
 	for i := range conts {
-		err = routertest.FakeRouter.AddRoutes(a1.Name, []*url.URL{conts[i].Address()})
+		err = routertest.FakeRouter.AddRoutes(context.TODO(), a1.Name, []*url.URL{conts[i].Address()})
 		c.Assert(err, check.IsNil)
 		err = papp.BindUnit(&units[i])
 		c.Assert(err, check.IsNil)

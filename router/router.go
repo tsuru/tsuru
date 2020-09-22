@@ -151,27 +151,27 @@ type App interface {
 type Router interface {
 	GetName() string
 
-	AddBackend(app App) error
-	RemoveBackend(name string) error
-	AddRoutes(name string, address []*url.URL) error
-	RemoveRoutes(name string, addresses []*url.URL) error
-	Addr(name string) (string, error)
+	AddBackend(ctx context.Context, app App) error
+	RemoveBackend(ctx context.Context, name string) error
+	AddRoutes(ctx context.Context, name string, address []*url.URL) error
+	RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) error
+	Addr(ctx context.Context, name string) (string, error)
 
 	// Swap change the router between two backends.
-	Swap(backend1, backend2 string, cnameOnly bool) error
+	Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) error
 
 	// Routes returns a list of routes of a backend.
-	Routes(name string) ([]*url.URL, error)
+	Routes(ctx context.Context, name string) ([]*url.URL, error)
 }
 
 type CNameRouter interface {
-	SetCName(cname, name string) error
-	UnsetCName(cname, name string) error
-	CNames(name string) ([]*url.URL, error)
+	SetCName(ctx context.Context, cname, name string) error
+	UnsetCName(ctx context.Context, cname, name string) error
+	CNames(ctx context.Context, name string) ([]*url.URL, error)
 }
 
 type CNameMoveRouter interface {
-	MoveCName(cname, orgBackend, dstBackend string) error
+	MoveCName(ctx context.Context, cname, orgBackend, dstBackend string) error
 }
 
 type MessageRouter interface {
@@ -179,42 +179,42 @@ type MessageRouter interface {
 }
 
 type CustomHealthcheckRouter interface {
-	SetHealthcheck(name string, data router.HealthcheckData) error
+	SetHealthcheck(ctx context.Context, name string, data router.HealthcheckData) error
 }
 
 type HealthChecker interface {
-	HealthCheck() error
+	HealthCheck(ctx context.Context) error
 }
 
 type OptsRouter interface {
-	AddBackendOpts(app App, opts map[string]string) error
-	UpdateBackendOpts(app App, opts map[string]string) error
+	AddBackendOpts(ctx context.Context, app App, opts map[string]string) error
+	UpdateBackendOpts(ctx context.Context, app App, opts map[string]string) error
 }
 
 // TLSRouter is a router that supports adding and removing
 // certificates for a given cname
 type TLSRouter interface {
-	AddCertificate(app App, cname, certificate, key string) error
-	RemoveCertificate(app App, cname string) error
-	GetCertificate(app App, cname string) (string, error)
+	AddCertificate(ctx context.Context, app App, cname, certificate, key string) error
+	RemoveCertificate(ctx context.Context, app App, cname string) error
+	GetCertificate(ctx context.Context, app App, cname string) (string, error)
 }
 
 type InfoRouter interface {
-	GetInfo() (map[string]string, error)
+	GetInfo(ctx context.Context) (map[string]string, error)
 }
 
 type AsyncRouter interface {
-	AddBackendAsync(app App) error
-	SetCNameAsync(cname, name string) error
-	AddRoutesAsync(name string, address []*url.URL) error
-	RemoveRoutesAsync(name string, addresses []*url.URL) error
+	AddBackendAsync(ctx context.Context, app App) error
+	SetCNameAsync(ctx context.Context, cname, name string) error
+	AddRoutesAsync(ctx context.Context, name string, address []*url.URL) error
+	RemoveRoutesAsync(ctx context.Context, name string, addresses []*url.URL) error
 }
 
 type PrefixRouter interface {
-	RoutesPrefix(name string) ([]appTypes.RoutableAddresses, error)
-	Addresses(name string) ([]string, error)
-	AddRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
-	RemoveRoutesPrefix(name string, addresses appTypes.RoutableAddresses, sync bool) error
+	RoutesPrefix(ctx context.Context, name string) ([]appTypes.RoutableAddresses, error)
+	Addresses(ctx context.Context, name string) ([]string, error)
+	AddRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error
+	RemoveRoutesPrefix(ctx context.Context, name string, addresses appTypes.RoutableAddresses, sync bool) error
 }
 
 type BackendStatus string
@@ -225,7 +225,7 @@ var (
 )
 
 type StatusRouter interface {
-	GetBackendStatus(name string) (status BackendStatus, detail string, err error)
+	GetBackendStatus(ctx context.Context, name string) (status BackendStatus, detail string, err error)
 }
 
 type RouterError struct {
@@ -333,29 +333,29 @@ func swapBackendName(backend1, backend2 string) error {
 	return coll.Update(bson.M{"app": backend2}, update)
 }
 
-func swapCnames(r Router, backend1, backend2 string) error {
+func swapCnames(ctx context.Context, r Router, backend1, backend2 string) error {
 	cnameRouter, ok := r.(CNameRouter)
 	if !ok {
 		return nil
 	}
-	cnames1, err := cnameRouter.CNames(backend1)
+	cnames1, err := cnameRouter.CNames(ctx, backend1)
 	if err != nil {
 		return err
 	}
-	cnames2, err := cnameRouter.CNames(backend2)
+	cnames2, err := cnameRouter.CNames(ctx, backend2)
 	if err != nil {
 		return err
 	}
 	swapCnameRouter, _ := r.(CNameMoveRouter)
 	for _, cname := range cnames1 {
 		if swapCnameRouter == nil {
-			err = cnameRouter.UnsetCName(cname.Host, backend1)
+			err = cnameRouter.UnsetCName(ctx, cname.Host, backend1)
 			if err != nil {
 				return err
 			}
-			err = cnameRouter.SetCName(cname.Host, backend2)
+			err = cnameRouter.SetCName(ctx, cname.Host, backend2)
 		} else {
-			err = swapCnameRouter.MoveCName(cname.Host, backend1, backend2)
+			err = swapCnameRouter.MoveCName(ctx, cname.Host, backend1, backend2)
 		}
 		if err != nil {
 			return err
@@ -363,13 +363,13 @@ func swapCnames(r Router, backend1, backend2 string) error {
 	}
 	for _, cname := range cnames2 {
 		if swapCnameRouter == nil {
-			err = cnameRouter.UnsetCName(cname.Host, backend2)
+			err = cnameRouter.UnsetCName(ctx, cname.Host, backend2)
 			if err != nil {
 				return err
 			}
-			err = cnameRouter.SetCName(cname.Host, backend1)
+			err = cnameRouter.SetCName(ctx, cname.Host, backend1)
 		} else {
-			err = swapCnameRouter.MoveCName(cname.Host, backend2, backend1)
+			err = swapCnameRouter.MoveCName(ctx, cname.Host, backend2, backend1)
 		}
 		if err != nil {
 			return err
@@ -378,28 +378,28 @@ func swapCnames(r Router, backend1, backend2 string) error {
 	return nil
 }
 
-func swapBackends(r Router, backend1, backend2 string) error {
-	routes1, err := r.Routes(backend1)
+func swapBackends(ctx context.Context, r Router, backend1, backend2 string) error {
+	routes1, err := r.Routes(ctx, backend1)
 	if err != nil {
 		return err
 	}
-	routes2, err := r.Routes(backend2)
+	routes2, err := r.Routes(ctx, backend2)
 	if err != nil {
 		return err
 	}
-	err = r.AddRoutes(backend1, routes2)
+	err = r.AddRoutes(ctx, backend1, routes2)
 	if err != nil {
 		return err
 	}
-	err = r.AddRoutes(backend2, routes1)
+	err = r.AddRoutes(ctx, backend2, routes1)
 	if err != nil {
 		return err
 	}
-	err = r.RemoveRoutes(backend1, routes1)
+	err = r.RemoveRoutes(ctx, backend1, routes1)
 	if err != nil {
 		return err
 	}
-	err = r.RemoveRoutes(backend2, routes2)
+	err = r.RemoveRoutes(ctx, backend2, routes2)
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,7 @@ func swapBackends(r Router, backend1, backend2 string) error {
 
 }
 
-func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
+func Swap(ctx context.Context, r Router, backend1, backend2 string, cnameOnly bool) error {
 	data1, err := retrieveRouterData(backend1)
 	if err != nil {
 		return err
@@ -421,9 +421,9 @@ func Swap(r Router, backend1, backend2 string, cnameOnly bool) error {
 			backend1, data1.Kind, backend2, data2.Kind)
 	}
 	if cnameOnly {
-		return swapCnames(r, backend1, backend2)
+		return swapCnames(ctx, r, backend1, backend2)
 	}
-	return swapBackends(r, backend1, backend2)
+	return swapBackends(ctx, r, backend1, backend2)
 }
 
 type PlanRouter struct {
@@ -464,7 +464,7 @@ func fetchRouterInfo(ctx context.Context, name string) (map[string]string, error
 		return nil, err
 	}
 	if infoR, ok := r.(InfoRouter); ok {
-		return infoR.GetInfo()
+		return infoR.GetInfo(ctx)
 	}
 	return nil, nil
 }

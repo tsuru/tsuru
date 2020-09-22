@@ -276,7 +276,7 @@ func removeAllRoutersBackend(ctx context.Context, app *App) error {
 			multi.Add(err)
 			continue
 		}
-		err = r.RemoveBackend(app.GetName())
+		err = r.RemoveBackend(ctx, app.GetName())
 		if err != nil && err != router.ErrBackendNotFound {
 			multi.Add(err)
 		}
@@ -306,9 +306,9 @@ var addRouterBackend = action.Action{
 				return nil, err
 			}
 			if optsRouter, ok := r.(router.OptsRouter); ok {
-				err = optsRouter.AddBackendOpts(app, appRouter.Opts)
+				err = optsRouter.AddBackendOpts(ctx.Context, app, appRouter.Opts)
 			} else {
-				err = r.AddBackend(app)
+				err = r.AddBackend(ctx.Context, app)
 			}
 			if err != nil {
 				return nil, err
@@ -652,12 +652,12 @@ func setUnsetCnames(ctx context.Context, app *App, cnames []string, toSet bool) 
 		}
 		for _, c := range cnames {
 			if toSet {
-				err = cnameRouter.SetCName(c, app.Name)
+				err = cnameRouter.SetCName(ctx, c, app.Name)
 				if err == router.ErrCNameExists {
 					err = nil
 				}
 			} else {
-				err = cnameRouter.UnsetCName(c, app.Name)
+				err = cnameRouter.UnsetCName(ctx, c, app.Name)
 				if err == router.ErrCNameNotFound {
 					err = nil
 				}
@@ -692,7 +692,7 @@ var setNewCNamesToProvisioner = action.Action{
 				continue
 			}
 			for _, cname := range cnames {
-				err = cnameRouter.SetCName(cname, app.Name)
+				err = cnameRouter.SetCName(ctx.Context, cname, app.Name)
 				if err != nil {
 					return nil, err
 				}
@@ -814,7 +814,7 @@ var unsetCNameFromProvisioner = action.Action{
 				continue
 			}
 			for _, cname := range cnames {
-				err = cnameRouter.UnsetCName(cname, app.Name)
+				err = cnameRouter.UnsetCName(ctx.Context, cname, app.Name)
 				if err != nil {
 					return nil, err
 				}

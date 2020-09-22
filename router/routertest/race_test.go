@@ -7,6 +7,7 @@
 package routertest
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"runtime"
@@ -17,6 +18,7 @@ import (
 
 func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	var wg sync.WaitGroup
+	ctx := context.TODO()
 	fake := newFakeRouter()
 	originalMaxProcs := runtime.GOMAXPROCS(4)
 	defer runtime.GOMAXPROCS(originalMaxProcs)
@@ -25,15 +27,15 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 		name := fmt.Sprintf("route-%d", i)
 		addr, _ := url.Parse(fmt.Sprintf("http://10.10.10.%d", i))
 		go func() {
-			fake.AddBackend(FakeApp{Name: name})
+			fake.AddBackend(ctx, FakeApp{Name: name})
 			wg.Done()
 		}()
 		go func() {
-			fake.AddRoutes(name, []*url.URL{addr})
+			fake.AddRoutes(ctx, name, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveRoutes(name, []*url.URL{addr})
+			fake.RemoveRoutes(ctx, name, []*url.URL{addr})
 			wg.Done()
 		}()
 		go func() {
@@ -41,7 +43,7 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 			wg.Done()
 		}()
 		go func() {
-			fake.RemoveBackend(name)
+			fake.RemoveBackend(ctx, name)
 			wg.Done()
 		}()
 	}

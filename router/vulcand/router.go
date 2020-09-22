@@ -7,6 +7,7 @@
 package vulcand
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"net/url"
@@ -26,6 +27,11 @@ func init() {
 	router.Register(routerName, createRouter)
 	hc.AddChecker("Router vulcand", router.BuildHealthCheck("vulcand"))
 }
+
+var (
+	_ router.Router      = &vulcandRouter{}
+	_ router.CNameRouter = &vulcandRouter{}
+)
 
 type vulcandRouter struct {
 	client     *api.Client
@@ -71,7 +77,7 @@ func (r *vulcandRouter) serverName(address string) string {
 	return fmt.Sprintf("tsuru_%x", md5.Sum([]byte(address)))
 }
 
-func (r *vulcandRouter) AddBackend(app router.App) (err error) {
+func (r *vulcandRouter) AddBackend(ctx context.Context, app router.App) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
@@ -116,7 +122,7 @@ func (r *vulcandRouter) AddBackend(app router.App) (err error) {
 	return router.Store(name, name, routerName)
 }
 
-func (r *vulcandRouter) RemoveBackend(name string) (err error) {
+func (r *vulcandRouter) RemoveBackend(ctx context.Context, name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -148,11 +154,11 @@ func (r *vulcandRouter) RemoveBackend(name string) (err error) {
 			return &router.RouterError{Err: err, Op: "remove-backend"}
 		}
 	}
-	routes, err := r.Routes(name)
+	routes, err := r.Routes(ctx, name)
 	if err != nil {
 		return err
 	}
-	err = r.RemoveRoutes(name, routes)
+	err = r.RemoveRoutes(ctx, name, routes)
 	if err != nil {
 		return err
 	}
@@ -166,7 +172,7 @@ func (r *vulcandRouter) RemoveBackend(name string) (err error) {
 	return nil
 }
 
-func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) (err error) {
+func (r *vulcandRouter) AddRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -192,7 +198,7 @@ func (r *vulcandRouter) AddRoutes(name string, addresses []*url.URL) (err error)
 	return nil
 }
 
-func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) (err error) {
+func (r *vulcandRouter) RemoveRoutes(ctx context.Context, name string, addresses []*url.URL) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -217,7 +223,7 @@ func (r *vulcandRouter) RemoveRoutes(name string, addresses []*url.URL) (err err
 	return nil
 }
 
-func (r *vulcandRouter) CNames(name string) (urls []*url.URL, err error) {
+func (r *vulcandRouter) CNames(ctx context.Context, name string) (urls []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -227,7 +233,7 @@ func (r *vulcandRouter) CNames(name string) (urls []*url.URL, err error) {
 		return nil, err
 	}
 	backendName := r.backendName(name)
-	address, err := r.Addr(name)
+	address, err := r.Addr(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +248,7 @@ func (r *vulcandRouter) CNames(name string) (urls []*url.URL, err error) {
 	return urls, nil
 }
 
-func (r *vulcandRouter) SetCName(cname, name string) (err error) {
+func (r *vulcandRouter) SetCName(ctx context.Context, cname, name string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -275,7 +281,7 @@ func (r *vulcandRouter) SetCName(cname, name string) (err error) {
 	return nil
 }
 
-func (r *vulcandRouter) UnsetCName(cname, _ string) (err error) {
+func (r *vulcandRouter) UnsetCName(ctx context.Context, cname, _ string) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -291,7 +297,7 @@ func (r *vulcandRouter) UnsetCName(cname, _ string) (err error) {
 	return nil
 }
 
-func (r *vulcandRouter) Addr(name string) (addr string, err error) {
+func (r *vulcandRouter) Addr(ctx context.Context, name string) (addr string, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -308,15 +314,15 @@ func (r *vulcandRouter) Addr(name string) (addr string, err error) {
 	return addr, nil
 }
 
-func (r *vulcandRouter) Swap(backend1, backend2 string, cnameOnly bool) (err error) {
+func (r *vulcandRouter) Swap(ctx context.Context, backend1, backend2 string, cnameOnly bool) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
 	}()
-	return router.Swap(r, backend1, backend2, cnameOnly)
+	return router.Swap(ctx, r, backend1, backend2, cnameOnly)
 }
 
-func (r *vulcandRouter) Routes(name string) (routes []*url.URL, err error) {
+func (r *vulcandRouter) Routes(ctx context.Context, name string) (routes []*url.URL, err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)
@@ -344,7 +350,7 @@ func (r *vulcandRouter) StartupMessage() (string, error) {
 	return message, nil
 }
 
-func (r *vulcandRouter) HealthCheck() (err error) {
+func (r *vulcandRouter) HealthCheck(ctx context.Context) (err error) {
 	done := router.InstrumentRequest(r.routerName)
 	defer func() {
 		done(err)

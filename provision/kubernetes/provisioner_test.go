@@ -2520,7 +2520,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 3)
-	raddrs, err := routertest.FakeRouter.Routes(a.GetName())
+	raddrs, err := routertest.FakeRouter.Routes(context.TODO(), a.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(raddrs, check.DeepEquals, []*url.URL{
 		{

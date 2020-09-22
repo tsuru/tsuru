@@ -5,6 +5,7 @@
 package container
 
 import (
+	"context"
 	"net/url"
 	"testing"
 
@@ -74,7 +75,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) removeTestContainer(c *Container) error {
-	routertest.FakeRouter.RemoveBackend(c.AppName)
+	routertest.FakeRouter.RemoveBackend(context.TODO(), c.AppName)
 	return c.Remove(s.cli, s.limiter)
 }
 
@@ -109,8 +110,8 @@ func (s *S) newContainer(opts newContainerOpts, cli *dockercommon.PullAndCreateC
 	if container.Image == "" {
 		container.Image = "tsuru/python:latest"
 	}
-	routertest.FakeRouter.AddBackend(routertest.FakeApp{Name: container.AppName})
-	routertest.FakeRouter.AddRoutes(container.AppName, []*url.URL{container.Address()})
+	routertest.FakeRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: container.AppName})
+	routertest.FakeRouter.AddRoutes(context.TODO(), container.AppName, []*url.URL{container.Address()})
 	ports := map[docker.Port]struct{}{
 		docker.Port(provision.WebProcessDefaultPort() + "/tcp"): {},
 	}

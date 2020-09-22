@@ -338,13 +338,17 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 
 type testInfoRouter struct{ Router }
 
-func (r *testInfoRouter) GetInfo() (map[string]string, error) {
+var _ InfoRouter = &testInfoRouter{}
+
+func (r *testInfoRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return map[string]string{"her": "amaat"}, nil
 }
 
 type testInfoErrRouter struct{ Router }
 
-func (r *testInfoErrRouter) GetInfo() (map[string]string, error) {
+var _ InfoRouter = &testInfoErrRouter{}
+
+func (r *testInfoErrRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return nil, errors.New("error getting router info")
 }
 
