@@ -919,10 +919,6 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	err = ensureAppCustomResourceSynced(ctx, client, a)
-	if err != nil {
-		return nil, err
-	}
 	ns, err := client.AppNamespace(a)
 	if err != nil {
 		return nil, err
