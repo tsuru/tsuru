@@ -502,36 +502,36 @@ func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, *provision.LabelSet, error) {
+func createAppDeployment(client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	extra := []string{extraRegisterCmds(a)}
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, cmdData, a, extra)
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	tenRevs := int32(10)
 	webProcessName, err := version.WebProcess()
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	yamlData, err := version.TsuruYamlData()
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	processPorts, err := getProcessPortsForVersion(version, process)
 	if err != nil {
-		return nil, nil, nil, errors.WithStack(err)
+		return nil, nil, errors.WithStack(err)
 	}
 	var hcData hcResult
 	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
 		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -566,7 +566,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	maxUnavailable := client.maxUnavailable(a.GetPool())
 	singlePool, err := client.SinglePool()
 	if err != nil {
-		return nil, nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   a.GetPool(),
@@ -579,7 +579,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
-		return nil, nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
 	resourceRequests := apiv1.ResourceList{}
 	memory := a.GetMemory()
@@ -594,7 +594,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	}
 	ephemeral, err := client.ephemeralStorage(a.GetPool())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	if ephemeral.Value() > 0 {
 		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
@@ -602,18 +602,17 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	}
 	volumes, mounts, err := createVolumesForApp(client, a)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	ns, err := client.AppNamespace(a)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	deployImage := version.VersionInfo().DeployImage
 	pullSecrets, err := getImagePullSecrets(client, ns, deployImage)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	depLabels := labels.WithoutVersion().ToLabels()
 	podLabels := labels.ToLabels()
 	baseName := deploymentNameForAppBase(a, process)
@@ -631,10 +630,9 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        depName,
-			Namespace:   ns,
-			Labels:      depLabels,
-			Annotations: annotations.ToLabels(),
+			Name:      depName,
+			Namespace: ns,
+			Labels:    depLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Strategy: appsv1.DeploymentStrategy{
@@ -651,8 +649,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: annotations.ToLabels(),
+					Labels: podLabels,
 				},
 				Spec: apiv1.PodSpec{
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
@@ -693,7 +690,7 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 	} else {
 		newDep, err = client.AppsV1().Deployments(ns).Update(&deployment)
 	}
-	return newDep, labels, annotations, errors.WithStack(err)
+	return newDep, labels, errors.WithStack(err)
 }
 
 func appEnvs(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []apiv1.EnvVar {
@@ -1077,7 +1074,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, annotations, err := createAppDeployment(m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
+	newDep, labels, err := createAppDeployment(m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
 	if err != nil {
 		return err
 	}
@@ -1113,7 +1110,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
-	err = m.ensureServices(ctx, a, process, labels, annotations)
+	err = m.ensureServices(ctx, a, process, labels)
 	if err != nil {
 		return err
 	}
@@ -1192,7 +1189,7 @@ type svcCreateData struct {
 	ports    []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels, annotations *provision.LabelSet) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet) error {
 	ns, err := m.client.AppNamespace(a)
 	if err != nil {
 		return err
@@ -1291,10 +1288,9 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	for _, svcData := range svcsToCreate {
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        svcData.name,
-				Namespace:   ns,
-				Labels:      svcData.labels,
-				Annotations: annotations.ToLabels(),
+				Name:      svcData.name,
+				Namespace: ns,
+				Labels:    svcData.labels,
 			},
 			Spec: apiv1.ServiceSpec{
 				Selector:              svcData.selector,
@@ -1318,14 +1314,14 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			return errors.WithStack(err)
 		}
 	}
-	err = m.createHeadlessService(headlessPorts, ns, a, process, routableLabels.WithoutVersion(), annotations)
+	err = m.createHeadlessService(headlessPorts, ns, a, process, routableLabels.WithoutVersion())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns string, a provision.App, process string, labels, annotations *provision.LabelSet) error {
+func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns string, a provision.App, process string, labels *provision.LabelSet) error {
 	enabled, err := m.client.headlessEnabled(a.GetPool())
 	if err != nil {
 		return errors.WithStack(err)
@@ -1360,10 +1356,9 @@ func (m *serviceManager) createHeadlessService(svcPorts []apiv1.ServicePort, ns 
 
 	headlessSvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        svcName,
-			Namespace:   ns,
-			Labels:      expandedLabelsHeadless,
-			Annotations: annotations.ToLabels(),
+			Name:      svcName,
+			Namespace: ns,
+			Labels:    expandedLabelsHeadless,
 		},
 		Spec: apiv1.ServiceSpec{
 			Selector:  labels.ToRoutableSelector(),
@@ -1640,11 +1635,11 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
 	volumes, mounts, err := createVolumesForApp(client, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
+	annotations := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	annotations.SetBuildImage(conf.destinationImages[0])
 	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   app.GetPool(),
@@ -1720,7 +1715,7 @@ func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podN
 		Prefix:      tsuruLabelPrefix,
 		Provisioner: provisionerName,
 	})
-	labels, annotations := provision.SplitServiceLabelsAnnotations(labels)
+	annotations := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	annotations.SetBuildImage(conf.destinationImages[0])
 	nodePoolLabelKey := tsuruLabelPrefix + provision.LabelNodePool
 	selectors := []apiv1.NodeSelectorRequirement{

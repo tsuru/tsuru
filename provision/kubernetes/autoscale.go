@@ -186,7 +186,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return errors.WithStack(err)
 	}
 
-	labels, _ = provision.SplitServiceLabelsAnnotations(labels)
 	labels.WithoutIsolated().WithoutRoutable().WithoutVersion()
 	minUnits := int32(spec.MinUnits)
 

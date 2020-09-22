@@ -444,8 +444,6 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/app-platform":    "plat",
 		"tsuru.io/app-pool":        "test-default",
 		"tsuru.io/app-version":     "1",
-		"tsuru.io/router-type":     "fake",
-		"tsuru.io/router-name":     "fake",
 		"tsuru.io/provisioner":     "kubernetes",
 	}
 	err := s.p.Provision(context.TODO(), a)

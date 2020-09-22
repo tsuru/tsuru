@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/set"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -47,9 +45,6 @@ var (
 	labelVolumePool = "volume-pool"
 	labelVolumePlan = "volume-plan"
 	labelVolumeTeam = "volume-team"
-
-	labelRouterName = "router-name"
-	labelRouterType = "router-type"
 
 	labelBuildImage = "build-image"
 	labelRestarts   = "restarts"
@@ -439,31 +434,6 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 	return set, nil
 }
 
-func SplitServiceLabelsAnnotations(ls *LabelSet) (labels *LabelSet, ann *LabelSet) {
-	labels = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}, RawLabels: map[string]string{}}
-	ann = &LabelSet{Prefix: ls.Prefix, Labels: map[string]string{}}
-	annKeys := map[string]struct{}{
-		labelRouterName: {},
-		labelRouterType: {},
-	}
-	for k, v := range ls.RawLabels {
-		labels.RawLabels[k] = v
-	}
-
-	for k, v := range ls.Labels {
-		_, isAnnotation := annKeys[k]
-		if !isAnnotation {
-			isAnnotation = v != "" && len(validation.IsValidLabelValue(v)) > 0
-		}
-		if isAnnotation {
-			ann.Labels[k] = v
-		} else {
-			labels.Labels[k] = v
-		}
-	}
-	return labels, ann
-}
-
 type ProcessLabelsOpts struct {
 	App         App
 	Process     string
@@ -474,15 +444,6 @@ type ProcessLabelsOpts struct {
 }
 
 func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, error) {
-	var routerNames, routerTypes []string
-	for _, appRouter := range opts.App.GetRouters() {
-		routerType, err := router.Type(ctx, appRouter.Name)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		routerNames = append(routerNames, appRouter.Name)
-		routerTypes = append(routerTypes, routerType)
-	}
 	ls := &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:     strconv.FormatBool(true),
@@ -492,8 +453,6 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 			labelAppProcess:  opts.Process,
 			labelAppPlatform: opts.App.GetPlatform(),
 			LabelAppPool:     opts.App.GetPool(),
-			labelRouterName:  strings.Join(routerNames, ","),
-			labelRouterType:  strings.Join(routerTypes, ","),
 			labelProvisioner: opts.Provisioner,
 			labelBuilder:     opts.Builder,
 		},

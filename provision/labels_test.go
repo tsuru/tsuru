@@ -72,8 +72,6 @@ func (s *S) TestProcessLabels(c *check.C) {
 			"app-process":     "p1",
 			"app-platform":    "cobol",
 			"app-pool":        "test-default",
-			"router-name":     "fake",
-			"router-type":     "fake",
 			"provisioner":     "kubernetes",
 			"builder":         "",
 			"custom-tag-tag1": "1",
@@ -116,8 +114,6 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"app-platform":    "cobol",
 			"app-pool":        "test-default",
 			"app-version":     "9",
-			"router-name":     "fake",
-			"router-type":     "fake",
 			"provisioner":     "kubernetes",
 			"build-image":     "myimg",
 			"builder":         "docker",
@@ -185,54 +181,4 @@ func (s *S) TestLabelSet_Merge(c *check.C) {
 		Prefix:    "myprefix.example.com/",
 	}
 	c.Assert(ls, check.DeepEquals, expected)
-}
-
-func (s *S) TestSplitServiceLabelsAnnotations(c *check.C) {
-	ls := &provision.LabelSet{
-		RawLabels: map[string]string{
-			"a": "b",
-		},
-		Labels: map[string]string{
-			"is-tsuru":        "true",
-			"is-stopped":      "false",
-			"is-deploy":       "false",
-			"app-name":        "myapp",
-			"app-process":     "p1",
-			"app-platform":    "cobol",
-			"app-pool":        "test-default",
-			"router-name":     "fake",
-			"router-type":     "fake",
-			"provisioner":     "kubernetes",
-			"builder":         "",
-			"custom-tag-tag1": "1",
-			"custom-tag-tag2": "",
-			"custom-tag-tag3": "a=b=c obla di obla da",
-		},
-	}
-	labels, annotations := provision.SplitServiceLabelsAnnotations(ls)
-	c.Assert(labels, check.DeepEquals, &provision.LabelSet{
-		RawLabels: map[string]string{
-			"a": "b",
-		},
-		Labels: map[string]string{
-			"is-tsuru":        "true",
-			"is-stopped":      "false",
-			"is-deploy":       "false",
-			"app-name":        "myapp",
-			"app-process":     "p1",
-			"app-platform":    "cobol",
-			"app-pool":        "test-default",
-			"provisioner":     "kubernetes",
-			"builder":         "",
-			"custom-tag-tag1": "1",
-			"custom-tag-tag2": "",
-		},
-	})
-	c.Assert(annotations, check.DeepEquals, &provision.LabelSet{
-		Labels: map[string]string{
-			"router-name":     "fake",
-			"router-type":     "fake",
-			"custom-tag-tag3": "a=b=c obla di obla da",
-		},
-	})
 }
