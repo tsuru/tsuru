@@ -117,7 +117,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	user, err := s.token.User()
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(user.Email)
+	repository.Manager().CreateUser(context.TODO(), user.Email)
 	config.Set("docker:router", "fake")
 
 	servicemock.SetMockService(&s.mockService)

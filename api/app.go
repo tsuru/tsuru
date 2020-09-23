@@ -421,7 +421,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 		return err
 	}
-	repo, err := repository.Manager().GetRepository(a.Name)
+	repo, err := repository.Manager().GetRepository(ctx, a.Name)
 	if err != nil {
 		return err
 	}

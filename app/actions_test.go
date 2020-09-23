@@ -254,7 +254,7 @@ func (s *S) TestCreateRepositoryForward(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(app.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -266,7 +266,7 @@ func (s *S) TestCreateRepositoryForwardAppPointer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(app.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -279,11 +279,11 @@ func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
 
 func (s *S) TestCreateRepositoryBackward(c *check.C) {
 	app := App{Name: "someapp"}
-	err := repository.Manager().CreateRepository(app.Name, nil)
+	err := repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
 	createRepository.Backward(ctx)
-	_, err = repository.Manager().GetRepository(app.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
 }

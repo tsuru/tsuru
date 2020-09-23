@@ -112,7 +112,7 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(s.user.Email)
+	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	config.Set("docker:router", "fake")
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {

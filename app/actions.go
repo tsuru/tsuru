@@ -255,7 +255,7 @@ var createRepository = action.Action{
 			userNames[i] = users[i].Email
 		}
 		manager := repository.Manager()
-		err = manager.CreateRepository(app.Name, userNames)
+		err = manager.CreateRepository(ctx.Context, app.Name, userNames)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +263,7 @@ var createRepository = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		repository.Manager().RemoveRepository(app.Name)
+		repository.Manager().RemoveRepository(ctx.Context, app.Name)
 	},
 	MinParams: 1,
 }

@@ -105,7 +105,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
@@ -156,7 +156,7 @@ func (s *S) TestDeleteWithEvents(c *check.C) {
 	evts, err = event.List(&event.Filter{IncludeRemoved: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 3)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
 }
@@ -175,7 +175,7 @@ func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	Delete(context.TODO(), a, evt, "")
-	_, err = repository.Manager().GetRepository(app.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
 }
@@ -297,7 +297,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	env := retrievedApp.Envs()
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -340,7 +340,7 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, s.defaultPlan)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -397,7 +397,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -523,7 +523,7 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 }
 
 func (s *S) TestCreateAppRepositoryManagerFailure(c *check.C) {
-	repository.Manager().CreateRepository("otherapp", nil)
+	repository.Manager().CreateRepository(context.TODO(), "otherapp", nil)
 	a := App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.NotNil)
@@ -1149,7 +1149,7 @@ func (s *S) TestGrantAccess(c *check.C) {
 	app := App{Name: "app-name", Platform: "django", Teams: []string{"acid-rain", "zito"}}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(app.Name, nil)
+	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
 	c.Assert(err, check.IsNil)
 	err = app.Grant(&s.team)
 	c.Assert(err, check.IsNil)
@@ -1176,9 +1176,9 @@ func (s *S) TestRevokeAccess(c *check.C) {
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(app.Name, nil)
+	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(app.Name, user.Email)
+	err = repository.Manager().GrantAccess(context.TODO(), app.Name, user.Email)
 	c.Assert(err, check.IsNil)
 	err = app.Revoke(&s.team)
 	c.Assert(err, check.IsNil)
@@ -1203,9 +1203,9 @@ func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
 	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(app.Name, nil)
+	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
 	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(app.Name, user.Email)
+	err = repository.Manager().GrantAccess(context.TODO(), app.Name, user.Email)
 	c.Assert(err, check.IsNil)
 	err = app.Revoke(&team)
 	c.Assert(err, check.IsNil)
@@ -2605,7 +2605,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	repository.Manager().CreateRepository("name", nil)
+	repository.Manager().CreateRepository(context.TODO(), "name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -2693,7 +2693,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 
-	repository.Manager().CreateRepository("name", nil)
+	repository.Manager().CreateRepository(context.TODO(), "name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false, Provisioner: "autoscaleProv"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -2897,7 +2897,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
-	repository.Manager().CreateRepository("name", nil)
+	repository.Manager().CreateRepository(context.TODO(), "name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)

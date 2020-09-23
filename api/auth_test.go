@@ -207,7 +207,7 @@ func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys("nobody@me.myself")
+	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), "nobody@me.myself")
 	c.Assert(err, check.IsNil)
 }
 
@@ -263,7 +263,7 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *c
 }
 
 func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
-	repository.Manager().CreateUser("nobody@globo.com")
+	repository.Manager().CreateUser(context.TODO(), "nobody@globo.com")
 	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest(http.MethodPost, "/users", b)
 	c.Assert(err, check.IsNil)
@@ -648,7 +648,7 @@ func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 			{"name": "key", "value": "my-key"},
 		},
 	}, eventtest.HasEvent)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-key"}})
 }
@@ -719,7 +719,7 @@ func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-other-key"}})
 }
@@ -736,7 +736,7 @@ func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+t.GetValue())
-	repository.Manager().RemoveUser(u.Email)
+	repository.Manager().RemoveUser(context.TODO(), u.Email)
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
@@ -766,7 +766,7 @@ func (s *AuthSuite) TestRemoveKey(c *check.C) {
 			{"name": ":key", "value": "the-key"},
 		},
 	}, eventtest.HasEvent)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
@@ -797,8 +797,8 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 		{Name: "homekey", Body: "lol somekey somecomment"},
 		{Name: "workkey", Body: "lol someotherkey someothercomment"},
 	}
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(s.user.Email, keys[0])
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(s.user.Email, keys[1])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), s.user.Email, keys[0])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), s.user.Email, keys[1])
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest(http.MethodGet, "/users/keys", nil)
 	c.Assert(err, check.IsNil)

@@ -705,9 +705,9 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	manager := repository.Manager()
 	for _, name := range appNames {
-		manager.RevokeAccess(name, u.Email)
+		manager.RevokeAccess(ctx, name, u.Email)
 	}
-	if err := manager.RemoveUser(u.Email); err != nil {
+	if err := manager.RemoveUser(ctx, u.Email); err != nil {
 		log.Errorf("Failed to remove user from repository manager: %s", err)
 	}
 	return app.AuthScheme.Remove(ctx, u)

@@ -761,7 +761,7 @@ func (s *S) TestDelete(c *check.C) {
 			{"name": ":app", "value": myApp.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(myApp.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), myApp.Name)
 	c.Assert(err, check.NotNil)
 }
 
@@ -914,7 +914,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 			{"name": "platform", "value": "zend"},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -963,7 +963,7 @@ func (s *S) TestCreateApp(c *check.C) {
 			{"name": "platform", "value": "zend"},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1006,7 +1006,7 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 			{"name": "name", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1554,7 +1554,7 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 			{"name": "platform", "value": p.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(a.Name)
+	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 }
 
@@ -2881,7 +2881,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	u := auth.User{Email: "burning@angel.com", Quota: quota.UnlimitedQuota}
 	err := s.conn.Users().Insert(u)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(u.Email)
+	repository.Manager().CreateUser(context.TODO(), u.Email)
 	t := authTypes.Team{Name: "anything"}
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
