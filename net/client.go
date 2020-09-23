@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int, followRedirects bool) (*http.Client, *net.Dialer) {
+func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int, followRedirects bool) *http.Client {
 	dialer := &net.Dialer{
 		Timeout:   dialTimeout,
 		KeepAlive: 30 * time.Second,
@@ -32,7 +32,7 @@ func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration,
 			return http.ErrUseLastResponse
 		}
 	}
-	return client, dialer
+	return client
 }
 
 const (
@@ -40,25 +40,31 @@ const (
 )
 
 var (
-	Dial15Full300Client, _                          = makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 5, true)
-	Dial15FullUnlimitedClient, _                    = makeTimeoutHTTPClient(15*time.Second, 0, 5, true)
-	Dial15Full300ClientNoKeepAlive, _               = makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, -1, true)
-	Dial15Full60ClientNoKeepAlive, _                = makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, true)
-	Dial15Full60ClientNoKeepAliveNoRedirect, _      = makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, false)
+	Dial15Full300Client                             = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 5, true))
+	Dial15FullUnlimitedClient                       = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 0, 5, true))
+	Dial15Full300ClientNoKeepAlive                  = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, -1, true))
+	Dial15Full60ClientNoKeepAlive                   = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, true))
+	Dial15Full60ClientNoKeepAliveNoRedirect         = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, false))
 	Dial15Full60ClientNoKeepAliveNoRedirectInsecure = insecure(*Dial15Full60ClientNoKeepAliveNoRedirect)
 	Dial15Full60ClientNoKeepAliveInsecure           = insecure(*Dial15Full60ClientNoKeepAlive)
 
-	Dial15Full60ClientWithPool, _  = makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, 10, true)
-	Dial15Full300ClientWithPool, _ = makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 10, true)
+	Dial15Full60ClientWithPool  = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, 10, true))
+	Dial15Full300ClientWithPool = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 10, true))
 )
 
 func insecure(client http.Client) http.Client {
-	tlsConfig := client.Transport.(*http.Transport).TLSClientConfig
+	httpTransport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		opentracingTransport := client.Transport.(*AutoOpentracingTransport)
+		httpTransport = opentracingTransport.RoundTripper.(*http.Transport)
+	}
+
+	tlsConfig := httpTransport.TLSClientConfig
 	if tlsConfig == nil {
 		tlsConfig = &tls.Config{}
 	}
 	tlsConfig.InsecureSkipVerify = true
-	client.Transport.(*http.Transport).TLSClientConfig = tlsConfig
+	httpTransport.TLSClientConfig = tlsConfig
 	return client
 }
 

@@ -199,6 +199,9 @@ func listRequest(req *http.Request) ([]appTypes.Applog, error) {
 }
 
 func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follow bool) ([]*http.Request, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	instances, err := servicemanager.InstanceTracker.LiveInstances(ctx)
 	if err != nil {
 		return nil, err
@@ -227,7 +230,7 @@ func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follo
 		if args.Token != nil {
 			req.Header.Set("Authorization", "Bearer "+args.Token.GetValue())
 		}
-		requests = append(requests, req)
+		requests = append(requests, req.WithContext(ctx))
 	}
 	return requests, nil
 }

@@ -338,6 +338,9 @@ func (r *apiRouter) do(ctx context.Context, method, path string, body io.Reader)
 	for k, v := range r.headers {
 		req.Header.Set(k, v)
 	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
 	resp, err := r.client.Do(req)
 	if r.debug {
 		bodyData, _ := ioutil.ReadAll(body)

@@ -88,19 +88,19 @@ type GalebClient struct {
 	MaxRequests   int
 }
 
-func (c *GalebClient) getToken() (string, error) {
+func (c *GalebClient) getToken(ctx context.Context) (string, error) {
 	c.tokenMu.RLock()
 	defer c.tokenMu.RUnlock()
 	if c.token == "" {
 		c.tokenMu.RUnlock()
-		err := c.regenerateToken()
+		err := c.regenerateToken(ctx)
 		c.tokenMu.RLock()
 		return c.token, err
 	}
 	return c.token, nil
 }
 
-func (c *GalebClient) regenerateToken() (err error) {
+func (c *GalebClient) regenerateToken(ctx context.Context) (err error) {
 	c.tokenMu.Lock()
 	defer c.tokenMu.Unlock()
 	path := "/token"
@@ -110,6 +110,7 @@ func (c *GalebClient) regenerateToken() (err error) {
 		return err
 	}
 	req.SetBasicAuth(c.Username, c.Password)
+	req = req.WithContext(ctx)
 	rsp, err := net.Dial15Full60ClientWithPool.Do(req)
 	if err != nil {
 		return err
@@ -134,11 +135,11 @@ func (c *GalebClient) regenerateToken() (err error) {
 	return nil
 }
 
-func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
-	return c.doRequestRetry(method, path, params, 0)
+func (c *GalebClient) doRequest(ctx context.Context, method, path string, params interface{}) (*http.Response, error) {
+	return c.doRequestRetry(ctx, method, path, params, 0)
 }
 
-func (c *GalebClient) doRequestRetry(method, path string, params interface{}, retryCount int) (*http.Response, error) {
+func (c *GalebClient) doRequestRetry(ctx context.Context, method, path string, params interface{}, retryCount int) (*http.Response, error) {
 	buf := bytes.Buffer{}
 	contentType := "application/json"
 	if params != nil {
@@ -162,9 +163,10 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	if c.UseToken {
 		var token string
-		token, err = c.getToken()
+		token, err = c.getToken(ctx)
 		log.Debugf("Use token: %s", token)
 		if err != nil {
 			return nil, err
@@ -193,20 +195,20 @@ func (c *GalebClient) doRequestRetry(method, path string, params interface{}, re
 	}
 	if retryCount < maxConnRetries {
 		if err == nil && rsp.StatusCode == http.StatusUnauthorized {
-			err = c.regenerateToken()
+			err = c.regenerateToken(ctx)
 			if err != nil {
 				return nil, err
 			}
-			return c.doRequestRetry(method, path, params, retryCount+1)
+			return c.doRequestRetry(ctx, method, path, params, retryCount+1)
 		} else if err != nil && req.Method == http.MethodGet {
-			return c.doRequestRetry(method, path, params, retryCount+1)
+			return c.doRequestRetry(ctx, method, path, params, retryCount+1)
 		}
 	}
 	return rsp, err
 }
 
-func (c *GalebClient) doCreateResource(path string, params interface{}) (string, error) {
-	rsp, err := c.doRequest(http.MethodPost, path, params)
+func (c *GalebClient) doCreateResource(ctx context.Context, path string, params interface{}) (string, error) {
+	rsp, err := c.doRequest(ctx, http.MethodPost, path, params)
 	if err != nil {
 		return "", err
 	}
@@ -264,14 +266,14 @@ func (c *GalebClient) AddVirtualHost(ctx context.Context, addr string, wait bool
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
-	resource, err := c.doCreateResource("/virtualhost", &params)
+	resource, err := c.doCreateResource(ctx, "/virtualhost", &params)
 	if err != nil {
 		return "", err
 	}
 	if wait {
-		err = c.waitStatusOK(resource)
+		err = c.waitStatusOK(ctx, resource)
 		if err != nil {
-			c.removeResource(resource)
+			c.removeResource(ctx, resource)
 			return "", err
 		}
 	}
@@ -300,12 +302,12 @@ func (c *GalebClient) AddVirtualHostWithGroup(ctx context.Context, addr string, 
 	if err != nil {
 		return "", err
 	}
-	resource, err := c.doCreateResource("/virtualhost", &params)
+	resource, err := c.doCreateResource(ctx, "/virtualhost", &params)
 	if err != nil {
 		return "", err
 	}
 	if wait {
-		err = c.waitStatusOK(resource)
+		err = c.waitStatusOK(ctx, resource)
 	}
 	return resource, err
 }
@@ -321,7 +323,7 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(ctx context.Context, addr strin
 	}
 	params.ID = virtualHostID
 	path := fmt.Sprintf("/virtualhost/%d", virtualHostID)
-	rsp, err := c.doRequest(http.MethodPatch, path, &params)
+	rsp, err := c.doRequest(ctx, http.MethodPatch, path, &params)
 	if err != nil {
 		return err
 	}
@@ -331,7 +333,7 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(ctx context.Context, addr strin
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	if wait {
-		return c.waitStatusOK(virtualHostFullID)
+		return c.waitStatusOK(ctx, virtualHostFullID)
 	}
 	return nil
 }
@@ -340,20 +342,20 @@ func (c *GalebClient) AddBackendPool(ctx context.Context, name string, wait bool
 	var params Pool
 	c.fillDefaultPoolValues(&params)
 	params.Name = name
-	resource, err := c.doCreateResource("/pool", &params)
+	resource, err := c.doCreateResource(ctx, "/pool", &params)
 	if err != nil {
 		return "", err
 	}
 	if wait {
-		err = c.waitStatusOK(resource)
+		err = c.waitStatusOK(ctx, resource)
 	}
 	return resource, err
 }
 
-func (c *GalebClient) getPoolProperties(poolID string) (BackendPoolHealthCheck, error) {
+func (c *GalebClient) getPoolProperties(ctx context.Context, poolID string) (BackendPoolHealthCheck, error) {
 	var pool Pool
 	path := strings.TrimPrefix(poolID, c.ApiURL)
-	err := c.getObj(path, &pool)
+	err := c.getObj(ctx, path, &pool)
 	return pool.BackendPoolHealthCheck, err
 }
 
@@ -362,7 +364,7 @@ func (c *GalebClient) UpdatePoolProperties(ctx context.Context, poolName string,
 	if err != nil {
 		return err
 	}
-	currProperties, err := c.getPoolProperties(poolID)
+	currProperties, err := c.getPoolProperties(ctx, poolID)
 	if err == nil && currProperties == properties {
 		log.Debugf("skipping properties update for pool %q", poolName)
 		return nil
@@ -374,7 +376,7 @@ func (c *GalebClient) UpdatePoolProperties(ctx context.Context, poolName string,
 	c.fillDefaultPoolValues(&poolParam)
 	poolParam.Name = poolName
 	poolParam.BackendPoolHealthCheck = properties
-	rsp, err := c.doRequest(http.MethodPatch, path, poolParam)
+	rsp, err := c.doRequest(ctx, http.MethodPatch, path, poolParam)
 	if err != nil {
 		return err
 	}
@@ -383,7 +385,7 @@ func (c *GalebClient) UpdatePoolProperties(ctx context.Context, poolName string,
 		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return c.waitStatusOK(poolID)
+	return c.waitStatusOK(ctx, poolID)
 }
 
 func (c *GalebClient) AddBackends(ctx context.Context, backends []*url.URL, poolName string, wait bool) error {
@@ -395,7 +397,7 @@ func (c *GalebClient) AddBackends(ctx context.Context, backends []*url.URL, pool
 		var params Target
 		params.Name = backends[i].String()
 		params.BackendPool = poolID
-		resource, cerr := c.doCreateResource("/target", &params)
+		resource, cerr := c.doCreateResource(ctx, "/target", &params)
 		if cerr != nil {
 			if _, ok := cerr.(ErrItemAlreadyExists); ok {
 				return nil
@@ -403,9 +405,9 @@ func (c *GalebClient) AddBackends(ctx context.Context, backends []*url.URL, pool
 			return cerr
 		}
 		if wait {
-			cerr = c.waitStatusOK(resource)
+			cerr = c.waitStatusOK(ctx, resource)
 			if cerr != nil {
-				c.removeResource(resource)
+				c.removeResource(ctx, resource)
 				return cerr
 			}
 		}
@@ -418,15 +420,15 @@ func (c *GalebClient) AddRuleToPool(ctx context.Context, name, poolName string) 
 	if err != nil {
 		return "", err
 	}
-	return c.addRuleToID(name, id)
+	return c.addRuleToID(ctx, name, id)
 }
 
-func (c *GalebClient) addRuleToID(name, poolID string) (string, error) {
+func (c *GalebClient) addRuleToID(ctx context.Context, name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
 	params.Name = name
 	params.BackendPool = []string{poolID}
-	return c.doCreateResource("/rule", &params)
+	return c.doCreateResource(ctx, "/rule", &params)
 }
 
 func (c *GalebClient) setRuleVirtualHostIDs(ctx context.Context, ruleID, virtualHostID string, wait bool) error {
@@ -440,12 +442,12 @@ func (c *GalebClient) setRuleVirtualHostIDs(ctx context.Context, ruleID, virtual
 	params.Rule = ruleID
 	params.VirtualHostGroup = fmt.Sprintf("%s/virtualhostgroup/%d", c.ApiURL, virtualHostGroupId)
 
-	resource, err := c.doCreateResource("/ruleordered", &params)
+	resource, err := c.doCreateResource(ctx, "/ruleordered", &params)
 	if err != nil {
 		return err
 	}
 	if wait {
-		return c.waitStatusOK(resource)
+		return c.waitStatusOK(ctx, resource)
 	}
 	return nil
 }
@@ -463,22 +465,22 @@ func (c *GalebClient) SetRuleVirtualHost(ctx context.Context, ruleName, virtualH
 }
 
 func (c *GalebClient) RemoveResourceByID(ctx context.Context, resourceID string) error {
-	resource, err := c.removeResource(resourceID)
+	resource, err := c.removeResource(ctx, resourceID)
 	if err != nil {
 		return err
 	}
-	err = c.waitStatusOK(resource)
+	err = c.waitStatusOK(ctx, resource)
 	return err
 }
 
 func (c *GalebClient) RemoveResourcesByIDs(ctx context.Context, resourceIDs []string, wait bool) error {
 	return DoLimited(context.Background(), c.MaxRequests, len(resourceIDs), func(i int) error {
-		resource, err := c.removeResource(resourceIDs[i])
+		resource, err := c.removeResource(ctx, resourceIDs[i])
 		if err != nil {
 			return err
 		}
 		if wait {
-			return c.waitStatusOK(resource)
+			return c.waitStatusOK(ctx, resource)
 		}
 		return nil
 	})
@@ -519,7 +521,7 @@ func (c *GalebClient) RemoveRulesOrderedByRule(ctx context.Context, ruleName str
 			RuleOrdered []RuleOrdered `json:"ruleordered"`
 		} `json:"_embedded"`
 	}
-	err = c.getObj(path, &rspObj)
+	err = c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return err
 	}
@@ -538,7 +540,7 @@ func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(ctx context.Context, v
 	var rspObj struct {
 		VirtualHostGroupId int `json:"id"`
 	}
-	err := c.getObj(path, &rspObj)
+	err := c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return 0, err
 	}
@@ -546,7 +548,7 @@ func (c *GalebClient) FindVirtualHostGroupByVirtualHostId(ctx context.Context, v
 }
 
 func (c *GalebClient) FindAllTargetsByPoolPrefix(ctx context.Context, poolNamePrefix string) (map[string][]Target, error) {
-	pools, err := c.findItemIDsByNameContaining("pool", poolNamePrefix)
+	pools, err := c.findItemIDsByNameContaining(ctx, "pool", poolNamePrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -562,7 +564,7 @@ func (c *GalebClient) FindAllTargetsByPoolPrefix(ctx context.Context, poolNamePr
 				Targets []Target `json:"target"`
 			} `json:"_embedded"`
 		}
-		err = c.getObj(path, &rspObj)
+		err = c.getObj(ctx, path, &rspObj)
 		if err != nil {
 			return nil, err
 		}
@@ -582,7 +584,7 @@ func (c *GalebClient) FindTargetsByPool(ctx context.Context, poolName string) ([
 			Targets []Target `json:"target"`
 		} `json:"_embedded"`
 	}
-	err = c.getObj(path, &rspObj)
+	err = c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +606,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(ctx context.Context, virtualHostNa
 			VirtualHosts []VirtualHost `json:"virtualhost"`
 		} `json:"_embedded"`
 	}
-	err = c.getObj(path, &rspObj)
+	err = c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return nil, err
 	}
@@ -613,7 +615,7 @@ func (c *GalebClient) FindVirtualHostsByGroup(ctx context.Context, virtualHostNa
 }
 
 func (c *GalebClient) Healthcheck(ctx context.Context) error {
-	rsp, err := c.doRequest(http.MethodGet, "/healthcheck", nil)
+	rsp, err := c.doRequest(ctx, http.MethodGet, "/healthcheck", nil)
 	if err != nil {
 		return err
 	}
@@ -629,9 +631,9 @@ func (c *GalebClient) Healthcheck(ctx context.Context) error {
 	return nil
 }
 
-func (c *GalebClient) removeResource(resourceURI string) (string, error) {
+func (c *GalebClient) removeResource(ctx context.Context, resourceURI string) (string, error) {
 	path := strings.TrimPrefix(resourceURI, c.ApiURL)
-	rsp, err := c.doRequest(http.MethodDelete, path, nil)
+	rsp, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return "", err
 	}
@@ -649,12 +651,12 @@ func (c *GalebClient) findItemByName(ctx context.Context, item, name string) (st
 	return idStr, err
 }
 
-func (c *GalebClient) findItemIDsByNameContaining(item, name string) ([]commonPostResponse, error) {
+func (c *GalebClient) findItemIDsByNameContaining(ctx context.Context, item, name string) ([]commonPostResponse, error) {
 	path := fmt.Sprintf("/%s/search/findByNameContaining?name=%s", item, name)
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
 	}
-	err := c.getObj(path, &rspObj)
+	err := c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return nil, err
 	}
@@ -666,7 +668,7 @@ func (c *GalebClient) findItemIDsByName(ctx context.Context, item, name string) 
 	var rspObj struct {
 		Embedded map[string][]commonPostResponse `json:"_embedded"`
 	}
-	err := c.getObj(path, &rspObj)
+	err := c.getObj(ctx, path, &rspObj)
 	if err != nil {
 		return "", 0, err
 	}
@@ -685,8 +687,8 @@ func (c *GalebClient) findItemIDsByName(ctx context.Context, item, name string) 
 	return id, itemObj.ID, nil
 }
 
-func (c *GalebClient) fetchPathStatus(path string) (map[string]string, int, error) {
-	rsp, err := c.doRequest(http.MethodGet, path, nil)
+func (c *GalebClient) fetchPathStatus(ctx context.Context, path string) (map[string]string, int, error) {
+	rsp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, -1, errors.Wrapf(err, "GET %s: unable to make request", path)
 	}
@@ -706,7 +708,7 @@ func (c *GalebClient) fetchPathStatus(path string) (map[string]string, int, erro
 	return response.Status, rsp.StatusCode, nil
 }
 
-func (c *GalebClient) waitStatusOK(resourceURI string) error {
+func (c *GalebClient) waitStatusOK(ctx context.Context, resourceURI string) error {
 	path := strings.TrimPrefix(resourceURI, c.ApiURL)
 	var timeout <-chan time.Time
 	if c.WaitTimeout != 0 {
@@ -717,7 +719,7 @@ func (c *GalebClient) waitStatusOK(resourceURI string) error {
 	var statusCode int
 loop:
 	for {
-		mapStatus, statusCode, err = c.fetchPathStatus(path)
+		mapStatus, statusCode, err = c.fetchPathStatus(ctx, path)
 		if err != nil {
 			break
 		}
@@ -748,8 +750,8 @@ func (c *GalebClient) containsStatus(status map[string]string, statusCheck strin
 	return true
 }
 
-func (c *GalebClient) getObj(path string, data interface{}) error {
-	rsp, err := c.doRequest(http.MethodGet, path, nil)
+func (c *GalebClient) getObj(ctx context.Context, path string, data interface{}) error {
+	rsp, err := c.doRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return err
 	}

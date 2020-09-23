@@ -177,6 +177,9 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 		if err != nil {
 			return nil, err
 		}
+		if ctx != nil {
+			req = req.WithContext(ctx)
+		}
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}

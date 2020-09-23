@@ -66,7 +66,7 @@ func (s *S) TestNewGalebClient(c *check.C) {
 }
 
 func (s *S) TestGalebAuthBasic(c *check.C) {
-	rsp, err := s.client.doRequest("GET", "/", nil)
+	rsp, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
@@ -77,7 +77,7 @@ func (s *S) TestGalebAuthBasic(c *check.C) {
 func (s *S) TestGalebAuthToken(c *check.C) {
 	s.handler.Content = `{"token":"aqwsed"}`
 	s.client.UseToken = true
-	rsp, err := s.client.doRequest("GET", "/", nil)
+	rsp, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/token", "/api/"})
@@ -87,7 +87,7 @@ func (s *S) TestGalebAuthToken(c *check.C) {
 	c.Assert(s.handler.Header[1].Get("Authorization"), check.Equals, "Basic "+
 		base64.StdEncoding.EncodeToString([]byte("myusername:aqwsed")))
 	s.resetHandler()
-	rsp, err = s.client.doRequest("GET", "/", nil)
+	rsp, err = s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/"})
@@ -99,7 +99,7 @@ func (s *S) TestGalebAuthToken(c *check.C) {
 func (s *S) TestGalebAuthTokenExpired(c *check.C) {
 	s.handler.Content = `{"token":"xyz"}`
 	s.client.UseToken = true
-	rsp, err := s.client.doRequest("GET", "/", nil)
+	rsp, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/token", "/api/"})
@@ -119,7 +119,7 @@ func (s *S) TestGalebAuthTokenExpired(c *check.C) {
 		}
 		return false
 	}
-	rsp, err = s.client.doRequest("GET", "/", nil)
+	rsp, err = s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusOK)
 	c.Assert(unauthorizedCount, check.Equals, 2)
@@ -148,7 +148,7 @@ func (s *S) TestGalebAuthTokenExpiredMaxRetries(c *check.C) {
 		}
 		return false
 	}
-	rsp, err := s.client.doRequest("GET", "/", nil)
+	rsp, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rsp.StatusCode, check.Equals, http.StatusUnauthorized)
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/", "/api/token", "/api/", "/api/token", "/api/", "/api/token", "/api/"})
@@ -177,7 +177,7 @@ func (s *S) TestGalebGetMaxRetries(c *check.C) {
 		conn.Close()
 		return true
 	}
-	_, err := s.client.doRequest("GET", "/", nil)
+	_, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 	c.Assert(err, check.NotNil)
 	s.handler.WithLock(func() {
 		c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/", "/api/", "/api/", "/api/"})
@@ -192,7 +192,7 @@ func (s *S) TestGalebPostNoRetry(c *check.C) {
 		conn.Close()
 		return true
 	}
-	_, err := s.client.doRequest("POST", "/", nil)
+	_, err := s.client.doRequest(context.TODO(), "POST", "/", nil)
 	c.Assert(err, check.NotNil)
 	s.handler.WithLock(func() {
 		c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/"})
@@ -208,7 +208,7 @@ func (s *S) TestGalebAuthTokenConcurrentRequests(c *check.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := s.client.doRequest("GET", "/", nil)
+			_, err := s.client.doRequest(context.TODO(), "GET", "/", nil)
 			c.Assert(err, check.IsNil)
 		}()
 	}
@@ -377,7 +377,7 @@ func (s *S) TestGalebAddRuleToID(c *check.C) {
 		Matching:           "/",
 		Project:            "proj1",
 	}
-	fullId, err := s.client.addRuleToID("myrule", "http://galeb.somewhere/api/target/9")
+	fullId, err := s.client.addRuleToID(context.TODO(), "myrule", "http://galeb.somewhere/api/target/9")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.URL, check.DeepEquals, []string{"/api/rule"})

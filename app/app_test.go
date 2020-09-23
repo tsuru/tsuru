@@ -42,6 +42,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	tsuruTest "github.com/tsuru/tsuru/test"
 	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -3428,7 +3429,7 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Name < apps[j].Name
 	})
-	c.Assert(apps, check.DeepEquals, []App{
+	c.Assert(apps, tsuruTest.JSONEquals, []App{
 		{
 			Name:      "app1",
 			CName:     []string{},
@@ -3520,7 +3521,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
-	c.Assert(apps, check.DeepEquals, []App{
+	c.Assert(apps, tsuruTest.JSONEquals, []App{
 		{
 			Name:        "app1",
 			CName:       []string{},

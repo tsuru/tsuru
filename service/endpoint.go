@@ -77,7 +77,7 @@ func (c *endpointClient) Create(ctx context.Context, instance *ServiceInstance, 
 	}
 	addParameters(params, instance.Parameters)
 	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
-	resp, err = c.issueRequest("/resources", "POST", params, requestID)
+	resp, err = c.issueRequest(ctx, "/resources", "POST", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode < 300 {
@@ -102,7 +102,7 @@ func (c *endpointClient) Update(ctx context.Context, instance *ServiceInstance, 
 		"eventid":     {evt.UniqueID.Hex()},
 	}
 	addParameters(params, instance.Parameters)
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "PUT", params, requestID)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "PUT", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -122,7 +122,7 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 		"user":    {evt.Owner.Name},
 		"eventid": {evt.UniqueID.Hex()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", params, requestID)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier(), "DELETE", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -153,13 +153,13 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, requestID)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params, requestID)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params, requestID)
+		resp, err = c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, requestID)
 	}
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind app %q to service instance "%s/%s"`, app.GetName(), instance.ServiceName, instance.Name))
@@ -197,7 +197,7 @@ func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params, "")
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, "")
 	if err != nil {
 		return log.WrapError(errors.Wrapf(err, `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp()))
 	}
@@ -231,7 +231,7 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(url, "DELETE", params, requestID)
+	resp, err := c.issueRequest(ctx, url, "DELETE", params, requestID)
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -259,7 +259,7 @@ func (c *endpointClient) UnbindUnit(ctx context.Context, instance *ServiceInstan
 	if len(appAddrs) > 0 {
 		params["app-host"] = []string{appAddrs[0]}
 	}
-	resp, err := c.issueRequest(url, "DELETE", params, "")
+	resp, err := c.issueRequest(ctx, url, "DELETE", params, "")
 	if err == nil {
 		defer resp.Body.Close()
 		if resp.StatusCode > 299 {
@@ -280,7 +280,7 @@ func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, 
 		err  error
 	)
 	url := "/resources/" + instance.GetIdentifier() + "/status"
-	if resp, err = c.issueRequest(url, "GET", nil, requestID); err == nil {
+	if resp, err = c.issueRequest(ctx, url, "GET", nil, requestID); err == nil {
 		defer resp.Body.Close()
 		switch resp.StatusCode {
 		case http.StatusOK:
@@ -308,7 +308,7 @@ func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, 
 func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error) {
 	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
-	resp, err := c.issueRequest(url, "GET", nil, requestID)
+	resp, err := c.issueRequest(ctx, url, "GET", nil, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, re
 // GET /resources/plans
 func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, error) {
 	url := "/resources/plans"
-	resp, err := c.issueRequest(url, "GET", nil, requestID)
+	resp, err := c.issueRequest(ctx, url, "GET", nil, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error
 	return nil
 }
 
-func (c *endpointClient) issueRequest(path, method string, params map[string][]string, requestID string) (*http.Response, error) {
+func (c *endpointClient) issueRequest(ctx context.Context, path, method string, params map[string][]string, requestID string) (*http.Response, error) {
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -411,6 +411,9 @@ func (c *endpointClient) issueRequest(path, method string, params map[string][]s
 	if err != nil {
 		log.Errorf("Got error while creating request: %s", err)
 		return nil, err
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")

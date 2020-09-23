@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -98,7 +99,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 		}
 		defer client.RemoveContainer(docker.RemoveContainerOptions{ID: rcont.ID, Force: true})
 	} else if opts.ArchiveURL != "" {
-		tarFile, err = downloadFromURL(opts.ArchiveURL)
+		tarFile, err = downloadFromURL(ctx, opts.ArchiveURL)
 		if err != nil {
 			return nil, err
 		}
@@ -337,10 +338,18 @@ func downloadFromContainer(ctx context.Context, client provision.BuilderDockerCl
 	return archiveFile, cont, nil
 }
 
-func downloadFromURL(url string) (io.ReadCloser, error) {
+func downloadFromURL(ctx context.Context, url string) (io.ReadCloser, error) {
 	var out bytes.Buffer
 	client := net.Dial15Full300Client
-	resp, err := client.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

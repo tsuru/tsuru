@@ -1893,6 +1893,9 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 	if err != nil {
 		return nil, err
 	}
+	for i := range apps {
+		apps[i].ctx = ctx
+	}
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
 		var prov provision.Provisioner
