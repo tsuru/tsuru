@@ -32,7 +32,7 @@ func open(url string) error {
 
 	if isWSL() {
 		cmd = "powershell.exe"
-		args = []string{"-c", "start", "'"+url+"'"}
+		args = []string{"-c", "start", "'" + url + "'"}
 	}
 
 	opts := exec.ExecuteOptions{
