@@ -28,18 +28,19 @@ import (
 )
 
 var (
-	ErrServiceInstanceNotFound         = errors.New("service instance not found")
-	ErrInvalidInstanceName             = errors.New("invalid service instance name")
-	ErrInstanceNameAlreadyExists       = errors.New("instance name already exists.")
-	ErrAccessNotAllowed                = errors.New("user does not have access to this service instance")
-	ErrTeamMandatory                   = errors.New("please specify the team that owns the service instance")
-	ErrAppAlreadyBound                 = errors.New("app is already bound to this service instance")
-	ErrAppNotBound                     = errors.New("app is not bound to this service instance")
-	ErrUnitNotBound                    = errors.New("unit is not bound to this service instance")
-	ErrServiceInstanceBound            = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
-	ErrMultiClusterServiceRequiresPool = errors.New("multi-cluster service instance requires a pool")
-	ErrMultiClusterPoolDoesNotMatch    = errors.New("pools between app and multi-cluster service instance does not match")
-	instanceNameRegexp                 = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
+	ErrServiceInstanceNotFound                  = errors.New("service instance not found")
+	ErrInvalidInstanceName                      = errors.New("invalid service instance name")
+	ErrInstanceNameAlreadyExists                = errors.New("instance name already exists.")
+	ErrAccessNotAllowed                         = errors.New("user does not have access to this service instance")
+	ErrTeamMandatory                            = errors.New("please specify the team that owns the service instance")
+	ErrAppAlreadyBound                          = errors.New("app is already bound to this service instance")
+	ErrAppNotBound                              = errors.New("app is not bound to this service instance")
+	ErrUnitNotBound                             = errors.New("unit is not bound to this service instance")
+	ErrServiceInstanceBound                     = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	ErrMultiClusterServiceRequiresPool          = errors.New("multi-cluster service instance requires a pool")
+	ErrMultiClusterPoolDoesNotMatch             = errors.New("pools between app and multi-cluster service instance does not match")
+	ErrRegularServiceInstanceCannotBelongToPool = errors.New("regular (non-multi-cluster) service instance cannot belong to a pool")
+	instanceNameRegexp                          = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -612,7 +613,10 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 }
 
 func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) error {
-	if s == nil || !s.IsMultiCluster {
+	if !s.IsMultiCluster {
+		if si.Pool != "" {
+			return ErrRegularServiceInstanceCannotBelongToPool
+		}
 		return nil
 	}
 	if si.Pool == "" {

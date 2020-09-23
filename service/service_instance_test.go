@@ -671,7 +671,6 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExis
 	}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-
 	instance := ServiceInstance{
 		Name:      "instance",
 		TeamOwner: s.team.Name,
@@ -737,6 +736,29 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 	err = CreateServiceInstance(context.TODO(), instance, &srv, createEvt(c), "")
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.Equals, int32(1))
+}
+
+func (s *InstanceSuite) TestCreateServiceInstanceRegularServiceWithPool(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Fail()
+	}))
+	defer ts.Close()
+	srv := &Service{
+		Name:           "non-multi-cluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: false,
+	}
+	err := s.conn.Services().Insert(srv)
+	c.Assert(err, check.IsNil)
+	err = CreateServiceInstance(context.TODO(), ServiceInstance{
+		Name:        "my-instance",
+		ServiceName: "non-multi-cluster-service",
+		TeamOwner:   s.team.Name,
+		Pool:        "my-pool",
+	}, srv, createEvt(c), "")
+	c.Assert(err, check.Equals, ErrRegularServiceInstanceCannotBelongToPool)
 }
 
 func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
