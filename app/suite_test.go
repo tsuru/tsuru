@@ -158,7 +158,7 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(s.user.Email)
+	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"

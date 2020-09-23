@@ -198,7 +198,7 @@ func (app *App) Units() ([]provision.Unit, error) {
 
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
-	repo, _ := repository.Manager().GetRepository(app.Name)
+	repo, _ := repository.Manager().GetRepository(app.ctx, app.Name)
 	result := make(map[string]interface{})
 	result["name"] = app.Name
 	result["platform"] = app.Platform
@@ -646,7 +646,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	err = repository.Manager().RemoveRepository(appName)
+	err = repository.Manager().RemoveRepository(ctx, appName)
 	if err != nil {
 		logErr("Unable to remove app from repository manager", err)
 	}
@@ -936,7 +936,7 @@ func (app *App) Grant(team *authTypes.Team) error {
 		return err
 	}
 	for _, user := range users {
-		err = repository.Manager().GrantAccess(app.Name, user.Email)
+		err = repository.Manager().GrantAccess(app.ctx, app.Name, user.Email)
 		if err != nil {
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
 			return err
@@ -990,7 +990,7 @@ func (app *App) Revoke(team *authTypes.Team) error {
 		if canDeploy {
 			continue
 		}
-		err = repository.Manager().RevokeAccess(app.Name, user.Email)
+		err = repository.Manager().RevokeAccess(app.ctx, app.Name, user.Email)
 		if err != nil {
 			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
 			return err

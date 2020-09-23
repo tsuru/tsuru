@@ -133,7 +133,7 @@ func (s *S) SetUpTest(c *check.C) {
 	iaas.ResetAll()
 	repositorytest.Reset()
 	queue.ResetQueue()
-	repository.Manager().CreateUser(s.user.Email)
+	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)

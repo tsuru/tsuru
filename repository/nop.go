@@ -4,44 +4,46 @@
 
 package repository
 
+import "context"
+
 func init() {
 	Register("nop", nopManager{})
 }
 
 type nopManager struct{}
 
-func (nopManager) CreateUser(username string) error {
+func (nopManager) CreateUser(ctx context.Context, username string) error {
 	return nil
 }
 
-func (nopManager) RemoveUser(username string) error {
+func (nopManager) RemoveUser(ctx context.Context, username string) error {
 	return nil
 }
 
-func (nopManager) GrantAccess(repository, user string) error {
+func (nopManager) GrantAccess(ctx context.Context, repository, user string) error {
 	return nil
 }
 
-func (nopManager) RevokeAccess(repository, user string) error {
+func (nopManager) RevokeAccess(ctx context.Context, repository, user string) error {
 	return nil
 }
 
-func (nopManager) CreateRepository(name string, users []string) error {
+func (nopManager) CreateRepository(ctx context.Context, name string, users []string) error {
 	return nil
 }
 
-func (nopManager) RemoveRepository(name string) error {
+func (nopManager) RemoveRepository(ctx context.Context, name string) error {
 	return nil
 }
 
-func (nopManager) GetRepository(name string) (Repository, error) {
+func (nopManager) GetRepository(ctx context.Context, name string) (Repository, error) {
 	return Repository{}, nil
 }
 
-func (nopManager) Diff(repositoryName, from, to string) (string, error) {
+func (nopManager) Diff(ctx context.Context, repositoryName, from, to string) (string, error) {
 	return "", nil
 }
 
-func (nopManager) CommitMessages(repository, ref string, limit int) ([]string, error) {
+func (nopManager) CommitMessages(ctx context.Context, repository, ref string, limit int) ([]string, error) {
 	return nil, nil
 }

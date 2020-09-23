@@ -53,6 +53,11 @@ func healthCheck() error {
 
 type gandalfManager struct{}
 
+var (
+	_ repository.RepositoryManager    = &gandalfManager{}
+	_ repository.KeyRepositoryManager = &gandalfManager{}
+)
+
 func (gandalfManager) client() (*gandalf.Client, error) {
 	url, err := config.GetString(endpointConfig)
 	if err != nil {
@@ -62,7 +67,7 @@ func (gandalfManager) client() (*gandalf.Client, error) {
 	return &client, nil
 }
 
-func Sync(w io.Writer) error {
+func Sync(ctx context.Context, w io.Writer) error {
 	var m gandalfManager
 	users, err := auth.ListUsers()
 	if err != nil {
@@ -70,7 +75,7 @@ func Sync(w io.Writer) error {
 	}
 	for _, user := range users {
 		fmt.Fprintf(w, "Syncing user %q... ", user.Email)
-		err = m.CreateUser(user.Email)
+		err = m.CreateUser(ctx, user.Email)
 		switch err {
 		case repository.ErrUserAlreadyExists:
 			fmt.Fprintln(w, "already present in Gandalf")
@@ -110,7 +115,7 @@ func Sync(w io.Writer) error {
 			userNames[i] = users[i].Email
 		}
 		fmt.Fprintf(w, "Syncing app %q... ", app.GetName())
-		err = m.CreateRepository(app.GetName(), userNames)
+		err = m.CreateRepository(ctx, app.GetName(), userNames)
 		switch err {
 		case repository.ErrRepositoryAlreadExists:
 			fmt.Fprintln(w, "already present in Gandalf")
@@ -120,13 +125,13 @@ func Sync(w io.Writer) error {
 			return err
 		}
 		for _, user := range userNames {
-			m.GrantAccess(app.GetName(), user)
+			m.GrantAccess(ctx, app.GetName(), user)
 		}
 	}
 	return nil
 }
 
-func (m gandalfManager) CreateUser(username string) error {
+func (m gandalfManager) CreateUser(ctx context.Context, username string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -138,7 +143,7 @@ func (m gandalfManager) CreateUser(username string) error {
 	return err
 }
 
-func (m gandalfManager) RemoveUser(username string) error {
+func (m gandalfManager) RemoveUser(ctx context.Context, username string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -150,7 +155,7 @@ func (m gandalfManager) RemoveUser(username string) error {
 	return err
 }
 
-func (m gandalfManager) CreateRepository(name string, users []string) error {
+func (m gandalfManager) CreateRepository(ctx context.Context, name string, users []string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -162,7 +167,7 @@ func (m gandalfManager) CreateRepository(name string, users []string) error {
 	return err
 }
 
-func (m gandalfManager) RemoveRepository(name string) error {
+func (m gandalfManager) RemoveRepository(ctx context.Context, name string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -174,7 +179,7 @@ func (m gandalfManager) RemoveRepository(name string) error {
 	return err
 }
 
-func (m gandalfManager) GetRepository(name string) (repository.Repository, error) {
+func (m gandalfManager) GetRepository(ctx context.Context, name string) (repository.Repository, error) {
 	client, err := m.client()
 	if err != nil {
 		return repository.Repository{}, err
@@ -192,7 +197,7 @@ func (m gandalfManager) GetRepository(name string) (repository.Repository, error
 	}, nil
 }
 
-func (m gandalfManager) GrantAccess(repository, user string) error {
+func (m gandalfManager) GrantAccess(ctx context.Context, repository, user string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -200,7 +205,7 @@ func (m gandalfManager) GrantAccess(repository, user string) error {
 	return client.GrantAccess([]string{repository}, []string{user})
 }
 
-func (m gandalfManager) RevokeAccess(repository, user string) error {
+func (m gandalfManager) RevokeAccess(ctx context.Context, repository, user string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -208,7 +213,7 @@ func (m gandalfManager) RevokeAccess(repository, user string) error {
 	return client.RevokeAccess([]string{repository}, []string{user})
 }
 
-func (m gandalfManager) AddKey(username string, key repository.Key) error {
+func (m gandalfManager) AddKey(ctx context.Context, username string, key repository.Key) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -224,7 +229,7 @@ func (m gandalfManager) AddKey(username string, key repository.Key) error {
 	return nil
 }
 
-func (m gandalfManager) UpdateKey(username string, key repository.Key) error {
+func (m gandalfManager) UpdateKey(ctx context.Context, username string, key repository.Key) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -232,7 +237,7 @@ func (m gandalfManager) UpdateKey(username string, key repository.Key) error {
 	return m.handleKeyOrUserError(client.UpdateKey(username, key.Name, key.Body))
 }
 
-func (m gandalfManager) RemoveKey(username string, key repository.Key) error {
+func (m gandalfManager) RemoveKey(ctx context.Context, username string, key repository.Key) error {
 	client, err := m.client()
 	if err != nil {
 		return err
@@ -257,7 +262,7 @@ func (gandalfManager) handleKeyOrUserError(err error) error {
 	return nil
 }
 
-func (m gandalfManager) ListKeys(username string) ([]repository.Key, error) {
+func (m gandalfManager) ListKeys(ctx context.Context, username string) ([]repository.Key, error) {
 	client, err := m.client()
 	if err != nil {
 		return nil, err
@@ -273,7 +278,7 @@ func (m gandalfManager) ListKeys(username string) ([]repository.Key, error) {
 	return keys, nil
 }
 
-func (m gandalfManager) Diff(name, from, to string) (string, error) {
+func (m gandalfManager) Diff(ctx context.Context, name, from, to string) (string, error) {
 	client, err := m.client()
 	if err != nil {
 		return "", err
@@ -281,7 +286,7 @@ func (m gandalfManager) Diff(name, from, to string) (string, error) {
 	return client.GetDiff(name, from, to)
 }
 
-func (m gandalfManager) CommitMessages(repository, ref string, limit int) ([]string, error) {
+func (m gandalfManager) CommitMessages(ctx context.Context, repository, ref string, limit int) ([]string, error) {
 	client, err := m.client()
 	if err != nil {
 		return nil, err

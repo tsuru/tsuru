@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
@@ -112,7 +113,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
 	key := repository.Key{Name: "some-key", Body: "my-key"}
 	err = u.AddKey(key, false)
 	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{key})
 }
@@ -150,7 +151,7 @@ func (s *S) TestAddKeyDuplicatedForce(c *check.C) {
 	newKey := repository.Key{Name: "some-key", Body: "my-new-key"}
 	err = u.AddKey(newKey, true)
 	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{newKey})
 }
@@ -173,11 +174,11 @@ func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	err = repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
+	err = repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, key)
 	c.Assert(err, check.IsNil)
 	err = u.RemoveKey(repository.Key{Name: "the-key"})
 	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
@@ -212,8 +213,8 @@ func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[0])
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[1])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, newKeys[0])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, newKeys[1])
 	keys, err := u.ListKeys()
 	c.Assert(err, check.IsNil)
 	expected := map[string]string{"key1": "superkey", "key2": "hiperkey"}
@@ -225,7 +226,7 @@ func (s *S) TestListKeysRepositoryManagerFailure(c *check.C) {
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	err = repository.Manager().RemoveUser(u.Email)
+	err = repository.Manager().RemoveUser(context.TODO(), u.Email)
 	c.Assert(err, check.IsNil)
 	keys, err := u.ListKeys()
 	c.Assert(keys, check.HasLen, 0)

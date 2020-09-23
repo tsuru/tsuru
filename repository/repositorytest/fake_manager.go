@@ -13,6 +13,7 @@
 package repositorytest
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"sync"
@@ -33,6 +34,11 @@ const Diff = "fake-diff"
 
 var manager = fakeManager{grants: make(map[string][]string), keys: make(map[string]map[string]string)}
 
+var (
+	_ repository.RepositoryManager    = &fakeManager{}
+	_ repository.KeyRepositoryManager = &fakeManager{}
+)
+
 type fakeManager struct {
 	grants     map[string][]string
 	grantsLock sync.Mutex
@@ -40,7 +46,7 @@ type fakeManager struct {
 	keysLock   sync.Mutex
 }
 
-func (m *fakeManager) CreateUser(username string) error {
+func (m *fakeManager) CreateUser(ctx context.Context, username string) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	if _, ok := m.keys[username]; ok {
@@ -50,7 +56,7 @@ func (m *fakeManager) CreateUser(username string) error {
 	return nil
 }
 
-func (m *fakeManager) RemoveUser(username string) error {
+func (m *fakeManager) RemoveUser(ctx context.Context, username string) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	if _, ok := m.keys[username]; !ok {
@@ -60,7 +66,7 @@ func (m *fakeManager) RemoveUser(username string) error {
 	return nil
 }
 
-func (m *fakeManager) CreateRepository(name string, users []string) error {
+func (m *fakeManager) CreateRepository(ctx context.Context, name string, users []string) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	for _, user := range users {
@@ -77,7 +83,7 @@ func (m *fakeManager) CreateRepository(name string, users []string) error {
 	return nil
 }
 
-func (m *fakeManager) RemoveRepository(name string) error {
+func (m *fakeManager) RemoveRepository(ctx context.Context, name string) error {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; !ok {
@@ -87,7 +93,7 @@ func (m *fakeManager) RemoveRepository(name string) error {
 	return nil
 }
 
-func (m *fakeManager) GetRepository(name string) (repository.Repository, error) {
+func (m *fakeManager) GetRepository(ctx context.Context, name string) (repository.Repository, error) {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; !ok {
@@ -99,7 +105,7 @@ func (m *fakeManager) GetRepository(name string) (repository.Repository, error) 
 	}, nil
 }
 
-func (m *fakeManager) GrantAccess(repo, user string) error {
+func (m *fakeManager) GrantAccess(ctx context.Context, repo, user string) error {
 	m.keysLock.Lock()
 	_, ok := m.keys[user]
 	m.keysLock.Unlock()
@@ -126,7 +132,7 @@ func (m *fakeManager) GrantAccess(repo, user string) error {
 	return nil
 }
 
-func (m *fakeManager) RevokeAccess(repo, user string) error {
+func (m *fakeManager) RevokeAccess(ctx context.Context, repo, user string) error {
 	m.keysLock.Lock()
 	_, ok := m.keys[user]
 	m.keysLock.Unlock()
@@ -154,7 +160,7 @@ func (m *fakeManager) RevokeAccess(repo, user string) error {
 	return nil
 }
 
-func (m *fakeManager) AddKey(username string, key repository.Key) error {
+func (m *fakeManager) AddKey(ctx context.Context, username string, key repository.Key) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
@@ -174,7 +180,7 @@ func (m *fakeManager) AddKey(username string, key repository.Key) error {
 	return nil
 }
 
-func (m *fakeManager) UpdateKey(username string, key repository.Key) error {
+func (m *fakeManager) UpdateKey(ctx context.Context, username string, key repository.Key) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
@@ -194,7 +200,7 @@ func (m *fakeManager) UpdateKey(username string, key repository.Key) error {
 	return nil
 }
 
-func (m *fakeManager) RemoveKey(username string, key repository.Key) error {
+func (m *fakeManager) RemoveKey(ctx context.Context, username string, key repository.Key) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
@@ -209,7 +215,7 @@ func (m *fakeManager) RemoveKey(username string, key repository.Key) error {
 	return nil
 }
 
-func (m *fakeManager) ListKeys(username string) ([]repository.Key, error) {
+func (m *fakeManager) ListKeys(ctx context.Context, username string) ([]repository.Key, error) {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
@@ -223,7 +229,7 @@ func (m *fakeManager) ListKeys(username string) ([]repository.Key, error) {
 	return result, nil
 }
 
-func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
+func (m *fakeManager) Diff(ctx context.Context, repositoryName, from, to string) (string, error) {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[repositoryName]; !ok {
@@ -232,7 +238,7 @@ func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
 	return Diff, nil
 }
 
-func (m *fakeManager) CommitMessages(repositoryName, ref string, limit int) ([]string, error) {
+func (m *fakeManager) CommitMessages(ctx context.Context, repositoryName, ref string, limit int) ([]string, error) {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[repositoryName]; !ok {

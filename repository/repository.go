@@ -7,6 +7,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 )
@@ -39,28 +41,28 @@ type Repository struct {
 
 // RepositoryManager represents a manager of application repositories.
 type RepositoryManager interface {
-	CreateUser(username string) error
-	RemoveUser(username string) error
+	CreateUser(ctx context.Context, username string) error
+	RemoveUser(ctx context.Context, username string) error
 
-	GrantAccess(repository, user string) error
-	RevokeAccess(repository, user string) error
+	GrantAccess(ctx context.Context, repository, user string) error
+	RevokeAccess(ctx context.Context, repository, user string) error
 
-	CreateRepository(name string, users []string) error
-	RemoveRepository(name string) error
-	GetRepository(name string) (Repository, error)
+	CreateRepository(ctx context.Context, name string, users []string) error
+	RemoveRepository(ctx context.Context, name string) error
+	GetRepository(ctx context.Context, name string) (Repository, error)
 
-	Diff(repositoryName, fromVersion, toVersion string) (string, error)
+	Diff(ctx context.Context, repositoryName, fromVersion, toVersion string) (string, error)
 
-	CommitMessages(repository, ref string, limit int) ([]string, error)
+	CommitMessages(ctx context.Context, repository, ref string, limit int) ([]string, error)
 }
 
 // KeyRepositoryManager is a RepositoryManager that is able to manage public
 // SSH keys.
 type KeyRepositoryManager interface {
-	AddKey(username string, key Key) error
-	UpdateKey(username string, key Key) error
-	RemoveKey(username string, key Key) error
-	ListKeys(username string) ([]Key, error)
+	AddKey(ctx context.Context, username string, key Key) error
+	UpdateKey(ctx context.Context, username string, key Key) error
+	RemoveKey(ctx context.Context, username string, key Key) error
+	ListKeys(ctx context.Context, username string) ([]Key, error)
 }
 
 // Manager returns the current configured manager, as defined in the

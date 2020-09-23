@@ -72,7 +72,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	message := InputValue(r, "message")
 	if commit != "" && message == "" {
 		var messages []string
-		messages, err = repository.Manager().CommitMessages(instance.Name, commit, 1)
+		messages, err = repository.Manager().CommitMessages(ctx, instance.Name, commit, 1)
 		if err != nil {
 			return err
 		}

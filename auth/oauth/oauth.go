@@ -116,10 +116,10 @@ func (s *oAuthScheme) Login(ctx context.Context, params map[string]string) (auth
 	if err != nil {
 		return nil, err
 	}
-	return s.handleToken(oauthToken)
+	return s.handleToken(ctx, oauthToken)
 }
 
-func (s *oAuthScheme) handleToken(t *oauth2.Token) (*tokenWrapper, error) {
+func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenWrapper, error) {
 	if t.AccessToken == "" {
 		return nil, ErrEmptyAccessToken
 	}

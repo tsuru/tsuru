@@ -5,6 +5,8 @@
 package main
 
 import (
+	stdContext "context"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/repository/gandalf"
 )
@@ -20,5 +22,5 @@ func (gandalfSyncCmd) Info() *cmd.Info {
 }
 
 func (gandalfSyncCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	return gandalf.Sync(context.Stdout)
+	return gandalf.Sync(stdContext.Background(), context.Stdout)
 }
