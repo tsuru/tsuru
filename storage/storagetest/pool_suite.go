@@ -21,6 +21,7 @@ type PoolSuite struct {
 func (s *PoolSuite) TestFindAll(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	err = conn.Pools().Insert(
 		bson.M{"_id": "pool-A", "provisioner": "docker", "default": true},
 		bson.M{"_id": "pool-B", "provisioner": "kubernetes"},
@@ -37,6 +38,7 @@ func (s *PoolSuite) TestFindAll(c *check.C) {
 func (s *PoolSuite) TestFindByName(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	err = conn.Pools().Insert(
 		bson.M{"_id": "pool-A", "provisioner": "docker", "default": true},
 		bson.M{"_id": "pool-B", "provisioner": "kubernetes"},
