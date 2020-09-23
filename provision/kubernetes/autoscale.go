@@ -61,38 +61,6 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	return specs, nil
 }
 
-func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
-	ns, err := client.AppNamespace(a)
-	if err != nil {
-		return nil, err
-	}
-
-	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
-		App:     a,
-		Process: process,
-		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
-		},
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	hpas, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
-	})
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	var specs []provision.AutoScaleSpec
-	for _, hpa := range hpas.Items {
-		specs = append(specs, hpaToSpec(hpa))
-	}
-	return specs, nil
-}
-
 func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpec {
 	ls := labelSetFromMeta(&hpa.ObjectMeta)
 	spec := provision.AutoScaleSpec{
@@ -136,43 +104,15 @@ func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.Ap
 }
 
 func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, spec provision.AutoScaleSpec) error {
-	depGroups, err := deploymentsDataForApp(ctx, client, a)
+	depInfo, err := minimumAutoScaleVersion(ctx, client, a, spec)
 	if err != nil {
 		return err
-	}
-
-	minRoutableVersion := -1
-	var depInfo *deploymentInfo
-
-	for version, deps := range depGroups.versioned {
-		if spec.Process == "" && len(deps) > 1 {
-			return provision.InvalidProcessError{Msg: "process argument is required"}
-		}
-		for i, dep := range deps {
-			if !dep.isRoutable {
-				continue
-			}
-			if spec.Process != "" && spec.Process != dep.process {
-				continue
-			}
-			if dep.dep.Spec.Replicas == nil || *dep.dep.Spec.Replicas == 0 {
-				continue
-			}
-			if minRoutableVersion == -1 || version < minRoutableVersion {
-				minRoutableVersion = version
-				depInfo = &deps[i]
-			}
-		}
-	}
-
-	if depInfo == nil {
-		return errNoDeploy
 	}
 
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: depInfo.process,
-		Version: minRoutableVersion,
+		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
@@ -223,10 +163,12 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	}
 
 	existing, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(hpa.Name, metav1.GetOptions{})
-	if err != nil && !k8sErrors.IsNotFound(err) {
+	if k8sErrors.IsNotFound(err) {
+		existing = nil
+	} else if err != nil {
 		return errors.WithStack(err)
 	}
-	if existing.ResourceVersion != "" {
+	if existing != nil {
 		hpa.ResourceVersion = existing.ResourceVersion
 		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Update(hpa)
 	} else {
@@ -236,6 +178,51 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, spec provision.AutoScaleSpec) (*deploymentInfo, error) {
+	depGroups, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return nil, err
+	}
+
+	minRoutableVersion := -1
+	minNonRoutableVersion := -1
+	var depInfoRoutable, depInfoNonRoutable *deploymentInfo
+
+	for version, deps := range depGroups.versioned {
+		if spec.Process == "" && len(deps) > 1 {
+			return nil, provision.InvalidProcessError{Msg: "process argument is required"}
+		}
+		for i, dep := range deps {
+			if spec.Process != "" && spec.Process != dep.process {
+				continue
+			}
+			if dep.dep.Spec.Replicas == nil || *dep.dep.Spec.Replicas == 0 {
+				continue
+			}
+			if dep.isRoutable {
+				if minRoutableVersion == -1 || version < minRoutableVersion {
+					minRoutableVersion = version
+					depInfoRoutable = &deps[i]
+				}
+			} else {
+				if minNonRoutableVersion == -1 || version < minNonRoutableVersion {
+					minNonRoutableVersion = version
+					depInfoNonRoutable = &deps[i]
+				}
+			}
+		}
+	}
+
+	depInfo := depInfoRoutable
+	if depInfo == nil {
+		depInfo = depInfoNonRoutable
+	}
+	if depInfo == nil {
+		return nil, errNoDeploy
+	}
+	return depInfo, nil
 }
 
 func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
@@ -255,4 +242,36 @@ func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App
 		}
 	}
 	return multiErr.ToError()
+}
+
+func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
+	ns, err := client.AppNamespace(a)
+	if err != nil {
+		return nil, err
+	}
+
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App:     a,
+		Process: process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	hpas, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var specs []provision.AutoScaleSpec
+	for _, hpa := range hpas.Items {
+		specs = append(specs, hpaToSpec(hpa))
+	}
+	return specs, nil
 }
