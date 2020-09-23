@@ -2904,6 +2904,8 @@ definitions:
         type: object
         additionalProperties:
           type: string
+      pool:
+        type: string
   ServiceInstanceBoundUnit:
     type: object
     properties:
