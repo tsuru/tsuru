@@ -7,6 +7,7 @@
 package bind
 
 import (
+	"context"
 	"io"
 )
 
@@ -33,6 +34,9 @@ type Unit interface {
 type App interface {
 	// GetAddresses returns the app addresses.
 	GetAddresses() ([]string, error)
+
+	// GetInternalAddresses returns the app addresses inside the cluster, if any.
+	GetInternalAddresses(context.Context) ([]string, error)
 
 	// GetName returns the app name.
 	GetName() string

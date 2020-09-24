@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -58,32 +59,33 @@ func init() {
 
 // Fake implementation for provision.App.
 type FakeApp struct {
-	name            string
-	uuid            string
-	cname           []string
-	IP              string
-	platform        string
-	platformVersion string
-	units           []provision.Unit
-	logs            []string
-	logMut          sync.Mutex
-	Commands        []string
-	Memory          int64
-	Swap            int64
-	CpuShare        int
-	MilliCPU        int
-	commMut         sync.Mutex
-	Deploys         uint
-	env             map[string]bind.EnvVar
-	bindCalls       []*provision.Unit
-	bindLock        sync.Mutex
-	serviceEnvs     []bind.ServiceEnvVar
-	serviceLock     sync.Mutex
-	Pool            string
-	UpdatePlatform  bool
-	TeamOwner       string
-	Teams           []string
-	Tags            []string
+	name              string
+	uuid              string
+	cname             []string
+	IP                string
+	platform          string
+	platformVersion   string
+	units             []provision.Unit
+	logs              []string
+	logMut            sync.Mutex
+	Commands          []string
+	Memory            int64
+	Swap              int64
+	CpuShare          int
+	MilliCPU          int
+	commMut           sync.Mutex
+	Deploys           uint
+	env               map[string]bind.EnvVar
+	bindCalls         []*provision.Unit
+	bindLock          sync.Mutex
+	serviceEnvs       []bind.ServiceEnvVar
+	serviceLock       sync.Mutex
+	Pool              string
+	UpdatePlatform    bool
+	TeamOwner         string
+	Teams             []string
+	Tags              []string
+	InternalAddresses []provision.AppInternalAddress
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -344,6 +346,14 @@ func (app *FakeApp) GetAddresses() ([]string, error) {
 		return nil, err
 	}
 	return []string{addr}, nil
+}
+
+func (app *FakeApp) GetInternalAddresses(ctx context.Context) ([]string, error) {
+	var addresses []string
+	for _, addr := range app.InternalAddresses {
+		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
+	}
+	return addresses, nil
 }
 
 func (app *FakeApp) ListTags() []string {

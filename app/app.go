@@ -1438,6 +1438,26 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
+func (app *App) GetInternalAddresses(ctx context.Context) ([]string, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	interAppProv, ok := prov.(provision.InterAppProvisioner)
+	if !ok {
+		return nil, nil
+	}
+	addrs, err := interAppProv.InternalAddresses(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	var addresses []string
+	for _, addr := range addrs {
+		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
+	}
+	return addresses, nil
+}
+
 func (app *App) GetQuotaInUse() (int, error) {
 	units, err := app.Units()
 	if err != nil {
