@@ -13,6 +13,8 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 )
 
+const PoolCollectionName = "pool"
+
 var _ provision.PoolStorage = &PoolStorage{}
 
 type PoolStorage struct{}
@@ -44,14 +46,19 @@ func findPoolByQuery(ctx context.Context, filter bson.M) (*provision.Pool, error
 }
 
 func findPoolsByQuery(ctx context.Context, filter bson.M) ([]provision.Pool, error) {
+	span := newMongoDBSpan(ctx, mongoSpanFind, PoolCollectionName)
+	span.SetQueryStatement(filter)
+	defer span.Finish()
 	conn, err := db.Conn()
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	defer conn.Close()
 	pools := []provision.Pool{}
 	err = conn.Pools().Find(filter).All(&pools)
 	if err != nil {
+		span.SetError(err)
 		return nil, err
 	}
 	return pools, err
