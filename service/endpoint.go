@@ -153,15 +153,20 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
+	internalAddrs, err := app.GetInternalAddresses(ctx)
+	if err != nil {
+		return nil, err
+	}
 	appAddrs, err := app.GetAddresses()
 	if err != nil {
 		return nil, err
 	}
 	params := map[string][]string{
-		"app-name":  {app.GetName()},
-		"app-hosts": appAddrs,
-		"user":      {evt.Owner.Name},
-		"eventid":   {evt.UniqueID.Hex()},
+		"app-name":           {app.GetName()},
+		"app-hosts":          appAddrs,
+		"app-internal-hosts": internalAddrs,
+		"user":               {evt.Owner.Name},
+		"eventid":            {evt.UniqueID.Hex()},
 	}
 	addParameters(params, bindParams)
 	if len(appAddrs) > 0 {

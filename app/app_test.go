@@ -5520,3 +5520,15 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 		{Process: "p2"},
 	})
 }
+
+func (s *S) TestGetInternalAddresses(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, provisioner: s.provisioner}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	addresses, err := app.GetInternalAddresses(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(addresses, check.DeepEquals, []string{
+		"tcp://myapp-web.fake-cluster.local:80",
+		"udp://myapp-logs.fake-cluster.local:12201",
+	})
+}

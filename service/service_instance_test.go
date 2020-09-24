@@ -9,8 +9,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"runtime"
 	"sort"
 	"strconv"
@@ -26,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -1257,6 +1260,14 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 		reqs = append(reqs, r)
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/resources/my-mysql/bind-app" && r.Method == "POST" {
+			bodyRaw, err := ioutil.ReadAll(r.Body)
+			c.Assert(err, check.IsNil)
+			v, err := url.ParseQuery(string(bodyRaw))
+			c.Assert(err, check.IsNil)
+			c.Assert(v["app-internal-hosts"], check.DeepEquals, []string{
+				"tcp://aclfromhell-web.tsuru.svc.cluster.local:8888",
+				"tcp://aclfromhell-web-v1.tsuru.svc.cluster.local:8888",
+			})
 			w.Write([]byte(`{"ENV1": "VAL1", "ENV2": "VAL2"}`))
 		}
 	}))
@@ -1272,6 +1283,18 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
+	a.InternalAddresses = []provision.AppInternalAddress{
+		{
+			Protocol: "TCP",
+			Domain:   "aclfromhell-web.tsuru.svc.cluster.local",
+			Port:     int32(8888),
+		},
+		{
+			Protocol: "TCP",
+			Domain:   "aclfromhell-web-v1.tsuru.svc.cluster.local",
+			Port:     int32(8888),
+		},
+	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	err = si.BindApp(a, nil, true, &buf, evt, "")
