@@ -682,6 +682,51 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExis
 	c.Assert(err.Error(), check.Equals, "pool not found")
 }
 
+func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(c *check.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Assert(r.Header["X-Tsuru-Pool-Name"], check.DeepEquals, []string{"my-pool"})
+		c.Assert(r.Header["X-Tsuru-Pool-Provisioner"], check.DeepEquals, []string{"docker"})
+		atomic.AddInt32(&requests, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	srv := Service{
+		Name:           "multicluster-service",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Username:       "user",
+		Password:       "password",
+		IsMultiCluster: true,
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	servicemanager.Pool = &provTypes.MockPoolService{
+		OnFindByName: func(name string) (*provTypes.Pool, error) {
+			if name != "my-pool" {
+				return nil, errors.New("pool not found")
+			}
+			return &provTypes.Pool{
+				Name:        "my-pool",
+				Provisioner: "docker",
+			}, nil
+		},
+	}
+	servicemanager.Cluster = &provTypes.MockClusterService{
+		OnFindByPool: func(provisioner, name string) (*provTypes.Cluster, error) {
+			return nil, provTypes.ErrNoCluster
+		},
+	}
+	c.Assert(err, check.IsNil)
+	instance := ServiceInstance{
+		Name:      "instance",
+		TeamOwner: s.team.Name,
+		Pool:      "my-pool",
+	}
+	err = CreateServiceInstance(context.TODO(), instance, &srv, createEvt(c), "")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.Equals, int32(1))
+}
+
 func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

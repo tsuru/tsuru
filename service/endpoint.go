@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/types/provision"
 )
 
 var (
@@ -523,6 +524,9 @@ func multiClusterHeader(ctx context.Context, si *ServiceInstance, header http.He
 	header.Set("X-Tsuru-Pool-Provisioner", p.Provisioner)
 	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
 	if err != nil {
+		if err == provision.ErrNoCluster {
+			return header, nil
+		}
 		return header, err
 	}
 	header.Set("X-Tsuru-Cluster-Name", c.Name)
