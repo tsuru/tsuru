@@ -9,10 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"runtime"
 	"sort"
 	"strconv"
@@ -28,10 +26,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -665,6 +661,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExis
 		c.Fail()
 	}))
 	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return nil, provTypes.ErrPoolNotFound
+	}
 	srv := Service{
 		Name:           "multicluster-service",
 		Endpoint:       map[string]string{"production": ts.URL},
@@ -682,7 +681,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenPoolDoesNotExis
 	evt := createEvt(c)
 	err = CreateServiceInstance(context.TODO(), instance, &srv, evt, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "pool not found")
+	c.Assert(err.Error(), check.Equals, "pool does not exist")
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(c *check.C) {
@@ -694,6 +693,18 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		if name != "my-pool" {
+			return nil, errors.New("pool not found")
+		}
+		return &provTypes.Pool{
+			Name:        "my-pool",
+			Provisioner: "docker",
+		}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, name string) (*provTypes.Cluster, error) {
+		return nil, provTypes.ErrNoCluster
+	}
 	srv := Service{
 		Name:           "multicluster-service",
 		Endpoint:       map[string]string{"production": ts.URL},
@@ -703,22 +714,6 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(
 	}
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
-	servicemanager.Pool = &provTypes.MockPoolService{
-		OnFindByName: func(name string) (*provTypes.Pool, error) {
-			if name != "my-pool" {
-				return nil, errors.New("pool not found")
-			}
-			return &provTypes.Pool{
-				Name:        "my-pool",
-				Provisioner: "docker",
-			}, nil
-		},
-	}
-	servicemanager.Cluster = &provTypes.MockClusterService{
-		OnFindByPool: func(provisioner, name string) (*provTypes.Cluster, error) {
-			return nil, provTypes.ErrNoCluster
-		},
-	}
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
 		Name:      "instance",
@@ -742,6 +737,20 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{
+			Name:        "my-pool",
+			Provisioner: "kubernetes",
+		}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, name string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "cluster-name",
+			Addresses:   []string{"https://my-kubernetes.example.com"},
+			Provisioner: "kubernetes",
+			Pools:       []string{"my-pool"},
+		}, nil
+	}
 	srv := Service{
 		Name:           "multicluster-service",
 		Endpoint:       map[string]string{"production": ts.URL},
@@ -750,31 +759,6 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 		IsMultiCluster: true,
 	}
 	err := s.conn.Services().Insert(&srv)
-	c.Assert(err, check.IsNil)
-	servicemanager.Pool = &provTypes.MockPoolService{
-		OnFindByName: func(name string) (*provTypes.Pool, error) {
-			if name != "my-pool" {
-				return nil, errors.New("pool not found")
-			}
-			return &provTypes.Pool{
-				Name:        "my-pool",
-				Provisioner: "kubernetes",
-			}, nil
-		},
-	}
-	servicemanager.Cluster = &provTypes.MockClusterService{
-		OnFindByPool: func(provisioner, name string) (*provTypes.Cluster, error) {
-			if name != "my-pool" || provisioner != "kubernetes" {
-				return nil, errors.New("pool does not exist")
-			}
-			return &provTypes.Cluster{
-				Name:        "cluster-name",
-				Addresses:   []string{"https://my-kubernetes.example.com"},
-				Provisioner: "kubernetes",
-				Pools:       []string{"my-pool"},
-			}, nil
-		},
-	}
 	c.Assert(err, check.IsNil)
 	instance := ServiceInstance{
 		Name:      "instance",
@@ -1260,14 +1244,6 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 		reqs = append(reqs, r)
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/resources/my-mysql/bind-app" && r.Method == "POST" {
-			bodyRaw, err := ioutil.ReadAll(r.Body)
-			c.Assert(err, check.IsNil)
-			v, err := url.ParseQuery(string(bodyRaw))
-			c.Assert(err, check.IsNil)
-			c.Assert(v["app-internal-hosts"], check.DeepEquals, []string{
-				"tcp://aclfromhell-web.tsuru.svc.cluster.local:8888",
-				"tcp://aclfromhell-web-v1.tsuru.svc.cluster.local:8888",
-			})
 			w.Write([]byte(`{"ENV1": "VAL1", "ENV2": "VAL2"}`))
 		}
 	}))
@@ -1283,18 +1259,6 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
-	a.InternalAddresses = []provision.AppInternalAddress{
-		{
-			Protocol: "TCP",
-			Domain:   "aclfromhell-web.tsuru.svc.cluster.local",
-			Port:     int32(8888),
-		},
-		{
-			Protocol: "TCP",
-			Domain:   "aclfromhell-web-v1.tsuru.svc.cluster.local",
-			Port:     int32(8888),
-		},
-	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	err = si.BindApp(a, nil, true, &buf, evt, "")

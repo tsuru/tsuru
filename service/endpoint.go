@@ -24,8 +24,9 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
-	"github.com/tsuru/tsuru/types/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 var (
@@ -153,24 +154,10 @@ func (c *endpointClient) Destroy(ctx context.Context, instance *ServiceInstance,
 func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, bindParams BindAppParameters, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q app at %q API",
 		instance.Name, app.GetName(), instance.ServiceName)
-	internalAddrs, err := app.GetInternalAddresses(ctx)
+	params, err := buildBindAppParams(ctx, evt, app, bindParams)
 	if err != nil {
+		log.Errorf("Ignoring some errors found while building the bind app parameters: %v", err)
 		return nil, err
-	}
-	appAddrs, err := app.GetAddresses()
-	if err != nil {
-		return nil, err
-	}
-	params := map[string][]string{
-		"app-name":           {app.GetName()},
-		"app-hosts":          appAddrs,
-		"app-internal-hosts": internalAddrs,
-		"user":               {evt.Owner.Name},
-		"eventid":            {evt.UniqueID.Hex()},
-	}
-	addParameters(params, bindParams)
-	if len(appAddrs) > 0 {
-		params["app-host"] = []string{appAddrs[0]}
 	}
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
@@ -529,7 +516,7 @@ func multiClusterHeader(ctx context.Context, si *ServiceInstance, header http.He
 	header.Set("X-Tsuru-Pool-Provisioner", p.Provisioner)
 	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
 	if err != nil {
-		if err == provision.ErrNoCluster {
+		if err == provTypes.ErrNoCluster {
 			return header, nil
 		}
 		return header, err
@@ -540,4 +527,56 @@ func multiClusterHeader(ctx context.Context, si *ServiceInstance, header http.He
 		header.Add("X-Tsuru-Cluster-Addresses", addr)
 	}
 	return header, nil
+}
+
+func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bindParams BindAppParameters) (url.Values, error) {
+	if app == nil {
+		return nil, errors.New("app cannot be nil")
+	}
+	params := url.Values{}
+	addParameters(params, bindParams)
+	params.Set("app-name", app.GetName())
+	if evt != nil {
+		params.Set("user", evt.Owner.Name)
+		params.Set("eventid", evt.UniqueID.Hex())
+	}
+	appAddrs, err := app.GetAddresses()
+	if err != nil {
+		return nil, err
+	}
+	params["app-hosts"] = appAddrs
+	if len(appAddrs) > 0 {
+		params.Set("app-host", appAddrs[0])
+	}
+	internalAddrs, err := app.GetInternalAddresses(ctx)
+	if err != nil {
+		return nil, err
+	}
+	params["app-internal-hosts"] = internalAddrs
+	a, ok := app.(provision.App)
+	if !ok {
+		return params, nil
+	}
+	p, err := servicemanager.Pool.FindByName(ctx, a.GetPool())
+	if err != nil {
+		if err == provTypes.ErrPoolNotFound {
+			return params, nil
+		}
+		return nil, err
+	}
+	if p == nil {
+		return params, nil
+	}
+	params.Set("app-pool-name", p.Name)
+	params.Set("app-pool-provisioner", p.Provisioner)
+	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
+	if err != nil || c == nil {
+		return params, nil
+	}
+	params.Set("app-cluster-name", c.Name)
+	params.Set("app-cluster-provisioner", c.Provisioner)
+	for _, addr := range c.Addresses {
+		params.Add("app-cluster-addresses", addr)
+	}
+	return params, nil
 }

@@ -19,7 +19,11 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
+	provTypes "github.com/tsuru/tsuru/types/provision"
+
 	check "gopkg.in/check.v1"
 )
 
@@ -345,8 +349,18 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "her-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "her-cluster",
+			Provisioner: "kubernetes",
+			Addresses:   []string{"https://kubernetes.example.com", "https://backup.kubernetes.example.com"},
+		}, nil
+	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindApp(context.TODO(), &instance, a, nil, evt, "")
@@ -359,11 +373,16 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
 	expected := map[string][]string{
-		"app-name":  {"her-app"},
-		"app-host":  {"her-app.fakerouter.com"},
-		"app-hosts": {"her-app.fakerouter.com"},
-		"user":      {"my@user"},
-		"eventid":   {evt.UniqueID.Hex()},
+		"app-name":                {"her-app"},
+		"app-host":                {"her-app.fakerouter.com"},
+		"app-hosts":               {"her-app.fakerouter.com"},
+		"app-pool-name":           {"her-pool"},
+		"app-pool-provisioner":    {"kubernetes"},
+		"app-cluster-name":        {"her-cluster"},
+		"app-cluster-provisioner": {"kubernetes"},
+		"app-cluster-addresses":   {"https://kubernetes.example.com", "https://backup.kubernetes.example.com"},
+		"user":                    {"my@user"},
+		"eventid":                 {evt.UniqueID.Hex()},
 	}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
@@ -372,8 +391,23 @@ func (s *S) TestBindAppWithParams(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "her-pool", Provisioner: "kubernetes"}, nil
+	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
+	a.InternalAddresses = []provision.AppInternalAddress{
+		{
+			Protocol: "TCP",
+			Domain:   "aclfromhell-web.tsuru.svc.cluster.local",
+			Port:     int32(8888),
+		},
+		{
+			Protocol: "TCP",
+			Domain:   "aclfromhell-web-v1.tsuru.svc.cluster.local",
+			Port:     int32(8888),
+		},
+	}
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	bindParams := map[string]interface{}{
@@ -395,6 +429,9 @@ func (s *S) TestBindAppWithParams(c *check.C) {
 		"app-name":               {"her-app"},
 		"app-host":               {"her-app.fakerouter.com"},
 		"app-hosts":              {"her-app.fakerouter.com"},
+		"app-internal-hosts":     {"tcp://aclfromhell-web.tsuru.svc.cluster.local:8888", "tcp://aclfromhell-web-v1.tsuru.svc.cluster.local:8888"},
+		"app-pool-name":          {"her-pool"},
+		"app-pool-provisioner":   {"kubernetes"},
 		"user":                   {"my@user"},
 		"eventid":                {evt.UniqueID.Hex()},
 		"parameters.p1":          {"v1"},
@@ -441,6 +478,13 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
+	originalPoolService := servicemanager.Pool
+	servicemanager.Pool = &provTypes.MockPoolService{
+		OnFindByName: func(name string) (*provTypes.Pool, error) {
+			return &provTypes.Pool{Name: "test-default", Provisioner: "docker"}, nil
+		},
+	}
+	defer func() { servicemanager.Pool = originalPoolService }()
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	env, err := client.BindApp(context.TODO(), &instance, a, nil, evt, "")
