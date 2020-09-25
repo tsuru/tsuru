@@ -220,7 +220,7 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	}
 	client := tsuruNet.Dial15Full60ClientNoKeepAlive
 	if hook.Insecure {
-		client = &tsuruNet.Dial15Full60ClientNoKeepAliveInsecure
+		client = tsuruNet.Dial15Full60ClientNoKeepAliveInsecure
 	}
 	if hook.ProxyURL != "" {
 		client, err = tsuruNet.WithProxy(*client, hook.ProxyURL)

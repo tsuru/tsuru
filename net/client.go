@@ -45,14 +45,14 @@ var (
 	Dial15Full300ClientNoKeepAlive                  = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, -1, true))
 	Dial15Full60ClientNoKeepAlive                   = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, true))
 	Dial15Full60ClientNoKeepAliveNoRedirect         = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, false))
-	Dial15Full60ClientNoKeepAliveNoRedirectInsecure = insecure(*Dial15Full60ClientNoKeepAliveNoRedirect)
-	Dial15Full60ClientNoKeepAliveInsecure           = insecure(*Dial15Full60ClientNoKeepAlive)
+	Dial15Full60ClientNoKeepAliveNoRedirectInsecure = insecure(withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, false)))
+	Dial15Full60ClientNoKeepAliveInsecure           = insecure(withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, -1, true)))
 
 	Dial15Full60ClientWithPool  = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, 10, true))
 	Dial15Full300ClientWithPool = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 10, true))
 )
 
-func insecure(client http.Client) http.Client {
+func insecure(client *http.Client) *http.Client {
 	httpTransport, ok := client.Transport.(*http.Transport)
 	if !ok {
 		opentracingTransport := client.Transport.(*AutoOpentracingTransport)
