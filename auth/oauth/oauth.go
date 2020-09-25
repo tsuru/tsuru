@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/set"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
@@ -112,7 +113,8 @@ func (s *oAuthScheme) Login(ctx context.Context, params map[string]string) (auth
 		return nil, ErrMissingCodeRedirectURL
 	}
 	conf.RedirectURL = redirectURL
-	oauthToken, err := conf.Exchange(context.Background(), code)
+	tracedClientCtx := context.WithValue(ctx, oauth2.HTTPClient, tsuruNet.Dial15Full60ClientWithPool)
+	oauthToken, err := conf.Exchange(tracedClientCtx, code)
 	if err != nil {
 		return nil, err
 	}
@@ -127,9 +129,19 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 	if err != nil {
 		return nil, err
 	}
-	client := conf.Client(context.Background(), t)
+
+	tracedClientCtx := context.WithValue(context.Background(), oauth2.HTTPClient, tsuruNet.Dial15Full60ClientWithPool)
+
+	client := conf.Client(tracedClientCtx, t)
 	t0 := time.Now()
-	response, err := client.Get(s.infoURL)
+
+	req, err := http.NewRequest(http.MethodGet, s.infoURL, nil)
+	if err != nil {
+		requestErrors.Inc()
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	response, err := client.Do(req)
 	requestLatencies.Observe(time.Since(t0).Seconds())
 	if err != nil {
 		requestErrors.Inc()
