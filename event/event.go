@@ -55,13 +55,6 @@ var (
 	}, []string{"kind"})
 
 	defaultAppRetryTimeout = 10 * time.Second
-
-	extraTargetKindNames = map[string]bool{
-		"app.update.bind":   true,
-		"app.update.unbind": true,
-		"app.update.swap":   true,
-		"healer":            true,
-	}
 )
 
 const (
@@ -498,7 +491,6 @@ func (f *Filter) toQuery() (bson.M, error) {
 	query := bson.M{}
 	permMap := map[string][]permTypes.PermissionContext{}
 	andBlock := []bson.M{}
-	enableExtraTargets := allowToQueryExtraTargets(f.KindNames)
 	if f.Permissions != nil {
 		for _, p := range f.Permissions {
 			permMap[p.Scheme.FullName()] = append(permMap[p.Scheme.FullName()], p.Context)
@@ -543,26 +535,18 @@ func (f *Filter) toQuery() (bson.M, error) {
 		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
 	if f.Target.Type != "" {
-		if enableExtraTargets {
-			orBlock := []bson.M{
-				{"target.type": f.Target.Type},
-				{"extratargets.target.type": f.Target.Type},
-			}
-			andBlock = append(andBlock, bson.M{"$or": orBlock})
-		} else {
-			query["target.type"] = f.Target.Type
+		orBlock := []bson.M{
+			{"target.type": f.Target.Type},
+			{"extratargets.target.type": f.Target.Type},
 		}
+		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
 	if f.Target.Value != "" {
-		if enableExtraTargets {
-			orBlock := []bson.M{
-				{"target.value": f.Target.Value},
-				{"extratargets.target.value": f.Target.Value},
-			}
-			andBlock = append(andBlock, bson.M{"$or": orBlock})
-		} else {
-			query["target.value"] = f.Target.Value
+		orBlock := []bson.M{
+			{"target.value": f.Target.Value},
+			{"extratargets.target.value": f.Target.Value},
 		}
+		andBlock = append(andBlock, bson.M{"$or": orBlock})
 	}
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
@@ -1410,16 +1394,4 @@ func addLinePrefix(data string, prefix string) string {
 	}
 	replacement := "\n" + prefix
 	return prefix + strings.ReplaceAll(data, "\n", replacement) + suffix
-}
-
-func allowToQueryExtraTargets(kindNames []string) bool {
-	enableExtraTargets := len(kindNames) == 0
-	for _, kindName := range kindNames {
-		if extraTargetKindNames[kindName] {
-			enableExtraTargets = true
-			break
-		}
-	}
-
-	return enableExtraTargets
 }

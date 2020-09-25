@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/safe"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	tsuruTest "github.com/tsuru/tsuru/test"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	trackerTypes "github.com/tsuru/tsuru/types/tracker"
 	"golang.org/x/crypto/bcrypt"
@@ -1067,103 +1066,6 @@ func (s *S) TestListWithFilters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Target.Type, check.Equals, TargetType("node"))
-}
-
-func (s *S) TestFilterToQuery(c *check.C) {
-	cases := []struct {
-		f             Filter
-		expectedQuery bson.M
-	}{
-		{
-			f: Filter{
-				Target:    Target{Type: "app", Value: "myapp"},
-				KindType:  KindTypePermission,
-				KindNames: []string{"app.deploy"},
-				OwnerType: OwnerTypeUser,
-				OwnerName: "u",
-				Limit:     20,
-			},
-			expectedQuery: bson.M{
-				"target.type":  "app",
-				"target.value": "myapp",
-				"removedate":   bson.M{"$exists": false},
-				"kind.name": bson.M{
-					"$in": []string{"app.deploy"},
-				},
-				"kind.type":  "permission",
-				"owner.name": "u",
-				"owner.type": "user",
-			},
-		},
-		{
-			f: Filter{
-				Target:    Target{Type: "app", Value: "myapp"},
-				KindType:  KindTypePermission,
-				KindNames: []string{"healer"},
-				OwnerType: OwnerTypeUser,
-				OwnerName: "u",
-				Limit:     20,
-			},
-			expectedQuery: bson.M{
-				"$and": []bson.M{
-					{
-						"$or": []bson.M{
-							{"target.type": "app"},
-							{"extratargets.target.type": "app"},
-						},
-					},
-					{
-						"$or": []bson.M{
-							{"target.value": "myapp"},
-							{"extratargets.target.value": "myapp"},
-						},
-					},
-				},
-				"kind.name": bson.M{
-					"$in": []string{"healer"},
-				},
-				"kind.type":  "permission",
-				"owner.name": "u",
-				"owner.type": "user",
-				"removedate": bson.M{"$exists": false},
-			},
-		},
-		{
-			f: Filter{
-				Target:    Target{Type: "app", Value: "myapp"},
-				KindType:  KindTypePermission,
-				OwnerType: OwnerTypeUser,
-				OwnerName: "u",
-				Limit:     20,
-			},
-			expectedQuery: bson.M{
-				"$and": []bson.M{
-					{
-						"$or": []bson.M{
-							{"target.type": "app"},
-							{"extratargets.target.type": "app"},
-						},
-					},
-					{
-						"$or": []bson.M{
-							{"target.value": "myapp"},
-							{"extratargets.target.value": "myapp"},
-						},
-					},
-				},
-				"kind.type":  "permission",
-				"owner.name": "u",
-				"owner.type": "user",
-				"removedate": bson.M{"$exists": false},
-			},
-		},
-	}
-
-	for _, itemCase := range cases {
-		query, err := itemCase.f.toQuery()
-		c.Assert(err, check.IsNil)
-		c.Assert(query, tsuruTest.JSONEquals, itemCase.expectedQuery)
-	}
 }
 
 func (s *S) TestListFilterPruneUserValues(c *check.C) {
