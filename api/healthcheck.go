@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 
@@ -24,12 +25,12 @@ func healthcheck(w http.ResponseWriter, r *http.Request) {
 	if values != nil {
 		checks = values["check"]
 	}
-	fullHealthcheck(w, checks)
+	fullHealthcheck(r.Context(), w, checks)
 }
 
-func fullHealthcheck(w http.ResponseWriter, checks []string) {
+func fullHealthcheck(ctx context.Context, w http.ResponseWriter, checks []string) {
 	var buf bytes.Buffer
-	results := hc.Check(checks...)
+	results := hc.Check(ctx, checks...)
 	if len(results) == 0 {
 		w.Write([]byte(hc.HealthCheckOK))
 		return

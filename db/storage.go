@@ -12,6 +12,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -34,7 +35,7 @@ func init() {
 	hc.AddChecker("MongoDB", healthCheck)
 }
 
-func healthCheck() error {
+func healthCheck(ctx context.Context) error {
 	conn, err := Conn()
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@
 package db
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -65,7 +66,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TestHealthCheck(c *check.C) {
-	err := healthCheck()
+	err := healthCheck(context.TODO())
 	c.Assert(err, check.IsNil)
 }
 

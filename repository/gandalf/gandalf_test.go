@@ -67,20 +67,20 @@ func (s *GandalfSuite) TearDownTest(c *check.C) {
 }
 
 func (s *GandalfSuite) TestHealthCheck(c *check.C) {
-	err := healthCheck()
+	err := healthCheck(context.TODO())
 	c.Assert(err, check.IsNil)
 }
 
 func (s *GandalfSuite) TestHealthCheckStatusFailure(c *check.C) {
 	s.server.PrepareFailure(gandalftest.Failure{Path: "/healthcheck", Method: "GET", Response: "epic fail"})
-	err := healthCheck()
+	err := healthCheck(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "epic fail\n")
 }
 
 func (s *GandalfSuite) TestHealthCheckContentFailure(c *check.C) {
 	s.server.PrepareFailure(gandalftest.Failure{Code: http.StatusOK, Path: "/healthcheck", Method: "GET", Response: "epic fail"})
-	err := healthCheck()
+	err := healthCheck(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "unexpected status - epic fail\n")
 }
@@ -90,7 +90,7 @@ func (s *GandalfSuite) TestHealthCheckDisabled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer config.Set("git:api-server", old)
 	config.Unset("git:api-server")
-	err = healthCheck()
+	err = healthCheck(context.TODO())
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 

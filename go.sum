@@ -540,8 +540,8 @@ github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24 h1:Y0lxOq5i0pImmPJT4
 github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24/go.mod h1:0VdaaU608jbG/69upNjUOIVQMcRQW00FgCz3EtzIsKQ=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa h1:JlLQP1xa13a994p/Aau2e3K9xXYaHNoNvTDVIMHSUa4=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa/go.mod h1:UibOSvkMFKRe/eiwktAPAvQG8L+p8nYsECJvu3Dgw7I=
-github.com/tsuru/go-gandalfclient v0.0.0-20160909010455-9d375d012f75 h1:YDPD9FlhUStMIKd+6fbZGwihmepMZTYDx69gn5Mj2Os=
-github.com/tsuru/go-gandalfclient v0.0.0-20160909010455-9d375d012f75/go.mod h1:R5aDolIXVmn+2YSBa/RFjcgEPAb8dVgx+0F0C/gL9Fg=
+github.com/tsuru/go-gandalfclient v0.0.0-20200928142220-6d227717b7c3 h1:n+XM2Sxj2EtGSZz6cVsqWWA73r7bDQwUeCurNYwzw34=
+github.com/tsuru/go-gandalfclient v0.0.0-20200928142220-6d227717b7c3/go.mod h1:p0UnkpWhQqUX4s3bzKPAYZ/rkz6NIS/PxsR8W4Opf3Q=
 github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3 h1:+aJngj5cQjYyx/qSjffQceop25t97hLS0+t8bvx9hg4=
 github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3/go.mod h1:3KR1vkjfm5b7Lhu5OXuO0NMIyZNG0d0d9xh6ufWYVxg=
 github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6 h1:1XDdWFAjIbCSG1OjN9v9KdWhuM8UtYlFcfHe/Ldkchk=

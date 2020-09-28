@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -24,15 +25,15 @@ func init() {
 	hc.AddChecker("docker", healthCheckDocker)
 }
 
-func healthCheckDockerRegistry() error {
-	err := pingDockerRegistry("https")
+func healthCheckDockerRegistry(ctx context.Context) error {
+	err := pingDockerRegistry(ctx, "https")
 	if err != nil {
-		return pingDockerRegistry("http")
+		return pingDockerRegistry(ctx, "http")
 	}
 	return nil
 }
 
-func pingDockerRegistry(scheme string) error {
+func pingDockerRegistry(ctx context.Context, scheme string) error {
 	registry, _ := config.GetString("docker:registry")
 	if registry == "" {
 		return hc.ErrDisabledComponent
@@ -46,6 +47,7 @@ func pingDockerRegistry(scheme string) error {
 	if err != nil {
 		return err
 	}
+	req = req.WithContext(ctx)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -85,7 +87,7 @@ func newRequestWithCredentials(method, url string) (*http.Request, error) {
 	return req, nil
 }
 
-func healthCheckDocker() error {
+func healthCheckDocker(ctx context.Context) error {
 	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	if err != nil {
 		return err

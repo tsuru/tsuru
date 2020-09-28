@@ -8,6 +8,7 @@
 package hc
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ var checkers []healthChecker
 
 type healthChecker struct {
 	name  string
-	check func() error
+	check func(ctx context.Context) error
 }
 
 // Result represents a result of a processed healthcheck call. It will contain
@@ -37,14 +38,14 @@ type Result struct {
 
 // AddChecker adds a new checker to the internal list of checkers. Checkers
 // added to this list can then be checked using the Check function.
-func AddChecker(name string, check func() error) {
+func AddChecker(name string, check func(ctx context.Context) error) {
 	checker := healthChecker{name: name, check: check}
 	checkers = append(checkers, checker)
 }
 
 // Check check the status of registered checkers matching names and return a
 // list of results.
-func Check(names ...string) []Result {
+func Check(ctx context.Context, names ...string) []Result {
 	results := make([]Result, 0, len(checkers))
 	nameSet := set.FromSlice(names)
 	isAll := nameSet.Includes("all")
@@ -53,7 +54,7 @@ func Check(names ...string) []Result {
 			continue
 		}
 		startTime := time.Now()
-		if err := checker.check(); err != nil && err != ErrDisabledComponent {
+		if err := checker.check(ctx); err != nil && err != ErrDisabledComponent {
 			results = append(results, Result{
 				Name:     checker.name,
 				Status:   "fail - " + err.Error(),

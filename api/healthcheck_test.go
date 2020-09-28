@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -26,7 +27,7 @@ func (s *HealthCheckSuite) TestHealthCheck(c *check.C) {
 }
 
 func (s *HealthCheckSuite) TestHealthCheckWithChecks(c *check.C) {
-	hc.AddChecker("mychecker", func() error {
+	hc.AddChecker("mychecker", func(ctx context.Context) error {
 		return nil
 	})
 	recorder := httptest.NewRecorder()
@@ -38,7 +39,7 @@ func (s *HealthCheckSuite) TestHealthCheckWithChecks(c *check.C) {
 }
 
 func (s *HealthCheckSuite) TestHealthCheckWithChecksSingleChecker(c *check.C) {
-	hc.AddChecker("mychecker", func() error {
+	hc.AddChecker("mychecker", func(context.Context) error {
 		return nil
 	})
 	recorder := httptest.NewRecorder()
@@ -50,7 +51,7 @@ func (s *HealthCheckSuite) TestHealthCheckWithChecksSingleChecker(c *check.C) {
 }
 
 func (s *HealthCheckSuite) TestHealthCheckWithChecksMultipleChecker(c *check.C) {
-	hc.AddChecker("mychecker", func() error {
+	hc.AddChecker("mychecker", func(context.Context) error {
 		return nil
 	})
 	recorder := httptest.NewRecorder()

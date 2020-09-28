@@ -15,9 +15,8 @@ import (
 // It will call the HealthCheck() method in the router (only if it's also a
 // HealthChecker), for each instance of it (including the "main" instance and
 // all custom routers).
-func BuildHealthCheck(routerName string) func() error {
-	return func() error {
-		ctx := context.Background() // TODO add context on healthcheck calls
+func BuildHealthCheck(routerName string) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
 		configRouters, err := listConfigRouters()
 		if err != nil {
 			return hc.ErrDisabledComponent

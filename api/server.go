@@ -675,7 +675,7 @@ func startServer(handler http.Handler) error {
 		return err
 	}
 	fmt.Println("Checking components status:")
-	results := hc.Check("all")
+	results := hc.Check(ctx, "all")
 	for _, result := range results {
 		if result.Status != hc.HealthCheckOK {
 			fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)

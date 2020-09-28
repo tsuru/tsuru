@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +31,7 @@ func (s *S) TestHealthCheckDockerRegistryV2(c *check.C) {
 		defer config.Unset("docker:registry")
 	}
 	config.Set("docker:registry", server.URL+"/")
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, http.MethodGet)
@@ -53,7 +54,7 @@ func (s *S) TestHealthCheckDockerRegistryV1(c *check.C) {
 		defer config.Unset("docker:registry")
 	}
 	config.Set("docker:registry", server.URL+"/")
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v1/_ping")
 	c.Assert(request.Method, check.Equals, http.MethodGet)
@@ -73,7 +74,7 @@ func (s *S) TestHealthCheckDockerRegistryConfiguredWithoutScheme(c *check.C) {
 	}
 	serverURL, _ := url.Parse(server.URL)
 	config.Set("docker:registry", serverURL.Host)
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, http.MethodGet)
@@ -91,7 +92,7 @@ func (s *S) TestHealthCheckDockerRegistryFailure(c *check.C) {
 		defer config.Unset("docker:registry")
 	}
 	config.Set("docker:registry", server.URL)
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "unexpected status - not pong")
 }
@@ -101,7 +102,7 @@ func (s *S) TestHealthCheckDockerRegistryUnconfigured(c *check.C) {
 		defer config.Set("docker:registry", old)
 	}
 	config.Unset("docker:registry")
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
@@ -134,7 +135,7 @@ func (s *S) TestHealthCheckDockerRegistryV2WithAuth(c *check.C) {
 		defer config.Unset("docker:registry-auth:password")
 	}
 
-	err = healthCheckDockerRegistry()
+	err = healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, http.MethodGet)
@@ -175,7 +176,7 @@ func (s *S) TestHealthCheckDockerRegistryV2WithAuthError(c *check.C) {
 		defer config.Unset("docker:registry-auth:password")
 	}
 
-	err = healthCheckDockerRegistry()
+	err = healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, http.MethodGet)
@@ -191,7 +192,7 @@ func (s *S) TestHealthCheckDocker(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "", cluster.Node{Address: server.URL})
 	c.Assert(err, check.IsNil)
-	err = healthCheckDocker()
+	err = healthCheckDocker(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.Method, check.Equals, http.MethodGet)
 	c.Assert(request.URL.Path, check.Equals, "/_ping")
@@ -213,7 +214,7 @@ func (s *S) TestHealthCheckDockerMultipleNodes(c *check.C) {
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "",
 		cluster.Node{Address: server1.URL}, cluster.Node{Address: server2.URL})
 	c.Assert(err, check.IsNil)
-	err = healthCheckDocker()
+	err = healthCheckDocker(context.TODO())
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 	c.Assert(request, check.IsNil)
 }
@@ -222,7 +223,7 @@ func (s *S) TestHealthCheckDockerNoNodes(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "")
 	c.Assert(err, check.IsNil)
-	err = healthCheckDocker()
+	err = healthCheckDocker(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "error - no nodes available for running containers")
 }
@@ -236,7 +237,7 @@ func (s *S) TestHealthCheckDockerFailure(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, "", cluster.Node{Address: server.URL})
 	c.Assert(err, check.IsNil)
-	err = healthCheckDocker()
+	err = healthCheckDocker(context.TODO())
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "ping failed: API error (500): something went wrong")
 }
@@ -261,7 +262,7 @@ func (s *S) TestHealthCheckDockerRegistryV2TLS(c *check.C) {
 		defer config.Unset("docker:registry")
 	}
 	config.Set("docker:registry", server.URL+"/")
-	err := healthCheckDockerRegistry()
+	err := healthCheckDockerRegistry(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, http.MethodGet)

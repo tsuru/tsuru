@@ -5,6 +5,7 @@
 package iaas
 
 import (
+	"context"
 	"errors"
 
 	"github.com/tsuru/config"
@@ -16,7 +17,7 @@ func (s *S) TestBuildHealthCheck(c *check.C) {
 	RegisterIaasProvider("hc", newTestHealthcheckIaaS)
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
-	err := fn()
+	err := fn(context.TODO())
 	c.Assert(err, check.IsNil)
 }
 
@@ -29,7 +30,7 @@ func (s *S) TestBuildHealthCheckFailure(c *check.C) {
 	hcIaas.err = err
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
-	hcErr := fn()
+	hcErr := fn(context.TODO())
 	c.Assert(hcErr, check.Equals, err)
 }
 
@@ -39,13 +40,13 @@ func (s *S) TestBuildHealthCheckUnconfigured(c *check.C) {
 	}
 	config.Unset("iaas")
 	fn := BuildHealthCheck("hc")
-	err := fn()
+	err := fn(context.TODO())
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *S) TestBuildHealthCheckNotChecker(c *check.C) {
 	config.Set("iaas:test-iaas", "something")
 	fn := BuildHealthCheck("test-iaas")
-	err := fn()
+	err := fn(context.TODO())
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }

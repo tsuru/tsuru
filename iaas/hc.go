@@ -5,6 +5,8 @@
 package iaas
 
 import (
+	"context"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 )
@@ -14,8 +16,8 @@ import (
 // It will call the HealthCheck() method in the provider (only if it's also a
 // HealthChecker), for each instance of it (including the "main" instance and
 // all custom IaaSes).
-func BuildHealthCheck(providerName string) func() error {
-	return func() error {
+func BuildHealthCheck(providerName string) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
 		iaasConfig, err := config.Get("iaas")
 		if err != nil {
 			return hc.ErrDisabledComponent

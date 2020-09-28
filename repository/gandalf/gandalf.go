@@ -23,7 +23,9 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/hc"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
+
 	"github.com/tsuru/tsuru/repository"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
@@ -41,13 +43,13 @@ func newManager() *gandalfManager {
 
 const endpointConfig = "git:api-server"
 
-func healthCheck() error {
+func healthCheck(ctx context.Context) error {
 	serverURL, _ := config.GetString(endpointConfig)
 	if serverURL == "" {
 		return hc.ErrDisabledComponent
 	}
 	client := gandalf.Client{Endpoint: serverURL}
-	result, err := client.GetHealthCheck()
+	result, err := client.GetHealthCheck(ctx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +75,7 @@ func (*gandalfManager) client() (*gandalf.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := gandalf.Client{Endpoint: url}
+	client := gandalf.Client{Endpoint: url, Client: tsuruNet.Dial15Full300Client}
 	return &client, nil
 }
 
@@ -146,7 +148,7 @@ func (m *gandalfManager) CreateUser(ctx context.Context, username string) error 
 	if err != nil {
 		return err
 	}
-	_, err = client.NewUser(username, nil)
+	_, err = client.NewUser(ctx, username, nil)
 	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
 		return repository.ErrUserAlreadyExists
 	}
@@ -158,7 +160,7 @@ func (m *gandalfManager) RemoveUser(ctx context.Context, username string) error 
 	if err != nil {
 		return err
 	}
-	err = client.RemoveUser(username)
+	err = client.RemoveUser(ctx, username)
 	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
 		return repository.ErrUserNotFound
 	}
@@ -170,7 +172,7 @@ func (m *gandalfManager) CreateRepository(ctx context.Context, name string, user
 	if err != nil {
 		return err
 	}
-	_, err = client.NewRepository(name, users, true)
+	_, err = client.NewRepository(ctx, name, users, true)
 	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
 		return repository.ErrRepositoryAlreadExists
 	}
@@ -182,7 +184,7 @@ func (m *gandalfManager) RemoveRepository(ctx context.Context, name string) erro
 	if err != nil {
 		return err
 	}
-	err = client.RemoveRepository(name)
+	err = client.RemoveRepository(ctx, name)
 	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
 		return repository.ErrRepositoryNotFound
 	}
@@ -205,7 +207,7 @@ func (m *gandalfManager) GetRepository(ctx context.Context, name string) (reposi
 	if err != nil {
 		return repository.Repository{}, err
 	}
-	repo, err := client.GetRepository(name)
+	repo, err := client.GetRepository(ctx, name)
 	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
 		return repository.Repository{}, repository.ErrRepositoryNotFound
 	}
@@ -214,7 +216,7 @@ func (m *gandalfManager) GetRepository(ctx context.Context, name string) (reposi
 	}
 	r = repository.Repository{
 		Name:         repo.Name,
-		ReadWriteURL: repo.SshURL,
+		ReadWriteURL: repo.SSHURL,
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -227,7 +229,7 @@ func (m *gandalfManager) GrantAccess(ctx context.Context, repository, user strin
 	if err != nil {
 		return err
 	}
-	return client.GrantAccess([]string{repository}, []string{user})
+	return client.GrantAccess(ctx, []string{repository}, []string{user})
 }
 
 func (m *gandalfManager) RevokeAccess(ctx context.Context, repository, user string) error {
@@ -235,7 +237,7 @@ func (m *gandalfManager) RevokeAccess(ctx context.Context, repository, user stri
 	if err != nil {
 		return err
 	}
-	return client.RevokeAccess([]string{repository}, []string{user})
+	return client.RevokeAccess(ctx, []string{repository}, []string{user})
 }
 
 func (m *gandalfManager) AddKey(ctx context.Context, username string, key repository.Key) error {
@@ -244,7 +246,7 @@ func (m *gandalfManager) AddKey(ctx context.Context, username string, key reposi
 		return err
 	}
 	keyMap := map[string]string{key.Name: key.Body}
-	err = client.AddKey(username, keyMap)
+	err = client.AddKey(ctx, username, keyMap)
 	if err != nil {
 		if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
 			return repository.ErrKeyAlreadyExists
@@ -259,7 +261,7 @@ func (m *gandalfManager) UpdateKey(ctx context.Context, username string, key rep
 	if err != nil {
 		return err
 	}
-	return m.handleKeyOrUserError(client.UpdateKey(username, key.Name, key.Body))
+	return m.handleKeyOrUserError(client.UpdateKey(ctx, username, key.Name, key.Body))
 }
 
 func (m *gandalfManager) RemoveKey(ctx context.Context, username string, key repository.Key) error {
@@ -267,7 +269,7 @@ func (m *gandalfManager) RemoveKey(ctx context.Context, username string, key rep
 	if err != nil {
 		return err
 	}
-	return m.handleKeyOrUserError(client.RemoveKey(username, key.Name))
+	return m.handleKeyOrUserError(client.RemoveKey(ctx, username, key.Name))
 }
 
 func (*gandalfManager) handleKeyOrUserError(err error) error {
@@ -292,7 +294,7 @@ func (m *gandalfManager) ListKeys(ctx context.Context, username string) ([]repos
 	if err != nil {
 		return nil, err
 	}
-	keyMap, err := client.ListKeys(username)
+	keyMap, err := client.ListKeys(ctx, username)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +310,7 @@ func (m *gandalfManager) Diff(ctx context.Context, name, from, to string) (strin
 	if err != nil {
 		return "", err
 	}
-	return client.GetDiff(name, from, to)
+	return client.GetDiff(ctx, name, from, to)
 }
 
 func (m *gandalfManager) CommitMessages(ctx context.Context, repository, ref string, limit int) ([]string, error) {
@@ -316,7 +318,7 @@ func (m *gandalfManager) CommitMessages(ctx context.Context, repository, ref str
 	if err != nil {
 		return nil, err
 	}
-	log, err := client.GetLog(repository, ref, "", limit)
+	log, err := client.GetLog(ctx, repository, ref, "", limit)
 	if err != nil {
 		return nil, err
 	}

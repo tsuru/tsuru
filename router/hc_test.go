@@ -5,6 +5,7 @@
 package router_test
 
 import (
+	"context"
 	"errors"
 
 	"github.com/tsuru/config"
@@ -17,13 +18,13 @@ import (
 func (s *ExternalSuite) TestBuildHealthCheck(c *check.C) {
 	config.Set("routers:fake-hc:type", "fake-hc")
 	fn := router.BuildHealthCheck("fake-hc")
-	c.Assert(fn(), check.IsNil)
+	c.Assert(fn(context.TODO()), check.IsNil)
 }
 
 func (s *ExternalSuite) TestBuildHealthCheckCustomRouter(c *check.C) {
 	config.Set("routers:fakeee:type", "fake-hc")
 	fn := router.BuildHealthCheck("fakeee")
-	c.Assert(fn(), check.IsNil)
+	c.Assert(fn(context.TODO()), check.IsNil)
 }
 
 func (s *ExternalSuite) TestBuildHealthCheckFailure(c *check.C) {
@@ -32,7 +33,7 @@ func (s *ExternalSuite) TestBuildHealthCheckFailure(c *check.C) {
 	routertest.HCRouter.SetErr(err)
 	defer routertest.HCRouter.SetErr(nil)
 	fn := router.BuildHealthCheck("fake-hc")
-	c.Assert(fn(), check.Equals, err)
+	c.Assert(fn(context.TODO()), check.Equals, err)
 }
 
 func (s *ExternalSuite) TestBuildHealthCheckUnconfigured(c *check.C) {
@@ -41,17 +42,17 @@ func (s *ExternalSuite) TestBuildHealthCheckUnconfigured(c *check.C) {
 	}
 	config.Unset("routers")
 	fn := router.BuildHealthCheck("fake-hc")
-	c.Assert(fn(), check.Equals, hc.ErrDisabledComponent)
+	c.Assert(fn(context.TODO()), check.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *ExternalSuite) TestBuildHealthCheckNoHealthChecker(c *check.C) {
 	config.Set("routers:fakeee:type", "fake")
 	fn := router.BuildHealthCheck("fakeee")
-	c.Assert(fn(), check.Equals, hc.ErrDisabledComponent)
+	c.Assert(fn(context.TODO()), check.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *ExternalSuite) TestBuildHealthCheckOtherConfigured(c *check.C) {
 	config.Set("routers:fake-hc:type", "fake-hc")
 	fn := router.BuildHealthCheck("other-hc")
-	c.Assert(fn(), check.Equals, hc.ErrDisabledComponent)
+	c.Assert(fn(context.TODO()), check.Equals, hc.ErrDisabledComponent)
 }

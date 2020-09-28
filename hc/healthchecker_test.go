@@ -5,6 +5,7 @@
 package hc
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -31,7 +32,7 @@ func (HCSuite) TestCheckAll(c *check.C) {
 		{Name: "success", Status: HealthCheckOK},
 		{Name: "failing", Status: "fail - something went wrong"},
 	}
-	result := Check("all")
+	result := Check(context.TODO(), "all")
 	expected[0].Duration = result[0].Duration
 	expected[1].Duration = result[1].Duration
 	c.Assert(result, check.DeepEquals, expected)
@@ -47,7 +48,7 @@ func (HCSuite) TestCheckFiltered(c *check.C) {
 		{Name: "success1", Status: HealthCheckOK},
 		{Name: "failing1", Status: "fail - something went wrong"},
 	}
-	result := Check("success1", "failing1")
+	result := Check(context.TODO(), "success1", "failing1")
 	expected[0].Duration = result[0].Duration
 	expected[1].Duration = result[1].Duration
 	c.Assert(result, check.DeepEquals, expected)
@@ -56,19 +57,19 @@ func (HCSuite) TestCheckFiltered(c *check.C) {
 	expected = []Result{
 		{Name: "success2", Status: HealthCheckOK},
 	}
-	result = Check("success2")
+	result = Check(context.TODO(), "success2")
 	expected[0].Duration = result[0].Duration
 	c.Assert(result, check.DeepEquals, expected)
 }
 
-func successChecker() error {
+func successChecker(ctx context.Context) error {
 	return nil
 }
 
-func failingChecker() error {
+func failingChecker(ctx context.Context) error {
 	return errors.New("something went wrong")
 }
 
-func disabledChecker() error {
+func disabledChecker(ctx context.Context) error {
 	return ErrDisabledComponent
 }
