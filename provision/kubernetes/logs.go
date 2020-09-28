@@ -116,7 +116,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 		clusterController: clusterController,
 	}
 	for _, pod := range pods {
-		if pod.Status.Phase == apiv1.PodPending {
+		if !loggablePod(&pod.Status) {
 			continue
 		}
 		watcher.watchingPods[pod.ObjectMeta.Name] = true
@@ -131,7 +131,6 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 
 func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	var wg sync.WaitGroup
-	wg.Add(len(pods))
 
 	errs := make([]error, len(pods))
 	logs := make([][]appTypes.Applog, len(pods))
@@ -141,6 +140,10 @@ func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod
 	}
 
 	for index, pod := range pods {
+		if !loggablePod(&pod.Status) {
+			continue
+		}
+		wg.Add(1)
 		go func(index int, pod *apiv1.Pod) {
 			defer wg.Done()
 
@@ -337,7 +340,7 @@ func (k *k8sLogsWatcher) Close() {
 func (k *k8sLogsWatcher) OnPodEvent(pod *apiv1.Pod) {
 	_, alreadyWatching := k.watchingPods[pod.ObjectMeta.Name]
 	podMatches := matchPod(pod, k.logArgs)
-	if !alreadyWatching && podMatches && pod.Status.Phase != apiv1.PodPending {
+	if !alreadyWatching && podMatches && loggablePod(&pod.Status) {
 		k.watchingPods[pod.ObjectMeta.Name] = true
 		k.wg.Add(1)
 		go k.watchPod(pod, true)
@@ -375,4 +378,12 @@ func matchPod(pod *apiv1.Pod, args appTypes.ListLogArgs) bool {
 	}
 
 	return true
+}
+
+func loggablePod(podStatus *apiv1.PodStatus) bool {
+	if podStatus.Phase == apiv1.PodFailed && podStatus.Reason == "Evicted" {
+		return false
+	}
+
+	return podStatus.Phase != apiv1.PodPending
 }
