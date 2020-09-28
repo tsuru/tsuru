@@ -13,6 +13,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 )
 
 // Result is the value returned by Forward. It is used in the call of the next
@@ -203,7 +204,7 @@ func (p *Pipeline) rollback(ctx context.Context, index int, params []interface{}
 		log.Debugf("[pipeline] running Backward for %s action", p.actions[i].Name)
 		if p.actions[i].Backward != nil {
 			span, actionCtx := opentracing.StartSpanFromContext(ctx, "Action backward "+p.actions[i].Name)
-			bwCtx.Context = actionCtx
+			bwCtx.Context = tsuruNet.WithoutCancel(actionCtx)
 
 			bwCtx.FWResult = p.actions[i].result
 			p.actions[i].Backward(bwCtx)
