@@ -210,7 +210,7 @@ var updateServices = &action.Action{
 		var err error
 		for _, processName := range toDeployProcesses {
 			labels := newLabelsMap[processName]
-			ectx, cancel := args.event.CancelableContext(context.Background())
+			ectx, cancel := args.event.CancelableContext(ctx.Context)
 			err = args.manager.DeployService(ectx, args.app, processName, labels.labels, labels.realReplicas, args.newVersion, args.preserveVersions)
 			cancel()
 			if err != nil {
