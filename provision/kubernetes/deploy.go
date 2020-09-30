@@ -1110,7 +1110,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
-	err = m.ensureServices(ctx, a, process, labels)
+	err = m.ensureServices(ctx, a, process, labels, version)
 	if err != nil {
 		return err
 	}
@@ -1189,7 +1189,7 @@ type svcCreateData struct {
 	ports    []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion) error {
 	ns, err := m.client.AppNamespace(a)
 	if err != nil {
 		return err
@@ -1233,7 +1233,13 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 
 		vInfo, ok := versionInfoMap[versionNumber]
 		if !ok {
-			return errors.Errorf("no version data found for %v", versionNumber)
+			err = errors.Errorf("unable to ensure service %q, no version data found", serviceNameForApp(a, process, versionNumber))
+			if currentVersion.Version() == versionNumber {
+				return err
+			} else {
+				log.Error(err)
+				continue
+			}
 		}
 		version := servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
 		var svcPorts []apiv1.ServicePort
