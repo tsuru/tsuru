@@ -178,7 +178,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"platform.create",
 	"platform.delete",
-	"platform.update",
+	"platform.update.events",
 	"platform.read.events",
 ).add(
 	"plan.create",

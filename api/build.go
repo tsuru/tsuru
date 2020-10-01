@@ -86,6 +86,9 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	var imageID string
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	ctx, cancel := evt.CancelableContext(opts.App.Context())
+	defer cancel()
+	opts.App.ReplaceContext(ctx)
 	opts.Event = evt
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()

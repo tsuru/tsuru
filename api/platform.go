@@ -56,11 +56,13 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
-		Kind:       permission.PermPlatformCreate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
+		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:          permission.PermPlatformCreate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermPlatformReadEvents),
+		AllowedCancel: event.Allowed(permission.PermPlatformUpdateEvents),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
@@ -68,6 +70,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
+	defer cancel()
 	err = servicemanager.Platform.Create(ctx, appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
@@ -75,7 +78,6 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Output: evt,
 		Ctx:    ctx,
 	})
-	cancel()
 	if err != nil {
 		return err
 	}
@@ -111,11 +113,13 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
-		Kind:       permission.PermPlatformUpdate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
+		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:          permission.PermPlatformUpdate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermPlatformReadEvents),
+		AllowedCancel: event.Allowed(permission.PermPlatformUpdateEvents),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
@@ -123,6 +127,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
+	defer cancel()
 	err = servicemanager.Platform.Update(ctx, appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
@@ -130,7 +135,6 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Output: evt,
 		Ctx:    ctx,
 	})
-	cancel()
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -260,11 +264,13 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
-		Kind:       permission.PermPlatformUpdate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermPlatformReadEvents),
+		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Kind:          permission.PermPlatformUpdate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermPlatformReadEvents),
+		AllowedCancel: event.Allowed(permission.PermPlatformUpdateEvents),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
@@ -272,13 +278,13 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	defer func() { evt.Done(err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
+	defer cancel()
 	err = servicemanager.Platform.Rollback(ctx, appTypes.PlatformOptions{
 		Name:      name,
 		ImageName: image,
 		Output:    evt,
 		Ctx:       ctx,
 	})
-	cancel()
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

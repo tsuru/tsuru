@@ -51,10 +51,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 		attachOutput:      evt,
 		inputFile:         "/home/application/archive.tar.gz",
 	}
-	ctx, cancel := evt.CancelableContext(ctx)
-	err = createBuildPod(ctx, params)
-	cancel()
-	return err
+	return createBuildPod(ctx, params)
 }
 
 func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App, evt *event.Event, oldImage string, version appTypes.AppVersion) (provision.InspectData, error) {
@@ -81,8 +78,6 @@ func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App
 	if tag != "latest" {
 		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
 	}
-	ctx, cancel := evt.CancelableContext(ctx)
-	defer cancel()
 	err = runInspectSidecar(ctx, inspectParams{
 		client:            client,
 		stdout:            stdout,
@@ -122,9 +117,7 @@ func (c *KubeClient) DownloadFromContainer(ctx context.Context, app provision.Ap
 	}
 	reader, writer := io.Pipe()
 	stderr := &bytes.Buffer{}
-	ctx, cancel := evt.CancelableContext(ctx)
 	go func() {
-		defer cancel()
 		opts := execOpts{
 			client:       client,
 			app:          app,

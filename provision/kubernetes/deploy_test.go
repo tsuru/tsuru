@@ -1446,6 +1446,8 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		}
 		return false, nil, nil
 	})
+	ctx, cancel := evt.CancelableContext(context.TODO())
+	defer cancel()
 	go func(id string) {
 		<-deployCreated
 		evtDB, errCancel := event.GetByHexID(id)
@@ -1453,7 +1455,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(ctx, &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 		Event:   evt,
@@ -1518,6 +1520,8 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		}
 		return false, nil, nil
 	})
+	ctx, cancel := evt.CancelableContext(context.TODO())
+	defer cancel()
 	go func(id string) {
 		<-deployCreated
 		evtDB, errCancel := event.GetByHexID(id)
@@ -1525,7 +1529,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(ctx, &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
 		Event:   evt,

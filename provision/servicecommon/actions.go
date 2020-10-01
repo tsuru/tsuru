@@ -15,6 +15,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -210,9 +211,7 @@ var updateServices = &action.Action{
 		var err error
 		for _, processName := range toDeployProcesses {
 			labels := newLabelsMap[processName]
-			ectx, cancel := args.event.CancelableContext(ctx.Context)
-			err = args.manager.DeployService(ectx, args.app, processName, labels.labels, labels.realReplicas, args.newVersion, args.preserveVersions)
-			cancel()
+			err = args.manager.DeployService(ctx.Context, args.app, processName, labels.labels, labels.realReplicas, args.newVersion, args.preserveVersions)
 			if err != nil {
 				break
 			}
@@ -221,7 +220,8 @@ var updateServices = &action.Action{
 		errs := tsuruErrors.NewMultiError()
 		if err != nil {
 			errs.Add(err)
-			if nerr := rollbackAddedProcesses(ctx.Context, args, deployedProcesses); nerr != nil {
+			rollbackCtx := tsuruNet.WithoutCancel(ctx.Context)
+			if nerr := rollbackAddedProcesses(rollbackCtx, args, deployedProcesses); nerr != nil {
 				errs.Add(nerr)
 			}
 		}

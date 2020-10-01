@@ -138,6 +138,7 @@ var (
 	PermPlatformRead                     = PermissionRegistry.get("platform.read")                       // [global]
 	PermPlatformReadEvents               = PermissionRegistry.get("platform.read.events")                // [global]
 	PermPlatformUpdate                   = PermissionRegistry.get("platform.update")                     // [global]
+	PermPlatformUpdateEvents             = PermissionRegistry.get("platform.update.events")              // [global]
 	PermPool                             = PermissionRegistry.get("pool")                                // [global pool]
 	PermPoolCreate                       = PermissionRegistry.get("pool.create")                         // [global]
 	PermPoolDelete                       = PermissionRegistry.get("pool.delete")                         // [global pool]
