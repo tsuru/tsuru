@@ -111,6 +111,9 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	ctx, cancel := evt.CancelableContext(opts.App.Context())
+	defer cancel()
+	opts.App.ReplaceContext(ctx)
 	w.Header().Set(eventIDHeader, evt.UniqueID.Hex())
 	opts.Event = evt
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
@@ -243,6 +246,9 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	ctx, cancel := evt.CancelableContext(opts.App.Context())
+	defer cancel()
+	opts.App.ReplaceContext(ctx)
 	opts.Event = evt
 	imageID, err = app.Deploy(ctx, opts)
 	if err != nil {
@@ -368,6 +374,9 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	ctx, cancel := evt.CancelableContext(opts.App.Context())
+	defer cancel()
+	opts.App.ReplaceContext(ctx)
 	opts.Event = evt
 	imageID, err = app.Deploy(ctx, opts)
 	if err != nil {

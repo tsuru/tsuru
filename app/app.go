@@ -132,6 +132,17 @@ var (
 	_ rebuild.RebuildApp = &App{}
 )
 
+func (app *App) ReplaceContext(ctx context.Context) {
+	app.ctx = ctx
+}
+
+func (app *App) Context() context.Context {
+	if app.ctx != nil {
+		return app.ctx
+	}
+	return context.Background()
+}
+
 func (app *App) getBuilder() (builder.Builder, error) {
 	if app.builder != nil {
 		return app.builder, nil

@@ -540,16 +540,21 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -616,16 +621,21 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateUnitAdd,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateUnitAdd,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -645,7 +655,6 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //   403: Not enough reserved units
 //   404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -664,16 +673,21 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateUnitRemove,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateUnitRemove,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1482,7 +1496,6 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //   401: Unauthorized
 //   404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1497,16 +1510,21 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateRestart,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateRestart,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1696,7 +1714,6 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1711,16 +1728,21 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateStart,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateStart,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1739,7 +1761,6 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	process := InputValue(r, "process")
 	version := InputValue(r, "version")
 	appName := r.URL.Query().Get(":app")
@@ -1754,16 +1775,21 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateStop,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdateStop,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()

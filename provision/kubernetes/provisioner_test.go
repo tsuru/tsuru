@@ -1864,18 +1864,17 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:          permission.PermAppDeploy,
-		Owner:         s.token,
-		Allowed:       event.Allowed(permission.PermAppDeploy),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents),
-		Cancelable:    true,
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
+	ctx, cancel := context.WithCancel(context.TODO())
 	version := newVersion(c, a, nil)
 	go func(evt *event.Event) {
-		img, errDeploy := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-		c.Check(errDeploy, check.ErrorMatches, `canceled after .*`)
+		img, errDeploy := s.p.Deploy(ctx, provision.DeployArgs{App: a, Version: version, Event: evt})
+		c.Check(errDeploy, check.ErrorMatches, `.*context canceled`)
 		c.Check(img, check.Equals, "")
 		deploy <- struct{}{}
 	}(evt)
@@ -1884,11 +1883,8 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	case <-time.After(time.Second * 15):
 		c.Fatal("timeout waiting for deploy to start")
 	}
-	evtDB, err := event.GetByHexID(evt.UniqueID.Hex())
-	c.Assert(err, check.IsNil)
-	err = evtDB.TryCancel("because I want.", "admin@admin.com")
+	cancel()
 	attach <- struct{}{}
-	c.Assert(err, check.IsNil)
 	select {
 	case <-deploy:
 	case <-time.After(time.Second * 15):
