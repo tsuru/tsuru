@@ -101,8 +101,8 @@ func RunPipelineWithRetry(ctx context.Context, pipe *action.Pipeline, args inter
 }
 
 func (c *Container) ShortID() string {
-	if len(c.ID) > 10 {
-		return c.ID[:10]
+	if len(c.ID) > 12 {
+		return c.ID[:12]
 	}
 	return c.ID
 }

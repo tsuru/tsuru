@@ -37,8 +37,8 @@ import (
 func (s *S) TestContainerShortID(c *check.C) {
 	container := Container{Container: types.Container{ID: "abc123"}}
 	c.Check(container.ShortID(), check.Equals, container.ID)
-	container.ID = "abcdef123456"
-	c.Check(container.ShortID(), check.Equals, "abcdef1234")
+	container.ID = "abcdef12345678"
+	c.Check(container.ShortID(), check.Equals, "abcdef123456")
 }
 
 func (s *S) TestContainerAvailable(c *check.C) {
