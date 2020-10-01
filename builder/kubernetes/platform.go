@@ -19,7 +19,7 @@ import (
 var _ builder.Builder = &kubernetesBuilder{}
 
 func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
-	return b.buildPlatform(opts)
+	return b.buildPlatform(ctx, opts)
 }
 
 func (b *kubernetesBuilder) PlatformRemove(name string) error {
@@ -27,7 +27,7 @@ func (b *kubernetesBuilder) PlatformRemove(name string) error {
 	return nil
 }
 
-func (b *kubernetesBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
+func (b *kubernetesBuilder) buildPlatform(ctx context.Context, opts appTypes.PlatformOptions) error {
 	client, err := getKubeClient()
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (b *kubernetesBuilder) buildPlatform(opts appTypes.PlatformOptions) error {
 	for _, tag := range opts.ExtraTags {
 		images = append(images, fmt.Sprintf("%s:%s", imageName, tag))
 	}
-	return client.BuildImage(opts.Ctx, opts.Name, images, inputStream, opts.Output)
+	return client.BuildImage(ctx, opts.Name, images, inputStream, opts.Output)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {

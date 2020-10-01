@@ -76,7 +76,6 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Args:   args,
 		Data:   data,
 		Output: evt,
-		Ctx:    ctx,
 	})
 	if err != nil {
 		return err
@@ -133,7 +132,6 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Args:   args,
 		Input:  file,
 		Output: evt,
-		Ctx:    ctx,
 	})
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -283,7 +281,6 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Name:      name,
 		ImageName: image,
 		Output:    evt,
-		Ctx:       ctx,
 	})
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

@@ -22,7 +22,6 @@ type PlatformOptions struct {
 	Input     io.Reader
 	Output    io.Writer
 	Data      []byte
-	Ctx       context.Context
 }
 
 type PlatformService interface {
