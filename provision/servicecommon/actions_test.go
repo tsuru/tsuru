@@ -312,7 +312,7 @@ func (s *S) TestActionUpdateServicesForward(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}})
 	newLabelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
@@ -339,7 +339,7 @@ func (s *S) TestActionUpdateServicesForwardMultiple(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	processes, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	processes, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string]*labelReplicas{"web": {}, "worker2": {}})
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
@@ -387,7 +387,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddle(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err = updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err = updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -425,7 +425,7 @@ func (s *S) TestActionUpdateServicesForwardFailureInMiddleNewProc(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err := updateServices.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err := updateServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.Equals, expectedError)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,
@@ -490,7 +490,7 @@ func (s *S) TestUpdateImageInDBForward(c *check.C) {
 		app:        fakeApp,
 		newVersion: newVersion,
 	}
-	_, err := updateImageInDB.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err := updateImageInDB.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(newVersion.VersionInfo().DeploySuccessful, check.Equals, true)
 }
@@ -513,7 +513,7 @@ func (s *S) TestRemoveOldServicesForward(c *check.C) {
 		oldVersion:       oldVersion,
 		oldVersionNumber: oldVersion.Version(),
 	}
-	_, err := removeOldServices.Forward(action.FWContext{Params: []interface{}{args}})
+	_, err := removeOldServices.Forward(action.FWContext{Context: context.TODO(), Params: []interface{}{args}})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.calls, check.DeepEquals, []managerCall{
 		{action: "remove", app: fakeApp, processName: "worker1", versionNumber: oldVersion.Version()},
