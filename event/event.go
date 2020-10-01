@@ -1271,6 +1271,16 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 		return coll.RemoveId(e.ID)
 	}
 	if evtErr != nil {
+		if errors.Cause(evtErr) == context.Canceled && !e.CancelInfo.Canceled {
+			now := time.Now().UTC()
+			e.CancelInfo = cancelInfo{
+				Owner:     e.Owner.String(),
+				Reason:    context.Canceled.Error(),
+				AckTime:   now,
+				StartTime: now,
+				Canceled:  true,
+			}
+		}
 		e.Error = evtErr.Error()
 	} else if e.CancelInfo.Canceled {
 		e.Error = "canceled by user request"
