@@ -1501,3 +1501,59 @@ func (s *S) TestEventCancelableContextNotCancelable(c *check.C) {
 	}
 	c.Assert(ctx.Err(), check.IsNil)
 }
+
+func (s *S) TestEventCancelableContextBaseCanceled(c *check.C) {
+	evt, err := New(&Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	_, evtCancel := evt.CancelableContext(cancelCtx)
+	evtCancel()
+	cancel()
+
+	err = evt.Done(cancelCtx.Err())
+	c.Assert(err, check.IsNil)
+
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].CancelInfo.AckTime.IsZero(), check.Equals, false)
+	evts[0].CancelInfo.StartTime = time.Time{}
+	evts[0].CancelInfo.AckTime = time.Time{}
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{
+		Reason:   "context canceled",
+		Owner:    "user me@me.com",
+		Canceled: true,
+	})
+}
+
+func (s *S) TestEventCancelableContextNotCanceled(c *check.C) {
+	evt, err := New(&Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	_, evtCancel := evt.CancelableContext(cancelCtx)
+	evtCancel()
+
+	err = evt.Done(cancelCtx.Err())
+	c.Assert(err, check.IsNil)
+	cancel()
+
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{})
+}

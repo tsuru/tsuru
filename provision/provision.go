@@ -748,11 +748,29 @@ func (e ErrUnitStartup) Error() string {
 	return e.Err.Error()
 }
 
+func (e ErrUnitStartup) Cause() error {
+	return e.Err
+}
+
 func IsStartupError(err error) (*ErrUnitStartup, bool) {
-	causeErr := errors.Cause(err)
-	if errUnitStartup, ok := causeErr.(ErrUnitStartup); ok {
-		return &errUnitStartup, ok
+	type causer interface {
+		Cause() error
 	}
-	errUnitStartup, ok := causeErr.(*ErrUnitStartup)
-	return errUnitStartup, ok
+
+	for err != nil {
+		if errUnitStartup, ok := err.(ErrUnitStartup); ok {
+			return &errUnitStartup, ok
+		}
+		if errUnitStartup, ok := err.(*ErrUnitStartup); ok {
+			return errUnitStartup, ok
+		}
+
+		cause, ok := err.(causer)
+		if !ok {
+			break
+		}
+		err = cause.Cause()
+	}
+
+	return nil, false
 }
