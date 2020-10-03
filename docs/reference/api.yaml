@@ -8,7 +8,7 @@ schemes:
 securityDefinitions:
   Bearer:
     type: apiKey
-    name: Authorization
+    name: Authorization.
     in: header
 paths:
   /1.0/services:
@@ -53,7 +53,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -83,7 +83,7 @@ paths:
         "200":
           description: Service instance created
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -119,7 +119,7 @@ paths:
           schema:
             $ref: "#/definitions/ServiceInstanceInfo"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -148,7 +148,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -176,7 +176,7 @@ paths:
         "400":
           description: Bad request
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -222,7 +222,7 @@ paths:
         "200":
           description: Instance bound to the app.
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -243,7 +243,7 @@ paths:
         "200":
           description: Instance has been unbound from the app.
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -265,7 +265,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -417,7 +417,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -447,7 +447,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -533,7 +533,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
@@ -576,7 +576,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -605,7 +605,7 @@ paths:
             items:
               $ref: "#/definitions/Env"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -642,7 +642,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -676,7 +676,7 @@ paths:
           schema:
             $ref: "#/definitions/Quota"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -704,7 +704,7 @@ paths:
         "200":
           description: Quota updated
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -746,7 +746,7 @@ paths:
         "200":
           description: App restarted
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -784,7 +784,7 @@ paths:
         "400":
           description: Invalid arguments
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -806,7 +806,7 @@ paths:
         "200":
           description: Platform removed
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -833,7 +833,7 @@ paths:
         "200":
           description: Platform updated
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -860,7 +860,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -891,7 +891,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -917,7 +917,7 @@ paths:
           schema:
             $ref: "#/definitions/PlatformInfo"
         "401":
-          description: Unauthorized
+          description: Unauthorized;
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -954,7 +954,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -981,7 +981,7 @@ paths:
         "204":
           description: No content.
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1007,7 +1007,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "409":
@@ -1032,7 +1032,7 @@ paths:
         "200":
           description: Team removed.
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -1065,7 +1065,7 @@ paths:
           schema:
             $ref: "#/definitions/TeamInfo"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1098,7 +1098,7 @@ paths:
         "200":
           description: Team updated
         "400":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
@@ -1138,7 +1138,7 @@ paths:
             items:
               $ref: "#/definitions/User"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1166,7 +1166,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -1195,7 +1195,7 @@ paths:
         "200":
           description: User removed
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1223,7 +1223,7 @@ paths:
           schema:
             type: string
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1250,7 +1250,7 @@ paths:
           schema:
             type: string
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1277,7 +1277,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1305,7 +1305,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "409":
@@ -1334,7 +1334,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1357,7 +1357,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1383,7 +1383,7 @@ paths:
           schema:
             $ref: "#/definitions/UserQuotaViewResponse"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1419,7 +1419,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1450,7 +1450,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -1491,7 +1491,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -1551,7 +1551,7 @@ paths:
         "201":
           description: Ok
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "400":
@@ -1581,7 +1581,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1618,7 +1618,7 @@ paths:
         "200":
           description: Ok
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1640,7 +1640,7 @@ paths:
           schema:
             $ref: "#/definitions/NodeGetResponse"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1667,7 +1667,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1689,7 +1689,7 @@ paths:
         "201":
           description: Volume created
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "409":
@@ -1716,7 +1716,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -1742,7 +1742,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "409":
@@ -1768,7 +1768,7 @@ paths:
           schema:
             $ref: "#/definitions/Pool"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1786,7 +1786,7 @@ paths:
         "200":
           description: Pool deleted
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "403":
@@ -1816,7 +1816,7 @@ paths:
         "200":
           description: Pool updated
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -1845,7 +1845,7 @@ paths:
             items:
               $ref: '#/definitions/Cluster'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
@@ -1873,7 +1873,7 @@ paths:
         '200':
           description: Cluster created
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
@@ -1901,7 +1901,7 @@ paths:
         '200':
           description: Cluster deleted
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
@@ -1941,7 +1941,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorMessage'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
         '404':
@@ -2001,7 +2001,7 @@ paths:
         "200":
           description: Volume deleted
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -2023,7 +2023,7 @@ paths:
           schema:
             $ref: "#/definitions/Volume"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "409":
@@ -2055,7 +2055,7 @@ paths:
         "200":
           description: Volume bind
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -2079,7 +2079,7 @@ paths:
         "200":
           description: Volume unbinded
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -2102,7 +2102,7 @@ paths:
           schema:
             $ref: "#/definitions/VolumePlansListResponse"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2490,7 +2490,7 @@ paths:
             items:
               $ref: '#/definitions/Provisioner'
         '401':
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: '#/definitions/ErrorMessage'
       tags:
@@ -2514,7 +2514,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2540,7 +2540,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2564,7 +2564,7 @@ paths:
         "204":
           description: No content
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2591,7 +2591,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -2767,7 +2767,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
@@ -2792,7 +2792,7 @@ paths:
         "200":
           description: AutoScale removed
         "401":
-          description: Unauthorized
+          description: Unauthorized.
           schema:
             $ref: "#/definitions/ErrorMessage"
         "404":
