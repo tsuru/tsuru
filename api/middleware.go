@@ -17,6 +17,7 @@ import (
 
 	"github.com/ajg/form"
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
@@ -51,14 +52,23 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 			}
 		}
 	}
+	span := opentracing.SpanFromContext(r.Context())
+
 	if t.IsAppToken() {
-		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
+		tokenAppName := t.GetAppName()
+		if span != nil {
+			span.SetTag("app.name", tokenAppName)
+		}
+		if q := r.URL.Query().Get(":app"); q != "" && tokenAppName != q {
 			return nil, &tsuruErrors.HTTP{
 				Code:    http.StatusForbidden,
 				Message: fmt.Sprintf("app token mismatch, token for %q, request for %q", t.GetAppName(), q),
 			}
 		}
 	} else {
+		if span != nil {
+			span.SetTag("user.name", t.GetUserName())
+		}
 		if q := r.URL.Query().Get(":app"); q != "" {
 			_, err = getAppFromContext(q, r)
 			if err != nil {
