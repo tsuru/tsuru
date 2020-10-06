@@ -256,7 +256,7 @@ func (s *appVersionStorage) DeleteVersions(ctx context.Context, appName string, 
 	return err
 }
 
-func (s *appVersionStorage) AllAppVersions(ctx context.Context) ([]appTypes.AppVersions, error) {
+func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter ...string) ([]appTypes.AppVersions, error) {
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	defer span.Finish()
 
@@ -267,7 +267,11 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context) ([]appTypes.AppV
 	}
 	defer coll.Close()
 	var allAppVersions []appTypes.AppVersions
-	err = coll.Find(nil).All(&allAppVersions)
+	var filter bson.M
+	if len(appNamesFilter) > 0 {
+		filter = bson.M{"appname": bson.M{"$in": appNamesFilter}}
+	}
+	err = coll.Find(filter).All(&allAppVersions)
 	if err != nil {
 		span.SetError(err)
 		return nil, err

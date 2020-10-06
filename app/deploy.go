@@ -61,14 +61,16 @@ type DeployData struct {
 	Message     string
 }
 
-func findValidImages(ctx context.Context, apps ...App) (set.Set, error) {
+func findValidImages(ctx context.Context, appNames []string) (set.Set, error) {
 	validImages := set.Set{}
-	for _, a := range apps {
-		versions, err := servicemanager.AppVersion.AppVersions(ctx, &a)
-		if err != nil && err != appTypes.ErrNoVersionsAvailable {
-			return nil, err
-		}
-		for _, version := range versions.Versions {
+
+	allVersions, err := servicemanager.AppVersion.AllAppVersions(ctx, appNames...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, av := range allVersions {
+		for _, version := range av.Versions {
 			if version.DeploySuccessful && version.DeployImage != "" {
 				validImages.Add(version.DeployImage)
 			}
@@ -98,7 +100,14 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 	if err != nil {
 		return nil, err
 	}
-	validImages, err := findValidImages(ctx, appsList...)
+	if len(evts) == 0 {
+		return []DeployData{}, nil
+	}
+	appsInEvents := set.Set{}
+	for _, evt := range evts {
+		appsInEvents.Add(evt.Target.Value)
+	}
+	validImages, err := findValidImages(ctx, appsInEvents.ToList())
 	if err != nil {
 		return nil, err
 	}

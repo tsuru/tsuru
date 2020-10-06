@@ -109,8 +109,8 @@ func (s *appVersionService) DeleteVersions(ctx context.Context, appName string, 
 	return s.storage.DeleteVersions(ctx, appName, opts...)
 }
 
-func (s *appVersionService) AllAppVersions(ctx context.Context) ([]appTypes.AppVersions, error) {
-	return s.storage.AllAppVersions(ctx)
+func (s *appVersionService) AllAppVersions(ctx context.Context, appNamesFilter ...string) ([]appTypes.AppVersions, error) {
+	return s.storage.AllAppVersions(ctx, appNamesFilter...)
 }
 
 func (s *appVersionService) DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
