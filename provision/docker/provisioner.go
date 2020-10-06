@@ -453,7 +453,7 @@ func (p *dockerProvisioner) Destroy(ctx context.Context, app provision.App) erro
 		&provisionRemoveOldUnits,
 		&provisionUnbindOldUnits,
 	)
-	return pipeline.Execute(context.TODO(), args)
+	return pipeline.Execute(ctx, args)
 }
 
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, yamlData provTypes.TsuruYamlData, w io.Writer) error {
@@ -614,7 +614,7 @@ func (p *dockerProvisioner) RemoveUnits(ctx context.Context, a provision.App, un
 		&provisionRemoveOldUnits,
 		&provisionUnbindOldUnits,
 	)
-	err = pipeline.Execute(context.TODO(), args)
+	err = pipeline.Execute(ctx, args)
 	if err != nil {
 		return errors.Wrap(err, "error removing routes, units weren't removed")
 	}
