@@ -411,9 +411,11 @@ func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Even
 		req.SetBasicAuth(c.username, c.password)
 		req.Host = url.Host
 		req.URL = url
+		*req = *req.WithContext(ctx)
 	}
 	proxy := &httputil.ReverseProxy{
-		Director: director,
+		Transport: net.Dial15Full300ClientWithPool.Transport,
+		Director:  director,
 	}
 	proxy.ServeHTTP(w, r)
 	return nil
