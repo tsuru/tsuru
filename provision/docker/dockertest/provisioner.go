@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/clusterclient"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 )
@@ -31,10 +30,6 @@ type ContainerMoving struct {
 	HostFrom    string
 	HostTo      string
 }
-
-var (
-	_ healer.DockerProvisioner = &FakeDockerProvisioner{}
-)
 
 type FakeDockerProvisioner struct {
 	containers      map[string][]container.Container

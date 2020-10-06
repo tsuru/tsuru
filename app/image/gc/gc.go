@@ -399,7 +399,7 @@ func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.App
 }
 
 func sweepOldImages() error {
-	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC sweedOldImages")
+	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC sweepOldImages")
 	defer span.Finish()
 
 	gcExecutionsTotal.WithLabelValues("sweep").Inc()
