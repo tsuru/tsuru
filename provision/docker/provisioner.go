@@ -366,7 +366,7 @@ func (p *dockerProvisioner) Deploy(ctx context.Context, args provision.DeployArg
 		return args.Version.VersionInfo().DeployImage, nil
 	}
 	cmds := dockercommon.DeployCmds(args.App)
-	imageID, err := p.deployPipeline(args.App, args.Version, cmds, args.Event)
+	imageID, err := p.deployPipeline(ctx, args.App, args.Version, cmds, args.Event)
 	if err != nil {
 		return "", err
 	}
@@ -470,7 +470,7 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, yaml
 	return nil
 }
 
-func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container, error) {
+func addContainersWithHost(ctx context.Context, args *changeUnitsPipelineArgs) ([]container.Container, error) {
 	a := args.app
 	w := args.writer
 	var units int
@@ -517,7 +517,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 		m                 sync.Mutex
 	)
 	err = runInContainers(oldContainers, func(c *container.Container, toRollback chan *container.Container) error {
-		c, startErr := args.provisioner.start(c, a, cmdData, args.version, w, destinationHost...)
+		c, startErr := args.provisioner.start(ctx, c, a, cmdData, args.version, w, destinationHost...)
 		if startErr != nil {
 			return startErr
 		}

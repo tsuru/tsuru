@@ -223,7 +223,7 @@ func (s *S) TestStart(c *check.C) {
 	var buf bytes.Buffer
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	c.Assert(err, check.IsNil)
-	cont, err := s.p.start(&container.Container{Container: types.Container{ProcessName: "web"}}, app, cmdData, version, &buf, "")
+	cont, err := s.p.start(context.TODO(), &container.Container{Container: types.Container{ProcessName: "web"}}, app, cmdData, version, &buf, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
@@ -245,7 +245,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
-	cont, err = s.p.start(cont, app, cmdData, version, &buf, "")
+	cont, err = s.p.start(context.TODO(), cont, app, cmdData, version, &buf, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)

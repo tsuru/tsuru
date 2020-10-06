@@ -322,7 +322,7 @@ var provisionAddUnitsToHost = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
-		containers, err := addContainersWithHost(&args)
+		containers, err := addContainersWithHost(ctx.Context, &args)
 		if err != nil {
 			return nil, err
 		}

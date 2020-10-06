@@ -1320,7 +1320,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(ctx context.Context, opts provisi
 		tty:      opts.Stdin != nil,
 	}
 	if len(opts.Units) == 0 {
-		return runIsolatedCmdPod(context.TODO(), client, eOpts)
+		return runIsolatedCmdPod(ctx, client, eOpts)
 	}
 	for _, u := range opts.Units {
 		eOpts.unit = u
@@ -1472,7 +1472,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&rebuildAppRoutes,
 		&removeOldAppResources,
 	}
-	return action.NewPipeline(actions...).Execute(context.TODO(), params)
+	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
 func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {

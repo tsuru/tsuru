@@ -48,7 +48,7 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-func (p *dockerProvisioner) deployPipeline(app provision.App, version appTypes.AppVersion, commands []string, evt *event.Event) (string, error) {
+func (p *dockerProvisioner) deployPipeline(ctx context.Context, app provision.App, version appTypes.AppVersion, commands []string, evt *event.Event) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -73,7 +73,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, version appTypes.A
 		event:         evt,
 		version:       version,
 	}
-	err := container.RunPipelineWithRetry(context.TODO(), pipeline, args)
+	err := container.RunPipelineWithRetry(ctx, pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
@@ -81,7 +81,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, version appTypes.A
 	return version.VersionInfo().DeployImage, nil
 }
 
-func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, cmdData dockercommon.ContainerCmdsData, version appTypes.AppVersion, w io.Writer, destinationHosts ...string) (*container.Container, error) {
+func (p *dockerProvisioner) start(ctx context.Context, oldContainer *container.Container, app provision.App, cmdData dockercommon.ContainerCmdsData, version appTypes.AppVersion, w io.Writer, destinationHosts ...string) (*container.Container, error) {
 	commands, processName, err := dockercommon.LeanContainerCmds(oldContainer.ProcessName, cmdData, app)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		exposedPort:      exposedPort,
 		version:          version,
 	}
-	err = container.RunPipelineWithRetry(context.TODO(), pipeline, args)
+	err = container.RunPipelineWithRetry(ctx, pipeline, args)
 	if err != nil {
 		return nil, err
 	}

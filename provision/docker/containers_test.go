@@ -51,7 +51,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
@@ -96,7 +96,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container.Container{Container: types.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"}})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
@@ -144,7 +144,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 		},
 	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+	addedConts, err := addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
@@ -189,7 +189,7 @@ func (s *S) TestMoveContainerStopped(c *check.C) {
 	p.Provision(ctx, appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+	addedConts, err := addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
 		app:         appInstance,
@@ -219,7 +219,7 @@ func (s *S) TestMoveContainerErrorStopped(c *check.C) {
 	p.Provision(context.TODO(), appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+	addedConts, err := addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2, Status: provision.StatusStopped}},
 		app:         appInstance,
@@ -251,7 +251,7 @@ func (s *S) TestMoveContainerErrorStarted(c *check.C) {
 	p.Provision(context.TODO(), appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+	addedConts, err := addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
@@ -285,7 +285,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	p.Provision(ctx, appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
@@ -333,7 +333,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	p.Provision(ctx, appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
@@ -386,7 +386,7 @@ func (s *S) TestRebalanceContainersByHost(c *check.C) {
 	p.Provision(ctx, appInstance)
 	version, err := newSuccessfulVersionForApp(p, appInstance, nil)
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
@@ -486,7 +486,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	version2, err := newSuccessfulVersionForApp(p, appInstance2, nil)
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
@@ -494,7 +494,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(context.TODO(), &changeUnitsPipelineArgs{
 		toHost:      "localhost",
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance2,

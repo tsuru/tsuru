@@ -1002,7 +1002,7 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}, "worker": {Quantity: 1}},
 		version:     version,
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 3)
 	url, _ := url.Parse(server.URL)
@@ -1051,7 +1051,7 @@ func (s *S) TestBindAndHealthcheckForwardBindUnitError(c *check.C) {
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}, "worker": {Quantity: 1}},
 		version:     version,
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 3)
 	var bindCounter int32
@@ -1113,7 +1113,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		version:     version,
 		toRemove:    []container.Container{*oldContainer},
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	url, _ := url.Parse(server.URL)
@@ -1172,7 +1172,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 		version:     version,
 		toRemove:    []container.Container{*oldContainer},
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	url, _ := url.Parse(server.URL)
@@ -1225,7 +1225,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		version:     version,
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	url, _ := url.Parse(server.URL)
@@ -1277,7 +1277,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		version:     version,
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
@@ -1307,7 +1307,7 @@ func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		version:     version,
 	}
-	containers, err := addContainersWithHost(&args)
+	containers, err := addContainersWithHost(context.TODO(), &args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	context := action.BWContext{Params: []interface{}{args}, FWResult: containers}
