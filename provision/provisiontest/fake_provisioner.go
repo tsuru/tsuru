@@ -46,6 +46,7 @@ var (
 	_ provision.SleepableProvisioner     = &FakeProvisioner{}
 	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
 	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
+	_ provision.NodeRebalanceProvisioner = &FakeProvisioner{}
 	_ provision.App                      = &FakeApp{}
 	_ bind.App                           = &FakeApp{}
 )
@@ -651,7 +652,7 @@ func (p *FakeProvisioner) NodeForNodeData(ctx context.Context, nodeData provisio
 	return node, nil
 }
 
-func (p *FakeProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+func (p *FakeProvisioner) RebalanceNodes(ctx context.Context, opts provision.RebalanceNodesOptions) (bool, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	return p.rebalanceNodesLocked(opts)
