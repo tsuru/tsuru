@@ -643,7 +643,7 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if !ok {
 			continue
 		}
-		_, err = rebalanceProv.RebalanceNodes(params)
+		_, err = rebalanceProv.RebalanceNodes(ctx, params)
 		if err != nil {
 			return errors.Wrap(err, "Error trying to rebalance units in nodes")
 		}

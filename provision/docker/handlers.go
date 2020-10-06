@@ -111,6 +111,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 //   401: Unauthorized
 //   404: Not found
 func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	params := map[string]string{}
 	err = api.ParseInput(r, &params)
 	if err != nil {
@@ -144,7 +145,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = mainDockerProvisioner.MoveContainers(from, to, evt)
+	err = mainDockerProvisioner.MoveContainers(ctx, from, to, evt)
 	if err != nil {
 		return errors.Wrap(err, "Error trying to move containers")
 	}

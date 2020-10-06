@@ -85,7 +85,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		c.Assert(err, check.IsNil)
 	}
 	buf := safe.NewBuffer(nil)
-	cloneProv, err := p.rebalanceContainersByFilter(buf, []string{}, map[string]string{"pool": "pool1"}, false)
+	cloneProv, err := p.rebalanceContainersByFilter(context.TODO(), buf, []string{}, map[string]string{"pool": "pool1"}, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(cloneProv.cluster.Healer, check.Equals, p.cluster.Healer)
 	for i := range nodeHosts {

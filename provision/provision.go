@@ -506,7 +506,7 @@ type RebalanceNodesOptions struct {
 }
 
 type NodeRebalanceProvisioner interface {
-	RebalanceNodes(RebalanceNodesOptions) (bool, error)
+	RebalanceNodes(context.Context, RebalanceNodesOptions) (bool, error)
 }
 
 type NodeContainerProvisioner interface {

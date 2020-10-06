@@ -2672,7 +2672,7 @@ func (s *S) TestUpdateNodeEnableCanMoveContainers(c *check.C) {
 	err = s.p.UpdateNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
-	err = s.p.MoveContainers("localhost", "127.0.0.1", &buf)
+	err = s.p.MoveContainers(context.TODO(), "localhost", "127.0.0.1", &buf)
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.DeepEquals, []string{
@@ -2720,13 +2720,13 @@ func (s *S) TestUpdateNodeDisableCanMoveContainers(c *check.C) {
 	}
 	err = p.UpdateNode(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = p.MoveContainers("127.0.0.1", "localhost", buf)
+	err = p.MoveContainers(context.TODO(), "127.0.0.1", "localhost", buf)
 	c.Assert(err, check.IsNil)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 4)
 	c.Assert(parts[0], check.Equals, "Moving 1 units...")
 	buf.Reset()
-	err = p.MoveContainers("localhost", "127.0.0.1", buf)
+	err = p.MoveContainers(context.TODO(), "localhost", "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	parts = strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 6)
@@ -2799,7 +2799,7 @@ func (s *S) TestRebalanceNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.SetLogWriter(buf)
-	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+	toRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
 		Event:          evt,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
@@ -2856,7 +2856,7 @@ func (s *S) TestRebalanceNodesCancel(c *check.C) {
 	done := make(chan bool)
 	go func() {
 		defer close(done)
-		toRebalance, rebalanceErr := p.RebalanceNodes(provision.RebalanceNodesOptions{
+		toRebalance, rebalanceErr := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
 			Event:          evt,
 			MetadataFilter: map[string]string{"pool": "test-default"},
 		})
@@ -2916,7 +2916,7 @@ func (s *S) TestRebalanceNodesNoNeed(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.SetLogWriter(buf)
-	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+	toRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
 		Event:          evt,
 		MetadataFilter: map[string]string{"pool": "test-default"},
 	})
@@ -2965,7 +2965,7 @@ func (s *S) TestRebalanceNodesNoNeedForce(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.SetLogWriter(buf)
-	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+	toRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
 		Event:          evt,
 		Force:          true,
 		MetadataFilter: map[string]string{"pool": "test-default"},
@@ -3007,7 +3007,7 @@ func (s *S) TestRebalanceNodesDry(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.SetLogWriter(buf)
-	toRebalance, err := p.RebalanceNodes(provision.RebalanceNodesOptions{
+	toRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
 		Event:          evt,
 		Dry:            true,
 		MetadataFilter: map[string]string{"pool": "test-default"},

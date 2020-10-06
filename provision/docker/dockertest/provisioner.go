@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/clusterclient"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 )
@@ -30,6 +31,10 @@ type ContainerMoving struct {
 	HostFrom    string
 	HostTo      string
 }
+
+var (
+	_ healer.DockerProvisioner = &FakeDockerProvisioner{}
+)
 
 type FakeDockerProvisioner struct {
 	containers      map[string][]container.Container
@@ -243,7 +248,7 @@ func (p *FakeDockerProvisioner) moveOneContainer(cont container.Container, toHos
 	return cont, nil
 }
 
-func (p *FakeDockerProvisioner) MoveContainers(fromHost, toHost string, w io.Writer) error {
+func (p *FakeDockerProvisioner) MoveContainers(ctx context.Context, fromHost, toHost string, w io.Writer) error {
 	p.containersMut.Lock()
 	defer p.containersMut.Unlock()
 	containers, ok := p.containers[fromHost]

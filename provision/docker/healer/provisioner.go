@@ -20,7 +20,7 @@ type DockerProvisioner interface {
 	Cluster() *cluster.Cluster
 	ActionLimiter() provision.ActionLimiter
 	MoveOneContainer(context.Context, container.Container, string, chan error, *sync.WaitGroup, io.Writer, container.AppLocker) container.Container
-	MoveContainers(fromHost, toHost string, w io.Writer) error
+	MoveContainers(ctx context.Context, fromHost, toHost string, w io.Writer) error
 	HandleMoveErrors(errors chan error, w io.Writer) error
 	GetContainer(id string) (*container.Container, error)
 	ListContainers(query bson.M) ([]container.Container, error)

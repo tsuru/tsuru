@@ -297,7 +297,7 @@ func (p *dockerProvisioner) Restart(ctx context.Context, a provision.App, proces
 		toAdd[c.ProcessName].Quantity++
 		toAdd[c.ProcessName].Status = provision.StatusStarted
 	}
-	_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, version)
+	_, err = p.runReplaceUnitsPipeline(ctx, w, a, toAdd, containers, version)
 	return err
 }
 
@@ -359,7 +359,7 @@ func (p *dockerProvisioner) Deploy(ctx context.Context, args provision.DeployArg
 		return "", errors.New("docker provisioner does not support multiple versions")
 	}
 	if args.Version.VersionInfo().DeployImage != "" {
-		err := p.deploy(args.App, args.Version, args.Event)
+		err := p.deploy(ctx, args.App, args.Version, args.Event)
 		if err != nil {
 			return "", err
 		}
@@ -370,14 +370,14 @@ func (p *dockerProvisioner) Deploy(ctx context.Context, args provision.DeployArg
 	if err != nil {
 		return "", err
 	}
-	err = p.deploy(args.App, args.Version, args.Event)
+	err = p.deploy(ctx, args.App, args.Version, args.Event)
 	if err != nil {
 		return "", err
 	}
 	return imageID, nil
 }
 
-func (p *dockerProvisioner) deploy(a provision.App, version appTypes.AppVersion, evt *event.Event) error {
+func (p *dockerProvisioner) deploy(ctx context.Context, a provision.App, version appTypes.AppVersion, evt *event.Event) error {
 	if err := checkCanceled(evt); err != nil {
 		return err
 	}
@@ -399,10 +399,10 @@ func (p *dockerProvisioner) deploy(a provision.App, version appTypes.AppVersion,
 			}
 			toAdd[processName].Quantity++
 		}
-		_, err = p.runCreateUnitsPipeline(evt, a, toAdd, version)
+		_, err = p.runCreateUnitsPipeline(ctx, evt, a, toAdd, version)
 	} else {
 		toAdd := getContainersToAdd(processes, containers)
-		_, err = p.runReplaceUnitsPipeline(evt, a, toAdd, containers, version)
+		_, err = p.runReplaceUnitsPipeline(ctx, evt, a, toAdd, containers, version)
 	}
 	if err != nil {
 		err = provision.ErrUnitStartup{Err: err}
@@ -550,7 +550,7 @@ func (p *dockerProvisioner) AddUnits(ctx context.Context, a provision.App, units
 	if w == nil {
 		w = ioutil.Discard
 	}
-	_, err := p.runCreateUnitsPipeline(w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
+	_, err := p.runCreateUnitsPipeline(ctx, w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
 	return err
 }
 
@@ -668,7 +668,7 @@ func (p *dockerProvisioner) ExecuteCommand(ctx context.Context, opts provision.E
 		if err != nil {
 			return err
 		}
-		return p.runCommandInContainer(version, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
+		return p.runCommandInContainer(ctx, version, opts.App, opts.Stdin, opts.Stdout, opts.Stderr, pty, opts.Cmds...)
 	}
 	for _, u := range opts.Units {
 		cont, err := p.GetContainer(u)
@@ -1093,7 +1093,7 @@ func (p *dockerProvisioner) RemoveNode(ctx context.Context, opts provision.Remov
 		return err
 	}
 	if opts.Rebalance {
-		err = p.rebalanceContainersByHost(net.URLToHost(opts.Address), opts.Writer)
+		err = p.rebalanceContainersByHost(ctx, net.URLToHost(opts.Address), opts.Writer)
 		if err != nil {
 			return err
 		}
@@ -1109,7 +1109,7 @@ func (p *dockerProvisioner) RemoveNodeContainer(ctx context.Context, name string
 	return internalNodeContainer.RemoveNamedContainers(p, writer, name, pool)
 }
 
-func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions) (bool, error) {
+func (p *dockerProvisioner) RebalanceNodes(ctx context.Context, opts provision.RebalanceNodesOptions) (bool, error) {
 	if opts.MetadataFilter == nil {
 		opts.MetadataFilter = map[string]string{}
 	}
@@ -1118,7 +1118,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 	}
 	isOnlyPool := len(opts.MetadataFilter) == 1 && opts.MetadataFilter[provision.PoolMetadataName] != ""
 	if opts.Force || !isOnlyPool || len(opts.AppFilter) > 0 {
-		_, err := p.rebalanceContainersByFilter(opts.Event, opts.AppFilter, opts.MetadataFilter, opts.Dry)
+		_, err := p.rebalanceContainersByFilter(ctx, opts.Event, opts.AppFilter, opts.MetadataFilter, opts.Dry)
 		return true, err
 	}
 	nodes, err := p.Cluster().NodesForMetadata(opts.MetadataFilter)
@@ -1135,7 +1135,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 		return false, errors.Wrapf(err, "unable to obtain container gap in nodes")
 	}
 	buf := safe.NewBuffer(nil)
-	dryProvisioner, err := p.rebalanceContainersByFilter(buf, nil, opts.MetadataFilter, true)
+	dryProvisioner, err := p.rebalanceContainersByFilter(context.TODO(), buf, nil, opts.MetadataFilter, true)
 	if err != nil {
 		return false, errors.Wrapf(err, "unable to run dry rebalance to check if rebalance is needed. log: %s", buf.String())
 	}
@@ -1148,7 +1148,7 @@ func (p *dockerProvisioner) RebalanceNodes(opts provision.RebalanceNodesOptions)
 	}
 	if math.Abs((float64)(gap-gapAfter)) > 2.0 {
 		fmt.Fprintf(opts.Event, "Rebalancing as gap is %d, after rebalance gap will be %d\n", gap, gapAfter)
-		_, err := p.rebalanceContainersByFilter(opts.Event, nil, opts.MetadataFilter, opts.Dry)
+		_, err := p.rebalanceContainersByFilter(context.TODO(), opts.Event, nil, opts.MetadataFilter, opts.Dry)
 		return true, err
 	}
 	return false, nil
