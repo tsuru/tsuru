@@ -100,7 +100,8 @@ func (s *clusterStorage) FindByName(ctx context.Context, name string) (*provisio
 	err = clustersCollection(conn).FindId(name).One(&c)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			err = provision.ErrClusterNotFound
+			span.LogKV("event", provision.ErrClusterNotFound.Error())
+			return nil, provision.ErrClusterNotFound
 		}
 		span.SetError(err)
 		return nil, err
@@ -141,7 +142,9 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 		span.SetQueryStatement(query)
 
 		err = coll.Find(query).One(&c)
-		span.SetError(err)
+		if err != mgo.ErrNotFound {
+			span.SetError(err)
+		}
 		span.Finish()
 	}
 	if err != nil {
