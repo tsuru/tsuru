@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -87,11 +89,19 @@ func AddRequestError(r *http.Request, err error) {
 	if err == nil {
 		return
 	}
-	existingErr := r.Context().Value(errorContextKey)
+	ctx := r.Context()
+	span := opentracing.SpanFromContext(ctx)
+	if span != nil {
+		span.LogFields(
+			log.String("event", "error"),
+			log.String("error.object", err.Error()),
+		)
+	}
+	existingErr := ctx.Value(errorContextKey)
 	if existingErr != nil {
 		err = &errors.CompositeError{Base: existingErr.(error), Message: err.Error()}
 	}
-	newReq := r.WithContext(context.WithValue(r.Context(), errorContextKey, err))
+	newReq := r.WithContext(context.WithValue(ctx, errorContextKey, err))
 	*r = *newReq
 }
 
