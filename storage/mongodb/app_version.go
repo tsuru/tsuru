@@ -170,14 +170,13 @@ func (s *appVersionStorage) baseUpdateWhere(ctx context.Context, where, updateQu
 	err = coll.Update(where, updateQuery)
 	if err == mgo.ErrNotFound {
 		if _, exists := where["updatedhash"]; exists {
-			err = appTypes.ErrTransactionCancelledByChange
-			span.SetError(err)
-			return err
+			span.LogKV("event", appTypes.ErrTransactionCancelledByChange.Error())
+			return appTypes.ErrTransactionCancelledByChange
 		}
-		err = appTypes.ErrNoVersionsAvailable
-		span.SetError(err)
-		return err
+		span.LogKV("event", appTypes.ErrNoVersionsAvailable.Error())
+		return appTypes.ErrNoVersionsAvailable
 	}
+	span.SetError(err)
 	return err
 }
 
