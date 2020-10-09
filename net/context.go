@@ -6,6 +6,20 @@ package net
 
 import "context"
 
+type baseContextKey struct{}
+
+var baseContextValue baseContextKey
+
+func CancelableParentContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	if baseCtx, ok := ctx.Value(baseContextValue).(context.Context); ok {
+		return baseCtx
+	}
+	return ctx
+}
+
 type withoutCancelContext struct {
 	context.Context
 }
@@ -19,5 +33,5 @@ func (*withoutCancelContext) Done() <-chan struct{} {
 }
 
 func WithoutCancel(ctx context.Context) context.Context {
-	return &withoutCancelContext{Context: ctx}
+	return context.WithValue(&withoutCancelContext{Context: ctx}, baseContextValue, ctx)
 }

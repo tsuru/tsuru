@@ -27,6 +27,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -81,6 +82,14 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 
 func contextClearerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	defer context.Clear(r)
+	next(w, r)
+}
+
+// contextNoCancelMiddleware replaces the original request context with a
+// non-cancelable context. This allows tsuru to retain its legacy behavior of
+// not canceling an operation on connection failures.
+func contextNoCancelMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	r = r.WithContext(tsuruNet.WithoutCancel(r.Context()))
 	next(w, r)
 }
 

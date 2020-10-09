@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -1254,7 +1255,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return followLogs(r.Context(), a.Name, watcher, encoder)
+	return followLogs(tsuruNet.CancelableParentContext(r.Context()), a.Name, watcher, encoder)
 }
 
 type msgEncoder interface {
@@ -1272,7 +1273,6 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 	tailCountMetric.Inc()
 	defer tailCountMetric.Dec()
 
-	closeChan := ctx.Done()
 	logChan := watcher.Chan()
 
 	entriesMetric := logsAppTailEntries.WithLabelValues(appName)
@@ -1280,7 +1280,7 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 		var logMsg appTypes.Applog
 		var chOpen bool
 		select {
-		case <-closeChan:
+		case <-ctx.Done():
 			return nil
 		case logMsg, chOpen = <-logChan:
 			entriesMetric.Inc()

@@ -517,6 +517,7 @@ func RunServer(dry bool) http.Handler {
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
+	n.Use(negroni.HandlerFunc(contextNoCancelMiddleware))
 	if !dry {
 		n.Use(observability.NewMiddleware())
 	}
