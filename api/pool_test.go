@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -59,8 +60,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 }
 
 func (s *S) TestAddPoolAlreadyExists(c *check.C) {
-	b := bytes.NewBufferString("name=pool1")
-	req, err := http.NewRequest(http.MethodPost, "/pools", b)
+	req, err := http.NewRequest(http.MethodPost, "/pools", bytes.NewBufferString("name=pool1"))
 	c.Assert(err, check.IsNil)
 	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -68,6 +68,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	rec = httptest.NewRecorder()
+	req.Body = ioutil.NopCloser(bytes.NewBufferString("name=pool1"))
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, pool.ErrPoolAlreadyExists.Error()+"\n")
