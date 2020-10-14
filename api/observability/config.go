@@ -49,9 +49,9 @@ func init() {
 }
 
 var (
-	_                        jaeger.Sampler = &tsuruJaegerSampler{}
-	writeOperations          []string       = []string{"POST", "PUT", "DELETE"}
-	writeOperationsBlackList []string       = []string{"POST /node/status"}
+	_                       jaeger.Sampler = &tsuruJaegerSampler{}
+	writeOperations         []string       = []string{"POST", "PUT", "DELETE"}
+	writeOperationsDenyList []string       = []string{"POST /node/status"}
 )
 
 func NewTsuruJaegerSamplerFromConfig(cfg *jaegerConfig.Configuration) (*tsuruJaegerSampler, error) {
@@ -85,7 +85,7 @@ func (*tsuruJaegerSampler) Equal(other jaeger.Sampler) bool {
 }
 
 func (t *tsuruJaegerSampler) IsSampled(id jaeger.TraceID, operation string) (sampled bool, tags []jaeger.Tag) {
-	if isWriteOperationBlackList(operation) {
+	if isWriteOperationDenied(operation) {
 		return t.fallbackSampler.IsSampled(id, operation)
 	}
 
@@ -100,8 +100,8 @@ func (t *tsuruJaegerSampler) IsSampled(id jaeger.TraceID, operation string) (sam
 	return t.fallbackSampler.IsSampled(id, operation)
 }
 
-func isWriteOperationBlackList(operation string) bool {
-	for _, writeOperation := range writeOperationsBlackList {
+func isWriteOperationDenied(operation string) bool {
+	for _, writeOperation := range writeOperationsDenyList {
 		if writeOperation == operation {
 			return true
 		}
