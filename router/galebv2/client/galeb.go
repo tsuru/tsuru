@@ -163,7 +163,9 @@ func (c *GalebClient) doRequestRetry(ctx context.Context, method, path string, p
 	if err != nil {
 		return nil, err
 	}
-	req = req.WithContext(ctx)
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
 	if c.UseToken {
 		var token string
 		token, err = c.getToken(ctx)

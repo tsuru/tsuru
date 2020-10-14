@@ -292,6 +292,9 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 //       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(ctx context.Context, app *App, user *auth.User) error {
+	if app.ctx == nil {
+		app.ctx = ctx
+	}
 	if _, err := GetByName(ctx, app.GetName()); err != appTypes.ErrAppNotFound {
 		if err != nil {
 			return errors.WithMessage(err, "unable to check if app already exists")
