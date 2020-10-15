@@ -12,7 +12,6 @@ import (
 	"github.com/uber/jaeger-client-go"
 	jaegerConfig "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/jaeger-client-go/zipkin"
-	jaegerMetrics "github.com/uber/jaeger-lib/metrics"
 )
 
 func init() {
@@ -63,7 +62,7 @@ func NewTsuruJaegerSamplerFromConfig(cfg *jaegerConfig.Configuration) (*tsuruJae
 		}
 	}
 
-	fallbackSampler, err := cfgSampler.NewSampler(cfg.ServiceName, jaeger.NewMetrics(jaegerMetrics.NullFactory, nil))
+	fallbackSampler, err := cfgSampler.NewSampler(cfg.ServiceName, jaeger.NewNullMetrics())
 	if err != nil {
 		return nil, err
 	}
