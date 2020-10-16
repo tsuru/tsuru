@@ -483,7 +483,7 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = ensureNamespace(c.cluster, c.cluster.Namespace())
+	err = ensureNamespace(ctx, c.cluster, c.cluster.Namespace())
 	if err != nil {
 		return err
 	}

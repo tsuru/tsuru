@@ -31,15 +31,16 @@ type nodeContainerManager struct {
 }
 
 func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	ctx := context.TODO()
 	if m.app != nil {
-		client, err := clusterForPool(context.TODO(), m.app.GetPool())
+		client, err := clusterForPool(ctx, m.app.GetPool())
 		if err != nil {
 			return err
 		}
-		return m.deployNodeContainerForCluster(client, *config, pool, filter, placementOnly)
+		return m.deployNodeContainerForCluster(ctx, client, *config, pool, filter, placementOnly)
 	}
 	err := forEachCluster(context.TODO(), func(cluster *ClusterClient) error {
-		return m.deployNodeContainerForCluster(cluster, *config, pool, filter, placementOnly)
+		return m.deployNodeContainerForCluster(ctx, cluster, *config, pool, filter, placementOnly)
 	})
 	if err == provTypes.ErrNoCluster {
 		return nil
@@ -47,7 +48,7 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 	return err
 }
 
-func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+func (m *nodeContainerManager) deployNodeContainerForCluster(ctx context.Context, client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
 	belongs, err := poolBelongsToCluster(client.Cluster, pool)
 	if err != nil {
 		return err
@@ -55,13 +56,13 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 	if !belongs {
 		return nil
 	}
-	err = ensurePoolNamespace(client, pool)
+	err = ensurePoolNamespace(ctx, client, pool)
 	if err != nil {
 		return err
 	}
 	dsName := daemonSetName(config.Name, pool)
 	ns := client.PoolNamespace(pool)
-	oldDs, err := client.AppsV1().DaemonSets(ns).Get(dsName, metav1.GetOptions{})
+	oldDs, err := client.AppsV1().DaemonSets(ns).Get(ctx, dsName, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
@@ -109,7 +110,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 			return nil
 		}
 		oldDs.Spec.Template.Spec.Affinity = affinity
-		_, err = client.AppsV1().DaemonSets(ns).Update(oldDs)
+		_, err = client.AppsV1().DaemonSets(ns).Update(ctx, oldDs, metav1.UpdateOptions{})
 		return errors.WithStack(err)
 	}
 	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
@@ -179,11 +180,11 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		Provisioner:       provisionerName,
 		Prefix:            tsuruLabelPrefix,
 	})
-	err = ensureServiceAccount(client, serviceAccountName, accountLabels, ns)
+	err = ensureServiceAccount(ctx, client, serviceAccountName, accountLabels, ns)
 	if err != nil {
 		return err
 	}
-	pullSecrets, err := getImagePullSecrets(client, config.Image())
+	pullSecrets, err := getImagePullSecrets(ctx, client, config.Image())
 	if err != nil {
 		return err
 	}
@@ -241,9 +242,9 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(client *ClusterClie
 		},
 	}
 	if oldDs != nil {
-		_, err = client.AppsV1().DaemonSets(ns).Update(ds)
+		_, err = client.AppsV1().DaemonSets(ns).Update(ctx, ds, metav1.UpdateOptions{})
 	} else {
-		_, err = client.AppsV1().DaemonSets(ns).Create(ds)
+		_, err = client.AppsV1().DaemonSets(ns).Create(ctx, ds, metav1.CreateOptions{})
 	}
 	return errors.WithStack(err)
 }

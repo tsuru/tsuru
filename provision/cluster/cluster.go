@@ -20,6 +20,7 @@ import (
 type ClusteredProvisioner interface {
 	InitializeCluster(c *provTypes.Cluster) error
 	ValidateCluster(c *provTypes.Cluster) error
+	DeleteCluster(ctx context.Context, c *provTypes.Cluster) error
 	ClusterHelp() provTypes.ClusterHelpInfo
 }
 
@@ -122,6 +123,17 @@ func (s *clusterService) Delete(ctx context.Context, c provTypes.Cluster) error 
 	c, err = s.updateClusterFromStorage(ctx, c)
 	if err != nil {
 		return err
+	}
+
+	prov, err := provision.Get(c.Provisioner)
+	if err != nil {
+		return err
+	}
+	if clusteredProv, ok := prov.(ClusteredProvisioner); ok {
+		err = clusteredProv.DeleteCluster(ctx, &c)
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.storage.Delete(ctx, c)

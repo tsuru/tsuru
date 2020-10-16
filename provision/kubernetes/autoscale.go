@@ -88,7 +88,7 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil {
 		return err
 	}
-	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(hpaNameForApp(a, process), &metav1.DeleteOptions{})
+	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -162,7 +162,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return err
 	}
 
-	existing, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(hpa.Name, metav1.GetOptions{})
+	existing, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(ctx, hpa.Name, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
 		existing = nil
 	} else if err != nil {
@@ -170,9 +170,9 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	}
 	if existing != nil {
 		hpa.ResourceVersion = existing.ResourceVersion
-		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Update(hpa)
+		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
 	} else {
-		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(hpa)
+		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
 	}
 	if err != nil {
 		return errors.WithStack(err)
@@ -262,7 +262,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		return nil, errors.WithStack(err)
 	}
 
-	hpas, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(metav1.ListOptions{
+	hpas, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
 	})
 	if err != nil {

@@ -104,7 +104,7 @@ func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 		APIPath: "/api",
 		ContentConfig: rest.ContentConfig{
 			GroupVersion:         &gv,
-			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: scheme.Codecs},
+			NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 		},
 		Timeout: kubeConf.APITimeout,
 	}, nil
