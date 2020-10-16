@@ -94,8 +94,6 @@ require (
 	github.com/vulcand/route v0.0.0-20181101151700-58b44163b968
 	github.com/vulcand/vulcand v0.0.0-20181107172627-5fb2302c78e2
 	go.uber.org/atomic v1.4.0 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
-	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
