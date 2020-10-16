@@ -14,6 +14,7 @@ limitations under the License.
 package kubernetes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,7 +46,7 @@ type DeploymentRollbacker struct {
 	c kubernetes.Interface
 }
 
-func (r *DeploymentRollbacker) Rollback(w io.Writer, obj *appsv1.Deployment) error {
+func (r *DeploymentRollbacker) Rollback(ctx context.Context, w io.Writer, obj *appsv1.Deployment) error {
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
 		return fmt.Errorf("failed to create accessor for kind %v: %s", obj.GetObjectKind(), err.Error())
@@ -57,12 +58,12 @@ func (r *DeploymentRollbacker) Rollback(w io.Writer, obj *appsv1.Deployment) err
 	// to the external appsv1 Deployment without round-tripping through an internal version of Deployment. We're
 	// currently getting rid of all internal versions of resources. So we specifically request the appsv1 version
 	// here. This follows the same pattern as for DaemonSet and StatefulSet.
-	deployment, err := r.c.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	deployment, err := r.c.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve Deployment %s: %v", name, err)
 	}
 
-	rsForRevision, err := r.deploymentRevision(deployment)
+	rsForRevision, err := r.deploymentRevision(ctx, deployment)
 	if err != nil {
 		return err
 	}
@@ -102,15 +103,15 @@ func (r *DeploymentRollbacker) Rollback(w io.Writer, obj *appsv1.Deployment) err
 	}
 
 	// Restore revision
-	if _, err = r.c.AppsV1().Deployments(namespace).Patch(name, patchType, patch); err != nil {
+	if _, err = r.c.AppsV1().Deployments(namespace).Patch(ctx, name, patchType, patch, metav1.PatchOptions{}); err != nil {
 		return fmt.Errorf("failed restoring revision %d: %v", 0, err)
 	}
 	return nil
 }
 
-func (r *DeploymentRollbacker) deploymentRevision(deployment *appsv1.Deployment) (*appsv1.ReplicaSet, error) {
+func (r *DeploymentRollbacker) deploymentRevision(ctx context.Context, deployment *appsv1.Deployment) (*appsv1.ReplicaSet, error) {
 
-	allRSs, err := getAllReplicasets(r.c, deployment)
+	allRSs, err := getAllReplicasets(ctx, r.c, deployment)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve replica sets from deployment %s: %v", deployment.Name, err)
 	}

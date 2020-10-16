@@ -150,12 +150,12 @@ func validateVolume(v *volume.Volume) (*volumeOptions, error) {
 	return &opts, nil
 }
 
-func pvcForVolume(client *ClusterClient, name string) ([]apiv1.PersistentVolumeClaim, error) {
+func pvcForVolume(ctx context.Context, client *ClusterClient, name string) ([]apiv1.PersistentVolumeClaim, error) {
 	labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
 		Name:   name,
 		Prefix: tsuruLabelPrefix,
 	})
-	pvcItems, err := client.CoreV1().PersistentVolumeClaims("").List(metav1.ListOptions{
+	pvcItems, err := client.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(labelSet.ToVolumeSelector())).String(),
 	})
 	if err != nil {
@@ -164,19 +164,19 @@ func pvcForVolume(client *ClusterClient, name string) ([]apiv1.PersistentVolumeC
 	return pvcItems.Items, nil
 }
 
-func deleteVolume(client *ClusterClient, name string) error {
-	err := client.CoreV1().PersistentVolumes().Delete(volumeName(name), &metav1.DeleteOptions{
+func deleteVolume(ctx context.Context, client *ClusterClient, name string) error {
+	err := client.CoreV1().PersistentVolumes().Delete(ctx, volumeName(name), metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 	})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
-	pvcItems, err := pvcForVolume(client, name)
+	pvcItems, err := pvcForVolume(ctx, client, name)
 	if err != nil {
 		return err
 	}
 	for _, pvc := range pvcItems {
-		err = client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(pvc.Name, &metav1.DeleteOptions{
+		err = client.CoreV1().PersistentVolumeClaims(pvc.Namespace).Delete(ctx, pvc.Name, metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
@@ -232,7 +232,7 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volume.Volume, 
 			},
 			Spec: pvSpec,
 		}
-		_, err = client.CoreV1().PersistentVolumes().Create(pv)
+		_, err = client.CoreV1().PersistentVolumes().Create(ctx, pv, metav1.CreateOptions{})
 		if err != nil && !k8sErrors.IsAlreadyExists(err) {
 			return errors.WithStack(err)
 		}
@@ -256,19 +256,19 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volume.Volume, 
 			StorageClassName: &opts.StorageClass,
 		},
 	}
-	_, err = client.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
+	_, err = client.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func volumeExists(client *ClusterClient, name string) (bool, error) {
-	_, err := client.CoreV1().PersistentVolumes().Get(volumeName(name), metav1.GetOptions{})
+func volumeExists(ctx context.Context, client *ClusterClient, name string) (bool, error) {
+	_, err := client.CoreV1().PersistentVolumes().Get(ctx, volumeName(name), metav1.GetOptions{})
 	if err == nil || !k8sErrors.IsNotFound(err) {
 		return true, err
 	}
-	pvcItems, err := pvcForVolume(client, name)
+	pvcItems, err := pvcForVolume(ctx, client, name)
 	if err != nil {
 		return false, err
 	}

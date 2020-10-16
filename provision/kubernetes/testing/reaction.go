@@ -334,7 +334,7 @@ func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) f
 		for _, f := range funcs {
 			f(r)
 		}
-		nlist, err := s.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		nlist, err := s.client.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		c.Assert(err, check.IsNil)
 		response := apiv1.PodList{}
 		namespaces := []string{}
@@ -345,7 +345,7 @@ func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) f
 			namespaces = append(namespaces, n.GetName())
 		}
 		for _, n := range namespaces {
-			podlist, errList := s.client.CoreV1().Pods(n).List(metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
+			podlist, errList := s.client.CoreV1().Pods(n).List(context.TODO(), metav1.ListOptions{LabelSelector: r.Form.Get("labelSelector")})
 			c.Assert(errList, check.IsNil)
 			response.Items = append(response.Items, podlist.Items...)
 		}
@@ -397,7 +397,7 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 	}
 	for i := 1; i <= 2; i++ {
 		s.WaitNodeUpdate(c, func() {
-			_, err := s.client.CoreV1().Nodes().Create(&apiv1.Node{
+			_, err := s.client.CoreV1().Nodes().Create(context.TODO(), &apiv1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("n%d", i),
 					Labels: map[string]string{
@@ -416,7 +416,7 @@ func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
 						},
 					},
 				},
-			})
+			}, metav1.CreateOptions{})
 			c.Assert(err, check.IsNil)
 		})
 	}
@@ -509,7 +509,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				ns, err := s.client.AppNamespace(context.TODO(), a)
 				c.Assert(err, check.IsNil)
 				UpdatePodContainerStatus(pod, false)
-				_, err = s.client.CoreV1().Pods(ns).Update(pod)
+				_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
 				c.Assert(err, check.IsNil)
 				err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)
 				c.Assert(err, check.IsNil)
@@ -622,8 +622,8 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			}
 			rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
-			_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(rs)
-			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(rs)
+			_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
+			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(context.TODO(), rs, metav1.UpdateOptions{})
 			c.Assert(err, check.IsNil)
 			_ = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
 			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
@@ -647,7 +647,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 			for i := int32(1); i <= specReplicas; i++ {
 				id := atomic.AddInt32(&counter, 1)
 				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
-				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(pod)
+				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 				c.Assert(err, check.IsNil)
 				err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
 				c.Assert(err, check.IsNil)
@@ -658,12 +658,12 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 }
 
 func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string, factory informers.SharedInformerFactory) error {
-	pods, err := client.CoreV1().Pods(namespace).List(opts)
+	pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), opts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	for _, pod := range pods.Items {
-		err = client.CoreV1().Pods(namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		err = client.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}

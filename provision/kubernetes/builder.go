@@ -40,7 +40,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	if err != nil {
 		return err
 	}
-	defer cleanupPod(client, buildPodName, ns)
+	defer cleanupPod(ctx, client, buildPodName, ns)
 	params := createPodParams{
 		app:               a,
 		client:            client,
@@ -143,7 +143,7 @@ func (c *KubeClient) BuildImage(ctx context.Context, name string, images []strin
 	if err != nil {
 		return err
 	}
-	defer cleanupPod(client, buildPodName, client.Namespace())
+	defer cleanupPod(ctx, client, buildPodName, client.Namespace())
 	params := createPodParams{
 		client:            client,
 		podName:           buildPodName,

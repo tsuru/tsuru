@@ -274,16 +274,16 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	// TODO: add a second node after fixing kubernetes FakePods: https://github.com/kubernetes/kubernetes/blob/865321c2d69d249d95079b7f8e2ca99f5430d79e/staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake/fake_pod.go#L67
 	numNodes := 1
 	for i := 1; i <= numNodes; i++ {
-		node, errGet := s.client.CoreV1().Nodes().Get(fmt.Sprintf("n%d", i), metav1.GetOptions{})
+		node, errGet := s.client.CoreV1().Nodes().Get(context.TODO(), fmt.Sprintf("n%d", i), metav1.GetOptions{})
 		c.Assert(errGet, check.IsNil)
 		node.ObjectMeta.Labels["tsuru.io/pool"] = fmt.Sprintf("pool%d", i)
-		_, errGet = s.client.CoreV1().Nodes().Update(node)
+		_, errGet = s.client.CoreV1().Nodes().Update(context.TODO(), node, metav1.UpdateOptions{})
 		c.Assert(errGet, check.IsNil)
 	}
 	for _, a := range []provision.App{app1, app2} {
 		c.Assert(err, check.IsNil)
 		for i := 1; i <= numNodes; i++ {
-			_, err = s.client.CoreV1().Pods("tsuru-test-default").Create(&apiv1.Pod{
+			_, err = s.client.CoreV1().Pods("tsuru-test-default").Create(context.TODO(), &apiv1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("%s-%d", a.GetName(), i),
 					Labels: map[string]string{
@@ -296,7 +296,7 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 				Spec: apiv1.PodSpec{
 					NodeName: fmt.Sprintf("n%d", i),
 				},
-			})
+			}, metav1.CreateOptions{})
 			c.Assert(err, check.IsNil)
 		}
 	}
@@ -355,7 +355,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 		w.Write([]byte(output))
 	}
 	ns := s.client.PoolNamespace("")
-	_, err := s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+	_, err := s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-pod-not-tsuru",
 			Namespace: ns,
@@ -363,7 +363,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 		Spec: apiv1.PodSpec{
 			NodeName: "n1",
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	fakeApp, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

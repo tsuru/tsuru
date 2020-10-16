@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	"github.com/tsuru/tsuru/provision/kubernetes/provider"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -83,7 +82,6 @@ var (
 	_ provision.LogsProvisioner          = &kubernetesProvisioner{}
 	_ provision.AutoScaleProvisioner     = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
-	_ cluster.ClusterProvider            = &kubernetesProvisioner{}
 	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
@@ -216,25 +214,8 @@ func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
 	}
 }
 
-func (p *kubernetesProvisioner) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	if len(c.CreateData) > 0 {
-		return provider.CreateCluster(ctx, c.Name, c.CreateData, c.Writer)
-	}
-	return nil
-}
-
-func (p *kubernetesProvisioner) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	if len(c.CreateData) > 0 {
-		return provider.UpdateCluster(ctx, c.Name, c.CreateData, c.Writer)
-	}
-	return nil
-}
-
 func (p *kubernetesProvisioner) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
 	stopClusterControllerByName(p, c.Name)
-	if len(c.CreateData) > 0 {
-		return provider.DeleteCluster(ctx, c.Name, c.CreateData, c.Writer)
-	}
 	return nil
 }
 
@@ -280,13 +261,13 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 	}
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, dd := range deps {
-		err = cleanupSingleDeployment(client, &dd)
+		err = cleanupSingleDeployment(ctx, client, &dd)
 		if err != nil {
 			multiErrors.Add(err)
 		}
 	}
 	for _, ss := range svcs {
-		err = client.CoreV1().Services(tsuruApp.Spec.NamespaceName).Delete(ss.Name, &metav1.DeleteOptions{
+		err = client.CoreV1().Services(tsuruApp.Spec.NamespaceName).Delete(ctx, ss.Name, metav1.DeleteOptions{
 			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
 		})
 		if err != nil && !k8sErrors.IsNotFound(err) {
@@ -311,14 +292,14 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 				}
 			}
 			if !bindedToOtherApps {
-				err = deleteVolume(client, vol.Name)
+				err = deleteVolume(ctx, client, vol.Name)
 				if err != nil {
 					multiErrors.Add(errors.WithStack(err))
 				}
 			}
 		}
 	}
-	err = client.CoreV1().ServiceAccounts(tsuruApp.Spec.NamespaceName).Delete(tsuruApp.Spec.ServiceAccountName, &metav1.DeleteOptions{})
+	err = client.CoreV1().ServiceAccounts(tsuruApp.Spec.NamespaceName).Delete(ctx, tsuruApp.Spec.ServiceAccountName, metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
 	}
@@ -856,7 +837,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 	if err != nil {
 		return err
 	}
-	pod, err := client.CoreV1().Pods(ns).Get(unitID, metav1.GetOptions{})
+	pod, err := client.CoreV1().Pods(ns).Get(ctx, unitID, metav1.GetOptions{})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			return &provision.UnitNotFoundError{ID: unitID}
@@ -1082,7 +1063,7 @@ func (p *kubernetesProvisioner) AddNode(ctx context.Context, opts provision.AddN
 			},
 		}
 		setNodeMetadata(node, opts.Pool, opts.IaaSID, opts.Metadata)
-		_, err = client.CoreV1().Nodes().Create(node)
+		_, err = client.CoreV1().Nodes().Create(ctx, node, metav1.CreateOptions{})
 		if err == nil {
 			return nil
 		}
@@ -1105,17 +1086,17 @@ func (p *kubernetesProvisioner) RemoveNode(ctx context.Context, opts provision.R
 	node := nodeWrapper.node
 	if opts.Rebalance {
 		node.Spec.Unschedulable = true
-		_, err = client.CoreV1().Nodes().Update(node)
+		_, err = client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		var pods []apiv1.Pod
-		pods, err = podsFromNode(client, node.Name, tsuruLabelPrefix+provision.LabelAppPool)
+		pods, err = podsFromNode(ctx, client, node.Name, tsuruLabelPrefix+provision.LabelAppPool)
 		if err != nil {
 			return err
 		}
 		for _, pod := range pods {
-			err = client.CoreV1().Pods(pod.Namespace).Evict(&policy.Eviction{
+			err = client.CoreV1().Pods(pod.Namespace).Evict(ctx, &policy.Eviction{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      pod.Name,
 					Namespace: pod.Namespace,
@@ -1126,7 +1107,7 @@ func (p *kubernetesProvisioner) RemoveNode(ctx context.Context, opts provision.R
 			}
 		}
 	}
-	err = client.CoreV1().Nodes().Delete(node.Name, &metav1.DeleteOptions{})
+	err = client.CoreV1().Nodes().Delete(ctx, node.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1147,7 +1128,7 @@ func (p *kubernetesProvisioner) findNodeByAddress(ctx context.Context, address s
 		if foundNode != nil {
 			return nil
 		}
-		node, err := p.getNodeByAddr(c, address)
+		node, err := p.getNodeByAddr(ctx, c, address)
 		if err == nil {
 			foundNode = &kubernetesNodeWrapper{
 				node:    node,
@@ -1211,7 +1192,7 @@ func (p *kubernetesProvisioner) internalNodeUpdate(ctx context.Context, opts pro
 	}
 	node.Spec.Taints = taints
 	setNodeMetadata(node, opts.Pool, iaasID, opts.Metadata)
-	_, err = client.CoreV1().Nodes().Update(node)
+	_, err = client.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return errors.WithStack(err)
 }
 
@@ -1230,7 +1211,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 		if nsErr != nil {
 			return "", nsErr
 		}
-		defer cleanupPod(client, deployPodName, ns)
+		defer cleanupPod(ctx, client, deployPodName, ns)
 		params := createPodParams{
 			app:               args.App,
 			client:            client,
@@ -1279,7 +1260,7 @@ func (p *kubernetesProvisioner) UpgradeNodeContainer(ctx context.Context, name s
 
 func (p *kubernetesProvisioner) RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
 	err := forEachCluster(ctx, func(cluster *ClusterClient) error {
-		return cleanupDaemonSet(cluster, name, pool)
+		return cleanupDaemonSet(ctx, cluster, name, pool)
 	})
 	if err == provTypes.ErrNoCluster {
 		return nil
@@ -1400,7 +1381,7 @@ func (p *kubernetesProvisioner) DeleteVolume(ctx context.Context, volumeName, po
 	if err != nil {
 		return err
 	}
-	return deleteVolume(client, volumeName)
+	return deleteVolume(ctx, client, volumeName)
 }
 
 func (p *kubernetesProvisioner) IsVolumeProvisioned(ctx context.Context, volumeName, pool string) (bool, error) {
@@ -1408,7 +1389,7 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(ctx context.Context, volumeN
 	if err != nil {
 		return false, err
 	}
-	return volumeExists(client, volumeName)
+	return volumeExists(ctx, client, volumeName)
 }
 
 func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provision.App, w io.Writer) error {
@@ -1485,7 +1466,7 @@ func ensureAppCustomResourceSynced(ctx context.Context, client *ClusterClient, a
 }
 
 func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterClient, a provision.App) (*tsuruv1.App, error) {
-	err := ensureNamespace(client, client.Namespace())
+	err := ensureNamespace(ctx, client, client.Namespace())
 	if err != nil {
 		return nil, err
 	}
@@ -1722,7 +1703,7 @@ func (p *kubernetesProvisioner) ToggleRoutable(ctx context.Context, a provision.
 		return errors.Errorf("no deployment found for version %v", version.Version())
 	}
 	for _, depData := range depsForVersion {
-		err = toggleRoutableDeployment(client, version.Version(), depData.dep, isRoutable)
+		err = toggleRoutableDeployment(ctx, client, version.Version(), depData.dep, isRoutable)
 		if err != nil {
 			return err
 		}
@@ -1730,14 +1711,14 @@ func (p *kubernetesProvisioner) ToggleRoutable(ctx context.Context, a provision.
 	return ensureAutoScale(ctx, client, a, "")
 }
 
-func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.Deployment, isRoutable bool) (err error) {
+func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, version int, dep *appsv1.Deployment, isRoutable bool) (err error) {
 	ls := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
 	ls.ToggleIsRoutable(isRoutable)
 	ls.SetVersion(version)
 	dep.Spec.Paused = true
 	dep.ObjectMeta.Labels = ls.WithoutVersion().ToLabels()
 	dep.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
-	_, err = client.AppsV1().Deployments(dep.Namespace).Update(dep)
+	_, err = client.AppsV1().Deployments(dep.Namespace).Update(ctx, dep, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1745,19 +1726,19 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 		if err != nil {
 			return
 		}
-		dep, err = client.AppsV1().Deployments(dep.Namespace).Get(dep.Name, metav1.GetOptions{})
+		dep, err = client.AppsV1().Deployments(dep.Namespace).Get(ctx, dep.Name, metav1.GetOptions{})
 		if err != nil {
 			err = errors.WithStack(err)
 			return
 		}
 		dep.Spec.Paused = false
-		_, err = client.AppsV1().Deployments(dep.Namespace).Update(dep)
+		_, err = client.AppsV1().Deployments(dep.Namespace).Update(ctx, dep, metav1.UpdateOptions{})
 		if err != nil {
 			err = errors.WithStack(err)
 		}
 	}()
 
-	rs, err := activeReplicaSetForDeployment(client, dep)
+	rs, err := activeReplicaSetForDeployment(ctx, client, dep)
 	if err != nil {
 		if k8sErrors.IsNotFound(errors.Cause(err)) {
 			return nil
@@ -1769,12 +1750,12 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 	ls.SetVersion(version)
 	rs.ObjectMeta.Labels = ls.ToLabels()
 	rs.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
-	_, err = client.AppsV1().ReplicaSets(rs.Namespace).Update(rs)
+	_, err = client.AppsV1().ReplicaSets(rs.Namespace).Update(ctx, rs, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	pods, err := podsForReplicaSet(client, rs)
+	pods, err := podsForReplicaSet(ctx, client, rs)
 	if err != nil {
 		return err
 	}
@@ -1783,7 +1764,7 @@ func toggleRoutableDeployment(client *ClusterClient, version int, dep *appsv1.De
 		ls.ToggleIsRoutable(isRoutable)
 		ls.SetVersion(version)
 		pod.ObjectMeta.Labels = ls.ToLabels()
-		_, err = client.CoreV1().Pods(pod.Namespace).Update(&pod)
+		_, err = client.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{})
 		if err != nil {
 			return errors.WithStack(err)
 		}

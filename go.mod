@@ -4,6 +4,8 @@ go 1.12
 
 require (
 	github.com/Azure/azure-sdk-for-go v19.1.1+incompatible // indirect
+	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
+	github.com/Azure/go-autorest/autorest/validation v0.3.0 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
@@ -57,6 +59,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.2
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
+	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opentracing-contrib/go-stdlib v1.0.0
@@ -67,9 +70,6 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
-	github.com/rancher/kontainer-engine v0.0.0-00010101000000-000000000000
-	github.com/rancher/rke v0.3.0-rc10.0.20190910214044-f622c8b94257
-	github.com/rancher/types v0.0.0-20190827214052-704648244586
 	github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
@@ -118,13 +118,11 @@ require (
 replace (
 	github.com/docker/docker => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
 	github.com/docker/machine => github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935
-	github.com/rancher/kontainer-engine => github.com/cezarsa/kontainer-engine v0.0.4-dev.0.20200420145904-d4e1271f77cf
-	github.com/rancher/norman => github.com/rancher/norman v0.0.0-20190930164704-e09204b63081
 	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
 	gopkg.in/ahmetb/go-linq.v3 => github.com/ahmetb/go-linq v3.0.0+incompatible
 	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20161208181325-20d25e280405
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20190918200256-06eb1244587a
+	k8s.io/apimachinery => k8s.io/apimachinery v0.18.9
+	k8s.io/client-go => k8s.io/client-go v0.18.9
 	k8s.io/code-generator => k8s.io/code-generator v0.18.9
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190709113604-33be087ad058
 )

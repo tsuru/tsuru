@@ -83,7 +83,7 @@ func (n *kubernetesNodeWrapper) ExtraData() map[string]string {
 }
 
 func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
-	pods, err := appPodsFromNode(n.cluster, n.node.Name)
+	pods, err := appPodsFromNode(n.ctx, n.cluster, n.node.Name)
 	if err != nil {
 		return nil, err
 	}
