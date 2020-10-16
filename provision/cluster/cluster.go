@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/storage"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -22,12 +21,6 @@ type ClusteredProvisioner interface {
 	InitializeCluster(c *provTypes.Cluster) error
 	ValidateCluster(c *provTypes.Cluster) error
 	ClusterHelp() provTypes.ClusterHelpInfo
-}
-
-type ClusterProvider interface {
-	CreateCluster(ctx context.Context, c *provTypes.Cluster) error
-	UpdateCluster(ctx context.Context, c *provTypes.Cluster) error
-	DeleteCluster(ctx context.Context, c *provTypes.Cluster) error
 }
 
 type clusterService struct {
@@ -62,16 +55,7 @@ func (s *clusterService) Create(ctx context.Context, c provTypes.Cluster) error 
 	if err != nil {
 		return err
 	}
-	prov, err := provision.Get(c.Provisioner)
-	if err != nil {
-		return err
-	}
-	if _, ok := prov.(ClusterProvider); !ok {
-		err = s.createClusterMachine(&c)
-		if err != nil {
-			return err
-		}
-	}
+
 	return s.save(ctx, c, true)
 }
 
@@ -139,16 +123,7 @@ func (s *clusterService) Delete(ctx context.Context, c provTypes.Cluster) error 
 	if err != nil {
 		return err
 	}
-	prov, err := provision.Get(c.Provisioner)
-	if err != nil {
-		return err
-	}
-	if createProv, ok := prov.(ClusterProvider); ok {
-		err = createProv.DeleteCluster(ctx, &c)
-		if err != nil {
-			return err
-		}
-	}
+
 	return s.storage.Delete(ctx, c)
 }
 
@@ -190,53 +165,11 @@ func (s *clusterService) initCluster(ctx context.Context, c provTypes.Cluster, i
 	if err != nil {
 		return err
 	}
-	if createProv, ok := prov.(ClusterProvider); ok {
-		if isNewCluster {
-			err = createProv.CreateCluster(ctx, &c)
-		} else {
-			err = createProv.UpdateCluster(ctx, &c)
-		}
-		if err != nil {
-			err = errors.Wrap(err, "error provisioning cluster")
-			if isNewCluster {
-				derr := s.storage.Delete(ctx, c)
-				if derr != nil {
-					err = errors.Wrapf(derr, "%v - error deleting cluster", err)
-				}
-			}
-			return err
-		}
-		c, err = s.updateClusterFromStorage(ctx, c)
-		if err != nil {
-			return err
-		}
-	}
+
 	if clusterProv, ok := prov.(ClusteredProvisioner); ok {
 		err = clusterProv.InitializeCluster(&c)
 	}
 	return err
-}
-
-func (s *clusterService) createClusterMachine(c *provTypes.Cluster) error {
-	if len(c.CreateData) == 0 {
-		return nil
-	}
-	if templateName, ok := c.CreateData["template"]; ok {
-		var err error
-		c.CreateData, err = iaas.ExpandTemplate(templateName, c.CreateData)
-		if err != nil {
-			return err
-		}
-	}
-	m, err := iaas.CreateMachine(c.CreateData)
-	if err != nil {
-		return err
-	}
-	c.Addresses = append(c.Addresses, m.FormatNodeAddress())
-	c.CaCert = m.CaCert
-	c.ClientCert = m.ClientCert
-	c.ClientKey = m.ClientKey
-	return nil
 }
 
 func (s *clusterService) updateClusterFromStorage(ctx context.Context, c provTypes.Cluster) (provTypes.Cluster, error) {
