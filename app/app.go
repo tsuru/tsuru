@@ -701,10 +701,6 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
 	}
-	err = event.MarkAsRemoved(event.Target{Type: event.TargetTypeApp, Value: appName})
-	if err != nil {
-		logErr("Unable to mark old events as removed", err)
-	}
 	return nil
 }
 

@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -115,51 +114,6 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Count, check.Not(check.Equals), 0)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
-}
-
-func (s *S) TestDeleteWithEvents(c *check.C) {
-	a := App{
-		Name:      "ritual",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	evt1, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppUpdateEnvSet,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	err = evt1.Done(nil)
-	c.Assert(err, check.IsNil)
-	evt2, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: "other"},
-		Kind:     permission.PermAppUpdateEnvSet,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	deleteEvt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	Delete(context.TODO(), app, deleteEvt, "")
-	evts, err := event.List(&event.Filter{})
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, eventtest.EvtEquals, evt2)
-	evts, err = event.List(&event.Filter{IncludeRemoved: true})
-	c.Assert(err, check.IsNil)
-	c.Assert(evts, check.HasLen, 3)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
 func (s *S) TestDeleteWithoutUnits(c *check.C) {

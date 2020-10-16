@@ -1020,7 +1020,6 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	lastDeploy.ID = evts[1].UniqueID
 	result.Timestamp = lastDeploy.Timestamp
-	result.RemoveDate = lastDeploy.RemoveDate
 	result.Duration = 0
 	result.Log = ""
 	c.Assert(result, check.DeepEquals, lastDeploy)
@@ -1051,7 +1050,6 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	result.Timestamp = lastDeploy.Timestamp
-	result.RemoveDate = lastDeploy.RemoveDate
 	result.Duration = 0
 	result.Log = ""
 	c.Assert(result, check.DeepEquals, lastDeploy)
