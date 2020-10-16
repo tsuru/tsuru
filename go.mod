@@ -3,9 +3,11 @@ module github.com/tsuru/tsuru
 go 1.12
 
 require (
-	github.com/Azure/azure-sdk-for-go v19.1.1+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go v47.0.0+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.11.10 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.0 // indirect
+	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
@@ -14,14 +16,13 @@ require (
 	github.com/aws/aws-sdk-go v1.16.21
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38 // indirect
-	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/codegangsta/cli v1.19.1 // indirect
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
+	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
-	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v1.5.0
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
@@ -34,16 +35,12 @@ require (
 	github.com/fsouza/go-dockerclient v0.0.0-20180427001620-3a206030a28a
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-ini/ini v1.41.0 // indirect
-	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/google/go-querystring v0.0.0-20150414214848-547ef5ac9797 // indirect
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
-	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/pat v0.0.0-20131205071617-ae2e162c4b2a // indirect
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-version v0.0.0-20160519212729-0181db470237
-	github.com/heptio/authenticator v0.3.0 // indirect
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
@@ -51,13 +48,7 @@ require (
 	github.com/kr/pretty v0.1.0
 	github.com/mailgun/holster v3.0.0+incompatible // indirect
 	github.com/mailgun/metrics v0.0.0-20170714162148-fd99b46995bd // indirect
-	github.com/mailgun/minheap v0.0.0-20170619185613-3dbe6c6bf55f // indirect
-	github.com/mailgun/multibuf v0.0.0-20150714184110-565402cd71fb // indirect
-	github.com/mailgun/timetools v0.0.0-20170619190023-f3a7b8ffff47 // indirect
-	github.com/mailgun/ttlmap v0.0.0-20170619185759-c1c17f74874f // indirect
-	github.com/marstr/guid v1.1.0 // indirect
 	github.com/mattn/go-shellwords v1.0.2
-	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
@@ -89,12 +80,9 @@ require (
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	github.com/vmware/govcloudair v0.0.2 // indirect
 	github.com/vmware/govmomi v0.0.0-20160923190800-b932baf416e9 // indirect
-	github.com/vulcand/oxy v0.0.0-20180707144047-21cae4f7b50b // indirect
-	github.com/vulcand/predicate v0.0.0-20141020235656-cb0bff91a7ab // indirect
-	github.com/vulcand/route v0.0.0-20181101151700-58b44163b968
-	github.com/vulcand/vulcand v0.0.0-20181107172627-5fb2302c78e2
-	go.uber.org/atomic v1.4.0 // indirect
-	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+	github.com/vulcand/route v0.0.0-20191025171320-daa4df6c711a
+	github.com/vulcand/vulcand v0.9.0
+	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
@@ -104,15 +92,14 @@ require (
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b
-	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528
+	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 	gopkg.in/redis.v3 v3.6.4
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.9
 	k8s.io/apiextensions-apiserver v0.18.9
 	k8s.io/apimachinery v0.18.9
-	k8s.io/client-go v11.0.1-0.20190805182715-88a2adca7e76+incompatible
+	k8s.io/client-go v0.18.9
 	k8s.io/code-generator v0.18.9
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace (
