@@ -45,7 +45,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 		return nil, err
 	}
 
-	ns, err := clusterClient.AppNamespace(app)
+	ns, err := clusterClient.AppNamespace(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 		return nil, err
 	}
 
-	ns, err := clusterClient.AppNamespace(app)
+	ns, err := clusterClient.AppNamespace(ctx, app)
 	if err != nil {
 		return nil, err
 	}

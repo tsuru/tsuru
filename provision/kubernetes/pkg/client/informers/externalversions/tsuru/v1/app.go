@@ -7,6 +7,7 @@
 package v1
 
 import (
+	"context"
 	time "time"
 
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
@@ -49,13 +50,13 @@ func NewFilteredAppInformer(client versioned.Interface, namespace string, resync
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TsuruV1().Apps(namespace).List(options)
+				return client.TsuruV1().Apps(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TsuruV1().Apps(namespace).Watch(options)
+				return client.TsuruV1().Apps(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&tsuruv1.App{},

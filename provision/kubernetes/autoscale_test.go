@@ -37,7 +37,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -178,7 +178,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 	}
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	for i, tt := range tests {
@@ -211,7 +211,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)

@@ -266,14 +266,14 @@ func (p *kubernetesProvisioner) Destroy(ctx context.Context, a provision.App) er
 	if err != nil {
 		return err
 	}
-	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	if err := p.removeResources(ctx, client, app, a); err != nil {
 		return err
 	}
-	return tclient.TsuruV1().Apps(client.Namespace()).Delete(a.GetName(), &metav1.DeleteOptions{})
+	return tclient.TsuruV1().Apps(client.Namespace()).Delete(ctx, a.GetName(), metav1.DeleteOptions{})
 }
 
 func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *ClusterClient, tsuruApp *tsuruv1.App, app provision.App) error {
@@ -703,7 +703,7 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -859,7 +859,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 	if err != nil {
 		return err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -919,7 +919,7 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -1233,7 +1233,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 	}
 	if args.Version.VersionInfo().DeployImage == "" {
 		deployPodName := deployPodNameForApp(args.App, args.Version)
-		ns, nsErr := client.AppNamespace(args.App)
+		ns, nsErr := client.AppNamespace(ctx, args.App)
 		if nsErr != nil {
 			return "", nsErr
 		}
@@ -1324,7 +1324,7 @@ func (p *kubernetesProvisioner) ExecuteCommand(ctx context.Context, opts provisi
 	}
 	for _, u := range opts.Units {
 		eOpts.unit = u
-		err := execCommand(eOpts)
+		err := execCommand(ctx, eOpts)
 		if err != nil {
 			return err
 		}
@@ -1496,7 +1496,7 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 	if err != nil {
 		return nil, err
 	}
-	err = ensureAppCustomResource(client, a)
+	err = ensureAppCustomResource(ctx, client, a)
 	if err != nil {
 		return nil, err
 	}
@@ -1505,7 +1505,7 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 	if err != nil {
 		return nil, err
 	}
-	appCRD, err := tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	appCRD, err := tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1556,11 +1556,11 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 		}
 	}
 
-	return tclient.TsuruV1().Apps(client.Namespace()).Update(appCRD)
+	return tclient.TsuruV1().Apps(client.Namespace()).Update(ctx, appCRD, metav1.UpdateOptions{})
 }
 
-func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
-	err := ensureCustomResourceDefinitions(client)
+func ensureAppCustomResource(ctx context.Context, client *ClusterClient, a provision.App) error {
+	err := ensureCustomResourceDefinitions(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -1568,34 +1568,34 @@ func ensureAppCustomResource(client *ClusterClient, a provision.App) error {
 	if err != nil {
 		return err
 	}
-	_, err = tclient.TsuruV1().Apps(client.Namespace()).Get(a.GetName(), metav1.GetOptions{})
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
 	if err == nil {
 		return nil
 	}
 	if !k8sErrors.IsNotFound(err) {
 		return err
 	}
-	_, err = tclient.TsuruV1().Apps(client.Namespace()).Create(&tsuruv1.App{
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Create(ctx, &tsuruv1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: a.GetName()},
 		Spec:       tsuruv1.AppSpec{NamespaceName: client.PoolNamespace(a.GetPool())},
-	})
+	}, metav1.CreateOptions{})
 	return err
 }
 
-func ensureCustomResourceDefinitions(client *ClusterClient) error {
+func ensureCustomResourceDefinitions(ctx context.Context, client *ClusterClient) error {
 	extClient, err := ExtensionsClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
 	toCreate := appCustomResourceDefinition()
-	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(toCreate)
+	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, toCreate, metav1.CreateOptions{})
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return err
 	}
 	timeout := time.After(time.Minute)
 loop:
 	for {
-		crd, errGet := extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(toCreate.GetName(), metav1.GetOptions{})
+		crd, errGet := extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, toCreate.GetName(), metav1.GetOptions{})
 		if errGet != nil {
 			return errGet
 		}

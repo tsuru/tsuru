@@ -197,7 +197,7 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 func createImageBuildPod(ctx context.Context, params createPodParams) error {
 	params.mainContainer = "build-cont"
 	kubeConf := getKubeConfig()
-	pod, err := newDeployAgentImageBuildPod(params.client, params.sourceImage, params.podName, deployAgentConfig{
+	pod, err := newDeployAgentImageBuildPod(ctx, params.client, params.sourceImage, params.podName, deployAgentConfig{
 		name:              params.mainContainer,
 		image:             kubeConf.DeploySidecarImage,
 		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
@@ -296,7 +296,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		}
 		params.pod = &pod
 	}
-	ns, err := params.client.AppNamespace(params.app)
+	ns, err := params.client.AppNamespace(ctx, params.app)
 	if err != nil {
 		return err
 	}
@@ -445,8 +445,8 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 	return result, nil
 }
 
-func ensureNamespaceForApp(client *ClusterClient, app provision.App) error {
-	ns, err := client.AppNamespace(app)
+func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app provision.App) error {
+	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -489,20 +489,20 @@ func ensureServiceAccount(client *ClusterClient, name string, labels *provision.
 	return nil
 }
 
-func ensureServiceAccountForApp(client *ClusterClient, a provision.App) error {
+func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a provision.App) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
 		App:         a,
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
 	return ensureServiceAccount(client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func createAppDeployment(client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	extra := []string{extraRegisterCmds(a)}
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
@@ -600,11 +600,11 @@ func createAppDeployment(client *ClusterClient, depName string, oldDeployment *a
 		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
 		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
 	}
-	volumes, mounts, err := createVolumesForApp(client, a)
+	volumes, mounts, err := createVolumesForApp(ctx, client, a)
 	if err != nil {
 		return nil, nil, err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -901,7 +901,7 @@ func formatEvtMessage(msg watch.Event, showSub bool) string {
 
 func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, a provision.App, processName string, w io.Writer, evtResourceVersion string, version appTypes.AppVersion) (string, error) {
 	revision := dep.Annotations[replicaDepRevision]
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return revision, err
 	}
@@ -1028,15 +1028,15 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return err
 	}
-	err = ensureNamespaceForApp(m.client, a)
+	err = ensureNamespaceForApp(ctx, m.client, a)
 	if err != nil {
 		return err
 	}
-	err = ensureServiceAccountForApp(m.client, a)
+	err = ensureServiceAccountForApp(ctx, m.client, a)
 	if err != nil {
 		return err
 	}
-	ns, err := m.client.AppNamespace(a)
+	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -1074,7 +1074,7 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, err := createAppDeployment(m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
+	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
 	if err != nil {
 		return err
 	}
@@ -1190,7 +1190,7 @@ type svcCreateData struct {
 }
 
 func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion) error {
-	ns, err := m.client.AppNamespace(a)
+	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -1557,7 +1557,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		}
 	}
 
-	ns, err := params.client.AppNamespace(params.app)
+	ns, err := params.client.AppNamespace(ctx, params.app)
 	if err != nil {
 		return err
 	}
@@ -1622,11 +1622,11 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
-	err := ensureNamespaceForApp(client, app)
+	err := ensureNamespaceForApp(ctx, client, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	err = ensureServiceAccountForApp(client, app)
+	err = ensureServiceAccountForApp(ctx, client, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
@@ -1641,7 +1641,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	volumes, mounts, err := createVolumesForApp(client, app)
+	volumes, mounts, err := createVolumesForApp(ctx, client, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
@@ -1659,7 +1659,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 		nodeSelector = map[string]string{}
 	}
 	_, uid := dockercommon.UserForContainer()
-	ns, err := client.AppNamespace(app)
+	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
@@ -1708,11 +1708,11 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	}, nil
 }
 
-func newDeployAgentImageBuildPod(client *ClusterClient, sourceImage string, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
+func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sourceImage string, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
-	err := ensureNamespaceForApp(client, nil)
+	err := ensureNamespaceForApp(ctx, client, nil)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}

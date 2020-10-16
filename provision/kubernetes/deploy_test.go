@@ -77,7 +77,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -108,7 +108,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "1"
 	podLabels["version"] = "v1"
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -400,7 +400,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	srv, err := s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -529,7 +529,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
@@ -560,7 +560,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -714,7 +714,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 			waitDep()
 		}
 		var dep *appsv1.Deployment
-		nsName, err := s.client.AppNamespace(a)
+		nsName, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
 		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
 		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
@@ -920,7 +920,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		waitDep()
-		nsName, err := s.client.AppNamespace(a)
+		nsName, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
 		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
@@ -962,7 +962,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1048,7 +1048,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	for _, tt := range tests {
@@ -1122,7 +1122,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1266,7 +1266,7 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1305,7 +1305,7 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1361,7 +1361,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -1466,7 +1466,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	c.Assert(err, check.FitsTypeOf, provision.ErrUnitStartup{})
 	c.Assert(err, check.ErrorMatches, `.*canceled by user action.*`)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
@@ -1540,7 +1540,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	c.Assert(err, check.FitsTypeOf, provision.ErrUnitStartup{})
 	c.Assert(err, check.ErrorMatches, `.*canceled by user action.*`)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1576,7 +1576,7 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1636,7 +1636,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1668,7 +1668,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1708,7 +1708,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1750,7 +1750,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1840,7 +1840,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 		},
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	for i, tt := range tests {
@@ -1888,7 +1888,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1922,7 +1922,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1966,7 +1966,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -2000,7 +2000,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "2"
 	podLabels["version"] = "v2"
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -2187,7 +2187,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	expectedDep := legacyDep.DeepCopy()
@@ -2266,7 +2266,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	expectedDepBase := legacyDep.DeepCopy()
@@ -2373,7 +2373,7 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 		},
 	})
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2448,7 +2448,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		podName:           "myapp-v1-build",
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2514,7 +2514,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2635,7 +2635,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2733,7 +2733,7 @@ func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
 	})
 	s.mock.IgnorePool = false
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -2826,7 +2826,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	})
 	watchCalled := make(chan struct{})
 	podReactorDone := make(chan struct{})
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -2939,7 +2939,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -2994,7 +2994,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
@@ -3100,7 +3100,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 	}
 	s.client.PrependReactor("create", "pods", podReaction)
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	depName := deploymentNameForAppBase(a, "p1")
 	timeout := time.After(10 * time.Second)
@@ -3171,7 +3171,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -3320,7 +3320,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
 	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
@@ -3345,7 +3345,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 		},
 	})
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3425,7 +3425,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/provisioner":     provisionerName,
 		"tsuru.io/builder":         "",
 	}
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -3492,7 +3492,7 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	})
 	err = m.RemoveService(context.TODO(), a, "p1", version.Version())
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -3599,7 +3599,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -3707,7 +3707,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, `(?s).*deployment \"myapp-p2\" exceeded its progress deadline.*`)
 	c.Assert(err.Error(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\] \[version 1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -3785,7 +3785,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, firstVersion.Version(), args, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, `(?s).*deployment \"myapp-p1\" exceeded its progress deadline.*`)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -3826,7 +3826,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	for k, v := range depLabels {
 		podLabels[k] = v
 	}
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	legacyDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

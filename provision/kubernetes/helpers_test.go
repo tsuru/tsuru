@@ -448,7 +448,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	}
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

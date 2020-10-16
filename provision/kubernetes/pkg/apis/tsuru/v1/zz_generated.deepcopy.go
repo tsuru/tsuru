@@ -9,7 +9,6 @@
 package v1
 
 import (
-	provision "github.com/tsuru/tsuru/types/provision"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -108,8 +107,7 @@ func (in *AppSpec) DeepCopyInto(out *AppSpec) {
 	}
 	if in.Configs != nil {
 		in, out := &in.Configs, &out.Configs
-		*out = new(provision.TsuruYamlKubernetesConfig)
-		(*in).DeepCopyInto(*out)
+		*out = (*in).DeepCopy()
 	}
 	return
 }

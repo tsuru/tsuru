@@ -45,7 +45,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 		return nil, errors.WithStack(err)
 	}
 
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil {
 		return err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		},
 	}
 
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App
 }
 
 func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}

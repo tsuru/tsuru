@@ -191,19 +191,19 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(app appTypes.App) (string, error) {
+func (c *ClusterClient) AppNamespace(ctx context.Context, app appTypes.App) (string, error) {
 	if app == nil {
 		return c.Namespace(), nil
 	}
-	return c.appNamespaceByName(app.GetName())
+	return c.appNamespaceByName(ctx, app.GetName())
 }
 
-func (c *ClusterClient) appNamespaceByName(appName string) (string, error) {
+func (c *ClusterClient) appNamespaceByName(ctx context.Context, appName string) (string, error) {
 	tclient, err := TsuruClientForConfig(c.restConfig)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get client for crd")
 	}
-	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(appName, metav1.GetOptions{})
+	a, err := tclient.TsuruV1().Apps(c.Namespace()).Get(ctx, appName, metav1.GetOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get app custom resource")
 	}

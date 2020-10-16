@@ -36,7 +36,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	if err != nil {
 		return err
 	}
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
