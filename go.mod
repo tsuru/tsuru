@@ -88,7 +88,7 @@ require (
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	google.golang.org/api v0.7.0 // indirect
-	gopkg.in/ahmetb/go-linq.v3 v3.0.0-00010101000000-000000000000 // indirect
+	gopkg.in/ahmetb/go-linq.v3 v3.0.0+incompatible // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b
