@@ -3,10 +3,6 @@ module github.com/tsuru/tsuru
 go 1.12
 
 require (
-	github.com/Azure/azure-sdk-for-go v47.0.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.10 // indirect
-	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
-	github.com/Azure/go-autorest/autorest/validation v0.3.0 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
@@ -22,14 +18,13 @@ require (
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
-	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/docker/docker v1.5.0
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
-	github.com/docker/machine v0.7.0
+	github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
-	github.com/exoscale/egoscale v0.9.31 // indirect
+	github.com/exoscale/egoscale v0.9.23 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/felixge/fgprof v0.9.1
 	github.com/fsouza/go-dockerclient v0.0.0-20180427001620-3a206030a28a
@@ -63,7 +58,6 @@ require (
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
 	github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
 	github.com/tsuru/config v0.0.0-20200717192526-2a9a0efe5f28
@@ -104,12 +98,7 @@ require (
 
 replace (
 	github.com/docker/docker => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
-	github.com/docker/machine => github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935
 	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
 	gopkg.in/ahmetb/go-linq.v3 => github.com/ahmetb/go-linq v3.0.0+incompatible
 	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20161208181325-20d25e280405
-	k8s.io/apimachinery => k8s.io/apimachinery v0.18.9
-	k8s.io/client-go => k8s.io/client-go v0.18.9
-	k8s.io/code-generator => k8s.io/code-generator v0.18.9
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190709113604-33be087ad058
 )

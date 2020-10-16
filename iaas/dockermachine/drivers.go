@@ -7,7 +7,6 @@ package dockermachine
 import (
 	cloudstack "github.com/andrestc/docker-machine-driver-cloudstack"
 	"github.com/docker/machine/drivers/amazonec2"
-	"github.com/docker/machine/drivers/azure"
 	"github.com/docker/machine/drivers/digitalocean"
 	"github.com/docker/machine/drivers/exoscale"
 	"github.com/docker/machine/drivers/generic"
@@ -34,8 +33,6 @@ func RunDriver(driverName string) error {
 	switch driverName {
 	case "amazonec2":
 		plugin.RegisterDriver(amazonec2.NewDriver("", ""))
-	case "azure":
-		plugin.RegisterDriver(azure.NewDriver("", ""))
 	case "digitalocean":
 		plugin.RegisterDriver(digitalocean.NewDriver("", ""))
 	case "exoscale":
@@ -75,8 +72,6 @@ func DefaultParamsForDriver(driverName string) map[string]interface{} {
 	switch driverName {
 	case "amazonec2":
 		params["amazonec2-use-private-address"] = true
-	case "azure":
-		params["azure-use-private-ip"] = true
 	case "google":
 		params["google-use-internal-ip"] = true
 	}
