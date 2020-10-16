@@ -79,10 +79,6 @@ func (s *S) TestClusterServiceCreateWithCreateData(c *check.C) {
 		Addresses:   []string{},
 		Provisioner: "fake",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{
@@ -482,10 +478,6 @@ func (s *S) TestClusterServiceCreateProvisionCluster(c *check.C) {
 		Addresses:   []string{},
 		Provisioner: "fake-cluster",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	upsertCall := false
 	cs := &clusterService{
@@ -518,10 +510,6 @@ func (s *S) TestClusterServiceUpdateProvisionCluster(c *check.C) {
 		Addresses:   []string{},
 		Provisioner: "fake-cluster",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	upsertCall := false
 	cs := &clusterService{
@@ -554,10 +542,6 @@ func (s *S) TestClusterServiceDeleteProvisionCluster(c *check.C) {
 		Addresses:   []string{},
 		Provisioner: "fake-cluster",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	deleteCall := false
 	cs := &clusterService{
@@ -594,10 +578,6 @@ func (s *S) TestClusterServiceCreateProvisionClusterError(c *check.C) {
 		Addresses:   []string{},
 		Provisioner: "fake-cluster",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	deleteCall := false
 	cs := &clusterService{
@@ -635,10 +615,6 @@ func (s *S) TestClusterServiceCreateProvisionClusterErrorProvisionerAndDelete(c 
 		Addresses:   []string{},
 		Provisioner: "fake-cluster",
 		Default:     true,
-		CreateData: map[string]string{
-			"id":   "test1",
-			"iaas": "test-iaas",
-		},
 	}
 	cs := &clusterService{
 		storage: &provTypes.MockClusterStorage{

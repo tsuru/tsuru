@@ -31,7 +31,6 @@ type cluster struct {
 	ClientKey   []byte            `bson:",omitempty"`
 	Pools       []string          `bson:",omitempty"`
 	CustomData  map[string]string `bson:",omitempty"`
-	CreateData  map[string]string `bson:",omitempty"`
 	Default     bool
 	Writer      io.Writer `bson:"-"`
 }

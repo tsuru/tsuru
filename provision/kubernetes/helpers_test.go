@@ -275,7 +275,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 				Namespace: ns,
 			},
 		}
-		_, err = s.client.CoreV1().Pods(ns).Create(podObj)
+		_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), podObj, metav1.CreateOptions{})
 		c.Assert(err, check.IsNil)
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		err = waitForPodContainersRunning(ctx, s.clusterClient, podObj, ns)
@@ -285,7 +285,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 		} else {
 			c.Assert(err, check.ErrorMatches, tt.err)
 		}
-		err = cleanupPod(s.clusterClient, "pod1", ns)
+		err = cleanupPod(context.TODO(), s.clusterClient, "pod1", ns)
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -356,10 +356,10 @@ func (s *S) TestWaitForPod(c *check.C) {
 		if len(tt.containers) > 0 {
 			pod.Spec.Containers = tt.containers
 		}
-		_, err = s.client.CoreV1().Pods(ns).Create(pod)
+		_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
 		c.Assert(err, check.IsNil)
 		if tt.evt != nil {
-			_, err = s.client.CoreV1().Events(ns).Create(tt.evt)
+			_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), tt.evt, metav1.CreateOptions{})
 			c.Assert(err, check.IsNil)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -370,10 +370,10 @@ func (s *S) TestWaitForPod(c *check.C) {
 		} else {
 			c.Assert(err, check.ErrorMatches, tt.err)
 		}
-		err = cleanupPod(s.clusterClient, "pod1", ns)
+		err = cleanupPod(context.TODO(), s.clusterClient, "pod1", ns)
 		c.Assert(err, check.IsNil)
 		if tt.evt != nil {
-			err = s.client.CoreV1().Events(ns).Delete(tt.evt.Name, nil)
+			err = s.client.CoreV1().Events(ns).Delete(context.TODO(), tt.evt.Name, metav1.DeleteOptions{})
 			c.Assert(err, check.IsNil)
 		}
 	}
@@ -381,12 +381,12 @@ func (s *S) TestWaitForPod(c *check.C) {
 
 func (s *S) TestCleanupPods(c *check.C) {
 	ns := "default"
-	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "rs1",
 			Namespace: ns,
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	controllerKind := appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
 	for i := 0; i < 3; i++ {
@@ -394,7 +394,7 @@ func (s *S) TestCleanupPods(c *check.C) {
 		if i == 2 {
 			labels["a"] = "y"
 		}
-		_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+		_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("pod-%d", i),
 				Namespace: ns,
@@ -403,14 +403,14 @@ func (s *S) TestCleanupPods(c *check.C) {
 					*metav1.NewControllerRef(rs, controllerKind),
 				},
 			},
-		})
+		}, metav1.CreateOptions{})
 		c.Assert(err, check.IsNil)
 	}
-	err = cleanupPods(s.clusterClient, metav1.ListOptions{
+	err = cleanupPods(context.TODO(), s.clusterClient, metav1.ListOptions{
 		LabelSelector: "a=x",
 	}, rs)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.DeepEquals, []apiv1.Pod{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -450,7 +450,7 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
+	dep, err := s.client.AppsV1().Deployments(ns).Create(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: ns,
@@ -472,9 +472,9 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -483,9 +483,9 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: ns,
@@ -494,24 +494,24 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version.Version())
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupReplicas(c *check.C) {
 	ns := "tsuru_pool"
-	dep, err := s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
+	dep, err := s.client.AppsV1().Deployments(ns).Create(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp",
 			Namespace: ns,
@@ -526,9 +526,9 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+	rs, err := s.client.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -539,9 +539,9 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: ns,
@@ -552,31 +552,31 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	err = cleanupReplicas(s.clusterClient, dep)
+	err = cleanupReplicas(context.TODO(), s.clusterClient, dep)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
-	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
 }
 
 func (s *S) TestCleanupDaemonSet(c *check.C) {
 	ns := s.client.PoolNamespace("pool")
-	ds, err := s.client.AppsV1().DaemonSets(ns).Create(&appsv1.DaemonSet{
+	ds, err := s.client.AppsV1().DaemonSets(ns).Create(context.TODO(), &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1",
 			Namespace: ns,
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "node-container-bs-pool-p1-xyz",
 			Namespace: ns,
@@ -591,14 +591,14 @@ func (s *S) TestCleanupDaemonSet(c *check.C) {
 				*metav1.NewControllerRef(ds, appsv1.SchemeGroupVersion.WithKind("DaemonSet")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	err = cleanupDaemonSet(s.clusterClient, "bs", "p1")
+	err = cleanupDaemonSet(context.TODO(), s.clusterClient, "bs", "p1")
 	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1().DaemonSets(ns).List(metav1.ListOptions{})
+	daemons, err := s.client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -646,7 +646,7 @@ func (s *S) TestGetServicePorts(c *check.C) {
 			Ports: []apiv1.ServicePort{{NodePort: 123}, {NodePort: 456}},
 		},
 	}
-	_, err = s.client.CoreV1().Services(ns).Create(svc)
+	_, err = s.client.CoreV1().Services(ns).Create(context.TODO(), svc, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	err = s.factory.Core().V1().Services().Informer().GetStore().Add(svc)
 	c.Assert(err, check.IsNil)

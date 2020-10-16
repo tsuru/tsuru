@@ -39,7 +39,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
+	hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	cpu := resource.MustParse("500m")
 	c.Assert(hpa, check.DeepEquals, &autoscalingv2.HorizontalPodAutoscaler{
@@ -185,7 +185,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		c.Logf("test %d", i)
 		tt.scenario()
 
-		hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
+		hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
 		c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
@@ -213,12 +213,12 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 }
 

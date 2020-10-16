@@ -202,14 +202,14 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			p.Status.Phase = apiv1.PodFailed
 			p.Status.Reason = "Evicted"
-			_, err = s.client.CoreV1().Pods(ns).Update(&p)
+			_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), &p, metav1.UpdateOptions{})
 			c.Assert(err, check.IsNil)
 		}
 	})
@@ -386,14 +386,14 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(podlist.Items), check.Equals, 1)
 	s.waitPodUpdate(c, func() {
 		for _, p := range podlist.Items {
 			p.Status.Phase = apiv1.PodFailed
 			p.Status.Reason = "Evicted"
-			_, err = s.client.CoreV1().Pods(ns).Update(&p)
+			_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), &p, metav1.UpdateOptions{})
 			c.Assert(err, check.IsNil)
 		}
 	})

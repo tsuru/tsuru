@@ -62,7 +62,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 	if len(args.Units) > 0 {
 		pods = filterPods(pods, args.Units)
 	}
-	return listLogsFromPods(clusterClient, ns, pods, args)
+	return listLogsFromPods(ctx, clusterClient, ns, pods, args)
 }
 
 func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
@@ -129,7 +129,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 	return watcher, nil
 }
 
-func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns string, pods []*apiv1.Pod, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	var wg sync.WaitGroup
 
 	errs := make([]error, len(pods))
@@ -151,7 +151,7 @@ func listLogsFromPods(clusterClient *ClusterClient, ns string, pods []*apiv1.Pod
 				TailLines:  tailLimit,
 				Timestamps: true,
 			})
-			stream, err := request.Stream()
+			stream, err := request.Stream(ctx)
 			if err != nil {
 				errs[index] = err
 				return
@@ -295,7 +295,7 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 		TailLines:  &tailLines,
 		Timestamps: true,
 	})
-	stream, err := request.Stream()
+	stream, err := request.Stream(k.ctx)
 	if err != nil {
 		k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
 		return

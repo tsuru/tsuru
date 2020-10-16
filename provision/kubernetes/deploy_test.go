@@ -79,7 +79,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	one := int32(1)
 	ten := int32(10)
@@ -198,7 +198,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 	}
 	c.Assert(dep, check.DeepEquals, expected)
-	srv, err := s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -238,7 +238,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
-	srvV1, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-v1", metav1.GetOptions{})
+	srvV1, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedSvcV1 := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -282,7 +282,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		},
 	}
 	c.Assert(srvV1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(srvV1, expectedSvcV1), "\n")))
-	srvHeadless, err := s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
+	srvHeadless, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvHeadless, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -323,7 +323,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Type:      apiv1.ServiceTypeClusterIP,
 		},
 	})
-	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get("app-myapp", metav1.GetOptions{})
+	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -402,7 +402,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 	waitDep()
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	srv, err := s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -448,7 +448,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
-	srv, err = s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
+	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -531,9 +531,9 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPorts(c *check.C) {
 	waitDep()
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1-units", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 }
 
@@ -562,7 +562,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	waitDep()
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	version = newCommittedVersion(c, a, map[string]interface{}{
@@ -588,7 +588,7 @@ func (s *S) TestServiceManagerDeployServiceNoExposedPortsRemoveExistingService(c
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	_, err = s.client.CoreV1().Services(nsName).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
 }
 
@@ -716,7 +716,7 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		var dep *appsv1.Deployment
 		nsName, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
-		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p1", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 		c.Assert(err == nil || k8sErrors.IsNotFound(err), check.Equals, true)
 		waitDep()
 		tt.fn(dep)
@@ -922,11 +922,11 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 		waitDep()
 		nsName, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
-		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-web", metav1.GetOptions{})
+		dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, tt.expectedReadiness)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, tt.expectedLiveness)
-		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get("myapp-p2", metav1.GetOptions{})
+		dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.IsNil)
@@ -964,7 +964,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
 		PostStart: &apiv1.Handler{
@@ -982,7 +982,7 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	cmd := dep.Spec.Template.Spec.Containers[0].Command
 	c.Assert(cmd, check.HasLen, 3)
 	c.Assert(cmd[2], check.Matches, `.*before cmd1 && before cmd2 && exec proc1$`)
-	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, expectedLifecycle)
 	cmd = dep.Spec.Template.Spec.Containers[0].Command
@@ -1061,7 +1061,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 		})
 		c.Assert(err, check.IsNil)
 		waitDep()
-		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].Lifecycle, check.DeepEquals, tt.expectedLife)
 		c.Assert(dep.Spec.Template.Spec.TerminationGracePeriodSeconds, check.DeepEquals, &tt.expectedGrace)
@@ -1124,20 +1124,20 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8080},
 		{ContainerPort: 9000},
 		{ContainerPort: 8001},
 	})
-	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{
 		{ContainerPort: 8888},
 	})
 
-	srv, err := s.client.CoreV1().Services(ns).Get("myapp-web", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
 		{
@@ -1159,7 +1159,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 			TargetPort: intstr.FromInt(8001),
 		},
 	})
-	srv, err = s.client.CoreV1().Services(ns).Get("myapp-p2", metav1.GetOptions{})
+	srv, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
 		{
@@ -1170,7 +1170,7 @@ func (s *S) TestServiceManagerDeployServiceWithKubernetesPorts(c *check.C) {
 		},
 	})
 
-	srv, err = s.client.CoreV1().Services(ns).Get("myapp-web-units", metav1.GetOptions{})
+	srv, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-units", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Spec.Ports, check.DeepEquals, []apiv1.ServicePort{
 		{
@@ -1268,14 +1268,14 @@ func (s *S) TestServiceManagerDeployServiceWithZeroKubernetesPorts(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Ports, check.DeepEquals, []apiv1.ContainerPort{})
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-web-units", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-units", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 }
 
@@ -1307,12 +1307,12 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
 		{Name: "registry-myreg.com"},
 	})
-	secrets, err := s.client.CoreV1().Secrets(ns).List(metav1.ListOptions{})
+	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
 		{
@@ -1372,7 +1372,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 			<-watchCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
-			s.client.AppsV1().Deployments(ns).Update(&depCopy)
+			s.client.AppsV1().Deployments(ns).Update(context.TODO(), &depCopy, metav1.UpdateOptions{})
 		}()
 		return false, nil, nil
 	})
@@ -1396,7 +1396,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ---> 1 of 1 new units ready.*? ---> Done updating units.*`)
 	c.Assert(buf.String(), check.Matches, `(?s).*  ---> pod-name-1 - msg1 \[c1\].*?  ---> pod-name-1 - msg2 \[c1, n1\].*`)
@@ -1468,7 +1468,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.DeepEquals, true)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? DELETING CREATED DEPLOYMENT AFTER FAILURE .*`)
 	c.Assert(deleteCalled, check.DeepEquals, true)
@@ -1542,7 +1542,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-web", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*`)
 }
@@ -1578,10 +1578,10 @@ func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep, check.NotNil)
-	daemon, err := s.client.Clientset.AppsV1().DaemonSets(ns).Get("node-container-bs-all", metav1.GetOptions{})
+	daemon, err := s.client.Clientset.AppsV1().DaemonSets(ns).Get(context.TODO(), "node-container-bs-all", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(daemon, check.NotNil)
 }
@@ -1638,7 +1638,7 @@ func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedUID := int64(1001)
 	c.Assert(dep.Spec.Template.Spec.SecurityContext, check.DeepEquals, &apiv1.PodSecurityContext{
@@ -1670,7 +1670,7 @@ func (s *S) TestServiceManagerDeployServiceWithResourceRequirements(c *check.C) 
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
@@ -1710,7 +1710,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(341, resource.BinarySI)
@@ -1752,7 +1752,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterPoolOvercommitFactor(c *ch
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedMemory := resource.NewQuantity(1024, resource.BinarySI)
 	expectedMemoryRequest := resource.NewQuantity(512, resource.BinarySI)
@@ -1858,7 +1858,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 		})
 		c.Assert(err, check.IsNil)
 		waitDep()
-		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+		dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(dep.Spec.Template.Spec.Containers[0].Resources, check.DeepEquals, tt.expected)
 	}
@@ -1890,7 +1890,7 @@ func (s *S) TestServiceManagerDeployServiceWithClusterWideMaxSurgeAndUnavailable
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	maxSurge := intstr.FromString("30%")
 	maxUnavailable := intstr.FromInt(2)
@@ -1924,7 +1924,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{})
 }
@@ -1968,15 +1968,15 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	v2Dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	v2Dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	v2Svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	v2Svc, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	depLabels := map[string]string{
@@ -2154,10 +2154,10 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	expected.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
 	expectedSvc.Labels["tsuru.io/restarts"] = "1"
 
-	v2Dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	v2Dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(v2Dep, check.DeepEquals, expected, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Dep, expected), "\n")))
-	v2Svc, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	v2Svc, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(v2Svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Svc, expectedSvc), "\n")))
 }
@@ -2223,15 +2223,15 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
 	expectedSvcV1.Spec.Selector["tsuru.io/is-isolated-run"] = "false"
 
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep, check.DeepEquals, expectedDep, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(dep, expectedDep), "\n")))
 
-	svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	svc, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svc, expectedSvc), "\n")))
 
-	svcV1, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	svcV1, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svcV1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcV1, expectedSvcV1), "\n")))
 }
@@ -2333,23 +2333,23 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	delete(expectedSvcV2.Labels, "tsuru.io/is-isolated-run")
 	delete(expectedSvcV2.Spec.Selector, "tsuru.io/is-isolated-run")
 
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep, check.DeepEquals, expectedDepBase, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(dep, expectedDepBase), "\n")))
 
-	depv2, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	depv2, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(depv2, check.DeepEquals, expectedDepV2, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(depv2, expectedDepV2), "\n")))
 
-	svc, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	svc, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svc, check.DeepEquals, expectedSvcBase, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svc, expectedSvcBase), "\n")))
 
-	svcv1, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	svcv1, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svcv1, check.DeepEquals, expectedSvcV1, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcv1, expectedSvcV1), "\n")))
 
-	svcv2, err := s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	svcv2, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svcv2, check.DeepEquals, expectedSvcV2, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcv2, expectedSvcV2), "\n")))
 }
@@ -2389,17 +2389,17 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), a.Name, []int{version1.Version()})
 	c.Assert(err, check.IsNil)
 
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p2", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p2-v1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
@@ -2411,26 +2411,26 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p2", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get("myapp-p2-v1", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 }
 
@@ -2450,7 +2450,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -2516,7 +2516,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -2637,7 +2637,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -2735,7 +2735,7 @@ func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string{})
@@ -2751,7 +2751,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		inputFile:         "/data/context.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
@@ -2786,7 +2786,7 @@ func (s *S) TestCreateImageBuildPodContainerOnSinglePool(c *check.C) {
 		inputFile:         "/data/context.tar.gz",
 	})
 	c.Assert(err, check.IsNil)
-	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
@@ -2840,7 +2840,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 			<-watchCalled
 			time.Sleep(time.Second)
 			podCopy.Status.ContainerStatuses = nil
-			s.clusterClient.CoreV1().Pods(ns).Update(&podCopy)
+			s.clusterClient.CoreV1().Pods(ns).Update(context.TODO(), &podCopy, metav1.UpdateOptions{})
 		}()
 		return false, nil, nil
 	})
@@ -2862,7 +2862,7 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	<-podReactorDone
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(buf.String(), check.Matches, `(?s).*stdout data.*`)
@@ -2941,7 +2941,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Volumes, check.DeepEquals, []apiv1.Volume{
 		{
@@ -2997,7 +2997,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
 	waitDep()
@@ -3031,30 +3031,30 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 
-	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
+	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
 			Namespace: ns,
 		},
 		Reason:  "Unhealthy",
 		Message: "my evt message",
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -3113,7 +3113,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 				c.Fatal("timeout waiting for deployment to finish rollout")
 			case <-time.After(time.Second):
 			}
-			dep, depErr := s.client.AppsV1().Deployments(ns).Get(depName, metav1.GetOptions{})
+			dep, depErr := s.client.AppsV1().Deployments(ns).Get(context.TODO(), depName, metav1.GetOptions{})
 			if k8sErrors.IsNotFound(depErr) {
 				continue
 			}
@@ -3122,7 +3122,7 @@ func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C
 				return
 			}
 			dep.Status.UnavailableReplicas = dep.Status.UnavailableReplicas - 1
-			_, depErr = s.client.AppsV1().Deployments(ns).UpdateStatus(dep)
+			_, depErr = s.client.AppsV1().Deployments(ns).UpdateStatus(context.TODO(), dep, metav1.UpdateOptions{})
 			c.Assert(depErr, check.IsNil)
 		}
 	}()
@@ -3187,7 +3187,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 			labelsCp[k] = v
 		}
 		go func() {
-			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "replica-for-" + dep.Name,
 					Labels: labelsCp,
@@ -3198,7 +3198,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 						*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
 					},
 				},
-			})
+			}, metav1.CreateOptions{})
 			c.Assert(repErr, check.IsNil)
 		}()
 		return false, nil, nil
@@ -3226,21 +3226,21 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-2-1\" not ready.*")
 	waitDep()
 
-	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
 	c.Assert(buf.String(), check.Matches, `(?s).*---- Updating units \[p1\] \[version 1\] ----.*ROLLING BACK AFTER FAILURE.*`)
 	err = cleanupDeployment(context.TODO(), s.clusterClient, a, "p1", version1.Version())
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Events(ns).Create(&apiv1.Event{
+	_, err = s.client.CoreV1().Events(ns).Create(context.TODO(), &apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod.evt1",
 			Namespace: ns,
 		},
 		Reason:  "Unhealthy",
 		Message: "my evt message",
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
@@ -3323,7 +3323,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackPendingPod(c *check.C) {
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
-	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 }
@@ -3347,7 +3347,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
+	_, err = s.client.AppsV1().Deployments(ns).Create(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-p1",
 		},
@@ -3356,7 +3356,7 @@ func (s *S) TestServiceManagerDeployServiceNoRollbackFullTimeoutSameRevision(c *
 				MatchLabels: map[string]string{},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
@@ -3427,10 +3427,10 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 	}
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	rs, err := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(&appsv1.ReplicaSet{
+	rs, err := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xxx",
 			Namespace: ns,
@@ -3439,9 +3439,9 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 				*metav1.NewControllerRef(&deps.Items[0], appsv1.SchemeGroupVersion.WithKind("Deployment")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(&apiv1.Pod{
+	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1-xyz",
 			Namespace: ns,
@@ -3450,20 +3450,20 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	err = m.RemoveService(context.TODO(), a, "p1", version.Version())
 	c.Assert(err, check.IsNil)
-	deps, err = s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err = s.client.Clientset.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 0)
-	srvs, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
+	srvs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
-	replicas, err := s.client.Clientset.AppsV1().ReplicaSets(ns).List(metav1.ListOptions{})
+	replicas, err := s.client.Clientset.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 0)
 }
@@ -3494,10 +3494,10 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s).*my dep err.*")
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+	deps, err := s.client.Clientset.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(deps.Items, check.HasLen, 1)
-	srvs, err := s.client.CoreV1().Services(ns).List(metav1.ListOptions{})
+	srvs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
 }
@@ -3564,14 +3564,14 @@ func (s *S) TestEnsureNamespace(c *check.C) {
 	}
 	for _, tt := range tests {
 		s.clusterClient.CustomData = tt.customData
-		err := ensureNamespace(s.clusterClient, tt.name)
+		err := ensureNamespace(context.TODO(), s.clusterClient, tt.name)
 		c.Assert(err, check.IsNil)
-		nss, err := s.client.CoreV1().Namespaces().List(metav1.ListOptions{})
+		nss, err := s.client.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(nss.Items, check.DeepEquals, []apiv1.Namespace{
 			tt.expected,
 		})
-		err = s.client.CoreV1().Namespaces().Delete(tt.name, nil)
+		err = s.client.CoreV1().Namespaces().Delete(context.TODO(), tt.name, metav1.DeleteOptions{})
 		c.Assert(err, check.IsNil)
 	}
 }
@@ -3601,11 +3601,11 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 	waitDep()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-units", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	srv, err := s.client.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	srv, err := s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv, check.DeepEquals, &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3709,23 +3709,23 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	c.Assert(err.Error(), check.Matches, `(?s).*error rolling back updated service for myapp\[p1\] \[version 1\]: deployment "myapp-p1" exceeded its progress deadline.*`)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
-	dep, err = s.client.AppsV1().Deployments(ns).Get("myapp-p2", metav1.GetOptions{})
+	dep, err = s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p2", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p2-v1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p2-v2", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 	c.Check(rolloutFailureCalled, check.Equals, true)
 	c.Check(evt.Done(err), check.IsNil)
@@ -3787,14 +3787,14 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Assert(err.Error(), check.Matches, `(?s).*deployment \"myapp-p1\" exceeded its progress deadline.*`)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1().Deployments(ns).Get("myapp-p1", metav1.GetOptions{})
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v1", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get("myapp-p1-v2", metav1.GetOptions{})
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 	c.Check(evt.Done(err), check.IsNil)
 	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*ERROR DURING ROLLBACK.*`)
@@ -3954,10 +3954,10 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 		},
 	}
 
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Create(legacyDep)
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Create(context.TODO(), legacyDep, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Create(legacySvc)
+	_, err = s.client.Clientset.CoreV1().Services(ns).Create(context.TODO(), legacySvc, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	return legacyDep, legacySvc
