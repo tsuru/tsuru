@@ -113,7 +113,7 @@ func (s *S) TestBuildPodWithPoolNamespaces(c *check.C) {
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	var counter int32
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)
@@ -199,7 +199,7 @@ func (s *S) TestImageTagPushAndInspectWithPoolNamespaces(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	var counter int32
-	nsName, err := s.client.AppNamespace(a)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	s.client.PrependReactor("create", "namespaces", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		atomic.AddInt32(&counter, 1)

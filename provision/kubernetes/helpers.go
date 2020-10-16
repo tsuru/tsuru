@@ -546,7 +546,7 @@ func baseVersionForApp(ctx context.Context, client *ClusterClient, a provision.A
 }
 
 func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -574,7 +574,7 @@ func allDeploymentsForAppNS(ctx context.Context, client *ClusterClient, ns strin
 }
 
 func allServicesForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]apiv1.Service, error) {
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +639,7 @@ svcsLoop:
 }
 
 func allDeploymentsForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]appsv1.Deployment, error) {
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -793,7 +793,7 @@ func cleanupDeployment(ctx context.Context, client *ClusterClient, a provision.A
 }
 
 func allServicesForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]apiv1.Service, error) {
-	ns, err := client.AppNamespace(a)
+	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -997,9 +997,9 @@ type execOpts struct {
 	tty          bool
 }
 
-func execCommand(opts execOpts) error {
+func execCommand(ctx context.Context, opts execOpts) error {
 	client := opts.client
-	ns, err := client.AppNamespace(opts.app)
+	ns, err := client.AppNamespace(ctx, opts.app)
 	if err != nil {
 		return err
 	}
@@ -1072,11 +1072,11 @@ type runSinglePodArgs struct {
 }
 
 func runPod(ctx context.Context, args runSinglePodArgs) error {
-	err := ensureNamespaceForApp(args.client, args.app)
+	err := ensureNamespaceForApp(ctx, args.client, args.app)
 	if err != nil {
 		return err
 	}
-	err = ensureServiceAccountForApp(args.client, args.app)
+	err = ensureServiceAccountForApp(ctx, args.client, args.app)
 	if err != nil {
 		return err
 	}
@@ -1094,7 +1094,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	} else {
 		tty = true
 	}
-	ns, err := args.client.AppNamespace(args.app)
+	ns, err := args.client.AppNamespace(ctx, args.app)
 	if err != nil {
 		return err
 	}
@@ -1208,12 +1208,12 @@ nodesloop:
 	return nil, provision.ErrNodeNotFound
 }
 
-func updateAppNamespace(client *ClusterClient, appName, namespaceName string) error {
+func updateAppNamespace(ctx context.Context, client *ClusterClient, appName, namespaceName string) error {
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return err
 	}
-	oldAppCR, err := getAppCR(client, appName)
+	oldAppCR, err := getAppCR(ctx, client, appName)
 	if err != nil {
 		return err
 	}
@@ -1221,16 +1221,16 @@ func updateAppNamespace(client *ClusterClient, appName, namespaceName string) er
 		return nil
 	}
 	oldAppCR.Spec.NamespaceName = namespaceName
-	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(oldAppCR)
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(ctx, oldAppCR, metav1.UpdateOptions{})
 	return err
 }
 
-func getAppCR(client *ClusterClient, appName string) (*tsuruv1.App, error) {
+func getAppCR(ctx context.Context, client *ClusterClient, appName string) (*tsuruv1.App, error) {
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
 		return nil, err
 	}
-	return tclient.TsuruV1().Apps(client.Namespace()).Get(appName, metav1.GetOptions{})
+	return tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, appName, metav1.GetOptions{})
 }
 
 func waitForContainerFinished(ctx context.Context, client *ClusterClient, podName, containerName, namespace string) error {

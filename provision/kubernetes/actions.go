@@ -99,7 +99,7 @@ var updateAppCR = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, updateAppNamespace(client, params.old.GetName(), client.PoolNamespace(params.new.GetPool()))
+		return nil, updateAppNamespace(ctx.Context, client, params.old.GetName(), client.PoolNamespace(params.new.GetPool()))
 	},
 	Backward: func(ctx action.BWContext) {
 		params := ctx.Params[0].(updatePipelineParams)
@@ -114,7 +114,7 @@ func backwardCR(ctx context.Context, params updatePipelineParams) error {
 	if err != nil {
 		return err
 	}
-	return updateAppNamespace(client, params.old.GetName(), client.PoolNamespace(params.old.GetPool()))
+	return updateAppNamespace(ctx, client, params.old.GetName(), client.PoolNamespace(params.old.GetPool()))
 }
 
 var removeOldAppResources = action.Action{
@@ -126,7 +126,7 @@ var removeOldAppResources = action.Action{
 			log.Errorf("failed to remove old resources: %v", err)
 			return nil, nil
 		}
-		oldAppCR, err := getAppCR(client, params.old.GetName())
+		oldAppCR, err := getAppCR(ctx.Context, client, params.old.GetName())
 		if err != nil {
 			log.Errorf("failed to remove old resources: %v", err)
 			return nil, nil
