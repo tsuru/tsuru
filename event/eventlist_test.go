@@ -7,9 +7,11 @@ package event_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -70,7 +72,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	var checkFilters = func(f *event.Filter, expected interface{}) {
 		evts, err := event.List(f)
 		c.Assert(err, check.IsNil)
-		c.Assert(evts, eventtest.EvtEquals, expected)
+		c.Assert(evts, eventtest.EvtEquals, expected, check.Commentf("Diff:\n%s", strings.Join(pretty.Diff(evts, expected), "\n")))
 	}
 	create(&event.Opts{
 		Target: event.Target{Type: "app", Value: "myapp"},
@@ -110,37 +112,28 @@ func (s *S) TestListFilterMany(c *check.C) {
 		InternalKind: "healer",
 		Allowed:      event.Allowed(permission.PermAppAdmin),
 	})
-	createi(&event.Opts{
-		Target:       event.Target{Type: "nodex", Value: "http://10.0.1.3"},
-		InternalKind: "healer",
-		Allowed:      event.Allowed(permission.PermAppAdmin),
-	})
-	err := event.MarkAsRemoved(event.Target{Type: "nodex", Value: "http://10.0.1.3"})
-	c.Assert(err, check.IsNil)
-	allEvts[len(allEvts)-2].Done(nil)
-	allEvts[len(allEvts)-3].Done(errors.New("my err"))
-	checkFilters(&event.Filter{Sort: "_id"}, allEvts[:len(allEvts)-1])
-	checkFilters(&event.Filter{Running: boolPtr(false), Sort: "_id"}, allEvts[len(allEvts)-3:len(allEvts)-1])
-	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-3])
-	checkFilters(&event.Filter{ErrorOnly: true, Sort: "_id"}, allEvts[len(allEvts)-3])
+	allEvts[len(allEvts)-1].Done(nil)
+	allEvts[len(allEvts)-2].Done(errors.New("my err"))
+	checkFilters(&event.Filter{Sort: "_id"}, allEvts)
+	checkFilters(&event.Filter{Running: boolPtr(false), Sort: "_id"}, allEvts[len(allEvts)-2:])
+	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-2])
+	checkFilters(&event.Filter{ErrorOnly: true, Sort: "_id"}, allEvts[len(allEvts)-2])
 	checkFilters(&event.Filter{Target: event.Target{Type: "app"}, Sort: "_id"}, []*event.Event{allEvts[0], allEvts[1]})
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "myapp"}}, allEvts[0])
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "xapp1"}}, allEvts[0])
 	checkFilters(&event.Filter{Target: event.Target{Type: "app", Value: "xapp2"}}, allEvts[0])
-	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
+	checkFilters(&event.Filter{KindType: event.KindTypeInternal, Sort: "_id"}, allEvts[3:])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, Sort: "_id"}, allEvts[:3])
 	checkFilters(&event.Filter{KindType: event.KindTypePermission, KindNames: []string{"kind"}}, nil)
-	checkFilters(&event.Filter{KindType: event.KindTypeInternal, KindNames: []string{"healer"}, Sort: "_id"}, allEvts[3:len(allEvts)-1])
+	checkFilters(&event.Filter{KindType: event.KindTypeInternal, KindNames: []string{"healer"}, Sort: "_id"}, allEvts[3:])
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeUser, Sort: "_id"}, allEvts[:3])
-	checkFilters(&event.Filter{OwnerType: event.OwnerTypeInternal, Sort: "_id"}, allEvts[3:len(allEvts)-1])
+	checkFilters(&event.Filter{OwnerType: event.OwnerTypeInternal, Sort: "_id"}, allEvts[3:])
 	checkFilters(&event.Filter{OwnerType: event.OwnerTypeUser, OwnerName: s.token.GetUserName(), Sort: "_id"}, allEvts[:3])
-	checkFilters(&event.Filter{Since: t0, Sort: "_id"}, allEvts[1:len(allEvts)-1])
+	checkFilters(&event.Filter{Since: t0, Sort: "_id"}, allEvts[1:])
 	checkFilters(&event.Filter{Until: t05, Sort: "_id"}, allEvts[:2])
 	checkFilters(&event.Filter{Since: t0, Until: t1, Sort: "_id"}, allEvts[1:3])
 	checkFilters(&event.Filter{Limit: 2, Sort: "_id"}, allEvts[:2])
-	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-2])
-	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}}, allEvts[:0])
-	checkFilters(&event.Filter{Target: event.Target{Type: "nodex"}, IncludeRemoved: true}, allEvts[5:6])
+	checkFilters(&event.Filter{Limit: 1, Sort: "-_id"}, allEvts[len(allEvts)-1])
 	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{}, Sort: "_id"}, allEvts[:0])
 	checkFilters(&event.Filter{AllowedTargets: []event.TargetFilter{
 		{Type: "app"},
@@ -163,7 +156,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 	}, Sort: "_id"}, allEvts[0])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
 		{Scheme: permission.PermAll, Context: permission.Context(permTypes.CtxGlobal, "")},
-	}, Sort: "_id"}, allEvts[:len(allEvts)-1])
+	}, Sort: "_id"}, allEvts[:])
 	checkFilters(&event.Filter{Permissions: []permission.Permission{
 		{Scheme: permission.PermAll},
 	}, Sort: "_id"}, allEvts[:0])
