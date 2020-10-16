@@ -200,7 +200,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
@@ -384,7 +384,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	ns, err := s.client.AppNamespace(a)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	podlist, err := s.client.CoreV1().Pods(ns).List(metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

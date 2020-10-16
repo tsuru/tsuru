@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -33,7 +34,7 @@ func (opts *volumeOptions) isPersistent() bool {
 	return !allowedNonPersistentVolumes.Includes(opts.Plugin)
 }
 
-func createVolumesForApp(client *ClusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
+func createVolumesForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
 	volumes, err := volume.ListByApp(app.GetName())
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
@@ -46,7 +47,7 @@ func createVolumesForApp(client *ClusterClient, app provision.App) ([]apiv1.Volu
 			return nil, nil, err
 		}
 		if opts.isPersistent() {
-			err = createVolume(client, &volumes[i], opts, app)
+			err = createVolume(ctx, client, &volumes[i], opts, app)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -185,8 +186,8 @@ func deleteVolume(client *ClusterClient, name string) error {
 	return nil
 }
 
-func createVolume(client *ClusterClient, v *volume.Volume, opts *volumeOptions, app provision.App) error {
-	namespace, err := getNamespaceForVolume(client, v)
+func createVolume(ctx context.Context, client *ClusterClient, v *volume.Volume, opts *volumeOptions, app provision.App) error {
+	namespace, err := getNamespaceForVolume(ctx, client, v)
 	if err != nil {
 		return err
 	}
@@ -277,7 +278,7 @@ func volumeExists(client *ClusterClient, name string) (bool, error) {
 	return false, nil
 }
 
-func getNamespaceForVolume(client *ClusterClient, v *volume.Volume) (string, error) {
+func getNamespaceForVolume(ctx context.Context, client *ClusterClient, v *volume.Volume) (string, error) {
 	binds, err := v.LoadBinds()
 	if err != nil {
 		return "", err
@@ -287,7 +288,7 @@ func getNamespaceForVolume(client *ClusterClient, v *volume.Volume) (string, err
 	}
 	var namespace string
 	for _, b := range binds {
-		ns, err := client.appNamespaceByName(b.ID.App)
+		ns, err := client.appNamespaceByName(ctx, b.ID.App)
 		if err != nil {
 			return "", err
 		}

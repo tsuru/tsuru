@@ -40,7 +40,6 @@ require (
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/pat v0.0.0-20131205071617-ae2e162c4b2a // indirect
 	github.com/gorilla/websocket v1.4.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/hashicorp/go-version v0.0.0-20160519212729-0181db470237
 	github.com/heptio/authenticator v0.3.0 // indirect
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
@@ -65,7 +64,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
 	github.com/prometheus/client_golang v1.1.0
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90
+	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
 	github.com/rancher/kontainer-engine v0.0.0-00010101000000-000000000000
@@ -97,8 +96,8 @@ require (
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
-	golang.org/x/net v0.0.0-20190812203447-cdfb69ac37fc
+	golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
@@ -110,11 +109,11 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20160818020120-3f83fa500528
 	gopkg.in/redis.v3 v3.6.4
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.0.0-20190918195907-bd6ac527cfd2
-	k8s.io/apiextensions-apiserver v0.0.0-20190918201827-3de75813f604
-	k8s.io/apimachinery v0.0.0-20190913080033-27d36303b655
+	k8s.io/api v0.18.9
+	k8s.io/apiextensions-apiserver v0.18.9
+	k8s.io/apimachinery v0.18.9
 	k8s.io/client-go v11.0.1-0.20190805182715-88a2adca7e76+incompatible
-	k8s.io/code-generator v0.0.0-20190912054826-cd179ad6a269
+	k8s.io/code-generator v0.18.9
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
@@ -128,6 +127,6 @@ replace (
 	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20161208181325-20d25e280405
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190817020851-f2f3a405f61d
 	k8s.io/client-go => k8s.io/client-go v0.0.0-20190918200256-06eb1244587a
-	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
+	k8s.io/code-generator => k8s.io/code-generator v0.18.9
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190709113604-33be087ad058
 )

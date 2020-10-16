@@ -105,10 +105,10 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	_, err := s.conn.Apps().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
-	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	for _, a := range appList.Items {
-		err = s.client.TsuruV1().Apps("tsuru").Delete(a.GetName(), &metav1.DeleteOptions{})
+		err = s.client.TsuruV1().Apps("tsuru").Delete(context.TODO(), a.GetName(), metav1.DeleteOptions{})
 		c.Assert(err, check.IsNil)
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()
@@ -143,7 +143,7 @@ func (s *S) TestMigrateAppsCRDs(c *check.C) {
 	}
 	err := MigrateAppsCRDs()
 	c.Assert(err, check.NotNil)
-	appList, err := s.client.TsuruV1().Apps("tsuru").List(metav1.ListOptions{})
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 2)
 	c.Assert(appList.Items[0].Name, check.Equals, "app-kube")
