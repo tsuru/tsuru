@@ -210,15 +210,8 @@ func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
 }
 
 func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
-	createDataHelp, err := provider.FormattedCreateOptions()
-	if err != nil {
-		createDataHelp = map[string]string{
-			"error": fmt.Sprintf("unable to get create flags: %v", err),
-		}
-	}
 	return provTypes.ClusterHelpInfo{
 		CustomDataHelp:  clusterHelp,
-		CreateDataHelp:  createDataHelp,
 		ProvisionerHelp: "Represents a kubernetes cluster, the address parameter must point to a valid kubernetes apiserver endpoint.",
 	}
 }
