@@ -56,7 +56,6 @@ type DeployData struct {
 	User        string
 	Origin      string
 	CanRollback bool
-	RemoveDate  time.Time `bson:",omitempty"`
 	Diff        string
 	Message     string
 }
@@ -470,7 +469,6 @@ func deployDataToEvent(data *DeployData) error {
 	evt.StructuredLog = []event.LogEntry{
 		{Message: data.Log},
 	}
-	evt.RemoveDate = data.RemoveDate
 	a, err := GetByName(context.TODO(), data.App)
 	if err == nil {
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),

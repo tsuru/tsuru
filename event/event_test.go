@@ -1079,7 +1079,6 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 		Since:          time.Now(),
 		Until:          time.Now(),
 		Running:        &t,
-		IncludeRemoved: true,
 		Raw:            bson.M{"a": 1},
 		AllowedTargets: []TargetFilter{{Type: TargetTypeApp, Values: []string{"a1"}}},
 		Limit:          50,

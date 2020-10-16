@@ -174,7 +174,6 @@ func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, strin
 			e.StartTime = time.Time{}
 			e.EndTime = time.Time{}
 			e.LockUpdateTime = time.Time{}
-			e.RemoveDate = time.Time{}
 		}
 	}
 	return check.DeepEquals.Check([]interface{}{evts[0], evts[1]}, names)

@@ -211,7 +211,6 @@ type eventData struct {
 	Error           string
 	Log             string     `bson:",omitempty"`
 	StructuredLog   []LogEntry `bson:",omitempty"`
-	RemoveDate      time.Time  `bson:",omitempty"`
 	CancelInfo      cancelInfo
 	Cancelable      bool
 	Running         bool
@@ -454,7 +453,6 @@ type Filter struct {
 	Since          time.Time
 	Until          time.Time
 	Running        *bool
-	IncludeRemoved bool
 	ErrorOnly      bool
 	Raw            bson.M
 	AllowedTargets []TargetFilter
@@ -575,9 +573,6 @@ func (f *Filter) toQuery() (bson.M, error) {
 	}
 	if f.Running != nil {
 		query["running"] = *f.Running
-	}
-	if !f.IncludeRemoved {
-		query["removedate"] = bson.M{"$exists": false}
 	}
 	if f.ErrorOnly {
 		query["error"] = bson.M{"$ne": ""}
@@ -715,21 +710,6 @@ func List(filter *Filter) ([]*Event, error) {
 		evts[i] = transformEvent(allData[i])
 	}
 	return evts, nil
-}
-
-func MarkAsRemoved(target Target) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	coll := conn.Events()
-	now := time.Now().UTC()
-	_, err = coll.UpdateAll(bson.M{
-		"target":     target,
-		"removedate": bson.M{"$exists": false},
-	}, bson.M{"$set": bson.M{"removedate": now}})
-	return err
 }
 
 func New(opts *Opts) (*Event, error) {

@@ -153,7 +153,6 @@ func (s *Storage) Events() *storage.Collection {
 	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}
 	uniqueIdIndex := mgo.Index{Key: []string{"uniqueid"}}
 	runningIndex := mgo.Index{Key: []string{"running"}}
-	removedIndex := mgo.Index{Key: []string{"removedate"}}
 	allowedSchemeIndex := mgo.Index{Key: []string{"allowed.scheme"}}
 	latestTargetKindIndex := mgo.Index{Key: []string{"target.value", "kind.name", "-starttime"}, Background: true}
 	latestTargetIndex := mgo.Index{Key: []string{"target.value", "-starttime"}, Background: true}
@@ -167,7 +166,6 @@ func (s *Storage) Events() *storage.Collection {
 	c.EnsureIndex(startTimeIndex)
 	c.EnsureIndex(uniqueIdIndex)
 	c.EnsureIndex(runningIndex)
-	c.EnsureIndex(removedIndex)
 	c.EnsureIndex(allowedSchemeIndex)
 	c.EnsureIndex(latestTargetKindIndex)
 	c.EnsureIndex(latestTargetIndex)
