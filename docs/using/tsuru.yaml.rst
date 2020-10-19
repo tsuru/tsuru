@@ -67,7 +67,11 @@ before switching the router to point to the new units, so your application will
 never be unresponsive. You can configure the maximum time to wait for the
 application to respond with the ``docker:healthcheck:max-time`` config.
 
-Here is how you can configure a health check in your yaml file:
+Health checks may also be used by the application router and by kubernetes, so
+you must ensure that the check is consistent to prevent units from being
+temporarily removed from the router.
+
+Example on how you can configure a HTTP base health check in your yaml file:
 
 .. highlight:: yaml
 
@@ -77,29 +81,45 @@ Here is how you can configure a health check in your yaml file:
       path: /healthcheck
       scheme: http
       method: GET
-      status: 200
       headers:
         Host: test.com
         X-Custom-Header: xxx
-      match: .*OKAY.*
       allowed_failures: 0
+      interval_seconds: 10
+      timeout_seconds: 60
+
+      // Ignored in kubernetes provisioner pools:
+      status: 200
       use_in_router: false
+      match: .*OKAY.*
       router_body: content
+
+
+Example of a command based healthcheck (kubernetes only):
+
+.. highlight:: yaml
+
+::
+
+    healthcheck:
+      command: ["curl", "-f", "-XPOST", "http://localhost:8888"]
 
 * ``healthcheck:path``: Which path to call in your application. This path will
   be called for each unit. It is the only mandatory field, if it's not set your
   health check will be ignored.
 * ``healthcheck:scheme``: Which scheme to use. Defaults to http.
-* ``healthcheck:method``: The method used to make the http request. Defaults to
-  GET.
+* ``healthcheck:method``: The method used to make the http request. This field is
+  ignored in kubernetes provisioner, GET is always used. Defaults to GET.
 * ``healthcheck:status``: The expected response code for the request. Defaults
   to 200. This field is ignored in ``kubernetes`` provisioner, which always
   expects a status code greater than or equal to 200 and less than 400.
 * ``healthcheck:headers``: Additional headers to use for the request. Headers name
   should be capitalized. It is optional.
 * ``healthcheck:match``: A regular expression to be matched against the request
-  body. If it's not set the body won't be read and only the status code will be
-  checked. This regular expression uses `Go syntax
+  body. This field is ignored in kubernetes provisioner, use
+  ``healthcheck:command`` if a more complex healthcheck is necessary. If it's
+  not set the body won't be read and only the status code will be checked. This
+  regular expression uses `Go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
 * ``healthcheck:command``: Exclusive to the ``kubernetes``
@@ -110,12 +130,14 @@ Here is how you can configure a health check in your yaml file:
 * ``healthcheck:allowed_failures``: The number of allowed failures before that
   the health check consider the application as unhealthy. Defaults to 0.
 * ``healthcheck:use_in_router``: Whether this health check path should also be
-  registered in the router. Please, ensure that the check is consistent to
-  prevent units being disabled by the router. Defaults to false. When an app
+  registered in the router. This field is ignored in ``kubernetes``
+  provisioner, which constantly calls the healthcheck every
+  ``interval_seconds``. Defaults to false in other provisioners. When an app
   has no explicit healthcheck or use_in_router is false a default healthcheck
   is configured.
-* ``healthcheck:router_body``: body passed to the router when ``use_in_router``
-  is true.
+* ``healthcheck:router_body``: Body content passed to the router when
+  ``use_in_router`` is true. This field is ignored in kubernetes provisioner,
+  use ``healthcheck:command`` if a more complex healthcheck is necessary.
 * ``healthcheck:timeout_seconds``: The timeout for each healthcheck call in
   seconds. Defaults to 60 seconds.
 * ``healthcheck:interval_seconds``: Exclusive to the ``kubernetes``

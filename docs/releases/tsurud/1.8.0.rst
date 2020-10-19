@@ -35,13 +35,13 @@ Now the Garbage collector of images uses a tsuru event to register all changes m
 
 
 Stream logs directly from kubernetes api-server (`#2408 <https://github.com/tsuru/tsuru/pull/2408>`_)
-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 
 We did an important architectural change using kubernetes provisioner, we intend to maintain Tsuru as a global control-plane application, we are assigning the responsibility to store logs to kubelet engine, thus allowing Tsuru to maintain many k8s clusters without any bottleneck.
 
 
 Support dynamically loading router definitions from database (`#2413 <https://github.com/tsuru/tsuru/pull/2413>`_)
------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
 
 Tsuru now has support to create and update routers without changing the config file.
 
