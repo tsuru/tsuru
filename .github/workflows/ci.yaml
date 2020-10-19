@@ -152,6 +152,12 @@ jobs:
       with:
         go-version: '1.14'
     - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - run: go get golang.org/x/tools/cmd/goimports
     - run: ./hack/verify-codegen.sh
       env:
