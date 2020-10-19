@@ -160,8 +160,6 @@ jobs:
           ${{ runner.os }}-go-
     - run: go get golang.org/x/tools/cmd/goimports
     - run: ./hack/verify-codegen.sh
-      env:
-        GOPATH: /tmp
 
   docker-image:
     needs:
