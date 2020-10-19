@@ -301,12 +301,6 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 		return
 	}
 
-	go func() {
-		// TODO: after update k8s library we can put context inside the request
-		<-k.ctx.Done()
-		stream.Close()
-	}()
-
 	scanner := bufio.NewScanner(stream)
 
 	for scanner.Scan() {
@@ -319,7 +313,10 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 		k.ch <- tsuruLog
 	}
 
-	if err := scanner.Err(); err != nil && !knet.IsProbableEOF(err) {
+	if err := scanner.Err(); err != nil {
+		if knet.IsProbableEOF(err) || err == context.Canceled {
+			return
+		}
 		k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
 	}
 }
