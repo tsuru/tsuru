@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -47,52 +46,6 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	s.conn.Close()
-}
-
-type TestIaaS struct{}
-
-func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
-	m.Status = "destroyed"
-	return nil
-}
-
-func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	m := iaas.Machine{
-		Id:      params["id"],
-		Status:  "running",
-		Address: params["id"] + ".somewhere.com",
-	}
-	if params["pool"] != "" {
-		m.Id += "-" + params["pool"]
-	}
-	return &m, nil
-}
-
-func newTestIaaS(string) iaas.IaaS {
-	return TestIaaS{}
-}
-
-func (s *S) TestClusterServiceCreateWithCreateData(c *check.C) {
-	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
-	kubeCluster := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{},
-		Provisioner: "fake",
-		Default:     true,
-	}
-	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(clust provTypes.Cluster) error {
-				c.Assert(clust.Name, check.Equals, kubeCluster.Name)
-				c.Assert(clust.Provisioner, check.Equals, kubeCluster.Provisioner)
-				c.Assert(clust.Addresses, check.DeepEquals, []string{"http://test1.somewhere.com:2375"})
-				return nil
-			},
-		},
-	}
-
-	err := cs.Create(context.TODO(), kubeCluster)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestClusterServiceCreateError(c *check.C) {
@@ -363,6 +316,8 @@ func (s *S) TestClusterServiceDeleteNotFound(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
+var _ ClusteredProvisioner = &clusterProv{}
+
 type clusterProv struct {
 	*provisiontest.FakeProvisioner
 	callCluster *provTypes.Cluster
@@ -374,6 +329,10 @@ func (p *clusterProv) InitializeCluster(c *provTypes.Cluster) error {
 }
 
 func (p *clusterProv) ValidateCluster(c *provTypes.Cluster) error {
+	return nil
+}
+
+func (p *clusterProv) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
 	return nil
 }
 
@@ -444,91 +403,30 @@ func (s *S) TestFindByPoolsNotFound(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `unable to find cluster for pool "poolD"`)
 }
 
+var _ ClusteredProvisioner = &provisionClusterProv{}
+
 type provisionClusterProv struct {
 	*provisiontest.FakeProvisioner
-	callLog         [][]string
-	OnCreateCluster func(ctx context.Context, c *provTypes.Cluster) error
+	callLog [][]string
 }
 
-func (p *provisionClusterProv) CreateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	if p.OnCreateCluster == nil {
-		p.callLog = append(p.callLog, []string{"CreateCluster", c.Name})
-		return nil
-	}
-	return p.OnCreateCluster(ctx, c)
-}
-
-func (p *provisionClusterProv) UpdateCluster(ctx context.Context, c *provTypes.Cluster) error {
-	p.callLog = append(p.callLog, []string{"UpdateCluster", c.Name})
-	return nil
-}
 func (p *provisionClusterProv) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
 	p.callLog = append(p.callLog, []string{"DeleteCluster", c.Name})
 	return nil
 }
 
-func (s *S) TestClusterServiceCreateProvisionCluster(c *check.C) {
-	inst := provisionClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
-	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
-		return &inst, nil
-	})
-	defer provision.Unregister("fake-cluster")
-	myCluster := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{},
-		Provisioner: "fake-cluster",
-		Default:     true,
-	}
-	upsertCall := false
-	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(clust provTypes.Cluster) error {
-				upsertCall = true
-				c.Assert(clust.Name, check.Equals, myCluster.Name)
-				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
-				return nil
-			},
-			OnFindByName: func(name string) (*provTypes.Cluster, error) {
-				c.Assert(upsertCall, check.Equals, true)
-				return &myCluster, nil
-			},
-		},
-	}
-	err := cs.Create(context.TODO(), myCluster)
-	c.Assert(err, check.IsNil)
-	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"CreateCluster", "c1"}})
+func (p *provisionClusterProv) InitializeCluster(c *provTypes.Cluster) error {
+	p.callLog = append(p.callLog, []string{"InitializeCluster"})
+	return nil
 }
 
-func (s *S) TestClusterServiceUpdateProvisionCluster(c *check.C) {
-	inst := provisionClusterProv{FakeProvisioner: provisiontest.ProvisionerInstance}
-	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
-		return &inst, nil
-	})
-	defer provision.Unregister("fake-cluster")
-	myCluster := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{},
-		Provisioner: "fake-cluster",
-		Default:     true,
-	}
-	upsertCall := false
-	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(clust provTypes.Cluster) error {
-				upsertCall = true
-				c.Assert(clust.Name, check.Equals, myCluster.Name)
-				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
-				return nil
-			},
-			OnFindByName: func(name string) (*provTypes.Cluster, error) {
-				c.Assert(upsertCall, check.Equals, true)
-				return &myCluster, nil
-			},
-		},
-	}
-	err := cs.Update(context.TODO(), myCluster)
-	c.Assert(err, check.IsNil)
-	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"UpdateCluster", "c1"}})
+func (p *provisionClusterProv) ValidateCluster(c *provTypes.Cluster) error {
+	p.callLog = append(p.callLog, []string{"ValidateCluster"})
+	return nil
+}
+
+func (p *provisionClusterProv) ClusterHelp() provTypes.ClusterHelpInfo {
+	return provTypes.ClusterHelpInfo{}
 }
 
 func (s *S) TestClusterServiceDeleteProvisionCluster(c *check.C) {
@@ -560,72 +458,4 @@ func (s *S) TestClusterServiceDeleteProvisionCluster(c *check.C) {
 	err := cs.Delete(context.TODO(), provTypes.Cluster{Name: "c1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(inst.callLog, check.DeepEquals, [][]string{{"DeleteCluster", "c1"}})
-}
-
-func (s *S) TestClusterServiceCreateProvisionClusterError(c *check.C) {
-	inst := provisionClusterProv{
-		FakeProvisioner: provisiontest.ProvisionerInstance,
-		OnCreateCluster: func(ctx context.Context, c *provTypes.Cluster) error {
-			return errors.New("some error")
-		},
-	}
-	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
-		return &inst, nil
-	})
-	defer provision.Unregister("fake-cluster")
-	myCluster := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{},
-		Provisioner: "fake-cluster",
-		Default:     true,
-	}
-	deleteCall := false
-	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(clust provTypes.Cluster) error {
-				c.Assert(clust.Name, check.Equals, myCluster.Name)
-				c.Assert(clust.Provisioner, check.Equals, myCluster.Provisioner)
-				return nil
-			},
-			OnDelete: func(clust provTypes.Cluster) error {
-				deleteCall = true
-				c.Assert(clust.Name, check.Equals, myCluster.Name)
-				return nil
-			},
-		},
-	}
-	err := cs.Create(context.TODO(), myCluster)
-	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error")
-	c.Assert(deleteCall, check.Equals, true)
-}
-
-func (s *S) TestClusterServiceCreateProvisionClusterErrorProvisionerAndDelete(c *check.C) {
-	inst := provisionClusterProv{
-		FakeProvisioner: provisiontest.ProvisionerInstance,
-		OnCreateCluster: func(ctx context.Context, c *provTypes.Cluster) error {
-			return errors.New("some error")
-		},
-	}
-	provision.Register("fake-cluster", func() (provision.Provisioner, error) {
-		return &inst, nil
-	})
-	defer provision.Unregister("fake-cluster")
-	myCluster := provTypes.Cluster{
-		Name:        "c1",
-		Addresses:   []string{},
-		Provisioner: "fake-cluster",
-		Default:     true,
-	}
-	cs := &clusterService{
-		storage: &provTypes.MockClusterStorage{
-			OnUpsert: func(clust provTypes.Cluster) error {
-				return nil
-			},
-			OnDelete: func(clust provTypes.Cluster) error {
-				return errors.New("delete error")
-			},
-		},
-	}
-	err := cs.Create(context.TODO(), myCluster)
-	c.Assert(err.Error(), check.Equals, "error provisioning cluster: some error - error deleting cluster: delete error")
 }
