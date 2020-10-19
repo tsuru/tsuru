@@ -1,4 +1,0 @@
-{
-    "Disable": ["gocyclo", "maligned"],
-    "Skip": ["vendor"]
-}

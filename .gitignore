@@ -6,3 +6,4 @@ docs/_build
 build
 data
 dist/
+vendor/
