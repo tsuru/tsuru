@@ -58,7 +58,7 @@ Then you will need to configure Gandalf, install the pre-receive hook and start 
 ::
 
     sudo mkdir -p /home/git/bare-template/hooks
-    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/pre-receive -o /home/git/bare-template/hooks/pre-receive
+    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/main/misc/git-hooks/pre-receive -o /home/git/bare-template/hooks/pre-receive
     sudo chmod +x /home/git/bare-template/hooks/pre-receive
     sudo chown -R git:git /home/git/bare-template
 

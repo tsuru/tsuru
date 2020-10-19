@@ -1,6 +1,6 @@
 # tsuru
 
-[![Build Status](https://github.com/tsuru/tsuru/workflows/ci/badge.svg?branch=master)](https://github.com/tsuru/tsuru/actions)
+[![Build Status](https://github.com/tsuru/tsuru/workflows/ci/badge.svg?branch=main)](https://github.com/tsuru/tsuru/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tsuru/tsuru)](https://goreportcard.com/report/github.com/tsuru/tsuru)
 
 ## What is tsuru?

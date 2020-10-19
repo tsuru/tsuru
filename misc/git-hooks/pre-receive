@@ -11,7 +11,7 @@
 while read oldrev newrev refname
 do
     set +e
-    echo $refname | grep -v tags/master$ | grep -q /master$
+    echo $refname | grep -v tags/main$ | grep -q /main$
     status=$?
     set -e
     if [ $status = 0 ]; then
@@ -21,7 +21,7 @@ done
 
 if [ -z ${COMMIT} ]
 then
-    echo "ERROR: please push to master"
+    echo "ERROR: please push to main"
     exit 3
 fi
 

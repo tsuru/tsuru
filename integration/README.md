@@ -26,7 +26,7 @@ resources by setting the requires field.
 
 - Amazon Web Services - https://github.com/tsuru/integration_ec2
 - Google Cloud Engine - https://github.com/tsuru/integration_gce
-- Local -	https://github.com/tsuru/tsuru/blob/master/Makefile#L138
+- Local -	https://github.com/tsuru/tsuru/blob/main/Makefile#L138
 
 ## Environment Variables
 

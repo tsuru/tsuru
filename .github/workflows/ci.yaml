@@ -187,7 +187,7 @@ jobs:
       id: smarttag
       with:
         docker_image: tsuru/api
-        default_branch: master
+        default_branch: main
         tag_with_sha: "true"
     - uses: docker/login-action@v1
       with:

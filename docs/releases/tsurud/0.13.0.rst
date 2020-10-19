@@ -144,7 +144,7 @@ Backward incompatible changes (action needed)
 
 * The post-receive hook is no longer supported, please update to one of the
   `available pre-receive hooks
-  <https://github.com/tsuru/tsuru/tree/master/misc/git-hooks>`_. You may stick
+  <https://github.com/tsuru/tsuru/tree/main/misc/git-hooks>`_. You may stick
   to a post-receive hook that invokes git-archive and uploads it to tsuru, but
   we recommend using a pre-receive hook.
 

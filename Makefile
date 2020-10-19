@@ -85,7 +85,7 @@ release:
 	@git tag $(version)
 
 	@git push --tags
-	@git push origin master
+	@git push origin main
 
 	@echo "$(version) released!"
 
