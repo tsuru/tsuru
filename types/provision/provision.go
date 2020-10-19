@@ -54,6 +54,12 @@ func (in *TsuruYamlKubernetesConfig) DeepCopyInto(out *TsuruYamlKubernetesConfig
 	}
 }
 
+func (in *TsuruYamlKubernetesConfig) DeepCopy() *TsuruYamlKubernetesConfig {
+	out := &TsuruYamlKubernetesConfig{}
+	in.DeepCopyInto(out)
+	return out
+}
+
 type TsuruYamlKubernetesGroup map[string]TsuruYamlKubernetesProcessConfig
 
 type TsuruYamlKubernetesProcessConfig struct {
