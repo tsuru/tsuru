@@ -5,7 +5,7 @@
 Automatic Authentication Through Token
 ===============
 
-Tsuru's client terminal enables automatic athentication through tokens. 
+Tsuru's client terminal enables automatic authentication through tokens. 
 
 To create a user token, create a user:
 
