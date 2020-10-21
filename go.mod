@@ -60,7 +60,7 @@ require (
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
-	github.com/tsuru/config v0.0.0-20200717192526-2a9a0efe5f28
+	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
 	github.com/tsuru/docker-cluster v0.0.0-20190325123005-f372d8d4e354
 	github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa

@@ -73,8 +73,6 @@ github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38/go.mod h1:90ReRw6
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081 h1:nERdkUtJ2vbNjbR59fPsKfwztXWaiJUQrJYmYXV7CTg=
 github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081/go.mod h1:B3TZHoY3EjMaI/cEzZDGB2sRv7LVC/BdGvsRU43nllE=
-github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935 h1:5zCYEyUB91XDlstHctPrAoWkD7j+Wfb5FRTppDEZF8k=
-github.com/cezarsa/machine v0.7.1-0.20190219165632-cdcfd549f935/go.mod h1:Dx5ygAngNW5Ztbxlb8h5h6WGQ8ceG7mKLgB8i3eS9P0=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
@@ -136,8 +134,6 @@ github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4/go.mod h
 github.com/docker/machine v0.7.0/go.mod h1:I8mPNDeK1uH+JTcUU7X0ZW8KiYz0jyAgNaeSJ1rCfDI=
 github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c h1:/CqsDCJqQY+xBxJ65ri4ZGw6jXugauXisH3roam3Ics=
 github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c/go.mod h1:I8mPNDeK1uH+JTcUU7X0ZW8KiYz0jyAgNaeSJ1rCfDI=
-github.com/docker/machine v0.16.2 h1:jyF9k3Zg+oIGxxSdYKPScyj3HqFZ6FjgA/3sblcASiU=
-github.com/docker/machine v0.16.2/go.mod h1:I8mPNDeK1uH+JTcUU7X0ZW8KiYz0jyAgNaeSJ1rCfDI=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96 h1:cenwrSVm+Z7QLSV/BsnenAOcDXdX4cMv4wP0B/5QbPg=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
@@ -493,8 +489,8 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 h1:LnC5Kc
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a h1:Z9AGmLYCqZ+o7I/9UqvCF6Tj0DcUv72Hl7CTJ+ONDV4=
 github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a/go.mod h1:qIgHCNEogDodrCcRfLe4eWSgm3i5tH++2A8DfoO7gxQ=
-github.com/tsuru/config v0.0.0-20200717192526-2a9a0efe5f28 h1:ZUM5bc/TSos0Vvts+klLmPBGWPp/n/WfF3lhrmn8u5g=
-github.com/tsuru/config v0.0.0-20200717192526-2a9a0efe5f28/go.mod h1:mj6t8JKWU51GScTT50XRmDj65T5XhTyNvO5FUNV5zS4=
+github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560 h1:fniQ/BmYAHdnNmY333kX4RdVBY+WDAOOs78VEunpY14=
+github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560/go.mod h1:mj6t8JKWU51GScTT50XRmDj65T5XhTyNvO5FUNV5zS4=
 github.com/tsuru/docker-cluster v0.0.0-20190325123005-f372d8d4e354 h1:KSHCFvKvCMQN9qafzgxNGalC4K/8otSjZ3UTVCJk8bc=
 github.com/tsuru/docker-cluster v0.0.0-20190325123005-f372d8d4e354/go.mod h1:Inv1W7alFRlGqinfekVO0/RzmQyyRSlfENxNCVxaoMY=
 github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24 h1:Y0lxOq5i0pImmPJT4S8ae85xfcJSwrxBe/FK7DlfUVs=

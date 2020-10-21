@@ -45,7 +45,7 @@ var (
 type apiRouter struct {
 	routerName string
 	endpoint   string
-	headers    map[string]string
+	headers    http.Header
 	client     *http.Client
 	supIface   router.Router
 
@@ -124,28 +124,16 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 	}
 	debug, _ := config.GetBool("debug")
 	multiCluster, _ := config.GetBool("multi-cluster")
-	headers, _ := config.Get("headers")
-	headerMap := make(map[string]string)
-	if headers != nil {
-		h, ok := headers.(map[interface{}]interface{})
-		if !ok {
-			return nil, errors.Errorf("invalid header configuration: %v", headers)
-		}
-		for k, v := range h {
-			v, okV := v.(string)
-			if !okV {
-				return nil, errors.Errorf("invalid header configuration: %v. Expected string got %s and %s", headers, k, v)
-			}
-			value, _ := config.GetString(fmt.Sprintf("headers:%s", k))
-			headerMap[fmt.Sprint(k)] = value
-		}
+	headers, err := headersFromConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	baseRouter := &apiRouter{
 		routerName: routerName,
 		endpoint:   endpoint,
 		client:     net.Dial15Full60ClientNoKeepAlive,
 		debug:      debug,
-		headers:    headerMap,
+		headers:    headers,
 
 		multiCluster: multiCluster,
 	}
@@ -373,15 +361,18 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	for headerName, headerValues := range headers {
-		for _, headerValue := range headerValues {
-			req.Header.Add(headerName, headerValue)
+	for k, values := range headers {
+		for _, value := range values {
+			req.Header.Add(k, value)
 		}
 	}
 
-	for k, v := range r.headers {
-		req.Header.Set(k, v)
+	for k, values := range r.headers {
+		for _, value := range values {
+			req.Header.Add(k, value)
+		}
 	}
+
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
@@ -702,4 +693,37 @@ func (r *apiRouter) getExtraHeadersFromApp(ctx context.Context, app router.App) 
 
 	poolName := app.GetPool()
 	return poolMultiCluster.Header(ctx, poolName, nil)
+}
+
+func headersFromConfig(config router.ConfigGetter) (http.Header, error) {
+	headers, _ := config.Get("headers")
+	headerResult := make(http.Header)
+	if headers != nil {
+		h, ok := headers.(map[interface{}]interface{})
+		if !ok {
+			return nil, errors.Errorf("invalid header configuration: %v", headers)
+		}
+
+		for k, v := range h {
+			_, isStr := v.(string)
+			_, isSlice := v.([]interface{})
+			if !isStr && !isSlice {
+				return nil, errors.Errorf("invalid header configuration at key: %s. Expected string or array of strings got %v", k, v)
+			}
+			valueStr, strErr := config.GetString(fmt.Sprintf("headers:%s", k))
+			valueList, listErr := config.GetList(fmt.Sprintf("headers:%s", k))
+
+			if strErr == nil {
+				headerResult.Add(fmt.Sprint(k), valueStr)
+			}
+
+			if listErr == nil {
+				for _, v := range valueList {
+					headerResult.Add(fmt.Sprint(k), v)
+				}
+			}
+		}
+	}
+
+	return headerResult, nil
 }
