@@ -11,6 +11,7 @@ import (
 
 type ConfigGetter interface {
 	GetString(string) (string, error)
+	GetList(string) ([]string, error)
 	GetInt(string) (int, error)
 	GetFloat(string) (float64, error)
 	GetBool(string) (bool, error)

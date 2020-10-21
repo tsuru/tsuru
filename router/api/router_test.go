@@ -521,6 +521,34 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestCreateDuplicatedCustomHeaders(c *check.C) {
+	s.apiRouter.router.HandleFunc("/custom", func(w http.ResponseWriter, r *http.Request) {
+		values := r.Header.Values("X-CUSTOM-ENV")
+		sort.Strings(values)
+
+		if !c.Check(values, check.DeepEquals, []string{"ABC", "XYZ"}) {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	})
+	os.Setenv("ROUTER_ENV_HEADER_OPT", "XYZ")
+	config.Set("routers:apirouter:headers", map[interface{}]interface{}{
+		"X-CUSTOM-ENV": []interface{}{
+			"$ROUTER_ENV_HEADER_OPT",
+			"ABC",
+		},
+	})
+	defer config.Unset("router:apirouter:headers")
+	defer os.Unsetenv("ROUTER_ENV_HEADER_OPT")
+	r, err := createRouter("apirouter", router.ConfigGetterFromPrefix("routers:apirouter"))
+	c.Assert(err, check.IsNil)
+	_, code, err := r.(*struct {
+		router.Router
+		router.OptsRouter
+	}).Router.(*apiRouter).do(context.TODO(), http.MethodGet, "/custom", nil, nil)
+	c.Assert(code, check.DeepEquals, http.StatusOK)
+	c.Assert(err, check.IsNil)
+}
+
 func newFakeRouter(c *check.C) *fakeRouterAPI {
 	api := &fakeRouterAPI{}
 	r := mux.NewRouter()
