@@ -111,7 +111,10 @@ func (s *S) TestClusterInitClient(c *check.C) {
 	}
 	expected.ContentConfig = cli.restConfig.ContentConfig
 	cli.restConfig.Dial = nil
-	c.Assert(cli.restConfig, check.DeepEquals, expected)
+	c.Assert(cli.restConfig.APIPath, check.DeepEquals, expected.APIPath)
+	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
+	c.Assert(cli.restConfig.TLSClientConfig, check.DeepEquals, expected.TLSClientConfig)
+	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
 }
 
 func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {

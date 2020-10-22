@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -108,10 +107,8 @@ func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 			GroupVersion:         &gv,
 			NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 		},
-		Timeout: kubeConf.APITimeout,
-		WrapTransport: func(rt http.RoundTripper) http.RoundTripper {
-			return tsuruNet.OpentracingTransport(rt)
-		},
+		Timeout:       kubeConf.APITimeout,
+		WrapTransport: tsuruNet.OpentracingTransport,
 	}, nil
 }
 
