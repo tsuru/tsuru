@@ -22,6 +22,10 @@ func withOpenTracing(cli *http.Client) *http.Client {
 	}
 }
 
+func OpentracingTransport(rt http.RoundTripper) http.RoundTripper {
+	return &AutoOpentracingTransport{RoundTripper: rt}
+}
+
 type AutoOpentracingTransport struct {
 	http.RoundTripper
 }

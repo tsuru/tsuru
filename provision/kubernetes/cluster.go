@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -107,6 +109,9 @@ func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 			NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 		},
 		Timeout: kubeConf.APITimeout,
+		WrapTransport: func(rt http.RoundTripper) http.RoundTripper {
+			return tsuruNet.OpentracingTransport(rt)
+		},
 	}, nil
 }
 
