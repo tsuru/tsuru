@@ -415,7 +415,9 @@ func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Even
 		*req = *req.WithContext(ctx)
 	}
 	proxy := &httputil.ReverseProxy{
-		Transport: net.Dial15Full300ClientWithPool.Transport,
+		// TODO(wpjunior): we cant use opentracing here, cause response.Body does not implement io.ReadWriteCloser, if use breaks websocket proxies
+		// https://github.com/opentracing-contrib/go-stdlib/blob/master/nethttp/client.go#L197
+		Transport: net.Dial15Full300ClientWithPoolNoTracing.Transport,
 		Director:  director,
 	}
 	proxy.ServeHTTP(w, r)
