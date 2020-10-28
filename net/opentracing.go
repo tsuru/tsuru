@@ -46,7 +46,12 @@ func (t *AutoOpentracingTransport) RoundTrip(req *http.Request) (*http.Response,
 		ht.Finish()
 		return nil, err
 	}
-	response.Body = &autoCloseTracer{ht: ht, ReadCloser: response.Body}
+	readWriteCloser, ok := response.Body.(io.ReadWriteCloser)
+	if ok {
+		response.Body = &autoWriterCloseTracer{ht: ht, ReadWriteCloser: readWriteCloser}
+	} else {
+		response.Body = &autoCloseTracer{ht: ht, ReadCloser: response.Body}
+	}
 	return response, nil
 }
 
@@ -57,6 +62,17 @@ type autoCloseTracer struct {
 
 func (a *autoCloseTracer) Close() error {
 	err := a.ReadCloser.Close()
+	a.ht.Finish()
+	return err
+}
+
+type autoWriterCloseTracer struct {
+	io.ReadWriteCloser
+	ht *opentracingHTTP.Tracer
+}
+
+func (a *autoWriterCloseTracer) Close() error {
+	err := a.ReadWriteCloser.Close()
 	a.ht.Finish()
 	return err
 }
