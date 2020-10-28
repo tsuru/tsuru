@@ -50,8 +50,6 @@ var (
 
 	Dial15Full60ClientWithPool  = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 1*time.Minute, 10, true))
 	Dial15Full300ClientWithPool = withOpenTracing(makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 10, true))
-
-	Dial15Full300ClientWithPoolNoTracing = makeTimeoutHTTPClient(15*time.Second, 5*time.Minute, 10, true)
 )
 
 func insecure(client *http.Client) *http.Client {
