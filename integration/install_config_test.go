@@ -93,55 +93,6 @@ func (s *S) getProvisioners() []string {
 	return selectedProvisioners
 }
 
-func setupGenericClusters() map[string]*genericKubeCluster {
-	clusters := map[string]*genericKubeCluster{
-		"gke": {
-			createData: map[string]string{
-				"driver":       "googlekubernetesengine",
-				"node-count":   "2",
-				"zone":         os.Getenv("GCE_ZONE"),
-				"project-id":   os.Getenv("GCE_PROJECT_ID"),
-				"machine-type": os.Getenv("GCE_MACHINE_TYPE"),
-			},
-		},
-		"eks": {
-			createData: map[string]string{
-				"driver":             "amazonelasticcontainerservice",
-				"minimum-nodes":      "2",
-				"maximum-nodes":      "3",
-				"kubernetes-version": os.Getenv("AWS_KUBERNETES_VERSION"),
-				"region":             os.Getenv("AWS_REGION"),
-				"instance-type":      os.Getenv("AWS_INSTANCE_TYPE"),
-				"virtual-network":    os.Getenv("AWS_VPC_ID"),
-				"subnets":            os.Getenv("AWS_SUBNET_IDS"),
-				"security-groups":    os.Getenv("AWS_SECURITY_GROUP_ID"),
-			},
-		},
-		"aks": {
-			createData: map[string]string{
-				"driver":                  "azurekubernetesservice",
-				"count":                   "2",
-				"service-cidr":            "10.0.0.1/24",
-				"dns-service-ip":          "10.0.0.10",
-				"docker-bridge-cidr":      "10.0.1.1/24",
-				"tenant-id":               os.Getenv("AZURE_TENANT_ID"),
-				"resource-group":          os.Getenv("AZURE_RESOURCE_GROUP"),
-				"subscription-id":         os.Getenv("AZURE_SUBSCRIPTION_ID"),
-				"location":                os.Getenv("AZURE_LOCATION"),
-				"agent-vm-size":           os.Getenv("AZURE_AGENT_VM_SIZE"),
-				"agent-pool-name":         os.Getenv("AZURE_AGENT_POOL_NAME"),
-				"ssh-public-key-contents": os.Getenv("AZURE_SSH_PUBLIC_KEY"),
-				"virtual-network":         os.Getenv("AZURE_VIRTUAL_NETWORK"),
-				"subnet":                  os.Getenv("AZURE_SUBNET"),
-			},
-		},
-	}
-	if awsUserdata, isSet := os.LookupEnv("AWS_USERDATA"); isSet {
-		clusters["eks"].createData["user-data"] = awsUserdata
-	}
-	return clusters
-}
-
 func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"minikube": &MinikubeClusterManager{env: s.env},
@@ -151,13 +102,9 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 			context: s.env.Get("kubectlctx"),
 			binary:  s.env.Get("kubectlbinary"),
 		},
-	}
-	moreClusters := setupGenericClusters()
-	for k, v := range moreClusters {
-		availableClusterManagers[k] = v
-	}
-	if _, ok := os.LookupEnv(integrationEnvID + "clusters"); !ok {
-		return []ClusterManager{}
+		"kubeenv": &KubeenvClusterManager{
+			env: s.env,
+		},
 	}
 	managers := make([]ClusterManager, 0, len(availableClusterManagers))
 	clusters := s.env.All("clusters")
@@ -168,7 +115,6 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 			continue
 		}
 		managers = append(managers, manager)
-		delete(availableClusterManagers, cluster)
 	}
 	return managers
 }
