@@ -16,13 +16,16 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ builder.Builder = &kubernetesBuilder{}
+var (
+	_ builder.Builder         = &kubernetesBuilder{}
+	_ builder.PlatformBuilder = &kubernetesBuilder{}
+)
 
 func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(ctx, opts)
 }
 
-func (b *kubernetesBuilder) PlatformRemove(name string) error {
+func (b *kubernetesBuilder) PlatformRemove(ctx context.Context, name string) error {
 	// Kubernetes already removes unused images on nodes.
 	return nil
 }
