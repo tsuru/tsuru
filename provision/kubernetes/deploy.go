@@ -934,10 +934,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 			return revision, ctx.Err()
 		}
 	}
-	var specReplicas int32
-	if dep.Spec.Replicas != nil {
-		specReplicas = *dep.Spec.Replicas
-	}
+
 	oldUpdatedReplicas := int32(-1)
 	oldReadyUnits := int32(-1)
 	oldPendingTermination := int32(-1)
@@ -950,6 +947,10 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	t0 := time.Now()
 	largestReady := int32(0)
 	for {
+		var specReplicas int32
+		if dep.Spec.Replicas != nil {
+			specReplicas = *dep.Spec.Replicas
+		}
 		for i := range dep.Status.Conditions {
 			c := dep.Status.Conditions[i]
 			if c.Type == appsv1.DeploymentProgressing && c.Reason == deadlineExeceededProgressCond {

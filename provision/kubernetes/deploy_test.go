@@ -338,6 +338,52 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 }
 
+func (s *S) TestServiceManagerDeployServiceRaceWithHPA(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cm1",
+		},
+	})
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
+		obj := action.(ktesting.CreateAction).GetObject()
+		dep := obj.(*appsv1.Deployment)
+		dep.Status.UnavailableReplicas = 1
+		depCopy := *dep
+		go func() {
+			time.Sleep(time.Second)
+			depCopy.Status.UnavailableReplicas = 0
+			replicas := *depCopy.Spec.Replicas
+			replicas++
+			depCopy.Spec.Replicas = &replicas
+			depCopy.Status.UpdatedReplicas = replicas
+			depCopy.Status.Replicas = replicas
+			s.client.AppsV1().Deployments(ns).Update(context.TODO(), &depCopy, metav1.UpdateOptions{})
+		}()
+		return false, nil, nil
+	}
+	s.client.PrependReactor("create", "deployments", reaction)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(*dep.Spec.Replicas, check.DeepEquals, int32(2))
+}
+
 func (s *S) TestServiceManagerDeployServiceWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
