@@ -43,6 +43,15 @@ type Service struct {
 
 type BindAppParameters map[string]interface{}
 
+type ProxyOpts struct {
+	Instance  *ServiceInstance
+	Path      string
+	Event     *event.Event
+	RequestID string
+	Writer    http.ResponseWriter
+	Request   *http.Request
+}
+
 // TODO: use requestID inside the context
 type ServiceClient interface {
 	Create(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
@@ -55,7 +64,7 @@ type ServiceClient interface {
 	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
 	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)
 	Plans(ctx context.Context, requestID string) ([]Plan, error)
-	Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error
+	Proxy(ctx context.Context, opts *ProxyOpts) error
 }
 
 var (
@@ -313,5 +322,11 @@ func Proxy(ctx context.Context, service *Service, path string, evt *event.Event,
 	if err != nil {
 		return err
 	}
-	return endpoint.Proxy(ctx, path, evt, requestID, w, r)
+	return endpoint.Proxy(ctx, &ProxyOpts{
+		Path:      path,
+		Event:     evt,
+		RequestID: requestID,
+		Writer:    w,
+		Request:   r,
+	})
 }

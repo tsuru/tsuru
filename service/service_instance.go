@@ -605,7 +605,15 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 			}
 		}
 	}
-	return endpoint.Proxy(ctx, fmt.Sprintf("%s%s", prefix, path), evt, requestID, w, r)
+
+	return endpoint.Proxy(ctx, &ProxyOpts{
+		Instance:  instance,
+		Path:      fmt.Sprintf("%s%s", prefix, path),
+		Event:     evt,
+		RequestID: requestID,
+		Writer:    w,
+		Request:   r,
+	})
 }
 
 func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) error {

@@ -56,6 +56,8 @@ func init() {
 	prometheus.MustRegister(requestErrors)
 }
 
+var _ ServiceClient = &endpointClient{}
+
 type endpointClient struct {
 	serviceName string
 	endpoint    string
@@ -383,8 +385,8 @@ func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, e
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
-	q := r.URL.Query()
+func (c *endpointClient) Proxy(ctx context.Context, opts *ProxyOpts) error {
+	q := opts.Request.URL.Query()
 	delete(q, "callback")
 	delete(q, ":service")           // injected as named param by DelayedRouter
 	delete(q, ":instance")          // injected as named param by DelayedRouter
@@ -394,21 +396,21 @@ func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Even
 	if qstring != "" {
 		qstring = fmt.Sprintf("?%s", qstring)
 	}
-	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + qstring
+	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(opts.Path, "/") + qstring
 	url, err := url.Parse(rawurl)
 	if err != nil {
 		log.Errorf("Got error while creating service proxy url %s: %s", rawurl, err)
 		return err
 	}
-	header, err := baseHeader(ctx, evt, nil, requestID)
+	header, err := baseHeader(ctx, opts.Event, opts.Instance, opts.RequestID)
 	if err != nil {
 		return err
 	}
 	for k, v := range header {
-		r.Header[k] = v
+		opts.Request.Header[k] = v
 	}
 	director := func(req *http.Request) {
-		req.Header = r.Header
+		req.Header = opts.Request.Header
 		req.SetBasicAuth(c.username, c.password)
 		req.Host = url.Host
 		req.URL = url
@@ -418,7 +420,7 @@ func (c *endpointClient) Proxy(ctx context.Context, path string, evt *event.Even
 		Transport: net.Dial15Full300ClientWithPool.Transport,
 		Director:  director,
 	}
-	proxy.ServeHTTP(w, r)
+	proxy.ServeHTTP(opts.Writer, opts.Request)
 	return nil
 }
 

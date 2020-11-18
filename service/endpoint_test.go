@@ -816,7 +816,12 @@ func (s *S) TestEndpointProxy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	evt := createEvt(c)
-	err = client.Proxy(context.TODO(), "/backup", evt, "", recorder, request)
+	err = client.Proxy(context.TODO(), &ProxyOpts{
+		Path:    "/backup",
+		Event:   evt,
+		Writer:  recorder,
+		Request: request,
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
@@ -838,7 +843,12 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	request.Header.Set("Content-Type", "text/new-crobuzon")
 	recorder := httptest.NewRecorder()
 	evt := createEvt(c)
-	err = client.Proxy(context.TODO(), "/backup", evt, "", recorder, request)
+	err = client.Proxy(context.TODO(), &ProxyOpts{
+		Path:    "/backup",
+		Event:   evt,
+		Writer:  recorder,
+		Request: request,
+	})
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 	c.Assert(proxiedRequest.Header.Get("Content-Type"), check.Equals, "text/new-crobuzon")

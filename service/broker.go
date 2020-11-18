@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 
 	"github.com/globalsign/mgo/bson"
@@ -408,7 +407,7 @@ func (b *brokerClient) Plans(ctx context.Context, _ string) ([]Plan, error) {
 }
 
 // Proxy is not implemented for OSB API implementations
-func (b *brokerClient) Proxy(ctx context.Context, path string, evt *event.Event, requestID string, w http.ResponseWriter, r *http.Request) error {
+func (b *brokerClient) Proxy(ctx context.Context, opts *ProxyOpts) error {
 	return fmt.Errorf("service proxy is not available for broker services")
 }
 
