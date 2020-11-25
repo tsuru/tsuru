@@ -420,6 +420,7 @@ type serviceInstanceInfo struct {
 	Description     string
 	PlanName        string
 	PlanDescription string
+	Pool            string
 	CustomInfo      map[string]string
 	Tags            []string
 	Parameters      map[string]interface{}
@@ -465,6 +466,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		Teams:           serviceInstance.Teams,
 		TeamOwner:       serviceInstance.TeamOwner,
 		Description:     serviceInstance.Description,
+		Pool:            serviceInstance.Pool,
 		PlanName:        plan.Name,
 		PlanDescription: plan.Description,
 		CustomInfo:      info,

@@ -7,6 +7,7 @@ package api
 import (
 	stdContext "context"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -39,6 +40,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -122,6 +124,23 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
+	}
+	s.mockService.Pool.OnFindByName = func(poolName string) (*provisionTypes.Pool, error) {
+		if poolName == "my-pool" {
+			return &provisionTypes.Pool{
+				Name: "my-pool",
+			}, nil
+		}
+
+		return nil, stdErrors.New("No pool named: " + poolName)
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provisionTypes.Cluster, error) {
+		if pool == "my-pool" {
+			return &provisionTypes.Cluster{
+				Name: "my-cluster",
+			}, nil
+		}
+		return nil, stdErrors.New("No cluster for pool: " + pool)
 	}
 	s.service = &service.Service{
 		Name:       "mysql",
@@ -1640,6 +1659,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		Teams:       []string{s.team.Name},
 		TeamOwner:   s.team.Name,
 		PlanName:    "small",
+		Pool:        "my-pool",
 		Description: "desc",
 		Tags:        []string{"tag 1"},
 		Parameters: map[string]interface{}{
@@ -1651,8 +1671,10 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
 	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Errorf("received body: %s", recorder.Body.String())
+	}
+	c.Check(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var instances serviceInstanceInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
@@ -1664,6 +1686,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 			"key":  "value",
 			"key2": "value2",
 		},
+		Pool:            "my-pool",
 		PlanName:        "small",
 		PlanDescription: "no space left for you",
 		Description:     si.Description,
