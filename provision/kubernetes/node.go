@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 
-	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 )
@@ -37,9 +36,6 @@ func (n *kubernetesNodeWrapper) Pool() string {
 func (n *kubernetesNodeWrapper) Address() string {
 	if n.node == nil {
 		return ""
-	}
-	if ip, ok := n.node.Labels["tsuru.io/override-ip"]; ok {
-		return ip
 	}
 	for _, addr := range n.node.Status.Addresses {
 		if addr.Type == apiv1.NodeInternalIP {
@@ -92,18 +88,11 @@ func (n *kubernetesNodeWrapper) Units() ([]provision.Unit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return n.prov.podsToUnits(n.ctx, n.cluster, pods, nil, n.node)
+	return n.prov.podsToUnits(n.ctx, n.cluster, pods, nil)
 }
 
 func (n *kubernetesNodeWrapper) Provisioner() provision.NodeProvisioner {
 	return n.prov
-}
-
-func (n *kubernetesNodeWrapper) ip() string {
-	if n.node == nil {
-		return ""
-	}
-	return tsuruNet.URLToHost(n.Address())
 }
 
 func (n *kubernetesNodeWrapper) RawNode() *apiv1.Node {

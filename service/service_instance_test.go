@@ -357,6 +357,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 		"ServiceName": "mysql",
 		"Info":        map[string]interface{}{"key": "value"},
 		"TeamOwner":   "",
+		"Pool":        "",
 	}
 	c.Assert(result, check.DeepEquals, expected)
 }
@@ -382,6 +383,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 		"ServiceName": "mysql",
 		"Info":        nil,
 		"TeamOwner":   "",
+		"Pool":        "",
 	}
 	c.Assert(result, check.DeepEquals, expected)
 }
@@ -407,6 +409,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *che
 		"ServiceName": "mysql",
 		"Info":        nil,
 		"TeamOwner":   "",
+		"Pool":        "",
 	}
 	c.Assert(result, check.DeepEquals, expected)
 }

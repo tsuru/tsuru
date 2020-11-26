@@ -142,6 +142,7 @@ func (si *ServiceInstance) GetIdentifier() string {
 type ServiceInstanceWithInfo struct {
 	Id          int
 	Name        string
+	Pool        string
 	Teams       []string
 	PlanName    string
 	Apps        []string
@@ -160,6 +161,7 @@ func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
 	return ServiceInstanceWithInfo{
 		Id:          si.Id,
 		Name:        si.Name,
+		Pool:        si.Pool,
 		Teams:       si.Teams,
 		PlanName:    si.PlanName,
 		Apps:        si.Apps,

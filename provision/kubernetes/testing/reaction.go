@@ -447,6 +447,7 @@ func UpdatePodContainerStatus(pod *apiv1.Pod, running bool) {
 		contStatus := apiv1.ContainerStatus{
 			Name:  cont.Name,
 			State: apiv1.ContainerState{},
+			Ready: running,
 		}
 		if running {
 			contStatus.State.Running = &apiv1.ContainerStateRunning{}
@@ -485,6 +486,7 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 		pod.Status.Phase = apiv1.PodSucceeded
+		pod.Status.HostIP = "192.168.99.1"
 		pod.Spec.NodeName = "n1"
 		toRegister := false
 		for _, cont := range pod.Spec.Containers {
@@ -533,6 +535,7 @@ func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.Wa
 		}
 		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 		pod.Status.Phase = apiv1.PodSucceeded
+		pod.Status.HostIP = "192.168.99.1"
 		pod.Spec.NodeName = "n1"
 		return false, nil, nil
 	}, &wg
@@ -633,6 +636,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 				ObjectMeta: dep.Spec.Template.ObjectMeta,
 				Spec:       dep.Spec.Template.Spec,
 			}
+			pod.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
 			pod.Status.Phase = apiv1.PodRunning
 			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
 			pod.ObjectMeta.Namespace = dep.Namespace
@@ -640,6 +644,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
 			}
 			pod.Spec.NodeName = "n1"
+			pod.Status.HostIP = "192.168.99.1"
 			err = cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
 			}, dep.Namespace, s.factory)

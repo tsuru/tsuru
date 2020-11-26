@@ -209,6 +209,12 @@ func (s *S) TestNodeUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := node.Units()
 	c.Assert(err, check.IsNil)
+	restarts := int32(0)
+	ready := false
+	for i := range units {
+		c.Assert(units[i].CreatedAt, check.Not(check.IsNil))
+		units[i].CreatedAt = nil
+	}
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			ID:          "myapp-web-pod-1-1",
@@ -223,6 +229,8 @@ func (s *S) TestNodeUnits(c *check.C) {
 				{Scheme: "http", Host: ":30000"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -237,6 +245,8 @@ func (s *S) TestNodeUnits(c *check.C) {
 				{Scheme: "http", Host: ":30000"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 	})
 }
@@ -316,6 +326,12 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 	units, err := node.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
+	restarts := int32(0)
+	ready := false
+	for i := range units {
+		c.Assert(units[i].CreatedAt, check.Not(check.IsNil))
+		units[i].CreatedAt = nil
+	}
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			ID:          "myapp-1",
@@ -328,6 +344,8 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: ""},
 			Addresses:   []url.URL{},
 			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 		{
 			ID:          "otherapp-1",
@@ -340,6 +358,8 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Address:     &url.URL{Scheme: "http", Host: ""},
 			Addresses:   []url.URL{},
 			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 	})
 }
@@ -385,6 +405,12 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := node.Units()
 	c.Assert(err, check.IsNil)
+	restarts := int32(0)
+	ready := false
+	for i := range units {
+		c.Assert(units[i].CreatedAt, check.Not(check.IsNil))
+		units[i].CreatedAt = nil
+	}
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			ID:          "myapp-web-pod-1-1",
@@ -399,6 +425,8 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 				{Scheme: "http", Host: ":30000"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -413,6 +441,8 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 				{Scheme: "http", Host: ":30000"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 	})
 }

@@ -158,6 +158,9 @@ type Unit struct {
 	Addresses   []url.URL
 	Version     int
 	Routable    bool
+	Restarts    *int32
+	CreatedAt   *time.Time
+	Ready       *bool
 }
 
 // GetName returns the name of the unit.
