@@ -44,7 +44,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -412,24 +411,19 @@ var stateMap = map[apiv1.PodPhase]provision.Status{
 	apiv1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApp provision.App, baseNode *apiv1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApp provision.App) ([]provision.Unit, error) {
 	var apps []provision.App
 	if baseApp != nil {
 		apps = append(apps, baseApp)
 	}
-	var nodes []apiv1.Node
-	if baseNode != nil {
-		nodes = append(nodes, *baseNode)
-	}
-	return p.podsToUnitsMultiple(ctx, client, pods, apps, nodes)
+	return p.podsToUnitsMultiple(ctx, client, pods, apps)
 }
 
-func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App, baseNodes []apiv1.Node) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App) ([]provision.Unit, error) {
 	var err error
 	if len(pods) == 0 {
 		return nil, nil
 	}
-	nodeMap := map[string]*apiv1.Node{}
 	appMap := map[string]provision.App{}
 	portsMap := map[string][]int32{}
 	for _, baseApp := range baseApps {
@@ -438,19 +432,6 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
-	}
-	nodeInformer, err := controller.getNodeInformer()
-	if err != nil {
-		return nil, err
-	}
-	if len(baseNodes) == 0 {
-		baseNodes, err = nodesForPods(nodeInformer, pods)
-		if err != nil {
-			return nil, err
-		}
-	}
-	for i, baseNode := range baseNodes {
-		nodeMap[baseNode.Name] = &baseNodes[i]
 	}
 	svcInformer, err := controller.getServiceInformer()
 	if err != nil {
@@ -462,14 +443,6 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			continue
 		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
-		node, ok := nodeMap[pod.Spec.NodeName]
-		if !ok && pod.Spec.NodeName != "" {
-			node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			nodeMap[pod.Spec.NodeName] = node.DeepCopy()
-		}
 		podApp, ok := appMap[l.AppName()]
 		if !ok {
 			podApp, err = app.GetByName(ctx, l.AppName())
@@ -478,10 +451,9 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			}
 			appMap[podApp.GetName()] = podApp
 		}
-		wrapper := kubernetesNodeWrapper{node: node, prov: p, ctx: ctx}
 		u := &url.URL{
 			Scheme: "http",
-			Host:   wrapper.Address(),
+			Host:   pod.Status.HostIP,
 		}
 		urls := []url.URL{}
 		appProcess := l.AppProcess()
@@ -512,7 +484,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			if len(ports) > 0 {
 				u.Host = fmt.Sprintf("%s:%d", u.Host, ports[0])
 				for _, p := range ports {
-					urls = append(urls, url.URL{Scheme: "http", Host: fmt.Sprintf("%s:%d", wrapper.Address(), p)})
+					urls = append(urls, url.URL{Scheme: "http", Host: fmt.Sprintf("%s:%d", pod.Status.HostIP, p)})
 				}
 			}
 		}
@@ -524,21 +496,44 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			status = stateMap[pod.Status.Phase]
 		}
 
+		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
 		units = append(units, provision.Unit{
 			ID:          pod.Name,
 			Name:        pod.Name,
 			AppName:     l.AppName(),
 			ProcessName: appProcess,
 			Type:        l.AppPlatform(),
-			IP:          wrapper.ip(),
+			IP:          pod.Status.HostIP,
 			Status:      status,
 			Address:     u,
 			Addresses:   urls,
 			Version:     appVersion,
 			Routable:    isRoutable,
+			Restarts:    containersRestarts(pod.Status.ContainerStatuses),
+			CreatedAt:   &createdAt,
+			Ready:       containersReady(pod.Status.ContainerStatuses),
 		})
 	}
 	return units, nil
+}
+
+func containersRestarts(containersStatus []apiv1.ContainerStatus) *int32 {
+	restarts := int32(0)
+	for _, containerStatus := range containersStatus {
+		restarts += containerStatus.RestartCount
+	}
+	return &restarts
+}
+
+func containersReady(containersStatus []apiv1.ContainerStatus) *bool {
+	ready := len(containersStatus) > 0
+	for _, containerStatus := range containersStatus {
+		if !containerStatus.Ready {
+			ready = false
+			break
+		}
+	}
+	return &ready
 }
 
 func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) provision.Status {
@@ -565,26 +560,6 @@ func isEvicted(pod apiv1.Pod) bool {
 	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "evicted"
 }
 
-func nodesForPods(informer v1informers.NodeInformer, pods []apiv1.Pod) ([]apiv1.Node, error) {
-	nodeSet := map[string]struct{}{}
-	for _, p := range pods {
-		nodeSet[p.Spec.NodeName] = struct{}{}
-	}
-	nodes, err := informer.Lister().List(labels.Everything())
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	nodesRet := make([]apiv1.Node, 0, len(nodes))
-	for _, node := range nodes {
-		_, inSet := nodeSet[node.Name]
-		if inSet {
-			copy := node.DeepCopy()
-			nodesRet = append(nodesRet, *copy)
-		}
-	}
-	return nodesRet, nil
-}
-
 func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
 	cApps, err := clustersForApps(ctx, apps)
 	if err != nil {
@@ -596,7 +571,7 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 		if err != nil {
 			return nil, err
 		}
-		clusterUnits, err := p.podsToUnitsMultiple(ctx, cApp.client, pods, cApp.apps, nil)
+		clusterUnits, err := p.podsToUnitsMultiple(ctx, cApp.client, pods, cApp.apps)
 		if err != nil {
 			return nil, err
 		}
@@ -765,14 +740,6 @@ func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *Clu
 	if err != nil {
 		return nil, err
 	}
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	nodeInformer, err := controller.getNodeInformer()
-	if err != nil {
-		return nil, err
-	}
 	addrs := make([]*url.URL, 0)
 	for _, pod := range pods {
 		labelSet := labelSetFromMeta(&pod.ObjectMeta)
@@ -786,14 +753,9 @@ func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *Clu
 			continue
 		}
 		if isPodReady(&pod) {
-			node, err := nodeInformer.Lister().Get(pod.Spec.NodeName)
-			if err != nil {
-				return nil, err
-			}
-			wrapper := kubernetesNodeWrapper{node: node, prov: p, ctx: ctx}
 			addrs = append(addrs, &url.URL{
 				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
+				Host:   fmt.Sprintf("%s:%d", pod.Status.HostIP, pubPort),
 			})
 		}
 	}
@@ -844,7 +806,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 		}
 		return errors.WithStack(err)
 	}
-	units, err := p.podsToUnits(ctx, client, []apiv1.Pod{*pod}, a, nil)
+	units, err := p.podsToUnits(ctx, client, []apiv1.Pod{*pod}, a)
 	if err != nil {
 		return err
 	}

@@ -638,7 +638,11 @@ func (s *S) TestUnits(c *check.C) {
 		c.Assert(splittedName[0], check.Equals, "myapp")
 		units[i].ID = ""
 		units[i].Name = ""
+		c.Assert(units[i].CreatedAt, check.Not(check.IsNil))
+		units[i].CreatedAt = nil
 	}
+	restarts := int32(0)
+	ready := false
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			AppName:     "myapp",
@@ -654,6 +658,8 @@ func (s *S) TestUnits(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30003"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 		{
 			AppName:     "myapp",
@@ -669,6 +675,8 @@ func (s *S) TestUnits(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30003"},
 			},
 			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
 		},
 	})
 }
@@ -683,6 +691,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 		}
 	}))
 	s.mock.MockfakeNodes(c, srv.URL)
+	t0 := time.Now().UTC()
 	for _, a := range []provision.App{a1, a2} {
 		for i := 1; i <= 2; i++ {
 			s.waitPodUpdate(c, func() {
@@ -694,10 +703,14 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 							"tsuru.io/app-process":  "web",
 							"tsuru.io/app-platform": "python",
 						},
-						Namespace: "default",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: t0},
 					},
 					Spec: apiv1.PodSpec{
 						NodeName: fmt.Sprintf("n%d", i),
+					},
+					Status: apiv1.PodStatus{
+						HostIP: fmt.Sprintf("192.168.99.%d", i),
 					},
 				}, metav1.CreateOptions{})
 				c.Assert(err, check.IsNil)
@@ -738,6 +751,8 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	sort.Slice(units, func(i, j int) bool {
 		return units[i].ID < units[j].ID
 	})
+	restarts := int32(0)
+	ready := false
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			ID:          "myapp-1",
@@ -752,7 +767,10 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30001"},
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 			},
-			Routable: true,
+			Routable:  true,
+			Restarts:  &restarts,
+			Ready:     &ready,
+			CreatedAt: &t0,
 		},
 		{
 			ID:          "myapp-2",
@@ -767,7 +785,10 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.2:30001"},
 				{Scheme: "http", Host: "192.168.99.2:30002"},
 			},
-			Routable: true,
+			Routable:  true,
+			Restarts:  &restarts,
+			Ready:     &ready,
+			CreatedAt: &t0,
 		},
 		{
 			ID:          "otherapp-1",
@@ -782,7 +803,10 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.1:30001"},
 				{Scheme: "http", Host: "192.168.99.1:30002"},
 			},
-			Routable: true,
+			Routable:  true,
+			Restarts:  &restarts,
+			Ready:     &ready,
+			CreatedAt: &t0,
 		},
 		{
 			ID:          "otherapp-2",
@@ -797,7 +821,10 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 				{Scheme: "http", Host: "192.168.99.2:30001"},
 				{Scheme: "http", Host: "192.168.99.2:30002"},
 			},
-			Routable: true,
+			Routable:  true,
+			Restarts:  &restarts,
+			Ready:     &ready,
+			CreatedAt: &t0,
 		},
 	})
 }
