@@ -2600,6 +2600,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"Protocol": "TCP",
 				"Port":     float64(4000),
 			}},
+		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
 		"owner":       "appOwner",
 		"deploys":     float64(7),
@@ -2690,6 +2691,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				"Protocol": "TCP",
 				"Port":     float64(4000),
 			}},
+		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
 		"owner":       "appOwner",
 		"deploys":     float64(7),
@@ -2785,7 +2787,8 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 				"opts":      map[string]interface{}{},
 			},
 		},
-		"tags": []interface{}{},
+		"tags":        []interface{}{},
+		"provisioner": "fake",
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2839,7 +2842,8 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"opts":      map[string]interface{}{},
 			},
 		},
-		"tags": nil,
+		"tags":        nil,
+		"provisioner": "fake",
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2909,7 +2913,8 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"opts":      map[string]interface{}{"opt1": "val1"},
 			},
 		},
-		"tags": []interface{}{"tag a", "tag b"},
+		"tags":        []interface{}{"tag a", "tag b"},
+		"provisioner": "fake",
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)

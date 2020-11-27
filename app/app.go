@@ -216,6 +216,13 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if version := app.GetPlatformVersion(); version != "latest" {
 		result["platform"] = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
+
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	result["provisioner"] = prov.GetName()
+
 	result["teams"] = app.Teams
 	units, err := app.Units()
 	result["units"] = units
