@@ -79,6 +79,7 @@ var (
 	_ provision.HCProvisioner            = &kubernetesProvisioner{}
 	_ provision.VersionsProvisioner      = &kubernetesProvisioner{}
 	_ provision.LogsProvisioner          = &kubernetesProvisioner{}
+	_ provision.MetricsProvisioner       = &kubernetesProvisioner{}
 	_ provision.AutoScaleProvisioner     = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}

@@ -209,6 +209,7 @@ func (app *App) Units() ([]provision.Unit, error) {
 
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
+	var errMsgs []string
 	repo, _ := repository.Manager().GetRepository(app.ctx, app.Name)
 	result := make(map[string]interface{})
 	result["name"] = app.Name
@@ -219,14 +220,15 @@ func (app *App) MarshalJSON() ([]byte, error) {
 
 	prov, err := app.getProvisioner()
 	if err != nil {
-		return nil, err
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get provisioner name: %+v", err))
 	}
-	result["provisioner"] = prov.GetName()
+	if prov != nil {
+		result["provisioner"] = prov.GetName()
+	}
 
 	result["teams"] = app.Teams
 	units, err := app.Units()
 	result["units"] = units
-	var errMsgs []string
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
 	}
@@ -268,6 +270,15 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if autoscale != nil {
 		result["autoscale"] = autoscale
 	}
+
+	unitMetrics, err := app.UnitsMetrics()
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
+	}
+	if unitMetrics != nil {
+		result["unitsMetrics"] = unitMetrics
+	}
+
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
@@ -2645,6 +2656,18 @@ func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
 		return nil, nil
 	}
 	return autoscaleProv.GetAutoScale(app.ctx, app)
+}
+
+func (app *App) UnitsMetrics() ([]provision.UnitMetric, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	metricsProv, ok := prov.(provision.MetricsProvisioner)
+	if !ok {
+		return nil, nil
+	}
+	return metricsProv.UnitsMetrics(app.ctx, app)
 }
 
 func (app *App) AutoScale(spec provision.AutoScaleSpec) error {

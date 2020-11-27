@@ -50,6 +50,7 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
+	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 const (
@@ -93,6 +94,7 @@ type ClientWrapper struct {
 	*fake.Clientset
 	ApiExtensionsClientset *fakeapiextensions.Clientset
 	TsuruClientset         *faketsuru.Clientset
+	MetricsClientset       *fakemetrics.Clientset
 	ClusterInterface
 }
 

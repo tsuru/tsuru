@@ -42,6 +42,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 type S struct {
@@ -108,6 +110,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		ClusterInterface:       s.clusterClient,
 	}
 	s.clusterClient.Interface = s.client
@@ -119,6 +122,9 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil
+	}
+	MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
+		return s.client.MetricsClientset, nil
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
