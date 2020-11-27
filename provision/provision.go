@@ -199,6 +199,13 @@ func (u *Unit) Available() bool {
 		u.Status == StatusError
 }
 
+// UnitMetric represents a a related metrics for an unit.
+type UnitMetric struct {
+	ID     string
+	CPU    string
+	Memory string
+}
+
 // Named is something that has a name, providing the GetName method.
 type Named interface {
 	GetName() string
@@ -387,6 +394,12 @@ type ExecutableProvisioner interface {
 type LogsProvisioner interface {
 	ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
 	WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
+}
+
+// MetricsProvisioner is a provisioner that have capability to view metrics of workloads
+type MetricsProvisioner interface {
+	// Units returns information about cpu and memory usage by App.
+	UnitsMetrics(ctx context.Context, a App) ([]UnitMetric, error)
 }
 
 // SleepableProvisioner is a provisioner that allows putting applications to

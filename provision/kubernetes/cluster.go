@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 const (
@@ -87,6 +88,10 @@ var ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.
 
 var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
 	return tsuruv1clientset.NewForConfig(conf)
+}
+
+var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
+	return metricsclientset.NewForConfig(conf)
 }
 
 type ClusterClient struct {
