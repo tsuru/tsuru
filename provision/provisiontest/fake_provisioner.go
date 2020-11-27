@@ -42,6 +42,7 @@ var (
 	_ provision.UpdatableProvisioner     = &FakeProvisioner{}
 	_ provision.Provisioner              = &FakeProvisioner{}
 	_ provision.LogsProvisioner          = &FakeProvisioner{}
+	_ provision.MetricsProvisioner       = &FakeProvisioner{}
 	_ provision.VolumeProvisioner        = &FakeProvisioner{}
 	_ provision.SleepableProvisioner     = &FakeProvisioner{}
 	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
@@ -1104,6 +1105,23 @@ func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]p
 		allUnits = append(allUnits, p.apps[a.GetName()].units...)
 	}
 	return allUnits, nil
+}
+
+func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provision.UnitMetric, error) {
+	if err := p.getError("UnitsMetrics"); err != nil {
+		return nil, err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	var unitsMetrics []provision.UnitMetric
+	for _, unit := range p.apps[a.GetName()].units {
+		unitsMetrics = append(unitsMetrics, provision.UnitMetric{
+			ID:     unit.ID,
+			CPU:    "10m",
+			Memory: "100Mi",
+		})
+	}
+	return unitsMetrics, nil
 }
 
 func (p *FakeProvisioner) MockRoutableAddresses(app provision.App, addrs []appTypes.RoutableAddresses) {

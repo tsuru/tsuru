@@ -2560,7 +2560,23 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	repository.Manager().CreateRepository(context.TODO(), "name", nil)
+	myPlan := appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100}
+	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
+	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		c.Assert(name, check.Equals, myPlan.Name)
+		return &myPlan, nil
+	}
+
+	team := authTypes.Team{Name: "myteam"}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, team.Name)
+		return &team, nil
+	}
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -2569,11 +2585,11 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Platform:    "Framework",
 		Teams:       []string{"team1"},
 		CName:       []string{"name.mycompany.com"},
-		Owner:       "appOwner",
+		Owner:       s.user.Email,
 		Deploys:     7,
 		Pool:        "test",
 		Description: "description",
-		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		Plan:        myPlan,
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
@@ -2585,15 +2601,52 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			},
 		},
 	}
-	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
+	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
+	_, err = s.provisioner.AddUnitsToNode(&app, 1, "web", nil, "addr1")
+	c.Assert(err, check.IsNil)
+
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+
+	unitAddress := map[string]interface{}{}
+	rawAddress, err := json.Marshal(units[0].Address)
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(rawAddress, &unitAddress)
+	c.Assert(err, check.IsNil)
+
 	expected := map[string]interface{}{
 		"name":       "name",
 		"platform":   "Framework",
 		"repository": "git@" + repositorytest.ServerHost + ":name.git",
-		"teams":      []interface{}{"team1"},
-		"units":      []interface{}{},
-		"ip":         "name.fakerouter.com",
+		"teams":      []interface{}{"myteam"},
+		"units": []interface{}{
+			map[string]interface{}{
+				"Address":     unitAddress,
+				"Addresses":   nil,
+				"AppName":     "name",
+				"CreatedAt":   nil,
+				"HostAddr":    "addr1",
+				"HostPort":    "1",
+				"ID":          "name-0",
+				"IP":          "addr1",
+				"Name":        "",
+				"ProcessName": "web",
+				"Ready":       nil,
+				"Restarts":    nil,
+				"Routable":    false,
+				"Status":      "started",
+				"Type":        "Framework", "Version": 0},
+		},
+		"unitsMetrics": []interface{}{
+			map[string]interface{}{
+				"ID":     "name-0",
+				"CPU":    "10m",
+				"Memory": "100Mi",
+			},
+		},
+		"ip": "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
 				"Domain":   "name.cluster.local",
@@ -2602,7 +2655,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			}},
 		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
-		"owner":       "appOwner",
+		"owner":       s.user.Email,
 		"deploys":     float64(7),
 		"pool":        "test",
 		"description": "description",
@@ -2637,7 +2690,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(result, tsuruTest.JSONEquals, expected)
 }
 
 func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
