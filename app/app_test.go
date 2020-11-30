@@ -5454,11 +5454,13 @@ func (s *S) TestFillInternalAddresses(c *check.C) {
 	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{
 		Domain:   "test-web.fake-cluster.local",
 		Protocol: "TCP",
+		Process:  "web",
 		Port:     80,
 	})
 	c.Assert(app.InternalAddresses[1], check.DeepEquals, provision.AppInternalAddress{
 		Domain:   "test-logs.fake-cluster.local",
 		Protocol: "UDP",
+		Process:  "logs",
 		Port:     12201,
 	})
 }
