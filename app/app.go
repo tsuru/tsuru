@@ -223,7 +223,17 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get provisioner name: %+v", err))
 	}
 	if prov != nil {
-		result["provisioner"] = prov.GetName()
+		provisionerName := prov.GetName()
+		result["provisioner"] = provisionerName
+
+		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
+		if clusterErr != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
+		}
+
+		if cluster != nil {
+			result["cluster"] = cluster.Name
+		}
 	}
 
 	result["teams"] = app.Teams
