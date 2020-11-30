@@ -427,6 +427,8 @@ type AppInternalAddress struct {
 	Domain   string
 	Protocol string
 	Port     int32
+	Version  string
+	Process  string
 }
 
 // MessageProvisioner is a provisioner that provides a welcome message for

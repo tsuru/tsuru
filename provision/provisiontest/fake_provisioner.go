@@ -1378,11 +1378,13 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.GetName()),
 			Port:     80,
 			Protocol: "TCP",
+			Process:  "web",
 		},
 		{
 			Domain:   fmt.Sprintf("%s-logs.fake-cluster.local", a.GetName()),
 			Port:     12201,
 			Protocol: "UDP",
+			Process:  "logs",
 		},
 	}, nil
 

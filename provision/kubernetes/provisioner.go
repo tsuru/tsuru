@@ -886,6 +886,8 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
 				Protocol: string(port.Protocol),
 				Port:     port.Port,
+				Version:  service.ObjectMeta.Labels["tsuru.io/app-version"],
+				Process:  service.ObjectMeta.Labels["tsuru.io/app-process"],
 			})
 		}
 	}
