@@ -35,8 +35,8 @@ type ClusterService interface {
 	List(context.Context) ([]Cluster, error)
 	FindByName(context.Context, string) (*Cluster, error)
 	FindByProvisioner(context.Context, string) ([]Cluster, error)
-	FindByPool(context.Context, string, string) (*Cluster, error)
-	FindByPools(context.Context, string, []string) (map[string]Cluster, error)
+	FindByPool(ctx context.Context, provisioner, pool string) (*Cluster, error)
+	FindByPools(ctx context.Context, provisioner string, pools []string) (map[string]Cluster, error)
 	Delete(context.Context, Cluster) error
 }
 

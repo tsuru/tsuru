@@ -2595,9 +2595,10 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Tags:        []string{"tag a", "tag b"},
 		InternalAddresses: []provision.AppInternalAddress{
 			{
-				Domain:   "name.cluster.local",
+				Domain:   "name-web.cluster.local",
 				Protocol: "TCP",
 				Port:     4000,
+				Process:  "web",
 			},
 		},
 	}
@@ -2649,9 +2650,11 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"ip": "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name.cluster.local",
+				"Domain":   "name-web.cluster.local",
 				"Protocol": "TCP",
 				"Port":     float64(4000),
+				"Process":  "web",
+				"Version":  "",
 			}},
 		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
@@ -2721,9 +2724,10 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		Tags:        []string{"tag a", "tag b"},
 		InternalAddresses: []provision.AppInternalAddress{
 			{
-				Domain:   "name.cluster.local",
+				Domain:   "name-web.cluster.local",
 				Protocol: "TCP",
 				Port:     4000,
+				Process:  "web",
 			},
 		},
 	}
@@ -2740,9 +2744,11 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"ip":         "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name.cluster.local",
+				"Domain":   "name-web.cluster.local",
 				"Protocol": "TCP",
 				"Port":     float64(4000),
+				"Version":  "",
+				"Process":  "web",
 			}},
 		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
