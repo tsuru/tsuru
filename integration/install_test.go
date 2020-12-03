@@ -617,7 +617,7 @@ func appSwap() ExecFlow {
 				return regex.MatchString(res.Stdout.String())
 			})
 			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-			addrRE := regexp.MustCompile(fmt.Sprintf(`\| %s\s+(\|[^|]+){2}\| ([^| ]+)`, env.Get("router")))
+			addrRE := regexp.MustCompile(fmt.Sprintf(`\| %s\s+(\|[^|]+){1}\| ([^| ]+)`, env.Get("router")))
 			parts := addrRE.FindStringSubmatch(res.Stdout.String())
 			c.Assert(parts, check.HasLen, 3)
 			addrs = append(addrs, parts[2])
