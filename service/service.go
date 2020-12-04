@@ -63,13 +63,14 @@ type ServiceClient interface {
 	UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
 	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
 	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)
-	Plans(ctx context.Context, requestID string) ([]Plan, error)
+	Plans(ctx context.Context, pool, requestID string) ([]Plan, error)
 	Proxy(ctx context.Context, opts *ProxyOpts) error
 }
 
 var (
 	ErrServiceAlreadyExists = errors.New("Service already exists.")
 	ErrServiceNotFound      = errors.New("Service not found.")
+	ErrMissingPool          = errors.New("Missing pool")
 
 	schemeRegexp = regexp.MustCompile("^https?://")
 )

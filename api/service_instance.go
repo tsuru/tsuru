@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
@@ -457,7 +458,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	plan, err := service.GetPlanByServiceAndPlanName(ctx, svc, serviceInstance.PlanName, requestID)
+	plan, err := service.GetPlanByServiceAndPlanName(ctx, svc, serviceInstance.Pool, serviceInstance.PlanName, requestID)
 	if err != nil {
 		return err
 	}
@@ -559,10 +560,16 @@ func getServiceInstanceOrError(ctx stdContext.Context, serviceName string, insta
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
+	pool := ""
 	s, err := getService(ctx, serviceName)
 	if err != nil {
 		return err
 	}
+
+	if s.IsMultiCluster {
+		pool = r.URL.Query().Get("pool")
+	}
+
 	if s.IsRestricted {
 		allowed := permission.Check(t, permission.PermServiceReadPlans,
 			contextsForService(&s)...,
@@ -572,12 +579,61 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	requestID := requestIDHeader(r)
-	plans, err := service.GetPlansByService(ctx, s, requestID)
+	plans, err := service.GetPlansByService(ctx, s, pool, requestID)
+	if err == service.ErrMissingPool {
+		availablePools, poolErr := possiblePoolsForService(ctx, t)
+		if poolErr != nil {
+			return poolErr
+		}
+		return &tsuruErrors.ValidationError{
+			Message: fmt.Sprintf("You must provide the pool name, available pools: %s", strings.Join(availablePools, ", ")),
+		}
+	}
+
 	if err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(plans)
+}
+
+func possiblePoolsForService(ctx stdContext.Context, t auth.Token) ([]string, error) {
+	global, teams := teamsForToken(t)
+	var pools []pool.Pool
+	var err error
+	if global {
+		pools, err = pool.ListAllPools(ctx)
+	} else {
+		pools, err = pool.ListPossiblePools(ctx, teams)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := []string{}
+	for _, pool := range pools {
+		result = append(result, pool.Name)
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+func teamsForToken(t auth.Token) (global bool, teams []string) {
+	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
+	teams = []string{}
+
+	for _, c := range contexts {
+		if c.CtxType == permTypes.CtxGlobal {
+			return true, nil
+		}
+
+		if c.CtxType == permTypes.CtxTeam {
+			teams = append(teams, c.Value)
+		}
+	}
+
+	return false, teams
 }
 
 // title: service instance proxy
