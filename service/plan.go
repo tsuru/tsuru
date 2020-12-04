@@ -17,20 +17,20 @@ type Plan struct {
 	Schemas     *osb.Schemas `json:",omitempty"`
 }
 
-func GetPlansByService(ctx context.Context, svc Service, requestID string) ([]Plan, error) {
+func GetPlansByService(ctx context.Context, svc Service, pool, requestID string) ([]Plan, error) {
 	endpoint, err := svc.getClient("production")
 	if err != nil {
 		return []Plan{}, nil
 	}
-	plans, err := endpoint.Plans(ctx, requestID)
+	plans, err := endpoint.Plans(ctx, pool, requestID)
 	if err != nil {
 		return nil, err
 	}
 	return plans, nil
 }
 
-func GetPlanByServiceAndPlanName(ctx context.Context, svc Service, planName, requestID string) (Plan, error) {
-	plans, err := GetPlansByService(ctx, svc, requestID)
+func GetPlanByServiceAndPlanName(ctx context.Context, svc Service, pool, planName, requestID string) (Plan, error) {
+	plans, err := GetPlansByService(ctx, svc, pool, requestID)
 	if err != nil {
 		return Plan{}, err
 	}

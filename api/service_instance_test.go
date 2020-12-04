@@ -126,18 +126,20 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 		return &defaultPlan, nil
 	}
 	s.mockService.Pool.OnFindByName = func(poolName string) (*provisionTypes.Pool, error) {
-		if poolName == "my-pool" {
+		if poolName == "my-pool" || poolName == "test1" {
 			return &provisionTypes.Pool{
-				Name: "my-pool",
+				Name: poolName,
 			}, nil
 		}
-
 		return nil, stdErrors.New("No pool named: " + poolName)
 	}
 	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provisionTypes.Cluster, error) {
-		if pool == "my-pool" {
+		if pool == "my-pool" || pool == "test1" {
 			return &provisionTypes.Cluster{
 				Name: "my-cluster",
+				Addresses: []string{
+					"http://my-cluster.myprovider.com",
+				},
 			}, nil
 		}
 		return nil, stdErrors.New("No cluster for pool: " + pool)
@@ -1965,6 +1967,86 @@ func (s *ServiceInstanceSuite) TestServicePlans(c *check.C) {
 	expected := []service.Plan{
 		{Name: "ignite", Description: "some value"},
 		{Name: "small", Description: "no space left for you"},
+	}
+	c.Assert(plans, check.DeepEquals, expected)
+}
+
+func (s *ServiceInstanceSuite) TestServicePlansWithMissingPool(c *check.C) {
+	for _, poolName := range []string{"test1", "test2"} {
+		err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
+		c.Assert(err, check.IsNil)
+		err = pool.AddPool(stdContext.TODO(), pool.AddPoolOptions{Name: poolName, Default: false})
+		c.Assert(err, check.IsNil)
+	}
+
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		content := `{"msg":"No cluster address provided","missing_params":["cluster"]}`
+		w.Write([]byte(content))
+	}))
+	defer ts.Close()
+	srvc := service.Service{
+		Name:           "mysqlplan",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Password:       "abcde",
+		OwnerTeams:     []string{s.team.Name},
+		IsMultiCluster: true,
+	}
+	err := service.Create(srvc)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/services/mysqlplan/plans", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	request.Header.Set(requestIDHeader, "test")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide the pool name, available pools: test1, test2\n")
+}
+
+func (s *ServiceInstanceSuite) TestServicePlansWithPool(c *check.C) {
+	for _, poolName := range []string{"test1", "test2"} {
+		err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
+		c.Assert(err, check.IsNil)
+		err = pool.AddPool(stdContext.TODO(), pool.AddPoolOptions{Name: poolName, Default: false})
+		c.Assert(err, check.IsNil)
+	}
+
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Check(r.Header.Get("X-Tsuru-Cluster-Name"), check.Equals, "my-cluster")
+		c.Check(r.Header.Get("X-Tsuru-Cluster-Addresses"), check.Equals, "http://my-cluster.myprovider.com")
+
+		content := `[{"name": "clustered-plan", "description": "some value"}]`
+		w.Write([]byte(content))
+	}))
+	defer ts.Close()
+	srvc := service.Service{
+		Name:           "mysqlplan",
+		Endpoint:       map[string]string{"production": ts.URL},
+		Password:       "abcde",
+		OwnerTeams:     []string{s.team.Name},
+		IsMultiCluster: true,
+	}
+	err := service.Create(srvc)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/services/mysqlplan/plans?pool=test1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	request.Header.Set(requestIDHeader, "test")
+	s.testServer.ServeHTTP(recorder, request)
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Errorf("Received body: %s", recorder.Body.String())
+	}
+	var plans []service.Plan
+	err = json.Unmarshal(recorder.Body.Bytes(), &plans)
+	c.Assert(err, check.IsNil)
+	expected := []service.Plan{
+		{Name: "clustered-plan", Description: "some value"},
 	}
 	c.Assert(plans, check.DeepEquals, expected)
 }

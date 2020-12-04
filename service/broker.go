@@ -390,7 +390,7 @@ func (b *brokerClient) Info(ctx context.Context, instance *ServiceInstance, requ
 	return params, nil
 }
 
-func (b *brokerClient) Plans(ctx context.Context, _ string) ([]Plan, error) {
+func (b *brokerClient) Plans(ctx context.Context, _, _ string) ([]Plan, error) {
 	_, s, err := b.getService(ctx, b.service, b.broker.Name)
 	if err != nil {
 		return nil, err

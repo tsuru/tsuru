@@ -791,7 +791,7 @@ func (s *S) TestPlans(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Plans(context.TODO(), "")
+	result, err := client.Plans(context.TODO(), "", "")
 	c.Assert(err, check.IsNil)
 	expected := []Plan{
 		{Name: "ignite", Description: "some value"},

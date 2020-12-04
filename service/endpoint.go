@@ -58,6 +58,11 @@ func init() {
 
 var _ ServiceClient = &endpointClient{}
 
+type validationError struct {
+	Msg           string   `json:"msg"`
+	MissingParams []string `json:"missing_params"`
+}
+
 type endpointClient struct {
 	serviceName string
 	endpoint    string
@@ -361,10 +366,16 @@ func (c *endpointClient) Info(ctx context.Context, instance *ServiceInstance, re
 // The api should be prepared to receive the request,
 // like below:
 // GET /resources/plans
-func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, error) {
+func (c *endpointClient) Plans(ctx context.Context, pool, requestID string) ([]Plan, error) {
 	header, err := baseHeader(ctx, nil, nil, requestID)
 	if err != nil {
 		return nil, err
+	}
+	if pool != "" {
+		header, err = poolMultiCluster.Header(ctx, pool, header)
+		if err != nil {
+			return nil, err
+		}
 	}
 	url := "/resources/plans"
 	resp, err := c.issueRequest(ctx, url, "GET", nil, header)
@@ -372,6 +383,17 @@ func (c *endpointClient) Plans(ctx context.Context, requestID string) ([]Plan, e
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusBadRequest {
+		validationErr := &validationError{}
+		err = c.jsonFromResponse(resp, &validationErr)
+		if err == nil {
+			for _, param := range validationErr.MissingParams {
+				if param == "cluster" {
+					return nil, ErrMissingPool
+				}
+			}
+		}
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil
 	}
@@ -471,13 +493,12 @@ func (c *endpointClient) issueRequest(ctx context.Context, path, method string, 
 }
 
 func (c *endpointClient) jsonFromResponse(resp *http.Response, v interface{}) error {
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	err := json.NewDecoder(resp.Body).Decode(v)
 	if err != nil {
 		log.Errorf("Got error while parsing service json: %s", err)
 		return err
 	}
-	return json.Unmarshal(body, &v)
+	return nil
 }
 
 func addParameters(dst url.Values, params map[string]interface{}) {
