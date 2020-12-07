@@ -1476,7 +1476,7 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetInternalAddresses(ctx context.Context) ([]string, error) {
+func (app *App) GetInternalBindableAddresses() ([]string, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -1485,12 +1485,16 @@ func (app *App) GetInternalAddresses(ctx context.Context) ([]string, error) {
 	if !ok {
 		return nil, nil
 	}
-	addrs, err := interAppProv.InternalAddresses(ctx, app)
+	addrs, err := interAppProv.InternalAddresses(app.ctx, app)
 	if err != nil {
 		return nil, err
 	}
 	var addresses []string
 	for _, addr := range addrs {
+		// version addresses are so volatile, they change after every deploy, we don't use them to bind process
+		if addr.Version != "" {
+			continue
+		}
 		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
 	}
 	return addresses, nil

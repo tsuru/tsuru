@@ -350,9 +350,12 @@ func (app *FakeApp) GetAddresses() ([]string, error) {
 	return []string{addr}, nil
 }
 
-func (app *FakeApp) GetInternalAddresses(ctx context.Context) ([]string, error) {
+func (app *FakeApp) GetInternalBindableAddresses() ([]string, error) {
 	var addresses []string
 	for _, addr := range app.InternalAddresses {
+		if addr.Version != "" {
+			continue
+		}
 		addresses = append(addresses, fmt.Sprintf("%s://%s:%d", strings.ToLower(addr.Protocol), addr.Domain, addr.Port))
 	}
 	return addresses, nil
@@ -1385,6 +1388,20 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 			Port:     12201,
 			Protocol: "UDP",
 			Process:  "logs",
+		},
+		{
+			Domain:   fmt.Sprintf("%s-logs-v2.fake-cluster.local", a.GetName()),
+			Port:     12201,
+			Protocol: "UDP",
+			Process:  "logs",
+			Version:  "2",
+		},
+		{
+			Domain:   fmt.Sprintf("%s-web-v2.fake-cluster.local", a.GetName()),
+			Port:     80,
+			Protocol: "TCP",
+			Process:  "web",
+			Version:  "2",
 		},
 	}, nil
 

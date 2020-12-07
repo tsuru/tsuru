@@ -551,7 +551,7 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 	if len(appAddrs) > 0 {
 		params.Set("app-host", appAddrs[0])
 	}
-	internalAddrs, err := app.GetInternalAddresses(ctx)
+	internalAddrs, err := app.GetInternalBindableAddresses()
 	if err != nil {
 		return nil, err
 	}

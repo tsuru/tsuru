@@ -5456,7 +5456,7 @@ func (s *S) TestFillInternalAddresses(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
 	err := app.FillInternalAddresses()
 	c.Assert(err, check.IsNil)
-	c.Assert(app.InternalAddresses, check.HasLen, 2)
+	c.Assert(app.InternalAddresses, check.HasLen, 4)
 	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{
 		Domain:   "test-web.fake-cluster.local",
 		Protocol: "TCP",
@@ -5468,6 +5468,20 @@ func (s *S) TestFillInternalAddresses(c *check.C) {
 		Protocol: "UDP",
 		Process:  "logs",
 		Port:     12201,
+	})
+	c.Assert(app.InternalAddresses[2], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "test-logs-v2.fake-cluster.local",
+		Protocol: "UDP",
+		Process:  "logs",
+		Version:  "2",
+		Port:     12201,
+	})
+	c.Assert(app.InternalAddresses[3], check.DeepEquals, provision.AppInternalAddress{
+		Domain:   "test-web-v2.fake-cluster.local",
+		Protocol: "TCP",
+		Process:  "web",
+		Version:  "2",
+		Port:     80,
 	})
 }
 
@@ -5541,11 +5555,11 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	})
 }
 
-func (s *S) TestGetInternalAddresses(c *check.C) {
+func (s *S) TestGetInternalBindableAddresses(c *check.C) {
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, provisioner: s.provisioner}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	addresses, err := app.GetInternalAddresses(context.TODO())
+	addresses, err := app.GetInternalBindableAddresses()
 	c.Assert(err, check.IsNil)
 	c.Assert(addresses, check.DeepEquals, []string{
 		"tcp://myapp-web.fake-cluster.local:80",

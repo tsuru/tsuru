@@ -1715,16 +1715,12 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	sort.Slice(addrs, func(i, j int) bool {
-		return fmt.Sprint(addrs[i].Domain, addrs[i].Port) < fmt.Sprint(addrs[j].Domain, addrs[j].Port)
-	})
-
 	c.Assert(addrs, check.DeepEquals, []provision.AppInternalAddress{
-		{Domain: "myapp-jobs-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "jobs"},
-		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},
-		{Domain: "myapp-web-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "web"},
-		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, Process: "web"},
+		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
+		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},
+		{Domain: "myapp-jobs-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "jobs"},
+		{Domain: "myapp-web-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "web"},
 	})
 }
 
