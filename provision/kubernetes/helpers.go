@@ -45,6 +45,11 @@ const (
 	tsuruNodeDisabledTaint    = tsuruLabelPrefix + "disabled"
 	tsuruExtraLabelsMeta      = tsuruLabelPrefix + "extra-labels"
 	tsuruExtraAnnotationsMeta = tsuruLabelPrefix + "extra-annotations"
+	tsuruLabelAppName         = tsuruLabelPrefix + provision.LabelAppName
+	tsuruLabelAppVersion      = tsuruLabelPrefix + provision.LabelAppVersion
+	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
+	tsuruLabelIsBuild         = tsuruLabelPrefix + provision.LabelIsBuild
+	tsuruLabelIsDeploy        = tsuruLabelPrefix + provision.LabelIsDeploy
 	replicaDepRevision        = "deployment.kubernetes.io/revision"
 	kubeLabelNameMaxLen       = 55
 )

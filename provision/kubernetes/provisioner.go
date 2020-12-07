@@ -876,10 +876,10 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	}
 
 	sort.Slice(svcs, func(i, j int) (x bool) {
-		iVersion := svcs[i].ObjectMeta.Labels["tsuru.io/app-version"]
-		jVersion := svcs[j].ObjectMeta.Labels["tsuru.io/app-version"]
-		iProcess := svcs[i].ObjectMeta.Labels["tsuru.io/app-process"]
-		jProcess := svcs[j].ObjectMeta.Labels["tsuru.io/app-process"]
+		iVersion := svcs[i].ObjectMeta.Labels[tsuruLabelAppVersion]
+		jVersion := svcs[j].ObjectMeta.Labels[tsuruLabelAppVersion]
+		iProcess := svcs[i].ObjectMeta.Labels[tsuruLabelAppProcess]
+		jProcess := svcs[j].ObjectMeta.Labels[tsuruLabelAppProcess]
 
 		// we priorize the web process without versioning
 		// in the most cases will be address used to bind related services
@@ -908,8 +908,8 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
 				Protocol: string(port.Protocol),
 				Port:     port.Port,
-				Version:  service.ObjectMeta.Labels["tsuru.io/app-version"],
-				Process:  service.ObjectMeta.Labels["tsuru.io/app-process"],
+				Version:  service.ObjectMeta.Labels[tsuruLabelAppVersion],
+				Process:  service.ObjectMeta.Labels[tsuruLabelAppProcess],
 			})
 		}
 	}

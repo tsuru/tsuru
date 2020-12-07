@@ -14,12 +14,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-var (
+const (
+	LabelIsBuild  = "is-build"
+	LabelIsDeploy = "is-deploy"
+
 	labelIsTsuru           = "is-tsuru"
 	labelIsStopped         = "is-stopped"
 	labelIsAsleep          = "is-asleep"
-	labelIsBuild           = "is-build"
-	labelIsDeploy          = "is-deploy"
 	labelIsIsolatedRun     = "is-isolated-run"
 	labelIsIsolatedRunNew  = "is-isolated-run-version"
 	labelIsNodeContainer   = "is-node-container"
@@ -27,11 +28,11 @@ var (
 	labelIsHeadlessService = "is-headless-service"
 	labelIsRoutable        = "is-routable"
 
-	labelAppName     = "app-name"
-	labelAppProcess  = "app-process"
+	LabelAppName     = "app-name"
+	LabelAppProcess  = "app-process"
 	LabelAppPool     = "app-pool"
-	labelAppPlatform = "app-platform"
-	labelAppVersion  = "app-version"
+	LabelAppPlatform = "app-platform"
+	LabelAppVersion  = "app-version"
 
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
@@ -106,23 +107,23 @@ func (s *LabelSet) ToLabels() map[string]string {
 }
 
 func (s *LabelSet) ToVersionSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun, labelIsIsolatedRunNew, labelAppVersion), s.Prefix)
+	return withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, LabelIsBuild, labelIsIsolatedRun, labelIsIsolatedRunNew, LabelAppVersion), s.Prefix)
 }
 
 func (s *LabelSet) ToBaseSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsIsolatedRun), s.Prefix)
+	return withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, LabelIsBuild, labelIsIsolatedRun), s.Prefix)
 }
 
 func (s *LabelSet) ToAllVersionsSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild), s.Prefix)
+	return withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, LabelIsBuild), s.Prefix)
 }
 
 func (s *LabelSet) ToRoutableSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName, labelAppProcess, labelIsBuild, labelIsRoutable), s.Prefix)
+	return withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, LabelIsBuild, labelIsRoutable), s.Prefix)
 }
 
 func (s *LabelSet) ToAppSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelAppName), s.Prefix)
+	return withPrefix(subMap(s.Labels, LabelAppName), s.Prefix)
 }
 
 func (s *LabelSet) ToNodeContainerSelector() map[string]string {
@@ -146,23 +147,23 @@ func (s *LabelSet) ToVolumeSelector() map[string]string {
 }
 
 func (s *LabelSet) ToHPASelector() map[string]string {
-	keys := []string{labelIsTsuru, labelAppName}
-	if s.getLabel(labelAppProcess) != "" {
-		keys = append(keys, labelAppProcess)
+	keys := []string{labelIsTsuru, LabelAppName}
+	if s.getLabel(LabelAppProcess) != "" {
+		keys = append(keys, LabelAppProcess)
 	}
 	return withPrefix(subMap(s.Labels, keys...), s.Prefix)
 }
 
 func (s *LabelSet) AppName() string {
-	return s.getLabel(labelAppName)
+	return s.getLabel(LabelAppName)
 }
 
 func (s *LabelSet) AppProcess() string {
-	return s.getLabel(labelAppProcess)
+	return s.getLabel(LabelAppProcess)
 }
 
 func (s *LabelSet) AppPlatform() string {
-	return s.getLabel(labelAppPlatform)
+	return s.getLabel(LabelAppPlatform)
 }
 
 func (s *LabelSet) AppPool() string {
@@ -182,12 +183,12 @@ func (s *LabelSet) NodeIaaSID() string {
 }
 
 func (s *LabelSet) AppVersion() int {
-	v, _ := strconv.Atoi(s.getLabel(labelAppVersion))
+	v, _ := strconv.Atoi(s.getLabel(LabelAppVersion))
 	return v
 }
 
 func (s *LabelSet) WithoutVersion() *LabelSet {
-	ns := s.without(labelAppVersion)
+	ns := s.without(LabelAppVersion)
 	delete(ns.RawLabels, "version")
 	return ns
 }
@@ -290,7 +291,7 @@ func (s *LabelSet) IsAsleep() bool {
 }
 
 func (s *LabelSet) IsDeploy() bool {
-	return s.getBoolLabel(labelIsDeploy)
+	return s.getBoolLabel(LabelIsDeploy)
 }
 
 func (s *LabelSet) IsService() bool {
@@ -346,7 +347,7 @@ func (s *LabelSet) SetBuildImage(image string) {
 }
 
 func (s *LabelSet) SetVersion(version int) {
-	s.addLabel(labelAppVersion, strconv.Itoa(version))
+	s.addLabel(LabelAppVersion, strconv.Itoa(version))
 	if s.RawLabels == nil {
 		s.RawLabels = make(map[string]string)
 	}
@@ -409,9 +410,9 @@ func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 	}
 	set.Labels[labelProvisioner] = opts.Provisioner
 	set.Labels[labelIsService] = strconv.FormatBool(true)
-	set.Labels[labelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
+	set.Labels[LabelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
 	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
-	set.Labels[labelIsBuild] = strconv.FormatBool(opts.IsBuild)
+	set.Labels[LabelIsBuild] = strconv.FormatBool(opts.IsBuild)
 	set.Labels[labelBuilder] = opts.Builder
 }
 
@@ -448,10 +449,10 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 		Labels: map[string]string{
 			labelIsTsuru:     strconv.FormatBool(true),
 			labelIsStopped:   strconv.FormatBool(false),
-			labelIsDeploy:    strconv.FormatBool(opts.IsDeploy),
-			labelAppName:     opts.App.GetName(),
-			labelAppProcess:  opts.Process,
-			labelAppPlatform: opts.App.GetPlatform(),
+			LabelIsDeploy:    strconv.FormatBool(opts.IsDeploy),
+			LabelAppName:     opts.App.GetName(),
+			LabelAppProcess:  opts.Process,
+			LabelAppPlatform: opts.App.GetPlatform(),
 			LabelAppPool:     opts.App.GetPool(),
 			labelProvisioner: opts.Provisioner,
 			labelBuilder:     opts.Builder,
@@ -495,7 +496,7 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 	if opts.App == nil {
 		labelMap[labelNodeContainerName] = opts.NodeContainerName
 	} else {
-		labelMap[labelAppName] = opts.App.GetName()
+		labelMap[LabelAppName] = opts.App.GetName()
 	}
 	return &LabelSet{
 		Labels: labelMap,
@@ -585,7 +586,7 @@ func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 	labels := map[string]string{
 		labelIsTsuru:     strconv.FormatBool(true),
 		labelProvisioner: opts.Provisioner,
-		labelIsBuild:     strconv.FormatBool(opts.IsBuild),
+		LabelIsBuild:     strconv.FormatBool(opts.IsBuild),
 	}
 	for k, v := range opts.CustomLabels {
 		labels[k] = v

@@ -237,7 +237,7 @@ func (c *clusterController) notifyPodChanges(pod *apiv1.Pod) {
 	c.podListenersMu.RLock()
 	defer c.podListenersMu.RUnlock()
 
-	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
+	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
 	listeners, contains := c.podListeners[appName]
 	if !contains {
 		return

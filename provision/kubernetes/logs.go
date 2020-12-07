@@ -157,8 +157,8 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 				return
 			}
 
-			appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
-			appProcess := pod.ObjectMeta.Labels["tsuru.io/app-process"]
+			appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
+			appProcess := pod.ObjectMeta.Labels[tsuruLabelAppProcess]
 
 			scanner := bufio.NewScanner(stream)
 			tsuruLogs := make([]appTypes.Applog, 0)
@@ -198,7 +198,7 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 		}
 
 		pod := pods[index]
-		appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
+		appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
 
 		unifiedLog = append(unifiedLog, errToLog(pod.ObjectMeta.Name, appName, err))
 	}
@@ -208,12 +208,12 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 
 func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
 	m := map[string]string{
-		"tsuru.io/is-build":  "false",
-		"tsuru.io/is-deploy": "false",
-		"tsuru.io/app-name":  args.AppName,
+		tsuruLabelIsBuild:  "false",
+		tsuruLabelIsDeploy: "false",
+		tsuruLabelAppName:  args.AppName,
 	}
 	if args.Source != "" {
-		m["tsuru.io/app-process"] = args.Source
+		m[tsuruLabelAppProcess] = args.Source
 	}
 	return labels.SelectorFromSet(labels.Set(m))
 }
@@ -281,8 +281,8 @@ type k8sLogsWatcher struct {
 func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 
 	defer k.wg.Done()
-	appName := pod.ObjectMeta.Labels["tsuru.io/app-name"]
-	appProcess := pod.ObjectMeta.Labels["tsuru.io/app-process"]
+	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
+	appProcess := pod.ObjectMeta.Labels[tsuruLabelAppProcess]
 	var tailLines int64
 
 	if addedLater {
@@ -357,13 +357,13 @@ func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
 }
 
 func matchPod(pod *apiv1.Pod, args appTypes.ListLogArgs) bool {
-	if pod.ObjectMeta.Labels["tsuru.io/is-build"] == "true" {
+	if pod.ObjectMeta.Labels[tsuruLabelIsBuild] == "true" {
 		return false
 	}
-	if pod.ObjectMeta.Labels["tsuru.io/is-deploy"] == "true" {
+	if pod.ObjectMeta.Labels[tsuruLabelIsDeploy] == "true" {
 		return false
 	}
-	if args.Source != "" && pod.ObjectMeta.Labels["tsuru.io/app-process"] != args.Source {
+	if args.Source != "" && pod.ObjectMeta.Labels[tsuruLabelAppProcess] != args.Source {
 		return false
 	}
 
