@@ -875,39 +875,30 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		return nil, err
 	}
 
-	priorizedSVCs := make([]apiv1.Service, 0, len(svcs))
+	sort.Slice(svcs, func(i, j int) (x bool) {
+		iVersion := svcs[i].ObjectMeta.Labels["tsuru.io/app-version"]
+		jVersion := svcs[j].ObjectMeta.Labels["tsuru.io/app-version"]
+		iProcess := svcs[i].ObjectMeta.Labels["tsuru.io/app-process"]
+		jProcess := svcs[j].ObjectMeta.Labels["tsuru.io/app-process"]
 
-	n := 0
-	for _, service := range svcs {
 		// we priorize the web process without versioning
 		// in the most cases will be address used to bind related services
 		// the list of services will send to tsuru services, then they uses the first address to automatic bind
-		if service.ObjectMeta.Labels["tsuru.io/app-process"] == "web" && service.ObjectMeta.Labels["tsuru.io/app-version"] == "" {
-			priorizedSVCs = append(priorizedSVCs, service)
-			continue
+		if iProcess == "web" && iVersion == "" {
+			return true
+		} else if jProcess == "web" && jVersion == "" {
+			return false
 		}
-		svcs[n] = service
-		n++
-	}
-	svcs = svcs[:n]
-
-	sort.Slice(svcs, func(i, j int) bool {
-		iVersion := svcs[i].ObjectMeta.Labels["tsuru.io/app-version"]
-		jVersion := svcs[j].ObjectMeta.Labels["tsuru.io/app-version"]
 
 		if iVersion != jVersion {
 			return iVersion < jVersion
 		}
 
-		iProcess := svcs[i].ObjectMeta.Labels["tsuru.io/app-process"]
-		jProcess := svcs[j].ObjectMeta.Labels["tsuru.io/app-process"]
-
 		return iProcess < jProcess
 	})
 
-	priorizedSVCs = append(priorizedSVCs, svcs...)
 	addresses := []provision.AppInternalAddress{}
-	for _, service := range priorizedSVCs {
+	for _, service := range svcs {
 		// we can't show headless services
 		if service.Spec.ClusterIP == "None" {
 			continue
