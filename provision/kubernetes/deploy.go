@@ -49,7 +49,10 @@ import (
 )
 
 const (
+	dockerSockVolume        = "dockersock"
 	dockerSockPath          = "/var/run/docker.sock"
+	containerdRunVolume     = "containerd-run"
+	containerdRunDir        = "/run/containerd"
 	buildIntercontainerPath = "/tmp/intercontainer"
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 	defaultHttpPortName     = "http-default"
@@ -174,12 +177,6 @@ type createPodParams struct {
 	attachOutput      io.Writer
 	pod               *apiv1.Pod
 	mainContainer     string
-}
-
-func createBuildPod(ctx context.Context, params createPodParams) error {
-	cmds := dockercommon.ArchiveBuildCmds(params.app, "file:///home/application/archive.tar.gz")
-	params.cmds = cmds
-	return createPod(ctx, params)
 }
 
 func createDeployPod(ctx context.Context, params createPodParams) error {
@@ -1739,22 +1736,14 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 			ServiceAccountName: serviceAccountNameForApp(app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
-			Volumes: append([]apiv1.Volume{
-				{
-					Name: "dockersock",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
-							Path: dockerSockPath,
-						},
-					},
-				},
+			Volumes: append(deployAgentEngineVolumes(), append([]apiv1.Volume{
 				{
 					Name: "intercontainer",
 					VolumeSource: apiv1.VolumeSource{
 						EmptyDir: &apiv1.EmptyDirVolumeSource{},
 					},
 				},
-			}, volumes...),
+			}, volumes...)...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", nil, true), mounts...),
@@ -1819,27 +1808,16 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 		Spec: apiv1.PodSpec{
 			Affinity:         affinity,
 			ImagePullSecrets: pullSecrets,
-			Volumes: []apiv1.Volume{
-				{
-					Name: "dockersock",
-					VolumeSource: apiv1.VolumeSource{
-						HostPath: &apiv1.HostPathVolumeSource{
-							Path: dockerSockPath,
-						},
-					},
-				},
-			},
-			RestartPolicy: apiv1.RestartPolicyNever,
+			Volumes:          deployAgentEngineVolumes(),
+			RestartPolicy:    apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
-					Name:  conf.name,
-					Image: conf.image,
-					VolumeMounts: []apiv1.VolumeMount{
-						{Name: "dockersock", MountPath: dockerSockPath},
-					},
-					Stdin:     true,
-					StdinOnce: true,
-					Env:       conf.asEnvs(),
+					Name:         conf.name,
+					Image:        conf.image,
+					VolumeMounts: deployAgentEngineMounts(),
+					Stdin:        true,
+					StdinOnce:    true,
+					Env:          conf.asEnvs(),
 					Command: []string{
 						"sh", "-ec",
 						fmt.Sprintf(`
@@ -1871,10 +1849,9 @@ func newDeployAgentContainer(conf deployAgentConfig) apiv1.Container {
 	return apiv1.Container{
 		Name:  conf.name,
 		Image: conf.image,
-		VolumeMounts: []apiv1.VolumeMount{
-			{Name: "dockersock", MountPath: dockerSockPath},
-			{Name: "intercontainer", MountPath: buildIntercontainerPath},
-		},
+		VolumeMounts: append(deployAgentEngineMounts(),
+			apiv1.VolumeMount{Name: "intercontainer", MountPath: buildIntercontainerPath},
+		),
 		Stdin:     true,
 		StdinOnce: true,
 		Env:       conf.asEnvs(),
@@ -1910,4 +1887,32 @@ func deepCopyPorts(ports []apiv1.ServicePort) []apiv1.ServicePort {
 		result[i] = *ports[i].DeepCopy()
 	}
 	return result
+}
+
+func deployAgentEngineVolumes() []apiv1.Volume {
+	return []apiv1.Volume{
+		{
+			Name: dockerSockVolume,
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: dockerSockPath,
+				},
+			},
+		},
+		{
+			Name: containerdRunVolume,
+			VolumeSource: apiv1.VolumeSource{
+				HostPath: &apiv1.HostPathVolumeSource{
+					Path: containerdRunDir,
+				},
+			},
+		},
+	}
+}
+
+func deployAgentEngineMounts() []apiv1.VolumeMount {
+	return []apiv1.VolumeMount{
+		{Name: dockerSockVolume, MountPath: dockerSockPath},
+		{Name: containerdRunVolume, MountPath: containerdRunDir},
+	}
 }

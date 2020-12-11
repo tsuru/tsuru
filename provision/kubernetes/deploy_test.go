@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
@@ -2737,14 +2738,15 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	})
 }
 
-func (s *S) TestCreateBuildPodContainers(c *check.C) {
+func (s *S) TestCreatePodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	err = createBuildPod(context.Background(), createPodParams{
+	err = createPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
 		sourceImage:       "myimg",
 		destinationImages: []string{"destimg"},
 		inputFile:         "/home/application/archive.tar.gz",
@@ -2765,6 +2767,7 @@ func (s *S) TestCreateBuildPodContainers(c *check.C) {
 		Image: "tsuru/deploy-agent:0.8.4",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
+			{Name: containerdRunVolume, MountPath: containerdRunDir},
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		},
 		Stdin:     true,
@@ -2863,6 +2866,14 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 					},
 				},
 				{
+					Name: containerdRunVolume,
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: containerdRunDir,
+						},
+					},
+				},
+				{
 					Name: "intercontainer",
 					VolumeSource: apiv1.VolumeSource{
 						EmptyDir: &apiv1.EmptyDirVolumeSource{},
@@ -2881,6 +2892,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Image: "tsuru/deploy-agent:0.8.4",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
+				{Name: containerdRunVolume, MountPath: containerdRunDir},
 				{Name: "intercontainer", MountPath: buildIntercontainerPath},
 			},
 			Stdin:     true,
@@ -2986,6 +2998,14 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 					VolumeSource: apiv1.VolumeSource{
 						HostPath: &apiv1.HostPathVolumeSource{
 							Path: dockerSockPath,
+						},
+					},
+				},
+				{
+					Name: containerdRunVolume,
+					VolumeSource: apiv1.VolumeSource{
+						HostPath: &apiv1.HostPathVolumeSource{
+							Path: containerdRunDir,
 						},
 					},
 				},
