@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -41,6 +42,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 		return err
 	}
 	defer cleanupPod(ctx, client, buildPodName, ns)
+	inputFile := "/home/application/archive.tar.gz"
 	params := createPodParams{
 		app:               a,
 		client:            client,
@@ -49,9 +51,10 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 		destinationImages: []string{version.BuildImageName()},
 		attachInput:       archiveFile,
 		attachOutput:      evt,
-		inputFile:         "/home/application/archive.tar.gz",
+		inputFile:         inputFile,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file://"+inputFile),
 	}
-	return createBuildPod(ctx, params)
+	return createPod(ctx, params)
 }
 
 func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App, evt *event.Event, oldImage string, version appTypes.AppVersion) (provision.InspectData, error) {
