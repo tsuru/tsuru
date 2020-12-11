@@ -697,7 +697,10 @@ func appEnvs(a provision.App, process string, version appTypes.AppVersion, isDep
 	appEnvs := EnvsForApp(a, process, version, isDeploy)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
-		envs[i] = apiv1.EnvVar{Name: envData.Name, Value: envData.Value}
+		envs[i] = apiv1.EnvVar{
+			Name:  envData.Name,
+			Value: strings.ReplaceAll(envData.Value, "$", "$$"),
+		}
 	}
 	return envs
 }

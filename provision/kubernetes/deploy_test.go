@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -2478,6 +2479,52 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	a.Env = map[string]bind.EnvVar{
+		"env1": {
+			Name:  "env1",
+			Value: "a$()b$$c",
+		},
+	}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:              a,
+		Version:          version,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true, Restart: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+		{Name: "TSURU_SERVICES", Value: "{}"},
+		{Name: "env1", Value: "a$$()b$$$$c"},
+		{Name: "TSURU_PROCESSNAME", Value: "p1"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
+		{Name: "TSURU_HOST", Value: ""},
+		{Name: "port", Value: "8888"},
+		{Name: "PORT", Value: "8888"},
+		{Name: "PORT_p1", Value: "8888"},
+	})
 }
 
 func (s *S) TestCreateBuildPodContainers(c *check.C) {
