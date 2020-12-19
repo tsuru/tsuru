@@ -49,6 +49,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/validation"
@@ -227,7 +228,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		result["provisioner"] = provisionerName
 
 		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
-		if clusterErr != nil {
+		if clusterErr != nil && clusterErr != provisionTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
 
