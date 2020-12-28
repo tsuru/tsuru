@@ -14,12 +14,13 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/servicemanager"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
-func volumeFilterByContext(contexts []permTypes.PermissionContext) *volume.Filter {
-	filter := &volume.Filter{}
+func volumeFilterByContext(contexts []permTypes.PermissionContext) *volumeTypes.Filter {
+	filter := &volumeTypes.Filter{}
 contextsLoop:
 	for _, c := range contexts {
 		switch c.CtxType {
@@ -37,7 +38,7 @@ contextsLoop:
 	return filter
 }
 
-func contextsForVolume(v *volume.Volume) []permTypes.PermissionContext {
+func contextsForVolume(v *volumeTypes.Volume) []permTypes.PermissionContext {
 	return []permTypes.PermissionContext{
 		permission.Context(permTypes.CtxVolume, v.Name),
 		permission.Context(permTypes.CtxTeam, v.TeamOwner),
@@ -54,12 +55,13 @@ func contextsForVolume(v *volume.Volume) []permTypes.PermissionContext {
 //   204: No content
 //   401: Unauthorized
 func volumesList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermVolumeRead)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	volumes, err := volume.ListByFilter(volumeFilterByContext(contexts))
+	volumes, err := servicemanager.Volume.ListByFilter(ctx, volumeFilterByContext(contexts))
 	if err != nil {
 		return err
 	}
@@ -80,9 +82,10 @@ func volumesList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   404: Volume not found
 func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	v, err := volume.Load(r.URL.Query().Get(":name"))
+	ctx := r.Context()
+	v, err := servicemanager.Volume.Get(ctx, r.URL.Query().Get(":name"))
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
+		if err == volumeTypes.ErrVolumeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -91,7 +94,7 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-	_, err = v.LoadBinds()
+	v.Binds, err = servicemanager.Volume.Binds(ctx, v)
 	if err != nil {
 		return err
 	}
@@ -109,7 +112,7 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   409: Volume already exists
 func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	var inputVolume volume.Volume
+	var inputVolume volumeTypes.Volume
 	err = ParseInput(r, &inputVolume)
 	if err != nil {
 		return err
@@ -134,11 +137,11 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	_, err = volume.Load(inputVolume.Name)
+	_, err = servicemanager.Volume.Get(ctx, inputVolume.Name)
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
 	}
-	err = inputVolume.Create(ctx)
+	err = servicemanager.Volume.Create(ctx, &inputVolume)
 	if err != nil {
 		return err
 	}
@@ -156,7 +159,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   404: Volume not found
 func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	var inputVolume volume.Volume
+	var inputVolume volumeTypes.Volume
 	err = ParseInput(r, &inputVolume)
 	if err != nil {
 		return err
@@ -164,9 +167,9 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
 	inputVolume.Name = r.URL.Query().Get(":name")
-	dbVolume, err := volume.Load(inputVolume.Name)
+	dbVolume, err := servicemanager.Volume.Get(ctx, inputVolume.Name)
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
+		if err == volumeTypes.ErrVolumeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -186,7 +189,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return inputVolume.Update(ctx)
+	return servicemanager.Volume.Update(ctx, &inputVolume)
 }
 
 // title: volume plan list
@@ -197,11 +200,12 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //   200: List volume plans
 //   401: Unauthorized
 func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermVolumeCreate)
 	if len(contexts) == 0 {
 		return permission.ErrUnauthorized
 	}
-	plansProvisioners, err := volume.ListPlans()
+	plansProvisioners, err := servicemanager.Volume.ListPlans(ctx)
 	if err != nil {
 		return err
 	}
@@ -224,9 +228,9 @@ func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error
 func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	volumeName := r.URL.Query().Get(":name")
-	dbVolume, err := volume.Load(volumeName)
+	dbVolume, err := servicemanager.Volume.Get(ctx, volumeName)
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
+		if err == volumeTypes.ErrVolumeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -246,7 +250,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return dbVolume.Delete(ctx)
+	return servicemanager.Volume.Delete(ctx, dbVolume)
 }
 
 // title: volume bind
@@ -270,9 +274,9 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
+	dbVolume, err := servicemanager.Volume.Get(ctx, r.URL.Query().Get(":name"))
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
+		if err == volumeTypes.ErrVolumeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -300,9 +304,14 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = dbVolume.BindApp(bindInfo.App, bindInfo.MountPoint, bindInfo.ReadOnly)
+	err = servicemanager.Volume.BindApp(ctx, &volumeTypes.BindOpts{
+		Volume:     dbVolume,
+		AppName:    bindInfo.App,
+		MountPoint: bindInfo.MountPoint,
+		ReadOnly:   bindInfo.ReadOnly,
+	})
 	if err != nil || bindInfo.NoRestart {
-		if err == volume.ErrVolumeAlreadyBound {
+		if err == volumeTypes.ErrVolumeAlreadyBound {
 			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 		}
 		return err
@@ -334,9 +343,9 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	dbVolume, err := volume.Load(r.URL.Query().Get(":name"))
+	dbVolume, err := servicemanager.Volume.Get(ctx, r.URL.Query().Get(":name"))
 	if err != nil {
-		if err == volume.ErrVolumeNotFound {
+		if err == volumeTypes.ErrVolumeNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
@@ -364,9 +373,13 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = dbVolume.UnbindApp(bindInfo.App, bindInfo.MountPoint)
+	err = servicemanager.Volume.UnbindApp(ctx, &volumeTypes.BindOpts{
+		Volume:     dbVolume,
+		AppName:    bindInfo.App,
+		MountPoint: bindInfo.MountPoint,
+	})
 	if err != nil || bindInfo.NoRestart {
-		if err == volume.ErrVolumeBindNotFound {
+		if err == volumeTypes.ErrVolumeBindNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err

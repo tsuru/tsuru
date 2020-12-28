@@ -189,16 +189,6 @@ func (s *Storage) InstallHosts() *storage.Collection {
 	return c
 }
 
-func (s *Storage) Volumes() *storage.Collection {
-	c := s.Collection("volumes")
-	return c
-}
-
-func (s *Storage) VolumeBinds() *storage.Collection {
-	c := s.Collection("volume_binds")
-	return c
-}
-
 func IsCollectionExistsError(err error) bool {
 	if err == nil {
 		return false

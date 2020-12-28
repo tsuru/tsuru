@@ -56,6 +56,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"github.com/tsuru/tsuru/volume"
 	"golang.org/x/net/websocket"
 )
 
@@ -175,6 +176,10 @@ func setupServices() error {
 		return err
 	}
 	servicemanager.Pool, err = pool.PoolService()
+	if err != nil {
+		return err
+	}
+	servicemanager.Volume, err = volume.VolumeService()
 	if err != nil {
 		return err
 	}

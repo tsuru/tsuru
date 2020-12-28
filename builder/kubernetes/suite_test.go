@@ -32,6 +32,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/volume"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -172,5 +173,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.token, err = nativeScheme.Login(context.TODO(), map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Volume, err = volume.VolumeService()
 	c.Assert(err, check.IsNil)
 }

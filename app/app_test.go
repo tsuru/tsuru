@@ -49,7 +49,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -198,12 +198,22 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt2", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -216,9 +226,9 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Delete(context.TODO(), app, evt, "")
 	c.Assert(err, check.IsNil)
-	dbV, err := volume.Load(v1.Name)
+	dbV, err := servicemanager.Volume.Get(context.TODO(), v1.Name)
 	c.Assert(err, check.IsNil)
-	binds, err := dbV.LoadBinds()
+	binds, err := servicemanager.Volume.Binds(context.TODO(), dbV)
 	c.Assert(err, check.IsNil)
 	c.Assert(binds, check.IsNil)
 }
@@ -4753,10 +4763,15 @@ func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
 	newSuccessfulAppVersion(c, &app)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(app.Name, "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    app.Name,
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)
@@ -4791,10 +4806,15 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 	newSuccessfulAppVersion(c, &app)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(app.Name, "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    app.Name,
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(1, "", "", nil)
 	c.Assert(err, check.IsNil)

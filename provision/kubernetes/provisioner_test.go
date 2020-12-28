@@ -37,7 +37,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -2591,7 +2591,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
 		return true, nil, nil
 	})
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -2599,13 +2599,18 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	c.Assert(err, check.IsNil)
@@ -2656,7 +2661,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
 		return true, nil, nil
 	})
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -2664,13 +2669,18 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
 	c.Assert(err, check.ErrorMatches, "can't change the pool of an app with binded volumes")
@@ -2701,7 +2711,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -2709,15 +2719,25 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      a.Pool,
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt1", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt1",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt2", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a)
 	c.Assert(err, check.IsNil)
@@ -2774,7 +2794,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -2782,13 +2802,18 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      a.Pool,
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a)
 	c.Assert(err, check.IsNil)
@@ -2796,7 +2821,12 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	err = s.p.Provision(context.TODO(), a2)
 	c.Assert(err, check.IsNil)
 	client1.TsuruClientset.PrependReactor("create", "apps", s.mock.AppReaction(a2, c))
-	err = v.BindApp(a2.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a2.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), client1.ClusterInterface.(*ClusterClient), a2)
 	c.Assert(err, check.IsNil)

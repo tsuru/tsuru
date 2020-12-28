@@ -33,6 +33,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/volume"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -168,6 +169,8 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.AppLog, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Volume, err = volume.VolumeService()
 	c.Assert(err, check.IsNil)
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -130,11 +131,14 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Volumes().Database)
+	err = dbtest.ClearAllCollections(conn.DefaultDatabase())
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestVolumeUnmarshalPlan(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
 	updateConfig(`
 volume-plans:
   nfs:
@@ -163,8 +167,8 @@ volume-plans:
 		Provisioner: "other",
 	})
 	c.Assert(err, check.IsNil)
-	v1 := Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}
-	err = v1.validate(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = vs.validate(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	var resultFake fakePlan
 	err = v1.UnmarshalPlan(&resultFake)
@@ -176,7 +180,7 @@ volume-plans:
 		},
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.validate(context.TODO())
+	err = vs.validate(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	resultFake = fakePlan{}
 	err = v1.UnmarshalPlan(&resultFake)
@@ -186,7 +190,7 @@ volume-plans:
 	})
 	v1.Plan.Name = "nfs"
 	v1.Pool = "mypool2"
-	err = v1.validate(context.TODO())
+	err = vs.validate(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	var resultFakeOther fakeOtherPlan
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -195,7 +199,7 @@ volume-plans:
 		Plugin: "nfs",
 	})
 	v1.Plan.Name = "ebs"
-	err = v1.validate(context.TODO())
+	err = vs.validate(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	resultFakeOther = fakeOtherPlan{}
 	err = v1.UnmarshalPlan(&resultFakeOther)
@@ -206,34 +210,38 @@ volume-plans:
 }
 
 func (s *S) TestVolumeCreateLoad(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+
 	tests := []struct {
-		v   Volume
+		v   volumeTypes.Volume
 		err string
 	}{
 		{
-			v:   Volume{},
+			v:   volumeTypes.Volume{},
 			err: "volume name cannot be empty",
 		},
 		{
-			v:   Volume{Name: "v1"},
+			v:   volumeTypes.Volume{Name: "v1"},
 			err: pool.ErrPoolNotFound.Error(),
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool"},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool"},
 			err: authTypes.ErrTeamNotFound.Error(),
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
 			err: "key \"volume-plans::fake\" not found",
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "bogus"}},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}},
 			err: "key \"volume-plans:bogus:fake\" not found",
 		},
 		{
-			v: Volume{
+			v: volumeTypes.Volume{
 				Name: "v1",
-				Plan: VolumePlan{
+				Plan: volumeTypes.VolumePlan{
 					Name: "p1",
 				},
 				Pool:      "mypool",
@@ -241,9 +249,9 @@ func (s *S) TestVolumeCreateLoad(c *check.C) {
 			},
 		},
 		{
-			v: Volume{
+			v: volumeTypes.Volume{
 				Name: "v1",
-				Plan: VolumePlan{
+				Plan: volumeTypes.VolumePlan{
 					Name: "p1",
 				},
 				Pool:      "mypool",
@@ -253,7 +261,7 @@ func (s *S) TestVolumeCreateLoad(c *check.C) {
 		},
 	}
 	for i, tt := range tests {
-		err := tt.v.Create(context.TODO())
+		err := vs.Create(context.TODO(), &tt.v)
 		if tt.err != "" {
 			c.Assert(err, check.ErrorMatches, tt.err)
 			continue
@@ -265,7 +273,7 @@ func (s *S) TestVolumeCreateLoad(c *check.C) {
 				"type": "nfs",
 			},
 		})
-		dbV, err := Load(tt.v.Name)
+		dbV, err := vs.Get(context.TODO(), tt.v.Name)
 		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
 		c.Assert(dbV, check.DeepEquals, &tt.v)
 		var planOpts fakePlanOpts
@@ -279,30 +287,34 @@ func (s *S) TestVolumeCreateLoad(c *check.C) {
 }
 
 func (s *S) TestVolumeUpdateLoad(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+
 	tests := []struct {
-		v   Volume
+		v   volumeTypes.Volume
 		err string
 	}{
 		{
-			v:   Volume{Name: "v1"},
+			v:   volumeTypes.Volume{Name: "v1"},
 			err: pool.ErrPoolNotFound.Error(),
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool"},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool"},
 			err: authTypes.ErrTeamNotFound.Error(),
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam"},
 			err: "key \"volume-plans::fake\" not found",
 		},
 		{
-			v:   Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "bogus"}},
+			v:   volumeTypes.Volume{Name: "v1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "bogus"}},
 			err: "key \"volume-plans:bogus:fake\" not found",
 		},
 		{
-			v: Volume{
+			v: volumeTypes.Volume{
 				Name: "v1",
-				Plan: VolumePlan{
+				Plan: volumeTypes.VolumePlan{
 					Name: "p1",
 				},
 				Pool:      "mypool",
@@ -310,9 +322,9 @@ func (s *S) TestVolumeUpdateLoad(c *check.C) {
 			},
 		},
 		{
-			v: Volume{
+			v: volumeTypes.Volume{
 				Name: "v1",
-				Plan: VolumePlan{
+				Plan: volumeTypes.VolumePlan{
 					Name: "p1",
 				},
 				Pool:      "mypool",
@@ -322,7 +334,7 @@ func (s *S) TestVolumeUpdateLoad(c *check.C) {
 		},
 	}
 	for i, tt := range tests {
-		err := tt.v.Update(context.TODO())
+		err := vs.Update(context.TODO(), &tt.v)
 		if tt.err != "" {
 			c.Assert(err, check.ErrorMatches, tt.err)
 			continue
@@ -334,7 +346,7 @@ func (s *S) TestVolumeUpdateLoad(c *check.C) {
 				"type": "nfs",
 			},
 		})
-		dbV, err := Load(tt.v.Name)
+		dbV, err := vs.Get(context.TODO(), tt.v.Name)
 		c.Assert(err, check.IsNil, check.Commentf("test %d", i))
 		c.Assert(dbV, check.DeepEquals, &tt.v)
 		var planOpts fakePlanOpts
@@ -348,134 +360,220 @@ func (s *S) TestVolumeUpdateLoad(c *check.C) {
 }
 
 func (s *S) TestVolumeBindApp(c *check.C) {
-	v := Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Create(context.TODO())
+	err := vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", true)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt1",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
-	binds, err := v.LoadBinds()
+	binds, err := vs.Binds(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: true}}
+	expected := []volumeTypes.VolumeBind{{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: true}}
 	c.Assert(binds, check.DeepEquals, expected)
-	dbV, err := Load(v.Name)
+	dbV, err := vs.Get(context.TODO(), v.Name)
 	c.Assert(err, check.IsNil)
-	binds, err = dbV.LoadBinds()
+	binds, err = vs.Binds(context.TODO(), dbV)
 	c.Assert(err, check.IsNil)
 	c.Assert(binds, check.DeepEquals, expected)
 }
 
 func (s *S) TestVolumeBindAppMultipleMounts(c *check.C) {
-	v := Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Create(context.TODO())
+	err := vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", false)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt1",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp2", "/mnt1", false)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp2",
+		MountPoint: "/mnt1",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", true)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", false)
-	c.Assert(err, check.Equals, ErrVolumeAlreadyBound)
-	expected := []VolumeBind{
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "myapp2", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyBound)
+	expected := []volumeTypes.VolumeBind{
+		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "myapp2", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
-	binds, err := v.LoadBinds()
+	binds, err := vs.Binds(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
 	c.Assert(binds, check.DeepEquals, expected)
 }
 
 func (s *S) TestLoadBindsForApp(c *check.C) {
-	v := Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Create(context.TODO())
+	err := vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", false)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt1",
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp2", "/mnt1", false)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp2",
+		MountPoint: "/mnt1",
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", true)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", false)
-	c.Assert(err, check.Equals, ErrVolumeAlreadyBound)
-	expected := []VolumeBind{
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyBound)
+	expected := []volumeTypes.VolumeBind{
+		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true},
 	}
-	binds, err := v.LoadBindsForApp("myapp")
+	binds, err := vs.BindsForApp(context.TODO(), &v, "myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(binds, check.DeepEquals, expected)
 }
 
 func (s *S) TestVolumeUnbindApp(c *check.C) {
-	v := Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Create(context.TODO())
+	err := vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt1", true)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt1",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("myapp", "/mnt2", true)
+	err = vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.UnbindApp("myapp", "/mnt1")
+	err = vs.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt1",
+	})
 	c.Assert(err, check.IsNil)
-	binds, err := v.LoadBinds()
+	binds, err := vs.Binds(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	expected := []VolumeBind{{ID: VolumeBindID{App: "myapp", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: true}}
+	expected := []volumeTypes.VolumeBind{
+		{
+			ID: volumeTypes.VolumeBindID{
+				App:        "myapp",
+				MountPoint: "/mnt2",
+				Volume:     "v1",
+			},
+			ReadOnly: true,
+		},
+	}
 	c.Assert(binds, check.DeepEquals, expected)
-	err = v.UnbindApp("myapp", "/mnt999")
-	c.Assert(err, check.Equals, ErrVolumeBindNotFound)
+	err = vs.UnbindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "myapp",
+		MountPoint: "/mnt999",
+	})
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeBindNotFound)
 }
 
 func (s *S) TestListByApp(c *check.C) {
-	volumes := []Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	volumes := []volumeTypes.Volume{
 		{
 			Name:      "v1",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
 			Pool:      "mypool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v2",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
 			Pool:      "mypool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v3",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
 			Pool:      "mypool",
 			TeamOwner: "myteam",
 		},
 	}
-	binds := []VolumeBind{
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "app2", MountPoint: "/mnt1", Volume: "v2"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
-		{ID: VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
+	binds := []volumeTypes.VolumeBind{
+		{ID: volumeTypes.VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v1"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "app1", MountPoint: "/mnt2", Volume: "v1"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "app2", MountPoint: "/mnt1", Volume: "v2"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "app1", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
+		{ID: volumeTypes.VolumeBindID{App: "app3", MountPoint: "/mnt1", Volume: "v3"}, ReadOnly: false},
 	}
 	for i, v := range volumes {
-		err := v.Create(context.TODO())
+		err := vs.Create(context.TODO(), &v)
 		c.Assert(err, check.IsNil)
+
 		volumes[i].Plan.Opts = map[string]interface{}{
 			"driver": "local",
 			"opt": map[string]interface{}{
@@ -484,42 +582,53 @@ func (s *S) TestListByApp(c *check.C) {
 		}
 		for _, b := range binds {
 			if b.ID.Volume == v.Name {
-				err := v.BindApp(b.ID.App, b.ID.MountPoint, b.ReadOnly)
+				err := vs.BindApp(context.TODO(), &volumeTypes.BindOpts{
+					Volume:     &v,
+					AppName:    b.ID.App,
+					MountPoint: b.ID.MountPoint,
+					ReadOnly:   b.ReadOnly,
+				})
 				c.Assert(err, check.IsNil)
 			}
 		}
 	}
-	appVolumes, err := ListByApp("app1")
+	appVolumes, err := vs.ListByApp(context.TODO(), "app1")
 	c.Assert(err, check.IsNil)
 	sort.Slice(appVolumes, func(i, j int) bool { return appVolumes[i].Name < appVolumes[j].Name })
-	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[0], volumes[2]})
-	appVolumes, err = ListByApp("app2")
+	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[0], volumes[2]})
+	appVolumes, err = vs.ListByApp(context.TODO(), "app2")
 	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[1]})
-	appVolumes, err = ListByApp("app3")
+	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[1]})
+	appVolumes, err = vs.ListByApp(context.TODO(), "app3")
 	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.DeepEquals, []Volume{volumes[2]})
-	appVolumes, err = ListByApp("app4")
+	c.Assert(appVolumes, check.DeepEquals, []volumeTypes.Volume{volumes[2]})
+	appVolumes, err = vs.ListByApp(context.TODO(), "app4")
 	c.Assert(err, check.IsNil)
-	c.Assert(appVolumes, check.IsNil)
+	c.Assert(appVolumes, check.HasLen, 0)
 }
 
 func (s *S) TestVolumeDelete(c *check.C) {
-	v := Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "mypool",
 		TeamOwner: "myteam",
 	}
-	err := v.Create(context.TODO())
+	err := vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.Delete(context.TODO())
+	err = vs.Delete(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	_, err = Load(v.Name)
-	c.Assert(err, check.Equals, ErrVolumeNotFound)
+	_, err = vs.Get(context.TODO(), v.Name)
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeNotFound)
 }
 
 func (s *S) TestVolumeUpdateAlreadyProvisioned(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
 	updateConfig(`
 volume-plans:
   p1:
@@ -536,20 +645,23 @@ volume-plans:
 		Provisioner: "volumeprov",
 	})
 	c.Assert(err, check.IsNil)
-	v := Volume{
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = v.Create(context.TODO())
+	err = vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
 	volumeProv.isProvisioned = true
-	err = v.Create(context.TODO())
-	c.Assert(err, check.Equals, ErrVolumeAlreadyProvisioned)
+	err = vs.Create(context.TODO(), &v)
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeAlreadyProvisioned)
 }
 
 func (s *S) TestVolumeDeleteWithVolumeProvisioner(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
 	updateConfig(`
 volume-plans:
   p1:
@@ -566,45 +678,51 @@ volume-plans:
 		Provisioner: "volumeprov",
 	})
 	c.Assert(err, check.IsNil)
-	v := Volume{
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "volumepool",
 		TeamOwner: "myteam",
 	}
-	err = v.Create(context.TODO())
+	err = vs.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.Delete(context.TODO())
+	err = vs.Delete(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumeProv.deleteCallVolume, check.Equals, "v1")
 	c.Assert(volumeProv.deleteCallPool, check.Equals, "volumepool")
-	_, err = Load(v.Name)
-	c.Assert(err, check.Equals, ErrVolumeNotFound)
+	_, err = vs.Get(context.TODO(), v.Name)
+	c.Assert(err, check.Equals, volumeTypes.ErrVolumeNotFound)
 }
 
 func (s *S) TestListByFilter(c *check.C) {
-	volumes := []Volume{
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	volumes := []volumeTypes.Volume{
 		{
 			Name:      "v1",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
+			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "mypool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v2",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
+			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "otherpool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v3",
-			Plan:      VolumePlan{Name: "p1"},
+			Plan:      volumeTypes.VolumePlan{Name: "p1"},
+			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "mypool",
 			TeamOwner: "otherteam",
 		},
 	}
 	for i, v := range volumes {
-		err := v.Create(context.TODO())
+		err := vs.Create(context.TODO(), &v)
 		c.Assert(err, check.IsNil)
 		volumes[i].Plan.Opts = map[string]interface{}{
 			"driver": "local",
@@ -614,18 +732,18 @@ func (s *S) TestListByFilter(c *check.C) {
 		}
 	}
 	tests := []struct {
-		filter   *Filter
-		expected []Volume
+		filter   *volumeTypes.Filter
+		expected []volumeTypes.Volume
 	}{
 		{filter: nil, expected: volumes},
-		{filter: &Filter{Names: []string{"v1", "v2"}}, expected: volumes[:2]},
-		{filter: &Filter{Names: []string{"v1", "vx"}}, expected: volumes[:1]},
-		{filter: &Filter{Names: []string{"v1", "vx"}, Teams: []string{"myteam"}}, expected: volumes[:2]},
-		{filter: &Filter{Names: []string{"v1", "vx"}, Pools: []string{"otherpool"}}, expected: volumes[:2]},
-		{filter: &Filter{Pools: []string{"otherpool", "mypool"}}, expected: volumes},
+		{filter: &volumeTypes.Filter{Names: []string{"v1", "v2"}}, expected: volumes[:2]},
+		{filter: &volumeTypes.Filter{Names: []string{"v1", "vx"}}, expected: volumes[:1]},
+		{filter: &volumeTypes.Filter{Names: []string{"v1", "vx"}, Teams: []string{"myteam"}}, expected: volumes[:2]},
+		{filter: &volumeTypes.Filter{Names: []string{"v1", "vx"}, Pools: []string{"otherpool"}}, expected: volumes[:2]},
+		{filter: &volumeTypes.Filter{Pools: []string{"otherpool", "mypool"}}, expected: volumes},
 	}
 	for _, tt := range tests {
-		vols, err := ListByFilter(tt.filter)
+		vols, err := vs.ListByFilter(context.TODO(), tt.filter)
 		c.Assert(err, check.IsNil)
 		sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
 		c.Assert(vols, check.DeepEquals, tt.expected)
@@ -633,11 +751,14 @@ func (s *S) TestListByFilter(c *check.C) {
 }
 
 func (s *S) TestVolumeValidateNew(c *check.C) {
-	vol := Volume{Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "p1"}}
+	vol := volumeTypes.Volume{Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "p1"}}
 	msg := "Invalid volume name, volume name should have at most 40 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
 	nameErr := &tsuruErrors.ValidationError{Message: msg}
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
 	tt := []struct {
 		name        string
 		expectedErr error
@@ -653,11 +774,15 @@ func (s *S) TestVolumeValidateNew(c *check.C) {
 	}
 	for _, t := range tt {
 		vol.Name = t.name
-		c.Check(errors.Cause(vol.validateNew(context.TODO())), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
+		err := vs.Create(context.TODO(), &vol)
+		c.Check(errors.Cause(err), check.DeepEquals, t.expectedErr, check.Commentf(t.name))
 	}
 }
 
 func (s *S) TestVolumeValidate(c *check.C) {
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
 	updateConfig(`
 volume-plans:
   nfs:
@@ -674,30 +799,33 @@ volume-plans:
       storage-class: my-ebs-storage-class
 `)
 	tt := []struct {
-		volume      Volume
+		volume      volumeTypes.Volume
 		expectedErr error
 	}{
-		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
-		{Volume{Name: "volume-with-a-name-longer-than-40-characters", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, nil},
-		{Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
-		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
-		{Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
+		{volumeTypes.Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}, nil},
+		{volumeTypes.Volume{Name: "volume-with-a-name-longer-than-40-characters", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}, nil},
+		{volumeTypes.Volume{Name: "volume1", Pool: "invalidpool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}, pool.ErrPoolNotFound},
+		{volumeTypes.Volume{Name: "volume1", Pool: "mypool", TeamOwner: "invalidteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}, authTypes.ErrTeamNotFound},
+		{volumeTypes.Volume{Name: "volume1", Pool: "mypool", TeamOwner: "myteam", Plan: volumeTypes.VolumePlan{Name: "invalidplan"}}, config.ErrKeyNotFound{Key: "volume-plans:invalidplan:fake"}},
 	}
 	for _, t := range tt {
-		c.Check(errors.Cause(t.volume.validate(context.TODO())), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
+		c.Check(errors.Cause(vs.validate(context.TODO(), &t.volume)), check.DeepEquals, t.expectedErr, check.Commentf(t.volume.Name))
 	}
 }
 
 func (s *S) TestRenameTeam(c *check.C) {
-	v1 := Volume{Name: "v1", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
-	err := v1.Create(context.TODO())
+	vs := &volumeService{
+		storage: &volumeTypes.MockVolumeStorage{},
+	}
+	v1 := volumeTypes.Volume{Name: "v1", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "myteam"}
+	err := vs.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	v2 := Volume{Name: "v2", Plan: VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
-	err = v2.Create(context.TODO())
+	v2 := volumeTypes.Volume{Name: "v2", Plan: volumeTypes.VolumePlan{Name: "p1"}, Pool: "mypool", TeamOwner: "otherteam"}
+	err = vs.Create(context.TODO(), &v2)
 	c.Assert(err, check.IsNil)
-	err = RenameTeam(context.TODO(), "myteam", "mynewteam")
+	err = vs.storage.RenameTeam(context.TODO(), "myteam", "mynewteam")
 	c.Assert(err, check.IsNil)
-	vols, err := ListByFilter(nil)
+	vols, err := vs.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
 	c.Assert(vols[0].TeamOwner, check.Equals, "mynewteam")

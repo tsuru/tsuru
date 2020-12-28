@@ -32,7 +32,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -3008,7 +3008,7 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -3016,13 +3016,18 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
