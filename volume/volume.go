@@ -6,64 +6,219 @@ package volume
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	internalConfig "github.com/tsuru/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/storage"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
 )
 
-var (
-	ErrVolumeNotFound           = errors.New("volume not found")
-	ErrVolumeAlreadyBound       = errors.New("volume already bound in mountpoint")
-	ErrVolumeBindNotFound       = errors.New("volume bind not found")
-	ErrVolumeAlreadyProvisioned = errors.New("updating a volume already provisioned is not supported, a new volume must be created and the old one deleted if necessary")
-)
-
-type VolumePlan struct {
-	Name string
-	Opts map[string]interface{}
+type volumeService struct {
+	storage volumeTypes.VolumeStorage
 }
 
-type VolumeBindID struct {
-	App        string
-	MountPoint string
-	Volume     string
+var _ volumeTypes.VolumeService = &volumeService{}
+
+func VolumeService() (volumeTypes.VolumeService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &volumeService{
+		storage: dbDriver.VolumeStorage,
+	}, nil
 }
 
-type VolumeBind struct {
-	ID       VolumeBindID `bson:"_id"`
-	ReadOnly bool
+func VolumeStorage() (volumeTypes.VolumeStorage, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dbDriver.VolumeStorage, nil
 }
 
-type Volume struct {
-	Name      string `bson:"_id"`
-	Pool      string
-	Plan      VolumePlan
-	TeamOwner string
-	Status    string
-	Binds     []VolumeBind      `bson:"-"`
-	Opts      map[string]string `bson:",omitempty"`
+func (s *volumeService) Create(ctx context.Context, v *volumeTypes.Volume) error {
+	err := s.validateNew(ctx, v)
+	if err != nil {
+		return err
+	}
+
+	err = s.validateProvisioner(ctx, v)
+	if err != nil {
+		return err
+	}
+
+	return s.storage.Save(ctx, v)
 }
 
-func (v *Volume) UnmarshalPlan(result interface{}) error {
-	jsonData, err := json.Marshal(v.Plan.Opts)
+func (s *volumeService) Update(ctx context.Context, v *volumeTypes.Volume) error {
+	err := s.validateProvisioner(ctx, v)
+	if err != nil {
+		return err
+	}
+	err = s.validate(ctx, v)
+	if err != nil {
+		return err
+	}
+
+	return s.storage.Save(ctx, v)
+}
+
+func (s *volumeService) Get(ctx context.Context, name string) (*volumeTypes.Volume, error) {
+	return s.storage.Get(ctx, name)
+}
+
+func (s *volumeService) ListByApp(ctx context.Context, appName string) ([]volumeTypes.Volume, error) {
+	binds, err := s.storage.BindsForApp(ctx, "", appName) // TODO: test empty volumeName
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if len(binds) == 0 {
+		return []volumeTypes.Volume{}, nil
+	}
+	var volumeNames []string
+	uniqueNames := map[string]bool{}
+	for _, bind := range binds {
+		if uniqueNames[bind.ID.Volume] {
+			continue
+		}
+		volumeNames = append(volumeNames, bind.ID.Volume)
+		uniqueNames[bind.ID.Volume] = true
+	}
+
+	return s.storage.ListByFilter(ctx, &volumeTypes.Filter{
+		Names: volumeNames,
+	})
+}
+
+func (s *volumeService) ListByFilter(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+	volumes, err := s.storage.ListByFilter(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+	for i := range volumes {
+		volumes[i].Binds, err = s.Binds(ctx, &volumes[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return volumes, nil
+}
+
+func (s *volumeService) Delete(ctx context.Context, v *volumeTypes.Volume) error {
+	binds, err := s.storage.Binds(ctx, v.Name)
+	if err != nil {
+		return err
+	}
+	if len(binds) > 0 {
+		return errors.New("cannot delete volume with existing binds")
+	}
+	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(json.Unmarshal(jsonData, result))
+	prov, err := p.GetProvisioner()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if volProv, ok := prov.(provision.VolumeProvisioner); ok {
+		err = volProv.DeleteVolume(ctx, v.Name, v.Pool)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return s.storage.Delete(ctx, v)
 }
 
-func (v *Volume) validateNew(ctx context.Context) error {
+func (s *volumeService) BindApp(ctx context.Context, opts *volumeTypes.BindOpts) error {
+	bind := &volumeTypes.VolumeBind{
+		ID: volumeTypes.VolumeBindID{
+			App:        opts.AppName,
+			MountPoint: opts.MountPoint,
+			Volume:     opts.Volume.Name,
+		},
+		ReadOnly: opts.ReadOnly,
+	}
+
+	err := s.storage.InsertBind(ctx, bind)
+	if err == volumeTypes.ErrVolumeBindAlreadyExists {
+		return volumeTypes.ErrVolumeAlreadyBound
+	}
+	return err
+}
+
+func (s *volumeService) UnbindApp(ctx context.Context, opts *volumeTypes.BindOpts) error {
+	return s.storage.RemoveBind(ctx, volumeTypes.VolumeBindID{
+		App:        opts.AppName,
+		Volume:     opts.Volume.Name,
+		MountPoint: opts.MountPoint,
+	})
+}
+
+func (s *volumeService) Binds(ctx context.Context, v *volumeTypes.Volume) ([]volumeTypes.VolumeBind, error) {
+	if v.Binds != nil {
+		return v.Binds, nil
+	}
+
+	binds, err := s.storage.Binds(ctx, v.Name)
+	if err != nil {
+		return nil, err
+	}
+	v.Binds = binds
+	return binds, nil
+}
+
+func (s *volumeService) BindsForApp(ctx context.Context, v *volumeTypes.Volume, appName string) ([]volumeTypes.VolumeBind, error) {
+	if v.Binds != nil {
+		binds := []volumeTypes.VolumeBind{}
+		for _, bind := range v.Binds {
+			if bind.ID.App == appName {
+				binds = append(binds, bind)
+			}
+		}
+		return binds, nil
+	}
+
+	binds, err := s.storage.BindsForApp(ctx, v.Name, appName)
+	if err != nil {
+		return nil, err
+	}
+	return binds, nil
+}
+
+func (s *volumeService) ListPlans(ctx context.Context) (map[string][]volumeTypes.VolumePlan, error) {
+	plans := map[string][]volumeTypes.VolumePlan{}
+	plansRaw, err := config.Get("volume-plans")
+	if err != nil {
+		return plans, nil
+	}
+	plansMap := asMapStringInterface(internalConfig.ConvertEntries(plansRaw))
+	for planName, planProvsRaw := range plansMap {
+		for prov, provDataRaw := range asMapStringInterface(planProvsRaw) {
+			plans[prov] = append(plans[prov], volumeTypes.VolumePlan{
+				Name: planName,
+				Opts: asMapStringInterface(provDataRaw),
+			})
+		}
+	}
+	return plans, nil
+}
+
+func (s *volumeService) validateNew(ctx context.Context, v *volumeTypes.Volume) error {
 	if v.Name == "" {
 		return errors.New("volume name cannot be empty")
 	}
@@ -73,10 +228,10 @@ func (v *Volume) validateNew(ctx context.Context) error {
 			"starting with a letter."
 		return errors.WithStack(&tsuruErrors.ValidationError{Message: msg})
 	}
-	return v.validate(ctx)
+	return s.validate(ctx, v)
 }
 
-func (v *Volume) validate(ctx context.Context) error {
+func (s *volumeService) validate(ctx context.Context, v *volumeTypes.Volume) error {
 	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return errors.WithStack(err)
@@ -101,40 +256,18 @@ func (v *Volume) validate(ctx context.Context) error {
 	return nil
 }
 
-func (v *Volume) Create(ctx context.Context) error {
-	err := v.validateNew(ctx)
-	if err != nil {
-		return err
-	}
-	return v.save(ctx)
-}
-
-func (v *Volume) Update(ctx context.Context) error {
-	err := v.validate(ctx)
-	if err != nil {
-		return err
-	}
-	return v.save(ctx)
-}
-
-func (v *Volume) save(ctx context.Context) error {
-	isProv, err := v.isProvisioned(ctx)
+func (s *volumeService) validateProvisioner(ctx context.Context, v *volumeTypes.Volume) error {
+	isProv, err := isProvisioned(ctx, v)
 	if err != nil {
 		return err
 	}
 	if isProv {
-		return ErrVolumeAlreadyProvisioned
+		return volumeTypes.ErrVolumeAlreadyProvisioned
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer conn.Close()
-	_, err = conn.Volumes().UpsertId(v.Name, v)
-	return errors.WithStack(err)
+	return nil
 }
 
-func (v *Volume) isProvisioned(ctx context.Context) (bool, error) {
+func isProvisioned(ctx context.Context, v *volumeTypes.Volume) (bool, error) {
 	p, err := pool.GetPoolByName(ctx, v.Pool)
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -154,177 +287,6 @@ func (v *Volume) isProvisioned(ctx context.Context) (bool, error) {
 	return isProv, nil
 }
 
-func (v *Volume) BindApp(appName, mountPoint string, readOnly bool) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer conn.Close()
-	bind := VolumeBind{
-		ID: VolumeBindID{
-			App:        appName,
-			MountPoint: mountPoint,
-			Volume:     v.Name,
-		},
-		ReadOnly: readOnly,
-	}
-	err = conn.VolumeBinds().Insert(bind)
-	if err != nil && mgo.IsDup(err) {
-		return ErrVolumeAlreadyBound
-	}
-	return errors.WithStack(err)
-}
-
-func (v *Volume) UnbindApp(appName, mountPoint string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer conn.Close()
-	err = conn.VolumeBinds().RemoveId(VolumeBindID{
-		App:        appName,
-		Volume:     v.Name,
-		MountPoint: mountPoint,
-	})
-	if err == mgo.ErrNotFound {
-		return ErrVolumeBindNotFound
-	}
-	return errors.WithStack(err)
-}
-
-func (v *Volume) LoadBindsForApp(appName string) ([]VolumeBind, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer conn.Close()
-	var binds []VolumeBind
-	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name, "_id.app": appName}).All(&binds)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return binds, nil
-}
-
-func (v *Volume) LoadBinds() ([]VolumeBind, error) {
-	if v.Binds != nil {
-		return v.Binds, nil
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer conn.Close()
-	var binds []VolumeBind
-	err = conn.VolumeBinds().Find(bson.M{"_id.volume": v.Name}).All(&binds)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	v.Binds = binds
-	return binds, nil
-}
-
-func (v *Volume) Delete(ctx context.Context) error {
-	binds, err := v.LoadBinds()
-	if err != nil {
-		return err
-	}
-	if len(binds) > 0 {
-		return errors.New("cannot delete volume with existing binds")
-	}
-	p, err := pool.GetPoolByName(ctx, v.Pool)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	prov, err := p.GetProvisioner()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if volProv, ok := prov.(provision.VolumeProvisioner); ok {
-		err = volProv.DeleteVolume(ctx, v.Name, v.Pool)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer conn.Close()
-	return conn.Volumes().RemoveId(v.Name)
-}
-
-func ListByApp(appName string) ([]Volume, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer conn.Close()
-	var volumeNames []string
-	err = conn.VolumeBinds().Find(bson.M{"_id.app": appName}).Distinct("_id.volume", &volumeNames)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	var volumes []Volume
-	err = conn.Volumes().Find(bson.M{"_id": bson.M{"$in": volumeNames}}).All(&volumes)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return volumes, nil
-}
-
-type Filter struct {
-	Teams []string
-	Pools []string
-	Names []string
-}
-
-func ListByFilter(f *Filter) ([]Volume, error) {
-	query := bson.M{}
-	if f != nil {
-		query["$or"] = []bson.M{
-			{"_id": bson.M{"$in": f.Names}},
-			{"pool": bson.M{"$in": f.Pools}},
-			{"teamowner": bson.M{"$in": f.Teams}},
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer conn.Close()
-	var volumes []Volume
-	err = conn.Volumes().Find(query).All(&volumes)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	for i := range volumes {
-		_, err = volumes[i].LoadBinds()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return volumes, nil
-}
-
-func ListPlans() (map[string][]VolumePlan, error) {
-	plans := map[string][]VolumePlan{}
-	plansRaw, err := config.Get("volume-plans")
-	if err != nil {
-		return plans, nil
-	}
-	plansMap := asMapStringInterface(internalConfig.ConvertEntries(plansRaw))
-	for planName, planProvsRaw := range plansMap {
-		for prov, provDataRaw := range asMapStringInterface(planProvsRaw) {
-			plans[prov] = append(plans[prov], VolumePlan{
-				Name: planName,
-				Opts: asMapStringInterface(provDataRaw),
-			})
-		}
-	}
-	return plans, nil
-}
-
 func asMapStringInterface(val interface{}) map[string]interface{} {
 	if val == nil {
 		return nil
@@ -335,33 +297,14 @@ func asMapStringInterface(val interface{}) map[string]interface{} {
 	return nil
 }
 
-func Load(name string) (*Volume, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer conn.Close()
-	var v Volume
-	err = conn.Volumes().FindId(name).One(&v)
-	if err == mgo.ErrNotFound {
-		return nil, ErrVolumeNotFound
-	}
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return &v, nil
-}
-
 func volumePlanKey(planName, provisioner string) string {
 	return fmt.Sprintf("volume-plans:%s:%s", planName, provisioner)
 }
 
 func RenameTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
+	volumeStorage, err := VolumeStorage()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Volumes().UpdateAll(bson.M{"teamowner": oldName}, bson.M{"$set": bson.M{"teamowner": newName}})
-	return err
+	return volumeStorage.RenameTeam(ctx, oldName, newName)
 }

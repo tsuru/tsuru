@@ -51,8 +51,8 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
-	"github.com/tsuru/tsuru/volume"
 )
 
 var AuthScheme auth.Scheme
@@ -491,7 +491,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		defer func() {
 			rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, args.Writer)
 		}()
-		err = validateVolumes(app)
+		err = validateVolumes(app.ctx, app)
 		if err != nil {
 			return err
 		}
@@ -507,8 +507,8 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }
 
-func validateVolumes(app *App) error {
-	volumes, err := volume.ListByApp(app.Name)
+func validateVolumes(ctx context.Context, app *App) error {
+	volumes, err := servicemanager.Volume.ListByApp(ctx, app.Name)
 	if err != nil {
 		return err
 	}
@@ -585,18 +585,22 @@ func (app *App) unbind(evt *event.Event, requestID string) error {
 }
 
 func (app *App) unbindVolumes() error {
-	volumes, err := volume.ListByApp(app.Name)
+	volumes, err := servicemanager.Volume.ListByApp(app.ctx, app.Name)
 	if err != nil {
 		return errors.Wrap(err, "Unable to list volumes for unbind")
 	}
 	for _, v := range volumes {
-		var binds []volume.VolumeBind
-		binds, err = v.LoadBinds()
+		var binds []volumeTypes.VolumeBind
+		binds, err = servicemanager.Volume.Binds(app.ctx, &v)
 		if err != nil {
 			return errors.Wrap(err, "Unable to list volume binds for unbind")
 		}
 		for _, b := range binds {
-			err = v.UnbindApp(app.Name, b.ID.MountPoint)
+			err = servicemanager.Volume.UnbindApp(app.ctx, &volumeTypes.BindOpts{
+				Volume:     &v,
+				AppName:    app.Name,
+				MountPoint: b.ID.MountPoint,
+			})
 			if err != nil {
 				return errors.Wrapf(err, "Unable to unbind volume %q in %q", app.Name, b.ID.MountPoint)
 			}

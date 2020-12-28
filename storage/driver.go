@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
+	"github.com/tsuru/tsuru/types/volume"
 )
 
 type DbDriver struct {
@@ -40,6 +41,7 @@ type DbDriver struct {
 	DynamicRouterStorage             router.DynamicRouterStorage
 	AuthGroupStorage                 auth.GroupStorage
 	PoolStorage                      provision.PoolStorage
+	VolumeStorage                    volume.VolumeStorage
 }
 
 var (

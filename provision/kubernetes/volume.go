@@ -11,8 +11,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	"github.com/ugorji/go/codec"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +36,7 @@ func (opts *volumeOptions) isPersistent() bool {
 }
 
 func createVolumesForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]apiv1.Volume, []apiv1.VolumeMount, error) {
-	volumes, err := volume.ListByApp(app.GetName())
+	volumes, err := servicemanager.Volume.ListByApp(ctx, app.GetName())
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -52,7 +53,7 @@ func createVolumesForApp(ctx context.Context, client *ClusterClient, app provisi
 				return nil, nil, err
 			}
 		}
-		volume, mounts, err := bindsForVolume(&volumes[i], opts, app.GetName())
+		volume, mounts, err := bindsForVolume(ctx, &volumes[i], opts, app.GetName())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -62,9 +63,9 @@ func createVolumesForApp(ctx context.Context, client *ClusterClient, app provisi
 	return kubeVolumes, kubeMounts, nil
 }
 
-func bindsForVolume(v *volume.Volume, opts *volumeOptions, appName string) (*apiv1.Volume, []apiv1.VolumeMount, error) {
+func bindsForVolume(ctx context.Context, v *volumeTypes.Volume, opts *volumeOptions, appName string) (*apiv1.Volume, []apiv1.VolumeMount, error) {
 	var kubeMounts []apiv1.VolumeMount
-	binds, err := v.LoadBindsForApp(appName)
+	binds, err := servicemanager.Volume.BindsForApp(ctx, v, appName)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -98,7 +99,7 @@ func bindsForVolume(v *volume.Volume, opts *volumeOptions, appName string) (*api
 	return &kubeVol, kubeMounts, nil
 }
 
-func nonPersistentVolume(v *volume.Volume, opts *volumeOptions) (apiv1.VolumeSource, error) {
+func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.VolumeSource, error) {
 	var volumeSrc apiv1.VolumeSource
 	data, err := json.Marshal(map[string]interface{}{
 		opts.Plugin: v.Opts,
@@ -115,7 +116,7 @@ func nonPersistentVolume(v *volume.Volume, opts *volumeOptions) (apiv1.VolumeSou
 	return volumeSrc, nil
 }
 
-func validateVolume(v *volume.Volume) (*volumeOptions, error) {
+func validateVolume(v *volumeTypes.Volume) (*volumeOptions, error) {
 	var opts volumeOptions
 	err := v.UnmarshalPlan(&opts)
 	if err != nil {
@@ -186,7 +187,7 @@ func deleteVolume(ctx context.Context, client *ClusterClient, name string) error
 	return nil
 }
 
-func createVolume(ctx context.Context, client *ClusterClient, v *volume.Volume, opts *volumeOptions, app provision.App) error {
+func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Volume, opts *volumeOptions, app provision.App) error {
 	namespace, err := getNamespaceForVolume(ctx, client, v)
 	if err != nil {
 		return err
@@ -278,8 +279,8 @@ func volumeExists(ctx context.Context, client *ClusterClient, name string) (bool
 	return false, nil
 }
 
-func getNamespaceForVolume(ctx context.Context, client *ClusterClient, v *volume.Volume) (string, error) {
-	binds, err := v.LoadBinds()
+func getNamespaceForVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Volume) (string, error) {
+	binds, err := servicemanager.Volume.Binds(ctx, v)
 	if err != nil {
 		return "", err
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
+	"github.com/tsuru/tsuru/types/volume"
 )
 
 var (
@@ -37,4 +38,5 @@ var (
 	DynamicRouter             router.DynamicRouterService
 	AuthGroup                 auth.GroupService
 	Pool                      provision.PoolService
+	Volume                    volume.VolumeService
 )

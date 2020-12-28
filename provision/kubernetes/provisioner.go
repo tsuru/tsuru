@@ -34,7 +34,7 @@ import (
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
@@ -274,12 +274,12 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 			multiErrors.Add(errors.WithStack(err))
 		}
 	}
-	vols, err := volume.ListByApp(app.GetName())
+	vols, err := servicemanager.Volume.ListByApp(ctx, app.GetName())
 	if err != nil {
 		multiErrors.Add(errors.WithStack(err))
 	} else {
 		for _, vol := range vols {
-			_, err = vol.LoadBinds()
+			vol.Binds, err = servicemanager.Volume.Binds(ctx, &vol)
 			if err != nil {
 				continue
 			}
@@ -1394,8 +1394,8 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 	sameCluster := client.GetCluster().Name == newClient.GetCluster().Name
 	sameNamespace := client.PoolNamespace(old.GetPool()) == client.PoolNamespace(new.GetPool())
 	if sameCluster && !sameNamespace {
-		var volumes []volume.Volume
-		volumes, err = volume.ListByApp(old.GetName())
+		var volumes []volumeTypes.Volume
+		volumes, err = servicemanager.Volume.ListByApp(ctx, old.GetName())
 		if err != nil {
 			return err
 		}

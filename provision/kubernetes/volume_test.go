@@ -10,7 +10,8 @@ import (
 	"github.com/tsuru/config"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/volume"
+	"github.com/tsuru/tsuru/servicemanager"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +25,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -32,19 +33,34 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt2", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = s.p.Provision(context.TODO(), provisiontest.NewFakeApp("otherapp", "python", 0))
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("otherapp", "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "otherapp",
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	volumes, mounts, err := createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -69,8 +85,8 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 			ReadOnly:  false,
 		},
 	}
-	c.Assert(volumes, check.DeepEquals, expectedVolume)
-	c.Assert(mounts, check.DeepEquals, expectedMount)
+	c.Check(volumes, check.DeepEquals, expectedVolume)
+	c.Check(mounts, check.DeepEquals, expectedMount)
 	pv, err := s.client.CoreV1().PersistentVolumes().Get(context.TODO(), volumeName(v.Name), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedCap, err := resource.ParseQuantity("20Gi")
@@ -144,22 +160,37 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"medium": "Memory",
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt2", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("otherapp", "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "otherapp",
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	volumes, mounts, err := createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -205,15 +236,20 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name:      "v1",
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	volumes, mounts, err := createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -287,7 +323,7 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 	}
 	_, err = s.client.TsuruV1().Apps(s.client.Namespace()).Update(context.TODO(), &appCR, metav1.UpdateOptions{})
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -295,13 +331,18 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -329,7 +370,7 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -337,17 +378,27 @@ func (s *S) TestCreateVolumeMultipleNamespacesFail(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	err = s.p.Provision(context.TODO(), provisiontest.NewFakeAppWithPool("otherapp", "python", "otherpool", 0))
 	c.Assert(err, check.IsNil)
-	err = v.BindApp("otherapp", "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "otherapp",
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.ErrorMatches, `multiple namespaces for volume not allowed: "tsuru-otherpool" and "tsuru-test-default"`)
@@ -359,7 +410,7 @@ func (s *S) TestDeleteVolume(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -367,13 +418,18 @@ func (s *S) TestDeleteVolume(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)
@@ -396,7 +452,7 @@ func (s *S) TestVolumeExists(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err = s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	v := volume.Volume{
+	v := volumeTypes.Volume{
 		Name: "v1",
 		Opts: map[string]string{
 			"path":         "/exports",
@@ -404,13 +460,18 @@ func (s *S) TestVolumeExists(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volume.VolumePlan{Name: "p1"},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
-	err = v.Create(context.TODO())
+	err = servicemanager.Volume.Create(context.TODO(), &v)
 	c.Assert(err, check.IsNil)
-	err = v.BindApp(a.GetName(), "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	_, _, err = createVolumesForApp(context.TODO(), s.clusterClient, a)
 	c.Assert(err, check.IsNil)

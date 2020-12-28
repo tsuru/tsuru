@@ -17,9 +17,10 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"github.com/tsuru/tsuru/volume"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,8 +29,8 @@ func (s *S) TestVolumeList(c *check.C) {
 	config.Set("volume-plans:nfs:fake:capacity", "20Gi")
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
@@ -38,14 +39,14 @@ func (s *S) TestVolumeList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result []volume.Volume
+	var result []volumeTypes.Volume
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []volume.Volume{{
+	c.Assert(result, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin":       "nfs",
@@ -61,11 +62,11 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	defer config.Unset("volume-plans")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "otherpool", Public: true})
 	c.Assert(err, check.IsNil)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: "otherteam", Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	v2 := volume.Volume{Name: "v2", Pool: "otherpool", TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v2.Create(context.TODO())
+	v2 := volumeTypes.Volume{Name: "v2", Pool: "otherpool", TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v2)
 	c.Assert(err, check.IsNil)
 	token1 := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermVolumeRead,
@@ -82,7 +83,7 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result []volume.Volume
+	var result []volumeTypes.Volume
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
@@ -110,12 +111,22 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt2", true)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
@@ -124,16 +135,16 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result []volume.Volume
+	var result []volumeTypes.Volume
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []volume.Volume{{
+	c.Assert(result, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
-		Binds: []volume.VolumeBind{
+		Binds: []volumeTypes.VolumeBind{
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt",
 					Volume:     "v1",
@@ -141,7 +152,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 				ReadOnly: false,
 			},
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt2",
 					Volume:     "v1",
@@ -149,7 +160,7 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 				ReadOnly: true,
 			},
 		},
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin":       "nfs",
@@ -168,12 +179,22 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt2", true)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
@@ -182,14 +203,14 @@ func (s *S) TestVolumeInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result volume.Volume
+	var result volumeTypes.Volume
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, volume.Volume{
+	c.Assert(result, check.DeepEquals, volumeTypes.Volume{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"access-modes": "ReadWriteMany",
@@ -197,9 +218,9 @@ func (s *S) TestVolumeInfo(c *check.C) {
 				"plugin":       "nfs",
 			},
 		},
-		Binds: []volume.VolumeBind{
+		Binds: []volumeTypes.VolumeBind{
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt",
 					Volume:     "v1",
@@ -207,7 +228,7 @@ func (s *S) TestVolumeInfo(c *check.C) {
 				ReadOnly: false,
 			},
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt2",
 					Volume:     "v1",
@@ -240,14 +261,14 @@ func (s *S) TestVolumeCreate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	volumes, err := volume.ListByFilter(nil)
+	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+	c.Assert(volumes, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
 		Opts:      map[string]string{"a": "b"},
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin": "nfs",
@@ -259,8 +280,8 @@ func (s *S) TestVolumeCreate(c *check.C) {
 func (s *S) TestVolumeCreateConflict(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored`)
 	url := "/1.4/volumes"
@@ -276,8 +297,8 @@ func (s *S) TestVolumeCreateConflict(c *check.C) {
 func (s *S) TestVolumeUpdate(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
 	url := "/1.4/volumes/v1"
@@ -288,14 +309,14 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	volumes, err := volume.ListByFilter(nil)
+	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+	c.Assert(volumes, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
 		Opts:      map[string]string{"a": "c"},
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin": "nfs",
@@ -330,13 +351,13 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result map[string][]volume.VolumePlan
+	var result map[string][]volumeTypes.VolumePlan
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	for key := range result {
 		sort.Slice(result[key], func(i, j int) bool { return result[key][i].Name < result[key][j].Name })
 	}
-	c.Assert(result, check.DeepEquals, map[string][]volume.VolumePlan{
+	c.Assert(result, check.DeepEquals, map[string][]volumeTypes.VolumePlan{
 		"fake": {
 			{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
 			{Name: "other", Opts: map[string]interface{}{"storage-class": "ebs"}},
@@ -350,8 +371,8 @@ func (s *S) TestVolumePlanList(c *check.C) {
 func (s *S) TestVolumeDelete(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -361,7 +382,7 @@ func (s *S) TestVolumeDelete(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	volumes, err := volume.ListByFilter(nil)
+	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.HasLen, 0)
 }
@@ -372,8 +393,8 @@ func (s *S) TestVolumeBind(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -399,15 +420,15 @@ func (s *S) TestVolumeBind(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches, `(?s).*restarting app.*`)
-	volumes, err := volume.ListByFilter(nil)
+	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+	c.Assert(volumes, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
-		Binds: []volume.VolumeBind{
+		Binds: []volumeTypes.VolumeBind{
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt1",
 					Volume:     "v1",
@@ -415,7 +436,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 				ReadOnly: false,
 			},
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt2",
 					Volume:     "v1",
@@ -423,7 +444,7 @@ func (s *S) TestVolumeBind(c *check.C) {
 				ReadOnly: true,
 			},
 		},
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin": "nfs",
@@ -438,8 +459,8 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -470,8 +491,8 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err := v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
@@ -499,12 +520,22 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt1", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt1",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt2", true)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt2",
+		ReadOnly:   true,
+	})
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt2"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -516,15 +547,15 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(recorder.Body.String(), check.Matches, `(?s).*restarting app.*`)
-	volumes, err := volume.ListByFilter(nil)
+	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(volumes, check.DeepEquals, []volume.Volume{{
+	c.Assert(volumes, check.DeepEquals, []volumeTypes.Volume{{
 		Name:      "v1",
 		Pool:      s.Pool,
 		TeamOwner: s.team.Name,
-		Binds: []volume.VolumeBind{
+		Binds: []volumeTypes.VolumeBind{
 			{
-				ID: volume.VolumeBindID{
+				ID: volumeTypes.VolumeBindID{
 					App:        "myapp",
 					MountPoint: "/mnt1",
 					Volume:     "v1",
@@ -532,7 +563,7 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 				ReadOnly: false,
 			},
 		},
-		Plan: volume.VolumePlan{
+		Plan: volumeTypes.VolumePlan{
 			Name: "nfs",
 			Opts: map[string]interface{}{
 				"plugin": "nfs",
@@ -550,8 +581,8 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -572,10 +603,15 @@ func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	v1 := volume.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volume.VolumePlan{Name: "nfs"}}
-	err = v1.Create(context.TODO())
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
-	err = v1.BindApp(a.Name, "/mnt1", false)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v1,
+		AppName:    a.Name,
+		MountPoint: "/mnt1",
+		ReadOnly:   false,
+	})
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes/v1/bind?app=myapp&mountpoint=/mnt1&norestart=true"
 	request, err := http.NewRequest("DELETE", url, nil)

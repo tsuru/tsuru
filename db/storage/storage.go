@@ -83,6 +83,10 @@ func (s *Storage) Close() {
 	s.session.Close()
 }
 
+func (s *Storage) DefaultDatabase() *mgo.Database {
+	return s.Database(s.dbname)
+}
+
 func (s *Storage) Database(name string) *mgo.Database {
 	return s.session.DB(name)
 }
