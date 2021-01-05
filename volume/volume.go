@@ -183,7 +183,7 @@ func (s *volumeService) Binds(ctx context.Context, v *volumeTypes.Volume) ([]vol
 }
 
 func (s *volumeService) BindsForApp(ctx context.Context, v *volumeTypes.Volume, appName string) ([]volumeTypes.VolumeBind, error) {
-	if v.Binds != nil {
+	if v != nil && v.Binds != nil {
 		binds := []volumeTypes.VolumeBind{}
 		for _, bind := range v.Binds {
 			if bind.ID.App == appName {
@@ -193,7 +193,11 @@ func (s *volumeService) BindsForApp(ctx context.Context, v *volumeTypes.Volume, 
 		return binds, nil
 	}
 
-	binds, err := s.storage.BindsForApp(ctx, v.Name, appName)
+	var volumeName string
+	if v != nil {
+		volumeName = v.Name
+	}
+	binds, err := s.storage.BindsForApp(ctx, volumeName, appName)
 	if err != nil {
 		return nil, err
 	}

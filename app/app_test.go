@@ -2590,6 +2590,27 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
+	config.Set("volume-plans:test-plan:fake:plugin", "nfs")
+
+	volume := &volumeTypes.Volume{
+		Name:      "test-volume",
+		Pool:      "test",
+		TeamOwner: "myteam",
+		Plan: volumeTypes.VolumePlan{
+			Name: "test-plan",
+		},
+	}
+	err = servicemanager.Volume.Create(context.TODO(), volume)
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     volume,
+		AppName:    "name",
+		MountPoint: "/mnt",
+		ReadOnly:   true,
+	})
+	c.Assert(err, check.IsNil)
+
 	app := App{
 		Name:        "name",
 		Platform:    "Framework",
@@ -2697,6 +2718,16 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			},
 		},
 		"tags": []interface{}{"tag a", "tag b"},
+		"volumeBinds": []interface{}{
+			map[string]interface{}{
+				"ID": map[string]interface{}{
+					"App":        "name",
+					"MountPoint": "/mnt",
+					"Volume":     "test-volume",
+				},
+				"ReadOnly": true,
+			},
+		},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)

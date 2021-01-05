@@ -290,6 +290,14 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		result["unitsMetrics"] = unitMetrics
 	}
 
+	volumeBinds, err := servicemanager.Volume.BindsForApp(app.ctx, nil, app.Name)
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get volume binds: %+v", err))
+	}
+	if volumeBinds != nil {
+		result["volumeBinds"] = volumeBinds
+	}
+
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
