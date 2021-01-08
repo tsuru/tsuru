@@ -222,6 +222,18 @@ func (s *volumeService) ListPlans(ctx context.Context) (map[string][]volumeTypes
 	return plans, nil
 }
 
+func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume volumeTypes.Volume) error {
+	volumes, err := s.ListByFilter(ctx, &volumeTypes.Filter{Pools: []string{volume.Pool}})
+	if err != nil {
+		return err
+	}
+	if len(volumes) > 0 {
+		return nil
+	}
+
+	return pool.ErrPoolHasNoVolumePlan
+}
+
 func (s *volumeService) validateNew(ctx context.Context, v *volumeTypes.Volume) error {
 	if v.Name == "" {
 		return errors.New("volume name cannot be empty")

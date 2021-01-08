@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	"github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -34,6 +35,7 @@ var (
 	ErrPoolAlreadyExists              = errors.New("Pool already exists.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
+	ErrPoolHasNoVolumePlan            = errors.New("no volume plan found for pool")
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 )
@@ -98,6 +100,19 @@ func (p *Pool) GetRouters() ([]string, error) {
 		return c, nil
 	}
 	return nil, ErrPoolHasNoRouter
+}
+
+func (p *Pool) GetVolumePlans() ([]string, error) {
+	allowedValues, err := p.allowedValues()
+	if err != nil {
+		return nil, err
+	}
+
+	if c := allowedValues[ConstraintTypeVolumePlan]; len(c) > 0 {
+		return c, nil
+	}
+
+	return nil, ErrPoolHasNoVolumePlan
 }
 
 func (p *Pool) GetPlans() ([]string, error) {
@@ -179,11 +194,17 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	volumePlans, err := volumePlanNames(p.ctx, p.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	resolved := map[poolConstraintType][]string{
-		ConstraintTypeRouter:  routers,
-		ConstraintTypeService: services,
-		ConstraintTypeTeam:    teams,
-		ConstraintTypePlan:    plans,
+		ConstraintTypeRouter:     routers,
+		ConstraintTypeService:    services,
+		ConstraintTypeTeam:       teams,
+		ConstraintTypePlan:       plans,
+		ConstraintTypeVolumePlan: volumePlans,
 	}
 	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan)
 	if err != nil {
@@ -212,6 +233,27 @@ func routersNames(ctx context.Context) ([]string, error) {
 		names = append(names, r.Name)
 	}
 	return names, nil
+}
+
+func volumePlanNames(ctx context.Context, poolName string) ([]string, error) {
+	volumes, err := servicemanager.Volume.ListByFilter(ctx, &volume.Filter{Pools: []string{poolName}})
+	if err != nil {
+		return nil, err
+	}
+
+	var vplans map[string]struct{}
+	for _, v := range volumes {
+		if _, ok := vplans[v.Plan.Name]; !ok {
+			vplans[v.Plan.Name] = struct{}{}
+		}
+	}
+
+	var plans []string
+	for planName := range vplans {
+		plans = append(plans, planName)
+	}
+
+	return plans, nil
 }
 
 func teamsNames(ctx context.Context) ([]string, error) {

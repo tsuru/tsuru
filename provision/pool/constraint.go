@@ -25,10 +25,11 @@ var (
 type poolConstraintType string
 
 const (
-	ConstraintTypeTeam    = poolConstraintType("team")
-	ConstraintTypeRouter  = poolConstraintType("router")
-	ConstraintTypeService = poolConstraintType("service")
-	ConstraintTypePlan    = poolConstraintType("plan")
+	ConstraintTypeTeam       = poolConstraintType("team")
+	ConstraintTypeRouter     = poolConstraintType("router")
+	ConstraintTypeService    = poolConstraintType("service")
+	ConstraintTypePlan       = poolConstraintType("plan")
+	ConstraintTypeVolumePlan = poolConstraintType("volume-plan")
 )
 
 type regexpCache struct {
