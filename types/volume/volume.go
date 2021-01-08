@@ -73,6 +73,7 @@ type VolumeService interface {
 	ListByApp(ctx context.Context, appName string) ([]Volume, error)
 	ListByFilter(ctx context.Context, f *Filter) ([]Volume, error)
 	ListPlans(ctx context.Context) (map[string][]VolumePlan, error)
+	CheckPoolVolumeConstraints(ctx context.Context, volume Volume) error
 	Get(ctx context.Context, name string) (*Volume, error)
 
 	BindApp(ctx context.Context, opts *BindOpts) error

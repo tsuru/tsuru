@@ -126,6 +126,12 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !canCreate {
 		return permission.ErrUnauthorized
 	}
+
+	err = servicemanager.Volume.CheckPoolVolumeConstraints(ctx, inputVolume)
+	if err != nil {
+		return err
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
