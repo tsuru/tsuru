@@ -241,7 +241,7 @@ func volumePlanNames(ctx context.Context, poolName string) ([]string, error) {
 		return nil, err
 	}
 
-	var vplans map[string]struct{}
+	vplans := make(map[string]struct{})
 	for _, v := range volumes {
 		if _, ok := vplans[v.Plan.Name]; !ok {
 			vplans[v.Plan.Name] = struct{}{}
