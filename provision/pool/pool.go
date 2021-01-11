@@ -35,7 +35,6 @@ var (
 	ErrPoolAlreadyExists              = errors.New("Pool already exists.")
 	ErrPoolHasNoTeam                  = errors.New("no team found for pool")
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
-	ErrPoolHasNoVolumePlan            = errors.New("no volume plan found for pool")
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 )
@@ -476,6 +475,10 @@ func ListPossiblePools(ctx context.Context, teams []string) ([]Pool, error) {
 
 func ListPoolsForTeam(ctx context.Context, team string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(ctx, true, ConstraintTypeTeam, team)
+}
+
+func ListPoolsForVolumePlan(ctx context.Context, volumePlanName string) ([]Pool, error) {
+	return getPoolsSatisfyConstraints(ctx, true, ConstraintTypeVolumePlan, volumePlanName)
 }
 
 func listPools(ctx context.Context, query bson.M) ([]Pool, error) {
