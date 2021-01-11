@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
-	"github.com/tsuru/tsuru/types/volume"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -37,6 +36,7 @@ var (
 	ErrPoolHasNoRouter                = errors.New("no router found for pool")
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
+	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
 )
 
 type Pool struct {
@@ -235,24 +235,17 @@ func routersNames(ctx context.Context) ([]string, error) {
 }
 
 func volumePlanNames(ctx context.Context, poolName string) ([]string, error) {
-	volumes, err := servicemanager.Volume.ListByFilter(ctx, &volume.Filter{Pools: []string{poolName}})
+	volumePlans, err := servicemanager.Volume.ListPlans(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	vplans := make(map[string]struct{})
-	for _, v := range volumes {
-		if _, ok := vplans[v.Plan.Name]; !ok {
-			vplans[v.Plan.Name] = struct{}{}
-		}
+	var pNames []string
+	for vPlan := range volumePlans {
+		pNames = append(pNames, vPlan)
 	}
 
-	var plans []string
-	for planName := range vplans {
-		plans = append(plans, planName)
-	}
-
-	return plans, nil
+	return pNames, nil
 }
 
 func teamsNames(ctx context.Context) ([]string, error) {
