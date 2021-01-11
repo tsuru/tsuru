@@ -206,7 +206,7 @@ func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan)
+	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}

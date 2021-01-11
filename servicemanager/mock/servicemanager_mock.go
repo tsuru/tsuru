@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/service"
 	"github.com/tsuru/tsuru/types/tracker"
+	"github.com/tsuru/tsuru/types/volume"
 )
 
 // MockService is a struct to use in tests
@@ -33,6 +34,7 @@ type MockService struct {
 	DynamicRouter             *router.MockDynamicRouterService
 	AuthGroup                 auth.GroupService
 	Pool                      *provision.MockPoolService
+	Volume                    volume.VolumeService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -51,6 +53,9 @@ func SetMockService(m *MockService) {
 	m.DynamicRouter = &router.MockDynamicRouterService{}
 	m.AuthGroup = &auth.MockGroupService{}
 	m.Pool = &provision.MockPoolService{}
+	m.Volume = &MockVolumeService{
+		Storage: &volume.MockVolumeStorage{},
+	}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -65,6 +70,7 @@ func SetMockService(m *MockService) {
 	servicemanager.DynamicRouter = m.DynamicRouter
 	servicemanager.AuthGroup = m.AuthGroup
 	servicemanager.Pool = m.Pool
+	servicemanager.Volume = m.Volume
 }
 
 func (m *MockService) ResetCache() {
