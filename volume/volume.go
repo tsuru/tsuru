@@ -223,15 +223,20 @@ func (s *volumeService) ListPlans(ctx context.Context) (map[string][]volumeTypes
 }
 
 func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume volumeTypes.Volume) error {
-	volumes, err := s.ListByFilter(ctx, &volumeTypes.Filter{Pools: []string{volume.Pool}})
+	pools, err := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
 	if err != nil {
 		return err
 	}
-	if len(volumes) > 0 {
-		return nil
+	if len(pools) == 0 {
+		return errors.New("no pool exists satisfying the specified volume-plan")
+	}
+	for _, p := range pools {
+		if p.Name == volume.Pool {
+			return nil
+		}
 	}
 
-	return pool.ErrPoolHasNoVolumePlan
+	return errors.New("specified pool does not support the desired volume-plan")
 }
 
 func (s *volumeService) validateNew(ctx context.Context, v *volumeTypes.Volume) error {
