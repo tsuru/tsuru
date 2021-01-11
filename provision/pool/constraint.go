@@ -19,7 +19,7 @@ import (
 
 var (
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", validConstraintTypes)
-	validConstraintTypes     = []poolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan}
+	validConstraintTypes     = []poolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan, ConstraintTypeVolumePlan}
 )
 
 type poolConstraintType string
