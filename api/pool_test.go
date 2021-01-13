@@ -661,11 +661,13 @@ func (s *S) TestPoolConstraint(c *check.C) {
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeVolumePlan, Values: []string{"faas"}})
 	c.Assert(err, check.IsNil)
 	expected := []pool.PoolConstraint{
 		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
 		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}},
 		{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}},
+		{PoolExpr: "dev", Field: pool.ConstraintTypeVolumePlan, Values: []string{"faas"}},
 	}
 	request, err := http.NewRequest(http.MethodGet, "/constraints", nil)
 	c.Assert(err, check.IsNil)
