@@ -661,6 +661,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}})
+	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeVolumePlan, Values: []string{"faas"}})
 	c.Assert(err, check.IsNil)
 	expected := []pool.PoolConstraint{
