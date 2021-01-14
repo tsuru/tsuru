@@ -654,15 +654,16 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	constraints, err := pool.allowedValues()
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[poolConstraintType][]string{
-		ConstraintTypeTeam:    {"team1"},
-		ConstraintTypeRouter:  {"router1", "router2"},
-		ConstraintTypeService: nil,
-		ConstraintTypePlan:    {"plan1", "plan2"},
+		ConstraintTypeTeam:       {"team1"},
+		ConstraintTypeRouter:     {"router1", "router2"},
+		ConstraintTypeService:    nil,
+		ConstraintTypePlan:       {"plan1", "plan2"},
+		ConstraintTypeVolumePlan: nil,
 	})
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.HasLen, 4)
+	c.Assert(constraints, check.HasLen, 5)
 	sort.Strings(constraints[ConstraintTypeTeam])
 	c.Assert(constraints[ConstraintTypeTeam], check.DeepEquals, []string{
 		"ateam", "pteam", "pubteam", "team1", "test",
