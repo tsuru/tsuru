@@ -54,7 +54,9 @@ func SetMockService(m *MockService) {
 	m.AuthGroup = &auth.MockGroupService{}
 	m.Pool = &provision.MockPoolService{}
 
-	m.VolumeService = &volume.MockVolumeService{}
+	m.VolumeService = &volume.MockVolumeService{
+		Storage: volume.MockVolumeStorage{},
+	}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
