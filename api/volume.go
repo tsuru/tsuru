@@ -128,6 +128,9 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 
 	err = servicemanager.Volume.CheckPoolVolumeConstraints(ctx, inputVolume)
+	if err == volumeTypes.ErrVolumePlanNotFound {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	if err != nil {
 		return err
 	}

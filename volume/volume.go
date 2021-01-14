@@ -34,9 +34,8 @@ func VolumeService() (volumeTypes.VolumeService, error) {
 			return nil, err
 		}
 	}
-	return &volumeService{
-		storage: dbDriver.VolumeStorage,
-	}, nil
+
+	return VolumeServiceFromStorage(dbDriver.VolumeStorage), nil
 }
 
 func VolumeStorage() (volumeTypes.VolumeStorage, error) {
@@ -48,6 +47,12 @@ func VolumeStorage() (volumeTypes.VolumeStorage, error) {
 		}
 	}
 	return dbDriver.VolumeStorage, nil
+}
+
+func VolumeServiceFromStorage(vStorage volumeTypes.VolumeStorage) volumeTypes.VolumeService {
+	return &volumeService{
+		storage: vStorage,
+	}
 }
 
 func (s *volumeService) Create(ctx context.Context, v *volumeTypes.Volume) error {
@@ -228,7 +233,7 @@ func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume v
 		return err
 	}
 	if len(pools) == 0 {
-		return errors.New("no pool exists satisfying the specified volume-plan")
+		return volumeTypes.ErrVolumePlanNotFound
 	}
 	for _, p := range pools {
 		if p.Name == volume.Pool {
@@ -236,7 +241,7 @@ func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume v
 		}
 	}
 
-	return errors.New("specified pool does not support the desired volume-plan")
+	return volumeTypes.ErrVolumePlanNotFound
 }
 
 func (s *volumeService) validateNew(ctx context.Context, v *volumeTypes.Volume) error {

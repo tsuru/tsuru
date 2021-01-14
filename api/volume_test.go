@@ -250,6 +250,12 @@ func (s *S) TestVolumeInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestVolumeCreate(c *check.C) {
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "test1",
+		Field:    pool.ConstraintTypeVolumePlan,
+		Values:   []string{"nfs"},
+	})
+	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=b`)
@@ -278,10 +284,16 @@ func (s *S) TestVolumeCreate(c *check.C) {
 }
 
 func (s *S) TestVolumeCreateConflict(c *check.C) {
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "test1",
+		Field:    pool.ConstraintTypeVolumePlan,
+		Values:   []string{"nfs"},
+	})
+	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
-	err := servicemanager.Volume.Create(context.TODO(), &v1)
+	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored`)
 	url := "/1.4/volumes"
