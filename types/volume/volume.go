@@ -17,6 +17,7 @@ var (
 	ErrVolumeAlreadyBound       = errors.New("volume already bound in mountpoint")
 	ErrVolumeBindNotFound       = errors.New("volume bind not found")
 	ErrVolumeAlreadyProvisioned = errors.New("updating a volume already provisioned is not supported, a new volume must be created and the old one deleted if necessary")
+	ErrVolumePlanNotFound       = errors.New("volume-plan not present in pool constraint")
 )
 
 type VolumePlan struct {

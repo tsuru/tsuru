@@ -30,11 +30,11 @@ type MockService struct {
 	Cluster                   *provision.MockClusterService
 	ServiceBroker             *service.MockServiceBrokerService
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
-	InstanceTracker           tracker.InstanceService
+	InstanceTracker           *tracker.MockInstanceService
 	DynamicRouter             *router.MockDynamicRouterService
-	AuthGroup                 auth.GroupService
+	AuthGroup                 *auth.MockGroupService
 	Pool                      *provision.MockPoolService
-	Volume                    volume.VolumeService
+	VolumeService             *volume.MockVolumeService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -53,9 +53,8 @@ func SetMockService(m *MockService) {
 	m.DynamicRouter = &router.MockDynamicRouterService{}
 	m.AuthGroup = &auth.MockGroupService{}
 	m.Pool = &provision.MockPoolService{}
-	m.Volume = &MockVolumeService{
-		Storage: &volume.MockVolumeStorage{},
-	}
+
+	m.VolumeService = &volume.MockVolumeService{}
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -70,7 +69,7 @@ func SetMockService(m *MockService) {
 	servicemanager.DynamicRouter = m.DynamicRouter
 	servicemanager.AuthGroup = m.AuthGroup
 	servicemanager.Pool = m.Pool
-	servicemanager.Volume = m.Volume
+	servicemanager.Volume = m.VolumeService
 }
 
 func (m *MockService) ResetCache() {
