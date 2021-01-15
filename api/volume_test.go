@@ -14,6 +14,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -30,6 +31,21 @@ func (s *S) TestVolumeList(c *check.C) {
 	config.Set("volume-plans:nfs:fake:access-modes", "ReadWriteMany")
 	defer config.Unset("volume-plans")
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{{
+			Name:      "v1",
+			Pool:      s.Pool,
+			TeamOwner: s.team.Name,
+			Plan: volumeTypes.VolumePlan{
+				Name: "nfs",
+				Opts: map[string]interface{}{
+					"plugin":       "nfs",
+					"capacity":     "20Gi",
+					"access-modes": "ReadWriteMany",
+				},
+			},
+		}}, nil
+	}
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	url := "/1.4/volumes"
@@ -76,6 +92,9 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 		Scheme:  permission.PermVolumeRead,
 		Context: permission.Context(permTypes.CtxTeam, "otherteam"),
 	})
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{v2}, nil
+	}
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -88,6 +107,9 @@ func (s *S) TestVolumeListPermissions(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
 	c.Assert(result[0].Name, check.Equals, "v2")
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{v1}, nil
+	}
 	request, err = http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("authorization", "bearer "+token2.GetValue())
@@ -128,6 +150,39 @@ func (s *S) TestVolumeListBinded(c *check.C) {
 		ReadOnly:   true,
 	})
 	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{{
+			Name:      "v1",
+			Pool:      s.Pool,
+			TeamOwner: s.team.Name,
+			Binds: []volumeTypes.VolumeBind{
+				{
+					ID: volumeTypes.VolumeBindID{
+						App:        "myapp",
+						MountPoint: "/mnt",
+						Volume:     "v1",
+					},
+					ReadOnly: false,
+				},
+				{
+					ID: volumeTypes.VolumeBindID{
+						App:        "myapp",
+						MountPoint: "/mnt2",
+						Volume:     "v1",
+					},
+					ReadOnly: true,
+				},
+			},
+			Plan: volumeTypes.VolumePlan{
+				Name: "nfs",
+				Opts: map[string]interface{}{
+					"plugin":       "nfs",
+					"capacity":     "20Gi",
+					"access-modes": "ReadWriteMany",
+				},
+			},
+		}}, nil
+	}
 	url := "/1.4/volumes"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -196,6 +251,37 @@ func (s *S) TestVolumeInfo(c *check.C) {
 		ReadOnly:   true,
 	})
 	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		v1.Plan = volumeTypes.VolumePlan{
+			Name: "nfs",
+			Opts: map[string]interface{}{
+				"access-modes": "ReadWriteMany",
+				"capacity":     "20Gi",
+				"plugin":       "nfs",
+			},
+		}
+		return &v1, nil
+	}
+	s.mockService.VolumeService.OnBinds = func(ctx context.Context, v *volumeTypes.Volume) ([]volumeTypes.VolumeBind, error) {
+		return []volumeTypes.VolumeBind{
+			{
+				ID: volumeTypes.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt",
+					Volume:     "v1",
+				},
+				ReadOnly: false,
+			},
+			{
+				ID: volumeTypes.VolumeBindID{
+					App:        "myapp",
+					MountPoint: "/mnt2",
+					Volume:     "v1",
+				},
+				ReadOnly: true,
+			},
+		}, nil
+	}
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -240,6 +326,9 @@ func (s *S) TestVolumeInfo(c *check.C) {
 }
 
 func (s *S) TestVolumeInfoNotFound(c *check.C) {
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return nil, volumeTypes.ErrVolumeNotFound
+	}
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -256,6 +345,25 @@ func (s *S) TestVolumeCreate(c *check.C) {
 		Values:   []string{"nfs"},
 	})
 	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return nil, volumeTypes.ErrVolumeNotFound
+	}
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{
+			{
+				Name:      "v1",
+				Pool:      s.Pool,
+				TeamOwner: s.team.Name,
+				Opts:      map[string]string{"a": "b"},
+				Plan: volumeTypes.VolumePlan{
+					Name: "nfs",
+					Opts: map[string]interface{}{
+						"plugin": "nfs",
+					},
+				},
+			},
+		}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=b`)
@@ -321,6 +429,22 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{
+			{
+				Name:      "v1",
+				Pool:      s.Pool,
+				TeamOwner: s.team.Name,
+				Opts:      map[string]string{"a": "c"},
+				Plan: volumeTypes.VolumePlan{
+					Name: "nfs",
+					Opts: map[string]interface{}{
+						"plugin": "nfs",
+					},
+				},
+			},
+		}, nil
+	}
 	volumes, err := servicemanager.Volume.ListByFilter(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(volumes, check.DeepEquals, []volumeTypes.Volume{{
@@ -338,6 +462,15 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 }
 
 func (s *S) TestVolumeUpdateNotFound(c *check.C) {
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "test1",
+		Field:    pool.ConstraintTypeVolumePlan,
+		Values:   []string{"nfs"},
+	})
+	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return nil, volumeTypes.ErrVolumeNotFound
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
@@ -355,6 +488,17 @@ func (s *S) TestVolumePlanList(c *check.C) {
 	config.Set("volume-plans:nfs1:fake:plugin", "nfs")
 	config.Set("volume-plans:other:fake:storage-class", "ebs")
 	config.Set("volume-plans:nfs1:otherprov:opts", "-t=nfs")
+	s.mockService.VolumeService.OnListPlans = func(ctx context.Context) (map[string][]volumeTypes.VolumePlan, error) {
+		return map[string][]volumeTypes.VolumePlan{
+			"fake": {
+				{Name: "nfs1", Opts: map[string]interface{}{"plugin": "nfs"}},
+				{Name: "other", Opts: map[string]interface{}{"storage-class": "ebs"}},
+			},
+			"otherprov": {
+				{Name: "nfs1", Opts: map[string]interface{}{"opts": "-t=nfs"}},
+			},
+		}, nil
+	}
 	defer config.Unset("volume-plans")
 	url := "/1.4/volumeplans"
 	request, err := http.NewRequest("GET", url, nil)
@@ -400,12 +544,46 @@ func (s *S) TestVolumeDelete(c *check.C) {
 }
 
 func (s *S) TestVolumeBind(c *check.C) {
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return &v1, nil
+	}
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{{
+			Name:      "v1",
+			Pool:      s.Pool,
+			TeamOwner: s.team.Name,
+			Binds: []volumeTypes.VolumeBind{
+				{
+					ID: volumeTypes.VolumeBindID{
+						App:        "myapp",
+						MountPoint: "/mnt1",
+						Volume:     "v1",
+					},
+					ReadOnly: false,
+				},
+				{
+					ID: volumeTypes.VolumeBindID{
+						App:        "myapp",
+						MountPoint: "/mnt2",
+						Volume:     "v1",
+					},
+					ReadOnly: true,
+				},
+			},
+			Plan: volumeTypes.VolumePlan{
+				Name: "nfs",
+				Opts: map[string]interface{}{
+					"plugin": "nfs",
+				},
+			},
+		}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -472,6 +650,9 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return &v1, nil
+	}
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -488,6 +669,9 @@ func (s *S) TestVolumeBindConflict(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body = strings.NewReader(`app=myapp&mountpoint=/mnt1&readonly=true`)
+	s.mockService.VolumeService.OnBindApp = func(ctx context.Context, opts *volumeTypes.BindOpts) error {
+		return &errors.HTTP{Code: http.StatusConflict}
+	}
 	request, err = http.NewRequest("POST", url, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -501,9 +685,12 @@ func (s *S) TestVolumeBindNoRestart(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return &v1, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err := servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -526,13 +713,39 @@ func (s *S) TestVolumeUnbind(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return &v1, nil
+	}
+	s.mockService.VolumeService.OnListByFilter = func(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+		return []volumeTypes.Volume{{
+			Name:      "v1",
+			Pool:      s.Pool,
+			TeamOwner: s.team.Name,
+			Binds: []volumeTypes.VolumeBind{
+				{
+					ID: volumeTypes.VolumeBindID{
+						App:        "myapp",
+						MountPoint: "/mnt1",
+						Volume:     "v1",
+					},
+					ReadOnly: false,
+				},
+			},
+			Plan: volumeTypes.VolumePlan{
+				Name: "nfs",
+				Opts: map[string]interface{}{
+					"plugin": "nfs",
+				},
+			},
+		}}, nil
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
@@ -588,6 +801,9 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return nil, volumeTypes.ErrVolumeNotFound
+	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -607,15 +823,18 @@ func (s *S) TestVolumeUnbindNotFound(c *check.C) {
 }
 
 func (s *S) TestVolumeUnbindNoRestart(c *check.C) {
+	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
+	}
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, appName string) (*volumeTypes.Volume, error) {
+		return &v1, nil
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
 	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
 	err = servicemanager.Volume.Create(context.TODO(), &v1)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
