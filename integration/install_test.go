@@ -516,7 +516,7 @@ func exampleApps() ExecFlow {
 		lang := strings.Replace(parts[1], "-iplat", "", -1)
 		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started")
+		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
 			res = T("app-info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
@@ -610,7 +610,7 @@ func appSwap() ExecFlow {
 			env.Add(fmt.Sprintf("swap-apps-%s-%s", env.Get("pool"), env.Get("router")), appName)
 			res = T("app-deploy", "-a", appName, swapDir).Run(env)
 			c.Assert(res, ResultOk)
-			regex := regexp.MustCompile("started")
+			regex := regexp.MustCompile("started|ready")
 			ok := retry(5*time.Minute, func() bool {
 				res = T("app-info", "-a", appName).Run(env)
 				c.Assert(res, ResultOk)
@@ -685,7 +685,7 @@ func appVersions() ExecFlow {
 		c.Assert(res, ResultOk)
 
 		checkVersion := func(expectedVersions ...string) {
-			regex := regexp.MustCompile("started")
+			regex := regexp.MustCompile("started|ready")
 			ok := retry(5*time.Minute, func() bool {
 				res = T("app-info", "-a", appName).Run(env)
 				c.Assert(res, ResultOk)
@@ -783,7 +783,7 @@ func testApps() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("app-deploy", "-a", appName, "{{.testcasesdir}}/{{.case}}/").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started")
+		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
 			res = T("app-info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
@@ -865,7 +865,7 @@ func serviceCreate() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("app-deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started")
+		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
 			res = T("app-info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
