@@ -391,6 +391,42 @@ func (s *S) TestVolumeCreate(c *check.C) {
 	}})
 }
 
+func (s *S) TestVolumeCreateErrNoVolumePlan(c *check.C) {
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "test1",
+		Field:    pool.ConstraintTypeVolumePlan,
+		Values:   []string{"nfs"},
+	})
+	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnCheckPoolVolumeConstraints = func(ctx context.Context, volume volumeTypes.Volume) error {
+		pools, err := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
+		if err != nil {
+			return err
+		}
+		if len(pools) == 0 {
+			return volumeTypes.ErrVolumePlanNotFound
+		}
+		for _, p := range pools {
+			if p.Name == volume.Pool {
+				return nil
+			}
+		}
+
+		return volumeTypes.ErrVolumePlanNotFound
+	}
+	config.Set("volume-plans:nfs:fake:plugin", "nfs")
+	defer config.Unset("volume-plans")
+	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=faas&status=ignored&plan.opts.something=ignored&opts.a=b`)
+	url := "/1.4/volumes"
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestVolumeCreateConflict(c *check.C) {
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "test1",

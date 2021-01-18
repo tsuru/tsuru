@@ -22,6 +22,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -30,11 +31,13 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	storage         *db.Storage
-	teams           []authTypes.Team
-	plans           []appTypes.Plan
-	mockTeamService *authTypes.MockTeamService
-	mockPlanService *appTypes.MockPlanService
+	storage           *db.Storage
+	teams             []authTypes.Team
+	plans             []appTypes.Plan
+	volumePlans       map[string][]volumeTypes.VolumePlan
+	mockTeamService   *authTypes.MockTeamService
+	mockPlanService   *appTypes.MockPlanService
+	mockVolumeService *volumeTypes.MockVolumeService
 }
 
 var _ = check.Suite(&S{})
@@ -61,6 +64,9 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.teams = []authTypes.Team{{Name: "ateam"}, {Name: "test"}, {Name: "pteam"}}
 	s.plans = []appTypes.Plan{{Name: "plan1"}, {Name: "plan2"}}
+	s.volumePlans = map[string][]volumeTypes.VolumePlan{
+		"kubernetes": {{Name: "nfs"}},
+	}
 	s.mockTeamService = &authTypes.MockTeamService{
 		OnList: func() ([]authTypes.Team, error) {
 			return s.teams, nil
@@ -79,6 +85,12 @@ func (s *S) SetUpTest(c *check.C) {
 			return s.plans, nil
 		},
 	}
+	s.mockVolumeService = &volumeTypes.MockVolumeService{
+		OnListPlans: func(ctx context.Context) (map[string][]volumeTypes.VolumePlan, error) {
+			return s.volumePlans, nil
+		},
+	}
+	servicemanager.Volume = s.mockVolumeService
 	servicemanager.Team = s.mockTeamService
 	servicemanager.Plan = s.mockPlanService
 }
@@ -470,6 +482,29 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 	c.Assert(pools, check.HasLen, 1)
 }
 
+func (s *S) TestListPoolsForVolumePlan(c *check.C) {
+	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1", Public: true})
+	c.Assert(err, check.IsNil)
+	err = AddPool(context.TODO(), AddPoolOptions{Name: "pool2", Public: true})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    ConstraintTypeVolumePlan,
+		Values:   []string{"faas"},
+	})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{
+		PoolExpr: "pool2",
+		Field:    ConstraintTypeVolumePlan,
+		Values:   []string{"nfs"},
+	})
+	c.Assert(err, check.IsNil)
+	pools, err := ListPoolsForVolumePlan(context.TODO(), "nfs")
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.HasLen, 1)
+	c.Assert(pools[0].Name, check.Equals, "pool2")
+}
+
 func (s *S) TestListPossiblePoolsAll(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1", Default: true})
 	c.Assert(err, check.IsNil)
@@ -651,6 +686,8 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeTeam, Values: []string{"team1"}})
 	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
+	c.Assert(err, check.IsNil)
 	constraints, err := pool.allowedValues()
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, map[poolConstraintType][]string{
@@ -658,7 +695,7 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 		ConstraintTypeRouter:     {"router1", "router2"},
 		ConstraintTypeService:    nil,
 		ConstraintTypePlan:       {"plan1", "plan2"},
-		ConstraintTypeVolumePlan: nil,
+		ConstraintTypeVolumePlan: {"nfs"},
 	})
 	pool.Name = "other"
 	constraints, err = pool.allowedValues()
