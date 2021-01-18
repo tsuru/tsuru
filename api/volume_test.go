@@ -399,9 +399,9 @@ func (s *S) TestVolumeCreateErrNoVolumePlan(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mockService.VolumeService.OnCheckPoolVolumeConstraints = func(ctx context.Context, volume volumeTypes.Volume) error {
-		pools, err := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
-		if err != nil {
-			return err
+		pools, funcErr := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
+		if funcErr != nil {
+			return funcErr
 		}
 		if len(pools) == 0 {
 			return volumeTypes.ErrVolumePlanNotFound
