@@ -49,6 +49,7 @@ import (
 )
 
 const (
+	dockerConfigVolume      = "dockerconfig"
 	dockerSockVolume        = "dockersock"
 	dockerSockPath          = "/var/run/docker.sock"
 	containerdRunVolume     = "containerd-run"
@@ -211,11 +212,11 @@ func createImageBuildPod(ctx context.Context, params createPodParams) error {
 }
 
 func getImagePullSecrets(ctx context.Context, client *ClusterClient, namespace string, images ...string) ([]apiv1.LocalObjectReference, error) {
-	registry, _ := config.GetString("docker:registry")
+	reg := registryAuth("")
 	useSecret := false
 	for _, image := range images {
 		imgDomain := strings.Split(image, "/")[0]
-		if imgDomain == registry {
+		if imgDomain == reg.imgDomain {
 			useSecret = true
 			break
 		}
@@ -223,40 +224,33 @@ func getImagePullSecrets(ctx context.Context, client *ClusterClient, namespace s
 	if !useSecret {
 		return nil, nil
 	}
-	err := ensureAuthSecret(ctx, client, namespace)
+	secretName, err := ensureAuthSecret(ctx, client, namespace, reg)
 	if err != nil {
 		return nil, err
 	}
-	secretName := registrySecretName(registry)
 	return []apiv1.LocalObjectReference{
 		{Name: secretName},
 	}, nil
 }
 
-func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace string) error {
-	registry, _ := config.GetString("docker:registry")
-	username, _ := config.GetString("docker:registry-auth:username")
-	password, _ := config.GetString("docker:registry-auth:password")
-	if len(username) == 0 && len(password) == 0 {
-		return nil
-	}
-	authEncoded := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace string, reg registryAuthConfig) (string, error) {
+	authEncoded := base64.StdEncoding.EncodeToString([]byte(reg.username + ":" + reg.password))
 	conf := map[string]map[string]dockerTypes.AuthConfig{
 		"auths": {
-			registry: {
-				Username: username,
-				Password: password,
+			reg.imgDomain: {
+				Username: reg.username,
+				Password: reg.password,
 				Auth:     authEncoded,
 			},
 		},
 	}
 	serializedConf, err := json.Marshal(conf)
 	if err != nil {
-		return err
+		return "", err
 	}
 	secret := &apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: registrySecretName(registry),
+			Name: registrySecretName(reg.imgDomain),
 		},
 		Data: map[string][]byte{
 			apiv1.DockerConfigJsonKey: serializedConf,
@@ -270,7 +264,7 @@ func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace stri
 	if err != nil {
 		err = errors.WithStack(err)
 	}
-	return err
+	return secret.Name, err
 }
 
 func createPod(ctx context.Context, params createPodParams) error {
@@ -329,18 +323,33 @@ func createPod(ctx context.Context, params createPodParams) error {
 	return waitForPod(tctx, params.client, params.pod, ns, false)
 }
 
-func registryAuth(img string) (username, password, imgDomain string) {
-	imgDomain = strings.Split(img, "/")[0]
-	r, _ := config.GetString("docker:registry")
-	if imgDomain != r {
-		return "", "", ""
+type registryAuthConfig struct {
+	username  string
+	password  string
+	imgDomain string
+	insecure  bool
+}
+
+func registryAuth(img string) registryAuthConfig {
+	regDomain, _ := config.GetString("docker:registry")
+	if img != "" {
+		imgDomain := strings.Split(img, "/")[0]
+		if imgDomain != regDomain {
+			return registryAuthConfig{}
+		}
 	}
-	username, _ = config.GetString("docker:registry-auth:username")
-	password, _ = config.GetString("docker:registry-auth:password")
+	username, _ := config.GetString("docker:registry-auth:username")
+	password, _ := config.GetString("docker:registry-auth:password")
 	if len(username) == 0 && len(password) == 0 {
-		return "", "", ""
+		return registryAuthConfig{}
 	}
-	return username, password, imgDomain
+	insecure, _ := config.GetBool("docker:registry-auth:insecure")
+	return registryAuthConfig{
+		username:  username,
+		password:  password,
+		imgDomain: regDomain,
+		insecure:  insecure,
+	}
 }
 
 func tsuruHostToken(a provision.App) (string, string) {
@@ -1668,9 +1677,7 @@ type deployAgentConfig struct {
 	destinationImages []string
 	sourceImage       string
 	inputFile         string
-	registryAuthPass  string
-	registryAuthUser  string
-	registryAddress   string
+	registryAuth      registryAuthConfig
 	runAsUser         string
 	dockerfileBuild   bool
 }
@@ -1736,7 +1743,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 			ServiceAccountName: serviceAccountNameForApp(app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
-			Volumes: append(deployAgentEngineVolumes(), append([]apiv1.Volume{
+			Volumes: append(deployAgentEngineVolumes(pullSecrets), append([]apiv1.Volume{
 				{
 					Name: "intercontainer",
 					VolumeSource: apiv1.VolumeSource{
@@ -1747,7 +1754,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", nil, true), mounts...),
-				newDeployAgentContainer(conf),
+				newDeployAgentContainer(conf, pullSecrets),
 			},
 		},
 	}, nil
@@ -1766,7 +1773,13 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 		Prefix:      tsuruLabelPrefix,
 		Provisioner: provisionerName,
 	})
-	annotations := provision.LabelSet{Prefix: tsuruLabelPrefix}
+	annotations := provision.LabelSet{
+		Prefix: tsuruLabelPrefix,
+		RawLabels: map[string]string{
+			fmt.Sprintf("container.apparmor.security.beta.kubernetes.io/%s", conf.name): "unconfined",
+			fmt.Sprintf("container.seccomp.security.alpha.kubernetes.io/%s", conf.name): "unconfined",
+		},
+	}
 	annotations.SetBuildImage(conf.destinationImages[0])
 	nodePoolLabelKey := tsuruLabelPrefix + provision.LabelNodePool
 	selectors := []apiv1.NodeSelectorRequirement{
@@ -1790,14 +1803,14 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 	}
 	_, uid := dockercommon.UserForContainer()
 	ns := client.Namespace()
-	pullSecrets, err := getImagePullSecrets(ctx, client, ns, sourceImage, conf.image)
+	pullSecrets, err := getImagePullSecrets(ctx, client, ns, sourceImage, conf.image, conf.destinationImages[0])
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
 	if uid != nil && conf.runAsUser == "" {
 		conf.runAsUser = strconv.FormatInt(*uid, 10)
 	}
-	conf.registryAuthUser, conf.registryAuthPass, conf.registryAddress = registryAuth(conf.destinationImages[0])
+	conf.registryAuth = registryAuth(conf.destinationImages[0])
 	return apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podName,
@@ -1808,13 +1821,13 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 		Spec: apiv1.PodSpec{
 			Affinity:         affinity,
 			ImagePullSecrets: pullSecrets,
-			Volumes:          deployAgentEngineVolumes(),
+			Volumes:          deployAgentEngineVolumes(pullSecrets),
 			RestartPolicy:    apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				{
 					Name:         conf.name,
 					Image:        conf.image,
-					VolumeMounts: deployAgentEngineMounts(),
+					VolumeMounts: deployAgentEngineMounts(pullSecrets),
 					Stdin:        true,
 					StdinOnce:    true,
 					Env:          conf.asEnvs(),
@@ -1835,21 +1848,24 @@ func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: strings.Join(c.destinationImages, ",")},
 		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: c.sourceImage},
-		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: c.registryAuthUser},
-		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: c.registryAuthPass},
-		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: c.registryAddress},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: c.registryAuth.username},
+		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: c.registryAuth.password},
+		{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: c.registryAuth.imgDomain},
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: c.inputFile},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: c.runAsUser},
 		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: strconv.FormatBool(c.dockerfileBuild)},
+		{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: strconv.FormatBool(c.registryAuth.insecure)},
+		{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+		{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 	}
 }
 
-func newDeployAgentContainer(conf deployAgentConfig) apiv1.Container {
-	conf.registryAuthUser, conf.registryAuthPass, conf.registryAddress = registryAuth(conf.destinationImages[0])
+func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalObjectReference) apiv1.Container {
+	conf.registryAuth = registryAuth(conf.destinationImages[0])
 	return apiv1.Container{
 		Name:  conf.name,
 		Image: conf.image,
-		VolumeMounts: append(deployAgentEngineMounts(),
+		VolumeMounts: append(deployAgentEngineMounts(pullSecrets),
 			apiv1.VolumeMount{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		),
 		Stdin:     true,
@@ -1889,8 +1905,8 @@ func deepCopyPorts(ports []apiv1.ServicePort) []apiv1.ServicePort {
 	return result
 }
 
-func deployAgentEngineVolumes() []apiv1.Volume {
-	return []apiv1.Volume{
+func deployAgentEngineVolumes(pullSecrets []apiv1.LocalObjectReference) []apiv1.Volume {
+	vols := []apiv1.Volume{
 		{
 			Name: dockerSockVolume,
 			VolumeSource: apiv1.VolumeSource{
@@ -1908,11 +1924,37 @@ func deployAgentEngineVolumes() []apiv1.Volume {
 			},
 		},
 	}
+	if len(pullSecrets) == 0 {
+		return vols
+	}
+	vols = append(vols, apiv1.Volume{
+		Name: dockerConfigVolume,
+		VolumeSource: apiv1.VolumeSource{
+			Secret: &apiv1.SecretVolumeSource{
+				SecretName: pullSecrets[0].Name,
+				Items: []apiv1.KeyToPath{
+					{
+						Key:  apiv1.DockerConfigJsonKey,
+						Path: "config.json",
+					},
+				},
+			},
+		},
+	})
+	return vols
 }
 
-func deployAgentEngineMounts() []apiv1.VolumeMount {
-	return []apiv1.VolumeMount{
+func deployAgentEngineMounts(pullSecrets []apiv1.LocalObjectReference) []apiv1.VolumeMount {
+	mounts := []apiv1.VolumeMount{
 		{Name: dockerSockVolume, MountPath: dockerSockPath},
 		{Name: containerdRunVolume, MountPath: containerdRunDir},
 	}
+	if len(pullSecrets) == 0 {
+		return mounts
+	}
+	mounts = append(mounts, apiv1.VolumeMount{
+		Name:      dockerConfigVolume,
+		MountPath: "/home/user/.docker",
+	})
+	return mounts
 }

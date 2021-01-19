@@ -2789,6 +2789,9 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 			{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/home/application/archive.tar.gz"},
 			{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 			{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
+			{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
+			{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+			{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
@@ -2914,6 +2917,9 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
+				{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
+				{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 			}},
 		{
 			Name:    "myapp-v1-deploy",
@@ -3010,6 +3016,20 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 					},
 				},
 				{
+					Name: dockerConfigVolume,
+					VolumeSource: apiv1.VolumeSource{
+						Secret: &apiv1.SecretVolumeSource{
+							SecretName: "registry-registry.example.com",
+							Items: []apiv1.KeyToPath{
+								{
+									Key:  apiv1.DockerConfigJsonKey,
+									Path: "config.json",
+								},
+							},
+						},
+					},
+				},
+				{
 					Name: "intercontainer",
 					VolumeSource: apiv1.VolumeSource{
 						EmptyDir: &apiv1.EmptyDirVolumeSource{},
@@ -3033,6 +3053,9 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
+		{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
+		{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+		{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 	})
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
@@ -3093,6 +3116,9 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/data/context.tar.gz"},
 		{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 		{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "true"},
+		{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
+		{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+		{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 	})
 	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.8.4")
 	cmds := cleanCmds(containers[0].Command[2])
