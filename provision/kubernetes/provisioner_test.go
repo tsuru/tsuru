@@ -2003,6 +2003,9 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
 				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
 				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
+				{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
+				{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
+				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 			})
 		}
 		return false, nil, nil
