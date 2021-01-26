@@ -399,19 +399,6 @@ func (s *S) TestVolumeCreateErrNoVolumePlan(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mockService.VolumeService.OnCheckPoolVolumeConstraints = func(ctx context.Context, volume volumeTypes.Volume) error {
-		pools, funcErr := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
-		if funcErr != nil {
-			return funcErr
-		}
-		if len(pools) == 0 {
-			return volumeTypes.ErrVolumePlanNotFound
-		}
-		for _, p := range pools {
-			if p.Name == volume.Pool {
-				return nil
-			}
-		}
-
 		return volumeTypes.ErrVolumePlanNotFound
 	}
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
