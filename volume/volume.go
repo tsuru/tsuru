@@ -228,15 +228,18 @@ func (s *volumeService) ListPlans(ctx context.Context) (map[string][]volumeTypes
 }
 
 func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume volumeTypes.Volume) error {
-	pools, err := pool.ListPoolsForVolumePlan(ctx, volume.Plan.Name)
+	pool, err := pool.GetPoolByName(ctx, volume.Pool)
 	if err != nil {
 		return err
 	}
-	if len(pools) == 0 {
-		return volumeTypes.ErrVolumePlanNotFound
+
+	vPlans, err := pool.GetVolumePlans()
+	if err != nil {
+		return err
 	}
-	for _, p := range pools {
-		if p.Name == volume.Pool {
+
+	for _, vplan := range vPlans {
+		if volume.Plan.Name == vplan {
 			return nil
 		}
 	}
