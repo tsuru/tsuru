@@ -606,7 +606,7 @@ func (s *S) TestGetVolumePlans(c *check.C) {
 	pool.Name = "other"
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "other", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	vPlans, err = pool.GetVolumePlans()
+	_, err = pool.GetVolumePlans()
 	c.Assert(err, check.Equals, ErrPoolHasNoVolumePlan)
 }
 
