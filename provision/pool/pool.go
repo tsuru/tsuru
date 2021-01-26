@@ -472,10 +472,6 @@ func ListPoolsForTeam(ctx context.Context, team string) ([]Pool, error) {
 	return getPoolsSatisfyConstraints(ctx, true, ConstraintTypeTeam, team)
 }
 
-func ListPoolsForVolumePlan(ctx context.Context, volumePlanName string) ([]Pool, error) {
-	return getPoolsSatisfyConstraints(ctx, false, ConstraintTypeVolumePlan, volumePlanName)
-}
-
 func listPools(ctx context.Context, query bson.M) ([]Pool, error) {
 	conn, err := db.Conn()
 	if err != nil {

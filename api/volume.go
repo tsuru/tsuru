@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -128,7 +129,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 
 	err = servicemanager.Volume.CheckPoolVolumeConstraints(ctx, inputVolume)
-	if err == volumeTypes.ErrVolumePlanNotFound {
+	if err == volumeTypes.ErrVolumePlanNotFound || err == pool.ErrPoolHasNoVolumePlan {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if err != nil {

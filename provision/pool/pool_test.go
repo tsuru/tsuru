@@ -508,29 +508,6 @@ func (s *S) TestListPoolsForTeam(c *check.C) {
 	c.Assert(pools, check.HasLen, 1)
 }
 
-func (s *S) TestListPoolsForVolumePlan(c *check.C) {
-	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1", Public: true})
-	c.Assert(err, check.IsNil)
-	err = AddPool(context.TODO(), AddPoolOptions{Name: "pool2", Public: true})
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{
-		PoolExpr: "pool1",
-		Field:    ConstraintTypeVolumePlan,
-		Values:   []string{"faas"},
-	})
-	c.Assert(err, check.IsNil)
-	err = SetPoolConstraint(&PoolConstraint{
-		PoolExpr: "pool2",
-		Field:    ConstraintTypeVolumePlan,
-		Values:   []string{"nfs"},
-	})
-	c.Assert(err, check.IsNil)
-	pools, err := ListPoolsForVolumePlan(context.TODO(), "nfs")
-	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.HasLen, 1)
-	c.Assert(pools[0].Name, check.Equals, "pool2")
-}
-
 func (s *S) TestListPossiblePoolsAll(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1", Default: true})
 	c.Assert(err, check.IsNil)
