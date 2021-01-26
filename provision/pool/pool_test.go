@@ -11,6 +11,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
+	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -64,6 +65,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.teams = []authTypes.Team{{Name: "ateam"}, {Name: "test"}, {Name: "pteam"}}
 	s.plans = []appTypes.Plan{{Name: "plan1"}, {Name: "plan2"}}
+
 	s.volumePlans = map[string][]volumeTypes.VolumePlan{
 		"kubernetes": {{Name: "nfs"}},
 	}
@@ -87,12 +89,36 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.mockVolumeService = &volumeTypes.MockVolumeService{
 		OnListPlans: func(ctx context.Context) (map[string][]volumeTypes.VolumePlan, error) {
-			return s.volumePlans, nil
+			plans := map[string][]volumeTypes.VolumePlan{}
+			plansRaw, err := config.Get("volume-plans")
+			if err != nil {
+				return plans, nil
+			}
+			plansMap := asMapStringInterface(internalConfig.ConvertEntries(plansRaw))
+			for planName, planProvsRaw := range plansMap {
+				for prov, provDataRaw := range asMapStringInterface(planProvsRaw) {
+					plans[prov] = append(plans[prov], volumeTypes.VolumePlan{
+						Name: planName,
+						Opts: asMapStringInterface(provDataRaw),
+					})
+				}
+			}
+			return plans, nil
 		},
 	}
 	servicemanager.Volume = s.mockVolumeService
 	servicemanager.Team = s.mockTeamService
 	servicemanager.Plan = s.mockPlanService
+}
+
+func asMapStringInterface(val interface{}) map[string]interface{} {
+	if val == nil {
+		return nil
+	}
+	if mapVal, ok := val.(map[string]interface{}); ok {
+		return mapVal
+	}
+	return nil
 }
 
 func (s *S) TestValidateRouters(c *check.C) {
@@ -565,6 +591,25 @@ func (s *S) TestGetRouters(c *check.C) {
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
 }
 
+func (s *S) TestGetVolumePlans(c *check.C) {
+	config.Set("volume-plans:test-volume-plan:kubernetes", "")
+	defer config.Unset("volume-plans")
+	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
+	c.Assert(err, check.IsNil)
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: false})
+	c.Assert(err, check.IsNil)
+	pool, err := GetPoolByName(context.TODO(), "pool1")
+	c.Assert(err, check.IsNil)
+	vPlans, err := pool.GetVolumePlans()
+	c.Assert(err, check.IsNil)
+	c.Assert(vPlans, check.DeepEquals, []string{"test-volume-plan"})
+	pool.Name = "other"
+	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "other", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: true})
+	c.Assert(err, check.IsNil)
+	vPlans, err = pool.GetVolumePlans()
+	c.Assert(err, check.Equals, ErrPoolHasNoVolumePlan)
+}
+
 func (s *S) TestGetPlans(c *check.C) {
 	err := AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
 	c.Assert(err, check.IsNil)
@@ -674,6 +719,8 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	config.Set("routers:router:type", "hipache")
 	config.Set("routers:router1:type", "hipache")
 	config.Set("routers:router2:type", "hipache")
+	config.Set("volume-plans:nfs:kubernetes", "")
+	defer config.Unset("volume-plans")
 	defer config.Unset("routers")
 	s.teams = append(s.teams, authTypes.Team{Name: "pubteam"}, authTypes.Team{Name: "team1"})
 	coll := s.storage.Pools()

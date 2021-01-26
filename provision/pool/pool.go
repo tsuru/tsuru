@@ -101,6 +101,19 @@ func (p *Pool) GetRouters() ([]string, error) {
 	return nil, ErrPoolHasNoRouter
 }
 
+func (p *Pool) GetVolumePlans() ([]string, error) {
+	allowedValues, err := p.allowedValues()
+	if err != nil {
+		return nil, err
+	}
+
+	if c := allowedValues[ConstraintTypeVolumePlan]; len(c) > 0 {
+		return c, nil
+	}
+
+	return nil, ErrPoolHasNoVolumePlan
+}
+
 func (p *Pool) GetPlans() ([]string, error) {
 	allowedValues, err := p.allowedValues()
 	if err != nil {
