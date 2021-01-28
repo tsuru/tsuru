@@ -28,11 +28,12 @@ const (
 	labelIsHeadlessService = "is-headless-service"
 	labelIsRoutable        = "is-routable"
 
-	LabelAppName     = "app-name"
-	LabelAppProcess  = "app-process"
-	LabelAppPool     = "app-pool"
-	LabelAppPlatform = "app-platform"
-	LabelAppVersion  = "app-version"
+	LabelAppName      = "app-name"
+	LabelAppProcess   = "app-process"
+	LabelAppPool      = "app-pool"
+	LabelAppPlatform  = "app-platform"
+	LabelAppVersion   = "app-version"
+	LabelAppTeamOwner = "app-team"
 
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
@@ -447,15 +448,16 @@ type ProcessLabelsOpts struct {
 func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, error) {
 	ls := &LabelSet{
 		Labels: map[string]string{
-			labelIsTsuru:     strconv.FormatBool(true),
-			labelIsStopped:   strconv.FormatBool(false),
-			LabelIsDeploy:    strconv.FormatBool(opts.IsDeploy),
-			LabelAppName:     opts.App.GetName(),
-			LabelAppProcess:  opts.Process,
-			LabelAppPlatform: opts.App.GetPlatform(),
-			LabelAppPool:     opts.App.GetPool(),
-			labelProvisioner: opts.Provisioner,
-			labelBuilder:     opts.Builder,
+			labelIsTsuru:      strconv.FormatBool(true),
+			labelIsStopped:    strconv.FormatBool(false),
+			LabelIsDeploy:     strconv.FormatBool(opts.IsDeploy),
+			LabelAppName:      opts.App.GetName(),
+			LabelAppTeamOwner: opts.App.GetTeamOwner(),
+			LabelAppProcess:   opts.Process,
+			LabelAppPlatform:  opts.App.GetPlatform(),
+			LabelAppPool:      opts.App.GetPool(),
+			labelProvisioner:  opts.Provisioner,
+			labelBuilder:      opts.Builder,
 		},
 		Prefix: opts.Prefix,
 	}
