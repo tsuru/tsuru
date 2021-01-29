@@ -49,6 +49,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 			Labels: map[string]string{
 				"tsuru.io/app-name":        "myapp",
 				"tsuru.io/app-platform":    "python",
+				"tsuru.io/app-team":        "",
 				"tsuru.io/app-pool":        "test-default",
 				"tsuru.io/app-process":     "web",
 				"tsuru.io/app-version":     "1",

@@ -97,6 +97,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 		"tsuru.io/is-routable":     "true",
 		"tsuru.io/app-name":        "myapp",
 		"tsuru.io/app-process":     "p1",
+		"tsuru.io/app-team":        "admin",
 		"tsuru.io/app-platform":    "",
 		"tsuru.io/app-pool":        "test-default",
 		"tsuru.io/provisioner":     "kubernetes",
@@ -213,6 +214,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-deploy":    "false",
 				"tsuru.io/is-routable":  "true",
 				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-team":     "admin",
 				"tsuru.io/app-process":  "p1",
 				"tsuru.io/app-platform": "",
 				"tsuru.io/app-pool":     "test-default",
@@ -253,6 +255,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-deploy":       "false",
 				"tsuru.io/is-isolated-run": "false",
 				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-team":        "admin",
 				"tsuru.io/app-process":     "p1",
 				"tsuru.io/app-platform":    "",
 				"tsuru.io/app-pool":        "test-default",
@@ -298,6 +301,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 				"tsuru.io/is-routable":         "true",
 				"tsuru.io/is-headless-service": "true",
 				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
 				"tsuru.io/app-process":         "p1",
 				"tsuru.io/app-platform":        "",
 				"tsuru.io/app-pool":            "test-default",
@@ -463,6 +467,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/is-deploy":    "false",
 				"tsuru.io/is-routable":  "true",
 				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-team":     "admin",
 				"tsuru.io/app-process":  "p1",
 				"tsuru.io/app-platform": "",
 				"tsuru.io/app-pool":     "test-default",
@@ -510,6 +515,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/is-routable":         "true",
 				"tsuru.io/is-headless-service": "true",
 				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
 				"tsuru.io/app-process":         "p1",
 				"tsuru.io/app-platform":        "",
 				"tsuru.io/app-pool":            "test-default",
@@ -2034,6 +2040,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		"tsuru.io/is-deploy":               "false",
 		"tsuru.io/is-isolated-run-version": "false",
 		"tsuru.io/app-name":                "myapp",
+		"tsuru.io/app-team":                "admin",
 		"tsuru.io/app-process":             "p1",
 		"tsuru.io/app-platform":            "",
 		"tsuru.io/app-pool":                "test-default",
@@ -2156,6 +2163,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 				"tsuru.io/is-deploy":               "false",
 				"tsuru.io/is-isolated-run-version": "false",
 				"tsuru.io/app-name":                "myapp",
+				"tsuru.io/app-team":                "admin",
 				"tsuru.io/app-process":             "p1",
 				"tsuru.io/app-version":             "2",
 				"tsuru.io/app-platform":            "",
@@ -2240,9 +2248,11 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedDep := legacyDep.DeepCopy()
 	expectedDep.Labels["tsuru.io/restarts"] = "1"
 	expectedDep.Labels["tsuru.io/is-routable"] = "true"
+	expectedDep.Labels["tsuru.io/app-team"] = "admin"
 	delete(expectedDep.Labels, "version")
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
+	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
 	expectedDep.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
 		{Name: "TSURU_SERVICES", Value: "{}"},
@@ -2257,6 +2267,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedSvc := legacySvc.DeepCopy()
 	expectedSvc.Labels["tsuru.io/restarts"] = "1"
 	expectedSvc.Labels["tsuru.io/is-routable"] = "true"
+	expectedSvc.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvc.Spec.Selector["tsuru.io/is-routable"] = "true"
 	delete(expectedSvc.Labels, "tsuru.io/is-isolated-run")
 	delete(expectedSvc.Spec.Selector, "tsuru.io/is-isolated-run")
@@ -2266,6 +2277,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedSvcV1.Labels["version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/restarts"] = "1"
 	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
 	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
 	expectedSvcV1.Spec.Selector["tsuru.io/is-isolated-run"] = "false"
@@ -2333,6 +2345,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedDepV2 := legacyDep.DeepCopy()
 	expectedDepV2.Name = "myapp-p1-v2"
 	expectedDepV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
+	expectedDepV2.Labels["tsuru.io/app-team"] = "admin"
 	delete(expectedDepV2.Labels, "version")
 	delete(expectedDepV2.Labels, "tsuru.io/is-routable")
 	delete(expectedDepV2.Labels, "tsuru.io/is-isolated-run")
@@ -2341,6 +2354,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	delete(expectedDepV2.Spec.Selector.MatchLabels, "tsuru.io/is-isolated-run")
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["version"] = "v2"
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "2"
+	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/is-isolated-run-version"] = "false"
 	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-routable")
 	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-isolated-run")
@@ -2358,6 +2372,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 
 	expectedSvcBase := legacySvc.DeepCopy()
 	expectedSvcBase.Labels["tsuru.io/is-routable"] = "true"
+	expectedSvcBase.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcBase.Spec.Selector["tsuru.io/is-routable"] = "true"
 	delete(expectedSvcBase.Labels, "tsuru.io/is-isolated-run")
 	delete(expectedSvcBase.Spec.Selector, "tsuru.io/is-isolated-run")
@@ -2366,6 +2381,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedSvcV1.Name = "myapp-p1-v1"
 	expectedSvcV1.Labels["version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
 	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
 	expectedSvcV1.Spec.Selector["tsuru.io/is-isolated-run"] = "false"
@@ -2374,6 +2390,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedSvcV2.Name = "myapp-p1-v2"
 	expectedSvcV2.Labels["version"] = "v2"
 	expectedSvcV2.Labels["tsuru.io/app-version"] = "2"
+	expectedSvcV2.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
 	expectedSvcV2.Spec.Selector["tsuru.io/app-version"] = "2"
 	expectedSvcV2.Spec.Selector["tsuru.io/is-isolated-run-version"] = "false"
@@ -2629,6 +2646,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/app-process":     "",
 				"tsuru.io/is-build":        "true",
 				"tsuru.io/app-platform":    "python",
+				"tsuru.io/app-team":        "",
 				"tsuru.io/is-service":      "true",
 				"tsuru.io/app-pool":        "test-default",
 				"tsuru.io/provisioner":     "kubernetes",
@@ -2745,6 +2763,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 				"tsuru.io/is-stopped":      "false",
 				"tsuru.io/is-tsuru":        "true",
 				"tsuru.io/app-name":        "myapp",
+				"tsuru.io/app-team":        "",
 				"tsuru.io/is-isolated-run": "false",
 				"tsuru.io/builder":         "",
 				"tsuru.io/app-process":     "",
@@ -3515,6 +3534,7 @@ func (s *S) TestServiceManagerRemoveService(c *check.C) {
 		"tsuru.io/is-deploy":       "false",
 		"tsuru.io/is-isolated-run": "false",
 		"tsuru.io/app-name":        a.GetName(),
+		"tsuru.io/app-team":        a.GetTeamOwner(),
 		"tsuru.io/app-process":     "p1",
 		"tsuru.io/app-version":     "1",
 		"tsuru.io/restarts":        "0",
@@ -3717,6 +3737,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 				"tsuru.io/is-deploy":    "false",
 				"tsuru.io/is-routable":  "true",
 				"tsuru.io/app-name":     "myapp",
+				"tsuru.io/app-team":     "admin",
 				"tsuru.io/app-process":  "p1",
 				"tsuru.io/app-platform": "",
 				"tsuru.io/app-pool":     "test-default",
