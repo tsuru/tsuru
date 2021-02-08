@@ -24,6 +24,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
+	apiv1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -39,10 +40,19 @@ var (
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
 )
 
+type PoolLabels struct {
+	Affinity *apiv1.Affinity
+	Selector map[string]string
+
+	Labels map[string]string
+}
+
 type Pool struct {
 	Name        string `bson:"_id"`
 	Default     bool
 	Provisioner string
+
+	Labels PoolLabels
 
 	ctx context.Context
 }
@@ -53,12 +63,16 @@ type AddPoolOptions struct {
 	Default     bool
 	Force       bool
 	Provisioner string
+
+	Labels PoolLabels
 }
 
 type UpdatePoolOptions struct {
 	Default *bool
 	Public  *bool
 	Force   bool
+
+	Labels PoolLabels
 }
 
 func (p *Pool) GetProvisioner() (provision.Provisioner, error) {
@@ -297,6 +311,7 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	}
 	result := make(map[string]interface{})
 	result["name"] = p.Name
+	result["labels"] = p.Labels
 	result["public"] = teams.AllowsAll()
 	result["default"] = p.Default
 	result["provisioner"] = p.Provisioner
@@ -319,7 +334,7 @@ func (p *Pool) validate() error {
 }
 
 func AddPool(ctx context.Context, opts AddPoolOptions) error {
-	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner}
+	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner, Labels: opts.Labels}
 	if err := pool.validate(); err != nil {
 		return err
 	}
@@ -562,6 +577,9 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 	query := bson.M{}
 	if opts.Default != nil {
 		query["default"] = *opts.Default
+	}
+	if opts.Labels.Affinity != nil || len(opts.Labels.Selector) > 0 {
+		query["label"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
 		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
