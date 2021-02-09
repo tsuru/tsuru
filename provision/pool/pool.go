@@ -40,19 +40,17 @@ var (
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
 )
 
-type PoolLabels struct {
-	Affinity *apiv1.Affinity
-	Selector map[string]string
-
-	Labels map[string]string
-}
+const (
+	nodeSelectorKey = "nodeSelector"
+	affinityKey     = "affinity"
+)
 
 type Pool struct {
 	Name        string `bson:"_id"`
 	Default     bool
 	Provisioner string
 
-	Labels PoolLabels
+	Labels map[string]string
 
 	ctx context.Context
 }
@@ -64,7 +62,7 @@ type AddPoolOptions struct {
 	Force       bool
 	Provisioner string
 
-	Labels PoolLabels
+	Labels map[string]string
 }
 
 type UpdatePoolOptions struct {
@@ -72,7 +70,36 @@ type UpdatePoolOptions struct {
 	Public  *bool
 	Force   bool
 
-	Labels PoolLabels
+	Labels map[string]string
+}
+
+func (p *Pool) GetNodeSelector() (map[string]string, error) {
+	var nodeSelectorValues map[string]string
+	if values, ok := p.Labels[nodeSelectorKey]; ok {
+		err := json.Unmarshal([]byte(values), &nodeSelectorValues)
+		if err != nil {
+			return map[string]string{}, err
+		}
+		return nodeSelectorValues, nil
+	}
+	return map[string]string{}, nil
+}
+
+func unmarshalAffinity(affinity string) (*apiv1.Affinity, error) {
+	var k8sAffinity apiv1.Affinity
+	if err := json.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
+		return nil, err
+	}
+
+	return &k8sAffinity, nil
+}
+
+func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
+	if val, ok := p.Labels[affinityKey]; ok {
+		return unmarshalAffinity(val)
+	}
+
+	return nil, nil
 }
 
 func (p *Pool) GetProvisioner() (provision.Provisioner, error) {
@@ -320,6 +347,24 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&result)
 }
 
+func validateLabels(labels map[string]string) error {
+	if selectorValues, ok := labels[nodeSelectorKey]; ok {
+		var sMap map[string]string
+		if err := json.Unmarshal([]byte(selectorValues), &sMap); err != nil {
+			return err
+		}
+	}
+
+	if affinityStr, ok := labels[affinityKey]; ok {
+		var affinity apiv1.Affinity
+		if err := json.Unmarshal([]byte(affinityStr), &affinity); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (p *Pool) validate() error {
 	if p.Name == "" {
 		return ErrPoolNameIsRequired
@@ -329,6 +374,10 @@ func (p *Pool) validate() error {
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
+	}
+
+	if len(p.Labels) > 0 {
+		validateLabels(p.Labels)
 	}
 	return nil
 }
@@ -578,7 +627,10 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 	if opts.Default != nil {
 		query["default"] = *opts.Default
 	}
-	if opts.Labels.Affinity != nil || len(opts.Labels.Selector) > 0 {
+	if len(opts.Labels) > 0 {
+		if err := validateLabels(opts.Labels); err != nil {
+			return err
+		}
 		query["label"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {

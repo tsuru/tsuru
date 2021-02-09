@@ -518,10 +518,7 @@ func getNodeSelector(ctx context.Context, a provision.App, client *ClusterClient
 		if err != nil {
 			return nil, err
 		}
-		if pool.Labels.Selector != nil {
-			return pool.Labels.Selector, nil
-		}
-		return map[string]string{}, nil
+		return pool.GetNodeSelector()
 	}
 
 	return provision.NodeLabels(provision.NodeLabelsOpts{
@@ -530,17 +527,13 @@ func getNodeSelector(ctx context.Context, a provision.App, client *ClusterClient
 	}).ToNodeByPoolSelector(), nil
 }
 
-func getPoolAffinity(ctx context.Context, a provision.App) (*apiv1.Affinity, error) {
+func podAffinity(ctx context.Context, a provision.App) (*apiv1.Affinity, error) {
 	pool, err := pool.GetPoolByName(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
 	}
 
-	if pool.Labels.Affinity != nil {
-		return pool.Labels.Affinity, nil
-	}
-
-	return pool.Labels.Affinity, nil
+	return pool.GetAffinity()
 }
 
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
@@ -611,7 +604,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return nil, nil, err
 	}
 
-	affinity, err := getPoolAffinity(ctx, a)
+	affinity, err := podAffinity(ctx, a)
 	if err != nil {
 		return nil, nil, err
 	}
