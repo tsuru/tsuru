@@ -113,6 +113,7 @@ type App struct {
 	Tags            []string
 	Error           string
 	Routers         []appTypes.AppRouter
+	Metadata        appTypes.Metadata
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -471,6 +472,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if tags != nil {
 		app.Tags = tags
 	}
+	err = args.UpdateData.Metadata.Validate()
+	if err != nil {
+		return err
+	}
+	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
 		p, v, err = getPlatformNameAndVersion(app.ctx, platform)
@@ -2671,6 +2677,10 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 
 func (app *App) ListTags() []string {
 	return app.Tags
+}
+
+func (app *App) GetMetadata() appTypes.Metadata {
+	return app.Metadata
 }
 
 func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {

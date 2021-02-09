@@ -253,6 +253,8 @@ type App interface {
 	GetTeamsName() []string
 
 	ListTags() []string
+
+	GetMetadata() appTypes.Metadata
 }
 
 type BuilderDockerClient interface {

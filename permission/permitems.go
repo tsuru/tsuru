@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2020 tsuru authors. All rights reserved.
+// Copyright 2021 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -52,6 +52,7 @@ var (
 	PermAppUpdateGrant                   = PermissionRegistry.get("app.update.grant")                    // [global app team pool]
 	PermAppUpdateImageReset              = PermissionRegistry.get("app.update.image-reset")              // [global app team pool]
 	PermAppUpdateLog                     = PermissionRegistry.get("app.update.log")                      // [global app team pool]
+	PermAppUpdateMetadata                = PermissionRegistry.get("app.update.metadata")                 // [global app team pool]
 	PermAppUpdatePlan                    = PermissionRegistry.get("app.update.plan")                     // [global app team pool]
 	PermAppUpdatePlanoverride            = PermissionRegistry.get("app.update.planoverride")             // [global app team pool]
 	PermAppUpdatePlatform                = PermissionRegistry.get("app.update.platform")                 // [global app team pool]

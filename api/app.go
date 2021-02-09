@@ -304,6 +304,7 @@ type inputApp struct {
 	RouterOpts   map[string]string
 	Tags         []string
 	PlanOverride appTypes.PlanOverride
+	Metadata     appTypes.Metadata
 }
 
 func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
@@ -475,6 +476,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Platform:       InputValue(r, "platform"),
 		UpdatePlatform: imageReset,
 		RouterOpts:     ia.RouterOpts,
+		Metadata:       ia.Metadata,
 	}
 	tags, _ := InputValues(r, "tag")
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
@@ -527,6 +529,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if updateData.UpdatePlatform {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateImageReset)
+	}
+	if len(updateData.Metadata.Annotations) > 0 || len(updateData.Metadata.Labels) > 0 {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateMetadata)
 	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, tags, plan, pool, team owner or platform were set. You must define at least one."

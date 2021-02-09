@@ -87,6 +87,7 @@ type FakeApp struct {
 	TeamOwner         string
 	Teams             []string
 	Tags              []string
+	Metadata          appTypes.Metadata
 	InternalAddresses []provision.AppInternalAddress
 }
 
@@ -363,6 +364,10 @@ func (app *FakeApp) GetInternalBindableAddresses() ([]string, error) {
 
 func (app *FakeApp) ListTags() []string {
 	return app.Tags
+}
+
+func (app *FakeApp) GetMetadata() appTypes.Metadata {
+	return app.Metadata
 }
 
 type Cmd struct {
