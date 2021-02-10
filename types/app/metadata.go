@@ -5,9 +5,9 @@
 package app
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/tsuru/tsuru/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -31,19 +31,15 @@ const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 
 func (m *Metadata) Validate() error {
 	errs := validateAnnotations(m.Annotations)
-	errs = append(errs, validateLabels(m.Labels)...)
-	if len(errs) > 0 {
-		errStr := ""
-		for _, e := range errs {
-			errStr = fmt.Sprintf("%s - %v\n", errStr, e)
-		}
-		return fmt.Errorf("metadata validation errors:\n%s", errStr)
+	errs.Append(validateLabels(m.Labels))
+	if errs.Len() > 0 {
+		return errs.ToError()
 	}
 	return nil
 }
 
-func validateAnnotations(items []MetadataItem) field.ErrorList {
-	allErrs := field.ErrorList{}
+func validateAnnotations(items []MetadataItem) *errors.MultiError {
+	allErrs := errors.NewMultiError()
 	fldPath := field.NewPath("metadata.annotations")
 	var totalSize int64
 	for _, item := range items {
@@ -51,28 +47,28 @@ func validateAnnotations(items []MetadataItem) field.ErrorList {
 			continue
 		}
 		for _, msg := range validation.IsQualifiedName(strings.ToLower(item.Name)) {
-			allErrs = append(allErrs, field.Invalid(fldPath, item.Name, msg))
+			allErrs.Add(field.Invalid(fldPath, item.Name, msg))
 		}
 		totalSize += (int64)(len(item.Name)) + (int64)(len(item.Value))
 	}
 	if totalSize > (int64)(totalAnnotationSizeLimitB) {
-		allErrs = append(allErrs, field.TooLong(fldPath, "", totalAnnotationSizeLimitB))
+		allErrs.Add(field.TooLong(fldPath, "", totalAnnotationSizeLimitB))
 	}
 	return allErrs
 }
 
-func validateLabels(items []MetadataItem) field.ErrorList {
-	allErrs := field.ErrorList{}
+func validateLabels(items []MetadataItem) *errors.MultiError {
+	allErrs := errors.NewMultiError()
 	fldPath := field.NewPath("metadata.labels")
 	for _, item := range items {
 		if item.Delete {
 			continue
 		}
 		for _, msg := range validation.IsQualifiedName(item.Name) {
-			allErrs = append(allErrs, field.Invalid(fldPath, item.Name, msg))
+			allErrs.Add(field.Invalid(fldPath, item.Name, msg))
 		}
 		for _, msg := range validation.IsValidLabelValue(item.Value) {
-			allErrs = append(allErrs, field.Invalid(fldPath, item.Value, msg))
+			allErrs.Add(field.Invalid(fldPath, item.Value, msg))
 		}
 	}
 	return allErrs
