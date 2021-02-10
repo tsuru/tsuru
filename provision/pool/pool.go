@@ -78,25 +78,20 @@ func (p *Pool) GetNodeSelector() (map[string]string, error) {
 	if values, ok := p.Labels[nodeSelectorKey]; ok {
 		err := json.Unmarshal([]byte(values), &nodeSelectorValues)
 		if err != nil {
-			return map[string]string{}, err
+			return nil, err
 		}
 		return nodeSelectorValues, nil
 	}
-	return map[string]string{}, nil
-}
-
-func unmarshalAffinity(affinity string) (*apiv1.Affinity, error) {
-	var k8sAffinity apiv1.Affinity
-	if err := json.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
-		return nil, err
-	}
-
-	return &k8sAffinity, nil
+	return nil, nil
 }
 
 func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
-	if val, ok := p.Labels[affinityKey]; ok {
-		return unmarshalAffinity(val)
+	if affinity, ok := p.Labels[affinityKey]; ok {
+		var k8sAffinity apiv1.Affinity
+		if err := json.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
+			return nil, err
+		}
+		return &k8sAffinity, nil
 	}
 
 	return nil, nil
@@ -631,7 +626,9 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 		if err := validateLabels(opts.Labels); err != nil {
 			return err
 		}
-		query["label"] = opts.Labels
+	}
+	if opts.Labels != nil {
+		query["labels"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
 		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})

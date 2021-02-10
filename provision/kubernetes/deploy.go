@@ -503,28 +503,30 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func getNodeSelector(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, error) {
+func defineSelector(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, error) {
 	singlePool, err := client.SinglePool()
 	if err != nil {
 		return nil, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
 	if singlePool {
-		return map[string]string{}, nil
+		return nil, nil
 	}
 
-	// if the key is not present in cluster -> try to use pool's nodeSelector
-	if _, ok := client.GetCluster().CustomData[nodeSelectorKey]; !ok {
-		pool, err := pool.GetPoolByName(ctx, a.GetPool())
+	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
+		shouldDisable, err := strconv.ParseBool(val)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
 		}
-		return pool.GetNodeSelector()
+		if shouldDisable {
+			return nil, nil
+		}
 	}
 
-	return provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   a.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector(), nil
+	pool, err := pool.GetPoolByName(ctx, a.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	return pool.GetNodeSelector()
 }
 
 func podAffinity(ctx context.Context, a provision.App) (*apiv1.Affinity, error) {
@@ -599,7 +601,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
 
-	nodeSelector, err := getNodeSelector(ctx, a, client)
+	nodeSelector, err := defineSelector(ctx, a, client)
 	if err != nil {
 		return nil, nil, err
 	}
