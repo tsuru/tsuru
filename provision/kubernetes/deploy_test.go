@@ -142,7 +142,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2086,7 +2087,8 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2253,6 +2255,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}
+	expectedDep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvc := legacySvc.DeepCopy()
 	expectedSvc.Labels["tsuru.io/restarts"] = "1"
@@ -2355,6 +2358,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}
+	expectedDepV2.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvcBase := legacySvc.DeepCopy()
 	expectedSvcBase.Labels["tsuru.io/is-routable"] = "true"

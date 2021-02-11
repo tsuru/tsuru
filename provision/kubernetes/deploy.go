@@ -616,7 +616,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 
 	metadata := a.GetMetadata()
 	for _, l := range metadata.Labels {
-		labels.Labels[l.Name] = l.Value
+		labels.RawLabels[l.Name] = l.Value
 	}
 
 	annotations := map[string]string{}

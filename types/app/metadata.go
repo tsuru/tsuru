@@ -1,10 +1,11 @@
-// Copyright 2018 tsuru authors. All rights reserved.
+// Copyright 2021 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package app
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/tsuru/tsuru/errors"
@@ -29,6 +30,8 @@ type MetadataItem struct {
 // https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
 const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 
+const tsuruPrefix = "tsuru.io/"
+
 func (m *Metadata) Validate() error {
 	errs := validateAnnotations(m.Annotations)
 	errs.Append(validateLabels(m.Labels))
@@ -45,6 +48,9 @@ func validateAnnotations(items []MetadataItem) *errors.MultiError {
 	for _, item := range items {
 		if item.Delete {
 			continue
+		}
+		if strings.HasPrefix(item.Name, tsuruPrefix) {
+			allErrs.Add(fmt.Errorf("prefix tsuru.io/ is private"))
 		}
 		for _, msg := range validation.IsQualifiedName(strings.ToLower(item.Name)) {
 			allErrs.Add(field.Invalid(fldPath, item.Name, msg))
@@ -63,6 +69,9 @@ func validateLabels(items []MetadataItem) *errors.MultiError {
 	for _, item := range items {
 		if item.Delete {
 			continue
+		}
+		if strings.HasPrefix(item.Name, tsuruPrefix) {
+			allErrs.Add(fmt.Errorf("prefix tsuru.io/ is private"))
 		}
 		for _, msg := range validation.IsQualifiedName(item.Name) {
 			allErrs.Add(field.Invalid(fldPath, item.Name, msg))
@@ -97,8 +106,7 @@ func hasItem(list []MetadataItem, name string) int {
 	n := -1
 	for i, v := range list {
 		if v.Name == name {
-			n = i
-			break
+			return i
 		}
 	}
 	return n

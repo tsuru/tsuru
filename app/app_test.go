@@ -5230,10 +5230,15 @@ func (s *S) TestUpdateMetadataAnnotationValidation(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 
-	updateData := App{Metadata: appTypes.Metadata{Annotations: []appTypes.MetadataItem{{Name: "_invalidName", Value: "asdf"}}}}
+	updateData := App{Metadata: appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "_invalidName", Value: "asdf"}},
+		Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/app-name", Value: "asdf"}},
+	}}
 	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "metadata.annotations: Invalid value: \"_invalidName\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')")
+	c.Assert(err.Error(), check.Equals, "multiple errors reported (2):\n"+
+		"error #0: metadata.annotations: Invalid value: \"_invalidName\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')\n"+
+		"error #1: prefix tsuru.io/ is private\n")
 }
 
 func (s *S) TestRenameTeam(c *check.C) {
