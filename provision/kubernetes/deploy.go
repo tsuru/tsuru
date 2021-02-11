@@ -526,7 +526,18 @@ func defineSelector(ctx context.Context, a provision.App, client *ClusterClient)
 	if err != nil {
 		return nil, err
 	}
-	return pool.GetNodeSelector()
+	selector, err := pool.GetNodeSelector()
+	if err != nil {
+		return nil, err
+	}
+	if selector != nil {
+		return selector, nil
+	}
+
+	return provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector(), nil
 }
 
 func podAffinity(ctx context.Context, a provision.App) (*apiv1.Affinity, error) {

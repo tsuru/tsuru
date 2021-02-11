@@ -1979,7 +1979,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{})
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
 }
 
 func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
