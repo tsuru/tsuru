@@ -3403,6 +3403,9 @@ definitions:
       imageReset:
         type: boolean
         description: Reset app image to platform base image.
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
   InputApp:
     type: object
     required:
@@ -3525,6 +3528,30 @@ definitions:
       cpumilli:
         type: integer
         x-go-custom-type: "*int"
+  Metadata:
+    description: App metadata such as custom labels and annotations.
+    type: object
+    properties:
+      annotations:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/MetadataItem"
+      labels:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/MetadataItem"
+  MetadataItem:
+    description: Metadata items
+    type: object
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+      delete:
+        type: boolean
   Env:
     description: Environment variable.
     type: object
