@@ -38,6 +38,7 @@ var (
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
+	ErrNodeSelectorNotValid           = errors.New("node selector is not a valid map")
 )
 
 const (
@@ -372,7 +373,7 @@ func (p *Pool) validate() error {
 	}
 
 	if len(p.Labels) > 0 {
-		validateLabels(p.Labels)
+		return validateLabels(p.Labels)
 	}
 	return nil
 }
