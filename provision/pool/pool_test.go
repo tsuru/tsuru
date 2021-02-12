@@ -525,6 +525,89 @@ func (s *S) TestPoolUpdate(c *check.C) {
 	c.Assert(constraint.AllowsAll(), check.Equals, true)
 }
 
+func (s *S) TestPoolUpdateWithLabels(c *check.C) {
+	tt := []struct {
+		testName  string
+		aOpts     AddPoolOptions
+		uOpts     UpdatePoolOptions
+		assertion func(testName string, c *check.C, pool *Pool, err error)
+	}{
+		{
+			testName: "create pool with node selector label",
+			aOpts: AddPoolOptions{
+				Name: "pool1",
+			},
+			uOpts: UpdatePoolOptions{
+				Labels: map[string]string{
+					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
+				},
+			},
+			assertion: func(testName string, c *check.C, pool *Pool, err error) {
+				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool1", check.Commentf("%s", testName))
+				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`}, check.Commentf("%s", testName))
+			},
+		},
+		{
+			testName: "create pool with affinity label",
+			aOpts: AddPoolOptions{
+				Name: "pool2",
+			},
+			uOpts: UpdatePoolOptions{
+				Labels: map[string]string{
+					affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`,
+				},
+			},
+			assertion: func(testName string, c *check.C, pool *Pool, err error) {
+				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool2", check.Commentf("%s", testName))
+				c.Assert(pool.Labels, check.DeepEquals, map[string]string{affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
+			},
+		},
+		{
+			testName: "create pool with affinity and node selector labels",
+			aOpts: AddPoolOptions{
+				Name: "pool3",
+			},
+			uOpts: UpdatePoolOptions{
+				Labels: map[string]string{
+					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
+					affinityKey:     `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`,
+				},
+			},
+			assertion: func(testName string, c *check.C, pool *Pool, err error) {
+				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool3", check.Commentf("%s", testName))
+				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`, affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
+			},
+		},
+		{
+			testName: "create pool with custom label",
+			aOpts: AddPoolOptions{
+				Name: "pool4",
+			},
+			uOpts: UpdatePoolOptions{
+				Labels: map[string]string{
+					"testLabel": "something",
+				},
+			},
+			assertion: func(testName string, c *check.C, pool *Pool, err error) {
+				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool4", check.Commentf("%s", testName))
+				c.Assert(pool.Labels, check.DeepEquals, map[string]string{"testLabel": "something"}, check.Commentf("%s", testName))
+			},
+		},
+	}
+	for _, t := range tt {
+		err := AddPool(context.TODO(), t.aOpts)
+		c.Assert(err, check.IsNil)
+		err = PoolUpdate(context.TODO(), t.aOpts.Name, t.uOpts)
+		c.Assert(err, check.IsNil)
+		pool, err := GetPoolByName(context.TODO(), t.aOpts.Name)
+		t.assertion(t.testName, c, pool, err)
+	}
+}
+
 func (s *S) TestPoolUpdateToDefault(c *check.C) {
 	opts := AddPoolOptions{
 		Name:    "pool1",
@@ -947,7 +1030,7 @@ func (s *S) TestGetAffinity(c *check.C) {
 			},
 		},
 		{
-			testName: "when an invalid is present",
+			testName: "when an invalid affinity is passed",
 			pool:     Pool{Name: "pool1", Labels: map[string]string{affinityKey: `invalid affinity`}},
 			assertion: func(testName string, c *check.C, affinity *apiv1.Affinity, err error) {
 				c.Assert(affinity, check.IsNil)

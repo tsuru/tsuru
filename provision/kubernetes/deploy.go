@@ -513,7 +513,8 @@ func defineSelector(ctx context.Context, a provision.App, client *ClusterClient)
 	}
 
 	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
-		shouldDisable, err := strconv.ParseBool(val)
+		var shouldDisable bool
+		shouldDisable, err = strconv.ParseBool(val)
 		if err != nil {
 			return nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
 		}

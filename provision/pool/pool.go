@@ -624,7 +624,7 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 		query["default"] = *opts.Default
 	}
 	if len(opts.Labels) > 0 {
-		if err := validateLabels(opts.Labels); err != nil {
+		if err = validateLabels(opts.Labels); err != nil {
 			return err
 		}
 	}
