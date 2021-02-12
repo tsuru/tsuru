@@ -1691,6 +1691,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
+
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
@@ -1698,12 +1699,15 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3&tags.0=tag0")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
+
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
 	c.Assert(err, check.IsNil)
@@ -1736,6 +1740,90 @@ func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Annotations: []appTypes.MetadataItem{{Name: "c", Value: "someData"}},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("description1=s&metadata.annotations.0.name=a&metadata.annotations.0.value=b&metadata.annotations.1.delete=true&metadata.annotations.1.name=c")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppWithLabels(c *check.C) {
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{{Name: "c", Value: "someData"}, {Name: "z", Value: "ground"}},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("description1=s&metadata.labels.0.name=a&metadata.labels.0.value=b&metadata.labels.1.delete=true&metadata.labels.1.name=c")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}, {Name: "z", Value: "ground"}})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":appname", "value": a.Name},
+		},
+	}, eventtest.HasEvent)
 }
 
 func (s *S) TestUpdateAppImageReset(c *check.C) {

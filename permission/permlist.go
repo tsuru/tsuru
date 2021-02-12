@@ -53,6 +53,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.router.update",
 	"app.update.router.remove",
 	"app.update.routable",
+	"app.update.metadata",
 	"app.deploy",
 	"app.deploy.archive-url",
 	"app.deploy.build",

@@ -77,6 +77,22 @@ func (s *S) TestMultiError_Add(c *check.C) {
 	c.Assert(multiError.errors[0], check.Equals, expectedError)
 }
 
+func (s *S) TestMultiError_Append(c *check.C) {
+	multiError := NewMultiError()
+	expectedError := errors.New("fail")
+	multiError.Add(expectedError)
+	c.Assert(multiError.errors, check.HasLen, 1)
+	c.Assert(multiError.errors[0], check.Equals, expectedError)
+
+	multiError2 := NewMultiError()
+	anotherError := errors.New("another")
+	multiError2.Add(anotherError)
+
+	multiError.Append(multiError2)
+	c.Assert(multiError.errors, check.HasLen, 2)
+	c.Assert(multiError.errors[1], check.Equals, anotherError)
+}
+
 func (s *S) TestMultiError_ToError(c *check.C) {
 	multiError := NewMultiError()
 	c.Assert(multiError.ToError(), check.IsNil)

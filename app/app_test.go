@@ -5150,6 +5150,97 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
+func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {
+	app := App{Name: "example", Platform: "python", TeamOwner: s.team.Name, Description: "blabla"}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Metadata: appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "a", Value: "b"}},
+		Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
+	}}
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "b"}})
+	c.Assert(dbApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "c", Value: "d"}})
+}
+
+func (s *S) TestUpdateMetadataWhenAlreadySet(c *check.C) {
+	app := App{
+		Name:        "example",
+		Platform:    "python",
+		TeamOwner:   s.team.Name,
+		Description: "blabla",
+		Metadata: appTypes.Metadata{
+			Annotations: []appTypes.MetadataItem{{Name: "a", Value: "old"}},
+			Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
+		},
+	}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Metadata: appTypes.Metadata{Annotations: []appTypes.MetadataItem{{Name: "a", Value: "new"}}}}
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{{Name: "a", Value: "new"}})
+	c.Assert(dbApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "c", Value: "d"}})
+}
+
+func (s *S) TestUpdateMetadataCanRemoveAnnotation(c *check.C) {
+	app := App{
+		Name:        "example",
+		Platform:    "python",
+		TeamOwner:   s.team.Name,
+		Description: "blabla",
+		Metadata: appTypes.Metadata{
+			Annotations: []appTypes.MetadataItem{{Name: "a", Value: "old"}},
+			Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
+		},
+	}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Metadata: appTypes.Metadata{Annotations: []appTypes.MetadataItem{{Name: "a", Delete: true}}}}
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.IsNil)
+
+	dbApp, err := GetByName(context.TODO(), app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{})
+	c.Assert(dbApp.Metadata.Labels, check.DeepEquals, []appTypes.MetadataItem{{Name: "c", Value: "d"}})
+}
+
+func (s *S) TestUpdateMetadataAnnotationValidation(c *check.C) {
+	app := App{
+		Name:        "example",
+		Platform:    "python",
+		TeamOwner:   s.team.Name,
+		Description: "blabla",
+		Metadata: appTypes.Metadata{
+			Annotations: []appTypes.MetadataItem{{Name: "a", Value: "old"}},
+			Labels:      []appTypes.MetadataItem{{Name: "c", Value: "d"}},
+		},
+	}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+
+	updateData := App{Metadata: appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "_invalidName", Value: "asdf"}},
+		Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/app-name", Value: "asdf"}},
+	}}
+	err = app.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "multiple errors reported (2):\n"+
+		"error #0: metadata.annotations: Invalid value: \"_invalidName\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')\n"+
+		"error #1: prefix tsuru.io/ is private\n")
+}
+
 func (s *S) TestRenameTeam(c *check.C) {
 	apps := []App{
 		{Name: "test1", TeamOwner: "t1", Routers: []appTypes.AppRouter{{Name: "fake"}}, Teams: []string{"t2", "t3", "t1"}},

@@ -143,7 +143,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2093,7 +2094,8 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: apiv1.PodSpec{
 					EnableServiceLinks: func(b bool) *bool { return &b }(false),
@@ -2263,6 +2265,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}
+	expectedDep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvc := legacySvc.DeepCopy()
 	expectedSvc.Labels["tsuru.io/restarts"] = "1"
@@ -2369,6 +2372,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}
+	expectedDepV2.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvcBase := legacySvc.DeepCopy()
 	expectedSvcBase.Labels["tsuru.io/is-routable"] = "true"
@@ -4080,4 +4084,41 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	c.Assert(err, check.IsNil)
 
 	return legacyDep, legacySvc
+}
+
+func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{
+		Name:      "myapp",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Annotations: []appTypes.MetadataItem{{Name: "tsuru.io/a", Value: "my custom annotation"}},
+			Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/logs", Value: "BACKUP"}},
+		},
+	}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	a.Plan = appTypes.Plan{Memory: 1024}
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.ObjectMeta.Annotations, check.DeepEquals, map[string]string{"tsuru.io/a": "my custom annotation"})
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/logs"], check.Equals, "BACKUP")
 }

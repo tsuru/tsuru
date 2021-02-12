@@ -613,6 +613,17 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, err
 	}
+
+	metadata := a.GetMetadata()
+	for _, l := range metadata.Labels {
+		labels.RawLabels[l.Name] = l.Value
+	}
+
+	annotations := map[string]string{}
+	for _, annotation := range metadata.Annotations {
+		annotations[annotation.Name] = annotation.Value
+	}
+
 	depLabels := labels.WithoutVersion().ToLabels()
 	podLabels := labels.ToLabels()
 	baseName := deploymentNameForAppBase(a, process)
@@ -630,9 +641,10 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      depName,
-			Namespace: ns,
-			Labels:    depLabels,
+			Name:        depName,
+			Namespace:   ns,
+			Labels:      depLabels,
+			Annotations: annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Strategy: appsv1.DeploymentStrategy{
@@ -649,7 +661,8 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
 					TerminationGracePeriodSeconds: &terminationGracePeriod,

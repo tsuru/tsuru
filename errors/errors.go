@@ -63,6 +63,10 @@ func (m *MultiError) Add(err error) {
 	m.errors = append(m.errors, err)
 }
 
+func (m *MultiError) Append(me *MultiError) {
+	m.errors = append(m.errors, me.errors...)
+}
+
 func (m *MultiError) Len() int {
 	return len(m.errors)
 }
