@@ -517,6 +517,9 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 		return nil, nil, err
 	}
 	affinity, err := pool.GetAffinity()
+	if err != nil {
+		return nil, nil, err
+	}
 	if affinity != nil && affinity.NodeAffinity != nil {
 		return nil, affinity, nil
 	}
