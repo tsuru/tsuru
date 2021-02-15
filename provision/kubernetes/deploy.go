@@ -503,51 +503,39 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
 }
 
-func defineSelector(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, error) {
+func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
 	singlePool, err := client.SinglePool()
 	if err != nil {
-		return nil, errors.WithMessage(err, "misconfigured cluster single pool value")
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
 	if singlePool {
-		return nil, nil
+		return nil, nil, nil
+	}
+
+	pool, err := pool.GetPoolByName(ctx, a.GetPool())
+	if err != nil {
+		return nil, nil, err
+	}
+	affinity, err := pool.GetAffinity()
+	if affinity != nil && affinity.NodeAffinity != nil {
+		return nil, affinity, nil
 	}
 
 	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
 		var shouldDisable bool
 		shouldDisable, err = strconv.ParseBool(val)
 		if err != nil {
-			return nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
+			return nil, nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
 		}
 		if shouldDisable {
-			return nil, nil
+			return nil, affinity, nil
 		}
-	}
-
-	pool, err := pool.GetPoolByName(ctx, a.GetPool())
-	if err != nil {
-		return nil, err
-	}
-	selector, err := pool.GetNodeSelector()
-	if err != nil {
-		return nil, err
-	}
-	if selector != nil {
-		return selector, nil
 	}
 
 	return provision.NodeLabels(provision.NodeLabelsOpts{
 		Pool:   a.GetPool(),
 		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector(), nil
-}
-
-func podAffinity(ctx context.Context, a provision.App) (*apiv1.Affinity, error) {
-	pool, err := pool.GetPoolByName(ctx, a.GetPool())
-	if err != nil {
-		return nil, err
-	}
-
-	return pool.GetAffinity()
+	}).ToNodeByPoolSelector(), affinity, nil
 }
 
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
@@ -613,15 +601,11 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
 
-	nodeSelector, err := defineSelector(ctx, a, client)
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	affinity, err := podAffinity(ctx, a)
-	if err != nil {
-		return nil, nil, err
-	}
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())

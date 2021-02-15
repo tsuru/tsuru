@@ -230,59 +230,30 @@ func (s *S) TestAddPoolWithLabels(c *check.C) {
 		assertion func(testName string, c *check.C, pool *Pool, err error)
 	}{
 		{
-			testName: "create pool with node selector label",
-			opts: AddPoolOptions{
-				Name: "pool1",
-				Labels: map[string]string{
-					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
-				},
-			},
-			assertion: func(testName string, c *check.C, pool *Pool, err error) {
-				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool1", check.Commentf("%s", testName))
-				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`}, check.Commentf("%s", testName))
-			},
-		},
-		{
 			testName: "create pool with affinity label",
 			opts: AddPoolOptions{
-				Name: "pool2",
+				Name: "pool1",
 				Labels: map[string]string{
 					affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`,
 				},
 			},
 			assertion: func(testName string, c *check.C, pool *Pool, err error) {
 				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool2", check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool1", check.Commentf("%s", testName))
 				c.Assert(pool.Labels, check.DeepEquals, map[string]string{affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
-			},
-		},
-		{
-			testName: "create pool with affinity and node selector labels",
-			opts: AddPoolOptions{
-				Name: "pool3",
-				Labels: map[string]string{
-					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
-					affinityKey:     `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`,
-				},
-			},
-			assertion: func(testName string, c *check.C, pool *Pool, err error) {
-				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool3", check.Commentf("%s", testName))
-				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`, affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
 			},
 		},
 		{
 			testName: "create pool with custom label",
 			opts: AddPoolOptions{
-				Name: "pool4",
+				Name: "pool2",
 				Labels: map[string]string{
 					"testLabel": "something",
 				},
 			},
 			assertion: func(testName string, c *check.C, pool *Pool, err error) {
 				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool4", check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool2", check.Commentf("%s", testName))
 				c.Assert(pool.Labels, check.DeepEquals, map[string]string{"testLabel": "something"}, check.Commentf("%s", testName))
 			},
 		},
@@ -301,14 +272,6 @@ func (s *S) TestAddPoolValidateLabels(c *check.C) {
 		opts        AddPoolOptions
 		expectedErr string
 	}{
-		{
-			testName: "selector label with invalid format",
-			opts: AddPoolOptions{
-				Name:   "pool1",
-				Labels: map[string]string{nodeSelectorKey: "invalid map"},
-			},
-			expectedErr: "invalid character 'i' looking for beginning of value",
-		},
 		{
 			testName: "affinity label with invalid format",
 			opts: AddPoolOptions{
@@ -533,25 +496,9 @@ func (s *S) TestPoolUpdateWithLabels(c *check.C) {
 		assertion func(testName string, c *check.C, pool *Pool, err error)
 	}{
 		{
-			testName: "create pool with node selector label",
-			aOpts: AddPoolOptions{
-				Name: "pool1",
-			},
-			uOpts: UpdatePoolOptions{
-				Labels: map[string]string{
-					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
-				},
-			},
-			assertion: func(testName string, c *check.C, pool *Pool, err error) {
-				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool1", check.Commentf("%s", testName))
-				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`}, check.Commentf("%s", testName))
-			},
-		},
-		{
 			testName: "create pool with affinity label",
 			aOpts: AddPoolOptions{
-				Name: "pool2",
+				Name: "pool1",
 			},
 			uOpts: UpdatePoolOptions{
 				Labels: map[string]string{
@@ -560,31 +507,14 @@ func (s *S) TestPoolUpdateWithLabels(c *check.C) {
 			},
 			assertion: func(testName string, c *check.C, pool *Pool, err error) {
 				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool2", check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool1", check.Commentf("%s", testName))
 				c.Assert(pool.Labels, check.DeepEquals, map[string]string{affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
-			},
-		},
-		{
-			testName: "create pool with affinity and node selector labels",
-			aOpts: AddPoolOptions{
-				Name: "pool3",
-			},
-			uOpts: UpdatePoolOptions{
-				Labels: map[string]string{
-					nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`,
-					affinityKey:     `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`,
-				},
-			},
-			assertion: func(testName string, c *check.C, pool *Pool, err error) {
-				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool3", check.Commentf("%s", testName))
-				c.Assert(pool.Labels, check.DeepEquals, map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`, affinityKey: `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}, check.Commentf("%s", testName))
 			},
 		},
 		{
 			testName: "create pool with custom label",
 			aOpts: AddPoolOptions{
-				Name: "pool4",
+				Name: "pool2",
 			},
 			uOpts: UpdatePoolOptions{
 				Labels: map[string]string{
@@ -593,7 +523,7 @@ func (s *S) TestPoolUpdateWithLabels(c *check.C) {
 			},
 			assertion: func(testName string, c *check.C, pool *Pool, err error) {
 				c.Assert(err, check.IsNil, check.Commentf("%s", testName))
-				c.Assert(pool.Name, check.Equals, "pool4", check.Commentf("%s", testName))
+				c.Assert(pool.Name, check.Equals, "pool2", check.Commentf("%s", testName))
 				c.Assert(pool.Labels, check.DeepEquals, map[string]string{"testLabel": "something"}, check.Commentf("%s", testName))
 			},
 		},
@@ -959,43 +889,6 @@ func (s *S) TestGetProvisionerForPool(c *check.C) {
 	prov, err = GetProvisionerForPool(context.TODO(), "not found")
 	c.Assert(prov, check.IsNil)
 	c.Assert(err, check.Equals, ErrPoolNotFound)
-}
-
-func (s *S) TestGetNodeSelector(c *check.C) {
-	tt := []struct {
-		testName  string
-		pool      Pool
-		assertion func(testName string, c *check.C, selector map[string]string, err error)
-	}{
-		{
-			testName: "when a valid node selector is present",
-			pool:     Pool{Name: "pool1", Labels: map[string]string{nodeSelectorKey: `{"beta.kubernetes.io/os":"linux"}`}},
-			assertion: func(testName string, c *check.C, selector map[string]string, err error) {
-				c.Assert(err, check.IsNil)
-				c.Assert(selector, check.DeepEquals, map[string]string{"beta.kubernetes.io/os": "linux"})
-			},
-		},
-		{
-			testName: "when an invalid node selector is present",
-			pool:     Pool{Name: "pool1", Labels: map[string]string{nodeSelectorKey: `wrong format`}},
-			assertion: func(testName string, c *check.C, selector map[string]string, err error) {
-				c.Assert(err, check.ErrorMatches, "invalid character 'w' looking for beginning of value")
-			},
-		},
-		{
-			testName: "when there's no label in pool",
-			pool:     Pool{Name: "pool1"},
-			assertion: func(testName string, c *check.C, selector map[string]string, err error) {
-				c.Assert(err, check.IsNil)
-				c.Assert(selector, check.IsNil)
-			},
-		},
-	}
-
-	for _, t := range tt {
-		selector, err := t.pool.GetNodeSelector()
-		t.assertion(t.testName, c, selector, err)
-	}
 }
 
 func (s *S) TestGetAffinity(c *check.C) {

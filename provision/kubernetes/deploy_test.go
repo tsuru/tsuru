@@ -344,302 +344,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	})
 }
 
-func (s *S) TestServiceManagerDeployServiceWithPoolNodeSelector(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"nodeSelector": `{"beta.kubernetes.io/os":"linux"}`}})
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
-	})
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
-		App:     a,
-		Version: version,
-	}, servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	})
-	c.Assert(err, check.IsNil)
-	waitDep()
-	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	one := int32(1)
-	ten := int32(10)
-	maxSurge := intstr.FromString("100%")
-	maxUnavailable := intstr.FromInt(0)
-	expectedUID := int64(1000)
-	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":        "true",
-		"tsuru.io/is-service":      "true",
-		"tsuru.io/is-build":        "false",
-		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
-		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/is-routable":     "true",
-		"tsuru.io/app-name":        "myapp",
-		"tsuru.io/app-process":     "p1",
-		"tsuru.io/app-team":        "admin",
-		"tsuru.io/app-platform":    "",
-		"tsuru.io/app-pool":        "test-default",
-		"tsuru.io/provisioner":     "kubernetes",
-		"tsuru.io/builder":         "",
-		"app":                      "myapp-p1",
-	}
-	podLabels := make(map[string]string)
-	for k, v := range depLabels {
-		podLabels[k] = v
-	}
-	podLabels["tsuru.io/app-version"] = "1"
-	podLabels["version"] = "v1"
-	nsName, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	expected := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
-		},
-		Status: appsv1.DeploymentStatus{
-			UpdatedReplicas: 1,
-			Replicas:        1,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{
-					MaxSurge:       &maxSurge,
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-			Replicas:             &one,
-			RevisionHistoryLimit: &ten,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"tsuru.io/app-name":        "myapp",
-					"tsuru.io/app-process":     "p1",
-					"tsuru.io/is-build":        "false",
-					"tsuru.io/is-isolated-run": "false",
-				},
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
-				},
-				Spec: apiv1.PodSpec{
-					EnableServiceLinks: func(b bool) *bool { return &b }(false),
-					ServiceAccountName: "app-myapp",
-					SecurityContext: &apiv1.PodSecurityContext{
-						RunAsUser: &expectedUID,
-					},
-					NodeSelector: map[string]string{
-						"beta.kubernetes.io/os": "linux",
-					},
-					RestartPolicy:                 "Always",
-					Subdomain:                     "myapp-p1-units",
-					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
-					Containers: []apiv1.Container{
-						{
-							Name:  "myapp-p1",
-							Image: version.BaseImageName(),
-							Command: []string{
-								"/bin/sh",
-								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
-							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
-								{Name: "TSURU_PROCESSNAME", Value: "p1"},
-								{Name: "TSURU_APPVERSION", Value: "1"},
-								{Name: "TSURU_HOST", Value: ""},
-								{Name: "port", Value: "8888"},
-								{Name: "PORT", Value: "8888"},
-								{Name: "PORT_p1", Value: "8888"},
-							},
-							Resources: apiv1.ResourceRequirements{
-								Limits: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
-								},
-								Requests: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-								},
-							},
-							Ports: []apiv1.ContainerPort{
-								{ContainerPort: 8888},
-							},
-							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
-									Exec: &apiv1.ExecAction{
-										Command: []string{"sh", "-c", "sleep 10 || true"},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	c.Assert(dep, check.DeepEquals, expected)
-	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestServiceManagerDeployServiceWithClusterNodeSelectorDisabled(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
-	m.client.CustomData[disableDefaultNodeSelectorKey] = "true"
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-			"p2": "cmd2",
-		},
-	})
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
-		App:     a,
-		Version: version,
-	}, servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	})
-	c.Assert(err, check.IsNil)
-	waitDep()
-	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	one := int32(1)
-	ten := int32(10)
-	maxSurge := intstr.FromString("100%")
-	maxUnavailable := intstr.FromInt(0)
-	expectedUID := int64(1000)
-	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":        "true",
-		"tsuru.io/is-service":      "true",
-		"tsuru.io/is-build":        "false",
-		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
-		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/is-routable":     "true",
-		"tsuru.io/app-name":        "myapp",
-		"tsuru.io/app-process":     "p1",
-		"tsuru.io/app-team":        "admin",
-		"tsuru.io/app-platform":    "",
-		"tsuru.io/app-pool":        "test-default",
-		"tsuru.io/provisioner":     "kubernetes",
-		"tsuru.io/builder":         "",
-		"app":                      "myapp-p1",
-	}
-	podLabels := make(map[string]string)
-	for k, v := range depLabels {
-		podLabels[k] = v
-	}
-	podLabels["tsuru.io/app-version"] = "1"
-	podLabels["version"] = "v1"
-	nsName, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	expected := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
-		},
-		Status: appsv1.DeploymentStatus{
-			UpdatedReplicas: 1,
-			Replicas:        1,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{
-					MaxSurge:       &maxSurge,
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-			Replicas:             &one,
-			RevisionHistoryLimit: &ten,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"tsuru.io/app-name":        "myapp",
-					"tsuru.io/app-process":     "p1",
-					"tsuru.io/is-build":        "false",
-					"tsuru.io/is-isolated-run": "false",
-				},
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
-				},
-				Spec: apiv1.PodSpec{
-					EnableServiceLinks: func(b bool) *bool { return &b }(false),
-					ServiceAccountName: "app-myapp",
-					SecurityContext: &apiv1.PodSecurityContext{
-						RunAsUser: &expectedUID,
-					},
-					NodeSelector:                  nil,
-					RestartPolicy:                 "Always",
-					Subdomain:                     "myapp-p1-units",
-					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
-					Containers: []apiv1.Container{
-						{
-							Name:  "myapp-p1",
-							Image: version.BaseImageName(),
-							Command: []string{
-								"/bin/sh",
-								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
-							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
-								{Name: "TSURU_PROCESSNAME", Value: "p1"},
-								{Name: "TSURU_APPVERSION", Value: "1"},
-								{Name: "TSURU_HOST", Value: ""},
-								{Name: "port", Value: "8888"},
-								{Name: "PORT", Value: "8888"},
-								{Name: "PORT_p1", Value: "8888"},
-							},
-							Resources: apiv1.ResourceRequirements{
-								Limits: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
-								},
-								Requests: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-								},
-							},
-							Ports: []apiv1.ContainerPort{
-								{ContainerPort: 8888},
-							},
-							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
-									Exec: &apiv1.ExecAction{
-										Command: []string{"sh", "-c", "sleep 10 || true"},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	c.Assert(dep, check.DeepEquals, expected)
-	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestServiceManagerDeployServiceWithPoolNodeAffinity(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
@@ -666,140 +371,126 @@ func (s *S) TestServiceManagerDeployServiceWithPoolNodeAffinity(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	one := int32(1)
-	ten := int32(10)
-	maxSurge := intstr.FromString("100%")
-	maxUnavailable := intstr.FromInt(0)
-	expectedUID := int64(1000)
-	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":        "true",
-		"tsuru.io/is-service":      "true",
-		"tsuru.io/is-build":        "false",
-		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
-		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/is-routable":     "true",
-		"tsuru.io/app-name":        "myapp",
-		"tsuru.io/app-process":     "p1",
-		"tsuru.io/app-team":        "admin",
-		"tsuru.io/app-platform":    "",
-		"tsuru.io/app-pool":        "test-default",
-		"tsuru.io/provisioner":     "kubernetes",
-		"tsuru.io/builder":         "",
-		"app":                      "myapp-p1",
+	expectedAffinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{
+					{
+						MatchExpressions: []apiv1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/hostname",
+								Operator: "In",
+								Values:   []string{"minikube"},
+							},
+						},
+					}},
+			},
+		},
 	}
-	podLabels := make(map[string]string)
-	for k, v := range depLabels {
-		podLabels[k] = v
-	}
-	podLabels["tsuru.io/app-version"] = "1"
-	podLabels["version"] = "v1"
-	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
 	c.Assert(err, check.IsNil)
-	expected := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "myapp-p1",
-			Namespace:   nsName,
-			Labels:      depLabels,
-			Annotations: map[string]string{},
+}
+
+func (s *S) TestServiceManagerDeployServiceWithPodAffinity(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
 		},
-		Status: appsv1.DeploymentStatus{
-			UpdatedReplicas: 1,
-			Replicas:        1,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{
-					MaxSurge:       &maxSurge,
-					MaxUnavailable: &maxUnavailable,
-				},
-			},
-			Replicas:             &one,
-			RevisionHistoryLimit: &ten,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"tsuru.io/app-name":        "myapp",
-					"tsuru.io/app-process":     "p1",
-					"tsuru.io/is-build":        "false",
-					"tsuru.io/is-isolated-run": "false",
-				},
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
-				},
-				Spec: apiv1.PodSpec{
-					EnableServiceLinks: func(b bool) *bool { return &b }(false),
-					ServiceAccountName: "app-myapp",
-					NodeSelector: map[string]string{
-						"tsuru.io/pool": "test-default",
-					},
-					SecurityContext: &apiv1.PodSecurityContext{
-						RunAsUser: &expectedUID,
-					},
-					Affinity: &apiv1.Affinity{
-						NodeAffinity: &apiv1.NodeAffinity{
-							RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
-								NodeSelectorTerms: []apiv1.NodeSelectorTerm{
-									{
-										MatchExpressions: []apiv1.NodeSelectorRequirement{
-											{
-												Key:      "kubernetes.io/hostname",
-												Operator: "In",
-												Values:   []string{"minikube"},
-											},
-										},
-									}},
-							},
-						},
-					},
-					RestartPolicy:                 "Always",
-					Subdomain:                     "myapp-p1-units",
-					TerminationGracePeriodSeconds: func(v int64) *int64 { return &v }(40),
-					Containers: []apiv1.Container{
-						{
-							Name:  "myapp-p1",
-							Image: version.BaseImageName(),
-							Command: []string{
-								"/bin/sh",
-								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
-							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
-								{Name: "TSURU_PROCESSNAME", Value: "p1"},
-								{Name: "TSURU_APPVERSION", Value: "1"},
-								{Name: "TSURU_HOST", Value: ""},
-								{Name: "port", Value: "8888"},
-								{Name: "PORT", Value: "8888"},
-								{Name: "PORT_p1", Value: "8888"},
-							},
-							Resources: apiv1.ResourceRequirements{
-								Limits: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
-								},
-								Requests: apiv1.ResourceList{
-									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-								},
-							},
-							Ports: []apiv1.ContainerPort{
-								{ContainerPort: 8888},
-							},
-							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
-									Exec: &apiv1.ExecAction{
-										Command: []string{"sh", "-c", "sleep 10 || true"},
-									},
-								},
-							},
-						},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity := &apiv1.Affinity{
+		PodAffinity: &apiv1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []apiv1.PodAffinityTerm{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{{
+							Key:      "security",
+							Operator: "In",
+							Values:   []string{"S1"},
+						}},
 					},
 				},
 			},
 		},
 	}
-	c.Assert(dep, check.DeepEquals, expected)
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{"tsuru.io/pool": "test-default"})
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithAffinityAndClusterNodeSelectorDisabled(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	m.client.CustomData[disableDefaultNodeSelectorKey] = "true"
+	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	expectedAffinity := &apiv1.Affinity{
+		PodAffinity: &apiv1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []apiv1.PodAffinityTerm{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{{
+							Key:      "security",
+							Operator: "In",
+							Values:   []string{"S1"},
+						}},
+					},
+				},
+			},
+		},
+	}
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceRaceWithHPA(c *check.C) {

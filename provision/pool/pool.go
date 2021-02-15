@@ -38,12 +38,10 @@ var (
 	ErrPoolHasNoService               = errors.New("no service found for pool")
 	ErrPoolHasNoPlan                  = errors.New("no plan found for pool")
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
-	ErrNodeSelectorNotValid           = errors.New("node selector is not a valid map")
 )
 
 const (
-	nodeSelectorKey = "nodeSelector"
-	affinityKey     = "affinity"
+	affinityKey = "affinity"
 )
 
 type Pool struct {
@@ -72,18 +70,6 @@ type UpdatePoolOptions struct {
 	Force   bool
 
 	Labels map[string]string
-}
-
-func (p *Pool) GetNodeSelector() (map[string]string, error) {
-	var nodeSelectorValues map[string]string
-	if values, ok := p.Labels[nodeSelectorKey]; ok {
-		err := json.Unmarshal([]byte(values), &nodeSelectorValues)
-		if err != nil {
-			return nil, err
-		}
-		return nodeSelectorValues, nil
-	}
-	return nil, nil
 }
 
 func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
@@ -344,13 +330,6 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 }
 
 func validateLabels(labels map[string]string) error {
-	if selectorValues, ok := labels[nodeSelectorKey]; ok {
-		var sMap map[string]string
-		if err := json.Unmarshal([]byte(selectorValues), &sMap); err != nil {
-			return err
-		}
-	}
-
 	if affinityStr, ok := labels[affinityKey]; ok {
 		var affinity apiv1.Affinity
 		if err := json.Unmarshal([]byte(affinityStr), &affinity); err != nil {
