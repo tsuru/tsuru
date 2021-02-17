@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -3768,6 +3769,101 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	srvs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
+}
+
+func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
+	tt := []struct {
+		name       string
+		app        provision.App
+		poolLabels map[string]string
+		customData map[string]string
+		assertion  func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C)
+	}{
+		{
+			name:       "when cluster has a single pool",
+			customData: map[string]string{singlePoolKey: "true"},
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+			},
+		},
+		{
+			name:       "when pool has node affinity",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			poolLabels: map[string]string{"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.DeepEquals, &apiv1.Affinity{
+					NodeAffinity: &apiv1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+							NodeSelectorTerms: []apiv1.NodeSelectorTerm{
+								{
+									MatchExpressions: []apiv1.NodeSelectorRequirement{
+										{
+											Key:      "kubernetes.io/hostname",
+											Operator: "In",
+											Values:   []string{"minikube"},
+										},
+									},
+								}},
+						},
+					},
+				})
+			},
+		},
+		{
+			name:       "when pool does not have node affinity and cluster disables default node selector",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			customData: map[string]string{disableDefaultNodeSelectorKey: "true"},
+			poolLabels: map[string]string{"affinity": `{"empty-affinity":"some-value"}`},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.DeepEquals, &apiv1.Affinity{})
+			},
+		},
+		{
+			name: "when pool affinity is nil and cluster has default node selector",
+			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.DeepEquals, map[string]string{"tsuru.io/pool": "test-default"})
+				c.Assert(affinity, check.IsNil)
+			},
+		},
+		{
+			name: "when app pool does not exist",
+			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "invalid pool"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+				c.Assert(err.Error(), check.DeepEquals, "Pool does not exist.")
+			},
+		},
+		{
+			name:       "when cluster default node selector key in custom data is invalid",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			customData: map[string]string{disableDefaultNodeSelectorKey: "invalid"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+				c.Assert(err.Error(), check.DeepEquals, fmt.Sprintf("error while parsing cluster custom data entry: %s: strconv.ParseBool: parsing \"invalid\": invalid syntax", disableDefaultNodeSelectorKey))
+			},
+		},
+	}
+
+	for _, t := range tt {
+		err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: t.poolLabels})
+		c.Assert(err, check.IsNil)
+		s.clusterClient.CustomData = t.customData
+		selector, affinity, err := defineSelectorAndAffinity(context.TODO(), t.app, s.clusterClient)
+		t.assertion(selector, affinity, err, c)
+		err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *S) TestEnsureNamespace(c *check.C) {
