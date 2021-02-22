@@ -361,6 +361,81 @@ paths:
         - service
       security:
         - Bearer: []
+  /1.0/plans:
+    get:
+      operationId: PlanList
+      description: List plans.
+      produces: application/json
+      responses:
+        "200":
+          description: Plans list
+          schema: 
+            type: array
+              items:
+                $ref: "#/definitions/Plan"
+        "204":
+          description: No content
+      tags:
+        - plan
+      security:
+        - Bearer: []
+    post:
+      operationId: PlanCreate
+      description: Create a new plan
+      parameters:
+        - name: plan
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/InputPlan"
+      consumes:
+        - application/json
+      responses:
+        "201":
+          description: Plan created
+          schema:
+            $ref: "#/definitions/PlanCreateResponse"
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Plan already exists
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - plan
+      security:
+        - Bearer: []
+  /1.0/plans/{name}:
+    delete:
+      operationId: DeletePlan
+      description: Remove a plan
+      parameters:
+        - name: plan
+          description: Remove current plan
+          in: query
+          type: boolean
+          required: true
+      responses:
+        "200":
+          description: Plan removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Plan not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - plan
+      security:
+        - Bearer: []
   /1.0/apps:
     get:
       operationId: AppList
