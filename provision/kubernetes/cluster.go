@@ -74,7 +74,7 @@ var (
 		singlePoolKey:                 "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
 		ephemeralStorageKey:           fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
 		preStopSleepKey:               fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
-		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if set to true",
+		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
 
 		enableLogsFromAPIServerKey: "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}

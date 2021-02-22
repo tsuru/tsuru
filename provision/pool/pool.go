@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -75,7 +76,7 @@ type UpdatePoolOptions struct {
 func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
 	if affinity, ok := p.Labels[affinityKey]; ok {
 		var k8sAffinity apiv1.Affinity
-		if err := json.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
+		if err := yaml.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
 			return nil, err
 		}
 		return &k8sAffinity, nil
