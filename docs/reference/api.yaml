@@ -378,7 +378,7 @@ paths:
           schema: 
             type: array
             items:
-              $ref: "#/definitions/plan"
+              $ref: "#/definitions/Plan"
         "204":
           description: No content
       tags:
