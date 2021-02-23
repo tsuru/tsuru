@@ -365,14 +365,20 @@ paths:
     get:
       operationId: PlanList
       description: List plans.
-      produces: application/json
+      produces: 
+       - application/json
+      parameters:
+        - name: name
+          description: Filter applications by name.
+          in: query
+          type: string
       responses:
         "200":
           description: Plans list
           schema: 
             type: array
             items:
-                $ref: "#/definitions/Plan"
+              $ref: "#/definitions/plans"
         "204":
           description: No content
       tags:
@@ -387,14 +393,14 @@ paths:
           required: true
           in: body
           schema:
-            $ref: "#/definitions/InputPlan"
+            $ref: "#/definitions/Plan"
       consumes:
         - application/x-www-form-urlencoded
       responses:
         "201":
           description: Plan created
           schema:
-            $ref: "#/definitions/PlanCreateResponse"
+            $ref: "#/definitions/Plan"
         "400":
           description: Invalid data
           schema:
@@ -411,7 +417,6 @@ paths:
         - plan
       security:
         - Bearer: []
-  /1.0/plans/{name}:
     delete:
       operationId: DeletePlan
       description: Remove a plan
