@@ -1036,34 +1036,34 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	return revision, nil
 }
 
-func (m *serviceManager) DeployService(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error {
+func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.DeployServiceOpts) error {
 	if m.writer == nil {
 		m.writer = ioutil.Discard
 	}
 
-	err := ensureNodeContainers(a)
+	err := ensureNodeContainers(opts.App)
 	if err != nil {
 		return err
 	}
-	err = ensureNamespaceForApp(ctx, m.client, a)
+	err = ensureNamespaceForApp(ctx, m.client, opts.App)
 	if err != nil {
 		return err
 	}
-	err = ensureServiceAccountForApp(ctx, m.client, a)
+	err = ensureServiceAccountForApp(ctx, m.client, opts.App)
 	if err != nil {
 		return err
 	}
-	ns, err := m.client.AppNamespace(ctx, a)
+	ns, err := m.client.AppNamespace(ctx, opts.App)
 	if err != nil {
 		return err
 	}
 
-	provision.ExtendServiceLabels(labels, provision.ServiceLabelExtendedOpts{
+	provision.ExtendServiceLabels(opts.Labels, provision.ServiceLabelExtendedOpts{
 		Provisioner: provisionerName,
 		Prefix:      tsuruLabelPrefix,
 	})
 
-	depArgs, err := m.baseDeploymentArgs(ctx, a, process, labels, version, preserveVersions)
+	depArgs, err := m.baseDeploymentArgs(ctx, opts.App, opts.ProcessName, opts.Labels, opts.Version, opts.PreserveVersions)
 	if err != nil {
 		return err
 	}
@@ -1091,11 +1091,11 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, a, process, version, replicas, labels, depArgs.selector)
+	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
 	if err != nil {
 		return err
 	}
-	newRevision, err := monitorDeployment(ctx, m.client, newDep, a, process, m.writer, events.ResourceVersion, version)
+	newRevision, err := monitorDeployment(ctx, m.client, newDep, opts.App, opts.ProcessName, m.writer, events.ResourceVersion, opts.Version)
 	if err != nil {
 		// We should only rollback if the updated deployment is a new revision.
 		var rollbackErr error
@@ -1126,13 +1126,13 @@ func (m *serviceManager) DeployService(ctx context.Context, a provision.App, pro
 		return provision.ErrUnitStartup{Err: err}
 	}
 
-	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", process)
-	err = m.ensureServices(ctx, a, process, labels, version)
+	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
+	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version)
 	if err != nil {
 		return err
 	}
 
-	err = ensureAutoScale(ctx, m.client, a, process)
+	err = ensureAutoScale(ctx, m.client, opts.App, opts.ProcessName)
 	if err != nil {
 		return errors.Wrap(err, "unable to ensure auto scale is configured")
 	}

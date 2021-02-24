@@ -113,19 +113,19 @@ func (m *recordManager) CurrentLabels(ctx context.Context, a provision.App, proc
 	return ls, rep, err
 }
 
-func (m *recordManager) DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error {
+func (m *recordManager) DeployService(ctx context.Context, opts DeployServiceOpts) error {
 	call := managerCall{
 		action:           "deploy",
-		processName:      processName,
-		version:          version,
-		labels:           labels,
-		replicas:         replicas,
-		app:              a,
-		preserveVersions: preserveVersions,
+		processName:      opts.ProcessName,
+		version:          opts.Version,
+		labels:           opts.Labels,
+		replicas:         opts.Replicas,
+		app:              opts.App,
+		preserveVersions: opts.PreserveVersions,
 	}
 	m.calls = append(m.calls, call)
 	if m.deployErrMap != nil {
-		return m.deployErrMap[processName]
+		return m.deployErrMap[opts.ProcessName]
 	}
 	return nil
 }

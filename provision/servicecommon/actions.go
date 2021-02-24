@@ -51,8 +51,17 @@ type labelReplicas struct {
 type ServiceManager interface {
 	RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error
 	CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
-	DeployService(ctx context.Context, a provision.App, processName string, labels *provision.LabelSet, replicas int, version appTypes.AppVersion, preserveVersions bool) error
+	DeployService(ctx context.Context, o DeployServiceOpts) error
 	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool) error
+}
+
+type DeployServiceOpts struct {
+	App              provision.App
+	ProcessName      string
+	Labels           *provision.LabelSet
+	Replicas         int
+	Version          appTypes.AppVersion
+	PreserveVersions bool
 }
 
 // RunServicePipeline runs a pipeline for deploy a service with multiple
@@ -110,7 +119,15 @@ func rollbackAddedProcesses(ctx context.Context, args *pipelineArgs, processes m
 			errors.Add(fmt.Errorf("unable to rollback service for %s[%s] to version %d, version not found anymore", args.app.GetName(), processName, args.oldVersionNumber))
 			continue
 		}
-		err := args.manager.DeployService(context.Background(), args.app, processName, oldLabels.labels, oldLabels.realReplicas, args.oldVersion, args.preserveVersions)
+		err := args.manager.DeployService(context.Background(), DeployServiceOpts{
+			App:              args.app,
+			ProcessName:      processName,
+			Labels:           oldLabels.labels,
+			Replicas:         oldLabels.realReplicas,
+			Version:          args.oldVersion,
+			PreserveVersions: args.preserveVersions,
+		})
+
 		if err != nil {
 			errors.Add(fmt.Errorf("error rolling back updated service for %s[%s] [version %d]: %+v", args.app.GetName(), processName, args.oldVersionNumber, err))
 		}
@@ -211,7 +228,15 @@ var updateServices = &action.Action{
 		var err error
 		for _, processName := range toDeployProcesses {
 			labels := newLabelsMap[processName]
-			err = args.manager.DeployService(ctx.Context, args.app, processName, labels.labels, labels.realReplicas, args.newVersion, args.preserveVersions)
+			err = args.manager.DeployService(ctx.Context, DeployServiceOpts{
+				App:              args.app,
+				ProcessName:      processName,
+				Labels:           labels.labels,
+				Replicas:         labels.realReplicas,
+				Version:          args.newVersion,
+				PreserveVersions: args.preserveVersions,
+			})
+
 			if err != nil {
 				break
 			}
