@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -52,6 +53,7 @@ const (
 	disableDefaultNodeSelectorKey = "disable-default-node-selector"
 	disableNodeContainers         = "disable-node-containers"
 
+	baseServicesAnnotations    = "base-services-annotations"
 	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
 	defaultLogsFromAPIServer   = false
 
@@ -321,6 +323,25 @@ func (c *ClusterClient) LogsFromAPIServerEnabled() bool {
 
 	enabled, _ := strconv.ParseBool(c.CustomData[enableLogsFromAPIServerKey])
 	return enabled
+}
+
+func (c *ClusterClient) BaseServiceAnnotations() (map[string]string, error) {
+	annotations := map[string]string{}
+	if c.CustomData == nil {
+		return nil, nil
+	}
+
+	annotationsRaw := c.CustomData[baseServicesAnnotations]
+	if annotationsRaw == "" {
+		return nil, nil
+	}
+
+	err := yaml.Unmarshal([]byte(annotationsRaw), &annotations)
+	if err != nil {
+		return nil, err
+	}
+
+	return annotations, nil
 }
 
 func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
