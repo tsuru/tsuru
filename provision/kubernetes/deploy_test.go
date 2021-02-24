@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -27,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -342,6 +344,155 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`}})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity := &apiv1.Affinity{
+		NodeAffinity: &apiv1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+				NodeSelectorTerms: []apiv1.NodeSelectorTerm{
+					{
+						MatchExpressions: []apiv1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/hostname",
+								Operator: "In",
+								Values:   []string{"minikube"},
+							},
+						},
+					}},
+			},
+		},
+	}
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithPodAffinity(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	expectedAffinity := &apiv1.Affinity{
+		PodAffinity: &apiv1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []apiv1.PodAffinityTerm{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{{
+							Key:      "security",
+							Operator: "In",
+							Values:   []string{"S1"},
+						}},
+					},
+				},
+			},
+		},
+	}
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{"tsuru.io/pool": "test-default"})
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithAffinityAndClusterNodeSelectorDisabled(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	m.client.CustomData[disableDefaultNodeSelectorKey] = "true"
+	err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"affinity": `{"podAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S1"]}]},"topologyKey":"topology.kubernetes.io/zone"}]}}`}})
+	c.Assert(err, check.IsNil)
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	expectedAffinity := &apiv1.Affinity{
+		PodAffinity: &apiv1.PodAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []apiv1.PodAffinityTerm{
+				{
+					TopologyKey: "topology.kubernetes.io/zone",
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{{
+							Key:      "security",
+							Operator: "In",
+							Values:   []string{"S1"},
+						}},
+					},
+				},
+			},
+		},
+	}
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Affinity, check.DeepEquals, expectedAffinity)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceRaceWithHPA(c *check.C) {
@@ -1980,7 +2131,7 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string{})
+	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
 }
 
 func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
@@ -3622,6 +3773,101 @@ func (s *S) TestServiceManagerRemoveServiceMiddleFailure(c *check.C) {
 	srvs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srvs.Items, check.HasLen, 0)
+}
+
+func (s *S) TestDefineSelectorAndAffinity(c *check.C) {
+	tt := []struct {
+		name       string
+		app        provision.App
+		poolLabels map[string]string
+		customData map[string]string
+		assertion  func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C)
+	}{
+		{
+			name:       "when cluster has a single pool",
+			customData: map[string]string{singlePoolKey: "true"},
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+			},
+		},
+		{
+			name:       "when pool has node affinity",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			poolLabels: map[string]string{"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["minikube"]}]}]}}}`},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.DeepEquals, &apiv1.Affinity{
+					NodeAffinity: &apiv1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &apiv1.NodeSelector{
+							NodeSelectorTerms: []apiv1.NodeSelectorTerm{
+								{
+									MatchExpressions: []apiv1.NodeSelectorRequirement{
+										{
+											Key:      "kubernetes.io/hostname",
+											Operator: "In",
+											Values:   []string{"minikube"},
+										},
+									},
+								}},
+						},
+					},
+				})
+			},
+		},
+		{
+			name:       "when pool does not have node affinity and cluster disables default node selector",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			customData: map[string]string{disableDefaultNodeSelectorKey: "true"},
+			poolLabels: map[string]string{"affinity": `{"empty-affinity":"some-value"}`},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.DeepEquals, &apiv1.Affinity{})
+			},
+		},
+		{
+			name: "when pool affinity is nil and cluster has default node selector",
+			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(err, check.IsNil)
+				c.Assert(selector, check.DeepEquals, map[string]string{"tsuru.io/pool": "test-default"})
+				c.Assert(affinity, check.IsNil)
+			},
+		},
+		{
+			name: "when app pool does not exist",
+			app:  &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "invalid pool"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+				c.Assert(err.Error(), check.DeepEquals, "Pool does not exist.")
+			},
+		},
+		{
+			name:       "when cluster default node selector key in custom data is invalid",
+			app:        &app.App{Name: "myapp", TeamOwner: s.team.Name, Pool: "test-default"},
+			customData: map[string]string{disableDefaultNodeSelectorKey: "invalid"},
+			assertion: func(selector map[string]string, affinity *apiv1.Affinity, err error, c *check.C) {
+				c.Assert(selector, check.IsNil)
+				c.Assert(affinity, check.IsNil)
+				c.Assert(err.Error(), check.DeepEquals, fmt.Sprintf("error while parsing cluster custom data entry: %s: strconv.ParseBool: parsing \"invalid\": invalid syntax", disableDefaultNodeSelectorKey))
+			},
+		},
+	}
+
+	for _, t := range tt {
+		err := pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: t.poolLabels})
+		c.Assert(err, check.IsNil)
+		s.clusterClient.CustomData = t.customData
+		selector, affinity, err := defineSelectorAndAffinity(context.TODO(), t.app, s.clusterClient)
+		t.assertion(selector, affinity, err, c)
+		err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{}})
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *S) TestEnsureNamespace(c *check.C) {

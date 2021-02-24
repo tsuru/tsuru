@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ghodss/yaml"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
+	apiv1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -39,10 +41,16 @@ var (
 	ErrPoolHasNoVolumePlan            = errors.New("no volume-plan found for pool")
 )
 
+const (
+	affinityKey = "affinity"
+)
+
 type Pool struct {
 	Name        string `bson:"_id"`
 	Default     bool
 	Provisioner string
+
+	Labels map[string]string
 
 	ctx context.Context
 }
@@ -53,12 +61,28 @@ type AddPoolOptions struct {
 	Default     bool
 	Force       bool
 	Provisioner string
+
+	Labels map[string]string
 }
 
 type UpdatePoolOptions struct {
 	Default *bool
 	Public  *bool
 	Force   bool
+
+	Labels map[string]string
+}
+
+func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
+	if affinity, ok := p.Labels[affinityKey]; ok {
+		var k8sAffinity apiv1.Affinity
+		if err := yaml.Unmarshal([]byte(affinity), &k8sAffinity); err != nil {
+			return nil, err
+		}
+		return &k8sAffinity, nil
+	}
+
+	return nil, nil
 }
 
 func (p *Pool) GetProvisioner() (provision.Provisioner, error) {
@@ -297,12 +321,24 @@ func (p *Pool) MarshalJSON() ([]byte, error) {
 	}
 	result := make(map[string]interface{})
 	result["name"] = p.Name
+	result["labels"] = p.Labels
 	result["public"] = teams.AllowsAll()
 	result["default"] = p.Default
 	result["provisioner"] = p.Provisioner
 	result["teams"] = resolvedConstraints[ConstraintTypeTeam]
 	result["allowed"] = resolvedConstraints
 	return json.Marshal(&result)
+}
+
+func validateLabels(labels map[string]string) error {
+	if affinityStr, ok := labels[affinityKey]; ok {
+		var affinity apiv1.Affinity
+		if err := json.Unmarshal([]byte(affinityStr), &affinity); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *Pool) validate() error {
@@ -315,11 +351,15 @@ func (p *Pool) validate() error {
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
+
+	if len(p.Labels) > 0 {
+		return validateLabels(p.Labels)
+	}
 	return nil
 }
 
 func AddPool(ctx context.Context, opts AddPoolOptions) error {
-	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner}
+	pool := Pool{Name: opts.Name, Default: opts.Default, Provisioner: opts.Provisioner, Labels: opts.Labels}
 	if err := pool.validate(); err != nil {
 		return err
 	}
@@ -562,6 +602,14 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 	query := bson.M{}
 	if opts.Default != nil {
 		query["default"] = *opts.Default
+	}
+	if len(opts.Labels) > 0 {
+		if err = validateLabels(opts.Labels); err != nil {
+			return err
+		}
+	}
+	if opts.Labels != nil {
+		query["labels"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
 		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})

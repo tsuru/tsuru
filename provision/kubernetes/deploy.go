@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -502,6 +503,44 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
 }
 
+func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
+	singlePool, err := client.SinglePool()
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
+	}
+	if singlePool {
+		return nil, nil, nil
+	}
+
+	pool, err := pool.GetPoolByName(ctx, a.GetPool())
+	if err != nil {
+		return nil, nil, err
+	}
+	affinity, err := pool.GetAffinity()
+	if err != nil {
+		return nil, nil, err
+	}
+	if affinity != nil && affinity.NodeAffinity != nil {
+		return nil, affinity, nil
+	}
+
+	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
+		var shouldDisable bool
+		shouldDisable, err = strconv.ParseBool(val)
+		if err != nil {
+			return nil, nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
+		}
+		if shouldDisable {
+			return nil, affinity, nil
+		}
+	}
+
+	return provision.NodeLabels(provision.NodeLabelsOpts{
+		Pool:   a.GetPool(),
+		Prefix: tsuruLabelPrefix,
+	}).ToNodeByPoolSelector(), affinity, nil
+}
+
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	extra := []string{extraRegisterCmds(a)}
@@ -564,17 +603,12 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
-	singlePool, err := client.SinglePool()
+
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "misconfigured cluster single pool value")
+		return nil, nil, err
 	}
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   a.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
-	if singlePool {
-		nodeSelector = map[string]string{}
-	}
+
 	_, uid := dockercommon.UserForContainer()
 	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
@@ -674,6 +708,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 					},
 					RestartPolicy: apiv1.RestartPolicyAlways,
 					NodeSelector:  nodeSelector,
+					Affinity:      affinity,
 					Volumes:       volumes,
 					Subdomain:     headlessServiceName(a, process),
 					Containers: []apiv1.Container{
