@@ -412,7 +412,7 @@ paths:
         - plan
       security:
         - Bearer: []
-  /1.0/plans/{name}:
+  /1.0/plans/{plan}:
     delete:
       operationId: DeletePlan
       description: Remove a plan
