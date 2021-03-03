@@ -1699,17 +1699,12 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	}
 	annotations := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	annotations.SetBuildImage(conf.destinationImages[0])
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   app.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
-	singlePool, err := client.SinglePool()
+
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, app, client)
 	if err != nil {
-		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
+		return apiv1.Pod{}, err
 	}
-	if singlePool {
-		nodeSelector = map[string]string{}
-	}
+
 	_, uid := dockercommon.UserForContainer()
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
@@ -1735,6 +1730,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(app),
 			NodeSelector:       nodeSelector,
+			Affinity:           affinity,
 			Volumes: append([]apiv1.Volume{
 				{
 					Name: "dockersock",
