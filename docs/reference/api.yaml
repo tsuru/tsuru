@@ -417,13 +417,14 @@ paths:
         - plan
       security:
         - Bearer: []
+  /1.0/plans/{name}:
     delete:
       operationId: DeletePlan
       description: Remove a plan
       parameters:
         - name: plan
           description: Remove current plan
-          in: query
+          in: path
           type: string
           required: true
       responses:
