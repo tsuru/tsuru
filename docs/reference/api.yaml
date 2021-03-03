@@ -3076,6 +3076,10 @@ definitions:
           type: array
           items:
             type: string
+      labels:
+        type: object
+        additionalProperties:
+          type: string 
   PoolCreateData:
     type: object
     properties:
