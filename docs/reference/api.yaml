@@ -3089,6 +3089,10 @@ definitions:
         type: boolean
       provisioner:
         type: string
+      labels:
+        type: object
+        additionalProperties:
+          type: string
   PoolUpdateData:
     type: object
     properties:
@@ -3098,6 +3102,10 @@ definitions:
         type: boolean
       force:
         type: boolean
+      labels:
+        type: object
+        additionalProperties:
+          type: string
   NodeUpdateData:
     type: object
     properties:
