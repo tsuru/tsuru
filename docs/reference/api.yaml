@@ -367,11 +367,6 @@ paths:
       description: List plans.
       produces: 
        - application/json
-      parameters:
-        - name: name
-          description: Filter applications by name.
-          in: query
-          type: string
       responses:
         "200":
           description: Plans list
