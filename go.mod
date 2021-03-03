@@ -18,7 +18,7 @@ require (
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
-	github.com/docker/docker v1.5.0
+	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
 	github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c
@@ -31,12 +31,13 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/google/go-querystring v0.0.0-20150414214848-547ef5ac9797 // indirect
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
 	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/pat v0.0.0-20131205071617-ae2e162c4b2a // indirect
 	github.com/gorilla/websocket v1.4.1
-	github.com/hashicorp/go-version v0.0.0-20160519212729-0181db470237
+	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
@@ -57,7 +58,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
-	github.com/sajari/fuzzy v0.0.0-20141008071338-bbbcac964e38
+	github.com/sajari/fuzzy v1.0.0
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
@@ -66,6 +67,7 @@ require (
 	github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
 	github.com/tsuru/go-gandalfclient v0.0.0-20200928142220-6d227717b7c3
+	github.com/tsuru/go-tsuruclient v0.0.0-20210303142354-a7c71c777e06 // indirect
 	github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
@@ -78,10 +80,11 @@ require (
 	github.com/vulcand/route v0.0.0-20191025171320-daa4df6c711a
 	github.com/vulcand/vulcand v0.9.0
 	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
-	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
+	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ahmetb/go-linq.v3 v3.0.0 // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect
