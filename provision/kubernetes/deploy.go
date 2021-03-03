@@ -1235,10 +1235,11 @@ func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App
 }
 
 type svcCreateData struct {
-	name     string
-	labels   map[string]string
-	selector map[string]string
-	ports    []apiv1.ServicePort
+	name        string
+	labels      map[string]string
+	annotations map[string]string
+	selector    map[string]string
+	ports       []apiv1.ServicePort
 }
 
 func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion) error {
@@ -1329,11 +1330,17 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	}
 
 	if baseSvcPorts != nil {
+		var annotations map[string]string
+		annotations, err = m.client.BaseServiceAnnotations()
+		if err != nil {
+			return errors.WithMessage(err, "could not to parse base services annotations")
+		}
 		svcsToCreate = append(svcsToCreate, svcCreateData{
-			name:     serviceNameForAppBase(a, process),
-			labels:   routableLabels.ToLabels(),
-			selector: routableLabels.ToRoutableSelector(),
-			ports:    baseSvcPorts,
+			name:        serviceNameForAppBase(a, process),
+			labels:      routableLabels.ToLabels(),
+			annotations: annotations,
+			selector:    routableLabels.ToRoutableSelector(),
+			ports:       baseSvcPorts,
 		})
 	}
 
@@ -1346,9 +1353,10 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	for _, svcData := range svcsToCreate {
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      svcData.name,
-				Namespace: ns,
-				Labels:    svcData.labels,
+				Name:        svcData.name,
+				Namespace:   ns,
+				Labels:      svcData.labels,
+				Annotations: svcData.annotations,
 			},
 			Spec: apiv1.ServiceSpec{
 				Selector:              svcData.selector,

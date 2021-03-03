@@ -285,6 +285,58 @@ func (s *S) TestClusterSinglePool(c *check.C) {
 
 }
 
+func (s *S) TestClusterBaseServiceAnnotations(c *check.C) {
+	tests := []struct {
+		customData          map[string]string
+		expectedAnnotations map[string]string
+		expectedErr         bool
+	}{
+		{
+			customData:          map[string]string{},
+			expectedAnnotations: nil,
+		},
+		{
+			customData: map[string]string{
+				"base-services-annotations": "",
+			},
+			expectedAnnotations: nil,
+		},
+		{
+			customData: map[string]string{
+				"base-services-annotations": `{"xpto.io/name": "custom-name"}`,
+			},
+			expectedAnnotations: map[string]string{
+				"xpto.io/name": "custom-name",
+			},
+		},
+		{
+			customData: map[string]string{
+				"base-services-annotations": `xpto.io/name: custom-name
+abc.io/name: test`,
+			},
+			expectedAnnotations: map[string]string{
+				"abc.io/name":  "test",
+				"xpto.io/name": "custom-name",
+			},
+		},
+	}
+	for _, tt := range tests {
+		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
+		client, err := NewClusterClient(&c1)
+		c.Assert(err, check.IsNil)
+		annotations, err := client.BaseServiceAnnotations()
+		if tt.expectedErr {
+			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+			c.Assert(annotations, check.Equals, nil)
+		} else {
+			c.Assert(err, check.IsNil)
+			c.Assert(annotations, check.DeepEquals, tt.expectedAnnotations)
+		}
+
+	}
+
+}
+
 func (s *S) TestClustersForApps(c *check.C) {
 	c1 := provTypes.Cluster{
 		Name:        "c1",
