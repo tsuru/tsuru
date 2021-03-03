@@ -3005,7 +3005,7 @@ func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
-	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string{})
+	c.Assert(pods.Items[0].Spec.NodeSelector, check.IsNil)
 }
 
 func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
