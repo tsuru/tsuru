@@ -424,7 +424,7 @@ paths:
         - name: plan
           description: Remove current plan
           in: query
-          type: boolean
+          type: string
           required: true
       responses:
         "200":
