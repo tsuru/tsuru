@@ -2689,7 +2689,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	client1, client2 := s.prepareMultiCluster(c)
+	client1, client2, _ := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)
@@ -2771,7 +2771,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	client1, client2 := s.prepareMultiCluster(c)
+	client1, client2, _ := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)

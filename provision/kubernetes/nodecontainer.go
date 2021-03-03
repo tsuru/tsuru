@@ -49,6 +49,10 @@ func (m *nodeContainerManager) DeployNodeContainer(config *nodecontainer.NodeCon
 }
 
 func (m *nodeContainerManager) deployNodeContainerForCluster(ctx context.Context, client *ClusterClient, config nodecontainer.NodeContainerConfig, pool string, filter servicecommon.PoolFilter, placementOnly bool) error {
+	disabled := client.CustomData[disableNodeContainers]
+	if disabled == "true" {
+		return nil
+	}
 	belongs, err := poolBelongsToCluster(client.Cluster, pool)
 	if err != nil {
 		return err

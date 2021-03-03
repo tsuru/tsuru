@@ -50,6 +50,7 @@ const (
 	ephemeralStorageKey           = "ephemeral-storage"
 	preStopSleepKey               = "pre-stop-sleep"
 	disableDefaultNodeSelectorKey = "disable-default-node-selector"
+	disableNodeContainers         = "disable-node-containers"
 
 	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
 	defaultLogsFromAPIServer   = false

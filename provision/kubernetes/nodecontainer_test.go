@@ -32,7 +32,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper) {
+func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
 	cluster1 := &provTypes.Cluster{
 		Name:        "c1",
 		Addresses:   []string{"https://clusteraddr1"},
@@ -49,6 +49,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		ClusterInterface:       clusterClient1,
 	}
 	clusterClient1.Interface = client1
+
 	cluster2 := &provTypes.Cluster{
 		Name:        "c2",
 		Addresses:   []string{"https://clusteraddr2"},
@@ -66,13 +67,35 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 	}
 	clusterClient2.Interface = client2
 
+	cluster3 := &provTypes.Cluster{
+		Name:        "c3",
+		Addresses:   []string{"https://clusteraddr3"},
+		Pools:       []string{"pool3"},
+		Provisioner: provisionerName,
+		CustomData: map[string]string{
+			disableNodeContainers: "true",
+		},
+	}
+	clusterClient3, err := NewClusterClient(cluster2)
+	c.Assert(err, check.IsNil)
+	client3 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+	clusterClient3.Interface = client3
+
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
-		return []provTypes.Cluster{*cluster1, *cluster2}, nil
+		return []provTypes.Cluster{*cluster1, *cluster2, *cluster3}, nil
 	}
 
 	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
 		if poolName == "pool2" {
 			return cluster2, nil
+		}
+		if poolName == "pool3" {
+			return cluster3, nil
 		}
 		return cluster1, nil
 	}
@@ -81,14 +104,17 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		if conf.Host == "https://clusteraddr1" {
 			return client1, nil
 		}
+		if conf.Host == "https://clusteraddr3" {
+			return client3, nil
+		}
 		return client2, nil
 	}
 
-	return client1, client2
+	return client1, client2, client3
 }
 
 func (s *S) TestManagerDeployNodeContainerMultiClusterNoApp(c *check.C) {
-	client1, client2 := s.prepareMultiCluster(c)
+	client1, client2, client3 := s.prepareMultiCluster(c)
 	nc := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -109,10 +135,14 @@ func (s *S) TestManagerDeployNodeContainerMultiClusterNoApp(c *check.C) {
 	daemons, err = client2.AppsV1().DaemonSets("default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(daemons.Items, check.HasLen, 1)
+
+	daemons, err = client3.AppsV1().DaemonSets("default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(daemons.Items, check.HasLen, 0)
 }
 
 func (s *S) TestManagerDeployNodeContainerMultiClusterWithApp(c *check.C) {
-	client1, client2 := s.prepareMultiCluster(c)
+	client1, client2, _ := s.prepareMultiCluster(c)
 	nc := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
