@@ -395,7 +395,7 @@ paths:
           schema:
             $ref: "#/definitions/Plan"
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       responses:
         "201":
           description: Plan created
