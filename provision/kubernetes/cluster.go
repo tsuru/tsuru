@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -93,6 +94,10 @@ var ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.
 
 var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
 	return tsuruv1clientset.NewForConfig(conf)
+}
+
+var VPAClientForConfig = func(conf *rest.Config) (vpaclientset.Interface, error) {
+	return vpaclientset.NewForConfig(conf)
 }
 
 var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {

@@ -41,6 +41,14 @@ func (m *Metadata) Validate() error {
 	return nil
 }
 
+func (m Metadata) Annotation(v string) (string, bool) {
+	return getItem(m.Annotations, v)
+}
+
+func (m Metadata) Label(v string) (string, bool) {
+	return getItem(m.Labels, v)
+}
+
 func validateAnnotations(items []MetadataItem) *errors.MultiError {
 	allErrs := errors.NewMultiError()
 	fldPath := field.NewPath("metadata.annotations")
@@ -118,4 +126,12 @@ func removeItem(list []MetadataItem, pos int) []MetadataItem {
 	}
 	list[pos] = list[len(list)-1]
 	return list[:len(list)-1]
+}
+
+func getItem(items []MetadataItem, item string) (string, bool) {
+	pos := hasItem(items, item)
+	if pos == -1 {
+		return "", false
+	}
+	return items[pos].Value, true
 }

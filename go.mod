@@ -67,7 +67,6 @@ require (
 	github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
 	github.com/tsuru/go-gandalfclient v0.0.0-20200928142220-6d227717b7c3
-	github.com/tsuru/go-tsuruclient v0.0.0-20210303142354-a7c71c777e06 // indirect
 	github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
@@ -95,6 +94,7 @@ require (
 	k8s.io/api v0.18.9
 	k8s.io/apiextensions-apiserver v0.18.9
 	k8s.io/apimachinery v0.18.9
+	k8s.io/autoscaler/vertical-pod-autoscaler v0.9.2
 	k8s.io/client-go v0.18.9
 	k8s.io/code-generator v0.18.9
 	k8s.io/metrics v0.18.9

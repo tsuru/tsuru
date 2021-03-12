@@ -109,6 +109,10 @@ func hpaNameForApp(a provision.App, process string) string {
 	return appProcessName(a, process, 0, "")
 }
 
+func vpaNameForApp(a provision.App, process string) string {
+	return appProcessName(a, process, 0, "")
+}
+
 func appProcessName(a provision.App, process string, version int, suffix string) string {
 	name := validKubeName(a.GetName())
 	processVersion := validKubeName(process)
