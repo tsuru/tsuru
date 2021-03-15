@@ -32,6 +32,7 @@ const routerType = "api"
 var (
 	_ router.OptsRouter              = &apiRouter{}
 	_ router.Router                  = &apiRouter{}
+	_ router.RouterV2                = &apiRouterV2{}
 	_ router.MessageRouter           = &apiRouter{}
 	_ router.HealthChecker           = &apiRouter{}
 	_ router.TLSRouter               = &apiRouterWithTLSSupport{}
@@ -52,6 +53,8 @@ type apiRouter struct {
 	debug        bool
 	multiCluster bool
 }
+
+type apiRouterV2 struct{ *apiRouter }
 
 type apiRouterWithCnameSupport struct{ *apiRouter }
 
@@ -109,8 +112,9 @@ var (
 	capInfo        = capability("info")
 	capStatus      = capability("status")
 	capPrefix      = capability("prefix")
+	capV2          = capability("v2")
 
-	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus, capPrefix}
+	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus, capPrefix, capV2}
 )
 
 func init() {
@@ -163,7 +167,7 @@ func (r *apiRouter) UpdateBackendOpts(ctx context.Context, app router.App, opts 
 
 func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method string, opts map[string]string) error {
 	path := fmt.Sprintf("backend/%s", app.GetName())
-	b, err := json.Marshal(addDefaultOpts(app, opts))
+	b, err := json.Marshal(addDefaultOpts(app, mapStringToMapInterface(opts)))
 	if err != nil {
 		return err
 	}
@@ -182,6 +186,14 @@ func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method st
 		return router.ErrBackendNotFound
 	}
 	return err
+}
+
+func mapStringToMapInterface(origin map[string]string) map[string]interface{} {
+	result := map[string]interface{}{}
+	for k, v := range origin {
+		result[k] = v
+	}
+	return result
 }
 
 func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
@@ -359,7 +371,9 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	if err != nil {
 		return nil, 0, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	if headers.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	for k, values := range headers {
 		for _, value := range values {
@@ -397,6 +411,27 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 		return data, code, errors.Errorf("failed to request %s - %d - %s", url, code, data)
 	}
 	return data, code, nil
+}
+
+func (r *apiRouterV2) EnsureBackend(ctx context.Context, app router.App, o router.EnsureBackendOpts) error {
+	path := fmt.Sprintf("backend/%s", app.GetName())
+
+	o.Opts = addDefaultOpts(app, o.Opts)
+
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(o)
+	if err != nil {
+		return err
+	}
+
+	headers, err := r.getExtraHeadersFromApp(ctx, app)
+	if err != nil {
+		return err
+	}
+
+	headers.Set("Content-Type", "application/json; router=v2")
+	_, _, err = r.do(ctx, http.MethodPut, path, headers, &buf)
+	return err
 }
 
 func (r *apiRouterWithCnameSupport) SetCName(ctx context.Context, cname string, app router.App) error {
@@ -652,7 +687,7 @@ func (r *apiRouter) doRoutesPrefix(ctx context.Context, app router.App, addresse
 	return r.doRoutesReq(ctx, app, req, suffix)
 }
 
-func addDefaultOpts(app router.App, opts map[string]string) map[string]interface{} {
+func addDefaultOpts(app router.App, opts map[string]interface{}) map[string]interface{} {
 	mergedOpts := make(map[string]interface{})
 	for k, v := range opts {
 		mergedOpts[k] = v

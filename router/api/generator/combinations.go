@@ -16,6 +16,7 @@ import (
 )
 
 var capMap = map[string][]string{
+	"v2":          {"router.RouterV2", "apiRouterV2"},
 	"cname":       {"router.CNameRouter", "apiRouterWithCnameSupport"},
 	"tls":         {"router.TLSRouter", "apiRouterWithTLSSupport"},
 	"healthcheck": {"router.CustomHealthcheckRouter", "apiRouterWithHealthcheckSupport"},

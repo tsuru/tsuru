@@ -102,10 +102,47 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	if err != nil {
 		return nil, err
 	}
+
+	if routerV2, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+		routes, routesErr := b.app.RoutableAddresses(ctx)
+		if routesErr != nil {
+			return nil, routesErr
+		}
+		hcData, errHc := b.app.GetHealthcheckData()
+		if errHc != nil {
+			return nil, errHc
+		}
+		opts := router.EnsureBackendOpts{
+			Opts:        map[string]interface{}{},
+			Prefixes:    []router.BackendPrefix{},
+			CNames:      b.app.GetCname(),
+			Healthcheck: hcData,
+		}
+		for key, opt := range appRouter.Opts {
+			opts.Opts[key] = opt
+		}
+		var resultRouterV2 RebuildRoutesResult
+		for _, route := range routes {
+			opts.Prefixes = append(opts.Prefixes, router.BackendPrefix{
+				Prefix: route.Prefix,
+				Target: route.ExtraData,
+			})
+			resultRouterV2.PrefixResults = append(resultRouterV2.PrefixResults, RebuildPrefixResult{
+				Prefix: route.Prefix,
+			})
+		}
+		err = routerV2.EnsureBackend(ctx, b.app, opts)
+		if err != nil {
+			return nil, err
+		}
+		return &resultRouterV2, nil
+	}
+
 	var asyncR router.AsyncRouter
 	if !b.wait {
 		asyncR, _ = r.(router.AsyncRouter)
 	}
+
 	if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(ctx, b.app, appRouter.Opts)
 	} else {
