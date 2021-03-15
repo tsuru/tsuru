@@ -1371,6 +1371,10 @@ func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr stri
 			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
 			return err
 		}
+		if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+			log.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
+			return fmt.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
+		}
 		var oldRoutes []*url.URL
 		oldRoutes, err = r.Routes(app.ctx, app)
 		if err != nil {
@@ -2193,7 +2197,9 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
-	if optsRouter, ok := r.(router.OptsRouter); ok {
+	if _, ok := r.(router.RouterV2); ok {
+		// nothing to do without router targets
+	} else if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
 	} else {
 		err = r.AddBackend(app.ctx, app)

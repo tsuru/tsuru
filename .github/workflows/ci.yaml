@@ -36,7 +36,7 @@ jobs:
     - run: go test -race ./...
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/setup-go@v2
       with:

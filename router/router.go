@@ -374,6 +374,9 @@ func swapCnames(ctx context.Context, r Router, backend1, backend2 App) error {
 }
 
 func swapBackends(ctx context.Context, r Router, backend1, backend2 App) error {
+	if _, isRouterV2 := r.(RouterV2); isRouterV2 {
+		return swapBackendName(backend1.GetName(), backend2.GetName())
+	}
 	routes1, err := r.Routes(ctx, backend1)
 	if err != nil {
 		return err

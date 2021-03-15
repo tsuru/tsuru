@@ -491,8 +491,14 @@ var addNewRoutes = action.Action{
 			return newContainers, nil
 		}
 		err = runInRouters(ctx.Context, args.app, func(r router.Router) error {
+			if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+				return nil
+			}
 			return r.AddRoutes(ctx.Context, args.app, routesToAdd)
 		}, func(r router.Router) error {
+			if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+				return nil
+			}
 			return r.RemoveRoutes(ctx.Context, args.app, routesToAdd)
 		})
 		if err != nil {
@@ -671,8 +677,14 @@ var removeOldRoutes = action.Action{
 			return result, nil
 		}
 		err = runInRouters(ctx.Context, args.app, func(r router.Router) error {
+			if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+				return nil
+			}
 			return r.RemoveRoutes(ctx.Context, args.app, routesToRemove)
 		}, func(r router.Router) error {
+			if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+				return nil
+			}
 			if args.appDestroy {
 				return nil
 			}
@@ -705,6 +717,9 @@ var removeOldRoutes = action.Action{
 			return
 		}
 		err := runInRouters(ctx.Context, args.app, func(r router.Router) error {
+			if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
+				return nil
+			}
 			return r.AddRoutes(ctx.Context, args.app, routesToAdd)
 		}, nil)
 		if err != nil {

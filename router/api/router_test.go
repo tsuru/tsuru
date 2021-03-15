@@ -457,6 +457,52 @@ func (s *S) TestHealcheckBackendNotFound(c *check.C) {
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
 }
 
+// Router V2 exclusive APIs
+func (s *S) TestEnsureBackend(c *check.C) {
+	routerV2 := &apiRouterV2{s.testRouter}
+	app := routertest.FakeApp{Name: "myapp", Pool: "mypool", Teams: []string{"team01", "team02"}, TeamOwner: "team03"}
+	err := routerV2.EnsureBackend(context.TODO(), app, router.EnsureBackendOpts{
+		Opts: map[string]interface{}{
+			"myinfo.io/test": "test",
+		},
+		Prefixes: []router.BackendPrefix{
+			{
+				Prefix: "",
+				Target: map[string]string{
+					// for kubernetes provisioner example
+					"service":   "myapp-web",
+					"namespace": "tsuru-myapp",
+				},
+			},
+			{
+				Prefix: "subscriber",
+				Target: map[string]string{
+					// for kubernetes provisioner example
+					"service":   "myapp-subscriber",
+					"namespace": "tsuru-myapp",
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(s.apiRouter.backends["myapp"].opts, check.DeepEquals, map[string]interface{}{
+		"myinfo.io/test":         "test",
+		"tsuru.io/app-pool":      "mypool",
+		"tsuru.io/app-teamowner": "team03",
+		"tsuru.io/app-teams":     []interface{}{"team01", "team02"},
+	})
+	c.Assert(s.apiRouter.backends["myapp"].prefixAddrs, check.DeepEquals, map[string]routesReq{
+		"": {
+			Prefix:    "",
+			ExtraData: map[string]string{"namespace": "tsuru-myapp", "service": "myapp-web"},
+		},
+		"subscriber": {
+			Prefix:    "subscriber",
+			ExtraData: map[string]string{"namespace": "tsuru-myapp", "service": "myapp-subscriber"},
+		},
+	})
+}
+
 func (s *S) TestCreateRouterSupport(c *check.C) {
 	tt := []struct {
 		features    map[string]bool
@@ -646,7 +692,43 @@ func (f *fakeRouterAPI) addBackend(w http.ResponseWriter, r *http.Request) {
 	f.backends[name] = &backend{opts: req, addr: name + ".apirouter.com"}
 }
 
+func (f *fakeRouterAPI) ensureBackendV2(w http.ResponseWriter, r *http.Request) {
+	o := &router.EnsureBackendOpts{}
+	err := json.NewDecoder(r.Body).Decode(o)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	vars := mux.Vars(r)
+	name := vars["name"]
+
+	f.backends[name] = &backend{
+		opts:        o.Opts,
+		prefixAddrs: map[string]routesReq{},
+		addr:        name + ".apirouter.com",
+	}
+
+	for _, prefix := range o.Prefixes {
+		f.backends[name].prefixAddrs[prefix.Prefix] = routesReq{
+			Prefix:    prefix.Prefix,
+			ExtraData: prefix.Target,
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (f *fakeRouterAPI) updateBackend(w http.ResponseWriter, r *http.Request) {
+	contentType := r.Header.Get("Content-Type")
+	contentTypeParts := strings.Split(contentType, ";")
+
+	if len(contentTypeParts) > 1 {
+		if strings.TrimSpace(contentTypeParts[1]) == "router=v2" {
+			f.ensureBackendV2(w, r)
+			return
+		}
+	}
+
 	vars := mux.Vars(r)
 	name := vars["name"]
 	backend, ok := f.backends[name]
