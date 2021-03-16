@@ -2825,6 +2825,14 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"autoscale": []interface{}{
 			map[string]interface{}{"process": "p1", "minUnits": float64(0), "maxUnits": float64(0), "averageCPU": "", "version": float64(0)},
 		},
+		"autoscaleRecommendation": []interface{}{
+			map[string]interface{}{
+				"process": "p1",
+				"recommendations": []interface{}{
+					map[string]interface{}{"type": "target", "cpu": "100m", "memory": "100MiB"},
+				},
+			},
+		},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)

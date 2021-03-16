@@ -29,6 +29,91 @@ const (
 
 var errNoDeploy = errors.New("no routable version found for app, at least one deploy is required before configuring autoscale")
 
+func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, a provision.App) ([]provision.RecommendedResources, error) {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	hasVPA, err := vpaCRDExists(ctx, client)
+	if err != nil {
+		return nil, err
+	}
+	if !hasVPA {
+		return nil, nil
+	}
+
+	controller, err := getClusterController(p, client)
+	if err != nil {
+		return nil, err
+	}
+	vpaInformer, err := controller.getVPAInformer()
+	if err != nil {
+		return nil, err
+	}
+
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	vpas, err := vpaInformer.Lister().VerticalPodAutoscalers(ns).List(labels.SelectorFromSet(labels.Set(ls.ToHPASelector())))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var specs []provision.RecommendedResources
+	for _, vpa := range vpas {
+		specs = append(specs, vpaToRecommended(*vpa))
+	}
+	return specs, nil
+}
+
+func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedResources {
+	ls := labelSetFromMeta(&vpa.ObjectMeta)
+	rec := provision.RecommendedResources{
+		Process: ls.AppProcess(),
+	}
+	if vpa.Status.Recommendation == nil {
+		return rec
+	}
+	for _, contRec := range vpa.Status.Recommendation.ContainerRecommendations {
+		if contRec.ContainerName != vpa.Name {
+			continue
+		}
+		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+			Type:   "lowerBound",
+			CPU:    contRec.LowerBound.Cpu().String(),
+			Memory: contRec.LowerBound.Memory().String(),
+		})
+		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+			Type:   "target",
+			CPU:    contRec.Target.Cpu().String(),
+			Memory: contRec.Target.Memory().String(),
+		})
+		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+			Type:   "uncappedTarget",
+			CPU:    contRec.UncappedTarget.Cpu().String(),
+			Memory: contRec.UncappedTarget.Memory().String(),
+		})
+		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+			Type:   "upperBound",
+			CPU:    contRec.UpperBound.Cpu().String(),
+			Memory: contRec.UpperBound.Memory().String(),
+		})
+	}
+	return rec
+}
+
 func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.App) ([]provision.AutoScaleSpec, error) {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
@@ -135,7 +220,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return errors.WithStack(err)
 	}
 
-	labels.WithoutIsolated().WithoutRoutable().WithoutVersion()
+	labels = labels.WithoutIsolated().WithoutRoutable()
 	minUnits := int32(spec.MinUnits)
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
@@ -296,10 +381,24 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 		return err
 	}
 
+	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App:     a,
+		Process: depInfo.process,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	labels = labels.WithoutIsolated().WithoutRoutable().WithoutVersion()
+
 	vpaUpdateOff := vpav1.UpdateModeOff
 	vpa := &vpav1.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: vpaNameForApp(a, process),
+			Name:   vpaNameForApp(a, process),
+			Labels: labels.ToLabels(),
 		},
 		Spec: vpav1.VerticalPodAutoscalerSpec{
 			TargetRef: &autoscalingv1.CrossVersionObjectReference{

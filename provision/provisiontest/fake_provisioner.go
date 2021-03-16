@@ -1511,6 +1511,15 @@ func (p *AutoScaleProvisioner) GetAutoScale(ctx context.Context, app provision.A
 	return p.autoscales[app.GetName()], nil
 }
 
+func (p *AutoScaleProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, app provision.App) ([]provision.RecommendedResources, error) {
+	if p.autoscales == nil {
+		return nil, nil
+	}
+	return []provision.RecommendedResources{
+		{Process: "p1", Recommendations: []provision.RecommendedProcessResources{{Type: "target", CPU: "100m", Memory: "100MiB"}}},
+	}, nil
+}
+
 func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app provision.App, spec provision.AutoScaleSpec) error {
 	if p.autoscales == nil {
 		p.autoscales = make(map[string][]provision.AutoScaleSpec)

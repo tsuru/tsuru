@@ -567,6 +567,17 @@ type AutoScaleSpec struct {
 	Version    int    `json:"version"`
 }
 
+type RecommendedResources struct {
+	Process         string                        `json:"process"`
+	Recommendations []RecommendedProcessResources `json:"recommendations"`
+}
+
+type RecommendedProcessResources struct {
+	Type   string `json:"type"`
+	CPU    string `json:"cpu"`
+	Memory string `json:"memory"`
+}
+
 func (s AutoScaleSpec) Validate(quotaLimit int) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
@@ -586,6 +597,7 @@ func (s AutoScaleSpec) Validate(quotaLimit int) error {
 
 type AutoScaleProvisioner interface {
 	GetAutoScale(ctx context.Context, a App) ([]AutoScaleSpec, error)
+	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]RecommendedResources, error)
 	SetAutoScale(ctx context.Context, a App, spec AutoScaleSpec) error
 	RemoveAutoScale(ctx context.Context, a App, process string) error
 }

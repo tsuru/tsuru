@@ -282,6 +282,13 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if autoscale != nil {
 		result["autoscale"] = autoscale
 	}
+	autoscaleRec, err := app.VerticalAutoScaleRecommendations()
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale recommendation info: %+v", err))
+	}
+	if autoscaleRec != nil {
+		result["autoscaleRecommendation"] = autoscaleRec
+	}
 
 	unitMetrics, err := app.UnitsMetrics()
 	if err != nil {
@@ -2693,6 +2700,18 @@ func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
 		return nil, nil
 	}
 	return autoscaleProv.GetAutoScale(app.ctx, app)
+}
+
+func (app *App) VerticalAutoScaleRecommendations() ([]provision.RecommendedResources, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if !ok {
+		return nil, nil
+	}
+	return autoscaleProv.GetVerticalAutoScaleRecommendations(app.ctx, app)
 }
 
 func (app *App) UnitsMetrics() ([]provision.UnitMetric, error) {
