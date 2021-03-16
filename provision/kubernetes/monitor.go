@@ -21,11 +21,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	vpaInformers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions"
+	vpaV1Informers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/autoscaling.k8s.io/v1"
+	vpaInternalInterfaces "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/internalinterfaces"
 	"k8s.io/client-go/informers"
 	autoscalingInformers "k8s.io/client-go/informers/autoscaling/v2beta2"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -58,10 +62,12 @@ type clusterController struct {
 	cluster                 *ClusterClient
 	informerFactory         informers.SharedInformerFactory
 	filteredInformerFactory informers.SharedInformerFactory
+	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
 	serviceInformer         v1informers.ServiceInformer
 	nodeInformer            v1informers.NodeInformer
 	hpaInformer             autoscalingInformers.HorizontalPodAutoscalerInformer
+	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
 	stopCh                  chan struct{}
 	cancel                  context.CancelFunc
 	resourceReadyCache      map[types.NamespacedName]bool
@@ -359,6 +365,27 @@ func (c *clusterController) getHPAInformer() (autoscalingInformers.HorizontalPod
 	return c.hpaInformer, err
 }
 
+func (c *clusterController) getVPAInformer() (vpaV1Informers.VerticalPodAutoscalerInformer, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.vpaInformer == nil {
+		if c.vpaInformerFactory == nil {
+			args := newInformerFactoryArgs(c.cluster, tsuruOnlyTweakFunc())
+			cli, err := VPAClientForConfig(args.restConfig)
+			if err != nil {
+				return nil, err
+			}
+			tweak := vpaInternalInterfaces.TweakListOptionsFunc(args.tweak)
+			c.vpaInformerFactory = vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak)
+		}
+		c.vpaInformer = c.vpaInformerFactory.Autoscaling().V1().VerticalPodAutoscalers()
+		c.vpaInformer.Informer()
+		c.vpaInformerFactory.Start(c.stopCh)
+	}
+	err := c.waitForSync(c.vpaInformer.Informer())
+	return c.vpaInformer, err
+}
+
 func (c *clusterController) getPodInformerWait(wait bool) (v1informers.PodInformer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -507,21 +534,27 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	return nil
 }
 
-func filteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
-	return InformerFactory(client, internalinterfaces.TweakListOptionsFunc(func(opts *metav1.ListOptions) {
+func tsuruOnlyTweakFunc() internalinterfaces.TweakListOptionsFunc {
+	return func(opts *metav1.ListOptions) {
 		ls := provision.IsServiceLabelSet(tsuruLabelPrefix)
 		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
-	}))
+	}
 }
 
-var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
+func filteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
+	return InformerFactory(client, tsuruOnlyTweakFunc())
+}
+
+type informerFactoryArgs struct {
+	restConfig *rest.Config
+	resync     time.Duration
+	tweak      internalinterfaces.TweakListOptionsFunc
+}
+
+func newInformerFactoryArgs(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) *informerFactoryArgs {
 	timeout := client.restConfig.Timeout
 	restConfig := *client.restConfig
 	restConfig.Timeout = 0
-	cli, err := ClientForConfig(&restConfig)
-	if err != nil {
-		return nil, err
-	}
 	tweakFunc := internalinterfaces.TweakListOptionsFunc(func(opts *metav1.ListOptions) {
 		if opts.TimeoutSeconds == nil {
 			timeoutSec := int64(timeout.Seconds())
@@ -531,5 +564,18 @@ var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.Tweak
 			tweak(opts)
 		}
 	})
-	return informers.NewFilteredSharedInformerFactory(cli, time.Minute, metav1.NamespaceAll, tweakFunc), nil
+	return &informerFactoryArgs{
+		restConfig: &restConfig,
+		resync:     time.Minute,
+		tweak:      tweakFunc,
+	}
+}
+
+var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
+	args := newInformerFactoryArgs(client, tweak)
+	cli, err := ClientForConfig(args.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	return informers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, args.tweak), nil
 }
