@@ -440,9 +440,9 @@ func (s *S) TestVolumeCreateConflict(c *check.C) {
 func (s *S) TestVolumeUpdate(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}
-	err := servicemanager.Volume.Create(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, name string) (*volumeTypes.Volume, error) {
+		return &volumeTypes.Volume{Name: name, Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}, Opts: map[string]string{"a": "b"}}, nil
+	}
 	body := strings.NewReader(`name=v1&pool=test1&teamowner=tsuruteam&plan.name=nfs&status=ignored&plan.opts.something=ignored&opts.a=c`)
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("POST", url, body)
@@ -550,9 +550,9 @@ func (s *S) TestVolumePlanList(c *check.C) {
 func (s *S) TestVolumeDelete(c *check.C) {
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
-	v1 := volumeTypes.Volume{Name: "v1", Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}
-	err := servicemanager.Volume.Create(context.TODO(), &v1)
-	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, name string) (*volumeTypes.Volume, error) {
+		return &volumeTypes.Volume{Name: name, Pool: s.Pool, TeamOwner: s.team.Name, Plan: volumeTypes.VolumePlan{Name: "nfs"}}, nil
+	}
 	url := "/1.4/volumes/v1"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
