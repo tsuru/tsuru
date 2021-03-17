@@ -87,11 +87,13 @@ func (w *FlushingWriter) flush() {
 	if w.hijacked {
 		return
 	}
+	if w.flushPending {
+		w.WriterFlusher.Flush()
+	}
 	w.flushPending = false
 	if w.timer != nil {
 		w.timer.Stop()
 	}
-	w.WriterFlusher.Flush()
 }
 
 func (w *FlushingWriter) Flush() {
