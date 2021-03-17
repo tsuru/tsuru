@@ -370,13 +370,11 @@ func (c *clusterController) getVPAInformer() (vpaV1Informers.VerticalPodAutoscal
 	defer c.mu.Unlock()
 	if c.vpaInformer == nil {
 		if c.vpaInformerFactory == nil {
-			args := newInformerFactoryArgs(c.cluster, tsuruOnlyTweakFunc())
-			cli, err := VPAClientForConfig(args.restConfig)
+			factory, err := VPAInformerFactory(c.cluster)
 			if err != nil {
 				return nil, err
 			}
-			tweak := vpaInternalInterfaces.TweakListOptionsFunc(args.tweak)
-			c.vpaInformerFactory = vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak)
+			c.vpaInformerFactory = factory
 		}
 		c.vpaInformer = c.vpaInformerFactory.Autoscaling().V1().VerticalPodAutoscalers()
 		c.vpaInformer.Informer()
@@ -578,4 +576,14 @@ var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.Tweak
 		return nil, err
 	}
 	return informers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, args.tweak), nil
+}
+
+var VPAInformerFactory = func(client *ClusterClient) (vpaInformers.SharedInformerFactory, error) {
+	args := newInformerFactoryArgs(client, tsuruOnlyTweakFunc())
+	cli, err := VPAClientForConfig(args.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	tweak := vpaInternalInterfaces.TweakListOptionsFunc(args.tweak)
+	return vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak), nil
 }

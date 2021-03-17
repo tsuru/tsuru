@@ -12,10 +12,15 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
+	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
 func (s *S) TestProvisionerSetAutoScale(c *check.C) {
@@ -273,6 +278,175 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
+		},
+	})
+}
+
+func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cm1",
+		},
+	})
+	err := s.p.AddUnits(context.Background(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	vpaUpdateOff := vpav1.UpdateModeOff
+
+	tests := []struct {
+		name        string
+		scenario    func()
+		expectedVPA *vpav1.VerticalPodAutoscaler
+	}{
+		{
+			name:        "no crd, no annotation",
+			expectedVPA: nil,
+		},
+		{
+			name: "with crd, no annotation",
+			scenario: func() {
+				vpaCRD := &v1beta1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
+				}
+				_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
+				c.Assert(err, check.IsNil)
+			},
+			expectedVPA: nil,
+		},
+		{
+			name: "with crd and annotation",
+			scenario: func() {
+				a.Metadata.Update(appTypes.Metadata{
+					Annotations: []appTypes.MetadataItem{
+						{Name: annotationEnableVPA, Value: "true"},
+					},
+				})
+			},
+			expectedVPA: &vpav1.VerticalPodAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "myapp-web",
+					Namespace: "default",
+					Labels: map[string]string{
+						"tsuru.io/app-name":     "myapp",
+						"tsuru.io/app-platform": "python",
+						"tsuru.io/app-team":     "",
+						"tsuru.io/app-pool":     "test-default",
+						"tsuru.io/app-process":  "web",
+						"tsuru.io/app-version":  "1",
+						"tsuru.io/builder":      "",
+						"tsuru.io/is-build":     "false",
+						"tsuru.io/is-deploy":    "false",
+						"tsuru.io/is-service":   "true",
+						"tsuru.io/is-stopped":   "false",
+						"tsuru.io/is-tsuru":     "true",
+						"tsuru.io/provisioner":  "kubernetes",
+						"version":               "v1",
+					},
+				},
+				Spec: vpav1.VerticalPodAutoscalerSpec{
+					TargetRef: &autoscalingv1.CrossVersionObjectReference{
+						APIVersion: appsv1.SchemeGroupVersion.String(),
+						Kind:       "Deployment",
+						Name:       "myapp-web",
+					},
+					UpdatePolicy: &vpav1.PodUpdatePolicy{
+						UpdateMode: &vpaUpdateOff,
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		c.Log(tt.name)
+		if tt.scenario != nil {
+			tt.scenario()
+		}
+		err := ensureVPAIfEnabled(context.TODO(), s.clusterClient, a, "web")
+		c.Assert(err, check.IsNil)
+		ns, err := s.client.AppNamespace(context.TODO(), a)
+		c.Assert(err, check.IsNil)
+		vpa, err := s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		if tt.expectedVPA == nil {
+			c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+		} else {
+			c.Assert(vpa, check.DeepEquals, tt.expectedVPA)
+		}
+	}
+}
+
+func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	rec, err := s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(rec, check.IsNil)
+
+	vpa := &vpav1.VerticalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-web",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "web",
+			},
+		},
+		Status: vpav1.VerticalPodAutoscalerStatus{
+			Recommendation: &vpav1.RecommendedPodResources{
+				ContainerRecommendations: []vpav1.RecommendedContainerResources{
+					{
+						ContainerName: "myapp-web",
+						Target: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("99Mi"),
+						},
+						UncappedTarget: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("101m"),
+							corev1.ResourceMemory: resource.MustParse("98Mi"),
+						},
+						LowerBound: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("102m"),
+							corev1.ResourceMemory: resource.MustParse("97Mi"),
+						},
+						UpperBound: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("103m"),
+							corev1.ResourceMemory: resource.MustParse("96Mi"),
+						},
+					},
+				},
+			},
+		},
+	}
+	_, err = s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Create(context.TODO(), vpa, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(rec, check.IsNil)
+
+	vpaCRD := &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
+	}
+	_, err = s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(rec, check.DeepEquals, []provision.RecommendedResources{
+		{
+			Process: "web",
+			Recommendations: []provision.RecommendedProcessResources{
+				{Type: "target", CPU: "100m", Memory: "99Mi"},
+				{Type: "uncappedTarget", CPU: "101m", Memory: "98Mi"},
+				{Type: "lowerBound", CPU: "102m", Memory: "97Mi"},
+				{Type: "upperBound", CPU: "103m", Memory: "96Mi"},
+			},
 		},
 	})
 }
