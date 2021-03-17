@@ -6,6 +6,7 @@ package api
 
 import (
 	stdcontext "context"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"testing"
@@ -53,7 +54,11 @@ type S struct {
 	mockService servicemock.MockService
 }
 
-var _ = check.Suite(&S{})
+var (
+	_ = check.Suite(&S{})
+
+	testCert, testKey string
+)
 
 type hasAccessToChecker struct{}
 
@@ -104,6 +109,13 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_api_base_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.testServer = RunServer(true)
+
+	testCertData, err := ioutil.ReadFile("./testdata/cert.pem")
+	c.Assert(err, check.IsNil)
+	testKeyData, err := ioutil.ReadFile("./testdata/key.pem")
+	c.Assert(err, check.IsNil)
+	testCert = string(testCertData)
+	testKey = string(testKeyData)
 }
 
 func (s *S) SetUpTest(c *check.C) {

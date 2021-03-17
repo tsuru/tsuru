@@ -120,3 +120,9 @@ test-int:
 	TSURU_INTEGRATION_platforms="python" \
 	TSURU_INTEGRATION_provisioners="docker" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
+
+generate-test-certs:
+	openssl genrsa -out ./app/testdata/private.key 1024
+	openssl req -new -x509 -sha256 -key ./app/testdata/private.key -subj '/CN=app.io' -addext 'subjectAltName = DNS:app.io' -out ./app/testdata/certificate.crt -days 3650
+	cp ./app/testdata/private.key ./api/testdata/key.pem
+	cp ./app/testdata/certificate.crt ./api/testdata/cert.pem
