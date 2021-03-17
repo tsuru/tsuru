@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
+	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	informers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
@@ -95,6 +96,7 @@ type ClientWrapper struct {
 	ApiExtensionsClientset *fakeapiextensions.Clientset
 	TsuruClientset         *faketsuru.Clientset
 	MetricsClientset       *fakemetrics.Clientset
+	VPAClientset           *fakevpa.Clientset
 	ClusterInterface
 }
 

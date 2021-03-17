@@ -38,6 +38,9 @@ import (
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/labels"
+	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
+	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
+	vpaInformers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes"
@@ -59,6 +62,7 @@ type S struct {
 	mock          *kTesting.KubeMock
 	mockService   servicemock.MockService
 	factory       informers.SharedInformerFactory
+	vpaFactory    vpaInformers.SharedInformerFactory
 }
 
 var suiteInstance = &S{}
@@ -112,6 +116,7 @@ func (s *S) SetUpTest(c *check.C) {
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
 		ClusterInterface:       s.clusterClient,
 	}
 	s.clusterClient.Interface = s.client
@@ -127,6 +132,9 @@ func (s *S) SetUpTest(c *check.C) {
 	MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
 		return s.client.MetricsClientset, nil
 	}
+	VPAClientForConfig = func(conf *rest.Config) (vpaclientset.Interface, error) {
+		return s.client.VPAClientset, nil
+	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
@@ -136,8 +144,12 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.vpaFactory = vpaInformers.NewSharedInformerFactory(s.client.VPAClientset, 1)
 	InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
+	}
+	VPAInformerFactory = func(client *ClusterClient) (vpaInformers.SharedInformerFactory, error) {
+		return s.vpaFactory, nil
 	}
 	s.p = &kubernetesProvisioner{
 		clusterControllers: map[string]*clusterController{},

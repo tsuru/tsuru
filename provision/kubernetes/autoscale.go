@@ -91,11 +91,6 @@ func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedReso
 			continue
 		}
 		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
-			Type:   "lowerBound",
-			CPU:    contRec.LowerBound.Cpu().String(),
-			Memory: contRec.LowerBound.Memory().String(),
-		})
-		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
 			Type:   "target",
 			CPU:    contRec.Target.Cpu().String(),
 			Memory: contRec.Target.Memory().String(),
@@ -104,6 +99,11 @@ func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedReso
 			Type:   "uncappedTarget",
 			CPU:    contRec.UncappedTarget.Cpu().String(),
 			Memory: contRec.UncappedTarget.Memory().String(),
+		})
+		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+			Type:   "lowerBound",
+			CPU:    contRec.LowerBound.Cpu().String(),
+			Memory: contRec.LowerBound.Memory().String(),
 		})
 		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
 			Type:   "upperBound",
@@ -342,29 +342,31 @@ func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App
 		multiErr.Add(err)
 	}
 
-	hasVPA, err := vpaCRDExists(ctx, client)
+	err = ensureVPAIfEnabled(ctx, client, a, process)
 	if err != nil {
 		multiErr.Add(err)
 	}
 
+	return multiErr.ToError()
+}
+
+func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
+	hasVPA, err := vpaCRDExists(ctx, client)
+	if err != nil {
+		return err
+	}
+
 	if !hasVPA {
-		return multiErr.ToError()
+		return nil
 	}
 
 	rawEnableVPA, _ := a.GetMetadata().Annotation(annotationEnableVPA)
 	if enableVPA, _ := strconv.ParseBool(rawEnableVPA); enableVPA {
 		err = ensureVPA(ctx, client, a, process)
-		if err != nil {
-			multiErr.Add(err)
-		}
 	} else {
 		err = ensureVPADeleted(ctx, client, a, process)
-		if err != nil {
-			multiErr.Add(err)
-		}
 	}
-
-	return multiErr.ToError()
+	return err
 }
 
 func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, process string) error {
@@ -384,6 +386,7 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     a,
 		Process: depInfo.process,
+		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:      tsuruLabelPrefix,
 			Provisioner: provisionerName,
@@ -392,7 +395,7 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	labels = labels.WithoutIsolated().WithoutRoutable().WithoutVersion()
+	labels = labels.WithoutIsolated().WithoutRoutable()
 
 	vpaUpdateOff := vpav1.UpdateModeOff
 	vpa := &vpav1.VerticalPodAutoscaler{
