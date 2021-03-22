@@ -2339,6 +2339,10 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		}
 		addr, err := r.Addr(app.ctx, app)
 		if err != nil {
+			if errors.Cause(err) == router.ErrBackendNotFound {
+				routers[i].Status = "not ready"
+				continue
+			}
 			multi.Add(err)
 			continue
 		}
