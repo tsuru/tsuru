@@ -21,10 +21,10 @@ import (
 	"github.com/vulcand/vulcand/plugin/registry"
 )
 
-const routerName = "vulcand"
+const routerType = "vulcand"
 
 func init() {
-	router.Register(routerName, createRouter)
+	router.Register(routerType, createRouter)
 	hc.AddChecker("Router vulcand", router.BuildHealthCheck("vulcand"))
 }
 
@@ -59,6 +59,10 @@ func createRouter(routerName string, config router.ConfigGetter) (router.Router,
 
 func (r *vulcandRouter) GetName() string {
 	return r.routerName
+}
+
+func (r *vulcandRouter) GetType() string {
+	return routerType
 }
 
 func (r *vulcandRouter) frontendHostname(app string) string {
@@ -119,7 +123,7 @@ func (r *vulcandRouter) AddBackend(ctx context.Context, app router.App) (err err
 		r.client.DeleteBackend(backendKey)
 		return &router.RouterError{Err: err, Op: "add-backend"}
 	}
-	return router.Store(name, name, routerName)
+	return router.Store(name, name, routerType)
 }
 
 func (r *vulcandRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {

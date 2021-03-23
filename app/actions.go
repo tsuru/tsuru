@@ -306,7 +306,7 @@ var addRouterBackend = action.Action{
 				return nil, err
 			}
 			if _, ok := r.(router.RouterV2); ok {
-				// there is nothing to do without targets
+				err = router.Store(app.GetName(), app.GetName(), r.GetType())
 			} else if optsRouter, ok := r.(router.OptsRouter); ok {
 				err = optsRouter.AddBackendOpts(ctx.Context, app, appRouter.Opts)
 			} else {

@@ -103,6 +103,10 @@ func (r *hipacheRouter) GetName() string {
 	return r.routerName
 }
 
+func (r *hipacheRouter) GetType() string {
+	return routerType
+}
+
 func (r *hipacheRouter) AddBackend(ctx context.Context, app router.App) (err error) {
 	name := app.GetName()
 	done := router.InstrumentRequest(r.routerName)

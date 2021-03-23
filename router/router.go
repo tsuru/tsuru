@@ -145,6 +145,7 @@ type App interface {
 // managing backends and routes. Each backend can have multiple routes.
 type Router interface {
 	GetName() string
+	GetType() string
 
 	AddBackend(ctx context.Context, app App) error
 	RemoveBackend(ctx context.Context, app App) error

@@ -109,6 +109,10 @@ func (r *fakeRouter) GetName() string {
 	return "fake"
 }
 
+func (r *fakeRouter) GetType() string {
+	return "fake"
+}
+
 func (r *fakeRouter) FailForIp(ip string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

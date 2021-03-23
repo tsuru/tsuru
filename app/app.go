@@ -2205,7 +2205,7 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	if _, ok := r.(router.RouterV2); ok {
-		// nothing to do without router targets
+		err = router.Store(app.GetName(), app.GetName(), r.GetType())
 	} else if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
 	} else {

@@ -123,6 +123,10 @@ func (r *galebRouter) GetName() string {
 	return r.routerName
 }
 
+func (r *galebRouter) GetType() string {
+	return routerType
+}
+
 func (r *galebRouter) poolName(prefix, base string) string {
 	if prefix != "" {
 		prefix = galebClient.RoutePrefixSeparator + prefix

@@ -149,6 +149,10 @@ func (r *apiRouter) GetName() string {
 	return r.routerName
 }
 
+func (r *apiRouter) GetType() string {
+	return routerType
+}
+
 func (r *apiRouter) AddBackend(ctx context.Context, app router.App) (err error) {
 	return r.AddBackendOpts(ctx, app, nil)
 }
