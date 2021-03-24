@@ -47,10 +47,15 @@ var PrefixRouter = prefixRouter{
 	prefixRoutes: make(map[string][]appTypes.RoutableAddresses),
 }
 
+var FakeRouterV2 = fakeRouterV2{
+	fakeRouter: newFakeRouter(),
+}
+
 var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
 	router.Register("fake", createRouter)
+	router.Register("fake-v2", createRouterV2)
 	router.Register("fake-hc", createHCRouter)
 	router.Register("fake-tls", createTLSRouter)
 	router.Register("fake-opts", createOptsRouter)
@@ -61,6 +66,10 @@ func init() {
 
 func createRouter(name string, config router.ConfigGetter) (router.Router, error) {
 	return &FakeRouter, nil
+}
+
+func createRouterV2(name string, config router.ConfigGetter) (router.Router, error) {
+	return &FakeRouterV2, nil
 }
 
 func createHCRouter(name string, config router.ConfigGetter) (router.Router, error) {
@@ -401,6 +410,23 @@ func (r *fakeRouter) Routes(ctx context.Context, app router.App) ([]*url.URL, er
 
 func (r *fakeRouter) Swap(ctx context.Context, app1, app2 router.App, cnameOnly bool) error {
 	return router.Swap(ctx, r, app1, app2, cnameOnly)
+}
+
+type fakeRouterV2 struct {
+	fakeRouter
+}
+
+var (
+	_ router.RouterV2 = &fakeRouterV2{}
+)
+
+func (r *fakeRouterV2) EnsureBackend(ctx context.Context, app router.App, opts router.EnsureBackendOpts) error {
+	name := app.GetName()
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.backends[name] = nil
+
+	return nil
 }
 
 type hcRouter struct {

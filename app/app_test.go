@@ -161,7 +161,7 @@ func (s *S) TestDeleteSwappedApp(c *check.C) {
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, true)
 }
 
-func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
+func (s *S) TestSwapAppOnlyWithoutCnames(c *check.C) {
 	a := App{
 		Name:      "ritual",
 		Platform:  "ruby",
@@ -171,6 +171,23 @@ func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	app2 := &App{Name: "app2", TeamOwner: s.team.Name}
+	err = CreateApp(context.TODO(), app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = Swap(context.TODO(), &a, app2, true)
+	c.Assert(err, check.Equals, ErrSwapNoCNames)
+}
+
+func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
+	a := App{
+		Name:      "ritual",
+		Platform:  "ruby",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+		CName:     []string{"ritual.io"},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := &App{Name: "app2", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
 	err = CreateApp(context.TODO(), app2, s.user)
 	c.Assert(err, check.IsNil)
 	err = Swap(context.TODO(), &a, app2, true)
@@ -185,6 +202,49 @@ func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
 	err = Delete(context.TODO(), &a, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
+}
+
+func (s *S) TestDeleteSwappedAppDifferentRouters(c *check.C) {
+	a := App{
+		Name:      "ritual",
+		Platform:  "ruby",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+		CName:     []string{"ritual.io"},
+		Routers:   []appTypes.AppRouter{{Name: "fake-v2"}},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := &App{
+		Name:      "app2",
+		TeamOwner: s.team.Name, CName: []string{"app2.io"}}
+	err = CreateApp(context.TODO(), app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = Swap(context.TODO(), &a, app2, true)
+	c.Assert(err, check.Equals, ErrSwapDifferentRouters)
+}
+
+func (s *S) TestDeleteSwappedAppRouterV2WithoutCnameDeprecation(c *check.C) {
+	a := App{
+		Name:      "ritual",
+		Platform:  "ruby",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+		CName:     []string{"ritual.io"},
+		Routers:   []appTypes.AppRouter{{Name: "fake-v2"}},
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := &App{
+		Name:      "app2",
+		TeamOwner: s.team.Name,
+		CName:     []string{"app2.io"},
+		Routers:   []appTypes.AppRouter{{Name: "fake-v2"}},
+	}
+	err = CreateApp(context.TODO(), app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = Swap(context.TODO(), &a, app2, false)
+	c.Assert(err, check.Equals, ErrSwapDeprecated)
 }
 
 func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
@@ -2392,7 +2452,7 @@ func (s *S) TestIsValid(c *check.C) {
 		{"b", s.team.Name, "pool1", "fake", "default-plan", ""},
 		{InternalAppName, s.team.Name, "pool1", "fake", "default-plan", errMsg},
 		{"myapp", "invalidteam", "pool1", "fake", "default-plan", "team not found"},
-		{"myapp", s.team.Name, "pool1", "faketls", "default-plan", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls\""},
+		{"myapp", s.team.Name, "pool1", "faketls", "default-plan", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls, fake-v2\""},
 		{"myapp", "noaccessteam", "pool1", "fake", "default-plan", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},
 		{"myApp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
 		{"myapp", s.team.Name, "pool1", "fake", "plan1", "App plan \"plan1\" is not allowed on pool \"pool1\""},
@@ -4261,7 +4321,7 @@ func (s *S) TestAppCreateValidateRouterNotAvailableForPool(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.DeepEquals, &errors.ValidationError{
-		Message: "router \"fake-tls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc\"",
+		Message: "router \"fake-tls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-v2\"",
 	})
 }
 

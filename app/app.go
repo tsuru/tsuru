@@ -65,6 +65,12 @@ var (
 	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
 
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
+
+	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
+	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
+	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
+	ErrSwapNoCNames         = errors.New("no cnames to swap")
+	ErrSwapDeprecated       = errors.New("swapping using router api v2 will work only with cnameOnly")
 )
 
 var (
@@ -2090,28 +2096,39 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 		return err
 	}
 	if app1Multiple || app2Multiple {
-		return errors.New("swapping apps with multiple versions is not allowed")
+		return ErrSwapMultipleVersions
 	}
 	a1Routers := app1.GetRouters()
 	a2Routers := app2.GetRouters()
 	if len(a1Routers) != 1 || len(a2Routers) != 1 {
-		return errors.New("swapping apps with multiple routers is not supported")
+		return ErrSwapMultipleRouters
 	}
-	r1, err := router.Get(ctx, a1Routers[0].Name)
+
+	if a1Routers[0].Name != a2Routers[0].Name {
+		return ErrSwapDifferentRouters
+	}
+
+	r, err := router.Get(ctx, a1Routers[0].Name)
 	if err != nil {
 		return err
 	}
-	r2, err := router.Get(ctx, a2Routers[0].Name)
-	if err != nil {
-		return err
+
+	if cnameOnly && len(app1.CName) == 0 && len(app2.CName) == 0 {
+		return ErrSwapNoCNames
 	}
+
+	_, isRouterV2 := r.(router.RouterV2)
+	if !cnameOnly && isRouterV2 {
+		return ErrSwapDeprecated
+	}
+
 	defer func(app1, app2 *App) {
 		rebuild.RoutesRebuildOrEnqueue(app1.Name)
 		rebuild.RoutesRebuildOrEnqueue(app2.Name)
 		app1.GetRoutersWithAddr()
 		app2.GetRoutersWithAddr()
 	}(app1, app2)
-	err = r1.Swap(ctx, app1, app2, cnameOnly)
+	err = r.Swap(ctx, app1, app2, cnameOnly)
 	if err != nil {
 		return err
 	}
@@ -2121,17 +2138,17 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	}
 	defer conn.Close()
 	app1.CName, app2.CName = app2.CName, app1.CName
-	updateCName := func(app *App, r router.Router) error {
+	updateCName := func(app *App) error {
 		return conn.Apps().Update(
 			bson.M{"name": app.Name},
 			bson.M{"$set": bson.M{"cname": app.CName}},
 		)
 	}
-	err = updateCName(app1, r1)
+	err = updateCName(app1)
 	if err != nil {
 		return err
 	}
-	return updateCName(app2, r2)
+	return updateCName(app2)
 }
 
 // Start starts the app calling the provisioner.Start method and

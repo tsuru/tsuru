@@ -103,6 +103,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("routers:fake-tls:type", "fake-tls")
+	config.Set("routers:fake-v2:type", "fake-v2")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
