@@ -5957,10 +5957,10 @@ func (s *S) TestSwap(c *check.C) {
 }
 
 func (s *S) TestSwapCnameOnly(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app1.io"}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=true")
