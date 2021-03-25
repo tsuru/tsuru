@@ -2128,27 +2128,19 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 		app1.GetRoutersWithAddr()
 		app2.GetRoutersWithAddr()
 	}(app1, app2)
-	err = r.Swap(ctx, app1, app2, cnameOnly)
-	if err != nil {
-		return err
+
+	// router v2 swap with rebuild with PreserveOldCNames
+	if !isRouterV2 {
+		err = r.Swap(ctx, app1, app2, cnameOnly)
+		if err != nil {
+			return err
+		}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	app1.CName, app2.CName = app2.CName, app1.CName
-	updateCName := func(app *App) error {
-		return conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName}},
-		)
-	}
-	err = updateCName(app1)
-	if err != nil {
-		return err
-	}
-	return updateCName(app2)
+
+	return action.NewPipeline(
+		&swapCNamesInDatabaseAction,
+		&swapReEnsureBackendsAction,
+	).Execute(ctx, app1, app2)
 }
 
 // Start starts the app calling the provisioner.Start method and

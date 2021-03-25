@@ -40,24 +40,31 @@ type RebuildApp interface {
 	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
 }
 
-func RebuildRoutes(ctx context.Context, app RebuildApp, dry bool) (map[string]RebuildRoutesResult, error) {
-	return rebuildRoutes(ctx, app, dry, true, ioutil.Discard)
+type RebuildRoutesOpts struct {
+	App               RebuildApp
+	Dry               bool
+	Wait              bool
+	PreserveOldCNames bool
+	Writer            io.Writer
 }
 
-func rebuildRoutesAsync(app RebuildApp, dry bool, w io.Writer) (map[string]RebuildRoutesResult, error) {
-	return rebuildRoutes(context.TODO(), app, dry, false, w)
-}
-
-func rebuildRoutes(ctx context.Context, app RebuildApp, dry, wait bool, w io.Writer) (map[string]RebuildRoutesResult, error) {
+func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]RebuildRoutesResult, error) {
 	result := make(map[string]RebuildRoutesResult)
 	multi := errors.NewMultiError()
-	b := rebuilder{
-		app:  app,
-		dry:  dry,
-		wait: wait,
-		w:    w,
+	writer := opts.Writer
+
+	if writer == nil {
+		writer = ioutil.Discard
 	}
-	for _, appRouter := range app.GetRouters() {
+
+	b := rebuilder{
+		app:               opts.App,
+		dry:               opts.Dry,
+		wait:              opts.Wait,
+		w:                 opts.Writer,
+		preserveOldCNames: opts.PreserveOldCNames,
+	}
+	for _, appRouter := range opts.App.GetRouters() {
 		resultInRouter, err := b.rebuildRoutesInRouter(ctx, appRouter)
 		if err == nil {
 			result[appRouter.Name] = *resultInRouter
@@ -90,6 +97,8 @@ type rebuilder struct {
 	dry  bool
 	wait bool
 	w    io.Writer
+
+	preserveOldCNames bool
 }
 
 func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
@@ -117,6 +126,8 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 			Prefixes:    []router.BackendPrefix{},
 			CNames:      b.app.GetCname(),
 			Healthcheck: hcData,
+
+			PreserveOldCNames: b.preserveOldCNames,
 		}
 		for key, opt := range appRouter.Opts {
 			opts.Opts[key] = opt

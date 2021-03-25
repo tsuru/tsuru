@@ -23,6 +23,8 @@ type EnsureBackendOpts struct {
 	CNames      []string               `json:"cnames"`
 	Prefixes    []BackendPrefix        `json:"prefixes"`
 	Healthcheck router.HealthcheckData `json:"healthcheck"`
+
+	PreserveOldCNames bool `json:"preserveOldCNames,omitempty"`
 }
 
 // RouterV2 is specialized in clustered router environments like kubernetes

@@ -142,7 +142,11 @@ func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
 			evt.Abort()
 		}()
 	}
-	result, err = rebuildRoutesAsync(a, false, w)
+	result, err = RebuildRoutes(context.TODO(), RebuildRoutesOpts{
+		App:    a,
+		Writer: w,
+	})
+
 	if err != nil {
 		return errors.Wrapf(err, "error rebuilding app %q", appName)
 	}
