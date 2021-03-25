@@ -42,10 +42,10 @@ type RebuildApp interface {
 
 type RebuildRoutesOpts struct {
 	App               RebuildApp
+	Writer            io.Writer
 	Dry               bool
 	Wait              bool
 	PreserveOldCNames bool
-	Writer            io.Writer
 }
 
 func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]RebuildRoutesResult, error) {
@@ -57,15 +57,8 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]Rebu
 		writer = ioutil.Discard
 	}
 
-	b := rebuilder{
-		app:               opts.App,
-		dry:               opts.Dry,
-		wait:              opts.Wait,
-		w:                 opts.Writer,
-		preserveOldCNames: opts.PreserveOldCNames,
-	}
 	for _, appRouter := range opts.App.GetRouters() {
-		resultInRouter, err := b.rebuildRoutesInRouter(ctx, appRouter)
+		resultInRouter, err := rebuildRoutesInRouter(ctx, appRouter, opts)
 		if err == nil {
 			result[appRouter.Name] = *resultInRouter
 		} else {
@@ -92,42 +85,33 @@ func diffRoutes(old []*url.URL, new []*url.URL) (toAdd []*url.URL, toRemove []*u
 	return toAdd, toRemove
 }
 
-type rebuilder struct {
-	app  RebuildApp
-	dry  bool
-	wait bool
-	w    io.Writer
-
-	preserveOldCNames bool
-}
-
-func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter) (*RebuildRoutesResult, error) {
-	log.Debugf("[rebuild-routes] rebuilding routes for app %q", b.app.GetName())
-	if b.w == nil {
-		b.w = ioutil.Discard
+func rebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o RebuildRoutesOpts) (*RebuildRoutesResult, error) {
+	log.Debugf("[rebuild-routes] rebuilding routes for app %q", o.App.GetName())
+	if o.Writer == nil {
+		o.Writer = ioutil.Discard
 	}
-	fmt.Fprintf(b.w, "\n---- Updating router [%s] ----\n", appRouter.Name)
+	fmt.Fprintf(o.Writer, "\n---- Updating router [%s] ----\n", appRouter.Name)
 	r, err := router.Get(ctx, appRouter.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	if routerV2, isRouterV2 := r.(router.RouterV2); isRouterV2 {
-		routes, routesErr := b.app.RoutableAddresses(ctx)
+		routes, routesErr := o.App.RoutableAddresses(ctx)
 		if routesErr != nil {
 			return nil, routesErr
 		}
-		hcData, errHc := b.app.GetHealthcheckData()
+		hcData, errHc := o.App.GetHealthcheckData()
 		if errHc != nil {
 			return nil, errHc
 		}
 		opts := router.EnsureBackendOpts{
 			Opts:        map[string]interface{}{},
 			Prefixes:    []router.BackendPrefix{},
-			CNames:      b.app.GetCname(),
+			CNames:      o.App.GetCname(),
 			Healthcheck: hcData,
 
-			PreserveOldCNames: b.preserveOldCNames,
+			PreserveOldCNames: o.PreserveOldCNames,
 		}
 		for key, opt := range appRouter.Opts {
 			opts.Opts[key] = opt
@@ -142,7 +126,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 				Prefix: route.Prefix,
 			})
 		}
-		err = routerV2.EnsureBackend(ctx, b.app, opts)
+		err = routerV2.EnsureBackend(ctx, o.App, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -150,17 +134,17 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	}
 
 	var asyncR router.AsyncRouter
-	if !b.wait {
+	if !o.Wait {
 		asyncR, _ = r.(router.AsyncRouter)
 	}
 
 	if optsRouter, ok := r.(router.OptsRouter); ok {
-		err = optsRouter.AddBackendOpts(ctx, b.app, appRouter.Opts)
+		err = optsRouter.AddBackendOpts(ctx, o.App, appRouter.Opts)
 	} else {
 		if asyncR == nil {
-			err = r.AddBackend(ctx, b.app)
+			err = r.AddBackend(ctx, o.App)
 		} else {
-			err = asyncR.AddBackendAsync(ctx, b.app)
+			err = asyncR.AddBackendAsync(ctx, o.App)
 		}
 	}
 	if err != nil && err != router.ErrBackendExists {
@@ -168,42 +152,42 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	}
 	if cnameRouter, ok := r.(router.CNameRouter); ok {
 		var oldCnames []*url.URL
-		oldCnames, err = cnameRouter.CNames(ctx, b.app)
+		oldCnames, err = cnameRouter.CNames(ctx, o.App)
 		if err != nil {
 			return nil, err
 		}
-		appCnames := b.app.GetCname()
+		appCnames := o.App.GetCname()
 		cnameAddrs := make([]*url.URL, len(appCnames))
 		for i, cname := range appCnames {
 			cnameAddrs[i] = &url.URL{Host: cname}
 		}
 		_, toRemove := diffRoutes(oldCnames, cnameAddrs)
 		for _, cname := range appCnames {
-			fmt.Fprintf(b.w, " ---> Adding cname: %s\n", cname)
+			fmt.Fprintf(o.Writer, " ---> Adding cname: %s\n", cname)
 			if asyncR == nil {
-				err = cnameRouter.SetCName(ctx, cname, b.app)
+				err = cnameRouter.SetCName(ctx, cname, o.App)
 			} else {
-				err = asyncR.SetCNameAsync(ctx, cname, b.app)
+				err = asyncR.SetCNameAsync(ctx, cname, o.App)
 			}
 			if err != nil && err != router.ErrCNameExists {
 				return nil, err
 			}
 		}
 		for _, toRemoveCname := range toRemove {
-			fmt.Fprintf(b.w, " ---> Removing cname: %s\n", toRemoveCname.Host)
-			err = cnameRouter.UnsetCName(ctx, toRemoveCname.Host, b.app)
+			fmt.Fprintf(o.Writer, " ---> Removing cname: %s\n", toRemoveCname.Host)
+			err = cnameRouter.UnsetCName(ctx, toRemoveCname.Host, o.App)
 			if err != nil && err != router.ErrCNameNotFound {
 				return nil, err
 			}
 		}
 	}
 	if hcRouter, ok := r.(router.CustomHealthcheckRouter); ok {
-		hcData, errHc := b.app.GetHealthcheckData()
+		hcData, errHc := o.App.GetHealthcheckData()
 		if errHc != nil {
 			return nil, errHc
 		}
-		fmt.Fprintf(b.w, " ---> Setting healthcheck: %s\n", hcData.String())
-		errHc = hcRouter.SetHealthcheck(ctx, b.app, hcData)
+		fmt.Fprintf(o.Writer, " ---> Setting healthcheck: %s\n", hcData.String())
+		errHc = hcRouter.SetHealthcheck(ctx, o.App, hcData)
 		if errHc != nil {
 			return nil, errHc
 		}
@@ -212,19 +196,19 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	prefixRouter, isPrefixRouter := r.(router.PrefixRouter)
 	var oldRoutes []appTypes.RoutableAddresses
 	if isPrefixRouter {
-		oldRoutes, err = prefixRouter.RoutesPrefix(ctx, b.app)
+		oldRoutes, err = prefixRouter.RoutesPrefix(ctx, o.App)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		var simpleOldRoutes []*url.URL
-		simpleOldRoutes, err = r.Routes(ctx, b.app)
+		simpleOldRoutes, err = r.Routes(ctx, o.App)
 		if err != nil {
 			return nil, err
 		}
 		oldRoutes = []appTypes.RoutableAddresses{{Addresses: simpleOldRoutes}}
 	}
-	log.Debugf("[rebuild-routes] old routes for app %q: %+v", b.app.GetName(), oldRoutes)
+	log.Debugf("[rebuild-routes] old routes for app %q: %+v", o.App.GetName(), oldRoutes)
 
 	allPrefixes := set.Set{}
 
@@ -234,11 +218,11 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 		allPrefixes.Add(addrs.Prefix)
 	}
 
-	newRoutes, err := b.app.RoutableAddresses(ctx)
+	newRoutes, err := o.App.RoutableAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("[rebuild-routes] addresses for app %q: %+v", b.app.GetName(), newRoutes)
+	log.Debugf("[rebuild-routes] addresses for app %q: %+v", o.App.GetName(), newRoutes)
 
 	newPrefixMap := make(map[string]appTypes.RoutableAddresses)
 	for _, addrs := range newRoutes {
@@ -262,7 +246,7 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			prefixResult, prefixErr := b.syncRoutePrefix(ctx, r, prefix, newRoutesForPrefix, oldRoutesForPrefix)
+			prefixResult, prefixErr := syncRoutePrefix(ctx, o, r, prefix, newRoutesForPrefix, oldRoutesForPrefix)
 			if prefixErr == nil {
 				resultCh <- *prefixResult
 			} else {
@@ -293,10 +277,10 @@ func (b *rebuilder) rebuildRoutesInRouter(ctx context.Context, appRouter appType
 	return &result, nil
 }
 
-func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix string, newRoutesForPrefix, oldRoutesForPrefix appTypes.RoutableAddresses) (*RebuildPrefixResult, error) {
+func syncRoutePrefix(ctx context.Context, o RebuildRoutesOpts, r router.Router, prefix string, newRoutesForPrefix, oldRoutesForPrefix appTypes.RoutableAddresses) (*RebuildPrefixResult, error) {
 	prefixRouter, _ := r.(router.PrefixRouter)
 	var asyncR router.AsyncRouter
-	if !b.wait {
+	if !o.Wait {
 		asyncR, _ = r.(router.AsyncRouter)
 	}
 
@@ -314,8 +298,8 @@ func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix
 	sort.Strings(prefixResult.Added)
 	sort.Strings(prefixResult.Removed)
 
-	if b.dry {
-		log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", b.app.GetName())
+	if o.Dry {
+		log.Debugf("[rebuild-routes] nothing to do. DRY mode for app: %q", o.App.GetName())
 		return prefixResult, nil
 	}
 
@@ -326,14 +310,14 @@ func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix
 
 	var err error
 
-	fmt.Fprintf(b.w, " ---> Updating routes%s: %d added, %d removed\n", prefixMsg, len(toAdd), len(toRemove))
+	fmt.Fprintf(o.Writer, " ---> Updating routes%s: %d added, %d removed\n", prefixMsg, len(toAdd), len(toRemove))
 	if prefixRouter != nil {
 		newRoutesForPrefix.Addresses = toAdd
-		err = prefixRouter.AddRoutesPrefix(ctx, b.app, newRoutesForPrefix, b.wait)
+		err = prefixRouter.AddRoutesPrefix(ctx, o.App, newRoutesForPrefix, o.Wait)
 	} else if asyncR == nil {
-		err = r.AddRoutes(ctx, b.app, toAdd)
+		err = r.AddRoutes(ctx, o.App, toAdd)
 	} else {
-		err = asyncR.AddRoutesAsync(ctx, b.app, toAdd)
+		err = asyncR.AddRoutesAsync(ctx, o.App, toAdd)
 	}
 	if err != nil {
 		return nil, err
@@ -341,18 +325,18 @@ func (b *rebuilder) syncRoutePrefix(ctx context.Context, r router.Router, prefix
 
 	if prefixRouter != nil {
 		oldRoutesForPrefix.Addresses = toRemove
-		err = prefixRouter.RemoveRoutesPrefix(ctx, b.app, oldRoutesForPrefix, b.wait)
+		err = prefixRouter.RemoveRoutesPrefix(ctx, o.App, oldRoutesForPrefix, o.Wait)
 	} else if asyncR == nil {
-		err = r.RemoveRoutes(ctx, b.app, toRemove)
+		err = r.RemoveRoutes(ctx, o.App, toRemove)
 	} else {
-		err = asyncR.RemoveRoutesAsync(ctx, b.app, toRemove)
+		err = asyncR.RemoveRoutesAsync(ctx, o.App, toRemove)
 	}
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("[rebuild-routes] routes added for app %q, prefix %q: %s", b.app.GetName(), prefix, strings.Join(prefixResult.Added, ", "))
-	log.Debugf("[rebuild-routes] routes removed for app %q, prefix %q: %s", b.app.GetName(), prefix, strings.Join(prefixResult.Removed, ", "))
-	fmt.Fprintf(b.w, " ---> Done updating routes%s: %d added, %d removed\n", prefixMsg, len(toAdd), len(toRemove))
+	log.Debugf("[rebuild-routes] routes added for app %q, prefix %q: %s", o.App.GetName(), prefix, strings.Join(prefixResult.Added, ", "))
+	log.Debugf("[rebuild-routes] routes removed for app %q, prefix %q: %s", o.App.GetName(), prefix, strings.Join(prefixResult.Removed, ", "))
+	fmt.Fprintf(o.Writer, " ---> Done updating routes%s: %d added, %d removed\n", prefixMsg, len(toAdd), len(toRemove))
 
 	return prefixResult, nil
 }
