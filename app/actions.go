@@ -959,10 +959,12 @@ func swapCNamesInDatabase(app1 *App, app2 *App) error {
 }
 
 func swapRebuildRoutes(ctx context.Context, app1 *App, app2 *App) error {
+	// preserveOldCnames makes the operation without downtime, however when using diffent pools we cant do that
+	preserveOldCNames := app1.Pool == app2.Pool
 	_, err := rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
 		App:               app1,
 		Wait:              true,
-		PreserveOldCNames: true,
+		PreserveOldCNames: preserveOldCNames,
 	})
 	if err != nil {
 		return err
@@ -970,7 +972,7 @@ func swapRebuildRoutes(ctx context.Context, app1 *App, app2 *App) error {
 	_, err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
 		App:               app2,
 		Wait:              true,
-		PreserveOldCNames: true,
+		PreserveOldCNames: preserveOldCNames,
 	})
 	if err != nil {
 		return err
