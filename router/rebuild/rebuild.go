@@ -54,7 +54,7 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]Rebu
 	writer := opts.Writer
 
 	if writer == nil {
-		writer = ioutil.Discard
+		opts.Writer = ioutil.Discard
 	}
 
 	for _, appRouter := range opts.App.GetRouters() {
