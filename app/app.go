@@ -2122,13 +2122,6 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 		return ErrSwapDeprecated
 	}
 
-	defer func(app1, app2 *App) {
-		rebuild.RoutesRebuildOrEnqueue(app1.Name)
-		rebuild.RoutesRebuildOrEnqueue(app2.Name)
-		app1.GetRoutersWithAddr()
-		app2.GetRoutersWithAddr()
-	}(app1, app2)
-
 	// router v2 swap with rebuild with PreserveOldCNames
 	if !isRouterV2 {
 		err = r.Swap(ctx, app1, app2, cnameOnly)
