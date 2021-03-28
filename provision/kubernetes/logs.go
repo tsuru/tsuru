@@ -160,23 +160,27 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 			appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
 			appProcess := pod.ObjectMeta.Labels[tsuruLabelAppProcess]
 
-			scanner := bufio.NewScanner(stream)
+			reader := bufio.NewReader(stream)
 			tsuruLogs := make([]appTypes.Applog, 0)
-			for scanner.Scan() {
-				line := scanner.Text()
+
+			for {
+				line, err := reader.ReadBytes('\n')
+				if err != nil {
+					if !knet.IsProbableEOF(err) {
+						errs[index] = err
+					}
+					break
+				}
 
 				if len(line) == 0 {
 					continue
 				}
-				tsuruLog := parsek8sLogLine(line)
+
+				tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 				tsuruLog.Unit = pod.ObjectMeta.Name
 				tsuruLog.AppName = appName
 				tsuruLog.Source = appProcess
 				tsuruLogs = append(tsuruLogs, tsuruLog)
-			}
-
-			if err := scanner.Err(); err != nil && !knet.IsProbableEOF(err) {
-				errs[index] = err
 			}
 
 			logs[index] = tsuruLogs
@@ -301,23 +305,26 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 		return
 	}
 
-	scanner := bufio.NewScanner(stream)
+	reader := bufio.NewReader(stream)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		tsuruLog := parsek8sLogLine(line)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			if !knet.IsProbableEOF(err) && err != context.Canceled {
+				k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
+			}
+			break
+		}
+
+		if len(line) == 0 {
+			continue
+		}
+
+		tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 		tsuruLog.Unit = pod.ObjectMeta.Name
 		tsuruLog.AppName = appName
 		tsuruLog.Source = appProcess
-
 		k.ch <- tsuruLog
-	}
-
-	if err := scanner.Err(); err != nil {
-		if knet.IsProbableEOF(err) || err == context.Canceled {
-			return
-		}
-		k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
 	}
 }
 
