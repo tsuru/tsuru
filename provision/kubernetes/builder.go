@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/event"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -41,7 +42,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	if err != nil {
 		return err
 	}
-	defer cleanupPod(ctx, client, buildPodName, ns)
+	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, ns)
 	inputFile := "/home/application/archive.tar.gz"
 	params := createPodParams{
 		app:               a,
@@ -146,7 +147,7 @@ func (c *KubeClient) BuildImage(ctx context.Context, name string, images []strin
 	if err != nil {
 		return err
 	}
-	defer cleanupPod(ctx, client, buildPodName, client.Namespace())
+	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, client.Namespace())
 	params := createPodParams{
 		client:            client,
 		podName:           buildPodName,

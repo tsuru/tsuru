@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -1637,7 +1638,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer cleanupPod(ctx, params.client, pod.Name, ns)
+	defer cleanupPod(tsuruNet.WithoutCancel(ctx), params.client, pod.Name, ns)
 
 	closeFn, err := logPodEvents(ctx, params.client, events.ResourceVersion, params.podName, ns, params.eventsOutput)
 	if err != nil {

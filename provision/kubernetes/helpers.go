@@ -1146,7 +1146,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	defer cleanupPod(ctx, args.client, pod.Name, ns)
+	defer cleanupPod(tsuruNet.WithoutCancel(ctx), args.client, pod.Name, ns)
 
 	if args.eventsOutput != nil {
 		var closeFn func()

@@ -1198,7 +1198,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 		if nsErr != nil {
 			return "", nsErr
 		}
-		defer cleanupPod(ctx, client, deployPodName, ns)
+		defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, deployPodName, ns)
 		params := createPodParams{
 			app:               args.App,
 			client:            client,
