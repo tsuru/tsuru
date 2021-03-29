@@ -365,12 +365,12 @@ paths:
     get:
       operationId: PlanList
       description: List plans.
-      produces: 
+      produces:
        - application/json
       responses:
         "200":
           description: Plans list
-          schema: 
+          schema:
             type: array
             items:
               $ref: "#/definitions/Plan"
@@ -3006,6 +3006,8 @@ definitions:
         type: string
       description:
         type: string
+      pool:
+        type: string
       planname:
         type: string
       plandescription:
@@ -3015,6 +3017,10 @@ definitions:
         items:
           type: string
       custominfo:
+        type: object
+        additionalProperties:
+          type: string
+      parameters:
         type: object
         additionalProperties:
           type: string
@@ -3075,7 +3081,7 @@ definitions:
       labels:
         type: object
         additionalProperties:
-          type: string 
+          type: string
   PoolCreateData:
     type: object
     properties:
