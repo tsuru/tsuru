@@ -97,7 +97,7 @@ func (s *S) TestDelayedRouterAddAll(c *check.C) {
 	router.AddAll("1.0", "/dream/{world}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
 	}))
-	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
+	for _, method := range []string{"GET", "POST", "PUT", "PATCH", "DELETE"} {
 		recorder := httptest.NewRecorder()
 		request, err := http.NewRequest(method, "/dream/tel'aran'rhiod", nil)
 		c.Assert(err, check.IsNil)
