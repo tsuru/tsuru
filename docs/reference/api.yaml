@@ -3455,7 +3455,8 @@ definitions:
             Protocol:
               type: string
             Port:
-              type: string
+              type: integer
+              format: int64
             Process:
               type: string
             Version:
