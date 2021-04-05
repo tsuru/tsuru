@@ -3429,7 +3429,8 @@ definitions:
           type: string
         description: CNames of App
       deploys:
-        type: number
+        type: integer
+        format: int64
         description: Number of Deploys
       routers:
         type: array
