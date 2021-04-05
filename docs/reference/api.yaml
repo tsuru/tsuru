@@ -3420,6 +3420,45 @@ definitions:
       name:
         type: string
         description: App name.
+      cluster:
+        type: string
+        description: Cluster name
+      cname:
+        type: array
+        items:
+          type: string
+        description: CNames of App
+      deploys:
+        type: number
+        description: Number of Deploys
+      routers:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            opts:
+              type: object
+            addresses:
+              type: array
+              items:
+                type: string
+      internalAddresses:
+        type: array
+        items:
+          type: object
+          properties:
+            Domain:
+              type: string
+            Protocol:
+              type: string
+            Port:
+              type: string
+            Process:
+              type: string
+            Version:
+              type: string
       tags:
         type: array
         items:
@@ -3439,6 +3478,9 @@ definitions:
       pool:
         type: string
         description: App pool.
+      provisioner:
+        type: string
+        description: App provisioner.
       platform:
         type: string
         description: App platform.
