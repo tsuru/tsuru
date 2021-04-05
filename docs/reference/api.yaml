@@ -3495,10 +3495,6 @@ definitions:
         type: array
         items:
           type: string
-      cname:
-        type: array
-        items:
-          type: string
       ip:
         type: string
       owner:
