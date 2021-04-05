@@ -1595,6 +1595,55 @@ func (s *S) TestDeploy(c *check.C) {
 	})
 }
 
+func (s *S) TestDeployWithDisabledUnitRegister(c *check.C) {
+	s.clusterClient.CustomData[disableUnitRegisterCmdKey] = "true"
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version := newCommittedVersion(c, a, customData)
+	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
+	containers := deps.Items[0].Spec.Template.Spec.Containers
+	c.Assert(containers, check.HasLen, 1)
+	c.Check(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
+		"/bin/sh",
+		"-lc",
+		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
+	})
+	units, err := s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(units, check.HasLen, 1)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments:        map[string][]string{"web": {"myapp-web"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
+	})
+}
+
 func (s *S) TestDeployCreatesAppCR(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

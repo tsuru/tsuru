@@ -550,7 +550,12 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
-	extra := []string{extraRegisterCmds(a)}
+	extra := []string{}
+
+	if client.unitRegisterCmdEnabled() {
+		extra = []string{extraRegisterCmds(a)}
+	}
+
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
