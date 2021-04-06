@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	check "gopkg.in/check.v1"
 )
 
@@ -55,7 +54,6 @@ func (s *S) SetUpTest(c *check.C) {
 	s.reqs = make([]*http.Request, 0)
 	s.bodies = make([]string, 0)
 	s.rsps = make(map[string]string)
-	repositorytest.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {

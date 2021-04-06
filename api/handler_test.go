@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -40,7 +39,6 @@ func (s *HandlerSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *HandlerSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

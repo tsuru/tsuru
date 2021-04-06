@@ -37,8 +37,6 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
@@ -761,8 +759,6 @@ func (s *S) TestDelete(c *check.C) {
 			{"name": ":app", "value": myApp.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(context.TODO(), myApp.Name)
-	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
@@ -831,7 +827,6 @@ func (s *S) TestAppInfo(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &myApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(myApp["name"], check.Equals, expectedApp.Name)
-	c.Assert(myApp["repository"], check.Equals, "git@"+repositorytest.ServerHost+":"+expectedApp.Name+".git")
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *check.C) {
@@ -889,12 +884,10 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -914,8 +907,6 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 			{"name": "platform", "value": "zend"},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateApp(c *check.C) {
@@ -938,12 +929,10 @@ func (s *S) TestCreateApp(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -963,8 +952,6 @@ func (s *S) TestCreateApp(c *check.C) {
 			{"name": "platform", "value": "zend"},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
@@ -981,12 +968,10 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1006,8 +991,6 @@ func (s *S) TestCreateAppWithoutPlatform(c *check.C) {
 			{"name": "name", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
@@ -1044,15 +1027,13 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var appIP string
 	appIP, err = s.provisioner.Addr(&gotApp)
 	c.Assert(err, check.IsNil)
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             appIP,
+		"status": "success",
+		"ip":     appIP,
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
@@ -1086,15 +1067,13 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
 	c.Assert(err, check.IsNil)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var appIP string
 	appIP, err = s.provisioner.Addr(&gotApp)
 	c.Assert(err, check.IsNil)
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             appIP,
+		"status": "success",
+		"ip":     appIP,
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
@@ -1141,12 +1120,10 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1186,12 +1163,10 @@ func (s *S) TestCreateAppWithDescription(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1229,12 +1204,10 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":someapp.git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1277,12 +1250,10 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + appName + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1307,7 +1278,6 @@ func (s *S) TestCreateAppWithPool(c *check.C) {
 
 func (s *S) TestCreateAppWithRouter(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
-	a := app.App{Name: "someapp"}
 	data, err := url.QueryUnescape("name=someapp&platform=zend&router=fake")
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
@@ -1322,12 +1292,10 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1343,7 +1311,6 @@ func (s *S) TestCreateAppWithRouter(c *check.C) {
 
 func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
-	a := app.App{Name: "someapp"}
 	data, err := url.QueryUnescape("name=someapp&platform=zend&routeropts.opt1=val1&routeropts.opt2=val2")
 	c.Assert(err, check.IsNil)
 	b := strings.NewReader(data)
@@ -1358,12 +1325,10 @@ func (s *S) TestCreateAppWithRouterOpts(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1519,7 +1484,6 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 		c.Assert(name, check.Equals, p.Name)
 		return &p, nil
 	}
-	a := app.App{Name: "someapp"}
 	data := "name=someapp&platform=" + p.Name
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -1529,12 +1493,10 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
 	var obtained map[string]string
 	expected := map[string]string{
-		"status":         "success",
-		"repository_url": repoURL,
-		"ip":             "someapp.fakerouter.com",
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
 	c.Assert(err, check.IsNil)
@@ -1554,8 +1516,6 @@ func (s *S) TestCreateAppWithDisabledPlatformAndPlatformUpdater(c *check.C) {
 			{"name": "platform", "value": p.Name},
 		},
 	}, eventtest.HasEvent)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
@@ -2792,30 +2752,6 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
-	t := authTypes.Team{Name: "anything"}
-	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
-		return []authTypes.Team{t, {Name: s.team.Name}}, nil
-	}
-	a := app.App{
-		Name:      "tsuru",
-		Platform:  "zend",
-		TeamOwner: t.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
-	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	grants, err := repositorytest.Granted(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
-}
-
 func (s *S) TestRevokeAccessFromTeam(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{"abcd", s.team.Name}}
 	err := s.conn.Apps().Insert(a)
@@ -2929,71 +2865,6 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
-}
-
-func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) {
-	t := authTypes.Team{Name: "any-team"}
-	newToken := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, t.Name),
-	})
-	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
-		c.Assert(name, check.Equals, t.Name)
-		return &t, nil
-	}
-	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
-	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	grants, err := repositorytest.Granted(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email, newToken.GetUserName()})
-	request, err = http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	grants, err = repositorytest.Granted(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
-}
-
-func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *check.C) {
-	u := auth.User{Email: "burning@angel.com", Quota: quota.UnlimitedQuota}
-	err := s.conn.Users().Insert(u)
-	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(context.TODO(), u.Email)
-	t := authTypes.Team{Name: "anything"}
-	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
-		c.Assert(name, check.Equals, t.Name)
-		return &t, nil
-	}
-	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
-	request, err := http.NewRequest("PUT", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	request, err = http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder = httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	grants, err := repositorytest.Granted(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *S) TestRunOnce(c *check.C) {

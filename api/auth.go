@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -543,128 +542,6 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
-// title: add key
-// path: /users/keys
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Key already exists
-func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	key := repository.Key{
-		Body: InputValue(r, "key"),
-		Name: InputValue(r, "name"),
-	}
-	var force bool
-	if InputValue(r, "force") == "true" {
-		force = true
-	}
-	allowed := permission.Check(t, permission.PermUserUpdateKeyAdd,
-		permission.Context(permTypes.CtxUser, t.GetUserName()),
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     userTarget(t.GetUserName()),
-		Kind:       permission.PermUserUpdateKeyAdd,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	if key.Body == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
-	}
-	u, err := auth.ConvertNewUser(t.User())
-	if err != nil {
-		return err
-	}
-	err = u.AddKey(key, force)
-	if err == authTypes.ErrKeyDisabled || err == repository.ErrUserNotFound {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	if err == repository.ErrKeyAlreadyExists {
-		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
-	}
-	return err
-}
-
-// title: remove key
-// path: /users/keys/{key}
-// method: DELETE
-// responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Not found
-func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	key := repository.Key{
-		Name: r.URL.Query().Get(":key"),
-	}
-	if key.Name == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
-	}
-	allowed := permission.Check(t, permission.PermUserUpdateKeyRemove,
-		permission.Context(permTypes.CtxUser, t.GetUserName()),
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     userTarget(t.GetUserName()),
-		Kind:       permission.PermUserUpdateKeyRemove,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	u, err := auth.ConvertNewUser(t.User())
-	if err != nil {
-		return err
-	}
-	err = u.RemoveKey(key)
-	if err == authTypes.ErrKeyDisabled {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	if err == repository.ErrKeyNotFound {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
-	}
-	return err
-}
-
-// title: list keys
-// path: /users/keys
-// method: GET
-// produce: application/json
-// responses:
-//   200: OK
-//   400: Invalid data
-//   401: Unauthorized
-func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := auth.ConvertNewUser(t.User())
-	if err != nil {
-		return err
-	}
-	keys, err := u.ListKeys()
-	if err == authTypes.ErrKeyDisabled {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	if err != nil {
-		return err
-	}
-	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(keys)
-}
-
 // title: remove user
 // path: /users
 // method: DELETE
@@ -698,17 +575,6 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	appNames, err := deployableApps(u, make(map[string]*permission.Role))
-	if err != nil {
-		return err
-	}
-	manager := repository.Manager()
-	for _, name := range appNames {
-		manager.RevokeAccess(ctx, name, u.Email)
-	}
-	if err := manager.RemoveUser(ctx, u.Email); err != nil {
-		log.Errorf("Failed to remove user from repository manager: %s", err)
 	}
 	return app.AuthScheme.Remove(ctx, u)
 }

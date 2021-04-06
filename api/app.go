@@ -31,7 +31,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
@@ -423,13 +422,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 		return err
 	}
-	repo, err := repository.Manager().GetRepository(ctx, a.Name)
-	if err != nil {
-		return err
-	}
 	msg := map[string]interface{}{
-		"status":         "success",
-		"repository_url": repo.ReadWriteURL,
+		"status": "success",
 	}
 	addrs, err := a.GetAddresses()
 	if err != nil {

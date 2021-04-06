@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
 	check "gopkg.in/check.v1"
@@ -217,7 +216,6 @@ func (s *S) TestOAuthCreate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
 	c.Assert(dbUser.Password, check.Equals, "")
-	c.Assert(repositorytest.Users(), check.DeepEquals, []string{user.Email})
 }
 
 func (s *S) TestOAuthRemove(c *check.C) {

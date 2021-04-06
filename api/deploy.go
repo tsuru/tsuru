@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/repository"
 )
 
 const eventIDHeader = "X-Tsuru-Eventid"
@@ -70,16 +69,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	message := InputValue(r, "message")
-	if commit != "" && message == "" {
-		var messages []string
-		messages, err = repository.Manager().CommitMessages(ctx, instance.Name, commit, 1)
-		if err != nil {
-			return err
-		}
-		if len(messages) > 0 {
-			message = messages[0]
-		}
-	}
 	if origin == "" && commit != "" {
 		origin = "git"
 	}

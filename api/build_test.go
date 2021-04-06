@@ -25,8 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -72,7 +70,6 @@ func (s *BuildSuite) createUserAndTeam(c *check.C) {
 func (s *BuildSuite) reset() {
 	s.provisioner.Reset()
 	routertest.FakeRouter.Reset()
-	repositorytest.Reset()
 }
 
 func (s *BuildSuite) SetUpSuite(c *check.C) {
@@ -112,7 +109,6 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.user, err = auth.ConvertNewUser(s.token.User())
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	config.Set("docker:router", "fake")
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {

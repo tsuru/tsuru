@@ -56,12 +56,3 @@ func (s *S) TestMigrateCmdIsRegistered(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(migrate.Command, check.FitsTypeOf, &migrateCmd{})
 }
-
-func (s *S) TestGandalfSyncCmdIsRegistered(c *check.C) {
-	manager := buildManager()
-	cmd, ok := manager.Commands["gandalf-sync"]
-	c.Assert(ok, check.Equals, true)
-	sync, ok := cmd.(*tsurudCommand)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(sync.Command, check.FitsTypeOf, gandalfSyncCmd{})
-}

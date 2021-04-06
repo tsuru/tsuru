@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/iaas/dockermachine"
 	_ "github.com/tsuru/tsuru/provision/docker"
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
-	_ "github.com/tsuru/tsuru/repository/gandalf"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 )
 
@@ -31,7 +30,6 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsurudCommand{Command: &apiCmd{}})
 	m.Register(&tsurudCommand{Command: tokenCmd{}})
 	m.Register(&tsurudCommand{Command: &migrateCmd{}})
-	m.Register(&tsurudCommand{Command: gandalfSyncCmd{}})
 	m.Register(&tsurudCommand{Command: createRootUserCmd{}})
 	m.Register(&tsurudCommand{Command: &migrationListCmd{}})
 	return m

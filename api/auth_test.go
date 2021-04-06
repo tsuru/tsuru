@@ -31,8 +31,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -93,7 +91,6 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	provisiontest.ProvisionerInstance.Reset()
 	routertest.FakeRouter.Reset()
-	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUser(c)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
@@ -199,18 +196,6 @@ func (s *AuthSuite) TestCreateUserPasswordHasLessThan6CharactersOrMoreThan50Char
 	}
 }
 
-func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
-	b := strings.NewReader("email=nobody@me.myself&password=123456")
-	request, err := http.NewRequest(http.MethodPost, "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), "nobody@me.myself")
-	c.Assert(err, check.IsNil)
-}
-
 func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *check.C) {
 	b := strings.NewReader("email=nobody@globo.com&password=123456")
 	request, err := http.NewRequest(http.MethodPost, "/users", b)
@@ -260,19 +245,6 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *c
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-}
-
-func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
-	repository.Manager().CreateUser(context.TODO(), "nobody@globo.com")
-	b := strings.NewReader("email=nobody@globo.com&password=123456")
-	request, err := http.NewRequest(http.MethodPost, "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
-	_, err = auth.GetUserByEmail("nobody@globo.com")
-	c.Assert(err, check.NotNil)
 }
 
 func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *check.C) {
@@ -628,208 +600,6 @@ func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
-func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
-	b := strings.NewReader("name=the-key&key=my-key")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	s.user, err = auth.GetUserByEmail(s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(eventtest.EventDesc{
-		Target: userTarget(s.token.GetUserName()),
-		Owner:  s.token.GetUserName(),
-		Kind:   "user.update.key.add",
-		StartCustomData: []map[string]interface{}{
-			{"name": "name", "value": "the-key"},
-			{"name": "key", "value": "my-key"},
-		},
-	}, eventtest.HasEvent)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-key"}})
-}
-
-func (s *AuthSuite) TestAddKeyToUserKeyIsMissing(c *check.C) {
-	b := strings.NewReader("")
-	request, err := http.NewRequest(http.MethodPost, "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e, check.ErrorMatches, "^Missing key content$")
-}
-
-func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C) {
-	b := bytes.NewBufferString(`{"key":""}`)
-	request, err := http.NewRequest(http.MethodPost, "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e, check.ErrorMatches, "^Missing key content$")
-}
-
-func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	b := strings.NewReader("name=the-key&key=my-key")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "key management is disabled\n")
-}
-
-func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
-	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	b := strings.NewReader("name=the-key&key=your-key")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Equals, "user already have this key\n")
-}
-
-func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
-	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
-	s.conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	b := strings.NewReader("name=the-key&key=my-other-key&force=true")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-other-key"}})
-}
-
-func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
-	_, err := nativeScheme.Create(context.TODO(), u)
-	c.Assert(err, check.IsNil)
-	t, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	defer nativeScheme.Logout(context.TODO(), t.GetValue())
-	b := strings.NewReader("name=the-key&key=my-key")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+t.GetValue())
-	repository.Manager().RemoveUser(context.TODO(), u.Email)
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "user not found\n")
-}
-
-func (s *AuthSuite) TestRemoveKey(c *check.C) {
-	b := strings.NewReader("name=the-key&key=my-key")
-	request, err := http.NewRequest(http.MethodPost, "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	request, err = http.NewRequest(http.MethodDelete, "/users/keys/the-key", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(eventtest.EventDesc{
-		Target: userTarget(s.token.GetUserName()),
-		Owner:  s.token.GetUserName(),
-		Kind:   "user.update.key.remove",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":key", "value": "the-key"},
-		},
-	}, eventtest.HasEvent)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.HasLen, 0)
-}
-
-func (s *AuthSuite) TestRemoveKeyNotFound(c *check.C) {
-	request, err := http.NewRequest(http.MethodDelete, "/users/keys/the-key", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *AuthSuite) TestRemoveKeyFromUserKeyManagerDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	request, err := http.NewRequest(http.MethodDelete, "/users/keys/the-key", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "key management is disabled\n")
-}
-
-func (s *AuthSuite) TestListKeysHandler(c *check.C) {
-	keys := []repository.Key{
-		{Name: "homekey", Body: "lol somekey somecomment"},
-		{Name: "workkey", Body: "lol someotherkey someothercomment"},
-	}
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), s.user.Email, keys[0])
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), s.user.Email, keys[1])
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest(http.MethodGet, "/users/keys", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	got := map[string]string{}
-	err = json.NewDecoder(recorder.Body).Decode(&got)
-	c.Assert(err, check.IsNil)
-	expected := map[string]string{
-		"homekey": "lol somekey somecomment",
-		"workkey": "lol someotherkey someothercomment",
-	}
-	c.Assert(expected, check.DeepEquals, got)
-}
-
-func (s *AuthSuite) TestListKeysKeyManagerDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	request, err := http.NewRequest(http.MethodGet, "/users/keys", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = listKeys(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "key management is disabled")
-}
-
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
@@ -849,9 +619,6 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "user.delete",
 	}, eventtest.HasEvent)
-	users := repositorytest.Users()
-	sort.Strings(users)
-	c.Assert(users, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
@@ -876,9 +643,7 @@ func (s *AuthSuite) TestRemoveUserProvidingOwnEmail(c *check.C) {
 			{"name": "user", "value": u.Email},
 		},
 	}, eventtest.HasEvent)
-	users := repositorytest.Users()
-	sort.Strings(users)
-	c.Assert(users, check.DeepEquals, []string{s.user.Email})
+
 }
 
 func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
@@ -902,9 +667,6 @@ func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
 			{"name": "user", "value": u.Email},
 		},
 	}, eventtest.HasEvent)
-	users := repositorytest.Users()
-	sort.Strings(users)
-	c.Assert(users, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *AuthSuite) TestRemoveAnotherUserNoPermission(c *check.C) {

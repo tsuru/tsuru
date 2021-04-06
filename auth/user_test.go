@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"context"
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
@@ -13,8 +12,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -31,7 +28,6 @@ func (s *S) TestCreateUser(c *check.C) {
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Email, check.Equals, u.Email)
-	c.Assert(repositorytest.Users(), check.DeepEquals, []string{u.Email})
 }
 
 func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail(c *check.C) {
@@ -102,147 +98,6 @@ func (s *S) TestDeleteUser(c *check.C) {
 	user, err := GetUserByEmail(u.Email)
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 	c.Assert(user, check.IsNil)
-	c.Assert(repositorytest.Users(), check.HasLen, 0)
-}
-
-func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Name: "some-key", Body: "my-key"}
-	err = u.AddKey(key, false)
-	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{key})
-}
-
-func (s *S) TestAddKeyEmptyName(c *check.C) {
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Body: "my-key"}
-	err = u.AddKey(key, false)
-	c.Assert(err, check.Equals, authTypes.ErrInvalidKey)
-}
-
-func (s *S) TestAddDuplicatedKey(c *check.C) {
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Name: "my-key", Body: "other-key"}
-	err = u.AddKey(key, false)
-	c.Assert(err, check.IsNil)
-	err = u.AddKey(key, false)
-	c.Assert(err, check.Equals, repository.ErrKeyAlreadyExists)
-}
-
-func (s *S) TestAddKeyDuplicatedForce(c *check.C) {
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Name: "some-key", Body: "my-key"}
-	err = u.AddKey(key, false)
-	c.Assert(err, check.IsNil)
-	newKey := repository.Key{Name: "some-key", Body: "my-new-key"}
-	err = u.AddKey(newKey, true)
-	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{newKey})
-}
-
-func (s *S) TestAddKeyDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Name: "my-key", Body: "other-key"}
-	err = u.AddKey(key, false)
-	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
-}
-
-func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
-	key := repository.Key{Body: "my-key", Name: "the-key"}
-	u := &User{Email: "shineon@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	err = repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, key)
-	c.Assert(err, check.IsNil)
-	err = u.RemoveKey(repository.Key{Name: "the-key"})
-	c.Assert(err, check.IsNil)
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(context.TODO(), u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.HasLen, 0)
-}
-
-func (s *S) TestRemoveUnknownKey(c *check.C) {
-	u := &User{Email: "shine@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	err = u.RemoveKey(repository.Key{Body: "my-key"})
-	c.Assert(err, check.Equals, repository.ErrKeyNotFound)
-}
-
-func (s *S) TestRemoveKeyDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	key := repository.Key{Name: "my-key", Body: "other-key"}
-	err = u.RemoveKey(key)
-	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
-}
-
-func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
-	u := User{
-		Email:    "wolverine@xmen.com",
-		Password: "123456",
-	}
-	newKeys := []repository.Key{{Name: "key1", Body: "superkey"}, {Name: "key2", Body: "hiperkey"}}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, newKeys[0])
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(context.TODO(), u.Email, newKeys[1])
-	keys, err := u.ListKeys()
-	c.Assert(err, check.IsNil)
-	expected := map[string]string{"key1": "superkey", "key2": "hiperkey"}
-	c.Assert(keys, check.DeepEquals, expected)
-}
-
-func (s *S) TestListKeysRepositoryManagerFailure(c *check.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	err = repository.Manager().RemoveUser(context.TODO(), u.Email)
-	c.Assert(err, check.IsNil)
-	keys, err := u.ListKeys()
-	c.Assert(keys, check.HasLen, 0)
-	c.Assert(err.Error(), check.Equals, "user not found")
-}
-
-func (s *S) TestListKeysDisabled(c *check.C) {
-	config.Set("repo-manager", "none")
-	defer config.Set("repo-manager", "fake")
-	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	keys, err := u.ListKeys()
-	c.Assert(err, check.Equals, authTypes.ErrKeyDisabled)
-	c.Assert(keys, check.IsNil)
 }
 
 func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {

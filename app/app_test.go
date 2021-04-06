@@ -29,13 +29,10 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -46,7 +43,6 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -105,34 +101,12 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "repository not found")
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 	appVersion, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Count, check.Not(check.Equals), 0)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
-}
-
-func (s *S) TestDeleteWithoutUnits(c *check.C) {
-	app := App{Name: "x4", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	a, err := GetByName(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	Delete(context.TODO(), a, evt, "")
-	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
 func (s *S) TestDeleteSwappedApp(c *check.C) {
@@ -322,8 +296,6 @@ func (s *S) TestCreateApp(c *check.C) {
 	env := retrievedApp.Envs()
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppAlreadyExists(c *check.C) {
@@ -365,8 +337,6 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, s.defaultPlan)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
@@ -422,8 +392,6 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
-	_, err = repository.Manager().GetRepository(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
@@ -545,16 +513,6 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expected)
 	_, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestCreateAppRepositoryManagerFailure(c *check.C) {
-	repository.Manager().CreateRepository(context.TODO(), "otherapp", nil)
-	a := App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.NotNil)
-	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
 }
 
 func (s *S) TestBindAndUnbindUnit(c *check.C) {
@@ -1166,81 +1124,10 @@ func (s *S) TestUpdateNodeStatusUnrelatedProvError(c *check.C) {
 	c.Assert(nodeData.Checks, check.HasLen, 1)
 }
 
-func (s *S) TestGrantAccess(c *check.C) {
-	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	app := App{Name: "app-name", Platform: "django", Teams: []string{"acid-rain", "zito"}}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
-	c.Assert(err, check.IsNil)
-	err = app.Grant(&s.team)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Teams, check.DeepEquals, []string{"acid-rain", "zito", s.team.Name})
-	grants, err := repositorytest.Granted(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{user.Email})
-}
-
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name}}
 	err := a.Grant(&s.team)
 	c.Assert(err, check.Equals, ErrAlreadyHaveAccess)
-}
-
-func (s *S) TestRevokeAccess(c *check.C) {
-	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	team := authTypes.Team{Name: "abcd"}
-	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(context.TODO(), app.Name, user.Email)
-	c.Assert(err, check.IsNil)
-	err = app.Revoke(&s.team)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
-	c.Assert(err, check.IsNil)
-	_, found := app.findTeam(&s.team)
-	c.Assert(found, check.Equals, false)
-	grants, err := repositorytest.Granted(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.HasLen, 0)
-}
-
-func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
-	team := authTypes.Team{Name: "abcd"}
-	user, _ := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	}, permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, team.Name),
-	})
-	app := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name, team.Name}}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
-	c.Assert(err, check.IsNil)
-	err = repository.Manager().GrantAccess(context.TODO(), app.Name, user.Email)
-	c.Assert(err, check.IsNil)
-	err = app.Revoke(&team)
-	c.Assert(err, check.IsNil)
-	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
-	c.Assert(err, check.IsNil)
-	_, found := app.findTeam(&team)
-	c.Assert(found, check.Equals, false)
-	grants, err := repositorytest.Granted(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(grants, check.DeepEquals, []string{user.Email})
 }
 
 func (s *S) TestRevokeAccessDoesntLeaveOrphanApps(c *check.C) {
@@ -2709,10 +2596,9 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	expected := map[string]interface{}{
-		"name":       "name",
-		"platform":   "Framework",
-		"repository": "git@" + repositorytest.ServerHost + ":name.git",
-		"teams":      []interface{}{"myteam"},
+		"name":     "name",
+		"platform": "Framework",
+		"teams":    []interface{}{"myteam"},
 		"units": []interface{}{
 			map[string]interface{}{
 				"Address":     unitAddress,
@@ -2806,7 +2692,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 
-	repository.Manager().CreateRepository(context.TODO(), "name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false, Provisioner: "autoscaleProv"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -2837,12 +2722,11 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
 	expected := map[string]interface{}{
-		"name":       "name",
-		"platform":   "Framework",
-		"repository": "git@" + repositorytest.ServerHost + ":name.git",
-		"teams":      []interface{}{"team1"},
-		"units":      []interface{}{},
-		"ip":         "name.fakerouter.com",
+		"name":     "name",
+		"platform": "Framework",
+		"teams":    []interface{}{"team1"},
+		"units":    []interface{}{},
+		"ip":       "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
 				"Domain":   "name-web.cluster.local",
@@ -2902,70 +2786,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
-func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
-	app := App{
-		Name:        "name",
-		Platform:    "Framework",
-		Teams:       []string{"team1"},
-		CName:       []string{"name.mycompany.com"},
-		Owner:       "appOwner",
-		Deploys:     7,
-		Pool:        "pool1",
-		Description: "description",
-		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
-		TeamOwner:   "myteam",
-		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
-		Tags:        []string{},
-	}
-	err := routertest.FakeRouter.AddBackend(context.TODO(), &app)
-	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
-		"name":        "name",
-		"platform":    "Framework",
-		"repository":  "",
-		"teams":       []interface{}{"team1"},
-		"units":       []interface{}{},
-		"ip":          "name.fakerouter.com",
-		"cname":       []interface{}{"name.mycompany.com"},
-		"owner":       "appOwner",
-		"deploys":     float64(7),
-		"pool":        "pool1",
-		"description": "description",
-		"teamowner":   "myteam",
-		"lock":        s.zeroLock,
-		"plan": map[string]interface{}{
-			"name":     "myplan",
-			"memory":   float64(64),
-			"swap":     float64(128),
-			"cpushare": float64(100),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-			},
-		},
-		"router":     "fake",
-		"routeropts": map[string]interface{}{},
-		"routers": []interface{}{
-			map[string]interface{}{
-				"name":      "fake",
-				"address":   "name.fakerouter.com",
-				"addresses": nil,
-				"type":      "fake",
-				"opts":      map[string]interface{}{},
-			},
-		},
-		"tags":        []interface{}{},
-		"provisioner": "fake",
-	}
-	data, err := app.MarshalJSON()
-	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
-	err = json.Unmarshal(data, &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
-}
-
 func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	provisiontest.ProvisionerInstance.PrepareFailure("Units", fmt.Errorf("my err"))
 	app := App{
@@ -2977,7 +2797,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	expected := map[string]interface{}{
 		"name":        "name",
 		"platform":    "",
-		"repository":  "",
 		"teams":       nil,
 		"units":       []interface{}{},
 		"ip":          "name.fakerouter.com",
@@ -3024,7 +2843,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
-	repository.Manager().CreateRepository(context.TODO(), "name", nil)
 	opts := pool.AddPoolOptions{Name: "test", Default: false}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -3048,7 +2866,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 	expected := map[string]interface{}{
 		"name":        "name",
 		"platform":    "Framework:v1",
-		"repository":  "git@" + repositorytest.ServerHost + ":name.git",
 		"teams":       []interface{}{"team1"},
 		"units":       []interface{}{},
 		"ip":          "name.fakerouter.com",

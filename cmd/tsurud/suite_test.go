@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	check "gopkg.in/check.v1"
 )
 
@@ -28,7 +27,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
-	repositorytest.Reset()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
