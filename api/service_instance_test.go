@@ -31,7 +31,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -66,7 +65,6 @@ func (s *ServiceInstanceSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 	routertest.FakeRouter.Reset()
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")

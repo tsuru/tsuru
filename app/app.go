@@ -39,7 +39,6 @@ import (
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/registry"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/service"
@@ -218,7 +217,6 @@ func (app *App) Units() ([]provision.Unit, error) {
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
 	var errMsgs []string
-	repo, _ := repository.Manager().GetRepository(app.ctx, app.Name)
 	result := make(map[string]interface{})
 	result["name"] = app.Name
 	result["platform"] = app.Platform
@@ -250,7 +248,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
 	}
-	result["repository"] = repo.ReadWriteURL
 	plan := map[string]interface{}{
 		"name":     app.Plan.Name,
 		"memory":   app.Plan.Memory,
@@ -340,8 +337,7 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 // Creating a new app is a process composed of the following steps:
 //
 //       1. Save the app in the database
-//       2. Create the git repository using the repository manager
-//       3. Provision the app using the provisioner
+//       2. Provision the app using the provisioner
 func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if app.ctx == nil {
 		app.ctx = ctx
@@ -389,7 +385,6 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		&insertApp,
 		&createAppToken,
 		&exportEnvironmentsAction,
-		&createRepository,
 		&provisionApp,
 		&addRouterBackend,
 	}
@@ -720,10 +715,6 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	err = repository.Manager().RemoveRepository(ctx, appName)
-	if err != nil {
-		logErr("Unable to remove app from repository manager", err)
-	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	err = AuthScheme.AppLogout(ctx, token)
 	if err != nil {
@@ -997,21 +988,12 @@ func (app *App) Grant(team *authTypes.Team) error {
 	if err != nil {
 		return err
 	}
-	users, err := auth.ListUsersWithPermissions(permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, team.Name),
-	})
+
 	if err != nil {
 		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
 		return err
 	}
-	for _, user := range users {
-		err = repository.Manager().GrantAccess(app.ctx, app.Name, user.Email)
-		if err != nil {
-			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
-			return err
-		}
-	}
+
 	return nil
 }
 
@@ -1036,35 +1018,6 @@ func (app *App) Revoke(team *authTypes.Team) error {
 	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
 	if err != nil {
 		return err
-	}
-	users, err := auth.ListUsersWithPermissions(permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxTeam, team.Name),
-	})
-	if err != nil {
-		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
-		return err
-	}
-	for _, user := range users {
-		perms, err := user.Permissions()
-		if err != nil {
-			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
-			return err
-		}
-		canDeploy := permission.CheckFromPermList(perms, permission.PermAppDeploy,
-			append(permission.Contexts(permTypes.CtxTeam, app.Teams),
-				permission.Context(permTypes.CtxApp, app.Name),
-				permission.Context(permTypes.CtxPool, app.Pool),
-			)...,
-		)
-		if canDeploy {
-			continue
-		}
-		err = repository.Manager().RevokeAccess(app.ctx, app.Name, user.Email)
-		if err != nil {
-			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
-			return err
-		}
 	}
 	return nil
 }

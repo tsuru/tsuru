@@ -5,19 +5,15 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
 
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -175,94 +171,6 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
-func deployableApps(u *auth.User, rolesCache map[string]*permission.Role) ([]string, error) {
-	var perms []permission.Permission
-	for _, roleData := range u.Roles {
-		role := rolesCache[roleData.Name]
-		if role == nil {
-			foundRole, err := permission.FindRole(roleData.Name)
-			if err != nil {
-				return nil, err
-			}
-			role = &foundRole
-			rolesCache[roleData.Name] = role
-		}
-		perms = append(perms, role.PermissionsFor(roleData.ContextValue)...)
-	}
-	contexts := permission.ContextsFromListForPermission(perms, permission.PermAppDeploy)
-	if len(contexts) == 0 {
-		return nil, nil
-	}
-	filter := appFilterByContext(contexts, nil)
-	apps, err := app.List(context.TODO(), filter)
-	if err != nil {
-		return nil, err
-	}
-	appNames := make([]string, len(apps))
-	for i := range apps {
-		appNames[i] = apps[i].GetName()
-	}
-	return appNames, nil
-}
-
-func syncRepositoryApps(ctx context.Context, user *auth.User, beforeApps []string, roleCache map[string]*permission.Role) error {
-	err := user.Reload()
-	if err != nil {
-		return err
-	}
-	afterApps, err := deployableApps(user, roleCache)
-	if err != nil {
-		return err
-	}
-	afterMap := map[string]struct{}{}
-	for _, a := range afterApps {
-		afterMap[a] = struct{}{}
-	}
-	manager := repository.Manager()
-	for _, a := range beforeApps {
-		var err error
-		if _, ok := afterMap[a]; !ok {
-			err = manager.RevokeAccess(ctx, a, user.Email)
-		}
-		if err != nil {
-			log.Errorf("error revoking gandalf access for app %s, user %s: %s", a, user.Email, err)
-		}
-	}
-	for _, a := range afterApps {
-		err := manager.GrantAccess(ctx, a, user.Email)
-		if err != nil {
-			log.Errorf("error granting gandalf access for app %s, user %s: %s", a, user.Email, err)
-		}
-	}
-	return nil
-
-}
-
-func runWithPermSync(ctx context.Context, users []auth.User, callback func() error) error {
-	usersMap := make(map[*auth.User][]string)
-	roleCache := make(map[string]*permission.Role)
-	for i := range users {
-		u := &users[i]
-		apps, err := deployableApps(u, roleCache)
-		if err != nil {
-			return err
-		}
-		usersMap[u] = apps
-	}
-	err := callback()
-	if err != nil {
-		return err
-	}
-	roleCache = make(map[string]*permission.Role)
-	for u, apps := range usersMap {
-		err = syncRepositoryApps(ctx, u, apps, roleCache)
-		if err != nil {
-			log.Errorf("unable to sync gandalf repositories updating permissions: %s", err)
-		}
-	}
-	return nil
-}
-
 // title: add permissions
 // path: /roles/{name}/permissions
 // method: POST
@@ -273,7 +181,6 @@ func runWithPermSync(ctx context.Context, users []auth.User, callback func() err
 //   401: Unauthorized
 //   409: Permission not allowed
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdatePermissionAdd) {
 		return permission.ErrUnauthorized
 	}
@@ -293,14 +200,10 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	users, err := auth.ListUsersWithRole(roleName)
-	if err != nil {
-		return err
-	}
-	err = runWithPermSync(ctx, users, func() error {
-		permissions, _ := InputValues(r, "permission")
-		return role.AddPermissions(permissions...)
-	})
+
+	permissions, _ := InputValues(r, "permission")
+	err = role.AddPermissions(permissions...)
+
 	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -330,7 +233,6 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //   401: Unauthorized
 //   404: Not found
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdatePermissionRemove) {
 		return permission.ErrUnauthorized
 	}
@@ -357,14 +259,8 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		}
 		return err
 	}
-	users, err := auth.ListUsersWithRole(roleName)
-	if err != nil {
-		return err
-	}
-	err = runWithPermSync(ctx, users, func() error {
-		return role.RemovePermissions(permName)
-	})
-	return err
+
+	return role.RemovePermissions(permName)
 }
 
 func canUseRole(t auth.Token, roleName, contextValue string) error {
@@ -404,7 +300,6 @@ func canUseRole(t auth.Token, roleName, contextValue string) error {
 //   401: Unauthorized
 //   404: Role not found
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
@@ -430,10 +325,8 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	err = runWithPermSync(ctx, []auth.User{*user}, func() error {
-		return user.AddRole(roleName, contextValue)
-	})
-	return err
+
+	return user.AddRole(roleName, contextValue)
 }
 
 // title: dissociate role from user
@@ -445,7 +338,6 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //   401: Unauthorized
 //   404: Role not found
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
 	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
@@ -471,10 +363,8 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	err = runWithPermSync(ctx, []auth.User{*user}, func() error {
-		return user.RemoveRole(roleName, contextValue)
-	})
-	return err
+
+	return user.RemoveRole(roleName, contextValue)
 }
 
 type permissionSchemeData struct {

@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -55,7 +54,6 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
-	repositorytest.Reset()
 	s.team = &authTypes.Team{Name: "superteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "quotauser", permission.Permission{
 		Scheme:  permission.PermAppAdminQuota,

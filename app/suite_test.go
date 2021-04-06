@@ -23,8 +23,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -146,7 +144,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("docker:router", "fake")
 	s.provisioner.Reset()
-	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	s.defaultPlan = appTypes.Plan{
@@ -160,7 +157,6 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"

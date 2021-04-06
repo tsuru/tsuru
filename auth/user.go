@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"context"
 	"crypto"
 	"crypto/rand"
 	_ "crypto/sha256"
@@ -19,7 +18,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -117,11 +115,6 @@ func (u *User) Create() error {
 	if err != nil {
 		return err
 	}
-	err = u.createOnRepositoryManager()
-	if err != nil {
-		u.Delete()
-		return err
-	}
 	err = u.AddRolesForEvent(permTypes.RoleEventUserCreate, "")
 	if err != nil {
 		log.Errorf("unable to add default roles during user creation for %q: %s", u.Email, err)
@@ -139,10 +132,7 @@ func (u *User) Delete() error {
 	if err != nil {
 		log.Errorf("failed to remove user %q from the database: %s", u.Email, err)
 	}
-	err = repository.Manager().RemoveUser(context.TODO(), u.Email)
-	if err != nil {
-		log.Errorf("failed to remove user %q from the repository manager: %s", u.Email, err)
-	}
+
 	return nil
 }
 
@@ -153,46 +143,6 @@ func (u *User) Update() error {
 	}
 	defer conn.Close()
 	return conn.Users().Update(bson.M{"email": u.Email}, u)
-}
-
-func (u *User) AddKey(key repository.Key, force bool) error {
-	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
-		if key.Name == "" {
-			return authTypes.ErrInvalidKey
-		}
-		err := mngr.AddKey(context.TODO(), u.Email, key)
-		if err == repository.ErrKeyAlreadyExists && force {
-			return mngr.UpdateKey(context.TODO(), u.Email, key)
-		}
-		return err
-	}
-	return authTypes.ErrKeyDisabled
-}
-
-func (u *User) RemoveKey(key repository.Key) error {
-	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
-		return mngr.RemoveKey(context.TODO(), u.Email, key)
-	}
-	return authTypes.ErrKeyDisabled
-}
-
-func (u *User) ListKeys() (map[string]string, error) {
-	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
-		keys, err := mngr.ListKeys(context.TODO(), u.Email)
-		if err != nil {
-			return nil, err
-		}
-		keysMap := make(map[string]string, len(keys))
-		for _, key := range keys {
-			keysMap[key.Name] = key.Body
-		}
-		return keysMap, nil
-	}
-	return nil, authTypes.ErrKeyDisabled
-}
-
-func (u *User) createOnRepositoryManager() error {
-	return repository.Manager().CreateUser(context.TODO(), u.Email)
 }
 
 func (u *User) ShowAPIKey() (string, error) {

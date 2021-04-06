@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -73,7 +72,6 @@ func (s *EventSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 	var err error
 	routertest.FakeRouter.Reset()
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)

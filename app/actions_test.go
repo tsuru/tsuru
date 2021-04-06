@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/quota"
@@ -38,10 +37,6 @@ func (s *S) TestCreateAppTokenName(c *check.C) {
 
 func (s *S) TestExportEnvironmentsName(c *check.C) {
 	c.Assert(exportEnvironmentsAction.Name, check.Equals, "export-environments")
-}
-
-func (s *S) TestCreateRepositoryName(c *check.C) {
-	c.Assert(createRepository.Name, check.Equals, "create-repository")
 }
 
 func (s *S) TestProvisionAppName(c *check.C) {
@@ -244,52 +239,6 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 
 func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
 	c.Assert(exportEnvironmentsAction.MinParams, check.Equals, 1)
-}
-
-func (s *S) TestCreateRepositoryForward(c *check.C) {
-	app := App{Name: "someapp", Teams: []string{s.team.Name}}
-	ctx := action.FWContext{Params: []interface{}{&app}}
-	result, err := createRepository.Forward(ctx)
-	a, ok := result.(*App)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Name, check.Equals, app.Name)
-	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestCreateRepositoryForwardAppPointer(c *check.C) {
-	app := App{Name: "someapp", Teams: []string{s.team.Name}}
-	ctx := action.FWContext{Params: []interface{}{&app}}
-	result, err := createRepository.Forward(ctx)
-	a, ok := result.(*App)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Name, check.Equals, app.Name)
-	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"something"}}
-	_, err := createRepository.Forward(ctx)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
-}
-
-func (s *S) TestCreateRepositoryBackward(c *check.C) {
-	app := App{Name: "someapp"}
-	err := repository.Manager().CreateRepository(context.TODO(), app.Name, nil)
-	c.Assert(err, check.IsNil)
-	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
-	createRepository.Backward(ctx)
-	_, err = repository.Manager().GetRepository(context.TODO(), app.Name)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "repository not found")
-}
-
-func (s *S) TestCreateRepositoryMinParams(c *check.C) {
-	c.Assert(createRepository.MinParams, check.Equals, 1)
 }
 
 func (s *S) TestProvisionAppForward(c *check.C) {

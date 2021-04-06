@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -58,10 +57,6 @@ func createToken(c *check.C) auth.Token {
 	return token
 }
 
-func (s *PlatformSuite) reset() {
-	repositorytest.Reset()
-}
-
 func (s *PlatformSuite) SetUpSuite(c *check.C) {
 	s.testServer = RunServer(true)
 }
@@ -76,12 +71,10 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	provision.DefaultProvisioner = "fake-extensible"
-	s.reset()
 	servicemock.SetMockService(&s.mockService)
 }
 
 func (s *PlatformSuite) TearDownTest(c *check.C) {
-	s.reset()
 	s.conn.Close()
 }
 

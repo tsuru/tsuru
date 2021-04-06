@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -76,7 +75,6 @@ func (s *S) SetUpTest(c *check.C) {
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
-	repositorytest.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {

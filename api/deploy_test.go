@@ -31,8 +31,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -77,7 +75,6 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 func (s *DeploySuite) reset() {
 	s.provisioner.Reset()
 	routertest.FakeRouter.Reset()
-	repositorytest.Reset()
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
@@ -115,9 +112,6 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	user, err := s.token.User()
-	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(context.TODO(), user.Email)
 	config.Set("docker:router", "fake")
 
 	servicemock.SetMockService(&s.mockService)
@@ -509,7 +503,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 			"origin":     "git",
 			"build":      false,
 			"rollback":   false,
-			"message":    "msg1",
+			"message":    "",
 		},
 		EndCustomData: map[string]interface{}{
 			"image": "tsuru/app-" + a.Name + ":v1",

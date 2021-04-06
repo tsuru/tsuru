@@ -350,9 +350,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", "Delete", "/users/tokens", AuthorizationRequiredHandler(logout))
 	m.Add("1.0", "Put", "/users/password", AuthorizationRequiredHandler(changePassword))
 	m.Add("1.0", "Delete", "/users", AuthorizationRequiredHandler(removeUser))
-	m.Add("1.0", "Get", "/users/keys", AuthorizationRequiredHandler(listKeys))
-	m.Add("1.0", "Post", "/users/keys", AuthorizationRequiredHandler(addKeyToUser))
-	m.Add("1.0", "Delete", "/users/keys/{key}", AuthorizationRequiredHandler(removeKeyFromUser))
 	m.Add("1.0", "Get", "/users/api-key", AuthorizationRequiredHandler(showAPIToken))
 	m.Add("1.0", "Post", "/users/api-key", AuthorizationRequiredHandler(regenerateAPIToken))
 

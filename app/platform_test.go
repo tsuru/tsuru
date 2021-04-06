@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	registrytest "github.com/tsuru/tsuru/registry/testing"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -46,7 +45,6 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)
 	builder.DefaultBuilder = "fake"
-	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.PlatformImage.OnNewImage = func(name string) (string, error) {

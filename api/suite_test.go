@@ -28,8 +28,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -114,7 +112,6 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:fake-tls:type", "fake-tls")
 	routertest.FakeRouter.Reset()
 	routertest.TLSRouter.Reset()
-	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -129,7 +126,6 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	s.setupMocks()
 	servicemanager.App, err = app.AppService()
 	c.Assert(err, check.IsNil)

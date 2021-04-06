@@ -33,8 +33,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
@@ -115,7 +113,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-	repositorytest.Reset()
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nScheme
@@ -131,9 +128,7 @@ func (s *S) SetUpTest(c *check.C) {
 	pool.ResetCache()
 	config.Set("docker:api-timeout", 2)
 	iaas.ResetAll()
-	repositorytest.Reset()
 	queue.ResetQueue()
-	repository.Manager().CreateUser(context.TODO(), s.user.Email)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err := s.p.Initialize()
 	c.Assert(err, check.IsNil)

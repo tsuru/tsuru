@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -46,7 +45,6 @@ var _ = check.Suite(&ProvisionSuite{})
 
 func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
-	repositorytest.Reset()
 	var err error
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")

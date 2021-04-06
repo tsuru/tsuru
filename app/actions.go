@@ -21,14 +21,11 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -215,55 +212,6 @@ var exportEnvironmentsAction = action.Action{
 				ShouldRestart: true,
 			})
 		}
-	},
-	MinParams: 1,
-}
-
-// createRepository creates a repository for the app in the repository manager.
-var createRepository = action.Action{
-	Name: "create-repository",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
-		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
-		default:
-			return nil, errors.New("First parameter must be *App.")
-		}
-		allowedPerms := []permission.Permission{
-			{
-				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permTypes.CtxGlobal, ""),
-			},
-			{
-				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permTypes.CtxPool, app.Pool),
-			},
-		}
-		for _, t := range app.GetTeams() {
-			allowedPerms = append(allowedPerms, permission.Permission{
-				Scheme:  permission.PermAppDeploy,
-				Context: permission.Context(permTypes.CtxTeam, t.Name),
-			})
-		}
-		users, err := auth.ListUsersWithPermissions(allowedPerms...)
-		if err != nil {
-			return nil, err
-		}
-		userNames := make([]string, len(users))
-		for i := range users {
-			userNames[i] = users[i].Email
-		}
-		manager := repository.Manager()
-		err = manager.CreateRepository(ctx.Context, app.Name, userNames)
-		if err != nil {
-			return nil, err
-		}
-		return app, err
-	},
-	Backward: func(ctx action.BWContext) {
-		app := ctx.FWResult.(*App)
-		repository.Manager().RemoveRepository(ctx.Context, app.Name)
 	},
 	MinParams: 1,
 }
