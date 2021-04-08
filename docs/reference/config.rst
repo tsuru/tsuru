@@ -1026,6 +1026,8 @@ docker:healing:events_collection
 Collection name in mongodb used to store information about triggered healing
 events. Defaults to ``healing_events``.
 
+.. _config_healthcheck_max_time:
+
 docker:healthcheck:max-time
 +++++++++++++++++++++++++++
 
