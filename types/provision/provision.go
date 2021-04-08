@@ -23,19 +23,20 @@ type TsuruYamlRestartHooks struct {
 }
 
 type TsuruYamlHealthcheck struct {
-	Path            string            `json:"path"`
-	Method          string            `json:"method"`
-	Status          int               `json:"status"`
-	Scheme          string            `json:"scheme"`
-	Command         []string          `json:"command,omitempty" bson:",omitempty"`
-	Headers         map[string]string `json:"headers,omitempty" bson:",omitempty"`
-	Match           string            `json:"match,omitempty" bson:",omitempty"`
-	RouterBody      string            `json:"router_body,omitempty" yaml:"router_body" bson:"router_body,omitempty"`
-	UseInRouter     bool              `json:"use_in_router,omitempty" yaml:"use_in_router" bson:"use_in_router,omitempty"`
-	ForceRestart    bool              `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
-	AllowedFailures int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
-	IntervalSeconds int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
-	TimeoutSeconds  int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
+	Path                 string            `json:"path"`
+	Method               string            `json:"method"`
+	Status               int               `json:"status"`
+	Scheme               string            `json:"scheme"`
+	Command              []string          `json:"command,omitempty" bson:",omitempty"`
+	Headers              map[string]string `json:"headers,omitempty" bson:",omitempty"`
+	Match                string            `json:"match,omitempty" bson:",omitempty"`
+	RouterBody           string            `json:"router_body,omitempty" yaml:"router_body" bson:"router_body,omitempty"`
+	UseInRouter          bool              `json:"use_in_router,omitempty" yaml:"use_in_router" bson:"use_in_router,omitempty"`
+	ForceRestart         bool              `json:"force_restart,omitempty" yaml:"force_restart" bson:"force_restart,omitempty"`
+	AllowedFailures      int               `json:"allowed_failures,omitempty" yaml:"allowed_failures" bson:"allowed_failures,omitempty"`
+	IntervalSeconds      int               `json:"interval_seconds,omitempty" yaml:"interval_seconds" bson:"interval_seconds,omitempty"`
+	TimeoutSeconds       int               `json:"timeout_seconds,omitempty" yaml:"timeout_seconds" bson:"timeout_seconds,omitempty"`
+	DeployTimeoutSeconds int               `json:"deploy_timeout_seconds,omitempty" yaml:"deploy_timeout_seconds" bson:"deploy_timeout_seconds,omitempty"`
 }
 
 type TsuruYamlKubernetesConfig struct {
