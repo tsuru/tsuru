@@ -80,15 +80,16 @@ Example on how you can configure a HTTP base health check in your yaml file:
     healthcheck:
       path: /healthcheck
       scheme: http
-      method: GET
       headers:
         Host: test.com
         X-Custom-Header: xxx
       allowed_failures: 0
       interval_seconds: 10
       timeout_seconds: 60
+      deploy_timeout_seconds: 180
 
       // Ignored in kubernetes provisioner pools:
+      method: GET
       status: 200
       use_in_router: false
       match: .*OKAY.*
@@ -122,13 +123,9 @@ Example of a command based healthcheck (kubernetes only):
   regular expression uses `Go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
-* ``healthcheck:command``: Exclusive to the ``kubernetes``
-  provisioner. A command to execute inside the unit container.
-  Exit status of zero is considered healthy and non-zero is unhealthy.
-  This option defaults to an empty string array. If ``healthcheck:path``
-  is set, this option will be ignored.
 * ``healthcheck:allowed_failures``: The number of allowed failures before that
-  the health check consider the application as unhealthy. Defaults to 0.
+  the health check consider the application as unhealthy. Defaults to 3 on
+  kubernetes pools and 0 on docker pools.
 * ``healthcheck:use_in_router``: Whether this health check path should also be
   registered in the router. This field is ignored in ``kubernetes``
   provisioner, which constantly calls the healthcheck every
@@ -140,6 +137,17 @@ Example of a command based healthcheck (kubernetes only):
   use ``healthcheck:command`` if a more complex healthcheck is necessary.
 * ``healthcheck:timeout_seconds``: The timeout for each healthcheck call in
   seconds. Defaults to 60 seconds.
+* ``healthcheck:deploy_timeout_seconds``: The timeout for the first successful
+  healthcheck response after the application process has started during a new
+  deploy. During this time a new healthcheck attempt will be made every
+  ``healthcheck:interval_seconds``. If the healthcheck is not successful in
+  this time the deploy will be aborted and rolled back. Defaults to
+  :ref:`max-time global config <config_healthcheck_max_time>`.
+* ``healthcheck:command``: Exclusive to the ``kubernetes`` provisioner. A
+  command to execute inside the unit container. Exit status of zero is
+  considered healthy and non-zero is unhealthy. This option defaults to an
+  empty string array. If ``healthcheck:path`` is set, this option will be
+  ignored.
 * ``healthcheck:interval_seconds``: Exclusive to the ``kubernetes``
   provisioner. The interval in seconds between each active healthcheck call if
   ``use_in_router`` is set to true. Defaults to 10 seconds.
