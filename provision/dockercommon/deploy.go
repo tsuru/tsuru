@@ -7,9 +7,11 @@ package dockercommon
 import (
 	"archive/tar"
 	"io"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 const (
@@ -68,4 +70,23 @@ func UserForContainer() (username string, uid *int64) {
 		}
 	}
 	return username, uid
+}
+
+func DeployHealthcheckTimeout(tsuruYamlData provTypes.TsuruYamlData) time.Duration {
+	const defaultWaitSeconds = 120
+
+	minWaitSeconds, _ := config.GetInt("docker:healthcheck:max-time")
+	if minWaitSeconds <= 0 {
+		minWaitSeconds = defaultWaitSeconds
+	}
+
+	var waitTime int
+	if tsuruYamlData.Healthcheck != nil {
+		waitTime = tsuruYamlData.Healthcheck.DeployTimeoutSeconds
+	}
+	if waitTime < minWaitSeconds {
+		waitTime = minWaitSeconds
+	}
+
+	return time.Duration(waitTime) * time.Second
 }

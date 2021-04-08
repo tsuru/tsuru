@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -56,11 +56,7 @@ func runHealthcheck(cont *container.Container, yamlData provTypes.TsuruYamlData,
 			return err
 		}
 	}
-	maxWaitTime, _ := config.GetInt("docker:healthcheck:max-time")
-	if maxWaitTime == 0 {
-		maxWaitTime = 120
-	}
-	maxWaitTime = maxWaitTime * int(time.Second)
+	maxWaitTime := dockercommon.DeployHealthcheckTimeout(yamlData)
 	sleepTime := 3 * time.Second
 	startedTime := time.Now()
 	url := fmt.Sprintf("%s://%s:%s/%s", scheme, cont.HostAddr, cont.HostPort, path)
@@ -110,7 +106,7 @@ func runHealthcheck(cont *container.Container, yamlData provTypes.TsuruYamlData,
 			fmt.Fprintf(w, " ---> healthcheck successful(%s)\n", cont.ShortID())
 			return nil
 		}
-		if time.Since(startedTime) > time.Duration(maxWaitTime) {
+		if time.Since(startedTime) > maxWaitTime {
 			return lastError
 		}
 		fmt.Fprintf(w, " ---> %s. Trying again in %s\n", lastError.Error(), sleepTime)
