@@ -947,13 +947,7 @@ paths:
         description: App name.
     get:
       operationId: AppRouterList
-      description: adds a router to app
-      parameters:
-        - name: router
-          required: true
-          in: body
-          schema:
-            $ref: "#/definitions/AppRouterList"
+      description: list routers from an app
       consumes:
         - application/json
       produces:
@@ -961,6 +955,8 @@ paths:
       responses:
         "200":
           description: Routers list
+          schema:
+            $ref: "#/definitions/AppRouterList"
         "204":
           description: No content
         "401":
@@ -3699,6 +3695,8 @@ definitions:
   VolumeBindData:
     type: object
     properties:
+      app:
+        type: string
       mountpoint:
         type: string
       norestart:
