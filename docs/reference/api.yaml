@@ -1077,14 +1077,56 @@ paths:
         type: string
         minLength: 1
         description: App name.
-      - name: router
+      - name: team
         in: path
         required: true
         type: string
         minLength: 1
-        description: Router name
+        description: Team name
     put:
+      operationId: AppTeamGrant
+      description: grant access to a team
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Access granted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Grant already exists
+      tags:
+        - app
+      security:
+        - Bearer: []
     delete:
+      operationId: AppTeamRevoke
+      description: grant access to a team
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Access revoked
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+        "404":
+          description: App or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.9/apps/{app}/units/autoscale:
     parameters:
       - name: app
