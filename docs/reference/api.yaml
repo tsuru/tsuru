@@ -187,7 +187,6 @@ paths:
         - service
       security:
         - Bearer: []
-
   /1.0/services/{service}/instances/{instance}/{app}:
     parameters:
       - name: service
@@ -250,6 +249,7 @@ paths:
         - service
       security:
         - Bearer: []
+
   /1.7/brokers:
     get:
       operationId: ServiceBrokerList
@@ -361,6 +361,7 @@ paths:
         - service
       security:
         - Bearer: []
+
   /1.0/plans:
     get:
       operationId: PlanList
@@ -437,6 +438,7 @@ paths:
         - plan
       security:
         - Bearer: []
+
   /1.0/apps:
     get:
       operationId: AppList
@@ -616,6 +618,74 @@ paths:
           description: Not found
           schema:
             $ref: '#/definitions/ErrorMessage'
+      tags:
+        - app
+      security:
+        - Bearer: []
+  /1.0/apps/{app}/cname:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppCnameAdd
+      description: adds a cname to app
+      parameters:
+        - name: cname
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppCName"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Cname added
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    delete:
+      operationId: AppCnameDelete
+      description: remove cname from app
+      parameters:
+        - name: cname
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppCName"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Cname removed
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
       tags:
         - app
       security:
@@ -867,6 +937,217 @@ paths:
           description: App not found
           schema:
             $ref: "#/definitions/ErrorMessage"
+  /1.5/apps/{app}/routers:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    get:
+      operationId: AppRouterList
+      description: adds a router to app
+      parameters:
+        - name: router
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppRouterList"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Routers list
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    post:
+      operationId: AppRouterAdd
+      description: adds a router to app
+      parameters:
+        - name: router
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppRouter"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Router added
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+  /1.5/apps/{app}/routers/{router}:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+      - name: router
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Router name
+    put:
+      operationId: AppRouterUpdate
+      description: update a router
+      parameters:
+        - name: router
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppRouter"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Router updated
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    delete:
+      operationId: AppRouterDelete
+      description: Delete a tsuru app.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: App removed.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+  /1.0/apps/{app}/teams/{team}:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+      - name: router
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Router name
+    put:
+    delete:
+  /1.9/apps/{app}/units/autoscale:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AutoScaleAdd
+      description: Add new unit autoscale spec.
+      parameters:
+        - name: autoScaleSpec
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AutoScaleSpec"
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: AutoScale updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    delete:
+      operationId: AutoScaleRemove
+      description: Remove unit autoscale spec.
+      parameters:
+        - name: process
+          required: true
+          in: query
+          type: string
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: AutoScale removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.0/platforms/{platform}:
     parameters:
       - name: platform
@@ -2816,69 +3097,6 @@ paths:
         - auth
       security:
         - Bearer: []
-  /1.9/apps/{app}/units/autoscale:
-    parameters:
-      - name: app
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: App name.
-    post:
-      operationId: AutoScaleAdd
-      description: Add new unit autoscale spec.
-      parameters:
-        - name: autoScaleSpec
-          in: body
-          required: true
-          schema:
-            $ref: "#/definitions/AutoScaleSpec"
-      consumes:
-        - application/json
-      responses:
-        "200":
-          description: AutoScale updated
-        "400":
-          description: Invalid data
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "404":
-          description: App not found
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-        - app
-      security:
-        - Bearer: []
-    delete:
-      operationId: AutoScaleRemove
-      description: Remove unit autoscale spec.
-      parameters:
-        - name: process
-          required: true
-          in: query
-          type: string
-      consumes:
-        - application/json
-      responses:
-        "200":
-          description: AutoScale removed
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-        "404":
-          description: App not found
-          schema:
-            $ref: "#/definitions/ErrorMessage"
-      tags:
-        - app
-      security:
-        - Bearer: []
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
@@ -2894,6 +3112,40 @@ definitions:
         type: string
       version:
         type: integer
+  AppCName:
+    description: Application CNames
+    type: object
+    properties:
+      cname:
+        type: array
+        items:
+          type: string
+  AppRouter:
+    description: Application Router
+    type: object
+    properties:
+      name:
+        type: string
+      opts:
+        type: object
+      address:
+        type: string
+      addresses:
+        type: array
+        items:
+          type: string
+      type:
+        type: string
+      status:
+        type: string
+      status-detail:
+        type: string
+  AppRouterList:
+    description: Application Router
+    type: array
+    items:
+      type: object
+      $ref: "#/definitions/AppRouter"
   DynamicRouter:
     description: Dynamic router
     type: object
