@@ -24,13 +24,312 @@ paths:
             type: array
             items:
               type: object
-              $ref: "#/definitions/Service"
+              $ref: "#/definitions/ServiceList"
         "204":
           description: No content
       tags:
         - service
       security:
         - Bearer: []
+    post:
+      operationId: ServiceCreate
+      description: Creates a new service
+      parameters:
+        - name: service
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/Service"
+      consumes:
+       - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Services
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+    get:
+      operationId: ServiceInfo
+      description: Information on a service
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Service removed
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/ServiceInfo"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    put:
+      operationId: ServiceUpdate
+      description: Updates a service
+      parameters:
+        - name: service
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/Service"
+      consumes:
+       - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Service Updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: ServiceDelete
+      description: Delete a service
+      consumes:
+       - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Service removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{name}/plans:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+    get:
+      operationId: ServicePlans
+      description: Plans for a service
+      parameters:
+        - name: pool
+          in: query
+          type: string
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Service plans
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/ServicePlan"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{name}/doc:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+    get:
+      operationId: ServiceDoc
+      description: Documentation on a service
+      produces:
+        - text/plain
+      responses:
+        "200":
+          description: Service docs
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    put:
+      operationId: ServiceAddDoc
+      description: Documentation on a service
+      parameters:
+        - name: doc
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/ServiceDoc"
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      responses:
+        "200":
+          description: Service docs added
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{service}/team/{team}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name
+    put:
+      operationId: ServiceGrantTeam
+      description: Grant access to team for the service
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Team access granted
+        "400":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Team already has access to this service
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: ServiceRevokeTeam
+      description: Revoke access to team for the service
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Team access revoked
+        "400":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Team does not has access to this service
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+
   /1.0/services/instances:
     get:
       operationId: InstancesList
@@ -49,7 +348,7 @@ paths:
             type: array
             items:
               type: object
-              $ref: "#/definitions/Service"
+              $ref: "#/definitions/ServiceList"
         "204":
           description: No content
         "401":
@@ -3310,6 +3609,58 @@ definitions:
     description: Error message.
     type: string
   Service:
+    type: object
+    properties:
+      id:
+        type: string
+      username:
+        type: string
+      password:
+        type: string
+      endpoint:
+        type: string
+      multi-cluster:
+        type: string
+      team:
+        type: string
+  ServiceInfo:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      pool:
+        type: string
+      teams:
+        type: array
+        items:
+          type: string
+      planname:
+        type: string
+      apps:
+        type: array
+        items:
+          type: string
+      servicename:
+        type: string
+      info:
+        type: object
+      teamowner:
+        type: string
+  ServicePlan:
+    type: object
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+  ServiceDoc:
+    type: object
+    properties:
+      doc:
+        type: string
+  ServiceList:
     type: object
     properties:
       service:
