@@ -13,6 +13,7 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -139,34 +140,9 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: OK
-//   400: Invalid data
-//   403: Forbidden
-//   404: Not found
+//   410: Gone
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
-	defer writer.Stop()
-	fmt.Fprint(w, "Saving the difference between the old and new code\n")
-	appName := r.URL.Query().Get(":appname")
-	diff := InputValue(r, "customdata")
-	instance, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	if t.GetAppName() != app.InternalAppName {
-		canDiffDeploy := permission.Check(t, permission.PermAppReadDeploy, contextsForApp(instance)...)
-		if !canDiffDeploy {
-			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
-		}
-	}
-	evt, err := event.GetRunning(appTarget(appName), permission.PermAppDeploy.FullName())
-	if err != nil {
-		return err
-	}
-	return evt.SetOtherCustomData(map[string]string{
-		"diff": diff,
-	})
+	return &errors.HTTP{Code: http.StatusGone, Message: "diff deploy is deprecated, this call does nothing"}
 }
 
 // title: rollback
