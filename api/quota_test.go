@@ -372,7 +372,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "limit", "value": "40"},
 		},
 	}, eventtest.HasEvent)
@@ -432,7 +432,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 			Owner:  s.token.GetUserName(),
 			Kind:   "app.admin.quota",
 			StartCustomData: []map[string]interface{}{
-				{"name": ":appname", "value": app.Name},
+				{"name": ":app", "value": app.Name},
 				{"name": "limit", "value": value},
 			},
 			ErrorMatches: `Invalid limit`,
@@ -482,7 +482,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "limit", "value": "3"},
 		},
 		ErrorMatches: `New limit is less than the current allocated value`,

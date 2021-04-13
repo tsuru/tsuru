@@ -170,7 +170,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: rollback
-// path: /apps/{appname}/deploy/rollback
+// path: /apps/{app}/deploy/rollback
 // method: POST
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
@@ -181,7 +181,7 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	appName := r.URL.Query().Get(":appname")
+	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
@@ -309,7 +309,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: rebuild
-// path: /apps/{appname}/deploy/rebuild
+// path: /apps/{app}/deploy/rebuild
 // method: POST
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
@@ -320,7 +320,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   404: Not found
 func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	appName := r.URL.Query().Get(":appname")
+	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
@@ -375,7 +375,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: rollback update
-// path: /apps/{appname}/deploy/rollback/update
+// path: /apps/{app}/deploy/rollback/update
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
@@ -384,7 +384,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Forbidden
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	appName := r.URL.Query().Get(":appname")
+	appName := r.URL.Query().Get(":app")
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{

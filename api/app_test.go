@@ -1567,7 +1567,7 @@ func (s *S) TestUpdateAppWithDescriptionOnly(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "description", "value": "my app description"},
 		},
 	}, eventtest.HasEvent)
@@ -1602,7 +1602,7 @@ func (s *S) TestUpdateAppPlatformOnly(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "platform", "value": "heimerdinger"},
 		},
 	}, eventtest.HasEvent)
@@ -1641,7 +1641,7 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "platform", "value": "myplatform:v1"},
 		},
 	}, eventtest.HasEvent)
@@ -1677,7 +1677,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 			{"name": "tag", "value": []string{"tag1", "tag2", "tag3"}},
 			{"name": "tags.0", "value": "tag0"},
 		},
@@ -1739,7 +1739,7 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
 }
@@ -1781,7 +1781,7 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 		Owner:  token.GetUserName(),
 		Kind:   "app.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":appname", "value": a.Name},
+			{"name": ":app", "value": a.Name},
 		},
 	}, eventtest.HasEvent)
 }

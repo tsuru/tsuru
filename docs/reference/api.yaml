@@ -249,6 +249,100 @@ paths:
         - service
       security:
         - Bearer: []
+  /1.0/services/{service}/instances/{instance}/status:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+    get:
+      operationId: ServiceInstanceStatus
+      description: Status for service instance
+      produces:
+        - text/plain
+      responses:
+        "200":
+          description: Instance has been unbound from the app.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service instance or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.0/services/{service}/instances/permission/{instance}/{team}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
+    put:
+      operationId: ServiceInstanceGrant
+      description: Grant access to team for this service instance
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Access granted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service instance or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: ServiceInstanceRevoke
+      description: Revoke access to team for this service instance
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Access revoked
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Service instance or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
 
   /1.7/brokers:
     get:

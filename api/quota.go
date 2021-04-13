@@ -102,7 +102,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 }
 
 // title: application quota
-// path: /apps/{appname}/quota
+// path: /apps/{app}/quota
 // method: GET
 // produce: application/json
 // responses:
@@ -110,7 +110,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //   401: Unauthorized
 //   404: Application not found
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	a, err := getAppFromContext(r.URL.Query().Get(":appname"), r)
+	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 // title: update application quota
-// path: /apps/{appname}/quota
+// path: /apps/{app}/quota
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
@@ -137,7 +137,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   403: Limit lower than allocated
 //   404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	appName := r.URL.Query().Get(":appname")
+	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err

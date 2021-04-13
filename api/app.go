@@ -475,7 +475,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	tags, _ := InputValues(r, "tag")
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
 	updateData.Tags = append(updateData.Tags, tags...) // for compatibility
-	appName := r.URL.Query().Get(":appname")
+	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
 		return err
