@@ -2304,7 +2304,7 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		if statusRouter, ok := r.(router.StatusRouter); ok {
 			status, detail, stErr := statusRouter.GetBackendStatus(app.ctx, app)
 			if stErr != nil {
-				multi.Add(err)
+				multi.Add(stErr)
 				continue
 			}
 			routers[i].Status = string(status)
