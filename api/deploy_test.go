@@ -1257,24 +1257,11 @@ func (s *DeploySuite) TestDiffDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	evt, err := event.New(&event.Opts{
-		Target:  appTarget(a.Name),
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "Saving the difference between the old and new code\n")
-	err = evt.Done(nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.deploy",
-	}, eventtest.HasEvent)
+	c.Assert(recorder.Code, check.Equals, http.StatusGone)
+	c.Assert(recorder.Body.String(), check.Equals, "diff deploy is deprecated, this call does nothing\n")
 }
 
 func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
@@ -1312,10 +1299,8 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := `Saving the difference between the old and new code
-`
-	c.Assert(recorder.Body.String(), check.Equals, expected+permission.ErrUnauthorized.Error()+"\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusGone)
+	c.Assert(recorder.Body.String(), check.Equals, "diff deploy is deprecated, this call does nothing\n")
 }
 
 func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {

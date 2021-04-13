@@ -5,7 +5,6 @@
 package api
 
 import (
-	"context"
 	stdcontext "context"
 	"math/rand"
 	"net/http"
@@ -124,7 +123,7 @@ func (s *S) SetUpTest(c *check.C) {
 	app.AuthScheme = nativeScheme
 	s.Pool = "test1"
 	opts := pool.AddPoolOptions{Name: "test1", Default: true}
-	err = pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(stdcontext.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	s.setupMocks()
 	servicemanager.App, err = app.AppService()
