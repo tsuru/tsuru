@@ -3962,6 +3962,9 @@ definitions:
       teamOwner:
         type: string
         description: Team that owns the app.
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
   AppCreateResponse:
     description: Newly created app information.
     type: object

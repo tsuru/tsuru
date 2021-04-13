@@ -352,6 +352,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		RouterOpts:  ia.RouterOpts,
 		Router:      ia.Router,
 		Tags:        ia.Tags,
+		Metadata:    ia.Metadata,
 		Quota:       quota.UnlimitedQuota,
 	}
 	tags, _ := InputValues(r, "tag")

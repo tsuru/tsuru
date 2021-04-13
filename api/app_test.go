@@ -1230,6 +1230,53 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateAppWithMetadata(c *check.C) {
+	s.setupMockForCreateApp(c, "zend")
+	data, err := url.QueryUnescape("name=someapp&platform=zend&metadata.annotations.0.name=a&metadata.annotations.0.value=b")
+	c.Assert(err, check.IsNil)
+
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+
+	var obtained map[string]string
+	expected := map[string]string{
+		"status": "success",
+		"ip":     "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
+	c.Assert(obtained, check.DeepEquals, expected)
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Metadata.Annotations, check.DeepEquals, []appTypes.MetadataItem{
+		{Name: "a", Value: "b", Delete: false},
+	})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("someapp"),
+		Kind:   "app.create",
+		Owner:  token.GetUserName(),
+		StartCustomData: []map[string]interface{}{
+			{"name": "name", "value": "someapp"},
+			{"name": "platform", "value": "zend"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestCreateAppWithPool(c *check.C) {
 	platName := "zend"
 	s.setupMockForCreateApp(c, platName)
