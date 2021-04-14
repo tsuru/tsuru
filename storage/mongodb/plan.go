@@ -94,7 +94,7 @@ func (s *PlanStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Plan
 	}
 	defer conn.Close()
 	var plans []plan
-	err = plansCollection(conn).Find(query).All(&plans)
+	err = plansCollection(conn).Find(query).Sort("_id").All(&plans)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
