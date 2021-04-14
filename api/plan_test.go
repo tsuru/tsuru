@@ -46,6 +46,9 @@ func (s *S) TestPlanAdd(c *check.C) {
 			{"name": "cpushare", "value": "100"},
 		},
 	}, eventtest.HasEvent)
+
+	fill := map[string]interface{}{}
+	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
 }
 
 func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {

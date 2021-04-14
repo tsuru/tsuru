@@ -71,6 +71,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
+		return json.NewEncoder(w).Encode(plan)
 	}
 	return err
 }
