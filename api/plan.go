@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // title: plan create
@@ -129,21 +131,13 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 }
 
 func getSize(formValue string) int64 {
-	const OneKbInBytes = 1024
-	value, err := strconv.ParseInt(formValue, 10, 64)
-	if err != nil {
-		unit := formValue[len(formValue)-1:]
-		size, _ := strconv.ParseInt(formValue[0:len(formValue)-1], 10, 64)
-		switch unit {
-		case "K":
-			return size * OneKbInBytes
-		case "M":
-			return size * OneKbInBytes * OneKbInBytes
-		case "G":
-			return size * OneKbInBytes * OneKbInBytes * OneKbInBytes
-		default:
-			return 0
-		}
+	if strings.HasSuffix(formValue, "K") ||
+		strings.HasSuffix(formValue, "M") ||
+		strings.HasSuffix(formValue, "G") {
+		formValue = formValue + "i"
 	}
-	return value
+
+	qtdy, _ := resource.ParseQuantity(formValue)
+	v, _ := qtdy.AsInt64()
+	return v
 }

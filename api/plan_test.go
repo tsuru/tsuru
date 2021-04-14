@@ -242,3 +242,14 @@ func (s *S) TestPlanRemoveInvalid(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
+
+func (s *S) TestPlanGetSize(c *check.C) {
+	c.Check(getSize("invalid"), check.Equals, int64(0))
+	c.Check(getSize(""), check.Equals, int64(0))
+	c.Check(getSize("10"), check.Equals, int64(10))
+	c.Check(getSize("10K"), check.Equals, int64(10240))
+	c.Check(getSize("10M"), check.Equals, int64(10485760))
+	c.Check(getSize("10G"), check.Equals, int64(10737418240))
+	c.Check(getSize("10Mi"), check.Equals, int64(10485760))
+	c.Check(getSize("10Gi"), check.Equals, int64(10737418240))
+}
