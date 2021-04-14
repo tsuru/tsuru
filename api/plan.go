@@ -131,6 +131,10 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 }
 
 func getSize(formValue string) int64 {
+	value, err := strconv.ParseInt(formValue, 10, 64)
+	if err == nil {
+		return value
+	}
 	if strings.HasSuffix(formValue, "K") ||
 		strings.HasSuffix(formValue, "M") ||
 		strings.HasSuffix(formValue, "G") {

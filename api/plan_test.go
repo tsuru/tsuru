@@ -247,6 +247,7 @@ func (s *S) TestPlanGetSize(c *check.C) {
 	c.Check(getSize("invalid"), check.Equals, int64(0))
 	c.Check(getSize(""), check.Equals, int64(0))
 	c.Check(getSize("10"), check.Equals, int64(10))
+	c.Check(getSize("9223372036854775807"), check.Equals, int64(9223372036854775807))
 	c.Check(getSize("10K"), check.Equals, int64(10240))
 	c.Check(getSize("10M"), check.Equals, int64(10485760))
 	c.Check(getSize("10G"), check.Equals, int64(10737418240))
