@@ -31,6 +31,8 @@ import (
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	cpuShare, _ := strconv.Atoi(InputValue(r, "cpushare"))
+	cpuMilli, _ := strconv.Atoi(InputValue(r, "cpumilli"))
+
 	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
 	memory := getSize(InputValue(r, "memory"))
 	swap := getSize(InputValue(r, "swap"))
@@ -39,6 +41,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Memory:   memory,
 		Swap:     swap,
 		CpuShare: cpuShare,
+		CPUMilli: cpuMilli,
 		Default:  isDefault,
 	}
 	allowed := permission.Check(t, permission.PermPlanCreate)
