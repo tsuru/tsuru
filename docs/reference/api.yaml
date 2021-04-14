@@ -2832,6 +2832,7 @@ paths:
         description: Volume name.
       - name: BindData
         in: body
+        required: true
         schema:
           $ref: "#/definitions/VolumeBindData"
     post:
