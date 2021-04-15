@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,6 +11,37 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 )
+
+// title: units autoscale info
+// path: /apps/{app}/units/autoscale
+// method: GET
+// produce: application/json
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
+func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+
+	canRead := permission.Check(t, permission.PermAppRead,
+		contextsForApp(&a)...,
+	)
+	if !canRead {
+		return permission.ErrUnauthorized
+	}
+
+	info, err := a.AutoScaleInfo()
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(&info)
+}
 
 // title: add unit auto scale
 // path: /apps/{app}/units/autoscale

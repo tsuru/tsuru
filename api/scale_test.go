@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,46 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
+
+func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
+	provision.DefaultProvisioner = "autoscaleProv"
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	autoscaleSpec := provision.AutoScaleSpec{
+		Process:    "p1",
+		AverageCPU: "300m",
+		MaxUnits:   10,
+		MinUnits:   2,
+	}
+	err = a.AutoScale(autoscaleSpec)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	request, err := http.NewRequest("GET", "/apps/myapp/units/autoscale", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+
+	var autoscales []provision.AutoScaleSpec
+	err = json.Unmarshal(recorder.Body.Bytes(), &autoscales)
+	c.Assert(err, check.IsNil)
+	c.Assert(autoscales, check.HasLen, 1)
+	c.Assert(autoscales[0], check.DeepEquals, autoscaleSpec)
+}
 
 func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {

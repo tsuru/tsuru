@@ -1524,6 +1524,35 @@ paths:
         type: string
         minLength: 1
         description: App name.
+    get:
+      operationId: AutoScaleInfo
+      description: List autoscales for app.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: AutoScale info
+          schema:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/AutoScaleSpec"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
     post:
       operationId: AutoScaleAdd
       description: Add new unit autoscale spec.
@@ -1579,6 +1608,7 @@ paths:
         - app
       security:
         - Bearer: []
+
   /1.0/platforms/{platform}:
     parameters:
       - name: platform
