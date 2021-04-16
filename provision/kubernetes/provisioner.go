@@ -440,7 +440,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 	}
 	var units []provision.Unit
 	for _, pod := range pods {
-		if isTerminating(pod) || isEvicted(pod) {
+		if isTerminating(pod) || isEvicted(pod) || isFailedByNodeAffinity(pod) {
 			continue
 		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
@@ -559,6 +559,10 @@ func isTerminating(pod apiv1.Pod) bool {
 
 func isEvicted(pod apiv1.Pod) bool {
 	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "evicted"
+}
+
+func isFailedByNodeAffinity(pod apiv1.Pod) bool {
+	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "nodeaffinity"
 }
 
 func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
