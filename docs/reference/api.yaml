@@ -4467,6 +4467,8 @@ definitions:
         type: string
       alias:
         type: string
+      public:
+        type: boolean
   EnvSetData:
     description: Data sent to the environment set endpoint.
     type: object
