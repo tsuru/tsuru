@@ -7,7 +7,17 @@ package api
 // Envs represents the configuration of an environment variable data
 // for the remote API
 type Envs struct {
-	Envs      []struct{ Name, Value, Alias string }
-	NoRestart bool
-	Private   bool
+	Envs        []Env
+	ManagedBy   string `json:"managedBy"`
+	NoRestart   bool
+	Private     bool
+	PruneUnused bool `json:"pruneUnused"`
+}
+
+type Env struct {
+	Name      string
+	Value     string
+	Alias     string
+	Private   *bool  `json:"private,omitempty"`
+	ManagedBy string `json:"-" bson:"managedBy"`
 }

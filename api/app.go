@@ -967,7 +967,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 // title: set envs
 // path: /apps/{app}/env
 // method: POST
-// consume: application/x-www-form-urlencoded
+// consume: application/json
 // produce: application/x-json-stream
 // responses:
 //   200: Envs updated
@@ -996,11 +996,13 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	var toExclude []string
-	if e.Private {
-		for i := 0; i < len(e.Envs); i++ {
+
+	for i := 0; i < len(e.Envs); i++ {
+		if (e.Envs[i].Private != nil && *e.Envs[i].Private) || e.Private {
 			toExclude = append(toExclude, fmt.Sprintf("Envs.%d.Value", i))
 		}
 	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
@@ -1016,11 +1018,20 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	variables := []bind.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
+		private := false
+		if v.Private != nil {
+			private = *v.Private
+		}
+		// Global private override individual private definitions
+		if e.Private {
+			private = true
+		}
 		variables = append(variables, bind.EnvVar{
-			Name:   v.Name,
-			Value:  v.Value,
-			Public: !e.Private,
-			Alias:  v.Alias,
+			Name:      v.Name,
+			Value:     v.Value,
+			Public:    !private,
+			Alias:     v.Alias,
+			ManagedBy: e.ManagedBy,
 		})
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -1030,6 +1041,8 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	evt.SetLogWriter(writer)
 	err = a.SetEnvs(bind.SetEnvArgs{
 		Envs:          variables,
+		ManagedBy:     e.ManagedBy,
+		PruneUnused:   e.PruneUnused,
 		ShouldRestart: !e.NoRestart,
 		Writer:        evt,
 	})

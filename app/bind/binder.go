@@ -12,10 +12,11 @@ import (
 
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Alias  string `json:"alias"`
-	Public bool   `json:"public"`
+	Name      string `json:"name"`
+	Value     string `json:"value"`
+	Alias     string `json:"alias"`
+	Public    bool   `json:"public"`
+	ManagedBy string `json:"managedBy,omitempty"`
 }
 
 type ServiceEnvVar struct {
@@ -56,6 +57,8 @@ type App interface {
 type SetEnvArgs struct {
 	Envs          []EnvVar
 	Writer        io.Writer
+	ManagedBy     string
+	PruneUnused   bool
 	ShouldRestart bool
 }
 
