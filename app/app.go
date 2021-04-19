@@ -1577,30 +1577,47 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if len(setEnvs.Envs) == 0 {
 		return nil
 	}
+
 	for _, env := range setEnvs.Envs {
 		err := validateEnv(env.Name)
 		if err != nil {
 			return err
 		}
 	}
+
 	if setEnvs.Writer != nil {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
 	}
+
+	if setEnvs.PruneUnused {
+		for name, value := range app.Env {
+			ok := envInSet(name, setEnvs.Envs)
+			// only prune variables managed by requested
+			if !ok && value.ManagedBy == setEnvs.ManagedBy {
+				delete(app.Env, name)
+			}
+		}
+	}
+
 	for _, env := range setEnvs.Envs {
 		app.setEnv(env)
 	}
+
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
 	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
 	if err != nil {
 		return err
 	}
+
 	if setEnvs.ShouldRestart {
 		return app.restartIfUnits(setEnvs.Writer)
 	}
+
 	return nil
 }
 
@@ -2713,4 +2730,13 @@ func (app *App) RemoveAutoScale(process string) error {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
 	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
+}
+
+func envInSet(envName string, envs []bind.EnvVar) bool {
+	for _, e := range envs {
+		if e.Name == envName {
+			return true
+		}
+	}
+	return false
 }

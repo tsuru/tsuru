@@ -3277,8 +3277,8 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3315,15 +3315,140 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestSetEnvPublicAndPrivate(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
+			{Name: "MY_DB_HOST", Value: "otherhost", Private: func(b bool) *bool { return &b }(false)},
+		},
+		ManagedBy: "terraform",
+	}
+
+	v, err := json.Marshal(d)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewReader(v)
+
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	app, err := app.GetByName(context.TODO(), "black-dog")
+	c.Assert(err, check.IsNil)
+
+	expected1 := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected1)
+
+	expected2 := bind.EnvVar{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"}
+	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, expected2)
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "*****"},
+			{"name": "Envs.1.Name", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Value", "value": "otherhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
+	a := app.App{
+		Name:      "black-dog",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env: map[string]bind.EnvVar{
+			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
+			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
+			{Name: "MY_DB_HOST", Value: "otherhost", Private: func(b bool) *bool { return &b }(false)},
+		},
+		PruneUnused: true,
+		ManagedBy:   "terraform",
+	}
+
+	v, err := json.Marshal(d)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewReader(v)
+
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	app, err := app.GetByName(context.TODO(), "black-dog")
+	c.Assert(err, check.IsNil)
+
+	_, hasOldVar := app.Env["OLDENV"]
+	c.Assert(hasOldVar, check.Equals, false)
+
+	expected0 := bind.EnvVar{Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"}
+	c.Assert(app.Env["CMDLINE"], check.DeepEquals, expected0)
+
+	expected1 := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected1)
+
+	expected2 := bind.EnvVar{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"}
+	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, expected2)
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "*****"},
+			{"name": "Envs.1.Name", "value": "MY_DB_HOST"},
+			{"name": "Envs.1.Value", "value": "otherhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "", "MY_DB_HOST"},
-			{"MY_DB_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "", Alias: "MY_DB_HOST"},
+			{Name: "MY_DB_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3376,8 +3501,8 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3420,8 +3545,8 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3450,9 +3575,9 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 		},
 	}, eventtest.HasEvent)
 	d = apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "127.0.0.1", ""},
-			{"DATABASE_PORT", "6379", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "127.0.0.1", Alias: ""},
+			{Name: "DATABASE_PORT", Value: "6379", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   true,
@@ -3497,9 +3622,9 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
-			{"DATABASE_USER", "root", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
+			{Name: "DATABASE_USER", Value: "root", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3552,8 +3677,8 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "http://foo.com:8080", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3599,8 +3724,8 @@ func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: true,
 		Private:   false,
@@ -3689,8 +3814,8 @@ func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
 	})
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"DATABASE_HOST", "localhost", ""},
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3714,8 +3839,8 @@ func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
-		Envs: []struct{ Name, Value, Alias string }{
-			{"INVALID ENV", "value", ""},
+		Envs: []apiTypes.Env{
+			{Name: "INVALID ENV", Value: "value", Alias: ""},
 		},
 	}
 	v, err := form.EncodeToValues(&d)

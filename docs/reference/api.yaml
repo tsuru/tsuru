@@ -1108,8 +1108,6 @@ paths:
       responses:
         "200":
           description: Envs updated
-          schema:
-            $ref: "#/definitions/EnvSetResponse"
         "400":
           description: Invalid data
           schema:
@@ -1142,7 +1140,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: "#/definitions/Env"
+              $ref: "#/definitions/EnvVar"
         "401":
           description: Unauthorized
           schema:
@@ -4457,7 +4455,7 @@ definitions:
         type: string
       delete:
         type: boolean
-  Env:
+  EnvVar:
     description: Environment variable.
     type: object
     properties:
@@ -4469,6 +4467,22 @@ definitions:
         type: string
       public:
         type: boolean
+      managedBy:
+        type: string
+  Env:
+    description: Environment variable.
+    type: object
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+      alias:
+        type: string
+      private:
+        type: boolean
+      managedBy:
+        type: string
   EnvSetData:
     description: Data sent to the environment set endpoint.
     type: object
@@ -4479,22 +4493,14 @@ definitions:
           type: object
           $ref: "#/definitions/Env"
         minItems: 1
+      managedBy:
+        type: string
+      pruneUnused:
+        type: boolean
       norestart:
         type: boolean
       private:
         type: boolean
-  EnvSetResponse:
-    description: Environment variables response information.
-    type: array
-    items:
-      type: object
-      properties:
-        name:
-          type: string
-        value:
-          type: string
-        public:
-          type: boolean
   Unit:
     type: object
     properties:
