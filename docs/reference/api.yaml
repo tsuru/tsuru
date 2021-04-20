@@ -4603,7 +4603,6 @@ definitions:
     type: object
     properties:
       units:
-        required: true
         type: string
       process:
         type: string
