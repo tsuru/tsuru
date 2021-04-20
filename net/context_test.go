@@ -10,13 +10,17 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+type TsuruForTesting string
+
+const TSURU_STR = TsuruForTesting("tsuru")
+
 func (s *S) TestWithoutCancelContext(c *check.C) {
-	ctx := context.WithValue(context.Background(), "tsuru", "power")
+	ctx := context.WithValue(context.Background(), TSURU_STR, "power")
 	ctx, cancel := context.WithCancel(ctx)
 	ctx = WithoutCancel(ctx)
 	cancel()
 
 	c.Assert(ctx.Err(), check.IsNil)
 	c.Assert(ctx.Done(), check.IsNil)
-	c.Assert(ctx.Value("tsuru"), check.Equals, "power")
+	c.Assert(ctx.Value(TSURU_STR), check.Equals, "power")
 }

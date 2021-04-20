@@ -835,7 +835,7 @@ func (s *S) TestHealerGetNodeStatusData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	healer := newNodeHealer(context.TODO(), nodeHealerArgs{})
 	healer.Shutdown(context.Background())
-	status, err := healer.GetNodeStatusData(node)
+	_, err = healer.GetNodeStatusData(node)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	checks := []provision.NodeCheckResult{
@@ -844,7 +844,7 @@ func (s *S) TestHealerGetNodeStatusData(c *check.C) {
 	}
 	err = healer.UpdateNodeData([]string{node.Address()}, checks)
 	c.Assert(err, check.IsNil)
-	status, err = healer.GetNodeStatusData(node)
+	status, err := healer.GetNodeStatusData(node)
 	c.Assert(err, check.IsNil)
 	c.Assert(status.LastSuccess.IsZero(), check.Equals, false)
 	c.Assert(status.LastUpdate.IsZero(), check.Equals, false)
