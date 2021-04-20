@@ -984,6 +984,10 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		msg := "You must provide the list of environment variables"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
+	if e.PruneUnused && e.ManagedBy == "" {
+		msg := "Prune unused requires a managed-by value"
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -995,8 +999,8 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	var toExclude []string
 
+	var toExclude []string
 	for i := 0; i < len(e.Envs); i++ {
 		if (e.Envs[i].Private != nil && *e.Envs[i].Private) || e.Private {
 			toExclude = append(toExclude, fmt.Sprintf("Envs.%d.Value", i))

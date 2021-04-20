@@ -3423,6 +3423,7 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, expected2)
 	c.Assert(recorder.Body.String(), check.Matches,
 		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
+{"Message":".*---- Pruning OLDENV from environment variables ----\\n","Timestamp":".*"}
 `)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -3438,6 +3439,45 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 			{"name": "Private", "value": ""},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetEnvDontPruneWhenMissingManagedBy(c *check.C) {
+	a := app.App{
+		Name:      "black-dog",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env: map[string]bind.EnvVar{
+			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
+			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
+			{Name: "MY_DB_HOST", Value: "otherhost", Private: func(b bool) *bool { return &b }(false)},
+		},
+		PruneUnused: true,
+	}
+
+	v, err := json.Marshal(d)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewReader(v)
+
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
+	c.Assert(recorder.Body.String(), check.Matches,
+		"Prune unused requires a managed-by value\n")
 }
 
 func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
