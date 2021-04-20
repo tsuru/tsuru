@@ -1594,6 +1594,9 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 			ok := envInSet(name, setEnvs.Envs)
 			// only prune variables managed by requested
 			if !ok && value.ManagedBy == setEnvs.ManagedBy {
+				if setEnvs.Writer != nil {
+					fmt.Fprintf(setEnvs.Writer, "---- Pruning %s from environment variables ----\n", name)
+				}
 				delete(app.Env, name)
 			}
 		}
