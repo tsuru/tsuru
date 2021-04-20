@@ -48,9 +48,9 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - uses: actions-contrib/golangci-lint@v1
+    - uses: golangci/golangci-lint-action@v2
       with:
-        golangci_lint_version: v1.31.0
+        version: v1.39.0
       env:
         GOROOT: ""
 
