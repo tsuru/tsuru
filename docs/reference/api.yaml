@@ -511,6 +511,7 @@ paths:
       description: Bind the service instance to app
       parameters:
         - name: bindData
+          required: true
           in: body
           schema:
             $ref: "#/definitions/ServiceInstanceBind"
@@ -532,6 +533,7 @@ paths:
       description: Unbind the service instance from app
       parameters:
         - name: unbindData
+          required: true
           in: body
           schema:
             $ref: "#/definitions/ServiceInstanceUnbind"
@@ -1500,6 +1502,82 @@ paths:
       responses:
         "200":
           description: Access revoked
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+        "404":
+          description: App or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+  /1.0/apps/{app}/units:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    put:
+      operationId: UnitsAdd
+      description: Add units to app
+      parameters:
+        - name: unitsDelta
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/UnitsDelta"
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Access revoked
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+        "404":
+          description: App or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    delete:
+      operationId: UnitsRemove
+      description: Remove units from app
+      parameters:
+        - name: unitsDelta
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/UnitsDelta"
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Access revoked
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
         "401":
           description: Unauthorized
           schema:
@@ -4521,6 +4599,16 @@ definitions:
       address:
         type: object
         $ref: "#/definitions/URL"
+  UnitsDelta:
+    type: object
+    properties:
+      units:
+        required: true
+        type: string
+      process:
+        type: string
+      version:
+        type: string
   Router:
     type: object
     properties:
