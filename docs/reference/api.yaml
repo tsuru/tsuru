@@ -1529,12 +1529,13 @@ paths:
       description: Add units to app
       parameters:
         - name: unitsDelta
-          in: body
           required: true
+          in: body
           schema:
             $ref: "#/definitions/UnitsDelta"
+          description: number of units to add
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       produces:
         - application/x-json-stream
       responses:
@@ -1567,8 +1568,9 @@ paths:
           required: true
           schema:
             $ref: "#/definitions/UnitsDelta"
+          description: number of units to remove
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       produces:
         - application/x-json-stream
       responses:
@@ -4340,6 +4342,11 @@ definitions:
         type: array
         items:
           type: string
+      units:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/Unit"
       ip:
         type: string
       owner:
@@ -4596,10 +4603,22 @@ definitions:
         type: string
       status:
         type: string
+      version:
+        type: integer
+      routable:
+        type: boolean
+        x-go-custom-type: "*bool"
+      ready:
+        type: boolean
+        x-go-custom-type: "*bool"
+      restarts:
+        type: integer
+        x-go-custom-type: "*int"
       address:
         type: object
         $ref: "#/definitions/URL"
   UnitsDelta:
+    description: number of units to add or remove from a process
     type: object
     properties:
       units:
