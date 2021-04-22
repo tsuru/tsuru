@@ -275,6 +275,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["lock"] = app.Lock
 	result["tags"] = app.Tags
 	result["routers"] = routers
+	result["metadata"] = app.Metadata
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
 	}
