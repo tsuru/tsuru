@@ -2664,6 +2664,10 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			},
 		},
 		"tags": []interface{}{"tag a", "tag b"},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      nil,
+		},
 		"volumeBinds": []interface{}{
 			map[string]interface{}{
 				"ID": map[string]interface{}{
@@ -2754,6 +2758,10 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				"memory":   nil,
 			},
 		},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      nil,
+		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
 		"routers": []interface{}{
@@ -2818,6 +2826,10 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 				"memory":   nil,
 			},
 		},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      nil,
+		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{},
 		"routers": []interface{}{
@@ -2860,6 +2872,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		TeamOwner:       "myteam",
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
+		Metadata:        appTypes.Metadata{Labels: []appTypes.MetadataItem{{Name: "label", Value: "value"}}},
 	}
 	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
@@ -2886,6 +2899,10 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"cpumilli": nil,
 				"memory":   nil,
 			},
+		},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      []interface{}{map[string]interface{}{"name": "label", "value": "value"}},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
@@ -3394,7 +3411,11 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			},
 			Pool:       "pool1",
 			RouterOpts: map[string]string{},
-			Tags:       []string{},
+			Metadata: appTypes.Metadata{
+				Labels:      []appTypes.MetadataItem{},
+				Annotations: []appTypes.MetadataItem{},
+			},
+			Tags: []string{},
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
@@ -3418,7 +3439,11 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 				CpuShare: 100,
 				Default:  true,
 			},
-			Pool:       "pool1",
+			Pool: "pool1",
+			Metadata: appTypes.Metadata{
+				Labels:      []appTypes.MetadataItem{},
+				Annotations: []appTypes.MetadataItem{},
+			},
 			RouterOpts: map[string]string{},
 			Tags:       []string{},
 			Routers: []appTypes.AppRouter{
@@ -3476,6 +3501,10 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 			Router:      "fake",
 			RouterOpts:  map[string]string{},
 			Tags:        []string{},
+			Metadata: appTypes.Metadata{
+				Labels:      []appTypes.MetadataItem{},
+				Annotations: []appTypes.MetadataItem{},
+			},
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
