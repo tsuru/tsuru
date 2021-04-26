@@ -28,7 +28,7 @@ application may need to be restarted after a schema change to your database.
 
 ::
 
-    $ tsuru app-restart -a appname
+    $ tsuru app restart -a appname
 
 Checking the status of application units
 ========================================
@@ -37,19 +37,19 @@ Checking the status of application units
 
 ::
 
-    $ tsuru app-info -a appname
+    $ tsuru app info -a appname
 
 Open a shell to the application
 ===============================
 
-You can also use `tsuru app-shell` to open a remote shell to one of the units
+You can also use `tsuru app shell` to open a remote shell to one of the units
 of the application.
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-shell -a appname
+    $ tsuru app shell -a appname
 
 You can also specify the unit ID to connect:
 
@@ -57,4 +57,4 @@ You can also specify the unit ID to connect:
 
 ::
 
-    $ tsuru app-shell -a appname <container-id>
+    $ tsuru app shell -a appname <container-id>

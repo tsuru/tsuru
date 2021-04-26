@@ -6,23 +6,22 @@ Unit states
 ===========
 
 The unit status is the way to know what is happening with a unit. You can use the
-`tsuru app-info -a <appname>` to see the unit status:
+`tsuru app info -a <appname>` to see the unit status:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-info -a tsuru-dashboard
+    $ tsuru app info -a tsuru-dashboard
     Application: tsuru-dashboard
-    Repository: git@localhost:tsuru-dashboard.git
     Platform: python
     ...
     Units: 1
-    +------------+---------+
-    | Unit       | State   |
-    +------------+---------+
-    | 9cf863c2c1 | started |
-    +------------+---------+
+    +---------------------------------------+-------+
+    | Unit                                  | State |
+    +------------------------------------- -+-------+
+    | tsuru-dashboard-web-9cf863c2c1-63c2c1 | ready |
+    +---------------------------------------+-------+
 
 The unit state flow is:
 
@@ -35,18 +34,18 @@ The unit state flow is:
     +----------+                   |                      +---------+
           ^                        |                           ^
           |                        |                           |
-     deploy unit                   |                         stop
+       deploy                      |                         stop
           |                        |                           |
-          +                        v       RegisterUnit        +
-     +---------+  app unit   +----------+  SetUnitStatus  +---------+
-     | created | +---------> | starting | +-------------> | started |
-     +---------+             +----------+                 +---------+
+          +       assigned         v                           +
+     +---------+  to node    +----------+                 +---------+  healthcheck ok   +-------+
+     | created | +---------> | starting | +-------------> | started | +---------------> | ready |
+     +---------+             +----------+                 +---------+                   +-------+
                                    +                         ^ +
                                    |                         | |
-                             SetUnitStatus                   | |
+                                   |                         | |
                                    |                         | |
                                    v                         | |
-                               +-------+     SetUnitStatus   | |
+                               +-------+                     | |
                                | error | +-------------------+ |
                                +-------+ <---------------------+
 
@@ -55,4 +54,5 @@ The unit state flow is:
 * `error`: is the status for units that failed to start, because of an application error.
 * `starting`: is set when the container is started in docker.
 * `started`: is for cases where the unit is up and running.
+* `ready`: is for cases where the unit is up and running and healthcheck is working.
 * `stopped`: is for cases where the unit has been stopped.

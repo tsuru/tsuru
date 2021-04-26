@@ -31,7 +31,7 @@ the Python platform, which can be easily installed with:
 
 ::
 
-    tsuru platform-add python
+    tsuru platform add python
 
 This will install the default Python platform. Please refer to :doc:`add platform </managing/add-platform>`
 for more details.
@@ -46,11 +46,11 @@ Now, lets create the dashboard application:
 
 ::
 
-    tsuru app-create tsuru-dashboard python -t admin
+    tsuru app create tsuru-dashboard python -t admin
 
 This will create an application called tsuru-dashboard which uses the Python platform
 and belongs to the admin team. Please refer to the
-`app-create client reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#create-an-application>`_
+`app create client reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#create-an-application>`_
 for more information.
 
 
@@ -58,19 +58,19 @@ for more information.
 Deploying the dashboard
 -----------------------
 
-There are several ways to deploy an application in tsuru: git push, app-deploy and
-app-deploy using docker images. The easiest way to deploy the dashboard is by using
-app-deploy with its docker image. To do that, simply type:
+There are several ways to deploy an application in tsuru: app deploy and
+app deploy using docker images. The easiest way to deploy the dashboard is by using
+app deploy with its docker image. To do that, simply type:
 
 .. highlight:: bash
 
 ::
 
-    tsuru app-deploy -a tsuru-dashboard -i tsuru/dashboard
+    tsuru app deploy -a tsuru-dashboard -i tsuru/dashboard
 
 This will deploy the docker image `tsuru/dashboard <https://hub.docker.com/r/tsuru/dashboard/>`_
 to the app we just created. Please refer to the
-`app-deploy client reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#deploy>`_
+`app deploy client reference <https://tsuru-client.readthedocs.io/en/latest/reference.html#deploy>`_
 for more information.
 
 Once the deploy finishes, we can run:
@@ -79,7 +79,7 @@ Once the deploy finishes, we can run:
 
 ::
 
-    tsuru app-info -a tsuru-dashboard
+    tsuru app info -a tsuru-dashboard
 
 
 to check it's address and access it on our browser.

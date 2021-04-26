@@ -15,7 +15,7 @@ Users can see which pools are available using the command `tsuru pool-list`:
 
 ::
 
-    $ tsuru pool-list
+    $ tsuru pool list
 
     +---------+--------------+
     | Team    | Pools        |
@@ -23,13 +23,13 @@ Users can see which pools are available using the command `tsuru pool-list`:
     | team1   | pool1, pool2 |
     +---------+--------------+
 
-So, in `app-create`, users can choose the pool using the `-o/--pool pool_name`
+So, in `app create`, users can choose the pool using the `-o/--pool pool_name`
 flag:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-create app_name platform -o pool1
+    $ tsuru app create app_name platform -o pool1
 
 There's no need to specify the pool when the user has access to only one pool.

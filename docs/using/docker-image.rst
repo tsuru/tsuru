@@ -14,13 +14,13 @@ This document is a hands-on guide to deploy a simple Docker Image web applicatio
 Creating the app
 ================
 
-To create an app, you need to use the command `app-create`:
+To create an app, you need to use the command `app create`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform>
 
 For Docker Images, doesn't exist a specific platform, but we can use ``static``! Let's be over creative and develop a hello
 world tutorial-app, let's call it "helloworld":
@@ -29,17 +29,17 @@ world tutorial-app, let's call it "helloworld":
 
 ::
 
-    $ tsuru app-create helloworld static
+    $ tsuru app create helloworld static
 
-To list all available platforms, use the command `platform-list`.
+To list all available platforms, use the command `platform list`.
 
-You can see all your applications using the command  `app-list`:
+You can see all your applications using the command  `app list`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------------------------+--------------------------------+
     | Application | Units State Summary     | Address                        |
     +-------------+-------------------------+--------------------------------+
@@ -132,13 +132,13 @@ Sending the image to registry
 Docker Image deployment
 =======================
 
-After pushing your image to your Docker image registry, you can do the deploy using the command `tsuru app-deploy -i`.
+After pushing your image to your Docker image registry, you can do the deploy using the command `tsuru app deploy -i`.
 
 .. highlight:: bash
 
 ::
 
-    tsuru app-deploy -i registry.myserver.com/image-name -a helloworld
+    tsuru app deploy -i registry.myserver.com/image-name -a helloworld
 
 
 .. note::
@@ -151,12 +151,12 @@ Running the application
 =======================
 
 Now that the app is deployed, you can access it from your browser, getting the
-IP or host listed in ``app-list`` and opening it. For example,
+IP or host listed in ``app list`` and opening it. For example,
 in the list below:
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------------------------+--------------------------------+
     | Application | Units State Summary     | Address                        |
     +-------------+-------------------------+--------------------------------+
@@ -165,7 +165,7 @@ in the list below:
 
 It's done! Now we have a simple Docker image project deployed on tsuru.
 
-Now we can access your app in the URL displayed in `app-list`
+Now we can access your app in the URL displayed in `app list`
 ("helloworld.192.168.50.4.nip.io" in this case).
 
 Going further

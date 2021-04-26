@@ -13,7 +13,7 @@ As an application developer, you can:
 - Write apps in the programming language of your choice
 - Back apps with add-on resources such as SQL and NoSQL databases, including memcached, redis, and many others.
 - Manage apps using the ``tsuru`` command-line tool
-- Deploy apps using Git, ``tsuru app-deploy`` or using docker images directly
+- Deploy apps using local files via ``tsuru app-deploy`` or using docker images directly
 
 Why tsuru?
 ==========
@@ -27,6 +27,10 @@ dependencies in the deployment process.
 Easily create testing, staging, and production versions of your app and deploy
 to them instantly.
 
+Increase developer velocity
+---------------------------
+Let your developers coding and understanding business instead of solving infrastructure problems or understanding big YAML files.
+
 Scaling
 -------
 
@@ -36,7 +40,7 @@ Reliable
 --------
 
 tsuru has a set of tools to make sure that the applications will be always
-available. 
+available.
 
 Open source
 -----------

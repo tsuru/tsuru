@@ -11,7 +11,7 @@ Overview
 
 Pool is used by provisioners to group nodes and know if an application can be
 deployed in these nodes. Users can choose which pool to deploy in `tsuru
-app-create`.
+app create`.
 
 Tsuru has three types of pool: team, public and default.
 
@@ -30,13 +30,13 @@ fallback pool, but with a explicit flag.
 Adding a pool
 -------------
 
-In order to create a pool, you should invoke `tsuru pool-add`:
+In order to create a pool, you should invoke `tsuru pool add`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-add pool1
+    $ tsuru pool add pool1
 
 If you want to create a public pool you can do:
 
@@ -44,7 +44,7 @@ If you want to create a public pool you can do:
 
 ::
 
-    $ tsuru pool-add pool1 -p
+    $ tsuru pool add pool1 -p
 
 If you want a default pool, you can create it with:
 
@@ -52,7 +52,7 @@ If you want a default pool, you can create it with:
 
 ::
 
-    $ tsuru pool-add pool1 -d
+    $ tsuru pool add pool1 -d
 
 You can overwrite default pool by setting the flag `-f`:
 
@@ -60,21 +60,21 @@ You can overwrite default pool by setting the flag `-f`:
 
 ::
 
-    $ tsuru pool-add new-default-pool -d -f
+    $ tsuru pool add new-default-pool -d -f
 
 Adding teams to a pool
 ----------------------
 
-Then you can use `tsuru pool-constraint-set` to add teams to the pool that
+Then you can use `tsuru pool constraint set` to add teams to the pool that
 you've just created:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-constraint-set pool1 team team1 team2 --append
+    $ tsuru pool constraint set pool1 team team1 team2 --append
 
-    $ tsuru pool-constraint-set pool2 team team3 --append
+    $ tsuru pool constraint set pool2 team team3 --append
 
 Listing pools
 -------------
@@ -85,7 +85,7 @@ To list pools you do:
 
 ::
 
-    $ tsuru pool-list
+    $ tsuru pool list
     +-------+-------------+
     | Pools | Teams       |
     +-------+-------------+
@@ -96,56 +96,56 @@ To list pools you do:
 Removing a pool
 ---------------
 
-If you want to remove a pool, use `tsuru pool-remove`:
+If you want to remove a pool, use `tsuru pool remove`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-remove pool1
+    $ tsuru pool remove pool1
 
 
 Removing teams from a pool
 --------------------------
 
-You can remove one or more teams from a pool using the command `tsuru pool-constraint-set`:
+You can remove one or more teams from a pool using the command `tsuru pool constraint set`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-constraint-set pool1 team team1 --blacklist
+    $ tsuru pool constraint set pool1 team team1 --blacklist
 
-    $ tsuru pool-constraint-set pool1 team team1 team2 team3 --blacklist
+    $ tsuru pool constraint set pool1 team team1 team2 team3 --blacklist
 
 Removing services from a pool
 -----------------------------
 
-You can remove one or more services from a pool using the command `tsuru pool-constraint-set`:
+You can remove one or more services from a pool using the command `tsuru pool constraint set`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru pool-constraint-set <pool> service <service1> <service2> <serviceN> --blacklist
+    $ tsuru pool constraint set <pool> service <service1> <service2> <serviceN> --blacklist
 
-    $ tsuru pool-constraint-set dev_pool service mongo_prod mysql_prod --blacklist
+    $ tsuru pool constraint set dev_pool service mongo_prod mysql_prod --blacklist
 
 Moving apps between pools and teams
 -----------------------------------
 
-You can move apps from poolA to poolB and from teamA to teamB even when they dont have permission to see each other's pools, this is made by using `tsuru app-update`:
+You can move apps from poolA to poolB and from teamA to teamB even when they dont have permission to see each other's pools, this is made by using `tsuru app update`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-update -a <app> -t <teamB> -o <poolB>
+    $ tsuru app update -a <app> -t <teamB> -o <poolB>
 
-By default the app will be set to both teams, so teamA can still see the app just in case that the user may have made some mistake. If you wish to remove the old teamA from the app, It's possible using `tsuru app-revoke`:
+By default the app will be set to both teams, so teamA can still see the app just in case that the user may have made some mistake. If you wish to remove the old teamA from the app, It's possible using `tsuru app revoke`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-revoke teamA -a <app>
+    $ tsuru app revoke teamA -a <app>

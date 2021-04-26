@@ -8,7 +8,7 @@ Clusters
 
 Cluster is a concept introduced in tsuru-server 1.2 and allows registering
 existing clusters of external provisioners in tsuru. Currently, external
-clusters can be registered to ``kubernetes`` and ``swarm`` provisioners.
+clusters can be registered to ``kubernetes`` provisioner.
 
 Clusters can either have a default flag or have multiple assigned pool. tsuru
 will use this information to decide which cluster will be used when interacting

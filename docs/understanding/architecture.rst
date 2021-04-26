@@ -20,16 +20,10 @@ Database
 
 The database component is a `MongoDB <https://www.mongodb.org/>`_ server.
 
-Queue/Cache
+Kubernetes
 -----------
 
-The queue and cache component uses `Redis <http://redis.io/>`_.
-
-Gandalf
--------
-
-`Gandalf <https://github.com/tsuru/gandalf>`_ is a REST API to manage Git repositories and users and provides
-access to them over SSH.
+The default provisioner is `Kubernetes <http://kubernetes.io/>`_.
 
 Registry
 --------
@@ -39,4 +33,4 @@ The `Docker registry <https://github.com/docker/docker-registry>`_ is the compon
 Router
 ------
 
-The router component routes traffic to application units (Docker containers).
+The router component routes traffic from users to applications. The recommended implementation of router is `kubernetes-router <https://github.com/tsuru/kubernetes-router>` that manages kubernetes loadbalancers and ingresses.

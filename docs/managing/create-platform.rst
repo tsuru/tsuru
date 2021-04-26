@@ -107,7 +107,7 @@ After creating you platform as a Dockerfile, you can add it to tsuru using the c
 
 ::
 
-    $ tsuru platform-add your-platform-name --dockerfile http://url-to-dockerfile
+    $ tsuru platform add your-platform-name --dockerfile http://url-to-dockerfile
 
 If you push your image to an Docker Registry, you can use:
 
@@ -115,4 +115,4 @@ If you push your image to an Docker Registry, you can use:
 
 ::
 
-    $ tsuru platform-add your-platform-name -i your-user/image-name
+    $ tsuru platform add your-platform-name -i your-user/image-name

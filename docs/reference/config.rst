@@ -280,28 +280,6 @@ smtp:password
 
 The password for authentication within the SMTP server.
 
-Repository configuration
-------------------------
-
-tsuru optionally uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage
-git repositories. Gandalf exposes a REST API for repositories management and
-tsuru needs information about the Gandalf HTTP server endpoint.
-
-repo-manager
-++++++++++++
-
-``repo-manager`` represents the repository manager that tsuru-server should use.
-For backward compatibility reasons, the default value is "gandalf". Users can
-disable repository and SSH key management by setting "repo-manager" to "none".
-For more details, please refer to the :doc:`repository management page
-</managing/repositories>` in the documentation.
-
-git:api-server
-++++++++++++++
-
-``git:api-server`` is the address of the Gandalf API. It should define the
-entire address, including protocol and port. Examples of value:
-``http://localhost:9090`` and ``https://gandalf.tsuru.io:9595``.
 
 Authentication configuration
 ----------------------------
@@ -1039,7 +1017,7 @@ successful. Defaults to 120 seconds.
 docker:image-history-size
 +++++++++++++++++++++++++
 
-Number of images available for rollback using ``tsuru app-deploy-rollback``.
+Number of images available for rollback using ``tsuru app deploy rollback``.
 tsuru will try to delete older images, but it may not be able to due to it being
 used as a layer to a newer image. tsuru will keep trying to remove these old
 images until they are not used as layers anymore. Defaults to 10 images.
@@ -1544,8 +1522,6 @@ Here is a complete example:
     queue:
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb
-    git:
-        api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:
         router: hipache

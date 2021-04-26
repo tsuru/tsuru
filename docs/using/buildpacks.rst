@@ -26,13 +26,13 @@ What do you need is create an application using `buildpack` platform:
 Deploying your Application
 ==========================
 
-Use `git push` to deploy your application.
+Use `tsuru app deploy` to deploy your application.
 
 .. highlight:: bash
 
 ::
 
-    $ git push <REMOTE-URL> master
+    $ tsuru app deploy -a myapp .
 
 
 Included Buildpacks
@@ -77,4 +77,4 @@ On your next `git push`, the custom buildpack will be used.
 Creating your own Buildpack
 ===========================
 
-You can follow this Heroku documentation to learn how to create your own Buildpack: https://devcenter.heroku.com/articles/buildpack-api. 
+You can follow this Heroku documentation to learn how to create your own Buildpack: https://devcenter.heroku.com/articles/buildpack-api.

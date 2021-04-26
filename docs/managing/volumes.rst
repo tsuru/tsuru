@@ -15,8 +15,7 @@ Volume Plans
 Volume plans are managed by tsuru administrators and are configured in tsuru.conf file. Volume plans describe
 how each volume that will be associated to this plan will be created by each provisioner.
 
-The following configuration register a volume plan called ``ebs`` that is supported by swarm and kubernetes using
-different parameters. Each has a own set of parameters that may be set on the configuration file.
+The following configuration register a volume plan called ``ebs`` that is supported kubernetes their own parameters.
 
 .. highlight:: yaml
 
@@ -24,12 +23,10 @@ different parameters. Each has a own set of parameters that may be set on the co
 
   volume-plans:
     ebs:
-      swarm:
-          driver: rexray/ebs
       kubernetes:
           storage-class: my-ebs-storage-class
 
-On swarm a driver must be specified along with its parameters. On Kubernetes, volume plans may use a volume plugin or a storage class.
+On Kubernetes, volume plans may use a volume plugin or a storage class.
 
 Volumes
 =======
@@ -46,11 +43,6 @@ the PersistentVolume.
 
 If the plan specifies a storage-class instead of a plugin only the PersistentVolumeClaim will be created using the specified storage-class.
 
-On Swarm provisioner
---------------------
-
-A new volume would be created (i.e. docker volume create) using the driver informed in the plan and the volume opt would be a merge between
-the plan opt and command line opt.
 
 Volume binds
 ============
