@@ -4312,6 +4312,9 @@ definitions:
         items:
           type: string
         description: App tags.
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
       router:
         type: string
         description: App router.
