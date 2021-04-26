@@ -17,15 +17,7 @@ should not works as expected with more than one `unit`.
 Select a deployment process
 ---------------------------
 
-tsuru supports three ways of deployment (git, app-deploy, Docker image):
-
-Git
-+++
-
-Git deployments are based on tsuru `platforms` and are useful if you want to
-track the difference between the deployments.
-
-:doc:`Learn how to deploy applications using Git </using/quickstart>`.
+tsuru supports two ways of deployment (app-deploy, Docker image):
 
 app-deploy
 ++++++++++

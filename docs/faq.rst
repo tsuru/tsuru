@@ -52,15 +52,3 @@ using `planb <https://github.com/tsuru/planb>`_ and another with `galeb
     as of 0.10.0 version **tsuru** supports more than one router. You can have
     a default router, configured by "docker:router" and you can define a custom
     router by plan
-
-How are Git repositories managed?
-=================================
-
-tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
-repositories. Every time you create an application, tsuru will ask Gandalf to
-create a related git bare repository for you to push in.
-
-This is the remote tsuru gives you when you create a new app. Everytime you
-perform a git push, Gandalf intercepts it, check if you have the required
-authorization to write into the application's repository, and then lets the
-push proceeds or returns an error message.

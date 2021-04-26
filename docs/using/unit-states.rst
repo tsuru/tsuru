@@ -14,15 +14,14 @@ The unit status is the way to know what is happening with a unit. You can use th
 
     $ tsuru app-info -a tsuru-dashboard
     Application: tsuru-dashboard
-    Repository: git@localhost:tsuru-dashboard.git
     Platform: python
     ...
     Units: 1
-    +------------+---------+
-    | Unit       | State   |
-    +------------+---------+
-    | 9cf863c2c1 | started |
-    +------------+---------+
+    +---------------------------------------+-------+
+    | Unit                                  | State |
+    +------------------------------------- -+-------+
+    | tsuru-dashboard-web-9cf863c2c1-63c2c1 | ready |
+    +---------------------------------------+-------+
 
 The unit state flow is:
 
