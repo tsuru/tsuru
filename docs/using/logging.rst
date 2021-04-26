@@ -14,14 +14,14 @@ Watch your logs
 ===============
 
 On its default installation tsuru will have all logs available using the ``tsuru
-app-log`` command.
+app log`` command.
 
 It's possible that viewing logs using tsuru was disabled by an administrator. In
-this case running ``tsuru app-log`` will show instructions on how logs can be
+this case running ``tsuru app log`` will show instructions on how logs can be
 read.
 
 For more informations about configuring the destination of logs and
-enabling/disabling ``tsuru app-log`` see :doc:`../managing/logs`.
+enabling/disabling ``tsuru app log`` see :doc:`../managing/logs`.
 
 Basic usage
 -----------
@@ -30,7 +30,7 @@ Basic usage
 
 ::
 
-    $ tsuru app-log -a <appname>
+    $ tsuru app log -a <appname>
     2014-12-11 16:36:17 -0200 [tsuru][api]:  ---> Removed route from unit 1d913e0910
     2014-12-11 16:36:17 -0200 [tsuru][api]: ---- Removing 1 old unit ----
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
@@ -46,7 +46,7 @@ you can use the ``-l/--lines`` parameter:
 
 ::
 
-    $ tsuru app-log -a <appname> --lines 100
+    $ tsuru app log -a <appname> --lines 100
 
 Filtering
 ---------
@@ -59,14 +59,14 @@ To filter by unit you should use `-u/--unit` parameter:
 
 ::
 
-    $ tsuru app-log -a <appname> --unit 11f863b2c14b
+    $ tsuru app log -a <appname> --unit 11f863b2c14b
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8100 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
 
 .. seealso::
 
-    To get the unit id you can use the ``tsuru app-info -a <appname>`` command.
+    To get the unit id you can use the ``tsuru app info -a <appname>`` command.
 
 The log can be sent by your process or by tsuru api. To filter by source
 you should use ``-s/--source`` parameter:
@@ -75,19 +75,19 @@ you should use ``-s/--source`` parameter:
 
 ::
 
-    $ tsuru app-log -a <appname> --source app
+    $ tsuru app log -a <appname> --source app
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8100 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
 
-    $ tsuru app-log -a <appname> --source tsuru
+    $ tsuru app log -a <appname> --source tsuru
     2014-12-11 16:36:17 -0200 [tsuru][api]:  ---> Removed route from unit 1d913e0910
     2014-12-11 16:36:17 -0200 [tsuru][api]: ---- Removing 1 old unit ----
 
 Realtime logging
 ----------------
 
-``tsuru app-log`` has a ``-f/--follow`` option that causes the log to not stop and
+``tsuru app log`` has a ``-f/--follow`` option that causes the log to not stop and
 wait for the new log data. With this option you can see in real time the
 behaviour of your application that is useful to debug problems:
 
@@ -95,6 +95,6 @@ behaviour of your application that is useful to debug problems:
 
 ::
 
-    $ tsuru app-log -a <appname> --follow
+    $ tsuru app log -a <appname> --follow
 
 You can close the session pressing Ctrl-C.

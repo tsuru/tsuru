@@ -17,15 +17,15 @@ should not works as expected with more than one `unit`.
 Select a deployment process
 ---------------------------
 
-tsuru supports two ways of deployment (app-deploy, Docker image):
+tsuru supports two ways of deployment (app deploy, Docker image):
 
-app-deploy
+app deploy
 ++++++++++
 
-The `app-deploy` deployments are based on tsuru `platforms` and are useful for
+The `app deploy` deployments are based on tsuru `platforms` and are useful for
 automated deployments.
 
-:doc:`Learn how to deploy applications using app-deploy </using/app-deploy>`.
+:doc:`Learn how to deploy applications using app deploy </using/app-deploy>`.
 
 Docker image
 ++++++++++++

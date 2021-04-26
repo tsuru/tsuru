@@ -28,7 +28,7 @@ Platforms are defined as Dockerfiles and tsuru already have a number of supporte
 .. _Go: https://github.com/tsuru/platforms/tree/master/go
 
 These platforms don't come pre-installed in tsuru, you have to add them to your
-server using the `platform-add
+server using the `platform add
 <http://tsuru-client.readthedocs.io/en/latest/reference.html#add-a-new-platform>`_ command in
 :doc:`tsuru </reference/tsuru-client>`.
 
@@ -39,7 +39,7 @@ you simply have to call:
 
 ::
 
-    tsuru platform-add python
+    tsuru platform add python
 
 
 If your application is not currently supported by the platforms above,

@@ -26,13 +26,13 @@ https://github.com/tsuru/tsuru-java-sample.
 Creating the app
 ================
 
-To create an app, you use the command `app-create`:
+To create an app, you use the command `app create`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform>
 
 For Java, the app platform is, guess what, ``java``! Let's call our application "helloweb":
 
@@ -40,7 +40,7 @@ For Java, the app platform is, guess what, ``java``! Let's call our application 
 
 ::
 
-    $ tsuru app-create helloweb java
+    $ tsuru app create helloweb java
 
 To list all available platforms, use the command `platform list`.
 
@@ -50,7 +50,7 @@ You can see all your applications using the command `app list`:
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------------------------+------------------------------+
     | Application | Units State Summary     | Address                      |
     +-------------+-------------------------+------------------------------+
@@ -61,14 +61,14 @@ Deploying the code
 ==================
 
 Using the Java platform, there are two deployment strategies: users can either
-upload WAR files to tsuru or send the code using the regular ``tsuru app-deploy``
+upload WAR files to tsuru or send the code using the regular ``tsuru app deploy``
 approach. This guide will cover both approaches:
 
 WAR deployment
 --------------
 
 Using the mvn archetype, generating the WAR is as easy as running ``mvn
-package``, then the user can deploy the code using ``tsuru app-deploy``:
+package``, then the user can deploy the code using ``tsuru app deploy``:
 
 .. highlight:: bash
 
@@ -76,7 +76,7 @@ package``, then the user can deploy the code using ``tsuru app-deploy``:
 
     $ mvn package
     $ cd target
-    $ tsuru app-deploy -a helloweb helloweb.war
+    $ tsuru app deploy -a helloweb helloweb.war
     Uploading files.... ok
 
     ---- Building application image ----
@@ -95,7 +95,7 @@ package``, then the user can deploy the code using ``tsuru app-deploy``:
     OK
 
 Done! Now you can access your project in the address displayed in the output of
-`tsuru app-list`.  Remeber to add ``/helloweb/``.
+`tsuru app list`.  Remeber to add ``/helloweb/``.
 
 You can also deploy you application to the / address, renaming the WAR to
 ROOT.war and redeploying it:
@@ -105,7 +105,7 @@ ROOT.war and redeploying it:
 ::
 
     $ mv helloweb.war ROOT.war
-    $ tsuru app-deploy -a helloweb ROOT.war
+    $ tsuru app deploy -a helloweb ROOT.war
     Uploading files... ok
 
     ---- Building application image ----
@@ -160,13 +160,13 @@ Here is how the file for the ``helloweb`` application looks like:
       build:
         - mvn package
 
-You can just run tsuru app-deploy command and your project will be deployed:
+You can just run tsuru app deploy command and your project will be deployed:
 
 .. highlight:: console
 
 ::
 
-    $ tsuru app-deploy -a helloweb .
+    $ tsuru app deploy -a helloweb .
      tar: Removing leading `/' from member names
      [INFO] Scanning for projects...
      [INFO]

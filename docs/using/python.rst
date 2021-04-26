@@ -16,13 +16,13 @@ SQLite database. It's applicable to any WSGI application.
 Creating the app
 ================
 
-To create an app, you use the command `app-create`:
+To create an app, you use the command `app create`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform>
 
 For Python, the app platform is, guess what, ``python``! Let's be over creative
 and develop a never-developed tutorial-app: a blog, and its name will also be
@@ -32,17 +32,17 @@ very creative, let's call it "blog":
 
 ::
 
-    $ tsuru app-create blog python
+    $ tsuru app create blog python
 
-To list all available platforms, use the command `platform-list`.
+To list all available platforms, use the command `platform list`.
 
-You can see all your applications using the command `app-list`:
+You can see all your applications using the command `app list`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------+--------------------------+
     | Application | Units | Address                  |
     +-------------+-------+--------------------------+
@@ -67,13 +67,13 @@ project:
 Deployment
 ==========
 
-You can just run tsuru app-deploy command and your project will be deployed:
+You can just run ``tsuru app deploy`` command and your project will be deployed:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-deploy -a blog .
+    $ tsuru app deploy -a blog .
      -- Using python version: 2.7.13 (default) --
      /home/application/current /
 
@@ -82,13 +82,13 @@ You can just run tsuru app-deploy command and your project will be deployed:
       ---> Cleaning up
 
 
-Now you can check your deployed app running `tsuru app-info`
+Now you can check your deployed app running `tsuru app info`
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-info -a blog
+    $ tsuru app info -a blog
     Application: blog
     Repository: git@192.168.50.4.nip.io:blog.git
     Platform: python
@@ -140,7 +140,7 @@ You can see the complete output of installing these dependencies below:
 
 ::
 
-     $ tsuru app-deploy -a blog .
+     $ tsuru app deploy -a blog .
      -- Using python version: 2.7.13 (default) --
      /home/application/current /
      requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
@@ -174,7 +174,7 @@ another deploy:
 
 ::
 
-    $ tsuru app-deploy -a blog .
+    $ tsuru app deploy -a blog .
      -- Using python version: 2.7.13 (default) --
      /home/application/current /
      requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
@@ -206,7 +206,7 @@ Now run another deploy:
 
 ::
 
-    $ tsuru app-deploy -a blog .
+    $ tsuru app deploy -a blog .
      -- Using python version: 2.7.13 (default) --
      /home/application/current /
      requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies
@@ -224,12 +224,12 @@ Now run another deploy:
 
 
 Now that the app is deployed, you can access it from your browser, getting the
-IP or host listed in ``app-list`` and opening it. For example,
+IP or host listed in ``app list`` and opening it. For example,
 in the list below:
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-----------+---------------------+
     | Application | Units     | Address             |
     +-------------+-----------+---------------------+
@@ -268,7 +268,7 @@ deploy it:
 
 ::
 
-    $ tsuru app-deploy -a blog .
+    $ tsuru app deploy -a blog .
      -- Using python version: 2.7.13 (default) --
      /home/application/current /
      requirements.txt detected, using 'pip install -r ./requirements.txt' to install dependencies

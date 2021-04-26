@@ -15,13 +15,13 @@ tsuru.
 Creating the app
 ================
 
-To create an app, you use the command `app-create`:
+To create an app, you use the command `app create`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform>
 
 For Go, the platform name is ``go``! Let's be over creative and develop a hello
 world tutorial-app, let's call it "helloworld":
@@ -30,17 +30,17 @@ world tutorial-app, let's call it "helloworld":
 
 ::
 
-    $ tsuru app-create helloworld go
+    $ tsuru app create helloworld go
 
-To list all available platforms, use the command `platform-list`.
+To list all available platforms, use the command `platform list`.
 
-You can see all your applications using the command  `app-list`:
+You can see all your applications using the command  `app list`:
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------------------------+--------------------------------+
     | Application | Units State Summary     | Address                        |
     +-------------+-------------------------+--------------------------------+
@@ -80,13 +80,13 @@ A simple web application in Go `main.go`:
 Deployment
 ==========
 
-You can just run tsuru app-deploy command and your project will be deployed:
+You can just run tsuru app deploy command and your project will be deployed:
 
 .. highlight:: console
 
 ::
 
-    $ tsuru app-deploy -a helloworld .
+    $ tsuru app deploy -a helloworld .
      tar: Removing leading `/' from member names
      /
 
@@ -106,13 +106,13 @@ You can just run tsuru app-deploy command and your project will be deployed:
      OK
 
 
-Now you can check your deployed app running `tsuru app-info`
+Now you can check your deployed app running `tsuru app info`
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru app-info -a helloworld
+    $ tsuru app info -a helloworld
     Application: helloworld
     Platform: go
     Teams: admin
@@ -157,7 +157,7 @@ the app deploy command. In this case, you would also need a Procfile:
 
     $ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o helloworld
     $ echo "web: ./helloworld" > ./Procfile
-    $ tsuru app-deploy --app helloworld ./helloworld ./Procfile
+    $ tsuru app deploy --app helloworld ./helloworld ./Procfile
 
 If your app has other files to include in the deploy command, like tsuru.yaml,
 include them as parameters in the above command as well.
@@ -171,12 +171,12 @@ the README of the Go platform:
 https://github.com/tsuru/basebuilder/blob/master/go/README.md.
 
 Now that the app is deployed, you can access it from your browser, getting the
-IP or host listed in ``app-list`` and opening it. For example,
+IP or host listed in ``app list`` and opening it. For example,
 in the list below:
 
 ::
 
-    $ tsuru app-list
+    $ tsuru app list
     +-------------+-------------------------+--------------------------------+
     | Application | Units State Summary     | Address                        |
     +-------------+-------------------------+--------------------------------+
@@ -185,7 +185,7 @@ in the list below:
 
 It's done! Now we have a simple go project deployed on tsuru.
 
-Now we can access your app in the URL displayed in `app-list`
+Now we can access your app in the URL displayed in `app list`
 ("helloworld.192.168.50.4.nip.io" in this case).
 
 Going further
