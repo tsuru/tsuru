@@ -22,7 +22,6 @@ func init() {
 		ClusterStorage:                   &clusterStorage{},
 		ServiceBrokerStorage:             &serviceBrokerStorage{},
 		ServiceBrokerCatalogCacheStorage: serviceBrokerCatalogCacheStorage(),
-		AppLogStorage:                    &applogStorage{},
 		InstanceTrackerStorage:           &instanceTrackerStorage{},
 		AppVersionStorage:                &appVersionStorage{},
 		DynamicRouterStorage:             &dynamicRouterStorage{},

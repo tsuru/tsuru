@@ -12,7 +12,6 @@ import (
 
 const (
 	promNamespace = "tsuru"
-	promSubsystem = "logs"
 )
 
 func AppLogService() (appTypes.AppLogService, error) {
@@ -23,14 +22,12 @@ func AppLogService() (appTypes.AppLogService, error) {
 	var svc appTypes.AppLogService
 	var err error
 	switch appLogSvc {
-	case "storage":
-		svc, err = storageAppLogService()
 	case "memory-standalone":
 		svc, err = memoryAppLogService()
 	case "memory":
 		svc, err = aggregatorAppLogService()
 	default:
-		return nil, errors.New(`invalid app log service, valid values are: "storage" or "memory"`)
+		return nil, errors.New(`invalid app log service, valid values are: "memory" or "memory-standalone"`)
 	}
 	if err != nil {
 		return nil, err

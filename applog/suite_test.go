@@ -72,10 +72,6 @@ func compareLogsNoDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.App
 	compareLogsDate(c, logs1, logs2, false)
 }
 
-func compareLogs(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog) {
-	compareLogsDate(c, logs1, logs2, true)
-}
-
 func compareLogsDate(c *check.C, logs1 []appTypes.Applog, logs2 []appTypes.Applog, compareDate bool) {
 	for i := range logs1 {
 		logs1[i].MongoID = ""
