@@ -32,7 +32,7 @@ Main new features
 
 * Node auto scaling. It's now possible to enable automatic scaling of docker
   nodes, this will add or remove nodes according to rules specified in your
-  tsuru.conf file. See :doc:`node auto scaling </advanced_topics/node_scaling>`
+  tsuru.conf file. See `node auto scaling`
   topic and :ref:`config reference <config_docker_auto_scale>` for more details.
   `#1110 <https://github.com/tsuru/tsuru/issues/1110>`_
 
@@ -167,7 +167,7 @@ Other improvements
       page (thanks Lucas Weiblen).
     - fix user creation instruction in the :doc:`installing
       </installing/api>` page (thanks Samuel Roze).
-    - fix wording and spelling in the :doc:`Gandalf install </installing/gandalf>` page
+    - fix wording and spelling in the `Gandalf install` page
       (thanks Martin Jackson).
 
 .. _backwards-0.11.0:

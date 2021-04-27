@@ -17,11 +17,7 @@ Managing
     using-pools
     provisioners
     clusters
-    segregate-scheduler
-    upgrading-docker
-    repositories
     users-and-permissions
-    logs
     debugging-and-troubleshooting
     volumes
     event-webhooks

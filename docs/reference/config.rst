@@ -873,12 +873,6 @@ to specify just one value, it's still needed to use the list notation:
 For more details on the available options, please refer to the Docker
 documentation: <https://docs.docker.com/reference/run/#security-configuration>.
 
-docker:segregate
-++++++++++++++++
-
-Deprecated. As of tsuru 0.11.1, using segregate scheduler is the default
-setting. See :doc:`/managing/segregate-scheduler` for details.
-
 .. _config_scheduler_memory:
 
 docker:scheduler:total-memory-metadata
@@ -901,10 +895,6 @@ memory to fit the creation of new units, based on how much memory is required by
 the plan used to create the application. If no node with enough unreserved
 memory is found, tsuru will ignore memory restrictions and let the scheduler
 choose any node.
-
-This setting, along with ``docker:scheduler:total-memory-metadata``, are also
-used by node auto scaling. See :doc:`node auto scaling
-</advanced_topics/node_scaling>` for more details.
 
 .. _config_cluster_storage:
 
@@ -1024,13 +1014,6 @@ images until they are not used as layers anymore. Defaults to 10 images.
 
 .. _config_docker_auto_scale:
 
-docker:auto-scale:enabled
-+++++++++++++++++++++++++
-
-Enable node auto scaling. See :doc:`node auto scaling
-</advanced_topics/node_scaling>` for more details. Defaults to false. Used as fallback
-for pools without rules set by ``tsuru node autoscale rule set``.
-
 
 docker:auto-scale:wait-new-time
 +++++++++++++++++++++++++++++++
@@ -1049,33 +1032,12 @@ docker:auto-scale:metadata-filter
 The name of a pool where auto scale will be enabled. Leave unset to allow
 dynamically configuring with ``tsuru node-autoscale-rule-set``.
 
-docker:auto-scale:max-container-count
-+++++++++++++++++++++++++++++++++++++
-
-Maximum number of containers per node, for count based scaling. See :doc:`node
-auto scaling </advanced_topics/node_scaling>` for more details. Leave unset to
-allow dynamically configuring with ``tsuru docker-autoscale-rule-set``.
-
-docker:auto-scale:prevent-rebalance
-+++++++++++++++++++++++++++++++++++
-
-Prevent rebalancing from happening when adding new nodes, or if a rebalance is
-needed. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
-details. Leave unset to allow dynamically configuring with ``tsuru docker-autoscale-rule-set``.
 
 docker:auto-scale:run-interval
 ++++++++++++++++++++++++++++++
 
 Number of seconds between two periodic runs of the auto scaling algorithm.
 Defaults to 3600 seconds (1 hour).
-
-docker:auto-scale:scale-down-ratio
-++++++++++++++++++++++++++++++++++
-
-Ratio used when scaling down. Must be greater than 1.0. See :doc:`node auto
-scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
-Leave unset to allow dynamically configuring with ``tsuru
-docker-autoscale-rule-set``.
 
 .. _docker_limit:
 

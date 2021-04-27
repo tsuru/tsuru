@@ -8,7 +8,6 @@ Frequently Asked Questions
 * `How do environment variables work?`_
 * `How does the quota system work?`_
 * `How does routing work?`_
-* `How are Git repositories managed?`_
 
 This document is an attempt to explain concepts you'll face when deploying and
 managing applications using tsuru.  To request additional explanations you can

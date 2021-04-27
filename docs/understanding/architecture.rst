@@ -28,9 +28,9 @@ The default provisioner is `Kubernetes <http://kubernetes.io/>`_.
 Registry
 --------
 
-The `Docker registry <https://github.com/docker/docker-registry>`_ is the component responsible for storing and distributing `Docker <https://www.docker.com/>`_ images.
+The `Docker registry <https://github.com/docker/docker-registry/>`_ is the component responsible for storing and distributing `Docker <https://www.docker.com/>`_ images.
 
 Router
 ------
 
-The router component routes traffic from users to applications. The recommended implementation of router is `kubernetes-router <https://github.com/tsuru/kubernetes-router>` that manages kubernetes loadbalancers and ingresses.
+The router component routes traffic from users to applications. The recommended implementation of router is `kubernetes-router <https://github.com/tsuru/kubernetes-router/>`_ that manages kubernetes loadbalancers and ingresses.

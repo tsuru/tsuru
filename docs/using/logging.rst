@@ -20,8 +20,6 @@ It's possible that viewing logs using tsuru was disabled by an administrator. In
 this case running ``tsuru app log`` will show instructions on how logs can be
 read.
 
-For more informations about configuring the destination of logs and
-enabling/disabling ``tsuru app log`` see :doc:`../managing/logs`.
 
 Basic usage
 -----------
