@@ -52,26 +52,62 @@ Examples
 
 Notifying every successful app deploy to a `Slack <https://slack.com/>`_ channel:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru event-webhook-create my-webhook https://hooks.slack.com/services/...
-            -d "all successful deploys"
-            -t <my-team>
-            -m POST
-            -H Content-Type=application/x-www-form-urlencoded
-            -b 'payload={"text": "[{{.Kind.Name}}]: {{.Target.Type}} {{.Target.Value}}"}'
-            --success-only
-            --kind-name app.deploy
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru event-webhook-create my-webhook https://hooks.slack.com/services/...
+                  -d "all successful deploys"
+                  -t <my-team>
+                  -m POST
+                  -H Content-Type=application/x-www-form-urlencoded
+                  -b 'payload={"text": "[{{.Kind.Name}}]: {{.Target.Type}} {{.Target.Value}}"}'
+                  --success-only
+                  --kind-name app.deploy
+
+   .. tab:: Terraform
+
+      .. highlight:: text
+
+      ::
+
+          resource "tsuru_webhook" "my-webhook" {
+             name        = "my-webhook"
+             description = "all sucessful deploys"
+             url         = "https://hooks.slack.com/services/..."
+             team_owner  = "myteam"
+             method      = "POST"
+             headers     = {
+                "Content-Type" = "application/x-www-form-urlencoded"
+             }
+             body        = <<EOT
+             payload={"text": "[{{.Kind.Name}}]: {{.Target.Type}} {{.Target.Value}}"}
+             EOT
+
+             event_filter {
+                success_only = true
+                kind_names = [
+                   "app.deploy"
+                ]
+             }
+          }
+
 
 Calling a specific URL every time a specific app is updated:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru event-webhook-create my-webhook <my-url>
-            -t <my-team>
-            --kind-name app.update
-            --target-value <my-app>
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru event-webhook-create my-webhook <my-url>
+                  -t <my-team>
+                  --kind-name app.update
+                  --target-value <my-app>

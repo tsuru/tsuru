@@ -30,29 +30,76 @@ fallback pool, but with a explicit flag.
 Adding a pool
 -------------
 
-In order to create a pool, you should invoke `tsuru pool add`:
+In order to create a pool, you should invoke `tsuru pool add` or `create a terraform resource`:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru pool add pool1
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru pool add pool1
+
+   .. tab:: Terraform
+
+      .. highlight:: terraform
+
+      ::
+
+          resource "tsuru_pool" "pool1" {
+            name = "pool1"
+          }
+
 
 If you want to create a public pool you can do:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru pool add pool1 -p
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru pool add pool1 --public
+
+
+   .. tab:: Terraform
+
+      .. highlight:: terraform
+
+      ::
+
+          resource "tsuru_pool" "pool1" {
+            name  = "pool1"
+            public = true
+          }
 
 If you want a default pool, you can create it with:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru pool add pool1 -d
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru pool add pool1 --default
+
+   .. tab:: Terraform
+
+      .. highlight:: terraform
+
+      ::
+
+          resource "tsuru_pool" "pool1" {
+            name    = "pool1"
+            default = true
+          }
+
 
 You can overwrite default pool by setting the flag `-f`:
 
@@ -140,7 +187,7 @@ You can move apps from poolA to poolB and from teamA to teamB even when they don
 
 ::
 
-    $ tsuru app update -a <app> -t <teamB> -o <poolB>
+    $ tsuru app update --app <app> --team-owner <teamB> --pool <poolB>
 
 By default the app will be set to both teams, so teamA can still see the app just in case that the user may have made some mistake. If you wish to remove the old teamA from the app, It's possible using `tsuru app revoke`:
 

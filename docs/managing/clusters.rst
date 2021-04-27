@@ -24,4 +24,5 @@ provisioner.
 To manipulate clusters the client commands ``tsuru cluster-add``, ``tsuru
 cluster-list``, ``tsuru cluster-update`` and ``tsuru cluster-remove`` can be
 used. You can find more information about them in the `client documentation
-<http://tsuru-client.readthedocs.io/en/master/reference.html#cluster-management>`_.
+<http://tsuru-client.readthedocs.io/en/master/reference.html#cluster-management>`_ or `terraform documentation
+<https://registry.terraform.io/providers/tsuru/tsuru/latest/docs/resources/cluster/>`_.

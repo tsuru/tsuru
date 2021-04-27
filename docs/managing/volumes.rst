@@ -54,21 +54,57 @@ client.
 Example
 =======
 
-Supose an ``ebs`` volume plan is registered in tsuru configuration, one can create a volume using tsuru client:
+Supose an ``ebs`` volume plan is registered in tsuru configuration, one can create a volume using:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru volume create myvol ebs -o capacity=1Gi
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru volume create myvol ebs -o capacity=1Gi
+
+   .. tab:: Terraform
+
+      .. highlight:: terraform
+
+      ::
+
+          resource "tsuru_volume" "myvol" {
+            name  = "myvol"
+            owner = "myteam"
+            plan  = "ebs"
+            options = {
+              "capacity" = "1Gi"
+            }
+          }
 
 To be able to use this volume from an app, bind to it:
 
-.. highlight:: bash
+.. tabs::
 
-::
+   .. tab:: Tsuru client
 
-    $ tsuru volume bind myvol /mnt/mountpoint -a my-app
+      .. highlight:: bash
+
+      ::
+
+          $ tsuru volume bind myvol /mnt/mountpoint -a my-app
+
+   .. tab:: Terraform
+
+      .. highlight:: terraform
+
+      ::
+
+          resource "tsuru_volume_bind" "myvol" {
+            app         = "my-app"
+            volume      = "myvol"
+            mount_point = "/mnt/mountpoint"
+          }
+
 
 Volumes with Minikube
 =====================
