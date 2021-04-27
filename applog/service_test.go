@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	_ = check.Suite(&ServiceSuite{svcFunc: storageAppLogService})
 	_ = check.Suite(&ServiceSuite{svcFunc: memoryAppLogService})
 )
 

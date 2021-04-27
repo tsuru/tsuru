@@ -35,7 +35,6 @@ type DbDriver struct {
 	ServiceBrokerStorage             service.ServiceBrokerStorage
 	ServiceBrokerCatalogCacheStorage cache.CacheStorage
 	PlatformImageStorage             image.PlatformImageStorage
-	AppLogStorage                    app.AppLogStorage
 	InstanceTrackerStorage           tracker.InstanceStorage
 	AppVersionStorage                app.AppVersionStorage
 	DynamicRouterStorage             router.DynamicRouterStorage
