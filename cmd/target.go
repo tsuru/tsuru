@@ -196,7 +196,7 @@ type targetAdd struct {
 func (t *targetAdd) Info() *Info {
 	return &Info{
 		Name:    "target-add",
-		Usage:   "target-add <label> <target> [--set-current|-s]",
+		Usage:   "target add <label> <target> [--set-current|-s]",
 		Desc:    "Adds a new entry to the list of available targets",
 		MinArgs: 2,
 	}
@@ -333,12 +333,12 @@ func (t *targetList) Info() *Info {
 
 Other commands related to target:
 
-  - target-add: adds a new target to the list of targets
-  - target-set: defines one of the targets in the list as the current target
-  - target-remove: removes one target from the list`
+  - target add: adds a new target to the list of targets
+  - target set: defines one of the targets in the list as the current target
+  - target remove: removes one target from the list`
 	return &Info{
 		Name:    "target-list",
-		Usage:   "target-list",
+		Usage:   "target list",
 		Desc:    desc,
 		MinArgs: 0,
 	}
@@ -367,7 +367,7 @@ func (t *targetRemove) Info() *Info {
 `
 	return &Info{
 		Name:    "target-remove",
-		Usage:   "target-remove",
+		Usage:   "target remove",
 		Desc:    desc,
 		MinArgs: 1,
 	}
@@ -412,7 +412,7 @@ func (t *targetSet) Info() *Info {
 `
 	return &Info{
 		Name:    "target-set",
-		Usage:   "target-set <label>",
+		Usage:   "target set <label>",
 		Desc:    desc,
 		MinArgs: 1,
 	}

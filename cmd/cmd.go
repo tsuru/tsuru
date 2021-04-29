@@ -382,7 +382,7 @@ func formatDescriptionLine(label, description string, maxSize int) string {
 		description = strings.ToUpper(description[:1]) + description[1:]
 	}
 	fmtStr := fmt.Sprintf("  %%-%ds %%s\n", maxSize)
-	return fmt.Sprintf(fmtStr, label, description)
+	return fmt.Sprintf(fmtStr, strings.ReplaceAll(label, "-", " "), description)
 }
 
 func maxLabelSize(labels []string) int {

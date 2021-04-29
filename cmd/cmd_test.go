@@ -136,8 +136,8 @@ func (s *S) TestImplicitTopicsHelp(c *check.C) {
 
 The following commands are available in the "foo" topic:
 
-  foo-bar              Desc foo-bar
-  foo-baz              Desc foo-baz
+  foo bar              Desc foo-bar
+  foo baz              Desc foo-baz
 
 Use glb help <commandname> to get more information about a command.
 `
@@ -783,10 +783,10 @@ func (s *S) TestInvalidCommandTopicMatch(c *check.C) {
 
 The following commands are available in the "target" topic:
 
-  target-add           Adds a new entry to the list of available targets
-  target-list          Displays the list of targets, marking the current
-  target-remove        Remove a target from target-list (tsuru server)
-  target-set           Change current target (tsuru server)
+  target add           Adds a new entry to the list of available targets
+  target list          Displays the list of targets, marking the current
+  target remove        Remove a target from target-list (tsuru server)
+  target set           Change current target (tsuru server)
 
 Use tsuru help <commandname> to get more information about a command.
 `, targetTopic)
