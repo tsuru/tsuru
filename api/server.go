@@ -632,12 +632,6 @@ func startServer(handler http.Handler) error {
 	}
 	defaultRouter, _ := router.Default(ctx)
 	fmt.Printf("Default router is %q.\n", defaultRouter)
-	repoManager, err := config.GetString("repo-manager")
-	if err != nil {
-		repoManager = "gandalf"
-		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare a repository manager, using default manager.")
-	}
-	fmt.Printf("Using %q repository manager.\n", repoManager)
 	err = rebuild.Initialize(appFinder)
 	if err != nil {
 		return err

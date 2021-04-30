@@ -22,7 +22,6 @@ func (IndexSuite) SetUpTest(c *check.C) {
 	config.Set("host", "http://localhost/")
 	config.Set("auth:user-registration", true)
 	config.Set("auth:scheme", "native")
-	config.Set("repo-manager", "gandalf")
 }
 
 func (IndexSuite) TestIndex(c *check.C) {
@@ -37,13 +36,11 @@ func (IndexSuite) TestIndex(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
-		"keysEnabled": true,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }
 
 func (IndexSuite) TestIndexNoRepoManager(c *check.C) {
-	config.Unset("repo-manager")
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -55,7 +52,6 @@ func (IndexSuite) TestIndexNoRepoManager(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
-		"keysEnabled": true,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }
@@ -73,25 +69,6 @@ func (IndexSuite) TestIndexNoUserCreation(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  false,
 		"nativeLogin": true,
-		"keysEnabled": true,
-	})
-	c.Assert(recorder.Body.String(), check.Equals, expected.String())
-}
-
-func (IndexSuite) TestIndexNoGandalf(c *check.C) {
-	config.Set("repo-manager", "none")
-	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	handler := RunServer(true)
-	handler.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var expected bytes.Buffer
-	indexTemplate.Execute(&expected, map[string]interface{}{
-		"tsuruTarget": "http://localhost/",
-		"userCreate":  true,
-		"nativeLogin": true,
-		"keysEnabled": false,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }
@@ -109,7 +86,6 @@ func (IndexSuite) TestIndexNoAuthScheme(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
-		"keysEnabled": true,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }
@@ -127,7 +103,6 @@ func (IndexSuite) TestIndexOAuth(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": false,
-		"keysEnabled": true,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }
@@ -147,7 +122,6 @@ func (IndexSuite) TestIndexCustomTemplate(c *check.C) {
 		"tsuruTarget": "http://localhost/",
 		"userCreate":  true,
 		"nativeLogin": true,
-		"keysEnabled": true,
 	})
 	c.Assert(recorder.Body.String(), check.Equals, expected.String())
 }

@@ -22,14 +22,11 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn    *db.Storage
-	hashed  string
-	user    *User
-	team    *authTypes.Team
-	server  *authtest.SMTPServer
-	gitHost string
-	gitPort string
-	gitProt string
+	conn   *db.Storage
+	hashed string
+	user   *User
+	team   *authTypes.Team
+	server *authtest.SMTPServer
 }
 
 var _ = check.Suite(&S{})
@@ -41,11 +38,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_auth_test")
 	s.conn, _ = db.Conn()
-	s.gitHost, _ = config.GetString("git:host")
-	s.gitPort, _ = config.GetString("git:port")
-	s.gitProt, _ = config.GetString("git:protocol")
 	config.Set("smtp:user", "root")
-	config.Set("repo-manager", "fake")
 	var err error
 	servicemanager.TeamToken, err = TeamTokenService()
 	c.Assert(err, check.IsNil)
@@ -84,7 +77,4 @@ func (s *S) TearDownTest(c *check.C) {
 		err := s.user.Update()
 		c.Assert(err, check.IsNil)
 	}
-	config.Set("git:host", s.gitHost)
-	config.Set("git:port", s.gitPort)
-	config.Set("git:protocol", s.gitProt)
 }
