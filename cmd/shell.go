@@ -23,7 +23,7 @@ import (
 var httpRegexp = regexp.MustCompile(`^http`)
 
 type ShellToContainerCmd struct {
-	GuessingCommand
+	AppNameMixIn
 	isolated bool
 	fs       *gnuflag.FlagSet
 }
@@ -41,7 +41,7 @@ You can get the ID of the unit using the app-info command.`,
 
 func (c *ShellToContainerCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = c.GuessingCommand.Flags()
+		c.fs = c.AppNameMixIn.Flags()
 		help := "Run shell in a new unit"
 		c.fs.BoolVar(&c.isolated, "isolated", false, help)
 		c.fs.BoolVar(&c.isolated, "i", false, help)
@@ -50,7 +50,7 @@ func (c *ShellToContainerCmd) Flags() *gnuflag.FlagSet {
 }
 
 func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
-	appName, err := c.Guess()
+	appName, err := c.AppName()
 	if err != nil {
 		return err
 	}

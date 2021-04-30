@@ -38,7 +38,6 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}
-	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
 	target := "http://" + server.Listener.Addr().String()
@@ -53,7 +52,6 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 		Stdin:  &stdin,
 	}
 	var command ShellToContainerCmd
-	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -75,7 +73,6 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 			return req.Method == "GET" && req.URL.Path == "/1.0/apps/myapp"
 		},
 	}
-	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
 	target := "http://" + server.Listener.Addr().String()
@@ -91,7 +88,6 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 		Stdin:  &stdin,
 	}
 	var command ShellToContainerCmd
-	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -138,7 +134,6 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 
 func (s *S) TestShellToContainerSessionExpired(c *check.C) {
 	var stdout, stderr, stdin bytes.Buffer
-	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	context := Context{
 		Args:   []string{"containerid"},
 		Stdout: &stdout,
@@ -155,7 +150,6 @@ func (s *S) TestShellToContainerSessionExpired(c *check.C) {
 		},
 	}
 	var command ShellToContainerCmd
-	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, check.IsNil)
 	mngr := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
