@@ -98,7 +98,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("queue:mongo-database", "queue_provision_docker_tests")
 	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
-	config.Set("repo-manager", "fake")
 	config.Set("docker:registry-max-try", 1)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.deployCmd = "/var/lib/tsuru/deploy"

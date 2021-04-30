@@ -21,12 +21,10 @@ func index(w http.ResponseWriter, r *http.Request) error {
 	host, _ := config.GetString("host")
 	userCreate, _ := config.GetBool("auth:user-registration")
 	scheme, _ := config.GetString("auth:scheme")
-	repoManager, _ := config.GetString("repo-manager")
 	data := map[string]interface{}{
 		"tsuruTarget": host,
 		"userCreate":  userCreate,
 		"nativeLogin": scheme == "" || scheme == "native",
-		"keysEnabled": repoManager == "" || repoManager == "gandalf",
 	}
 	template, err := getTemplate()
 	if err != nil {

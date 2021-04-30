@@ -22,10 +22,6 @@ database:
   url: 127.0.0.1:3435
   name: tsuru
 
-git:
-  unit-repo: /home/application/current
-  api-server: http://127.0.0.1:8000
-
 auth:
   user-registration: true
   scheme: native
@@ -100,34 +96,6 @@ func (s *CheckerSuite) TestCheckDockerBasicConfigError(c *check.C) {
 	config.Unset("docker:collection")
 	err := checkDockerBasicConfig()
 	c.Assert(err, check.NotNil)
-}
-
-func (s *CheckerSuite) TestCheckGandalfErrorRepoManagerDefined(c *check.C) {
-	config.Set("repo-manager", "gandalf")
-	config.Unset("git:api-server")
-	err := checkGandalf()
-	c.Assert(err, check.NotNil)
-}
-
-func (s *CheckerSuite) TestCheckGandalfErrorRepoManagerUndefined(c *check.C) {
-	config.Unset("repo-manager")
-	config.Unset("git:api-server")
-	err := checkGandalf()
-	c.Assert(err, check.NotNil)
-}
-
-func (s *CheckerSuite) TestCheckGandalfSuccessRepoManagerUndefined(c *check.C) {
-	config.Unset("repo-manager")
-	config.Set("git:api-server", "http://gandalf.com")
-	err := checkGandalf()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *CheckerSuite) TestCheckGandalfSuccessRepoManagerDefined(c *check.C) {
-	config.Set("repo-manager", "gandalf")
-	config.Set("git:api-server", "http://gandalf.com")
-	err := checkGandalf()
-	c.Assert(err, check.IsNil)
 }
 
 func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {

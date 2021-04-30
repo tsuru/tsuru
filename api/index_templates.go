@@ -65,14 +65,6 @@ $ tsuru team-list
 <pre>
 $ tsuru team-create &lt;team-name&gt;
 </pre>
-		{{if .keysEnabled}}
-		<h2>Add an SSH key</h2>
-		<p>In order to deploy your application using <code>git push</code>, you need to have an SSH key registered with tsuru, you can add a new SSH key using the <code>key-add</code> command:</p>
-<pre>
-$ tsuru key-add my-rsa-key ~/.ssh/id_rsa.pub
-</pre>
-		<p>Any key accepted by OpenSSH can be used with tsuru, this includes formats like RSA and DSA.</p>
-		{{end}}
 		<h2>Build and deploy your application</h2>
 		<p>Now you're ready to deploy an application to this tsuru server, please refer to the tsuru documentation for more details: <a href="http://docs.tsuru.io/en/stable/using/python.html" title="Deploying Python applications in tsuru">docs.tsuru.io/en/stable/using/python.html</a>.</p>
 	</body>

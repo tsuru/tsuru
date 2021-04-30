@@ -26,16 +26,6 @@ func checkDatabase() error {
 	}, "Config error: you should have %q key set in your config file")
 }
 
-func checkGandalf() error {
-	if value, _ := config.GetString("repo-manager"); value == "gandalf" || value == "" {
-		_, err := config.Get("git:api-server")
-		if err != nil {
-			return errors.Errorf("Config error: you must define the %q config key", "git:api-server")
-		}
-	}
-	return nil
-}
-
 // Check provisioner configs
 func checkProvisioner() error {
 	if value, _ := config.Get("provisioner"); value == defaultProvisionerName || value == "" {
