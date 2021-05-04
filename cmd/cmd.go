@@ -201,26 +201,40 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		if msg, isTopic := m.tryImplicitTopic(name); isTopic {
+		if msg, isTopic := m.tryImplicitTopic(name); len(args) == 1 && isTopic {
 			fmt.Fprint(m.stdout, msg)
 			return
 		}
-		msg := fmt.Sprintf("%s: %q is not a %s command. See %q.\n", m.name, name, m.name, m.name+" help")
+
+		topicBasedName := m.findTopicBasedCommand(args)
+
+		fmt.Fprintf(m.stderr, "%s: %q is not a %s command. See %q.\n", m.name, topicBasedName, m.name, m.name+" help")
 		var keys []string
 		for key := range m.Commands {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
+		possibleCommands := []string{}
+
 		for _, key := range keys {
-			levenshtein := fuzzy.Levenshtein(&key, &args[0])
-			if levenshtein < 3 || strings.Contains(key, args[0]) {
-				if !strings.Contains(msg, "Did you mean?") {
-					msg += "\nDid you mean?\n"
-				}
-				msg += fmt.Sprintf("\t%s\n", strings.ReplaceAll(key, "-", " "))
+			key := strings.ReplaceAll(key, "-", " ")
+
+			if len(args) == 1 && strings.Contains(key, args[0]) {
+				possibleCommands = append(possibleCommands, key)
+				continue
+			}
+
+			if score := fuzzy.Levenshtein(&key, &topicBasedName); score < 3 {
+				possibleCommands = append(possibleCommands, key)
 			}
 		}
-		fmt.Fprint(m.stderr, msg)
+		if len(possibleCommands) > 0 {
+			fmt.Fprintln(m.stderr, "\nDid you mean?")
+
+			for _, cmd := range possibleCommands {
+				fmt.Fprintf(m.stderr, "\t%s\n", cmd)
+			}
+		}
 		m.finisher().Exit(1)
 		return
 	}
@@ -300,6 +314,19 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	m.finisher().Exit(status)
+}
+
+func (m *Manager) findTopicBasedCommand(args []string) string {
+	safeCmd := []string{}
+	for _, arg := range args {
+		if len(arg) > 0 && arg[0] == '-' {
+			break
+		}
+
+		safeCmd = append(safeCmd, arg)
+	}
+
+	return strings.Join(safeCmd, " ")
 }
 
 func (m *Manager) newContext(args []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) *Context {

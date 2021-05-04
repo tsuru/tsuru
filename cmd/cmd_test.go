@@ -849,6 +849,27 @@ func (s *S) TestInvalidCommandFuzzyMatch04(c *check.C) {
 	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
+func (s *S) TestInvalidCommandFuzzyMatch05(c *check.C) {
+	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
+	var stdout, stderr bytes.Buffer
+	var exiter recordingExiter
+	mngr.e = &exiter
+	mngr.stdout = &stdout
+	mngr.stderr = &stderr
+	mngr.Run([]string{"target", "sit"})
+	expectedOutput := `.*: "target sit" is not a tsuru command. See "tsuru help".
+
+Did you mean?
+	target list
+	target set
+`
+
+	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
+	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
+	c.Assert(stderr.String(), check.Matches, expectedOutput)
+	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
+}
+
 func (s *S) TestFileSystem(c *check.C) {
 	fsystem = &fstest.RecordingFs{}
 	c.Assert(filesystem(), check.DeepEquals, fsystem)
