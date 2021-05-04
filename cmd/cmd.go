@@ -217,7 +217,7 @@ func (m *Manager) Run(args []string) {
 				if !strings.Contains(msg, "Did you mean?") {
 					msg += "\nDid you mean?\n"
 				}
-				msg += fmt.Sprintf("\t%s\n", key)
+				msg += fmt.Sprintf("\t%s\n", strings.ReplaceAll(key, "-", " "))
 			}
 		}
 		fmt.Fprint(m.stderr, msg)

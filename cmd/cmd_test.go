@@ -802,11 +802,11 @@ func (s *S) TestInvalidCommandFuzzyMatch02(c *check.C) {
 	mngr.e = &exiter
 	mngr.stdout = &stdout
 	mngr.stderr = &stderr
-	mngr.Run([]string{"target-lisr"})
-	expectedOutput := `.*: "target-lisr" is not a tsuru command. See "tsuru help".
+	mngr.Run([]string{"target lisr"})
+	expectedOutput := `.*: "target lisr" is not a tsuru command. See "tsuru help".
 
 Did you mean?
-	target-list
+	target list
 `
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
@@ -825,7 +825,7 @@ func (s *S) TestInvalidCommandFuzzyMatch03(c *check.C) {
 	expectedOutput := `.*: "list" is not a tsuru command. See "tsuru help".
 
 Did you mean?
-	target-list
+	target list
 `
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
