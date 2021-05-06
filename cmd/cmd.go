@@ -217,15 +217,15 @@ func (m *Manager) Run(args []string) {
 		possibleCommands := []string{}
 
 		for _, key := range keys {
-			key := strings.ReplaceAll(key, "-", " ")
+			topicBasedKey := strings.ReplaceAll(key, "-", " ")
 
-			if len(args) == 1 && strings.Contains(key, args[0]) {
-				possibleCommands = append(possibleCommands, key)
+			if len(args) == 1 && strings.Contains(topicBasedKey, args[0]) {
+				possibleCommands = append(possibleCommands, topicBasedKey)
 				continue
 			}
 
-			if score := fuzzy.Levenshtein(&key, &topicBasedName); score < 3 {
-				possibleCommands = append(possibleCommands, key)
+			if score := fuzzy.Levenshtein(&topicBasedKey, &topicBasedName); score < 3 {
+				possibleCommands = append(possibleCommands, topicBasedKey)
 			}
 		}
 		if len(possibleCommands) > 0 {
