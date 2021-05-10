@@ -12,10 +12,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -47,7 +47,7 @@ func RemoveImageIgnoreNotFound(ctx context.Context, imageName string) error {
 // RemoveImage removes an image manifest from a remote registry v2 server, returning an error
 // in case of failure.
 func RemoveImage(ctx context.Context, imageName string) error {
-	registry, image, tag := parseImage(imageName)
+	registry, image, tag := image.ParseImageParts(imageName)
 	if registry == "" {
 		registry, _ = config.GetString("docker:registry")
 	}
@@ -198,27 +198,4 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 		return resp, nil
 	}
 	return nil, err
-}
-
-func parseImage(imageName string) (registry string, image string, tag string) {
-	parts := strings.SplitN(imageName, "/", 3)
-	switch len(parts) {
-	case 1:
-		image = imageName
-	case 2:
-		if strings.ContainsAny(parts[0], ":.") || parts[0] == "localhost" {
-			registry = parts[0]
-			image = parts[1]
-			break
-		}
-		image = imageName
-	case 3:
-		registry = parts[0]
-		image = strings.Join(parts[1:], "/")
-	}
-	parts = strings.SplitN(image, ":", 2)
-	if len(parts) < 2 {
-		return registry, parts[0], ""
-	}
-	return registry, parts[0], parts[1]
 }
