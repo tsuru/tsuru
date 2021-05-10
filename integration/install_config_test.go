@@ -45,7 +45,6 @@ func (s *S) getPlatforms() []string {
 	availablePlatforms := []string{
 		"tsuru/python",
 		"tsuru/go",
-		"tsuru/buildpack",
 		"tsuru/cordova",
 		"tsuru/elixir",
 		"tsuru/java",
