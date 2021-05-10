@@ -159,6 +159,10 @@ func volumeClaimName(name string) string {
 
 func registrySecretName(registry string) string {
 	registry = validKubeName(registry)
+	if registry == "" {
+		return "registry"
+	}
+
 	return fmt.Sprintf("registry-%s", registry)
 }
 
