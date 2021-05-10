@@ -170,31 +170,6 @@ func (s *S) TestRegistryRemoveImageEmptyDigest(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `.*empty digest returned for image tsuru/app-test:v1.*`)
 }
 
-func (s *S) TestParseImage(c *check.C) {
-	tt := []struct {
-		imageURI         string
-		expectedRegistry string
-		expectedImage    string
-		expectedTag      string
-	}{
-		{"f064bf4", "", "f064bf4", ""},
-		{"", "", "", ""},
-		{"registry.io/tsuru/app-img:v1", "registry.io", "tsuru/app-img", "v1"},
-		{"tsuru/app-img:v1", "", "tsuru/app-img", "v1"},
-		{"tsuru/app-img", "", "tsuru/app-img", ""},
-		{"f064bf4:v1", "", "f064bf4", "v1"},
-		{"registry:5000/app-img:v1", "registry:5000", "app-img", "v1"},
-		{"registry.io/app-img:v1", "registry.io", "app-img", "v1"},
-		{"localhost/app-img:v1", "localhost", "app-img", "v1"},
-	}
-	for _, t := range tt {
-		registry, image, tag := parseImage(t.imageURI)
-		c.Check(registry, check.Equals, t.expectedRegistry, check.Commentf("Invalid registry for image: %v", t.imageURI))
-		c.Check(image, check.Equals, t.expectedImage, check.Commentf("Invalid image for image: %v", t.imageURI))
-		c.Check(tag, check.Equals, t.expectedTag, check.Commentf("Invalid tag for image: %v", t.imageURI))
-	}
-}
-
 func (s *S) TestDockerRegistryDoRequest(c *check.C) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -23,24 +23,37 @@ func ImageHistorySize() int {
 }
 
 func SplitImageName(imageName string) (repo, tag string) {
-	imgNameSplit := strings.Split(imageName, ":")
-	switch len(imgNameSplit) {
-	case 1:
-		repo = imgNameSplit[0]
+	reg, img, tag := ParseImageParts(imageName)
+	if tag == "" {
 		tag = "latest"
-	case 2:
-		if strings.Contains(imgNameSplit[1], "/") {
-			repo = imageName
-			tag = "latest"
-		} else {
-			repo = imgNameSplit[0]
-			tag = imgNameSplit[1]
-		}
-	default:
-		repo = strings.Join(imgNameSplit[:len(imgNameSplit)-1], ":")
-		tag = imgNameSplit[len(imgNameSplit)-1]
 	}
-	return
+	if reg != "" {
+		img = strings.Join([]string{reg, img}, "/")
+	}
+	return img, tag
+}
+
+func ParseImageParts(imageName string) (registry string, image string, tag string) {
+	parts := strings.SplitN(imageName, "/", 3)
+	switch len(parts) {
+	case 1:
+		image = imageName
+	case 2:
+		if strings.ContainsAny(parts[0], ":.") || parts[0] == "localhost" {
+			registry = parts[0]
+			image = parts[1]
+			break
+		}
+		image = imageName
+	case 3:
+		registry = parts[0]
+		image = strings.Join(parts[1:], "/")
+	}
+	parts = strings.SplitN(image, ":", 2)
+	if len(parts) < 2 {
+		return registry, parts[0], ""
+	}
+	return registry, parts[0], parts[1]
 }
 
 func AppBasicImageName(appName string) string {

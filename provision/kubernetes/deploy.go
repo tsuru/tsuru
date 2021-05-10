@@ -215,8 +215,8 @@ func createImageBuildPod(ctx context.Context, params createPodParams) error {
 func getImagePullSecrets(ctx context.Context, client *ClusterClient, namespace string, images ...string) ([]apiv1.LocalObjectReference, error) {
 	reg := registryAuth("")
 	useSecret := false
-	for _, image := range images {
-		imgDomain := strings.Split(image, "/")[0]
+	for _, img := range images {
+		imgDomain, _, _ := image.ParseImageParts(img)
 		if imgDomain == reg.imgDomain {
 			useSecret = true
 			break
@@ -229,12 +229,18 @@ func getImagePullSecrets(ctx context.Context, client *ClusterClient, namespace s
 	if err != nil {
 		return nil, err
 	}
+	if secretName == "" {
+		return nil, nil
+	}
 	return []apiv1.LocalObjectReference{
 		{Name: secretName},
 	}, nil
 }
 
 func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace string, reg registryAuthConfig) (string, error) {
+	if reg.username == "" && reg.password == "" {
+		return "", nil
+	}
 	authEncoded := base64.StdEncoding.EncodeToString([]byte(reg.username + ":" + reg.password))
 	conf := map[string]map[string]dockerTypes.AuthConfig{
 		"auths": {
@@ -248,6 +254,9 @@ func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace stri
 	serializedConf, err := json.Marshal(conf)
 	if err != nil {
 		return "", err
+	}
+	if reg.imgDomain == "" {
+		reg.imgDomain = "default"
 	}
 	secret := &apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -334,7 +343,7 @@ type registryAuthConfig struct {
 func registryAuth(img string) registryAuthConfig {
 	regDomain, _ := config.GetString("docker:registry")
 	if img != "" {
-		imgDomain := strings.Split(img, "/")[0]
+		imgDomain, _, _ := image.ParseImageParts(img)
 		if imgDomain != regDomain {
 			return registryAuthConfig{}
 		}

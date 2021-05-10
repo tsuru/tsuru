@@ -4492,3 +4492,80 @@ func (s *S) TestServiceManagerDeployServiceWithVPA(c *check.C) {
 	_, err = s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestGetImagePullSecrets(c *check.C) {
+	tests := []struct {
+		config      map[string]interface{}
+		images      []string
+		expectedRef []apiv1.LocalObjectReference
+	}{
+		{
+			config: map[string]interface{}{
+				"docker:registry":               "myreg1.com",
+				"docker:registry-auth:username": "user",
+				"docker:registry-auth:password": "pass",
+			},
+			images: []string{"myreg1.com/tsuru/go"},
+			expectedRef: []apiv1.LocalObjectReference{
+				{Name: "registry-myreg1.com"},
+			},
+		},
+		{
+			config: map[string]interface{}{
+				"docker:registry":               "myreg1.com",
+				"docker:registry-auth:username": "user",
+				"docker:registry-auth:password": "pass",
+			},
+			images:      []string{"otherreg.com/tsuru/go"},
+			expectedRef: nil,
+		},
+		{
+			config: map[string]interface{}{
+				"docker:registry":               "myreg1.com",
+				"docker:registry-auth:username": "user",
+				"docker:registry-auth:password": "pass",
+			},
+			images: []string{"otherreg.com/tsuru/go", "myreg1.com/tsuru/go"},
+			expectedRef: []apiv1.LocalObjectReference{
+				{Name: "registry-myreg1.com"},
+			},
+		},
+		{
+			config: map[string]interface{}{
+				"docker:registry": "myreg1.com",
+			},
+			images:      []string{"myreg1.com/tsuru/go"},
+			expectedRef: nil,
+		},
+		{
+			config: map[string]interface{}{
+				"docker:registry": "",
+			},
+			images:      []string{"tsuru/go"},
+			expectedRef: nil,
+		},
+		{
+			config: map[string]interface{}{
+				"docker:registry":               "",
+				"docker:registry-auth:username": "user",
+				"docker:registry-auth:password": "pass",
+			},
+			images: []string{"tsuru/go"},
+			expectedRef: []apiv1.LocalObjectReference{
+				{Name: "registry-default"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		for k, v := range tt.config {
+			config.Set(k, v)
+		}
+		ref, err := getImagePullSecrets(context.TODO(), s.clusterClient, "ns1", tt.images...)
+		c.Assert(err, check.IsNil)
+		c.Assert(ref, check.DeepEquals, tt.expectedRef)
+		for k := range tt.config {
+			config.Unset(k)
+		}
+	}
+}
