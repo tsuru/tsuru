@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
 	"github.com/opentracing/opentracing-go"
@@ -529,6 +530,8 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
+
+	form.DefaultEncoder = form.DefaultEncoder.UseJSONTags(false)
 
 	if !dry {
 		err := startServer(n)

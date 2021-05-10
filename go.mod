@@ -35,7 +35,6 @@ require (
 	github.com/google/go-querystring v0.0.0-20150414214848-547ef5ac9797 // indirect
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
 	github.com/gorilla/mux v1.7.0
-	github.com/gorilla/pat v0.0.0-20131205071617-ae2e162c4b2a // indirect
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
@@ -55,7 +54,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
 	github.com/prometheus/client_golang v1.1.0
-	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
 	github.com/sajari/fuzzy v1.0.0
@@ -64,9 +62,7 @@ require (
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
 	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
 	github.com/tsuru/docker-cluster v0.0.0-20190325123005-f372d8d4e354
-	github.com/tsuru/gandalf v0.0.0-20180117164358-86866cf0af24
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
-	github.com/tsuru/go-gandalfclient v0.0.0-20200928142220-6d227717b7c3
 	github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
@@ -82,7 +78,6 @@ require (
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/ahmetb/go-linq.v3 v3.0.0 // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
@@ -101,6 +96,7 @@ require (
 )
 
 replace (
+	github.com/ajg/form => github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/docker/docker => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
 	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
 	gopkg.in/ahmetb/go-linq.v3 => github.com/ahmetb/go-linq v3.0.0+incompatible

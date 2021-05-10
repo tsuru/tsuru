@@ -305,6 +305,7 @@ func ParseInput(r *http.Request, dst interface{}) error {
 		dec := form.NewDecoder(nil)
 		dec.IgnoreCase(true)
 		dec.IgnoreUnknownKeys(true)
+		dec.UseJSONTags(false)
 		err := parseForm(r)
 		if err != nil && contentType == "application/x-www-form-urlencoded" {
 			return &tsuruErrors.HTTP{
