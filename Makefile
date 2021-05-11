@@ -60,34 +60,19 @@ release:
 		exit 1; \
 	fi
 
-	$(eval PATCH := $(shell echo $(version) | sed "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
-	$(eval MINOR := $(shell echo $(PATCH) | sed "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
+	$(eval SED := $(shell which gsed || which sed))
+	$(eval PATCH := $(shell echo $(version) | $(SED) "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
+	$(eval MINOR := $(shell echo $(PATCH) | $(SED) "s/^\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/"))
 	@if [ $(MINOR) == $(PATCH) ]; then \
 		echo "invalid version"; \
 		exit 1; \
 	fi
 
-	@if [ ! -f docs/releases/tsurud/$(PATCH).rst ]; then \
-		echo "to release the $(version) version you should create a release notes for version $(PATCH) first."; \
-		exit 1; \
-	fi
-
 	@echo "Releasing tsuru $(version) version."
 	@echo "Replacing version string."
-	@sed -i "s/release = '.*'/release = '$(version)'/g" docs/conf.py
-	@sed -i "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
-	@sed -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
-
-	@git add docs/conf.py api/server.go
-	@git commit -m "bump to $(version)"
-
-	@echo "Creating $(version) tag."
-	@git tag $(version)
-
-	@git push --tags
-	@git push origin main
-
-	@echo "$(version) released!"
+	@$(SED) -i "s/release = '.*'/release = '$(version)'/g" docs/conf.py
+	@$(SED) -i "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
+	@$(SED) -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
 
 install:
 	go install ./...
