@@ -1,7 +1,7 @@
 # goreleaser.yml
 # Build customization
-build:
-  main: ./cmd/tsurud
+builds:
+- main: ./cmd/tsurud
   binary: tsurud
   ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}}
   goos:
@@ -10,8 +10,8 @@ build:
     - amd64
 
 # Archive customization
-archive:
-  name_template: "tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}"
+archives:
+- name_template: "tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}"
   format: tar.gz
   replacements:
     amd64: amd64
