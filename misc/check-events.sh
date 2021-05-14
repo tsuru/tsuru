@@ -16,7 +16,7 @@ EOF
 )
 ignored=$(echo "$ignored" | sort)
 
-go get -u github.com/tsuru/tsuru-api-docs
+go install github.com/tsuru/tsuru-api-docs@latest
 badhandlers=$(tsuru-api-docs --no-method GET --no-search "event\." | sort)
 badhandlers=$(comm -23 <(echo "$badhandlers") <(echo "$ignored"))
 
