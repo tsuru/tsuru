@@ -1,4 +1,7 @@
-FROM golang:alpine as builder
+FROM --platform=$BUILDPLATFORM golang:alpine as builder
+
+ARG TARGETARCH
+ENV GOARCH=$TARGETARCH
 
 RUN apk add --no-cache git
 COPY . /go/src/github.com/tsuru/tsuru
