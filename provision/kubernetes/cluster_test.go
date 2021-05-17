@@ -16,6 +16,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	"k8s.io/client-go/rest"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 var (
@@ -114,6 +115,37 @@ func (s *S) TestClusterInitClient(c *check.C) {
 	c.Assert(cli.restConfig.APIPath, check.DeepEquals, expected.APIPath)
 	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
 	c.Assert(cli.restConfig.TLSClientConfig, check.DeepEquals, expected.TLSClientConfig)
+	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
+}
+
+func (s *S) TestClusterInitClientByKubeConfig(c *check.C) {
+	c1 := provTypes.Cluster{
+		Name:        "c1",
+		Default:     true,
+		Provisioner: provisionerName,
+		KubeConfig: &provTypes.KubeConfig{
+			Cluster: clientcmdapi.Cluster{
+				Server:                   "http://blah.com",
+				CertificateAuthorityData: testCA,
+			},
+			AuthInfo: clientcmdapi.AuthInfo{
+				ClientCertificateData: testCert,
+				ClientKeyData:         testKey,
+			},
+		},
+	}
+	cli, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	c.Assert(cli.Interface, check.NotNil)
+	c.Assert(cli.restConfig, check.NotNil)
+	expected := &rest.Config{
+		Host: "http://blah.com",
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: testCA,
+		},
+		Timeout: time.Minute,
+	}
+	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
 	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
 }
 

@@ -187,7 +187,7 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 			cluster.Name: &cluster.KubeConfig.AuthInfo,
 		},
 	}
-	restConfig, err := clientcmd.NewNonInteractiveClientConfig(cliCfg, cluster.Name, nil, nil).ClientConfig()
+	restConfig, err := clientcmd.NewNonInteractiveClientConfig(cliCfg, cluster.Name, &clientcmd.ConfigOverrides{}, nil).ClientConfig()
 	if err != nil {
 		return nil, err
 	}
