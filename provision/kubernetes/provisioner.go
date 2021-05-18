@@ -204,7 +204,7 @@ func initLocalCluster() {
 
 	clusters, err := servicemanager.Cluster.List(context.Background())
 	if err != nil {
-		log.Errorf("[kubernetes-provisioner] could not list clusters")
+		log.Errorf("[kubernetes-provisioner] could not list clusters: %s", err.Error())
 		return
 	}
 
