@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -183,11 +185,44 @@ func (p *kubernetesProvisioner) Initialize() error {
 		// there's a better way to control glog.
 		flag.CommandLine.Parse([]string{"-v", strconv.Itoa(conf.LogLevel), "-logtostderr"})
 	}
+
+	initLocalCluster()
+
 	err := initAllControllers(p)
 	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err
+}
+
+func initLocalCluster() {
+	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" || os.Getenv("KUBERNETES_SERVICE_PORT") == "" {
+		return // not running inside a kubernetes cluster
+	}
+
+	log.Debugf("[kubernetes-provisioner] tsuru is running inside a kubernetes cluster")
+
+	clusters, err := servicemanager.Cluster.List(context.Background())
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not list clusters")
+		return
+	}
+
+	if len(clusters) > 0 {
+		return
+	}
+
+	log.Debugf("[kubernetes-provisioner] no kubernetes clusters found, adding default")
+
+	err = servicemanager.Cluster.Create(context.Background(), provTypes.Cluster{
+		Name:    "local",
+		Default: true,
+		Local:   true,
+	})
+
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not create default cluster: %v", err)
+	}
 }
 
 func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {

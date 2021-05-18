@@ -24,7 +24,7 @@ type Cluster struct {
 	CustomData  map[string]string `json:"custom_data"`
 	Local       bool              `json:"local"`
 	Default     bool              `json:"default"`
-	KubeConfig  *KubeConfig       `json:"kubeConfig"`
+	KubeConfig  *KubeConfig       `json:"kubeConfig,omitempty"`
 
 	Writer io.Writer `json:"-"`
 }
