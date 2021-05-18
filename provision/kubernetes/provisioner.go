@@ -201,10 +201,31 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 }
 
 func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
+	multiErrors := tsuruErrors.NewMultiError()
+
 	if _, ok := c.CustomData[singlePoolKey]; ok && len(c.Pools) != 1 {
-		return errors.Errorf("only one pool is allowed to use entire cluster as single-pool. %d pools found", len(c.Pools))
+		multiErrors.Add(errors.Errorf("only one pool is allowed to use entire cluster as single-pool. %d pools found", len(c.Pools)))
 	}
-	return nil
+
+	if c.KubeConfig != nil {
+		if len(c.Addresses) > 1 {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of addresses is not used"))
+		}
+		if c.CaCert != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of cacert is not used"))
+		}
+		if c.ClientCert != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of clientcert is not used"))
+		}
+		if c.ClientKey != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of clientkey is not used"))
+		}
+		if c.KubeConfig.Cluster.Server == "" {
+			multiErrors.Add(errors.New("kubeConfig.cluster.server field is required"))
+		}
+	}
+
+	return multiErrors.ToError()
 }
 
 func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
