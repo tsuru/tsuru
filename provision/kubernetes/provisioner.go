@@ -218,6 +218,12 @@ func initLocalCluster() {
 		Name:    "local",
 		Default: true,
 		Local:   true,
+		CustomData: map[string]string{
+			enableLogsFromAPIServerKey:    "true",
+			disableDefaultNodeSelectorKey: "true",
+			disableUnitRegisterCmdKey:     "true",
+			disableNodeContainers:         "true",
+		},
 	})
 
 	if err != nil {
