@@ -34,6 +34,7 @@ type cluster struct {
 	Local       bool              `bson:",omitempty"`
 	Default     bool
 	KubeConfig  *provision.KubeConfig `bson:",omitempty"`
+	HTTPProxy   string                `json:"httpProxy,omitempty"`
 
 	Writer io.Writer `bson:"-"`
 }
