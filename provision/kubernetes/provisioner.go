@@ -203,7 +203,7 @@ func initLocalCluster() {
 	log.Debugf("[kubernetes-provisioner] tsuru is running inside a kubernetes cluster")
 
 	clusters, err := servicemanager.Cluster.List(context.Background())
-	if err != nil {
+	if err != nil && err != provTypes.ErrNoCluster {
 		log.Errorf("[kubernetes-provisioner] could not list clusters: %s", err.Error())
 		return
 	}
