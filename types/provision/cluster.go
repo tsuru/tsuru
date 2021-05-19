@@ -25,6 +25,7 @@ type Cluster struct {
 	Local       bool              `json:"local"`
 	Default     bool              `json:"default"`
 	KubeConfig  *KubeConfig       `json:"kubeConfig,omitempty"`
+	HTTPProxy   string            `json:"httpProxy,omitempty"`
 
 	Writer io.Writer `json:"-"`
 }

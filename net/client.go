@@ -69,12 +69,9 @@ func insecure(client *http.Client) *http.Client {
 }
 
 func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
-	u, err := url.Parse(proxyURL)
+	newTransport, err := ProxyTransport(proxyURL)
 	if err != nil {
 		return nil, err
-	}
-	newTransport := http.Transport{
-		Proxy: http.ProxyURL(u),
 	}
 	baseTrans, _ := cli.Transport.(*http.Transport)
 	if baseTrans != nil {
@@ -83,6 +80,16 @@ func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
 		newTransport.MaxIdleConnsPerHost = baseTrans.MaxIdleConnsPerHost
 		newTransport.TLSClientConfig = baseTrans.TLSClientConfig
 	}
-	cli.Transport = &newTransport
+	cli.Transport = newTransport
 	return &cli, nil
+}
+
+func ProxyTransport(proxyURL string) (*http.Transport, error) {
+	u, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, err
+	}
+	return &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}, nil
 }

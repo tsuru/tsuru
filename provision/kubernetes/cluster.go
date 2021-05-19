@@ -198,8 +198,16 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 		NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 	}
 	restConfig.Timeout = kubeConf.APITimeout
-	restConfig.WrapTransport = tsuruNet.OpentracingTransport
 
+	if cluster.HTTPProxy == "" {
+		restConfig.WrapTransport = tsuruNet.OpentracingTransport
+	} else {
+		transport, err := tsuruNet.ProxyTransport(cluster.HTTPProxy)
+		if err != nil {
+			return nil, err
+		}
+		restConfig.Transport = transport
+	}
 	return restConfig, nil
 }
 

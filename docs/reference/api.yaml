@@ -4941,10 +4941,64 @@ definitions:
         type: object
         additionalProperties:
           type: string
-      create_data:
+      httpProxy:
+        type: string
+      kubeConfig:
         type: object
-        additionalProperties:
-          type: string
+        properties:
+          cluster: # extracted from k8s.io/client-go/tools/clientcmd/api.Cluster
+            type: object
+            properties:
+              server:
+                type: string
+              certificate-authority-data:
+                type: string
+              insecure-skip-tls-verify:
+                type: bool
+            required: ["server"]
+          user: # extracted from k8s.io/client-go/tools/clientcmd/api.AuthInfo
+            type: object
+            properties:
+              auth-provider: # extracted from: k8s.io/client-go/tools/clientcmd/api.AuthProviderConfig
+                type: object
+                properties:
+                  name:
+                    type: string
+                  config:
+                    type: object
+                    additionalProperties:
+                      type: string
+              exec:
+                type: object
+                properties:
+                  apiVersion:
+                    type: string
+                  command:
+                    type: string
+                  args:
+                    type: array
+                    items:
+                      type: string
+                  env:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+              client-certificate-data:
+                type: string
+              client-key-data:
+                type: string
+              token:
+                type: string
+              username:
+                type: string
+              password:
+                type: string
+
       default:
         type: boolean
   Quota:
