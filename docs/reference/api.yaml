@@ -4954,7 +4954,7 @@ definitions:
               certificate-authority-data:
                 type: string
               insecure-skip-tls-verify:
-                type: bool
+                type: boolean
             required: ["server"]
           user: # extracted from k8s.io/client-go/tools/clientcmd/api.AuthInfo
             type: object
