@@ -4937,6 +4937,10 @@ definitions:
         type: array
         items:
           type: string
+      default:
+        type: boolean
+      local:
+        type: boolean
       custom_data:
         type: object
         additionalProperties:
@@ -4952,6 +4956,8 @@ definitions:
               server:
                 type: string
               certificate-authority-data:
+                type: string
+              tls-server-name:
                 type: string
               insecure-skip-tls-verify:
                 type: boolean
@@ -4998,9 +5004,6 @@ definitions:
                 type: string
               password:
                 type: string
-
-      default:
-        type: boolean
   Quota:
     type: object
     properties:
