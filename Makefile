@@ -111,3 +111,12 @@ generate-test-certs:
 	openssl req -new -x509 -sha256 -key ./app/testdata/private.key -subj '/CN=app.io' -addext 'subjectAltName = DNS:app.io' -out ./app/testdata/certificate.crt -days 3650
 	cp ./app/testdata/private.key ./api/testdata/key.pem
 	cp ./app/testdata/certificate.crt ./api/testdata/cert.pem
+
+development-mac:
+	minikube start --driver=virtualbox
+	minikube addons enable registry
+	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
+	docker-compose up -d
+	go build -o $(TSR_BIN) $(TSR_SRC)
+	$(TSR_BIN) api -c ./etc/tsuru-local.conf
+	

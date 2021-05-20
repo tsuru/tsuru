@@ -4,29 +4,15 @@ services:
         image: mongo
         volumes:
             - ./data/mongo:/data/db
-        networks:
-            - tsuru_net
         ports:
             - 27017:27017
     redis:
         image: redis
         volumes:
             - ./data/redis:/data
-        networks:
-            - tsuru_net
         ports:
-            - "6379:6379"
-    registry:
-        image: registry:2
-        environment:
-            - REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/var/lib/registry
-            - REGISTRY_STORAGE_DELETE_ENABLED=true
-        volumes:
-            - ./data/registry:/var/lib/registry
-        networks:
-            - tsuru_net
-        ports:
-            - 5000:5000
+            - 6379:6379
+
     planb:
         image: tsuru/planb
         command: --read-redis-host=redis --write-redis-host=redis
@@ -34,58 +20,3 @@ services:
             - redis
         ports:
             - "8989:8989"
-        networks:
-            - tsuru_net
-    gandalf:
-        image: tsuru/gandalf:latest
-        environment:
-            - MONGODB_ADDR=mongo
-            - MONGODB_PORT=27017
-            - TSURU_HOST=http://api:8080
-            - TSURU_TOKEN=
-        volumes:
-            - ./data/gandalf/repositories:/var/lib/gandalf/repositories
-            - ./data/gandalf/ssh:/home/git/.ssh
-            - ./misc/git-hooks:/home/git/bare-template/hooks
-        networks:
-            - tsuru_net
-        ports:
-            - "10022:22"
-    api:
-        build:
-            context: .
-            dockerfile: Dockerfile.dev
-        ports:
-            - 8080:8080
-        depends_on:
-            - mongo
-            - gandalf
-            - redis
-            - registry
-        networks:
-            - tsuru_net
-    node1:
-        image: docker:dind
-        privileged: true
-        command: --insecure-registry 10.200.10.1:5000
-        ports:
-            - "2375:2375"
-            - "32768-32772:32768-32772"
-        networks:
-            - tsuru_net
-    service1:
-        build:
-            context: https://github.com/tsuru/eviaas.git
-        ports:
-            - 8888:8888
-        networks:
-            tsuru_net:
-                ipv4_address: 172.42.0.20
-
-networks:
-  tsuru_net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-      - subnet: 172.42.0.0/24
