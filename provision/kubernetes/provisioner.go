@@ -215,9 +215,10 @@ func initLocalCluster() {
 	log.Debugf("[kubernetes-provisioner] no kubernetes clusters found, adding default")
 
 	err = servicemanager.Cluster.Create(context.Background(), provTypes.Cluster{
-		Name:    "local",
-		Default: true,
-		Local:   true,
+		Name:        "local",
+		Default:     true,
+		Local:       true,
+		Provisioner: provisionerName,
 		CustomData: map[string]string{
 			enableLogsFromAPIServerKey:    "true",
 			disableDefaultNodeSelectorKey: "true",
