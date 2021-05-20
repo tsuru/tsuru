@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -196,13 +197,14 @@ func (p *kubernetesProvisioner) Initialize() error {
 }
 
 func initLocalCluster() {
+	ctx := context.Background()
 	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" || os.Getenv("KUBERNETES_SERVICE_PORT") == "" {
 		return // not running inside a kubernetes cluster
 	}
 
 	log.Debugf("[kubernetes-provisioner] tsuru is running inside a kubernetes cluster")
 
-	clusters, err := servicemanager.Cluster.List(context.Background())
+	clusters, err := servicemanager.Cluster.List(ctx)
 	if err != nil && err != provTypes.ErrNoCluster {
 		log.Errorf("[kubernetes-provisioner] could not list clusters: %s", err.Error())
 		return
@@ -214,7 +216,7 @@ func initLocalCluster() {
 
 	log.Debugf("[kubernetes-provisioner] no kubernetes clusters found, adding default")
 
-	err = servicemanager.Cluster.Create(context.Background(), provTypes.Cluster{
+	err = servicemanager.Cluster.Create(ctx, provTypes.Cluster{
 		Name:        "local",
 		Default:     true,
 		Local:       true,
@@ -230,6 +232,28 @@ func initLocalCluster() {
 	if err != nil {
 		log.Errorf("[kubernetes-provisioner] could not create default cluster: %v", err)
 	}
+
+	pools, err := servicemanager.Pool.List(ctx)
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not list pools: %v", err)
+	}
+
+	if len(pools) == 0 {
+		return
+	}
+
+	log.Debugf("[kubernetes-provisioner] no pool found, adding default")
+
+	err = pool.AddPool(ctx, pool.AddPoolOptions{
+		Name:        "local",
+		Provisioner: provisionerName,
+		Default:     true,
+	})
+
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not create default pool: %v", err)
+	}
+
 }
 
 func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
