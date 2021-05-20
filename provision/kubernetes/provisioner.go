@@ -47,6 +47,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -253,7 +254,6 @@ func initLocalCluster() {
 	if err != nil {
 		log.Errorf("[kubernetes-provisioner] could not create default pool: %v", err)
 	}
-
 }
 
 func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
