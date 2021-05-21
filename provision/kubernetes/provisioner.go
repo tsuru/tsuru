@@ -29,6 +29,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	_ "github.com/tsuru/tsuru/provision/kubernetes/authplugin/gcpwithproxy" // import custom authplugin that have proxy support
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -47,7 +48,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // gcp default auth plugin
 	"k8s.io/client-go/tools/remotecommand"
 )
 
