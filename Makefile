@@ -112,6 +112,7 @@ generate-test-certs:
 	cp ./app/testdata/private.key ./api/testdata/key.pem
 	cp ./app/testdata/certificate.crt ./api/testdata/cert.pem
 
+# reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
 development-mac:
 	minikube start --driver=virtualbox
 	minikube addons enable registry

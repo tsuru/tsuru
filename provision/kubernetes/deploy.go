@@ -519,6 +519,18 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
 }
 
+func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {
+	shouldDisable := false
+	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
+		var err error
+		shouldDisable, err = strconv.ParseBool(val)
+		if err != nil {
+			return false, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
+		}
+	}
+	return shouldDisable, nil
+}
+
 func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
 	singlePool, err := client.SinglePool()
 	if err != nil {
@@ -540,15 +552,12 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 		return nil, affinity, nil
 	}
 
-	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
-		var shouldDisable bool
-		shouldDisable, err = strconv.ParseBool(val)
-		if err != nil {
-			return nil, nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
-		}
-		if shouldDisable {
-			return nil, affinity, nil
-		}
+	shouldDisable, err := getClusterNodeSelectorFlag(client)
+	if err != nil {
+		return nil, nil, err
+	}
+	if shouldDisable {
+		return nil, affinity, nil
 	}
 
 	return provision.NodeLabels(provision.NodeLabelsOpts{
@@ -1813,7 +1822,11 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 	if err != nil {
 		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
-	if singlePool {
+	shouldDisable, err := getClusterNodeSelectorFlag(client)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	if shouldDisable || singlePool {
 		affinity = &apiv1.Affinity{}
 	}
 	_, uid := dockercommon.UserForContainer()
