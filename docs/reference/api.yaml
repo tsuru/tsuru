@@ -2573,6 +2573,8 @@ paths:
     post:
       operationId: VolumeCreate
       description: Create volume.
+      consumes:
+        - application/json
       parameters:
         - name: volumeData
           in: body
