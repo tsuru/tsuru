@@ -240,7 +240,7 @@ func initLocalCluster() {
 		log.Errorf("[kubernetes-provisioner] could not list pools: %v", err)
 	}
 
-	if len(pools) == 0 {
+	if len(pools) > 0 {
 		return
 	}
 

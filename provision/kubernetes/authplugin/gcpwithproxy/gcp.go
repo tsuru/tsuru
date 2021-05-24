@@ -101,14 +101,21 @@ func newGCPAuthProvider(_ string, gcpConfig map[string]string, persister restcli
 }
 
 func tokenSource(gcpConfig map[string]string) (oauth2.TokenSource, error) {
+	if gcpConfig["dry-run"] != "" {
+		return &dryRunTokenSource{
+			token: &oauth2.Token{
+				AccessToken: "my-fake-token",
+			},
+		}, nil
+	}
 	// Google Application Credentials-based token source
 	scopes := parseScopes(gcpConfig)
 
-	proxyURL := gcpConfig["proxy-url"]
+	httpProxy := gcpConfig["http-proxy"]
 	ctx := context.Background()
-	if proxyURL != "" {
+	if httpProxy != "" {
 		client := tsuruNet.Dial15Full60ClientNoKeepAlive
-		client, err := tsuruNet.WithProxy(*client, proxyURL)
+		client, err := tsuruNet.WithProxy(*client, httpProxy)
 		if err != nil {
 			return nil, err
 		}
@@ -257,3 +264,9 @@ func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 }
 
 func (t *conditionalTransport) WrappedRoundTripper() http.RoundTripper { return t.oauthTransport.Base }
+
+type dryRunTokenSource struct{ token *oauth2.Token }
+
+func (t *dryRunTokenSource) Token() (*oauth2.Token, error) {
+	return t.token, nil
+}

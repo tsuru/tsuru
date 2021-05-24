@@ -6,9 +6,19 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"sort"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+
+	"github.com/elazarl/goproxy"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
@@ -147,6 +157,69 @@ func (s *S) TestClusterInitClientByKubeConfig(c *check.C) {
 	}
 	c.Assert(cli.restConfig.Host, check.DeepEquals, expected.Host)
 	c.Assert(cli.restConfig.Timeout, check.DeepEquals, expected.Timeout)
+}
+
+func (s *S) TestClusterInitClientByKubeConfigWithProxyANDTLS(c *check.C) {
+	fakeK8SServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/namespaces/default/endpoints/kubernetes" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(&corev1.Endpoints{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kubernetes",
+				},
+				Subsets: []corev1.EndpointSubset{
+					{
+						Addresses: []corev1.EndpointAddress{
+							{
+								IP: "1.2.3.4",
+							},
+						},
+					},
+				},
+			})
+			return
+		}
+		http.Error(w, "Unepected path: "+r.URL.Path, http.StatusInternalServerError)
+	}))
+	fakeK8SServer.StartTLS()
+	defer fakeK8SServer.Close()
+
+	proxy := goproxy.NewProxyHttpServer()
+	proxy.Verbose = true
+
+	fakeProxy := httptest.NewServer(proxy)
+	defer fakeProxy.Close()
+
+	c1 := provTypes.Cluster{
+		Name:        "c1",
+		Default:     true,
+		Provisioner: provisionerName,
+		KubeConfig: &provTypes.KubeConfig{
+			Cluster: clientcmdapi.Cluster{
+				Server:                fakeK8SServer.URL,
+				InsecureSkipTLSVerify: true,
+			},
+			AuthInfo: clientcmdapi.AuthInfo{
+				AuthProvider: &clientcmdapi.AuthProviderConfig{
+					Name: "gcp-with-proxy",
+					Config: map[string]string{
+						"dry-run":    "true",
+						"http-proxy": fakeProxy.URL,
+					},
+				},
+			},
+		},
+		HTTPProxy: fakeProxy.URL,
+	}
+	restConfig, err := getRestConfigByKubeConfig(&c1)
+	c.Assert(err, check.IsNil)
+
+	k8s, err := kubernetes.NewForConfig(restConfig)
+	c.Assert(err, check.IsNil)
+
+	endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", v1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(endpoint.Subsets[0].Addresses[0].IP, check.Equals, "1.2.3.4")
 }
 
 func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {

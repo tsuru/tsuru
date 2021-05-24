@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
@@ -199,14 +202,26 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 	}
 	restConfig.Timeout = kubeConf.APITimeout
 
+	proxyURL, err := url.Parse(cluster.HTTPProxy)
+	if err != nil {
+		return nil, err
+	}
+
 	if cluster.HTTPProxy == "" {
 		restConfig.WrapTransport = tsuruNet.OpentracingTransport
 	} else {
-		transport, err := tsuruNet.ProxyTransport(cluster.HTTPProxy)
-		if err != nil {
-			return nil, err
+		restConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+			transport, ok := rt.(*http.Transport)
+
+			if !ok {
+				log.Errorf("Could not apply patch to current transport, creating new one")
+				return &http.Transport{
+					Proxy: http.ProxyURL(proxyURL),
+				}
+			}
+			transport.Proxy = http.ProxyURL(proxyURL)
+			return transport
 		}
-		restConfig.Transport = transport
 	}
 	return restConfig, nil
 }
