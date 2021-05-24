@@ -988,6 +988,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		msg := "Prune unused requires a managed-by value"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
+	//validateen
+
+	for _, result := range e.Envs {
+		pass, envErr := isInternalEnv(result.Name)
+		if !pass {
+			msg := "You cannot name this environment variable  with the same name as an internal environment variable, env name: " + envErr
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+		}
+	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1054,6 +1063,17 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
 	}
 	return err
+}
+func isInternalEnv(name string) (bool, string) {
+	internalEnvs := []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
+	for _, Envs := range internalEnvs {
+		if Envs == name {
+			msg := name
+			return false, msg
+		}
+	}
+	msg := "pass"
+	return true, msg
 }
 
 // title: unset envs
