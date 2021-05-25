@@ -3225,6 +3225,9 @@ func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {
 	d := apiTypes.Envs{
 		Envs: []apiTypes.Env{
 			{Name: "TSURU_APPNAME", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_APPDIR", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_APPN_TOKEN", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_SERVICE", Value: "everything-i-want", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
