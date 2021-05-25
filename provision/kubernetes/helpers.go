@@ -1139,7 +1139,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	var initialResource string
 	if args.eventsOutput != nil {
 		var events *apiv1.EventList
-		events, err = args.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(pod.Name))
+		events, err = args.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", pod.Name))
 		if err != nil {
 			return errors.WithStack(err)
 		}

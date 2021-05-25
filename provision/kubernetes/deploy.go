@@ -302,7 +302,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(params.podName))
+	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", params.podName))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -380,7 +380,7 @@ func extraRegisterCmds(a provision.App) string {
 }
 
 func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVersion, podName, namespace string, output io.Writer) (func(), error) {
-	watch, err := filteredPodEvents(ctx, client, initialResourceVersion, podName, namespace)
+	watch, err := filteredResourceEvents(ctx, client, initialResourceVersion, "Pod", podName, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -922,50 +922,6 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 	}
 }
 
-func filteredPodEvents(ctx context.Context, client *ClusterClient, evtResourceVersion, podName, namespace string) (watch.Interface, error) {
-	var err error
-	client, err = NewClusterClient(client.Cluster)
-	if err != nil {
-		return nil, err
-	}
-	err = client.SetTimeout(time.Hour)
-	if err != nil {
-		return nil, err
-	}
-	opts := listOptsForPodEvent(podName)
-	opts.Watch = true
-	opts.ResourceVersion = evtResourceVersion
-	evtWatch, err := client.CoreV1().Events(namespace).Watch(ctx, opts)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return evtWatch, nil
-}
-
-func listOptsForPodEvent(podName string) metav1.ListOptions {
-	selector := map[string]string{
-		"involvedObject.kind": "Pod",
-	}
-	if podName != "" {
-		selector["involvedObject.name"] = podName
-	}
-	return metav1.ListOptions{
-		FieldSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
-	}
-}
-
-func listOptsForResourceEvent(resourceType, resourceName string) metav1.ListOptions {
-	selector := map[string]string{
-		"involvedObject.kind": resourceType,
-	}
-	if resourceName != "" {
-		selector["involvedObject.name"] = resourceName
-	}
-	return metav1.ListOptions{
-		FieldSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
-	}
-}
-
 func filteredResourceEvents(ctx context.Context, client *ClusterClient, evtResourceVersion, resourceType, resourceName, namespace string) (watch.Interface, error) {
 	var err error
 	client, err = NewClusterClient(client.Cluster)
@@ -984,6 +940,18 @@ func filteredResourceEvents(ctx context.Context, client *ClusterClient, evtResou
 		return nil, errors.WithStack(err)
 	}
 	return evtWatch, nil
+}
+
+func listOptsForResourceEvent(resourceType, resourceName string) metav1.ListOptions {
+	selector := map[string]string{
+		"involvedObject.kind": resourceType,
+	}
+	if resourceName != "" {
+		selector["involvedObject.name"] = resourceName
+	}
+	return metav1.ListOptions{
+		FieldSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
+	}
 }
 
 func isDeploymentEvent(msg watch.Event, dep *appsv1.Deployment) bool {
@@ -1018,36 +986,32 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	if err != nil {
 		return revision, err
 	}
-	watchPods, err := filteredPodEvents(ctx, client, evtResourceVersion, "", ns)
+	watchPods, err := filteredResourceEvents(ctx, client, evtResourceVersion, "Pod", "", ns)
+	if err != nil {
+		return revision, err
+	}
+	watchDep, err := filteredResourceEvents(ctx, client, evtResourceVersion, "Deployment", dep.Name, ns)
+	if err != nil {
+		return revision, err
+	}
+	watchReplicaSet, err := filteredResourceEvents(ctx, client, evtResourceVersion, "ReplicaSet", "", ns)
 	if err != nil {
 		return revision, err
 	}
 	watchPodCh := watchPods.ResultChan()
+	watchDepCh := watchDep.ResultChan()
+	watchRepCh := watchReplicaSet.ResultChan()
 	defer func() {
 		watchPods.Stop()
 		if watchPodCh != nil {
 			// Drain watch channel to avoid goroutine leaks.
 			<-watchPodCh
 		}
-	}()
-	watchDep, err := filteredResourceEvents(ctx, client, evtResourceVersion, "Deployment", dep.Name, ns)
-	if err != nil {
-		return revision, err
-	}
-	watchDepCh := watchDep.ResultChan()
-	defer func() {
 		watchDep.Stop()
 		if watchDepCh != nil {
 			// Drain watch channel to avoid goroutine leaks.
 			<-watchDepCh
 		}
-	}()
-	watchReplicaSet, err := filteredResourceEvents(ctx, client, evtResourceVersion, "ReplicaSet", "", ns)
-	if err != nil {
-		return revision, err
-	}
-	watchRepCh := watchReplicaSet.ResultChan()
-	defer func() {
 		watchReplicaSet.Stop()
 		if watchRepCh != nil {
 			// Drain watch channel to avoid goroutine leaks.
@@ -1225,7 +1189,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if oldDep != nil {
 		oldRevision = oldDep.Annotations[replicaDepRevision]
 	}
-	events, err := m.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(""))
+	events, err := m.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1725,7 +1689,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		return err
 	}
 
-	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(params.podName))
+	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", params.podName))
 	if err != nil {
 		return errors.WithStack(err)
 	}
