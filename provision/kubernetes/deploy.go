@@ -1107,9 +1107,8 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				watchDepCh = nil
 				break
 			}
-			if isDeploymentEvent(msg, dep) {
-				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
-			}
+			fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+
 		case msg, isOpen := <-watchRepCh:
 			if !isOpen {
 				watchRepCh = nil
