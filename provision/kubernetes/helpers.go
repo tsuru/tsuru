@@ -7,10 +7,8 @@ package kubernetes
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -59,90 +57,62 @@ var svcIgnoredLabels = []string{
 	tsuruLabelPrefix + "external-controller",
 }
 
-var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
-
-func validKubeName(name string) string {
-	return strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
-}
-
 func serviceAccountNameForApp(a provision.App) string {
-	name := validKubeName(a.GetName())
+	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
 }
 
 func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
-	name := validKubeName(nodeContainer.Name)
+	name := provision.ValidKubeName(nodeContainer.Name)
 	return fmt.Sprintf("node-container-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string, version int) string {
-	return appProcessName(a, process, version, "")
+	return provision.AppProcessName(a, process, version, "")
 }
 
 func deploymentNameForAppBase(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func serviceNameForApp(a provision.App, process string, version int) string {
-	return appProcessName(a, process, version, "")
+	return provision.AppProcessName(a, process, version, "")
 }
 
 func serviceNameForAppBase(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func headlessServiceName(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "units")
+	return provision.AppProcessName(a, process, 0, "units")
 }
 
 func deployPodNameForApp(a provision.App, version appTypes.AppVersion) string {
-	name := validKubeName(a.GetName())
+	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("%s-v%d-deploy", name, version.Version())
 }
 
 func buildPodNameForApp(a provision.App, version appTypes.AppVersion) string {
-	name := validKubeName(a.GetName())
+	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("%s-v%d-build", name, version.Version())
 }
 
 func hpaNameForApp(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "")
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func vpaNameForApp(a provision.App, process string) string {
-	return appProcessName(a, process, 0, "")
-}
-
-func appProcessName(a provision.App, process string, version int, suffix string) string {
-	name := validKubeName(a.GetName())
-	processVersion := validKubeName(process)
-	if version > 0 {
-		processVersion = fmt.Sprintf("%s-v%d", processVersion, version)
-	} else if suffix != "" {
-		processVersion = fmt.Sprintf("%s-%s", processVersion, suffix)
-	}
-	label := fmt.Sprintf("%s-%s", name, processVersion)
-	if len(label) > kubeLabelNameMaxLen {
-		h := sha256.New()
-		h.Write([]byte(processVersion))
-		hash := fmt.Sprintf("%x", h.Sum(nil))
-		maxLen := kubeLabelNameMaxLen - len(name) - 1
-		if len(hash) > maxLen {
-			hash = hash[:maxLen]
-		}
-		label = fmt.Sprintf("%s-%s", name, hash)
-	}
-	return label
+	return provision.AppProcessName(a, process, 0, "")
 }
 
 func execCommandPodNameForApp(a provision.App) string {
-	name := validKubeName(a.GetName())
+	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("%s-isolated-run", name)
 }
 
 func daemonSetName(name, pool string) string {
-	name = validKubeName(name)
-	pool = validKubeName(pool)
+	name = provision.ValidKubeName(name)
+	pool = provision.ValidKubeName(pool)
 	if pool == "" {
 		return fmt.Sprintf("node-container-%s-all", name)
 	}
@@ -158,7 +128,7 @@ func volumeClaimName(name string) string {
 }
 
 func registrySecretName(registry string) string {
-	registry = validKubeName(registry)
+	registry = provision.ValidKubeName(registry)
 	if registry == "" {
 		return "registry"
 	}

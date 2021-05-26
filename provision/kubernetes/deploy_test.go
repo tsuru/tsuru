@@ -92,21 +92,25 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
 	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":        "true",
-		"tsuru.io/is-service":      "true",
-		"tsuru.io/is-build":        "false",
-		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
-		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/is-routable":     "true",
-		"tsuru.io/app-name":        "myapp",
-		"tsuru.io/app-process":     "p1",
-		"tsuru.io/app-team":        "admin",
-		"tsuru.io/app-platform":    "",
-		"tsuru.io/app-pool":        "test-default",
-		"tsuru.io/provisioner":     "kubernetes",
-		"tsuru.io/builder":         "",
-		"app":                      "myapp-p1",
+		"tsuru.io/is-tsuru":            "true",
+		"tsuru.io/is-service":          "true",
+		"tsuru.io/is-build":            "false",
+		"tsuru.io/is-stopped":          "false",
+		"tsuru.io/is-deploy":           "false",
+		"tsuru.io/is-isolated-run":     "false",
+		"tsuru.io/is-routable":         "true",
+		"tsuru.io/app-name":            "myapp",
+		"tsuru.io/app-process":         "p1",
+		"tsuru.io/app-team":            "admin",
+		"tsuru.io/app-platform":        "",
+		"tsuru.io/app-pool":            "test-default",
+		"tsuru.io/provisioner":         "kubernetes",
+		"tsuru.io/builder":             "",
+		"app":                          "myapp-p1",
+		"app.kubernetes.io/component":  "tsuru-app",
+		"app.kubernetes.io/managed-by": "tsuru",
+		"app.kubernetes.io/name":       "myapp",
+		"app.kubernetes.io/instance":   "myapp-p1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -114,6 +118,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "1"
 	podLabels["version"] = "v1"
+	podLabels["app.kubernetes.io/version"] = "v1"
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
@@ -212,19 +217,24 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":     "true",
-				"tsuru.io/is-service":   "true",
-				"tsuru.io/is-build":     "false",
-				"tsuru.io/is-stopped":   "false",
-				"tsuru.io/is-deploy":    "false",
-				"tsuru.io/is-routable":  "true",
-				"tsuru.io/app-name":     "myapp",
-				"tsuru.io/app-team":     "admin",
-				"tsuru.io/app-process":  "p1",
-				"tsuru.io/app-platform": "",
-				"tsuru.io/app-pool":     "test-default",
-				"tsuru.io/provisioner":  "kubernetes",
-				"tsuru.io/builder":      "",
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-routable":         "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -253,21 +263,27 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1-v1",
 			Namespace: nsName,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-team":        "admin",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/app-platform":    "",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/app-version":     "1",
-				"tsuru.io/provisioner":     "kubernetes",
-				"tsuru.io/builder":         "",
-				"version":                  "v1",
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"app.kubernetes.io/version":    "v1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-isolated-run":     "false",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/app-version":         "1",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
+				"version":                      "v1",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -298,6 +314,11 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1-units",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-service":          "true",
 				"tsuru.io/is-build":            "false",
@@ -652,19 +673,24 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":     "true",
-				"tsuru.io/is-service":   "true",
-				"tsuru.io/is-build":     "false",
-				"tsuru.io/is-stopped":   "false",
-				"tsuru.io/is-deploy":    "false",
-				"tsuru.io/is-routable":  "true",
-				"tsuru.io/app-name":     "myapp",
-				"tsuru.io/app-team":     "admin",
-				"tsuru.io/app-process":  "p1",
-				"tsuru.io/app-platform": "",
-				"tsuru.io/app-pool":     "test-default",
-				"tsuru.io/provisioner":  "kubernetes",
-				"tsuru.io/builder":      "",
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-routable":         "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -699,6 +725,11 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 			Name:      "myapp-p1-units",
 			Namespace: nsName,
 			Labels: map[string]string{
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
 				"tsuru.io/is-tsuru":            "true",
 				"tsuru.io/is-service":          "true",
 				"tsuru.io/is-build":            "false",
@@ -2239,6 +2270,10 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 		"tsuru.io/provisioner":             "kubernetes",
 		"tsuru.io/builder":                 "",
 		"app":                              "myapp-p1",
+		"app.kubernetes.io/component":      "tsuru-app",
+		"app.kubernetes.io/managed-by":     "tsuru",
+		"app.kubernetes.io/name":           "myapp",
+		"app.kubernetes.io/instance":       "myapp-p1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -2246,6 +2281,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	}
 	podLabels["tsuru.io/app-version"] = "2"
 	podLabels["version"] = "v2"
+	podLabels["app.kubernetes.io/version"] = "v2"
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	one := int32(1)
@@ -2364,6 +2400,12 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 				"tsuru.io/provisioner":             "kubernetes",
 				"tsuru.io/builder":                 "",
 				"version":                          "v2",
+				"app":                              "myapp-p1",
+				"app.kubernetes.io/component":      "tsuru-app",
+				"app.kubernetes.io/managed-by":     "tsuru",
+				"app.kubernetes.io/name":           "myapp",
+				"app.kubernetes.io/instance":       "myapp-p1",
+				"app.kubernetes.io/version":        "v2",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -2443,8 +2485,10 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedDep.Labels["tsuru.io/is-routable"] = "true"
 	expectedDep.Labels["tsuru.io/app-team"] = "admin"
 	delete(expectedDep.Labels, "version")
+	delete(expectedDep.Labels, "app.kubernetes.io/version")
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/restarts"] = "1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
+	expectedDep.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/version"] = "v1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
 	expectedDep.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
@@ -2471,6 +2515,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedSvcV1.Labels["version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/restarts"] = "1"
 	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["app.kubernetes.io/version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
 	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
@@ -2525,7 +2570,9 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedDepBase := legacyDep.DeepCopy()
 	expectedDepBase.Labels["tsuru.io/is-routable"] = "true"
 	delete(expectedDepBase.Labels, "version")
+	delete(expectedDepBase.Labels, "app.kubernetes.io/version")
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
+	expectedDepBase.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/version"] = "v1"
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
 	expectedDepBase.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
 		{Name: "TSURU_SERVICES", Value: "{}"},
@@ -2541,6 +2588,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedDepV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
 	expectedDepV2.Labels["tsuru.io/app-team"] = "admin"
 	delete(expectedDepV2.Labels, "version")
+	delete(expectedDepV2.Labels, "app.kubernetes.io/version")
 	delete(expectedDepV2.Labels, "tsuru.io/is-routable")
 	delete(expectedDepV2.Labels, "tsuru.io/is-isolated-run")
 	expectedDepV2.Spec.Selector.MatchLabels["tsuru.io/app-version"] = "2"
@@ -2548,6 +2596,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	delete(expectedDepV2.Spec.Selector.MatchLabels, "tsuru.io/is-isolated-run")
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["version"] = "v2"
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "2"
+	expectedDepV2.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/version"] = "v2"
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDepV2.Spec.Template.ObjectMeta.Labels["tsuru.io/is-isolated-run-version"] = "false"
 	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-routable")
@@ -2576,6 +2625,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedSvcV1.Name = "myapp-p1-v1"
 	expectedSvcV1.Labels["version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/app-version"] = "1"
+	expectedSvcV1.Labels["app.kubernetes.io/version"] = "v1"
 	expectedSvcV1.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV1.Labels["tsuru.io/is-isolated-run"] = "false"
 	expectedSvcV1.Spec.Selector["tsuru.io/app-version"] = "1"
@@ -2585,6 +2635,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedSvcV2.Name = "myapp-p1-v2"
 	expectedSvcV2.Labels["version"] = "v2"
 	expectedSvcV2.Labels["tsuru.io/app-version"] = "2"
+	expectedSvcV2.Labels["app.kubernetes.io/version"] = "v2"
 	expectedSvcV2.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcV2.Labels["tsuru.io/is-isolated-run-version"] = "false"
 	expectedSvcV2.Spec.Selector["tsuru.io/app-version"] = "2"
@@ -2837,19 +2888,22 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Name:      "myapp-v1-deploy",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/builder":         "",
-				"tsuru.io/app-process":     "",
-				"tsuru.io/is-build":        "true",
-				"tsuru.io/app-platform":    "python",
-				"tsuru.io/app-team":        "",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/provisioner":     "kubernetes",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/is-isolated-run":     "false",
+				"tsuru.io/builder":             "",
+				"tsuru.io/app-process":         "",
+				"tsuru.io/is-build":            "true",
+				"tsuru.io/app-platform":        "python",
+				"tsuru.io/app-team":            "",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
@@ -2971,19 +3025,22 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			Name:      "myapp-v1-deploy",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-team":        "",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/builder":         "",
-				"tsuru.io/app-process":     "",
-				"tsuru.io/is-build":        "true",
-				"tsuru.io/app-platform":    "python",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/provisioner":     "kubernetes",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "",
+				"tsuru.io/is-isolated-run":     "false",
+				"tsuru.io/builder":             "",
+				"tsuru.io/app-process":         "",
+				"tsuru.io/is-build":            "true",
+				"tsuru.io/app-platform":        "python",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
 			},
 			Annotations: map[string]string{
 				"tsuru.io/build-image": version.BaseImageName(),
@@ -4065,19 +4122,24 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":     "true",
-				"tsuru.io/is-service":   "true",
-				"tsuru.io/is-build":     "false",
-				"tsuru.io/is-stopped":   "false",
-				"tsuru.io/is-deploy":    "false",
-				"tsuru.io/is-routable":  "true",
-				"tsuru.io/app-name":     "myapp",
-				"tsuru.io/app-team":     "admin",
-				"tsuru.io/app-process":  "p1",
-				"tsuru.io/app-platform": "",
-				"tsuru.io/app-pool":     "test-default",
-				"tsuru.io/provisioner":  "kubernetes",
-				"tsuru.io/builder":      "",
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-routable":         "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -4261,20 +4323,25 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
 	depLabels := map[string]string{
-		"tsuru.io/is-tsuru":        "true",
-		"tsuru.io/is-service":      "true",
-		"tsuru.io/is-build":        "false",
-		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
-		"tsuru.io/is-isolated-run": "false",
-		"tsuru.io/app-name":        "myapp",
-		"tsuru.io/app-process":     "p1",
-		"tsuru.io/app-platform":    "",
-		"tsuru.io/app-pool":        "test-default",
-		"tsuru.io/provisioner":     "kubernetes",
-		"tsuru.io/builder":         "",
-		"app":                      "myapp-p1",
-		"version":                  "v1",
+		"tsuru.io/is-tsuru":            "true",
+		"tsuru.io/is-service":          "true",
+		"tsuru.io/is-build":            "false",
+		"tsuru.io/is-stopped":          "false",
+		"tsuru.io/is-deploy":           "false",
+		"tsuru.io/is-isolated-run":     "false",
+		"tsuru.io/app-name":            "myapp",
+		"tsuru.io/app-process":         "p1",
+		"tsuru.io/app-platform":        "",
+		"tsuru.io/app-pool":            "test-default",
+		"tsuru.io/provisioner":         "kubernetes",
+		"tsuru.io/builder":             "",
+		"app":                          "myapp-p1",
+		"app.kubernetes.io/component":  "tsuru-app",
+		"app.kubernetes.io/managed-by": "tsuru",
+		"app.kubernetes.io/name":       "myapp",
+		"app.kubernetes.io/instance":   "myapp-p1",
+		"app.kubernetes.io/version":    "v1",
+		"version":                      "v1",
 	}
 	podLabels := make(map[string]string)
 	for k, v := range depLabels {
@@ -4374,18 +4441,23 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 			Name:      "myapp-p1",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":        "true",
-				"tsuru.io/is-service":      "true",
-				"tsuru.io/is-build":        "false",
-				"tsuru.io/is-stopped":      "false",
-				"tsuru.io/is-deploy":       "false",
-				"tsuru.io/is-isolated-run": "false",
-				"tsuru.io/app-name":        "myapp",
-				"tsuru.io/app-process":     "p1",
-				"tsuru.io/app-platform":    "",
-				"tsuru.io/app-pool":        "test-default",
-				"tsuru.io/provisioner":     "kubernetes",
-				"tsuru.io/builder":         "",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-isolated-run":     "false",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
 			},
 		},
 		Spec: apiv1.ServiceSpec{

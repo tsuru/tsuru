@@ -681,9 +681,6 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 
 	depLabels := labels.WithoutVersion().ToLabels()
 	podLabels := labels.ToLabels()
-	baseName := deploymentNameForAppBase(a, process)
-	depLabels["app"] = baseName
-	podLabels["app"] = baseName
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort

@@ -238,7 +238,7 @@ func (c *ClusterClient) PoolNamespace(pool string) string {
 		prefix = c.CustomData[namespaceClusterKey]
 	}
 	// Replace invalid characters from the pool name, to keep compatibility with older tsuru versions
-	nsPool := validKubeName(pool)
+	nsPool := provision.ValidKubeName(pool)
 	if usePoolNamespaces && len(nsPool) > 0 {
 		return fmt.Sprintf("%s-%s", prefix, nsPool)
 	}

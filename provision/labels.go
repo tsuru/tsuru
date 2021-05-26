@@ -6,7 +6,9 @@ package provision
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -191,6 +193,7 @@ func (s *LabelSet) AppVersion() int {
 func (s *LabelSet) WithoutVersion() *LabelSet {
 	ns := s.without(LabelAppVersion)
 	delete(ns.RawLabels, "version")
+	delete(ns.RawLabels, "app.kubernetes.io/version")
 	return ns
 }
 
@@ -352,7 +355,9 @@ func (s *LabelSet) SetVersion(version int) {
 	if s.RawLabels == nil {
 		s.RawLabels = make(map[string]string)
 	}
-	s.RawLabels["version"] = fmt.Sprintf("v%d", version)
+	versionStr := fmt.Sprintf("v%d", version)
+	s.RawLabels["version"] = versionStr
+	s.RawLabels["app.kubernetes.io/version"] = versionStr
 }
 
 func (s *LabelSet) addLabel(k, v string) {
@@ -427,7 +432,16 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 		return nil, err
 	}
 	if set.RawLabels == nil {
-		set.RawLabels = make(map[string]string)
+		set.RawLabels = map[string]string{
+			"app.kubernetes.io/name":       opts.App.GetName(),
+			"app.kubernetes.io/component":  "tsuru-app",
+			"app.kubernetes.io/managed-by": "tsuru",
+		}
+		if opts.Process != "" {
+			appProcessName := AppProcessName(opts.App, opts.Process, 0, "")
+			set.RawLabels["app"] = appProcessName
+			set.RawLabels["app.kubernetes.io/instance"] = appProcessName
+		}
 	}
 	if opts.Version != 0 {
 		set.SetVersion(opts.Version)
@@ -624,4 +638,34 @@ func IsServiceLabelSet(prefix string) *LabelSet {
 		labelIsService: strconv.FormatBool(true),
 	}
 	return &LabelSet{Labels: labels, Prefix: prefix}
+}
+
+var kubeNameRegex = regexp.MustCompile(`(?i)[^a-z0-9.-]`)
+
+func ValidKubeName(name string) string {
+	return strings.ToLower(kubeNameRegex.ReplaceAllString(name, "-"))
+}
+
+func AppProcessName(a App, process string, version int, suffix string) string {
+	const kubeLabelNameMaxLen = 55
+
+	name := ValidKubeName(a.GetName())
+	processVersion := ValidKubeName(process)
+	if version > 0 {
+		processVersion = fmt.Sprintf("%s-v%d", processVersion, version)
+	} else if suffix != "" {
+		processVersion = fmt.Sprintf("%s-%s", processVersion, suffix)
+	}
+	label := fmt.Sprintf("%s-%s", name, processVersion)
+	if len(label) > kubeLabelNameMaxLen {
+		h := sha256.New()
+		h.Write([]byte(processVersion))
+		hash := fmt.Sprintf("%x", h.Sum(nil))
+		maxLen := kubeLabelNameMaxLen - len(name) - 1
+		if len(hash) > maxLen {
+			hash = hash[:maxLen]
+		}
+		label = fmt.Sprintf("%s-%s", name, hash)
+	}
+	return label
 }
