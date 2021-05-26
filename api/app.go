@@ -990,8 +990,8 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 
 	for _, result := range e.Envs {
-		if !isInternalEnv(result.Name) {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("Can't change the following environment variables (write protected): %s", strings.Join([]string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}, ", "))}
+		if isInternalEnv(result.Name) {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("Can't change the following environment variables (write protected): %s", internalEnvs())}
 		}
 	}
 	appName := r.URL.Query().Get(":app")
@@ -1062,13 +1062,15 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return err
 }
 func isInternalEnv(envKey string) bool {
-	internalEnvs := []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
-	for _, InternalEnv := range internalEnvs {
-		if InternalEnv == envKey {
-			return false
+	for _, internalEnv := range internalEnvs() {
+		if internalEnv == envKey {
+			return true
 		}
 	}
-	return true
+	return false
+}
+func internalEnvs() []string {
+	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }
 
 // title: unset envs
