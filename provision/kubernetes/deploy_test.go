@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -1576,8 +1577,8 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	fakeWatcher := watch.NewFakeWithChanSize(2, false)
-	fakeWatcher.Add(&apiv1.Event{
+	fakePodWatcher := watch.NewFakeWithChanSize(2, false)
+	fakePodWatcher.Add(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-web-base.1",
 		},
@@ -1589,7 +1590,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		},
 		Message: "msg1",
 	})
-	fakeWatcher.Add(&apiv1.Event{
+	fakePodWatcher.Add(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-web-base.2",
 		},
@@ -1602,7 +1603,9 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		},
 		Message: "msg2",
 	})
-	watchCalled := make(chan struct{})
+	watchPodCalled := make(chan struct{})
+	watchRepCalled := make(chan struct{})
+	watchDepCalled := make(chan struct{})
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1614,7 +1617,9 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		dep.Status.UnavailableReplicas = 1
 		depCopy := *dep
 		go func() {
-			<-watchCalled
+			<-watchPodCalled
+			<-watchRepCalled
+			<-watchDepCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
 			s.client.AppsV1().Deployments(ns).Update(context.TODO(), &depCopy, metav1.UpdateOptions{})
@@ -1622,8 +1627,19 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		return false, nil, nil
 	})
 	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
-		close(watchCalled)
-		return true, fakeWatcher, nil
+		requirements := action.(testing.WatchActionImpl).GetWatchRestrictions().Fields.Requirements()
+		for _, req := range requirements {
+			if req.Value == "Pod" {
+				close(watchPodCalled)
+			}
+			if req.Value == "ReplicaSet" {
+				close(watchRepCalled)
+			}
+			if req.Value == "Deployment" {
+				close(watchDepCalled)
+			}
+		}
+		return true, fakePodWatcher, nil
 	})
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
