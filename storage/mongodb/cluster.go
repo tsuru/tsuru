@@ -31,8 +31,12 @@ type cluster struct {
 	ClientKey   []byte            `bson:",omitempty"`
 	Pools       []string          `bson:",omitempty"`
 	CustomData  map[string]string `bson:",omitempty"`
+	Local       bool              `bson:",omitempty"`
 	Default     bool
-	Writer      io.Writer `bson:"-"`
+	KubeConfig  *provision.KubeConfig `bson:",omitempty"`
+	HTTPProxy   string                `json:"httpProxy,omitempty"`
+
+	Writer io.Writer `bson:"-"`
 }
 
 func clustersCollection(conn *db.Storage) *dbStorage.Collection {

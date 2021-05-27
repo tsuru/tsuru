@@ -283,24 +283,30 @@ func InputFields(r *http.Request, exclude ...string) url.Values {
 	return ret
 }
 
+func ParseJSON(r *http.Request, dst interface{}) error {
+	data, err := context.GetBody(r)
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	err = json.Unmarshal(data, dst)
+	if err != nil {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to parse as json: %q - %v", string(data), err),
+		}
+	}
+
+	return nil
+}
+
 func ParseInput(r *http.Request, dst interface{}) error {
 	contentType := r.Header.Get("Content-Type")
 	switch contentType {
 	case "application/json":
-		data, err := context.GetBody(r)
-		if err != nil {
-			return err
-		}
-		if len(data) == 0 {
-			return nil
-		}
-		err = json.Unmarshal(data, dst)
-		if err != nil {
-			return &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: fmt.Sprintf("unable to parse as json: %q - %v", string(data), err),
-			}
-		}
+		return ParseJSON(r, dst)
 	default:
 		dec := form.NewDecoder(nil)
 		dec.IgnoreCase(true)

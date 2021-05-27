@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
@@ -33,6 +36,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
@@ -162,6 +167,65 @@ func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	return cfg, nil
 }
 
+func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error) {
+	gv, err := schema.ParseGroupVersion("/v1")
+	if err != nil {
+		return nil, err
+	}
+
+	cliCfg := clientcmdapi.Config{
+		APIVersion:     "v1",
+		Kind:           "Config",
+		CurrentContext: cluster.Name,
+		Clusters: map[string]*clientcmdapi.Cluster{
+			cluster.Name: &cluster.KubeConfig.Cluster,
+		},
+		Contexts: map[string]*clientcmdapi.Context{
+			cluster.Name: {
+				Cluster:  cluster.Name,
+				AuthInfo: cluster.Name,
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			cluster.Name: &cluster.KubeConfig.AuthInfo,
+		},
+	}
+	restConfig, err := clientcmd.NewNonInteractiveClientConfig(cliCfg, cluster.Name, &clientcmd.ConfigOverrides{}, nil).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	kubeConf := getKubeConfig()
+	restConfig.ContentConfig = rest.ContentConfig{
+		GroupVersion:         &gv,
+		NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
+	}
+	restConfig.Timeout = kubeConf.APITimeout
+
+	proxyURL, err := url.Parse(cluster.HTTPProxy)
+	if err != nil {
+		return nil, err
+	}
+
+	if cluster.HTTPProxy == "" {
+		restConfig.WrapTransport = tsuruNet.OpentracingTransport
+	} else {
+		restConfig.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+			transport, ok := rt.(*http.Transport)
+
+			if !ok {
+				log.Errorf("Could not apply patch to current transport, creating new one")
+				return &http.Transport{
+					Proxy: http.ProxyURL(proxyURL),
+				}
+			}
+			transport.Proxy = http.ProxyURL(proxyURL)
+			return transport
+		}
+	}
+	return restConfig, nil
+}
+
 func getInClusterConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	cfg, err := getRestBaseConfig(c)
 	if err != nil {
@@ -180,7 +244,9 @@ func getInClusterConfig(c *provTypes.Cluster) (*rest.Config, error) {
 func NewClusterClient(clust *provTypes.Cluster) (*ClusterClient, error) {
 	var cfg *rest.Config
 	var err error
-	if len(clust.Addresses) == 0 {
+	if clust.KubeConfig != nil {
+		cfg, err = getRestConfigByKubeConfig(clust)
+	} else if clust.Local || len(clust.Addresses) == 0 {
 		cfg, err = getInClusterConfig(clust)
 	} else {
 		cfg, err = getRestConfig(clust)

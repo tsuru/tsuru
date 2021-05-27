@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,11 +25,14 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	_ "github.com/tsuru/tsuru/provision/kubernetes/authplugin/gcpwithproxy" // import custom authplugin that have proxy support
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -44,6 +48,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // gcp default auth plugin
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -183,11 +188,73 @@ func (p *kubernetesProvisioner) Initialize() error {
 		// there's a better way to control glog.
 		flag.CommandLine.Parse([]string{"-v", strconv.Itoa(conf.LogLevel), "-logtostderr"})
 	}
+
+	initLocalCluster()
+
 	err := initAllControllers(p)
 	if err == provTypes.ErrNoCluster {
 		return nil
 	}
 	return err
+}
+
+func initLocalCluster() {
+	ctx := context.Background()
+	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" || os.Getenv("KUBERNETES_SERVICE_PORT") == "" {
+		return // not running inside a kubernetes cluster
+	}
+
+	log.Debugf("[kubernetes-provisioner] tsuru is running inside a kubernetes cluster")
+
+	clusters, err := servicemanager.Cluster.List(ctx)
+	if err != nil && err != provTypes.ErrNoCluster {
+		log.Errorf("[kubernetes-provisioner] could not list clusters: %s", err.Error())
+		return
+	}
+
+	if len(clusters) > 0 {
+		return
+	}
+
+	log.Debugf("[kubernetes-provisioner] no kubernetes clusters found, adding default")
+
+	err = servicemanager.Cluster.Create(ctx, provTypes.Cluster{
+		Name:        "local",
+		Default:     true,
+		Local:       true,
+		Provisioner: provisionerName,
+		CustomData: map[string]string{
+			enableLogsFromAPIServerKey:    "true",
+			disableDefaultNodeSelectorKey: "true",
+			disableUnitRegisterCmdKey:     "true",
+			disableNodeContainers:         "true",
+		},
+	})
+
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not create default cluster: %v", err)
+	}
+
+	pools, err := servicemanager.Pool.List(ctx)
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not list pools: %v", err)
+	}
+
+	if len(pools) > 0 {
+		return
+	}
+
+	log.Debugf("[kubernetes-provisioner] no pool found, adding default")
+
+	err = pool.AddPool(ctx, pool.AddPoolOptions{
+		Name:        "local",
+		Provisioner: provisionerName,
+		Default:     true,
+	})
+
+	if err != nil {
+		log.Errorf("[kubernetes-provisioner] could not create default pool: %v", err)
+	}
 }
 
 func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
@@ -201,10 +268,31 @@ func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
 }
 
 func (p *kubernetesProvisioner) ValidateCluster(c *provTypes.Cluster) error {
+	multiErrors := tsuruErrors.NewMultiError()
+
 	if _, ok := c.CustomData[singlePoolKey]; ok && len(c.Pools) != 1 {
-		return errors.Errorf("only one pool is allowed to use entire cluster as single-pool. %d pools found", len(c.Pools))
+		multiErrors.Add(errors.Errorf("only one pool is allowed to use entire cluster as single-pool. %d pools found", len(c.Pools)))
 	}
-	return nil
+
+	if c.KubeConfig != nil {
+		if len(c.Addresses) > 1 {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of addresses is not used"))
+		}
+		if c.CaCert != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of cacert is not used"))
+		}
+		if c.ClientCert != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of clientcert is not used"))
+		}
+		if c.ClientKey != nil {
+			multiErrors.Add(errors.New("when kubeConfig is set the use of clientkey is not used"))
+		}
+		if c.KubeConfig.Cluster.Server == "" {
+			multiErrors.Add(errors.New("kubeConfig.cluster.server field is required"))
+		}
+	}
+
+	return multiErrors.ToError()
 }
 
 func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {

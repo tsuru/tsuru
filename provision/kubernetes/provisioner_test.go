@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	ktesting "k8s.io/client-go/testing"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
@@ -2916,6 +2917,29 @@ func (s *S) TestProvisionerInitialize(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, ok = s.p.clusterControllers[s.clusterClient.Name]
 	c.Assert(ok, check.Equals, true)
+}
+
+func (s *S) TestProvisionerValidation(c *check.C) {
+	err := s.p.ValidateCluster(&provTypes.Cluster{
+		Addresses:  []string{"blah"},
+		CaCert:     []byte(`fakeca`),
+		ClientCert: []byte(`clientcert`),
+		ClientKey:  []byte(`clientkey`),
+		KubeConfig: &provTypes.KubeConfig{
+			Cluster: clientcmdapi.Cluster{},
+		},
+	})
+	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of cacert is not used"), check.Equals, true)
+	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of clientcert is not used"), check.Equals, true)
+	c.Assert(strings.Contains(err.Error(), "when kubeConfig is set the use of clientkey is not used"), check.Equals, true)
+
+	err = s.p.ValidateCluster(&provTypes.Cluster{
+		KubeConfig: &provTypes.KubeConfig{
+			Cluster: clientcmdapi.Cluster{},
+		},
+	})
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err.Error(), check.Equals, "kubeConfig.cluster.server field is required")
 }
 
 func (s *S) TestProvisionerInitializeNoClusters(c *check.C) {

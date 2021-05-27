@@ -5,6 +5,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/tsuru/tsuru/api/context"
@@ -35,4 +36,14 @@ func (fn AuthorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	} else {
 		context.AddRequestError(r, fn(w, r, t))
 	}
+}
+
+func deprecateFormContentType(r *http.Request) error {
+	contentType := r.Header.Get("Content-Type")
+
+	if contentType == "" || contentType == "application/json" {
+		return nil
+	}
+
+	return fmt.Errorf("Invalid Content-Type %q", contentType)
 }

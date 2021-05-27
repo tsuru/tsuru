@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"io"
+
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 // Cluster represents a cluster of nodes.
@@ -20,8 +22,17 @@ type Cluster struct {
 	ClientKey   []byte            `json:"clientkey"`
 	Pools       []string          `json:"pools"`
 	CustomData  map[string]string `json:"custom_data"`
+	Local       bool              `json:"local"`
 	Default     bool              `json:"default"`
-	Writer      io.Writer         `json:"-"`
+	KubeConfig  *KubeConfig       `json:"kubeConfig,omitempty"`
+	HTTPProxy   string            `json:"httpProxy,omitempty"`
+
+	Writer io.Writer `json:"-"`
+}
+
+type KubeConfig struct {
+	Cluster  clientcmdapi.Cluster  `json:"cluster"`
+	AuthInfo clientcmdapi.AuthInfo `json:"user"`
 }
 
 type ClusterHelpInfo struct {

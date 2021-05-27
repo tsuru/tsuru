@@ -26,7 +26,7 @@ import (
 // title: create provisioner cluster
 // path: /provisioner/clusters
 // method: POST
-// consume: application/x-www-form-urlencoded
+// consume: application/json
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
@@ -40,8 +40,14 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+
+	err = deprecateFormContentType(r)
+	if err != nil {
+		return err
+	}
+
 	var provCluster provTypes.Cluster
-	err = ParseInput(r, &provCluster)
+	err = ParseJSON(r, &provCluster)
 	if err != nil {
 		return err
 	}
@@ -94,7 +100,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // title: update provisioner cluster
 // path: /provisioner/clusters/{name}
 // method: POST
-// consume: application/x-www-form-urlencoded
+// consume: application/json
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
@@ -107,8 +113,14 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+
+	err = deprecateFormContentType(r)
+	if err != nil {
+		return err
+	}
+
 	var provCluster provTypes.Cluster
-	err = ParseInput(r, &provCluster)
+	err = ParseJSON(r, &provCluster)
 	provCluster.Name = r.URL.Query().Get(":name")
 	if err != nil {
 		return err
@@ -165,7 +177,6 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // title: list provisioner clusters
 // path: /provisioner/clusters
 // method: GET
-// consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
 //   200: Ok
@@ -198,7 +209,6 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // title: provisioner cluster info
 // path: /provisioner/clusters/{name}
 // method: GET
-// consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
 //   200: Ok
@@ -228,7 +238,6 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // title: delete provisioner cluster
 // path: /provisioner/clusters/{name}
 // method: DELETE
-// consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
 //   200: Ok
