@@ -3160,6 +3160,23 @@ func (s *S) TestCreateImageBuildPodContainerOnSinglePool(c *check.C) {
 	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
 }
 
+func (s *S) TestCreateImageBuildPodContainerWithClusterNodeSelectorDisabled(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	s.clusterClient.CustomData[disableDefaultNodeSelectorKey] = "true"
+	err := createImageBuildPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		podName:           "myplatform-image-build",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/data/context.tar.gz",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
+}
+
 func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
