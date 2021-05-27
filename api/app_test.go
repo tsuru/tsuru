@@ -3217,6 +3217,33 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 }
 
+func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {
+	a := app.App{Name: "black-erro", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "TSURU_APPNAME", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_APPDIR", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_APPN_TOKEN", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_SERVICE", Value: "everything-i-want", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)

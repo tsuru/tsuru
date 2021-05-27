@@ -988,6 +988,12 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		msg := "Prune unused requires a managed-by value"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
+
+	for _, result := range e.Envs {
+		if isInternalEnv(result.Name) {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("Can't change the following environment variables (write protected): %s", internalEnvs())}
+		}
+	}
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -1054,6 +1060,17 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
 	}
 	return err
+}
+func isInternalEnv(envKey string) bool {
+	for _, internalEnv := range internalEnvs() {
+		if internalEnv == envKey {
+			return true
+		}
+	}
+	return false
+}
+func internalEnvs() []string {
+	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }
 
 // title: unset envs
