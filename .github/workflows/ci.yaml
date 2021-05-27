@@ -44,6 +44,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
+        version: v2.1.5
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
