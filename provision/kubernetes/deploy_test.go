@@ -2779,6 +2779,10 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	runAsUser := int64(1000)
+	cpuResource, err := resource.ParseQuantity("0m")
+	c.Assert(err, check.IsNil)
+	memoryResource, err := resource.ParseQuantity("0")
+	c.Assert(err, check.IsNil)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
 		Image: "tsuru/deploy-agent:0.8.4",
@@ -2795,6 +2799,16 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 				trap end EXIT
 				mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
 			`,
+		},
+		Resources: apiv1.ResourceRequirements{
+			Limits: apiv1.ResourceList{
+				"cpu":    cpuResource,
+				"memory": memoryResource,
+			},
+			Requests: apiv1.ResourceList{
+				"cpu":    cpuResource,
+				"memory": memoryResource,
+			},
 		},
 		Env: []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
@@ -2815,7 +2829,17 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 		Name:    "myapp-v1-build",
 		Image:   "myimg",
 		Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-		Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+		Resources: apiv1.ResourceRequirements{
+			Limits: apiv1.ResourceList{
+				"cpu":    cpuResource,
+				"memory": memoryResource,
+			},
+			Requests: apiv1.ResourceList{
+				"cpu":    cpuResource,
+				"memory": memoryResource,
+			},
+		},
+		Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: &runAsUser,
 		},
@@ -2906,6 +2930,10 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	runAsUser := int64(1000)
+	cpuResource, err := resource.ParseQuantity("0m")
+	c.Assert(err, check.IsNil)
+	memoryResource, err := resource.ParseQuantity("0")
+	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
@@ -2923,6 +2951,16 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				trap end EXIT
 				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
 			`,
+			},
+			Resources: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					"cpu":    cpuResource,
+					"memory": memoryResource,
+				},
+				Requests: apiv1.ResourceList{
+					"cpu":    cpuResource,
+					"memory": memoryResource,
+				},
 			},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
@@ -2942,7 +2980,17 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Name:    "myapp-v1-deploy",
 			Image:   version.BuildImageName(),
 			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Resources: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					"cpu":    cpuResource,
+					"memory": memoryResource,
+				},
+				Requests: apiv1.ResourceList{
+					"cpu":    cpuResource,
+					"memory": memoryResource,
+				},
+			},
+			Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},
