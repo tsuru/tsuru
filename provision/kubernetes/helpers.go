@@ -49,7 +49,6 @@ const (
 	tsuruLabelIsBuild         = tsuruLabelPrefix + provision.LabelIsBuild
 	tsuruLabelIsDeploy        = tsuruLabelPrefix + provision.LabelIsDeploy
 	replicaDepRevision        = "deployment.kubernetes.io/revision"
-	kubeLabelNameMaxLen       = 55
 )
 
 var svcIgnoredLabels = []string{
