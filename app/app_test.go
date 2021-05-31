@@ -5262,6 +5262,33 @@ func (s *S) TestUpdateRouter(c *check.C) {
 	})
 }
 
+func (s *S) TestUpdateRouterV2(c *check.C) {
+	config.Set("routers:fake-v2:type", "fake-opts")
+	defer config.Unset("routers:fake-v2:type")
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-v2",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = app.UpdateRouter(appTypes.AppRouter{Name: "fake-v2", Opts: map[string]string{
+		"c": "d",
+	}})
+	c.Assert(err, check.IsNil)
+	routers := app.GetRouters()
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake"},
+		{Name: "fake-v2", Opts: map[string]string{"c": "d"}},
+	})
+	c.Assert(routertest.OptsRouter.Opts["myapp"], check.DeepEquals, map[string]string{
+		"c": "d",
+	})
+}
+
 func (s *S) TestUpdateRouterNotSupported(c *check.C) {
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)

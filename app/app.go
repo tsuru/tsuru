@@ -2218,6 +2218,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
+	_, isRouterV2 := r.(router.RouterV2)
 	optsRouter, ok := r.(router.OptsRouter)
 	if !ok {
 		return errors.Errorf("updating is not supported by router %q", appRouter.Name)
@@ -2228,14 +2229,24 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
-	err = optsRouter.UpdateBackendOpts(app.ctx, app, appRouter.Opts)
-	if err != nil {
-		existing.Opts = oldOpts
-		rollbackErr := app.updateRoutersDB(routers)
-		if rollbackErr != nil {
-			log.Errorf("unable to update router opts in db rolling back update router: %v", rollbackErr)
+	if isRouterV2 {
+		_, err = rebuild.RebuildRoutes(app.ctx, rebuild.RebuildRoutesOpts{
+			App:  app,
+			Wait: true,
+		})
+		if err != nil {
+			return err
 		}
-		return err
+	} else {
+		err = optsRouter.UpdateBackendOpts(app.ctx, app, appRouter.Opts)
+		if err != nil {
+			existing.Opts = oldOpts
+			rollbackErr := app.updateRoutersDB(routers)
+			if rollbackErr != nil {
+				log.Errorf("unable to update router opts in db rolling back update router: %v", rollbackErr)
+			}
+			return err
+		}
 	}
 	return nil
 }
