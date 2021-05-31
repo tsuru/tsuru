@@ -4309,6 +4309,22 @@ definitions:
               type: string
             Version:
               type: string
+      volumeBinds:
+        type: array
+        items:
+          type: object
+          properties:
+            ID:
+              type: object
+              properties:
+                App:
+                  type: string
+                MountPoint:
+                  type: string
+                Volume:
+                  type: string
+            ReadOnly:
+              type: bool
       tags:
         type: array
         items:
