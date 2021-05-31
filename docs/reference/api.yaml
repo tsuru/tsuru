@@ -4324,7 +4324,7 @@ definitions:
                 Volume:
                   type: string
             ReadOnly:
-              type: bool
+              type: boolean
       tags:
         type: array
         items:
