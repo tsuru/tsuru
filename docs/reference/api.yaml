@@ -2988,6 +2988,8 @@ paths:
     post:
       operationId: VolumeBind
       description: Bind volume.
+      consumes:
+        - application/json
       produces:
         - application/json
       responses:
@@ -4426,6 +4428,10 @@ definitions:
         type: string
       message:
         type: string
+      new-version:
+        type: boolean
+      override-versions:
+        type: boolean
   UpdateApp:
     type: object
     properties:
