@@ -2828,6 +2828,13 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 }
 
 func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(string) (*appTypes.Plan, error) {
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 2000,
+			Memory:   int64(4294967296),
+		}, nil
+	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
@@ -2878,6 +2885,13 @@ func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
 }
 
 func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(string) (*appTypes.Plan, error) {
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 1000,
+			Memory:   int64(2147483648),
+		}, nil
+	}
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)

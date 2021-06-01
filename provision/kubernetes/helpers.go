@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	tsuruapp "github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -26,6 +25,7 @@ import (
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
@@ -1288,14 +1288,14 @@ func isPodReady(pod *apiv1.Pod) bool {
 	return true
 }
 
-func getPoolBuildPlan(ctx context.Context, poolName string, ps appTypes.PlanService) (*appTypes.Plan, error) {
+func getPoolBuildPlan(ctx context.Context, poolName string) (*appTypes.Plan, error) {
 	var plan *appTypes.Plan
 	pool, err := pool.GetPoolByName(ctx, poolName)
 	if err != nil {
 		return nil, err
 	}
 	if planName, ok := pool.Labels["buildPlan"]; ok {
-		plan, err = ps.FindByName(ctx, planName)
+		plan, err = servicemanager.Plan.FindByName(ctx, planName)
 		if err != nil {
 			return nil, err
 		}
@@ -1305,11 +1305,11 @@ func getPoolBuildPlan(ctx context.Context, poolName string, ps appTypes.PlanServ
 	return nil, nil
 }
 
-func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient, ps appTypes.PlanService) (*appTypes.Plan, error) {
+func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (*appTypes.Plan, error) {
 	var plan *appTypes.Plan
 	var err error
 	if planName, ok := cluster.CustomData["buildPlan"]; ok {
-		plan, err = ps.FindByName(ctx, planName)
+		plan, err = servicemanager.Plan.FindByName(ctx, planName)
 		if err != nil {
 			return nil, err
 		}
@@ -1319,23 +1319,18 @@ func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient, ps appType
 
 func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (v1.ResourceRequirements, error) {
 	var plan *appTypes.Plan
-	ps, err := tsuruapp.PlanService()
+	// first, try to get the build plan from apps pool
+	plan, err := getPoolBuildPlan(ctx, app.GetPool())
 	if err != nil {
 		return v1.ResourceRequirements{}, err
 	}
-
-	// first, try to get the build plan from app pool
-	plan, err = getPoolBuildPlan(ctx, app.GetPool(), ps)
-	if err != nil {
-		return v1.ResourceRequirements{}, err
-	}
-	// if pool's build plan is nil, try to get it from the cluster
+	// if pools build plan is nil, try to get it from the cluster
 	if plan == nil {
-		plan, err = getClusterBuildPlan(ctx, cluster, ps)
+		plan, err = getClusterBuildPlan(ctx, cluster)
 		if err != nil {
 			return v1.ResourceRequirements{}, err
 		}
-		// if neither pool build plan or cluster build are set, return no error and an empty ResourceRequirement
+		// if neither pool build plan or cluster build plan are set, return no error and an empty ResourceRequirement
 		if plan == nil {
 			return v1.ResourceRequirements{}, nil
 		}
