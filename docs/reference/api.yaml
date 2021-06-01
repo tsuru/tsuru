@@ -1017,6 +1017,46 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/apps/{app}/deploy:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppDeploy
+      description: deploy a app
+      parameters:
+        - name: deployOptions
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/AppDeployOptions"
+
+      consumes:
+        - application/json
+      produces:
+        - text
+      responses:
+        "200":
+          description: Deploy started
+        "400":
+          description: Invalid data
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+
   /1.0/apps/{app}/cname:
     parameters:
       - name: app
@@ -4377,6 +4417,15 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSpec"
+  AppDeployOptions:
+    type: object
+    required:
+      - image
+    properties:
+      image:
+        type: string
+      message:
+        type: string
   UpdateApp:
     type: object
     properties:
