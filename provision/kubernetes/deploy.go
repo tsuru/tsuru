@@ -641,11 +641,11 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	_, uid := dockercommon.UserForContainer()
-	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
+	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
 	memory := a.GetMemory()
 	if memory != 0 {
@@ -1797,7 +1797,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 	}
 	serviceLinks := false
 
-	quota, err := getResourceRequirements(params.app)
+	quota, err := getResourceRequirementsForBuildPod(ctx, params.app, params.client)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}

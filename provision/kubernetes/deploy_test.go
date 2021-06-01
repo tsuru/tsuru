@@ -2779,10 +2779,6 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	runAsUser := int64(1000)
-	cpuResource, err := resource.ParseQuantity("0m")
-	c.Assert(err, check.IsNil)
-	memoryResource, err := resource.ParseQuantity("0")
-	c.Assert(err, check.IsNil)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
 		Image: "tsuru/deploy-agent:0.8.4",
@@ -2800,16 +2796,7 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 				mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
 			`,
 		},
-		Resources: apiv1.ResourceRequirements{
-			Limits: apiv1.ResourceList{
-				"cpu":    cpuResource,
-				"memory": memoryResource,
-			},
-			Requests: apiv1.ResourceList{
-				"cpu":    cpuResource,
-				"memory": memoryResource,
-			},
-		},
+		Resources: apiv1.ResourceRequirements{},
 		Env: []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
@@ -2826,25 +2813,117 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
-		Name:    "myapp-v1-build",
-		Image:   "myimg",
-		Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-		Resources: apiv1.ResourceRequirements{
-			Limits: apiv1.ResourceList{
-				"cpu":    cpuResource,
-				"memory": memoryResource,
-			},
-			Requests: apiv1.ResourceList{
-				"cpu":    cpuResource,
-				"memory": memoryResource,
-			},
-		},
-		Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+		Name:      "myapp-v1-build",
+		Image:     "myimg",
+		Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+		Resources: apiv1.ResourceRequirements{},
+		Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: &runAsUser,
 		},
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	s.clusterClient.CustomData["buildPlan"] = "c2m4"
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuota, err := resource.ParseQuantity("2000m") // 2vCPU
+	c.Assert(err, check.IsNil)
+	memoryQuota, err := resource.ParseQuantity("4294967296") // 4Gi
+	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"buildPlan": "c1m2"}})
+	c.Assert(err, check.IsNil)
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuota, err := resource.ParseQuantity("1000m") // 1vCPU
+	c.Assert(err, check.IsNil)
+	memoryQuota, err := resource.ParseQuantity("2147483648") // 2Gi
+	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
 		},
 	})
 }
@@ -2930,10 +3009,6 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	runAsUser := int64(1000)
-	cpuResource, err := resource.ParseQuantity("0m")
-	c.Assert(err, check.IsNil)
-	memoryResource, err := resource.ParseQuantity("0")
-	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
@@ -2952,16 +3027,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
 			`,
 			},
-			Resources: apiv1.ResourceRequirements{
-				Limits: apiv1.ResourceList{
-					"cpu":    cpuResource,
-					"memory": memoryResource,
-				},
-				Requests: apiv1.ResourceList{
-					"cpu":    cpuResource,
-					"memory": memoryResource,
-				},
-			},
+			Resources: apiv1.ResourceRequirements{},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",tsuru/app-myapp:latest"},
@@ -2977,20 +3043,11 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 			}},
 		{
-			Name:    "myapp-v1-deploy",
-			Image:   version.BuildImageName(),
-			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-			Resources: apiv1.ResourceRequirements{
-				Limits: apiv1.ResourceList{
-					"cpu":    cpuResource,
-					"memory": memoryResource,
-				},
-				Requests: apiv1.ResourceList{
-					"cpu":    cpuResource,
-					"memory": memoryResource,
-				},
-			},
-			Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Name:      "myapp-v1-deploy",
+			Image:     version.BuildImageName(),
+			Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+			Resources: apiv1.ResourceRequirements{},
+			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},

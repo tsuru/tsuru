@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
@@ -19,8 +18,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -30,28 +27,6 @@ func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKub
 }
 
 type KubeClient struct{}
-
-func getResourceRequirements(app provision.App) (v1.ResourceRequirements, error) {
-	memoryBytes, err := resource.ParseQuantity(strconv.Itoa(int(app.GetMemory())))
-	if err != nil {
-		return v1.ResourceRequirements{}, err
-	}
-	cpuMilli, err := resource.ParseQuantity(fmt.Sprintf("%dm", app.GetMilliCPU()))
-	if err != nil {
-		return v1.ResourceRequirements{}, err
-	}
-
-	return v1.ResourceRequirements{
-		Limits: v1.ResourceList{
-			"cpu":    cpuMilli,
-			"memory": memoryBytes,
-		},
-		Requests: v1.ResourceList{
-			"cpu":    cpuMilli,
-			"memory": memoryBytes,
-		},
-	}, nil
-}
 
 func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.Event, archiveFile io.Reader, version appTypes.AppVersion) error {
 	baseImage, err := image.GetBuildImage(ctx, a)
@@ -69,7 +44,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	}
 	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, ns)
 	inputFile := "/home/application/archive.tar.gz"
-	quota, err := getResourceRequirements(a)
+	quota, err := getResourceRequirementsForBuildPod(ctx, a, client)
 	if err != nil {
 		return err
 	}
