@@ -44,6 +44,10 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	}
 	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, ns)
 	inputFile := "/home/application/archive.tar.gz"
+	quota, err := getResourceRequirementsForBuildPod(ctx, a, client)
+	if err != nil {
+		return err
+	}
 	params := createPodParams{
 		app:               a,
 		client:            client,
@@ -53,6 +57,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 		attachInput:       archiveFile,
 		attachOutput:      evt,
 		inputFile:         inputFile,
+		quota:             quota,
 		cmds:              dockercommon.ArchiveBuildCmds(a, "file://"+inputFile),
 	}
 	return createPod(ctx, params)

@@ -178,6 +178,7 @@ type createPodParams struct {
 	attachInput       io.Reader
 	attachOutput      io.Writer
 	pod               *apiv1.Pod
+	quota             apiv1.ResourceRequirements
 	mainContainer     string
 }
 
@@ -286,7 +287,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		if len(params.cmds) != 3 {
 			return errors.Errorf("unexpected cmds list: %#v", params.cmds)
 		}
-		pod, err := newDeployAgentPod(ctx, params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+		pod, err := newDeployAgentPod(ctx, params, deployAgentConfig{
 			name:              params.mainContainer,
 			image:             kubeConf.DeploySidecarImage,
 			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
@@ -302,7 +303,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(params.podName))
+	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", params.podName))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -380,7 +381,7 @@ func extraRegisterCmds(a provision.App) string {
 }
 
 func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVersion, podName, namespace string, output io.Writer) (func(), error) {
-	watch, err := filteredPodEvents(ctx, client, initialResourceVersion, podName, namespace)
+	watch, err := filteredResourceEvents(ctx, client, initialResourceVersion, "Pod", podName, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -519,6 +520,18 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
 }
 
+func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {
+	shouldDisable := false
+	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
+		var err error
+		shouldDisable, err = strconv.ParseBool(val)
+		if err != nil {
+			return false, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
+		}
+	}
+	return shouldDisable, nil
+}
+
 func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
 	singlePool, err := client.SinglePool()
 	if err != nil {
@@ -540,15 +553,12 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 		return nil, affinity, nil
 	}
 
-	if val, ok := client.GetCluster().CustomData[disableDefaultNodeSelectorKey]; ok {
-		var shouldDisable bool
-		shouldDisable, err = strconv.ParseBool(val)
-		if err != nil {
-			return nil, nil, errors.WithMessage(err, fmt.Sprintf("error while parsing cluster custom data entry: %s", disableDefaultNodeSelectorKey))
-		}
-		if shouldDisable {
-			return nil, affinity, nil
-		}
+	shouldDisable, err := getClusterNodeSelectorFlag(client)
+	if err != nil {
+		return nil, nil, err
+	}
+	if shouldDisable {
+		return nil, affinity, nil
 	}
 
 	return provision.NodeLabels(provision.NodeLabelsOpts{
@@ -631,11 +641,11 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	_, uid := dockercommon.UserForContainer()
-	resourceLimits := apiv1.ResourceList{}
 	overcommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
+	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
 	memory := a.GetMemory()
 	if memory != 0 {
@@ -910,7 +920,7 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 	}
 }
 
-func filteredPodEvents(ctx context.Context, client *ClusterClient, evtResourceVersion, podName, namespace string) (watch.Interface, error) {
+func filteredResourceEvents(ctx context.Context, client *ClusterClient, evtResourceVersion, resourceType, resourceName, namespace string) (watch.Interface, error) {
 	var err error
 	client, err = NewClusterClient(client.Cluster)
 	if err != nil {
@@ -920,7 +930,7 @@ func filteredPodEvents(ctx context.Context, client *ClusterClient, evtResourceVe
 	if err != nil {
 		return nil, err
 	}
-	opts := listOptsForPodEvent(podName)
+	opts := listOptsForResourceEvent(resourceType, resourceName)
 	opts.Watch = true
 	opts.ResourceVersion = evtResourceVersion
 	evtWatch, err := client.CoreV1().Events(namespace).Watch(ctx, opts)
@@ -930,12 +940,12 @@ func filteredPodEvents(ctx context.Context, client *ClusterClient, evtResourceVe
 	return evtWatch, nil
 }
 
-func listOptsForPodEvent(podName string) metav1.ListOptions {
+func listOptsForResourceEvent(resourceType, resourceName string) metav1.ListOptions {
 	selector := map[string]string{
-		"involvedObject.kind": "Pod",
+		"involvedObject.kind": resourceType,
 	}
-	if podName != "" {
-		selector["involvedObject.name"] = podName
+	if resourceName != "" {
+		selector["involvedObject.name"] = resourceName
 	}
 	return metav1.ListOptions{
 		FieldSelector: labels.SelectorFromSet(labels.Set(selector)).String(),
@@ -974,18 +984,39 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 	if err != nil {
 		return revision, err
 	}
-	watch, err := filteredPodEvents(ctx, client, evtResourceVersion, "", ns)
+	watchPods, err := filteredResourceEvents(ctx, client, evtResourceVersion, "Pod", "", ns)
 	if err != nil {
 		return revision, err
 	}
-	watchCh := watch.ResultChan()
+	watchDep, err := filteredResourceEvents(ctx, client, evtResourceVersion, "Deployment", dep.Name, ns)
+	if err != nil {
+		return revision, err
+	}
+	watchReplicaSet, err := filteredResourceEvents(ctx, client, evtResourceVersion, "ReplicaSet", "", ns)
+	if err != nil {
+		return revision, err
+	}
+	watchPodCh := watchPods.ResultChan()
+	watchDepCh := watchDep.ResultChan()
+	watchRepCh := watchReplicaSet.ResultChan()
 	defer func() {
-		watch.Stop()
-		if watchCh != nil {
+		watchPods.Stop()
+		if watchPodCh != nil {
 			// Drain watch channel to avoid goroutine leaks.
-			<-watchCh
+			<-watchPodCh
+		}
+		watchDep.Stop()
+		if watchDepCh != nil {
+			// Drain watch channel to avoid goroutine leaks.
+			<-watchDepCh
+		}
+		watchReplicaSet.Stop()
+		if watchRepCh != nil {
+			// Drain watch channel to avoid goroutine leaks.
+			<-watchRepCh
 		}
 	}()
+
 	fmt.Fprintf(w, "\n---- Updating units [%s] [version %d] ----\n", processName, version.Version())
 	kubeConf := getKubeConfig()
 	timer := time.NewTimer(kubeConf.DeploymentProgressTimeout)
@@ -1061,9 +1092,24 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 		select {
 		case <-time.After(100 * time.Millisecond):
-		case msg, isOpen := <-watchCh:
+		case msg, isOpen := <-watchPodCh:
 			if !isOpen {
-				watchCh = nil
+				watchPodCh = nil
+				break
+			}
+			if isDeploymentEvent(msg, dep) {
+				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+			}
+		case msg, isOpen := <-watchDepCh:
+			if !isOpen {
+				watchDepCh = nil
+				break
+			}
+			fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
+
+		case msg, isOpen := <-watchRepCh:
+			if !isOpen {
+				watchRepCh = nil
 				break
 			}
 			if isDeploymentEvent(msg, dep) {
@@ -1140,7 +1186,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if oldDep != nil {
 		oldRevision = oldDep.Annotations[replicaDepRevision]
 	}
-	events, err := m.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(""))
+	events, err := m.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1619,7 +1665,13 @@ type inspectParams struct {
 func runInspectSidecar(ctx context.Context, params inspectParams) error {
 	inspectContainer := "inspect-cont"
 	kubeConf := getKubeConfig()
-	pod, err := newDeployAgentPod(ctx, params.client, params.sourceImage, params.app, params.podName, deployAgentConfig{
+	// params.client, params.sourceImage, params.app, params.podName
+	pod, err := newDeployAgentPod(ctx, createPodParams{
+		client:      params.client,
+		sourceImage: params.sourceImage,
+		app:         params.app,
+		podName:     params.podName,
+	}, deployAgentConfig{
 		name:              inspectContainer,
 		image:             kubeConf.DeployInspectImage,
 		cmd:               "cat >/dev/null && /bin/deploy-agent",
@@ -1640,7 +1692,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		return err
 	}
 
-	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(params.podName))
+	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", params.podName))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1694,20 +1746,20 @@ type deployAgentConfig struct {
 	dockerfileBuild   bool
 }
 
-func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage string, app provision.App, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
+func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployAgentConfig) (apiv1.Pod, error) {
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
-	err := ensureNamespaceForApp(ctx, client, app)
+	err := ensureNamespaceForApp(ctx, params.client, params.app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	err = ensureServiceAccountForApp(ctx, client, app)
+	err = ensureServiceAccountForApp(ctx, params.client, params.app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
-		App: app,
+		App: params.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			IsBuild:     true,
 			Prefix:      tsuruLabelPrefix,
@@ -1717,24 +1769,23 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	volumes, mounts, err := createVolumesForApp(ctx, client, app)
+	volumes, mounts, err := createVolumesForApp(ctx, params.client, params.app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
 	annotations := provision.LabelSet{Prefix: tsuruLabelPrefix}
 	annotations.SetBuildImage(conf.destinationImages[0])
 
-	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, app, client)
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, params.app, params.client)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-
 	_, uid := dockercommon.UserForContainer()
-	ns, err := client.AppNamespace(ctx, app)
+	ns, err := params.client.AppNamespace(ctx, params.app)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	pullSecrets, err := getImagePullSecrets(ctx, client, ns, sourceImage, conf.image)
+	pullSecrets, err := getImagePullSecrets(ctx, params.client, ns, params.sourceImage, conf.image)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
@@ -1742,9 +1793,15 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 		conf.runAsUser = strconv.FormatInt(*uid, 10)
 	}
 	serviceLinks := false
+
+	quota, err := getResourceRequirementsForBuildPod(ctx, params.app, params.client)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	params.quota = quota
 	return apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        podName,
+			Name:        params.podName,
 			Namespace:   ns,
 			Labels:      labels.ToLabels(),
 			Annotations: annotations.ToLabels(),
@@ -1752,7 +1809,7 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 		Spec: apiv1.PodSpec{
 			EnableServiceLinks: &serviceLinks,
 			ImagePullSecrets:   pullSecrets,
-			ServiceAccountName: serviceAccountNameForApp(app),
+			ServiceAccountName: serviceAccountNameForApp(params.app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
 			Volumes: append(deployAgentEngineVolumes(pullSecrets), append([]apiv1.Volume{
@@ -1765,8 +1822,8 @@ func newDeployAgentPod(ctx context.Context, client *ClusterClient, sourceImage s
 			}, volumes...)...),
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
-				newSleepyContainer(podName, sourceImage, uid, appEnvs(app, "", nil, true), mounts...),
-				newDeployAgentContainer(conf, pullSecrets),
+				newSleepyContainer(params, uid, appEnvs(params.app, "", nil, true), mounts...),
+				newDeployAgentContainer(conf, pullSecrets, params.quota),
 			},
 		},
 	}, nil
@@ -1810,7 +1867,11 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 	if err != nil {
 		return apiv1.Pod{}, errors.WithMessage(err, "misconfigured cluster single pool value")
 	}
-	if singlePool {
+	shouldDisable, err := getClusterNodeSelectorFlag(client)
+	if err != nil {
+		return apiv1.Pod{}, err
+	}
+	if shouldDisable || singlePool {
 		affinity = &apiv1.Affinity{}
 	}
 	_, uid := dockercommon.UserForContainer()
@@ -1872,7 +1933,7 @@ func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 	}
 }
 
-func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalObjectReference) apiv1.Container {
+func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalObjectReference, quota apiv1.ResourceRequirements) apiv1.Container {
 	conf.registryAuth = registryAuth(conf.destinationImages[0])
 	return apiv1.Container{
 		Name:  conf.name,
@@ -1883,6 +1944,7 @@ func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalOb
 		Stdin:     true,
 		StdinOnce: true,
 		Env:       conf.asEnvs(),
+		Resources: quota,
 		Command: []string{
 			"sh", "-ec",
 			fmt.Sprintf(`
@@ -1894,15 +1956,16 @@ func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalOb
 	}
 }
 
-func newSleepyContainer(name, image string, uid *int64, envs []apiv1.EnvVar, mounts ...apiv1.VolumeMount) apiv1.Container {
+func newSleepyContainer(params createPodParams, uid *int64, envs []apiv1.EnvVar, mounts ...apiv1.VolumeMount) apiv1.Container {
 	return apiv1.Container{
-		Name:  name,
-		Image: image,
+		Name:  params.podName,
+		Image: params.sourceImage,
 		Env:   envs,
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: uid,
 		},
-		Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
+		Resources: params.quota,
+		Command:   []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
 		VolumeMounts: append([]apiv1.VolumeMount{
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		}, mounts...),

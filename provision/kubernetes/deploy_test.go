@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -1607,8 +1608,8 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	fakeWatcher := watch.NewFakeWithChanSize(2, false)
-	fakeWatcher.Add(&apiv1.Event{
+	fakePodWatcher := watch.NewFakeWithChanSize(2, false)
+	fakePodWatcher.Add(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-web-base.1",
 		},
@@ -1620,7 +1621,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		},
 		Message: "msg1",
 	})
-	fakeWatcher.Add(&apiv1.Event{
+	fakePodWatcher.Add(&apiv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "myapp-web-base.2",
 		},
@@ -1633,7 +1634,9 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		},
 		Message: "msg2",
 	})
-	watchCalled := make(chan struct{})
+	watchPodCalled := make(chan struct{})
+	watchRepCalled := make(chan struct{})
+	watchDepCalled := make(chan struct{})
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1645,7 +1648,9 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		dep.Status.UnavailableReplicas = 1
 		depCopy := *dep
 		go func() {
-			<-watchCalled
+			<-watchPodCalled
+			<-watchRepCalled
+			<-watchDepCalled
 			time.Sleep(time.Second)
 			depCopy.Status.UnavailableReplicas = 0
 			s.client.AppsV1().Deployments(ns).Update(context.TODO(), &depCopy, metav1.UpdateOptions{})
@@ -1653,8 +1658,19 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		return false, nil, nil
 	})
 	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
-		close(watchCalled)
-		return true, fakeWatcher, nil
+		requirements := action.(testing.WatchActionImpl).GetWatchRestrictions().Fields.Requirements()
+		for _, req := range requirements {
+			if req.Value == "Pod" {
+				close(watchPodCalled)
+			}
+			if req.Value == "ReplicaSet" {
+				close(watchRepCalled)
+			}
+			if req.Value == "Deployment" {
+				close(watchDepCalled)
+			}
+		}
+		return true, fakePodWatcher, nil
 	})
 	buf := bytes.NewBuffer(nil)
 	m := serviceManager{client: s.clusterClient, writer: buf}
@@ -2831,6 +2847,7 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 				mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/archive.tar.gz && tsuru_unit_agent   myapp "/var/lib/tsuru/deploy archive file:///home/application/archive.tar.gz" build
 			`,
 		},
+		Resources: apiv1.ResourceRequirements{},
 		Env: []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "destimg"},
@@ -2847,15 +2864,131 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
-		Name:    "myapp-v1-build",
-		Image:   "myimg",
-		Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-		Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+		Name:      "myapp-v1-build",
+		Image:     "myimg",
+		Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+		Resources: apiv1.ResourceRequirements{},
+		Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: &runAsUser,
 		},
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(string) (*appTypes.Plan, error) {
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 2000,
+			Memory:   int64(4294967296),
+		}, nil
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	s.clusterClient.CustomData[buildPlanKey] = "c2m4"
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuota, err := resource.ParseQuantity("2000m") // 2vCPU
+	c.Assert(err, check.IsNil)
+	memoryQuota, err := resource.ParseQuantity("4294967296") // 4Gi
+	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(string) (*appTypes.Plan, error) {
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 1000,
+			Memory:   int64(2147483648),
+		}, nil
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{buildPlanKey: "c1m2"}})
+	c.Assert(err, check.IsNil)
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuota, err := resource.ParseQuantity("1000m") // 1vCPU
+	c.Assert(err, check.IsNil)
+	memoryQuota, err := resource.ParseQuantity("2147483648") // 2Gi
+	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuota,
+			"memory": memoryQuota,
 		},
 	})
 }
@@ -2962,6 +3095,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only
 			`,
 			},
+			Resources: apiv1.ResourceRequirements{},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
 				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",tsuru/app-myapp:latest"},
@@ -2977,10 +3111,11 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 			}},
 		{
-			Name:    "myapp-v1-deploy",
-			Image:   version.BuildImageName(),
-			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-			Env:     []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Name:      "myapp-v1-deploy",
+			Image:     version.BuildImageName(),
+			Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+			Resources: apiv1.ResourceRequirements{},
+			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},
@@ -3188,6 +3323,23 @@ func (s *S) TestCreateImageBuildPodContainerOnSinglePool(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
 	s.clusterClient.CustomData[singlePoolKey] = "true"
+	err := createImageBuildPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		podName:           "myplatform-image-build",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/data/context.tar.gz",
+	})
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(s.client.Namespace()).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	c.Assert(pods.Items[0].Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
+}
+
+func (s *S) TestCreateImageBuildPodContainerWithClusterNodeSelectorDisabled(c *check.C) {
+	_, rollback := s.mock.NoAppReactions(c)
+	defer rollback()
+	s.clusterClient.CustomData[disableDefaultNodeSelectorKey] = "true"
 	err := createImageBuildPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		podName:           "myplatform-image-build",

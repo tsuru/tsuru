@@ -22,11 +22,15 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1108,7 +1112,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	var initialResource string
 	if args.eventsOutput != nil {
 		var events *apiv1.EventList
-		events, err = args.client.CoreV1().Events(ns).List(ctx, listOptsForPodEvent(pod.Name))
+		events, err = args.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", pod.Name))
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -1251,4 +1255,73 @@ func isPodReady(pod *apiv1.Pod) bool {
 		}
 	}
 	return true
+}
+
+func getPoolBuildPlan(ctx context.Context, poolName string) (*appTypes.Plan, error) {
+	var plan *appTypes.Plan
+	pool, err := pool.GetPoolByName(ctx, poolName)
+	if err != nil {
+		return nil, err
+	}
+	if planName := pool.GetBuildPlan(); planName != "" {
+		plan, err = servicemanager.Plan.FindByName(ctx, planName)
+		if err != nil {
+			return nil, err
+		}
+		return plan, nil
+	}
+
+	return nil, nil
+}
+
+func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (*appTypes.Plan, error) {
+	var plan *appTypes.Plan
+	var err error
+	if planName, ok := cluster.CustomData[buildPlanKey]; ok {
+		plan, err = servicemanager.Plan.FindByName(ctx, planName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return plan, nil
+}
+
+func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (v1.ResourceRequirements, error) {
+	var plan *appTypes.Plan
+	// first, try to get the build plan from apps pool
+	plan, err := getPoolBuildPlan(ctx, app.GetPool())
+	if err != nil {
+		return v1.ResourceRequirements{}, err
+	}
+	// if pools build plan is nil, try to get it from the cluster
+	if plan == nil {
+		plan, err = getClusterBuildPlan(ctx, cluster)
+		if err != nil {
+			return v1.ResourceRequirements{}, err
+		}
+		// if neither pool build plan or cluster build plan are set, return no error and an empty ResourceRequirement
+		if plan == nil {
+			return v1.ResourceRequirements{}, nil
+		}
+	}
+
+	cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(plan.CPUMilli)))
+	if err != nil {
+		return v1.ResourceRequirements{}, err
+	}
+	memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(plan.Memory, 10))
+	if err != nil {
+		return v1.ResourceRequirements{}, err
+	}
+
+	return v1.ResourceRequirements{
+		Limits: v1.ResourceList{
+			"cpu":    cpu,
+			"memory": memoryBytes,
+		},
+		Requests: v1.ResourceList{
+			"cpu":    cpu,
+			"memory": memoryBytes,
+		},
+	}, nil
 }
