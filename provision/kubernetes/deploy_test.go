@@ -2839,7 +2839,7 @@ func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	s.clusterClient.CustomData["buildPlan"] = "c2m4"
+	s.clusterClient.CustomData[buildPlanKey] = "c2m4"
 	err = createPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
@@ -2896,7 +2896,7 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{"buildPlan": "c1m2"}})
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{buildPlanKey: "c1m2"}})
 	c.Assert(err, check.IsNil)
 	err = createPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
