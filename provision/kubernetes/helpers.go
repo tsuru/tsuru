@@ -1294,7 +1294,7 @@ func getPoolBuildPlan(ctx context.Context, poolName string) (*appTypes.Plan, err
 	if err != nil {
 		return nil, err
 	}
-	if planName, ok := pool.Labels["buildPlan"]; ok {
+	if planName := pool.GetBuildPlan(); planName != "" {
 		plan, err = servicemanager.Plan.FindByName(ctx, planName)
 		if err != nil {
 			return nil, err
@@ -1308,7 +1308,7 @@ func getPoolBuildPlan(ctx context.Context, poolName string) (*appTypes.Plan, err
 func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (*appTypes.Plan, error) {
 	var plan *appTypes.Plan
 	var err error
-	if planName, ok := cluster.CustomData["buildPlan"]; ok {
+	if planName, ok := cluster.CustomData[buildPlanKey]; ok {
 		plan, err = servicemanager.Plan.FindByName(ctx, planName)
 		if err != nil {
 			return nil, err
