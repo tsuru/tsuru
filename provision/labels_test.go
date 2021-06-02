@@ -101,7 +101,13 @@ func (s *S) TestServiceLabels(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		RawLabels: map[string]string{
-			"version": "v9",
+			"app":                          "myapp-p1",
+			"app.kubernetes.io/component":  "tsuru-app",
+			"app.kubernetes.io/instance":   "myapp-p1",
+			"app.kubernetes.io/managed-by": "tsuru",
+			"app.kubernetes.io/name":       "myapp",
+			"app.kubernetes.io/version":    "v9",
+			"version":                      "v9",
 		},
 		Labels: map[string]string{
 			"is-tsuru":        "true",
