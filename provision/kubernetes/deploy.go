@@ -408,11 +408,7 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error) {
-	var result hcResult
-	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
-		return result, nil
-	}
+func validateHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
@@ -430,7 +426,25 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		hc.AllowedFailures = 3
 	}
 	if hc.Method != http.MethodGet {
-		return result, errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+	}
+
+	if _, ok := client.CustomData[gcpHealtcheckConstraints]; ok {
+		if hc.TimeoutSeconds >= hc.IntervalSeconds {
+			hc.IntervalSeconds = hc.TimeoutSeconds + 1
+		}
+	}
+
+	return nil
+}
+
+func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, port int) (hcResult, error) {
+	var result hcResult
+	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
+		return result, nil
+	}
+	if err := validateHC(hc, client); err != nil {
+		return result, err
 	}
 	headers := []apiv1.HTTPHeader{}
 	for header, value := range hc.Headers {
@@ -599,7 +613,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	var hcData hcResult
 	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
-		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
+		hcData, err = probesFromHC(yamlData.Healthcheck, client, processPorts[0].TargetPort)
 		if err != nil {
 			return nil, nil, err
 		}

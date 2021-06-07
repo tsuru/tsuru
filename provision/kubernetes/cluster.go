@@ -60,6 +60,7 @@ const (
 	disableNodeContainers         = "disable-node-containers"
 	disableUnitRegisterCmdKey     = "disable-unit-register"
 	buildPlanKey                  = "build-plan"
+	gcpHealtcheckConstraints      = "gcp-healthcheck-enable"
 
 	baseServicesAnnotations    = "base-services-annotations"
 	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
@@ -87,6 +88,7 @@ var (
 		preStopSleepKey:               fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
 		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
 		buildPlanKey:                  "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
+		gcpHealtcheckConstraints:      "Enable specific GCP healthcheck constraints inside the cluster",
 
 		enableLogsFromAPIServerKey: "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}
