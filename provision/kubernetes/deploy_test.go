@@ -1210,6 +1210,76 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	}
 }
 
+func (s *S) TestServiceManagerDeployServiceWithHCWithGCPConstraints(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	s.clusterClient.CustomData[gcpHealtcheckConstraints] = "true"
+	defer func() {
+		delete(s.clusterClient.CustomData, gcpHealtcheckConstraints)
+	}()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	hc := provTypes.TsuruYamlHealthcheck{
+		Path:            "/hc",
+		Scheme:          "https",
+		IntervalSeconds: 9,
+		TimeoutSeconds:  10,
+		AllowedFailures: 4,
+		ForceRestart:    true,
+	}
+	expectedReadiness := &apiv1.Probe{
+		PeriodSeconds:    11,
+		FailureThreshold: 4,
+		TimeoutSeconds:   10,
+		Handler: apiv1.Handler{
+			HTTPGet: &apiv1.HTTPGetAction{
+				Path:        "/hc",
+				Port:        intstr.FromInt(8888),
+				Scheme:      apiv1.URISchemeHTTPS,
+				HTTPHeaders: []apiv1.HTTPHeader{},
+			},
+		},
+	}
+	expectedLiveness := &apiv1.Probe{
+		PeriodSeconds:    11,
+		FailureThreshold: 4,
+		TimeoutSeconds:   10,
+		Handler: apiv1.Handler{
+			HTTPGet: &apiv1.HTTPGetAction{
+				Path:        "/hc",
+				Port:        intstr.FromInt(8888),
+				Scheme:      apiv1.URISchemeHTTPS,
+				HTTPHeaders: []apiv1.HTTPHeader{},
+			},
+		},
+	}
+
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cm1",
+		},
+		"healthcheck": hc,
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, expectedReadiness)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, expectedLiveness)
+}
+
 func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
