@@ -429,7 +429,7 @@ func validateHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient) error
 		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
 	}
 
-	if _, ok := client.CustomData[gcpHealtcheckConstraints]; ok {
+	if _, ok := client.CustomData[probeIntervalGreaterThanTimeoutKey]; ok {
 		if hc.TimeoutSeconds >= hc.IntervalSeconds {
 			hc.IntervalSeconds = hc.TimeoutSeconds + 1
 		}

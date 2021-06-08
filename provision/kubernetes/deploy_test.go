@@ -1213,9 +1213,9 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceWithHCWithGCPConstraints(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	s.clusterClient.CustomData[gcpHealtcheckConstraints] = "true"
+	s.clusterClient.CustomData[probeIntervalGreaterThanTimeoutKey] = "true"
 	defer func() {
-		delete(s.clusterClient.CustomData, gcpHealtcheckConstraints)
+		delete(s.clusterClient.CustomData, probeIntervalGreaterThanTimeoutKey)
 	}()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
