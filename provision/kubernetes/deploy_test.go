@@ -1210,7 +1210,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	}
 }
 
-func (s *S) TestServiceManagerDeployServiceWithHCWithGCPConstraints(c *check.C) {
+func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	s.clusterClient.CustomData[probeIntervalGreaterThanTimeoutKey] = "true"
