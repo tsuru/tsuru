@@ -49,7 +49,6 @@ const (
 	overcommitClusterKey               = "overcommit-factor"
 	namespaceLabelsKey                 = "namespace-labels"
 	externalPolicyLocalKey             = "external-policy-local"
-	routerAddressLocalKey              = "router-local"
 	disableHeadlessKey                 = "disable-headless"
 	maxSurgeKey                        = "max-surge"
 	maxUnavailableKey                  = "max-unavailable"
@@ -61,10 +60,9 @@ const (
 	disableUnitRegisterCmdKey          = "disable-unit-register"
 	buildPlanKey                       = "build-plan"
 	probeIntervalGreaterThanTimeoutKey = "probe-interval-gt-timeout"
-
-	baseServicesAnnotations    = "base-services-annotations"
-	enableLogsFromAPIServerKey = "enable-logs-from-apiserver"
-	defaultLogsFromAPIServer   = false
+	baseServicesAnnotations            = "base-services-annotations"
+	enableLogsFromAPIServerKey         = "enable-logs-from-apiserver"
+	defaultLogsFromAPIServer           = false
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -79,7 +77,6 @@ var (
 		overcommitClusterKey:               "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
 		namespaceLabelsKey:                 "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
 		externalPolicyLocalKey:             "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
-		routerAddressLocalKey:              "Only add node addresses that contains a pod from an app to the router. This config may be prefixed with `<pool-name>:`.",
 		disableHeadlessKey:                 "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
 		maxSurgeKey:                        "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
 		maxUnavailableKey:                  "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
@@ -89,8 +86,7 @@ var (
 		disableDefaultNodeSelectorKey:      "Disables the use of node selector in the cluster if enabled",
 		buildPlanKey:                       "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
 		probeIntervalGreaterThanTimeoutKey: "Enable specific GCP healthcheck constraints inside the cluster",
-
-		enableLogsFromAPIServerKey: "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
+		enableLogsFromAPIServerKey:         "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}
 )
 
@@ -363,21 +359,6 @@ func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
 	}
 	externalPolicyLocal, err := strconv.ParseBool(externalPolicyLocalConf)
 	return externalPolicyLocal, err
-}
-
-func (c *ClusterClient) RouterAddressLocal(pool string) (bool, error) {
-	if c.CustomData == nil {
-		return false, nil
-	}
-	routerAddressLocalConf := c.configForContext(pool, routerAddressLocalKey)
-	if routerAddressLocalConf == "" {
-		return false, nil
-	}
-	routerAddressLocal, _ := strconv.ParseBool(routerAddressLocalConf)
-	if routerAddressLocal {
-		return routerAddressLocal, nil
-	}
-	return c.ExternalPolicyLocal(pool)
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {

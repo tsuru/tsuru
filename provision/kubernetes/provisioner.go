@@ -805,16 +805,7 @@ func (p *kubernetesProvisioner) routableAddrForProcess(ctx context.Context, clie
 	if pubPort == 0 {
 		return routableAddrs, nil
 	}
-	routerLocal, err := client.RouterAddressLocal(a.GetPool())
-	if err != nil {
-		return routableAddrs, err
-	}
-	var addrs []*url.URL
-	if routerLocal {
-		addrs, err = p.addressesForApp(ctx, client, a, processName, pubPort, version)
-	} else {
-		addrs, err = p.addressesForPool(client, a.GetPool(), pubPort)
-	}
+	addrs, err := p.addressesForApp(ctx, client, a, processName, pubPort, version)
 	if err != nil || addrs == nil {
 		return routableAddrs, err
 	}
@@ -850,34 +841,6 @@ func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *Clu
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", pod.Status.HostIP, pubPort),
 			})
-		}
-	}
-	return addrs, nil
-}
-
-func (p *kubernetesProvisioner) addressesForPool(client *ClusterClient, poolName string, pubPort int32) ([]*url.URL, error) {
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   poolName,
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	nodeInformer, err := controller.getNodeInformer()
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := nodeInformer.Lister().List(labels.SelectorFromSet(nodeSelector))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	addrs := make([]*url.URL, len(nodes))
-	for i, n := range nodes {
-		wrapper := kubernetesNodeWrapper{node: n, prov: p}
-		addrs[i] = &url.URL{
-			Scheme: "http",
-			Host:   fmt.Sprintf("%s:%d", wrapper.Address(), pubPort),
 		}
 	}
 	return addrs, nil

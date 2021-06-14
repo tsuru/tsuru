@@ -32,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
-	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -1225,108 +1224,6 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	c.Assert(len(appList.Items), check.Equals, 0)
 }
 
-func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
-	}
-	version := newCommittedVersion(c, a, customData)
-	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
-	wait()
-	addrs, err := s.p.RoutableAddresses(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	sort.Slice(addrs, func(i, j int) bool {
-		return addrs[i].Prefix < addrs[j].Prefix
-	})
-	for k := range addrs {
-		sort.Slice(addrs[k].Addresses, func(i, j int) bool {
-			return addrs[k].Addresses[i].Host < addrs[k].Addresses[j].Host
-		})
-	}
-	expected := []appTypes.RoutableAddresses{
-		{
-			Prefix: "",
-			ExtraData: map[string]string{
-				"service":   "myapp-web",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version.web.process",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
-			},
-		},
-		{
-			Prefix: "web.process",
-			ExtraData: map[string]string{
-				"service":   "myapp-web",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
-			},
-		},
-	}
-	c.Assert(addrs, check.DeepEquals, expected)
-}
-
 func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1369,10 +1266,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
 				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
 			},
 		},
 		{
@@ -1385,10 +1278,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 				{
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
 				},
 			},
 		},
@@ -1403,10 +1292,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
 				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
 			},
 		},
 		{
@@ -1419,10 +1304,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 				{
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
-				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
 				},
 			},
 		},
@@ -1437,10 +1318,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
 				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
 			},
 		},
 		{
@@ -1454,20 +1331,13 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 					Scheme: "http",
 					Host:   "192.168.99.1:30000",
 				},
-				{
-					Scheme: "http",
-					Host:   "192.168.99.2:30000",
-				},
 			},
 		},
 	}
 	c.Assert(addrs, check.DeepEquals, expected)
 }
 
-func (s *S) TestProvisionerRoutableAddressesRouterAddressLocal(c *check.C) {
-	s.clusterClient.CustomData = map[string]string{
-		routerAddressLocalKey: "true",
-	}
+func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	evt, err := event.New(&event.Opts{
@@ -2592,14 +2462,6 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 3)
-	raddrs, err := routertest.FakeRouter.Routes(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(raddrs, check.DeepEquals, []*url.URL{
-		{
-			Scheme: "http",
-			Host:   "192.168.100.1:30002",
-		},
-	})
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {

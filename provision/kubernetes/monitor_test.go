@@ -19,9 +19,7 @@ import (
 )
 
 func (s *S) TestNewClusterController(c *check.C) {
-	s.clusterClient.CustomData = map[string]string{
-		routerAddressLocalKey: "true",
-	}
+	s.clusterClient.CustomData = map[string]string{}
 	watchFake := watch.NewFake()
 	s.client.Fake.PrependWatchReactor("pods", ktesting.DefaultWatchReactor(watchFake, nil))
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}

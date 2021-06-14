@@ -169,13 +169,11 @@ func (c *GalebClient) doRequestRetry(ctx context.Context, method, path string, p
 	if c.UseToken {
 		var token string
 		token, err = c.getToken(ctx)
-		log.Debugf("Use token: %s", token)
 		if err != nil {
 			return nil, err
 		}
 		req.SetBasicAuth(c.Username, token)
 	} else {
-		log.Debugf("Use basic auth: %s, %s", c.Username, c.Password)
 		req.SetBasicAuth(c.Username, c.Password)
 	}
 	req.Header.Set("Content-Type", contentType)

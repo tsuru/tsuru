@@ -288,24 +288,21 @@ func (c *clusterController) enqueuePod(pod *apiv1.Pod) {
 	if labelSet.IsDeploy() || labelSet.IsIsolatedRun() {
 		return
 	}
-	routerLocal, _ := c.cluster.RouterAddressLocal(labelSet.AppPool())
-	if routerLocal {
-		var runningTrue bool = true
-		evts, err := event.List(&event.Filter{
-			Running: &runningTrue,
-			Target: event.Target{
-				Type:  event.TargetTypeApp,
-				Value: appName,
-			},
-			KindType:  event.KindTypePermission,
-			KindNames: eventKindsIgnoreRebuild,
-			Limit:     1,
-		})
-		if err == nil && len(evts) > 0 {
-			return
-		}
-		runRoutesRebuild(appName)
+	runningTrue := true
+	evts, err := event.List(&event.Filter{
+		Running: &runningTrue,
+		Target: event.Target{
+			Type:  event.TargetTypeApp,
+			Value: appName,
+		},
+		KindType:  event.KindTypePermission,
+		KindNames: eventKindsIgnoreRebuild,
+		Limit:     1,
+	})
+	if err == nil && len(evts) > 0 {
+		return
 	}
+	runRoutesRebuild(appName)
 }
 
 // runRoutesRebuild is used in tests for mocking rebuild
