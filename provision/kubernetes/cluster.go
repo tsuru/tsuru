@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	backendConfigClientSet "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
@@ -104,6 +105,10 @@ var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, 
 
 var VPAClientForConfig = func(conf *rest.Config) (vpaclientset.Interface, error) {
 	return vpaclientset.NewForConfig(conf)
+}
+
+var BackendConfigClientForConfig = func(conf *rest.Config) (backendConfigClientSet.Interface, error) {
+	return backendConfigClientSet.NewForConfig(conf)
 }
 
 var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
