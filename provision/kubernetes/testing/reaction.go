@@ -569,17 +569,33 @@ func (s *KubeMock) ServiceWithPortReaction(c *check.C, ports []apiv1.ServicePort
 }
 
 func (s *KubeMock) DeploymentReactions(c *check.C) func() {
-	depReaction, depPodReady := s.deploymentWithPodReaction(c)
+	var counter int32
+	depReaction, depPodReady := s.deploymentWithPodReaction(c, &counter)
+	lastReactor := s.client.ReactionChain[len(s.client.ReactionChain)-1]
 	s.client.PrependReactor("create", "deployments", depReaction)
 	s.client.PrependReactor("update", "deployments", depReaction)
+	s.client.PrependReactor("patch", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
+		lastReactor.React(action)
+		depPodReady.Add(1)
+		patchAction := action.(ktesting.PatchAction)
+		go func() {
+			defer depPodReady.Done()
+			dep, _ := s.client.AppsV1().Deployments(patchAction.GetNamespace()).Get(context.TODO(), patchAction.GetName(), metav1.GetOptions{})
+			var specReplicas int32
+			if dep.Spec.Replicas != nil {
+				specReplicas = *dep.Spec.Replicas
+			}
+			s.deployWithPodReaction(c, dep, specReplicas, &counter)
+		}()
+		return true, nil, nil
+	})
 	return func() {
 		depPodReady.Wait()
 	}
 }
 
-func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+func (s *KubeMock) deploymentWithPodReaction(c *check.C, counter *int32) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
-	var counter int32
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetSubresource() != "" {
 			return false, nil, nil
@@ -600,70 +616,73 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
-			var revision int
-			if dep.Annotations["deployment.kubernetes.io/revision"] != "" {
-				revision, _ = strconv.Atoi(dep.Annotations["deployment.kubernetes.io/revision"])
-			}
-			revision++
-
-			rs := &appsv1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        dep.Name + "-1",
-					Namespace:   dep.Namespace,
-					Labels:      dep.Labels,
-					Annotations: map[string]string{},
-				},
-				Spec: appsv1.ReplicaSetSpec{
-					Replicas: dep.Spec.Replicas,
-					Selector: dep.Spec.Selector.DeepCopy(),
-					Template: *dep.Spec.Template.DeepCopy(),
-				},
-			}
-
-			for k, v := range dep.Annotations {
-				rs.Annotations[k] = v
-			}
-			rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
-			rs.OwnerReferences = []metav1.OwnerReference{
-				*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
-			}
-			rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
-			_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
-			_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(context.TODO(), rs, metav1.UpdateOptions{})
-			c.Assert(err, check.IsNil)
-			_ = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
-			err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
-			c.Assert(err, check.IsNil)
-
-			pod := &apiv1.Pod{
-				ObjectMeta: dep.Spec.Template.ObjectMeta,
-				Spec:       dep.Spec.Template.Spec,
-			}
-			pod.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
-			pod.Status.Phase = apiv1.PodRunning
-			pod.Status.StartTime = &metav1.Time{Time: time.Now()}
-			pod.ObjectMeta.Namespace = dep.Namespace
-			pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
-				*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
-			}
-			pod.Spec.NodeName = "n1"
-			pod.Status.HostIP = "192.168.99.1"
-			err = cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
-				LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
-			}, dep.Namespace, s.factory)
-			c.Assert(err, check.IsNil)
-			for i := int32(1); i <= specReplicas; i++ {
-				id := atomic.AddInt32(&counter, 1)
-				pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
-				_, err = s.client.CoreV1().Pods(dep.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
-				c.Assert(err, check.IsNil)
-				err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
-				c.Assert(err, check.IsNil)
-			}
+			s.deployWithPodReaction(c, dep, specReplicas, counter)
 		}()
 		return false, nil, nil
 	}, &wg
+}
+
+func (s *KubeMock) deployWithPodReaction(c *check.C, dep *appsv1.Deployment, specReplicas int32, counter *int32) {
+	var revision int
+	if dep.Annotations["deployment.kubernetes.io/revision"] != "" {
+		revision, _ = strconv.Atoi(dep.Annotations["deployment.kubernetes.io/revision"])
+	}
+	revision++
+
+	rs := &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        dep.Name + "-1",
+			Namespace:   dep.Namespace,
+			Labels:      dep.Labels,
+			Annotations: map[string]string{},
+		},
+		Spec: appsv1.ReplicaSetSpec{
+			Replicas: dep.Spec.Replicas,
+			Selector: dep.Spec.Selector.DeepCopy(),
+			Template: *dep.Spec.Template.DeepCopy(),
+		},
+	}
+
+	for k, v := range dep.Annotations {
+		rs.Annotations[k] = v
+	}
+	rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
+	rs.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+	}
+	rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
+	_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
+	_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(context.TODO(), rs, metav1.UpdateOptions{})
+	c.Assert(err, check.IsNil)
+	_ = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
+	err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
+	c.Assert(err, check.IsNil)
+
+	pod := &apiv1.Pod{
+		ObjectMeta: dep.Spec.Template.ObjectMeta,
+		Spec:       dep.Spec.Template.Spec,
+	}
+	pod.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
+	pod.Status.Phase = apiv1.PodRunning
+	pod.Status.StartTime = &metav1.Time{Time: time.Now()}
+	pod.ObjectMeta.Namespace = dep.Namespace
+	pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
+	}
+	pod.Spec.NodeName = "n1"
+	pod.Status.HostIP = "192.168.99.1"
+	err = cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
+	}, dep.Namespace, s.factory)
+	c.Assert(err, check.IsNil)
+	for i := int32(1); i <= specReplicas; i++ {
+		id := atomic.AddInt32(counter, 1)
+		pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
+		_, err = s.client.CoreV1().Pods(dep.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		c.Assert(err, check.IsNil)
+		err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func cleanupPods(client ClusterInterface, opts metav1.ListOptions, namespace string, factory informers.SharedInformerFactory) error {

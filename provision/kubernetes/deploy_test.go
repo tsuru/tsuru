@@ -3698,7 +3698,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-4-1\" not ready.*Pod \"myapp-p1-pod-4-1\" failed health check: my evt message.*")
 }
 
 func (s *S) TestServiceManagerDeployServiceFullTimeoutResetOnProgress(c *check.C) {
@@ -3884,7 +3884,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-3-1\" not ready.*Pod \"myapp-p1-pod-3-1\" failed health check: my evt message.*")
+	c.Assert(err, check.ErrorMatches, "(?s).*Pod \"myapp-p1-pod-4-1\" not ready.*Pod \"myapp-p1-pod-4-1\" failed health check: my evt message.*")
 	waitDep()
 }
 

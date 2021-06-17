@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -48,6 +49,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // gcp default auth plugin
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -462,10 +464,48 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	return servicecommon.ChangeUnits(ctx, &serviceManager{
-		client: client,
-		writer: w,
-	}, a, units, processName, version)
+	dep, err := deploymentForVersion(ctx, client, a, processName, version.Version())
+	if k8sErrors.IsNotFound(err) {
+		return servicecommon.ChangeUnits(ctx, &serviceManager{
+			client: client,
+			writer: w,
+		}, a, units, processName, version)
+	}
+	if err != nil {
+		return err
+	}
+	zero := int32(0)
+	if dep.Spec.Replicas == nil {
+		dep.Spec.Replicas = &zero
+	}
+	newReplicas := int(*dep.Spec.Replicas) + units
+	patchType, patch, err := replicasPatch(newReplicas)
+	if err != nil {
+		return err
+	}
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+	_, err = client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func replicasPatch(replicas int) (types.PatchType, []byte, error) {
+	patch, err := json.Marshal([]interface{}{
+		map[string]interface{}{
+			"op":    "replace",
+			"path":  "/spec/replicas",
+			"value": replicas,
+		},
+	})
+	if err != nil {
+		return "", nil, errors.WithStack(err)
+	}
+	return types.JSONPatchType, patch, nil
 }
 
 func (p *kubernetesProvisioner) AddUnits(ctx context.Context, a provision.App, units uint, processName string, version appTypes.AppVersion, w io.Writer) error {
