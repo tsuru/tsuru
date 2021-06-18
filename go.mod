@@ -12,11 +12,12 @@ require (
 	github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625
 	github.com/codegangsta/cli v1.19.1 // indirect
 	github.com/codegangsta/negroni v1.0.0
+	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
 	github.com/docker/docker v20.10.2+incompatible
-	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
+	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
@@ -27,14 +28,14 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.2.0
 	github.com/mailgun/holster v3.0.0+incompatible // indirect
 	github.com/mailgun/metrics v0.0.0-20170714162148-fd99b46995bd // indirect
@@ -45,8 +46,8 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
-	github.com/prometheus/client_golang v1.7.1
-	github.com/prometheus/common v0.10.0
+	github.com/prometheus/client_golang v1.1.0
+	github.com/prometheus/common v0.6.0
 	github.com/rackspace/gophercloud v0.0.0-20160825135439-c90cb954266e // indirect
 	github.com/sajari/fuzzy v1.0.0
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
@@ -60,6 +61,7 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/ugorji/go/codec v1.1.7
+	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	github.com/vmware/govcloudair v0.0.2 // indirect
 	github.com/vulcand/route v0.0.0-20191025171320-daa4df6c711a
 	github.com/vulcand/vulcand v0.9.0
@@ -75,13 +77,13 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 	gopkg.in/redis.v3 v3.6.4
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/api v0.19.0
+	k8s.io/api v0.18.9
 	k8s.io/apiextensions-apiserver v0.18.9
-	k8s.io/apimachinery v0.19.0
+	k8s.io/apimachinery v0.18.9
 	k8s.io/autoscaler/vertical-pod-autoscaler v0.9.2
-	k8s.io/client-go v0.19.0
+	k8s.io/client-go v0.18.9
 	k8s.io/code-generator v0.18.9
-	k8s.io/ingress-gce v1.12.0
+	k8s.io/ingress-gce v1.11.3
 	k8s.io/metrics v0.18.9
 )
 
@@ -89,7 +91,9 @@ replace (
 	github.com/ajg/form => github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/docker/docker => github.com/docker/engine v0.0.0-20190219214528-cbe11bdc6da8
 	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
-	google.golang.org/grpc => google.golang.org/grpc v1.29.1
+	github.com/vmware/govmomi => github.com/vmware/govmomi v0.6.2
+	google.golang.org/api => google.golang.org/api v0.15.0
+	google.golang.org/grpc => google.golang.org/grpc v1.26.0
 	gopkg.in/ahmetb/go-linq.v3 => github.com/ahmetb/go-linq v3.0.0+incompatible
 	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20161208181325-20d25e280405
 	k8s.io/api => k8s.io/api v0.18.9
