@@ -87,8 +87,6 @@ func (s *S) TestChangeUnits(c *check.C) {
 		{action: "deploy", app: fakeApp, processName: "worker", replicas: 1, labels: labelsWorker, version: latestVersion, preserveVersions: true},
 		{action: "cleanup", app: fakeApp, versionNumber: latestVersion.Version(), preserveVersions: true},
 	})
-	err = ChangeUnits(context.TODO(), m, fakeApp, 1, "", latestVersion)
-	c.Assert(err, check.ErrorMatches, "process error: no process name specified and more than one declared in Procfile")
 }
 
 func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
@@ -100,7 +98,7 @@ func (s *S) TestChangeUnitsSingleProcess(c *check.C) {
 			"web": "python web1",
 		},
 	})
-	err := ChangeUnits(context.TODO(), m, fakeApp, 1, "", latestVersion)
+	err := ChangeUnits(context.TODO(), m, fakeApp, 1, "web", latestVersion)
 	c.Assert(err, check.IsNil)
 	labelsWeb, err := provision.ServiceLabels(context.TODO(), provision.ServiceLabelsOpts{
 		App:     fakeApp,

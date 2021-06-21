@@ -569,32 +569,31 @@ func (s *KubeMock) ServiceWithPortReaction(c *check.C, ports []apiv1.ServicePort
 }
 
 func (s *KubeMock) DeploymentReactions(c *check.C) func() {
-	var counter int32
-	depReaction, depPodReady := s.deploymentWithPodReaction(c, &counter)
+	depReaction, depPodReady := s.deploymentWithPodReaction(c)
 	lastReactor := s.client.ReactionChain[len(s.client.ReactionChain)-1]
 	s.client.PrependReactor("create", "deployments", depReaction)
 	s.client.PrependReactor("update", "deployments", depReaction)
 	s.client.PrependReactor("patch", "deployments", func(action ktesting.Action) (bool, runtime.Object, error) {
-		lastReactor.React(action)
+		_, ret, err := lastReactor.React(action)
+		if err != nil {
+			return false, nil, err
+		}
 		depPodReady.Add(1)
 		patchAction := action.(ktesting.PatchAction)
 		go func() {
 			defer depPodReady.Done()
 			dep, _ := s.client.AppsV1().Deployments(patchAction.GetNamespace()).Get(context.TODO(), patchAction.GetName(), metav1.GetOptions{})
-			var specReplicas int32
-			if dep.Spec.Replicas != nil {
-				specReplicas = *dep.Spec.Replicas
-			}
-			s.deployWithPodReaction(c, dep, specReplicas, &counter)
+			s.client.AppsV1().Deployments(patchAction.GetNamespace()).Update(context.TODO(), dep, metav1.UpdateOptions{})
 		}()
-		return true, nil, nil
+		return true, ret, nil
 	})
 	return func() {
 		depPodReady.Wait()
 	}
 }
 
-func (s *KubeMock) deploymentWithPodReaction(c *check.C, counter *int32) (ktesting.ReactionFunc, *sync.WaitGroup) {
+func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	var counter int32
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		if action.GetSubresource() != "" {
@@ -616,7 +615,7 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C, counter *int32) (ktesti
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.deployWithPodReaction(c, dep, specReplicas, counter)
+			s.deployWithPodReaction(c, dep, specReplicas, &counter)
 		}()
 		return false, nil, nil
 	}, &wg

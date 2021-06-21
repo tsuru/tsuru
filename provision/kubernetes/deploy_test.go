@@ -3822,21 +3822,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackHealthcheckTimeout(c *check.C
 		for k, v := range dep.Spec.Template.Labels {
 			labelsCp[k] = v
 		}
-		go func() {
-			_, repErr := s.client.Clientset.AppsV1().ReplicaSets(ns).Create(context.TODO(), &appsv1.ReplicaSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:   "replica-for-" + dep.Name,
-					Labels: labelsCp,
-					Annotations: map[string]string{
-						"deployment.kubernetes.io/revision": strconv.Itoa(rev),
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
-					},
-				},
-			}, metav1.CreateOptions{})
-			c.Assert(repErr, check.IsNil)
-		}()
 		return false, nil, nil
 	}
 	s.client.PrependReactor("create", "deployments", reaction)

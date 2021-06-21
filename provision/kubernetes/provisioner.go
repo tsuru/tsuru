@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"sort"
@@ -30,6 +31,7 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
+	"github.com/tsuru/tsuru/provision/dockercommon"
 	_ "github.com/tsuru/tsuru/provision/kubernetes/authplugin/gcpwithproxy" // import custom authplugin that have proxy support
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/node"
@@ -456,6 +458,9 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 }
 
 func changeUnits(ctx context.Context, a provision.App, units int, processName string, version appTypes.AppVersion, w io.Writer) error {
+	if units == 0 {
+		return errors.New("cannot change 0 units")
+	}
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
@@ -463,6 +468,17 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
 		return err
+	}
+	if processName == "" {
+		var cmdData dockercommon.ContainerCmdsData
+		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
+		if err != nil {
+			return err
+		}
+		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
+		if err != nil {
+			return errors.WithStack(err)
+		}
 	}
 	dep, err := deploymentForVersion(ctx, client, a, processName, version.Version())
 	if k8sErrors.IsNotFound(err) {
@@ -479,6 +495,10 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 		dep.Spec.Replicas = &zero
 	}
 	newReplicas := int(*dep.Spec.Replicas) + units
+	if w == nil {
+		w = ioutil.Discard
+	}
+	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, newReplicas)
 	patchType, patch, err := replicasPatch(newReplicas)
 	if err != nil {
 		return err
@@ -487,9 +507,20 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	_, err = client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
+	newDep, err := client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	events, err := client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = monitorDeployment(ctx, client, newDep, a, processName, w, events.ResourceVersion, version)
+	if err != nil {
+		if _, ok := err.(provision.ErrUnitStartup); ok {
+			return err
+		}
+		return provision.ErrUnitStartup{Err: err}
 	}
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
@@ -45,20 +44,7 @@ func ChangeUnits(ctx context.Context, manager ServiceManager, a provision.App, u
 	if a.GetDeploys() == 0 {
 		return errors.New("units can only be modified after the first deploy")
 	}
-	if units == 0 {
-		return errors.New("cannot change 0 units")
-	}
-	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
-	if err != nil {
-		return err
-	}
-	if processName == "" {
-		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	err = RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
+	err := RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
 		processName: ProcessState{Increment: units},
 	})
 	if err != nil {
