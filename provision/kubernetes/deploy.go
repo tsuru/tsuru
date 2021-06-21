@@ -1503,7 +1503,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			return errors.WithMessage(err, "could not to parse base services annotations")
 		}
 		if annotations == nil {
-			annotations = map[string]string{}
+			annotations = make(map[string]string)
 		}
 		annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigName)
 
