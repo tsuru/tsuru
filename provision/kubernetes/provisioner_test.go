@@ -159,7 +159,7 @@ func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
 		Address:   "192.168.99.1",
 		Rebalance: true,
 	}
-	s.mock.WaitNodeUpdate(c, func() {
+	s.mock.WaitNodeUpdateCount(c, true, func() {
 		err = s.p.RemoveNode(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 	})

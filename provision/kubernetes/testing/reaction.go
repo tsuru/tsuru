@@ -366,6 +366,10 @@ func SortNodes(nodes []*apiv1.Node) {
 }
 
 func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
+	s.WaitNodeUpdateCount(c, false, fn)
+}
+
+func (s *KubeMock) WaitNodeUpdateCount(c *check.C, countOnly bool, fn func()) {
 	nodes, err := s.p.(provision.NodeProvisioner).ListNodes(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	var rawNodes []*apiv1.Node
@@ -381,10 +385,16 @@ func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
 		for _, n := range nodes {
 			rawNodesAfter = append(rawNodesAfter, n.(interface{ RawNode() *apiv1.Node }).RawNode())
 		}
-		SortNodes(rawNodes)
-		SortNodes(rawNodesAfter)
-		if !reflect.DeepEqual(rawNodes, rawNodesAfter) {
-			return
+		if countOnly {
+			if len(rawNodes) != len(rawNodesAfter) {
+				return
+			}
+		} else {
+			SortNodes(rawNodes)
+			SortNodes(rawNodesAfter)
+			if !reflect.DeepEqual(rawNodes, rawNodesAfter) {
+				return
+			}
 		}
 		select {
 		case <-time.After(100 * time.Millisecond):
