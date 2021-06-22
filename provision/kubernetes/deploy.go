@@ -47,7 +47,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 const (
@@ -60,7 +59,7 @@ const (
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 	defaultHttpPortName     = "http-default"
 	defaultUdpPortName      = "udp-default"
-	backendConfigName       = "backendconfigs.cloud.google.com"
+	backendConfigCRDName    = "backendconfigs.cloud.google.com"
 	backendConfigKey        = "cloud.google.com/backend-config"
 )
 
@@ -436,77 +435,6 @@ func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck, client 
 		if hc.TimeoutSeconds >= hc.IntervalSeconds {
 			hc.IntervalSeconds = hc.TimeoutSeconds + 1
 		}
-
-		if err := ensureBackendConfig(ctx, client, app, hc); err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-}
-
-func int64PointerFromInt(v int) *int64 {
-	p := new(int64)
-	*p = int64(v)
-	return p
-}
-
-func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision.App, hc *provTypes.TsuruYamlHealthcheck) error {
-	exists, err := backendConfigCRDExists(ctx, client)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return nil
-	}
-
-	backendConfigName := fmt.Sprintf("%s-backend-config", a.GetName())
-	cli, err := BackendConfigClientForConfig(client.RestConfig())
-	if err != nil {
-		return err
-	}
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return err
-	}
-
-	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
-	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
-	healthyThreshold := int64PointerFromInt(hc.AllowedFailures)
-
-	backendConfig := &backendconfigv1.BackendConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      backendConfigName,
-			Namespace: ns,
-		},
-		Spec: backendconfigv1.BackendConfigSpec{
-			HealthCheck: &backendconfigv1.HealthCheckConfig{
-				CheckIntervalSec:   intervalSec,
-				TimeoutSec:         timeoutSec,
-				HealthyThreshold:   healthyThreshold,
-				UnhealthyThreshold: healthyThreshold,
-				Type:               &hc.Scheme,
-				RequestPath:        &hc.Path,
-			},
-		},
-	}
-
-	existingBackendConfig, err := cli.CloudV1().BackendConfigs(ns).Get(ctx, backendConfigName, metav1.GetOptions{})
-	if k8sErrors.IsNotFound(err) {
-		existingBackendConfig = nil
-	} else if err != nil {
-		return err
-	}
-
-	if existingBackendConfig != nil {
-		backendConfig.ResourceVersion = existingBackendConfig.ResourceVersion
-		_, err = cli.CloudV1().BackendConfigs(ns).Update(ctx, backendConfig, metav1.UpdateOptions{})
-	} else {
-		_, err = cli.CloudV1().BackendConfigs(ns).Create(ctx, backendConfig, metav1.CreateOptions{})
-	}
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -618,21 +546,6 @@ func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {
 		}
 	}
 	return shouldDisable, nil
-}
-
-func backendConfigCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
-	extClient, err := ExtensionsClientForConfig(client.restConfig)
-	if err != nil {
-		return false, err
-	}
-	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, backendConfigName, metav1.GetOptions{})
-	if k8sErrors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *ClusterClient) (map[string]string, *apiv1.Affinity, error) {
@@ -1329,6 +1242,13 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
+	yamlData, err := opts.Version.TsuruYamlData()
+	if err != nil {
+		return err
+	}
+	if err := ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck); err != nil {
+		return err
+	}
 	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version)
 	if err != nil {
 		return err
@@ -1505,7 +1425,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-		annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigName)
+		annotations[backendConfigKey] = fmt.Sprintf("{\"%s\":\"%s\"}", backendConfigNameForApp(a, process), backendConfigCRDName)
 
 		svcsToCreate = append(svcsToCreate, svcCreateData{
 			name:        serviceNameForAppBase(a, process),
