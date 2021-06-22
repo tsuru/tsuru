@@ -1246,7 +1246,8 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if err != nil {
 		return err
 	}
-	if err := ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck); err != nil {
+	err = ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck)
+	if err != nil {
 		return err
 	}
 	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version)
