@@ -1260,6 +1260,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 
 	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
 	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
+	protocolType := strings.ToUpper(hc.Scheme)
 	expectedBackendConfig := backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      provision.AppProcessName(a, "web", 0, ""),
@@ -1269,7 +1270,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 			HealthCheck: &backendconfigv1.HealthCheckConfig{
 				CheckIntervalSec: intervalSec,
 				TimeoutSec:       timeoutSec,
-				Type:             &hc.Scheme,
+				Type:             &protocolType,
 				RequestPath:      &hc.Path,
 			},
 		},

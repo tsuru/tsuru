@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tsuru/tsuru/provision"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -55,6 +56,7 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 
 	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
 	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
+	protocolType := strings.ToUpper(hc.Scheme)
 
 	backendConfig := &backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -65,7 +67,7 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 			HealthCheck: &backendconfigv1.HealthCheckConfig{
 				CheckIntervalSec: intervalSec,
 				TimeoutSec:       timeoutSec,
-				Type:             &hc.Scheme,
+				Type:             &protocolType,
 				RequestPath:      &hc.Path,
 			},
 		},
