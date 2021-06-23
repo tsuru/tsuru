@@ -40,6 +40,7 @@ var (
 		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
+		unitAddRemove(),
 		testCases(),
 		testApps(),
 		updateAppPools(),
@@ -564,6 +565,35 @@ func testCases() ExecFlow {
 	}
 }
 
+func unitAddRemove() ExecFlow {
+	flow := ExecFlow{
+		requires: []string{"appnames"},
+	}
+	flow.forward = func(c *check.C, env *Environment) {
+		appName := env.Get("appnames")
+		res := T("unit-add", "-a", appName, "2").Run(env)
+		c.Assert(res, ResultOk)
+		regex := regexp.MustCompile(" (started|ready) ")
+		ok := retry(5*time.Minute, func() bool {
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			unitsReady := len(regex.FindAllString(res.Stdout.String(), -1))
+			return unitsReady == 3
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
+		res = T("unit-remove", "-a", appName, "2").Run(env)
+		c.Assert(res, ResultOk)
+		ok = retry(5*time.Minute, func() bool {
+			res = T("app-info", "-a", appName).Run(env)
+			c.Assert(res, ResultOk)
+			unitsReady := len(regex.FindAllString(res.Stdout.String(), -1))
+			return unitsReady == 1
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("new units not removed after 5 minutes: %v", res))
+	}
+	return flow
+}
+
 func appRouters() ExecFlow {
 	return ExecFlow{
 		provides: []string{"routers"},
@@ -732,9 +762,11 @@ func appVersions() ExecFlow {
 		c.Assert(res, ResultOk)
 		checkVersion("2")
 
+		time.Sleep(1 * time.Second)
 		res = T("app-router-version-add", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("2", "3")
+		time.Sleep(1 * time.Second)
 		res = T("app-router-version-remove", "2", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("3")
@@ -743,9 +775,11 @@ func appVersions() ExecFlow {
 		c.Assert(res, ResultOk)
 		checkVersion("3")
 
+		time.Sleep(1 * time.Second)
 		res = T("app-router-version-add", "1", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("1", "3")
+		time.Sleep(1 * time.Second)
 		res = T("app-router-version-remove", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("1")
@@ -875,6 +909,13 @@ func serviceCreate() ExecFlow {
 		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
 		parts := addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
+		cmd := NewCommand("curl", "-sS", "-o", "/dev/null", "--write-out", "%{http_code}", "http://"+parts[1])
+		ok = retry(15*time.Minute, func() bool {
+			res = cmd.Run(env)
+			code, _ := strconv.Atoi(res.Stdout.String())
+			return code >= 200 && code < 500
+		})
+		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
 		dir, err := ioutil.TempDir("", "service")
 		c.Assert(err, check.IsNil)
 		currDir, err := os.Getwd()
