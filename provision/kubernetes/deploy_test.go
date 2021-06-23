@@ -219,7 +219,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Name:      "myapp-p1",
 			Namespace: nsName,
 			Annotations: map[string]string{
-				"cloud.google.com/backend-config": "{\"default\":\"backendconfigs.cloud.google.com\"}",
+				"cloud.google.com/backend-config": "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}",
 			},
 			Labels: map[string]string{
 				"app":                          "myapp-p1",
@@ -407,7 +407,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
 		"myannotation.io/name":            "test",
-		"cloud.google.com/backend-config": "{\"default\":\"backendconfigs.cloud.google.com\"}",
+		"cloud.google.com/backend-config": "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}",
 	})
 
 	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
@@ -701,7 +701,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 				"tsuru.io/builder":             "",
 			},
 			Annotations: map[string]string{
-				"cloud.google.com/backend-config": "{\"default\":\"backendconfigs.cloud.google.com\"}",
+				"cloud.google.com/backend-config": "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
@@ -2686,7 +2686,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 
 	expectedSvc := legacySvc.DeepCopy()
 	expectedSvc.Annotations = make(map[string]string)
-	expectedSvc.Annotations["cloud.google.com/backend-config"] = "{\"default\":\"backendconfigs.cloud.google.com\"}"
+	expectedSvc.Annotations["cloud.google.com/backend-config"] = "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}"
 	expectedSvc.Labels["tsuru.io/restarts"] = "1"
 	expectedSvc.Labels["tsuru.io/is-routable"] = "true"
 	expectedSvc.Labels["tsuru.io/app-team"] = "admin"
@@ -2800,7 +2800,7 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 
 	expectedSvcBase := legacySvc.DeepCopy()
 	expectedSvcBase.Annotations = make(map[string]string)
-	expectedSvcBase.Annotations["cloud.google.com/backend-config"] = "{\"default\":\"backendconfigs.cloud.google.com\"}"
+	expectedSvcBase.Annotations["cloud.google.com/backend-config"] = "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}"
 	expectedSvcBase.Labels["tsuru.io/is-routable"] = "true"
 	expectedSvcBase.Labels["tsuru.io/app-team"] = "admin"
 	expectedSvcBase.Spec.Selector["tsuru.io/is-routable"] = "true"
@@ -4449,7 +4449,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 				"tsuru.io/builder":             "",
 			},
 			Annotations: map[string]string{
-				"cloud.google.com/backend-config": "{\"default\":\"backendconfigs.cloud.google.com\"}",
+				"cloud.google.com/backend-config": "{\"myapp-p1\":\"backendconfigs.cloud.google.com\"}",
 			},
 		},
 		Spec: apiv1.ServiceSpec{
