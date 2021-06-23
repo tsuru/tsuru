@@ -387,6 +387,15 @@ func (c *ClusterClient) LogsFromAPIServerEnabled() bool {
 	return enabled
 }
 
+func (c *ClusterClient) ProbeIntervalGreaterThanTimeout() bool {
+	if c.CustomData == nil {
+		return false
+	}
+
+	enabled, _ := strconv.ParseBool(c.CustomData[probeIntervalGreaterThanTimeoutKey])
+	return enabled
+}
+
 func (c *ClusterClient) BaseServiceAnnotations() (map[string]string, error) {
 	annotations := map[string]string{}
 	if c.CustomData == nil {

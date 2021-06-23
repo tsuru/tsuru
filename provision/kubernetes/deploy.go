@@ -431,12 +431,6 @@ func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck, client 
 		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
 	}
 
-	if _, ok := client.CustomData[probeIntervalGreaterThanTimeoutKey]; ok {
-		if hc.TimeoutSeconds >= hc.IntervalSeconds {
-			hc.IntervalSeconds = hc.TimeoutSeconds + 1
-		}
-	}
-
 	return nil
 }
 
