@@ -1426,7 +1426,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		if annotations == nil {
 			annotations = make(map[string]string)
 		}
-		annotations[backendConfigKey] = fmt.Sprintf("{\"%s\":\"%s\"}", backendConfigNameForApp(a, process), backendConfigCRDName)
+		annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigNameForApp(a, process))
 
 		svcsToCreate = append(svcsToCreate, svcCreateData{
 			name:        serviceNameForAppBase(a, process),
