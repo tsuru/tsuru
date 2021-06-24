@@ -410,7 +410,7 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck) error {
+func validateHC(hc *provTypes.TsuruYamlHealthcheck) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
@@ -434,12 +434,12 @@ func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck) error {
 	return nil
 }
 
-func probesFromHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, port int, app provision.App) (hcResult, error) {
+func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, port int) (hcResult, error) {
 	var result hcResult
 	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
 		return result, nil
 	}
-	if err := validateHC(ctx, hc); err != nil {
+	if err := validateHC(hc); err != nil {
 		return result, err
 	}
 	headers := []apiv1.HTTPHeader{}
@@ -609,7 +609,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	var hcData hcResult
 	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
-		hcData, err = probesFromHC(ctx, yamlData.Healthcheck, client, processPorts[0].TargetPort, a)
+		hcData, err = probesFromHC(yamlData.Healthcheck, client, processPorts[0].TargetPort)
 		if err != nil {
 			return nil, nil, err
 		}
