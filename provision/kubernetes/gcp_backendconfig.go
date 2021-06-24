@@ -56,12 +56,9 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 
 	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
 	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
-	if client.ProbeIntervalGreaterThanTimeout() {
-		if *timeoutSec >= *intervalSec {
-			*intervalSec = *timeoutSec + 1
-		}
+	if *timeoutSec >= *intervalSec {
+		*intervalSec = *timeoutSec + 1
 	}
-
 	protocolType := strings.ToUpper(hc.Scheme)
 
 	backendConfig := &backendconfigv1.BackendConfig{

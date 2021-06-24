@@ -1228,10 +1228,6 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	}
 	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	s.clusterClient.CustomData[probeIntervalGreaterThanTimeoutKey] = "true"
-	defer func() {
-		delete(s.clusterClient.CustomData, probeIntervalGreaterThanTimeoutKey)
-	}()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, s.user)

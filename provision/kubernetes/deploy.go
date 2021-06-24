@@ -410,7 +410,7 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, app provision.App) error {
+func validateHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
@@ -439,7 +439,7 @@ func probesFromHC(ctx context.Context, hc *provTypes.TsuruYamlHealthcheck, clien
 	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
 		return result, nil
 	}
-	if err := validateHC(ctx, hc, client, app); err != nil {
+	if err := validateHC(ctx, hc); err != nil {
 		return result, err
 	}
 	headers := []apiv1.HTTPHeader{}
