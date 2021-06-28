@@ -2646,6 +2646,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
+			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,
@@ -2752,6 +2753,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
+			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,
@@ -2820,6 +2822,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"memory":   float64(0),
 			"swap":     float64(0),
 			"cpushare": float64(0),
+			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,
@@ -2894,6 +2897,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
+			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,
