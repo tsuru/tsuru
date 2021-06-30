@@ -2422,7 +2422,7 @@ paths:
           description: User new quota.
           type: integer
       consumes:
-        - application/json
+        - application/x-www-form-urlencoded
       responses:
         "200":
           description: Quota successfully updated
@@ -2453,7 +2453,7 @@ paths:
           schema:
             $ref: "#/definitions/ChangePasswordData"
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       responses:
         "200":
           description: Ok
