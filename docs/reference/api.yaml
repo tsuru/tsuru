@@ -1313,11 +1313,11 @@ paths:
         - application/json
       parameters:
         - name: process
-          in: formData
+          in: body
           type: string
           description: Process number to be started. If the process number will not informed, whole application will be started.
         - name: version
-          in: formData
+          in: body
           type: string
       produces:
         - application/x-json-stream
@@ -1351,11 +1351,11 @@ paths:
         - application/json
       parameters:
         - name: process
-          in: formData
+          in: body
           type: string
           description: Process number to be stoped. If the process number will not informed, whole application will be stoped.
         - name: version
-          in: formData
+          in: body
           type: string
       produces:
         - application/x-json-stream
@@ -1389,7 +1389,7 @@ paths:
         - application/json
       parameters:
         - name: process
-          in: formData
+          in: body
           type: string
           description: Process number to be restarted. If the process number will not informed, whole application will be restarted.
         - name: version
