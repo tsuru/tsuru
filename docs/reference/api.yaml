@@ -1270,7 +1270,7 @@ paths:
       security:
         - Bearer: []
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       parameters:
         - name: limit
           in: formData
@@ -1294,6 +1294,82 @@ paths:
           description: App not found
           schema:
             $ref: "#/definitions/ErrorMessage"
+  /1.0/apps/{app}/start:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppStart
+      description: Start App.
+      tags:
+        - app
+      security:
+        - Bearer: []
+      consumes:
+        - application/json
+      parameters:
+        - name: process
+          in: formData
+          type: string
+          description: Process number to be started. If the process number will not informed, whole application will be started.
+        - name: version
+          in: formData
+          type: string
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: App restarted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+  /1.0/apps/{app}/stop:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppStop
+      description: Stop App.
+      tags:
+        - app
+      security:
+        - Bearer: []
+      consumes:
+        - application/json
+      parameters:
+        - name: process
+          in: formData
+          type: string
+          description: Process number to be stoped. If the process number will not informed, whole application will be stoped.
+        - name: version
+          in: formData
+          type: string
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: App restarted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
   /1.0/apps/{app}/restart:
     parameters:
       - name: app
@@ -1310,7 +1386,7 @@ paths:
       security:
         - Bearer: []
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       parameters:
         - name: process
           in: formData
@@ -2938,6 +3014,26 @@ paths:
       responses:
         "200":
           description: Volume deleted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Volume not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - volume
+      security:
+        - Bearer: []
+    put:
+      operationId: VolumeUpdate
+      description: Update volume.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Volume updated
         "401":
           description: Unauthorized
           schema:
