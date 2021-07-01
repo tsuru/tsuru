@@ -1312,18 +1312,16 @@ paths:
       consumes:
         - application/json
       parameters:
-        - name: process
+        - name: appStartData
           in: body
-          type: string
-          description: Process number to be started. If the process number will not informed, whole application will be started.
-        - name: version
-          in: body
-          type: string
+          required: true
+          schema:
+            $ref: "#/definitions/AppStatus"
       produces:
         - application/x-json-stream
       responses:
         "200":
-          description: App restarted
+          description: App started
         "401":
           description: Unauthorized
           schema:
@@ -1350,18 +1348,16 @@ paths:
       consumes:
         - application/json
       parameters:
-        - name: process
+        - name: appStopData
           in: body
-          type: string
-          description: Process number to be stoped. If the process number will not informed, whole application will be stoped.
-        - name: version
-          in: body
-          type: string
+          required: true
+          schema:
+            $ref: "#/definitions/AppStatus"
       produces:
         - application/x-json-stream
       responses:
         "200":
-          description: App restarted
+          description: App stoped
         "401":
           description: Unauthorized
           schema:
@@ -1388,13 +1384,11 @@ paths:
       consumes:
         - application/json
       parameters:
-        - name: process
+        - name: appRestartData
           in: body
-          type: string
-          description: Process number to be restarted. If the process number will not informed, whole application will be restarted.
-        - name: version
-          in: formData
-          type: string
+          required: true
+          schema:
+            $ref: "#/definitions/AppStatus"
       produces:
         - application/x-json-stream
       responses:
@@ -5203,6 +5197,13 @@ definitions:
         type: object
         additionalProperties:
           type: string
+  AppStatus:
+    type: object
+    properties:
+      process:
+        type: string
+      version:
+        type: string
   SetRoutableArgs:
     type: object
     properties:
