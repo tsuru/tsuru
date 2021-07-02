@@ -1316,7 +1316,7 @@ paths:
           in: body
           required: true
           schema:
-            $ref: "#/definitions/AppStatus"
+            $ref: "#/definitions/AppStartStop"
       produces:
         - application/x-json-stream
       responses:
@@ -1352,7 +1352,7 @@ paths:
           in: body
           required: true
           schema:
-            $ref: "#/definitions/AppStatus"
+            $ref: "#/definitions/AppStartStop"
       produces:
         - application/x-json-stream
       responses:
@@ -1388,7 +1388,7 @@ paths:
           in: body
           required: true
           schema:
-            $ref: "#/definitions/AppStatus"
+            $ref: "#/definitions/AppStartStop"
       produces:
         - application/x-json-stream
       responses:
@@ -5197,7 +5197,7 @@ definitions:
         type: object
         additionalProperties:
           type: string
-  AppStatus:
+  AppStartStop:
     type: object
     properties:
       process:
