@@ -1270,7 +1270,7 @@ paths:
       security:
         - Bearer: []
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       parameters:
         - name: limit
           in: formData
@@ -1294,6 +1294,78 @@ paths:
           description: App not found
           schema:
             $ref: "#/definitions/ErrorMessage"
+  /1.0/apps/{app}/start:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppStart
+      description: Start App.
+      tags:
+        - app
+      security:
+        - Bearer: []
+      consumes:
+        - application/json
+      parameters:
+        - name: appStartData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AppStartStop"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: App started
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+  /1.0/apps/{app}/stop:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppStop
+      description: Stop App.
+      tags:
+        - app
+      security:
+        - Bearer: []
+      consumes:
+        - application/json
+      parameters:
+        - name: appStopData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AppStartStop"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: App stoped
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
   /1.0/apps/{app}/restart:
     parameters:
       - name: app
@@ -1310,15 +1382,13 @@ paths:
       security:
         - Bearer: []
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       parameters:
-        - name: process
-          in: formData
-          type: string
-          description: Process number to be restarted. If the process number will not informed, whole application will be restarted.
-        - name: version
-          in: formData
-          type: string
+        - name: appRestartData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AppStartStop"
       produces:
         - application/x-json-stream
       responses:
@@ -2346,7 +2416,7 @@ paths:
           description: User new quota.
           type: integer
       consumes:
-        - application/json
+        - application/x-www-form-urlencoded
       responses:
         "200":
           description: Quota successfully updated
@@ -2377,7 +2447,7 @@ paths:
           schema:
             $ref: "#/definitions/ChangePasswordData"
       consumes:
-        - application/x-www-form-urlencoded
+        - application/json
       responses:
         "200":
           description: Ok
@@ -2938,6 +3008,26 @@ paths:
       responses:
         "200":
           description: Volume deleted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Volume not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - volume
+      security:
+        - Bearer: []
+    put:
+      operationId: VolumeUpdate
+      description: Update volume.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Volume updated
         "401":
           description: Unauthorized
           schema:
@@ -5107,6 +5197,13 @@ definitions:
         type: object
         additionalProperties:
           type: string
+  AppStartStop:
+    type: object
+    properties:
+      process:
+        type: string
+      version:
+        type: string
   SetRoutableArgs:
     type: object
     properties:
