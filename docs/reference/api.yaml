@@ -3025,6 +3025,12 @@ paths:
       description: Update volume.
       produces:
         - application/json
+      parameters:
+        - name: volumeUpdate
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/Volume"
       responses:
         "200":
           description: Volume updated
