@@ -1270,7 +1270,7 @@ paths:
       security:
         - Bearer: []
       consumes:
-        - application/json
+        - application/x-www-form-urlencoded
       parameters:
         - name: limit
           in: formData
@@ -3023,8 +3023,13 @@ paths:
     put:
       operationId: VolumeUpdate
       description: Update volume.
-      produces:
+      consumes:
         - application/json
+      parameters:
+        - name: volume
+          in: body
+          schema:
+            $ref: "#/definitions/VolumeUpdateData"
       responses:
         "200":
           description: Volume updated
@@ -4380,6 +4385,37 @@ definitions:
       volume:
         description: Volume name.
         type: string
+  VolumeUpdateData:
+    description: Volume
+    type: object
+    properties:
+      name:
+        type: string
+        description: Volume name.
+      pool:
+        type: string
+        description: Volume pool.
+      teamOwner:
+        type: string
+        description: Team that owns the volume.
+      status:
+        type: string
+        description: Volume status.
+      plan:
+        type: object
+        description: Volume plan.
+        $ref: "#/definitions/VolumePlan"
+      binds:
+        type: array
+        description: Volume binds.
+        items:
+          type: object
+          $ref: "#/definitions/VolumeBind"
+      opts:
+        type: object
+        description: Custom volume options.
+        additionalProperties:
+          type: string
   VolumeBindData:
     type: object
     properties:
