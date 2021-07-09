@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -246,19 +247,56 @@ func (s *Service) findTeam(team *authTypes.Team) int {
 	return -1
 }
 
-func (s *Service) getClient(endpoint string) (cli ServiceClient, err error) {
+func endpointNameForPool(ctx context.Context, pool string) (string, error) {
+	if pool == "" {
+		return "", nil
+	}
+	p, err := servicemanager.Pool.FindByName(ctx, pool)
+	if err != nil {
+		return "", err
+	}
+	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
+	if err != nil {
+		if err == provTypes.ErrNoCluster {
+			return "", nil
+		}
+		return "", err
+	}
+	return c.Name, nil
+}
+
+func (s *Service) getClientForPool(ctx context.Context, pool string) (ServiceClient, error) {
+	var cli ServiceClient
+	poolEndpoint, err := endpointNameForPool(ctx, pool)
+	if err != nil {
+		return cli, err
+	}
+	var endpoints []string
+	if poolEndpoint != "" {
+		endpoints = []string{poolEndpoint, "production"}
+	} else {
+		endpoints = []string{"production"}
+	}
+	return s.getClient(endpoints...)
+}
+
+func (s *Service) getClient(endpoints ...string) (ServiceClient, error) {
 	if isBrokeredService(s.Name) {
 		return newBrokeredServiceClient(s.Name)
 	}
-	if e, ok := s.Endpoint[endpoint]; ok {
-		if p := schemeRegexp.MatchString(e); !p {
-			e = "http://" + e
+	var err error
+	for _, endpoint := range endpoints {
+		if e, ok := s.Endpoint[endpoint]; ok {
+			if p := schemeRegexp.MatchString(e); !p {
+				e = "http://" + e
+			}
+			cli := &endpointClient{serviceName: s.Name, endpoint: e, username: s.getUsername(), password: s.Password}
+			return cli, nil
+		} else {
+			err = errors.New("Unknown endpoint: " + endpoint)
 		}
-		cli = &endpointClient{serviceName: s.Name, endpoint: e, username: s.getUsername(), password: s.Password}
-	} else {
-		err = errors.New("Unknown endpoint: " + endpoint)
 	}
-	return
+	return nil, err
 }
 
 func (s *Service) validate(skipName bool) (err error) {
