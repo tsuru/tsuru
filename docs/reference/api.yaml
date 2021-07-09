@@ -3026,10 +3026,18 @@ paths:
       consumes:
         - application/json
       parameters:
+<<<<<<< HEAD
         - name: volume
           in: body
           schema:
             $ref: "#/definitions/VolumeUpdateData"
+=======
+        - name: volumeUpdate
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/Volume"
+>>>>>>> b89a484dc93ff356499b784396d99f28aa67bb92
       responses:
         "200":
           description: Volume updated
