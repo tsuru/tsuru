@@ -319,8 +319,8 @@ func (s *Service) validate(skipName bool) (err error) {
 	if s.Password == "" {
 		return fmt.Errorf("Service password is required")
 	}
-	if endpoint, ok := s.Endpoint["production"]; !ok || endpoint == "" {
-		return fmt.Errorf("Service production endpoint is required")
+	if len(s.Endpoint) == 0 {
+		return fmt.Errorf("At least one endpoint is required")
 	}
 	return s.validateOwnerTeams()
 }

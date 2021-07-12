@@ -6,6 +6,7 @@ package service
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
@@ -31,6 +32,8 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func Test(t *testing.T) { check.TestingT(t) }
 
 type hasAccessToChecker struct{}
 
