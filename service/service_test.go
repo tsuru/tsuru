@@ -154,6 +154,14 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
+
+	service.Name = "per-cluster-endpoing"
+	service.Endpoint = map[string]string{"my-cluster": "https://my.cluster"}
+	err = Create(*service)
+	c.Assert(err, check.IsNil)
+	se, err = Get(context.TODO(), service.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(se.Endpoint["my-cluster"], check.Equals, "https://my.cluster")
 }
 
 func (s *S) TestCreateServiceValidation(c *check.C) {
@@ -181,7 +189,7 @@ func (s *S) TestCreateServiceValidation(c *check.C) {
 	service.Password = "abcde"
 	service.Endpoint = nil
 	err = Create(*service)
-	c.Assert(err, check.ErrorMatches, "Service production endpoint is required")
+	c.Assert(err, check.ErrorMatches, "At least one endpoint is required")
 	service.Endpoint = endpt
 	service.OwnerTeams = []string{}
 	err = Create(*service)
