@@ -67,6 +67,42 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(results)
 }
 
+type serviceInput struct {
+	Name      string            `json:"id" form:"id"`
+	Username  string            `json:"username" form:"username"`
+	Password  string            `json:"password" form:"password"`
+	Endpoints map[string]string `json:"endpoints" form:"endpoints"`
+	Endpoint  string            `json:"endpoint" form:"endpoint"`
+}
+
+func parseService(r *http.Request) (service.Service, error) {
+	var s service.Service
+
+	var inputSvc serviceInput
+	err := ParseInput(r, &inputSvc)
+	if err != nil {
+		return s, &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	s.Name = inputSvc.Name
+	s.Username = inputSvc.Username
+	s.Password = inputSvc.Password
+	if len(inputSvc.Endpoints) != 0 {
+		s.Endpoint = inputSvc.Endpoints
+	} else if inputSvc.Endpoint != "" {
+		s.Endpoint = map[string]string{"production": inputSvc.Endpoint}
+	}
+
+	multiCluster, err := strconv.ParseBool(InputValue(r, "multi-cluster"))
+	if err == nil {
+		s.IsMultiCluster = multiCluster
+	}
+	team := InputValue(r, "team")
+	if team != "" {
+		s.OwnerTeams = []string{team}
+	}
+	return s, nil
+}
+
 // title: service create
 // path: /services
 // method: POST
@@ -77,18 +113,13 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //   401: Unauthorized
 //   409: Service already exists
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	s := service.Service{
-		Name:     InputValue(r, "id"),
-		Username: InputValue(r, "username"),
-		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
-		Password: InputValue(r, "password"),
+	s, err := parseService(r)
+	if err != nil {
+		return err
 	}
-	multiCluster, err := strconv.ParseBool(InputValue(r, "multi-cluster"))
-	if err == nil {
-		s.IsMultiCluster = multiCluster
-	}
-	team := InputValue(r, "team")
-	if team == "" {
+
+	if len(s.OwnerTeams) == 0 {
+		var team string
 		team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
 		if err == permission.ErrTooManyTeams {
 			return &errors.HTTP{
@@ -99,8 +130,8 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		if err != nil {
 			return err
 		}
+		s.OwnerTeams = []string{team}
 	}
-	s.OwnerTeams = []string{team}
 	allowed := permission.Check(t, permission.PermServiceCreate,
 		permission.Context(permTypes.CtxTeam, s.OwnerTeams[0]),
 	)
@@ -142,14 +173,13 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //   403: Forbidden (team is not the owner)
 //   404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	d := service.Service{
-		Username: InputValue(r, "username"),
-		Endpoint: map[string]string{"production": InputValue(r, "endpoint")},
-		Password: InputValue(r, "password"),
-		Name:     r.URL.Query().Get(":name"),
+	d, err := parseService(r)
+	if err != nil {
+		return err
 	}
-	team := InputValue(r, "team")
+	d.Name = r.URL.Query().Get(":name")
+
+	ctx := r.Context()
 	s, err := getService(ctx, d.Name)
 	if err != nil {
 		return err
@@ -175,8 +205,8 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
-	if team != "" {
-		s.OwnerTeams = []string{team}
+	if len(d.OwnerTeams) != 0 {
+		s.OwnerTeams = d.OwnerTeams
 	}
 	return service.Update(s)
 }
