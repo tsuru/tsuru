@@ -4408,9 +4408,6 @@ definitions:
       binds:
         type: array
         description: Volume binds.
-        items:
-          type: object
-          $ref: "#/definitions/VolumeBind"
       opts:
         type: object
         description: Custom volume options.
