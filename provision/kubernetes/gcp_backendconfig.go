@@ -35,23 +35,24 @@ func backendConfigNameForApp(a provision.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
-func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision.App, processName string, hc *provTypes.TsuruYamlHealthcheck) error {
+func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision.App, processName string, hc *provTypes.TsuruYamlHealthcheck) (bool, error) {
+	crdExists := false
 	exists, err := backendConfigCRDExists(ctx, client)
 	if err != nil {
-		return err
+		return crdExists, err
 	}
 	if !exists {
-		return nil
+		return crdExists, nil
 	}
-
+	crdExists = true
 	backendConfigName := backendConfigNameForApp(a, processName)
 	cli, err := BackendConfigClientForConfig(client.RestConfig())
 	if err != nil {
-		return err
+		return crdExists, err
 	}
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
-		return err
+		return crdExists, err
 	}
 
 	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
@@ -80,7 +81,7 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 	if k8sErrors.IsNotFound(err) {
 		existingBackendConfig = nil
 	} else if err != nil {
-		return err
+		return crdExists, err
 	}
 
 	if existingBackendConfig != nil {
@@ -90,8 +91,8 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 		_, err = cli.CloudV1().BackendConfigs(ns).Create(ctx, backendConfig, metav1.CreateOptions{})
 	}
 	if err != nil {
-		return err
+		return crdExists, err
 	}
 
-	return nil
+	return crdExists, nil
 }

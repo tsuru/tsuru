@@ -1240,11 +1240,11 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if err != nil {
 		return err
 	}
-	err = ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck)
+	backendCfgexists, err := ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck)
 	if err != nil {
 		return err
 	}
-	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version)
+	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists)
 	if err != nil {
 		return err
 	}
@@ -1324,7 +1324,7 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -1417,10 +1417,12 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		if err != nil {
 			return errors.WithMessage(err, "could not to parse base services annotations")
 		}
-		if annotations == nil {
-			annotations = make(map[string]string)
+		if backendCRD {
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigNameForApp(a, process))
 		}
-		annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigNameForApp(a, process))
 
 		svcsToCreate = append(svcsToCreate, svcCreateData{
 			name:        serviceNameForAppBase(a, process),
