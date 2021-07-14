@@ -4405,9 +4405,6 @@ definitions:
         type: object
         description: Volume plan.
         $ref: "#/definitions/VolumePlan"
-      binds:
-        type: array
-        description: Volume binds.
       opts:
         type: object
         description: Custom volume options.
