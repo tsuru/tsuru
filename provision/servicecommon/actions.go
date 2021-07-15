@@ -83,16 +83,22 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		return errors.Errorf("no process information found deploying version %q", args.Version)
 	}
 	newSpec := ProcessSpec{}
+	appStop := true
 	for p := range newProcesses {
 		newSpec[p] = ProcessState{Start: true}
 		if updateSpec != nil {
 			newSpec[p] = updateSpec[p]
+			if !newSpec[p].Stop { // newSpec[p].Stop == false
+				appStop = false
+			}
 		}
 	}
+	actions := []*action.Action{updateServices, updateImageInDB}
+	if !appStop {
+		actions = append(actions, removeOldServices)
+	}
 	pipeline := action.NewPipeline(
-		updateServices,
-		updateImageInDB,
-		removeOldServices,
+		actions...,
 	)
 	return pipeline.Execute(ctx, &pipelineArgs{
 		manager:          manager,
