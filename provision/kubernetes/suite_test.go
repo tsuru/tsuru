@@ -46,6 +46,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	backendConfigClientSet "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned"
+	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
+
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
@@ -117,6 +120,7 @@ func (s *S) SetUpTest(c *check.C) {
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
 		ClusterInterface:       s.clusterClient,
 	}
 	s.clusterClient.Interface = s.client
@@ -134,6 +138,9 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	VPAClientForConfig = func(conf *rest.Config) (vpaclientset.Interface, error) {
 		return s.client.VPAClientset, nil
+	}
+	BackendConfigClientForConfig = func(conf *rest.Config) (backendConfigClientSet.Interface, error) {
+		return s.client.BackendClientset, nil
 	}
 	routertest.FakeRouter.Reset()
 	rand.Seed(0)
