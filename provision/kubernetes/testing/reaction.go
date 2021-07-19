@@ -51,6 +51,7 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
+	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
 	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
@@ -97,6 +98,7 @@ type ClientWrapper struct {
 	TsuruClientset         *faketsuru.Clientset
 	MetricsClientset       *fakemetrics.Clientset
 	VPAClientset           *fakevpa.Clientset
+	BackendClientset       *fakeBackendConfig.Clientset
 	ClusterInterface
 }
 

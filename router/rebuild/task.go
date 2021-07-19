@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/api/shutdown"
@@ -24,14 +25,12 @@ const (
 	eventKindRebuild = "rebuild-routes-task"
 )
 
-var (
-	appFinder func(string) (RebuildApp, error)
-	task      *rebuildTask
-)
+var globalTask atomic.Value
 
 type rebuildTask struct {
-	queue workqueue.RateLimitingInterface
-	wg    sync.WaitGroup
+	queue     workqueue.RateLimitingInterface
+	appFinder func(string) (RebuildApp, error)
+	wg        sync.WaitGroup
 }
 
 func (t *rebuildTask) Shutdown(ctx context.Context) error {
@@ -91,8 +90,8 @@ func process(key interface{}) error {
 }
 
 func Initialize(finder func(string) (RebuildApp, error)) error {
-	appFinder = finder
-	task = &rebuildTask{
+	task := &rebuildTask{
+		appFinder: finder,
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
 			"tsuru_workqueue_rebuild",
@@ -100,14 +99,24 @@ func Initialize(finder func(string) (RebuildApp, error)) error {
 	}
 	task.runWorkers()
 	shutdown.Register(task)
+	globalTask.Store(task)
 	return nil
 }
 
+func getTask() *rebuildTask {
+	value := globalTask.Load()
+	if value == nil {
+		return nil
+	}
+	return value.(*rebuildTask)
+}
+
 func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
-	if appFinder == nil {
+	task := getTask()
+	if task == nil {
 		return errors.New("no appFinder available")
 	}
-	a, err := appFinder(appName)
+	a, err := task.appFinder(appName)
 	if err != nil {
 		return errors.Wrapf(err, "error getting app %q", appName)
 	}
@@ -166,6 +175,7 @@ func LockedRoutesRebuildOrEnqueue(appName string) {
 }
 
 func EnqueueRoutesRebuild(appName string) {
+	task := getTask()
 	if task != nil {
 		task.queue.Add(appName)
 	}
@@ -181,6 +191,7 @@ func routesRebuildOrEnqueueOptionalLock(appName string, lock bool, w io.Writer) 
 }
 
 func Shutdown(ctx context.Context) error {
+	task := getTask()
 	if task != nil {
 		return task.Shutdown(ctx)
 	}

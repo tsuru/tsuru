@@ -59,6 +59,8 @@ const (
 	buildIntercontainerDone = buildIntercontainerPath + "/done"
 	defaultHttpPortName     = "http-default"
 	defaultUdpPortName      = "udp-default"
+	backendConfigCRDName    = "backendconfigs.cloud.google.com"
+	backendConfigKey        = "cloud.google.com/backend-config"
 )
 
 type InspectData struct {
@@ -408,7 +410,7 @@ type hcResult struct {
 	readiness *apiv1.Probe
 }
 
-func validateHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient) error {
+func validateHC(hc *provTypes.TsuruYamlHealthcheck) error {
 	if hc.Scheme == "" {
 		hc.Scheme = provision.DefaultHealthcheckScheme
 	}
@@ -429,12 +431,6 @@ func validateHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient) error
 		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
 	}
 
-	if _, ok := client.CustomData[probeIntervalGreaterThanTimeoutKey]; ok {
-		if hc.TimeoutSeconds >= hc.IntervalSeconds {
-			hc.IntervalSeconds = hc.TimeoutSeconds + 1
-		}
-	}
-
 	return nil
 }
 
@@ -443,7 +439,7 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, por
 	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
 		return result, nil
 	}
-	if err := validateHC(hc, client); err != nil {
+	if err := validateHC(hc); err != nil {
 		return result, err
 	}
 	headers := []apiv1.HTTPHeader{}
@@ -1240,7 +1236,15 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
-	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version)
+	yamlData, err := opts.Version.TsuruYamlData()
+	if err != nil {
+		return err
+	}
+	backendCfgexists, err := ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck)
+	if err != nil {
+		return err
+	}
+	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists)
 	if err != nil {
 		return err
 	}
@@ -1320,7 +1324,7 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -1413,6 +1417,13 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		if err != nil {
 			return errors.WithMessage(err, "could not to parse base services annotations")
 		}
+		if backendCRD {
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations[backendConfigKey] = fmt.Sprintf("{\"default\":\"%s\"}", backendConfigNameForApp(a, process))
+		}
+
 		svcsToCreate = append(svcsToCreate, svcCreateData{
 			name:        serviceNameForAppBase(a, process),
 			labels:      routableLabels.ToLabels(),

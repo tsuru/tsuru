@@ -48,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 func cleanCmds(cmds string) string {
@@ -401,7 +402,9 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 
 	srv, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{"myannotation.io/name": "test"})
+	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
+		"myannotation.io/name": "test",
+	})
 
 	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -1210,18 +1213,31 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 	}
 }
 
-func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *check.C) {
+func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	s.clusterClient.CustomData[probeIntervalGreaterThanTimeoutKey] = "true"
-	defer func() {
-		delete(s.clusterClient.CustomData, probeIntervalGreaterThanTimeoutKey)
-	}()
+	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
+	}
+	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
+	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-
+	expectedReadiness := &apiv1.Probe{
+		PeriodSeconds:    9,
+		FailureThreshold: 4,
+		TimeoutSeconds:   10,
+		Handler: apiv1.Handler{
+			HTTPGet: &apiv1.HTTPGetAction{
+				Path:        "/hc",
+				Port:        intstr.FromInt(8888),
+				Scheme:      apiv1.URISchemeHTTPS,
+				HTTPHeaders: []apiv1.HTTPHeader{},
+			},
+		},
+	}
 	hc := provTypes.TsuruYamlHealthcheck{
 		Path:            "/hc",
 		Scheme:          "https",
@@ -1230,29 +1246,21 @@ func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *chec
 		AllowedFailures: 4,
 		ForceRestart:    true,
 	}
-	expectedReadiness := &apiv1.Probe{
-		PeriodSeconds:    11,
-		FailureThreshold: 4,
-		TimeoutSeconds:   10,
-		Handler: apiv1.Handler{
-			HTTPGet: &apiv1.HTTPGetAction{
-				Path:        "/hc",
-				Port:        intstr.FromInt(8888),
-				Scheme:      apiv1.URISchemeHTTPS,
-				HTTPHeaders: []apiv1.HTTPHeader{},
-			},
+
+	intervalSec := int64PointerFromInt(hc.TimeoutSeconds + 1)
+	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
+	protocolType := strings.ToUpper(hc.Scheme)
+	expectedBackendConfig := backendconfigv1.BackendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Namespace: "default",
 		},
-	}
-	expectedLiveness := &apiv1.Probe{
-		PeriodSeconds:    11,
-		FailureThreshold: 4,
-		TimeoutSeconds:   10,
-		Handler: apiv1.Handler{
-			HTTPGet: &apiv1.HTTPGetAction{
-				Path:        "/hc",
-				Port:        intstr.FromInt(8888),
-				Scheme:      apiv1.URISchemeHTTPS,
-				HTTPHeaders: []apiv1.HTTPHeader{},
+		Spec: backendconfigv1.BackendConfigSpec{
+			HealthCheck: &backendconfigv1.HealthCheckConfig{
+				CheckIntervalSec: intervalSec,
+				TimeoutSec:       timeoutSec,
+				Type:             &protocolType,
+				RequestPath:      &hc.Path,
 			},
 		},
 	}
@@ -1260,6 +1268,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *chec
 	version := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
 			"web": "cm1",
+			"p2":  "cmd2",
 		},
 		"healthcheck": hc,
 	})
@@ -1269,6 +1278,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *chec
 		Version: version,
 	}, servicecommon.ProcessSpec{
 		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
 	})
 	c.Assert(err, check.IsNil)
 	waitDep()
@@ -1277,7 +1287,13 @@ func (s *S) TestServiceManagerDeployServiceWithHCWithIntervalConstraints(c *chec
 	dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.DeepEquals, expectedReadiness)
-	c.Assert(dep.Spec.Template.Spec.Containers[0].LivenessProbe, check.DeepEquals, expectedLiveness)
+	dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+
+	backendConfig, err := s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(backendConfig.Spec, check.DeepEquals, expectedBackendConfig.Spec)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
