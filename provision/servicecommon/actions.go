@@ -52,7 +52,7 @@ type ServiceManager interface {
 	RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error
 	CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
 	DeployService(ctx context.Context, o DeployServiceOpts) error
-	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool) error
+	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool, newVersionSpec ProcessSpec) error
 }
 
 type DeployServiceOpts struct {
@@ -83,22 +83,16 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		return errors.Errorf("no process information found deploying version %q", args.Version)
 	}
 	newSpec := ProcessSpec{}
-	appStop := true
 	for p := range newProcesses {
 		newSpec[p] = ProcessState{Start: true}
 		if updateSpec != nil {
 			newSpec[p] = updateSpec[p]
-			if !newSpec[p].Stop { // newSpec[p].Stop == false
-				appStop = false
-			}
 		}
 	}
-	actions := []*action.Action{updateServices, updateImageInDB}
-	if !appStop {
-		actions = append(actions, removeOldServices)
-	}
 	pipeline := action.NewPipeline(
-		actions...,
+		updateServices,
+		updateImageInDB,
+		removeOldServices,
 	)
 	return pipeline.Execute(ctx, &pipelineArgs{
 		manager:          manager,
@@ -285,7 +279,7 @@ var removeOldServices = &action.Action{
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions)
+		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions, args.newVersionSpec)
 		if err != nil {
 			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}

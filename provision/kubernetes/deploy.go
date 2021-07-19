@@ -802,7 +802,7 @@ type serviceManager struct {
 
 var _ servicecommon.ServiceManager = &serviceManager{}
 
-func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, deployedVersion int, preserveOldVersions bool) error {
+func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, deployedVersion int, preserveOldVersions bool, newVersionSpec servicecommon.ProcessSpec) error {
 	depGroups, err := deploymentsDataForApp(ctx, m.client, a)
 	if err != nil {
 		return err
@@ -843,10 +843,11 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
 		svcVersion := labels.AppVersion()
-		_, inUseProcess := processInUse[labels.AppProcess()]
+		process := labels.AppProcess()
+		_, inUseProcess := processInUse[process]
 		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
 
-		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
+		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess) || newVersionSpec[process].Stop
 
 		if toKeep {
 			continue
