@@ -3026,6 +3026,8 @@ paths:
       description: Update volume.
       consumes:
         - application/json
+      parameters:
+        - name: volumeUpdate
           required: true
           in: body
           schema:
@@ -5286,3 +5288,4 @@ definitions:
             type: array
             items:
               type: string
+              
