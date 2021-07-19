@@ -3026,8 +3026,6 @@ paths:
       description: Update volume.
       consumes:
         - application/json
-      produces:
-        - application/json
       parameters:
         - name: volumeUpdate
           required: true
