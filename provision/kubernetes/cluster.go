@@ -38,31 +38,31 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	backendConfigClientSet "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 const (
-	namespaceClusterKey                = "namespace"
-	tokenClusterKey                    = "token"
-	userClusterKey                     = "username"
-	passwordClusterKey                 = "password"
-	overcommitClusterKey               = "overcommit-factor"
-	namespaceLabelsKey                 = "namespace-labels"
-	externalPolicyLocalKey             = "external-policy-local"
-	disableHeadlessKey                 = "disable-headless"
-	maxSurgeKey                        = "max-surge"
-	maxUnavailableKey                  = "max-unavailable"
-	singlePoolKey                      = "single-pool"
-	ephemeralStorageKey                = "ephemeral-storage"
-	preStopSleepKey                    = "pre-stop-sleep"
-	disableDefaultNodeSelectorKey      = "disable-default-node-selector"
-	disableNodeContainers              = "disable-node-containers"
-	disableUnitRegisterCmdKey          = "disable-unit-register"
-	buildPlanKey                       = "build-plan"
-	probeIntervalGreaterThanTimeoutKey = "probe-interval-gt-timeout"
-	baseServicesAnnotations            = "base-services-annotations"
-	enableLogsFromAPIServerKey         = "enable-logs-from-apiserver"
-	defaultLogsFromAPIServer           = false
+	namespaceClusterKey           = "namespace"
+	tokenClusterKey               = "token"
+	userClusterKey                = "username"
+	passwordClusterKey            = "password"
+	overcommitClusterKey          = "overcommit-factor"
+	namespaceLabelsKey            = "namespace-labels"
+	externalPolicyLocalKey        = "external-policy-local"
+	disableHeadlessKey            = "disable-headless"
+	maxSurgeKey                   = "max-surge"
+	maxUnavailableKey             = "max-unavailable"
+	singlePoolKey                 = "single-pool"
+	ephemeralStorageKey           = "ephemeral-storage"
+	preStopSleepKey               = "pre-stop-sleep"
+	disableDefaultNodeSelectorKey = "disable-default-node-selector"
+	disableNodeContainers         = "disable-node-containers"
+	disableUnitRegisterCmdKey     = "disable-unit-register"
+	buildPlanKey                  = "build-plan"
+	baseServicesAnnotations       = "base-services-annotations"
+	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
+	defaultLogsFromAPIServer      = false
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -70,23 +70,22 @@ const (
 
 var (
 	clusterHelp = map[string]string{
-		namespaceClusterKey:                "Namespace used to create resources unless kubernetes:use-pool-namespaces config is enabled.",
-		tokenClusterKey:                    "Token used to connect to the cluster,",
-		userClusterKey:                     "User used to connect to the cluster.",
-		passwordClusterKey:                 "Password used to connect to the cluster.",
-		overcommitClusterKey:               "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
-		namespaceLabelsKey:                 "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
-		externalPolicyLocalKey:             "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
-		disableHeadlessKey:                 "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
-		maxSurgeKey:                        "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
-		maxUnavailableKey:                  "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
-		singlePoolKey:                      "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
-		ephemeralStorageKey:                fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
-		preStopSleepKey:                    fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
-		disableDefaultNodeSelectorKey:      "Disables the use of node selector in the cluster if enabled",
-		buildPlanKey:                       "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
-		probeIntervalGreaterThanTimeoutKey: "Enable specific GCP healthcheck constraints inside the cluster",
-		enableLogsFromAPIServerKey:         "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
+		namespaceClusterKey:           "Namespace used to create resources unless kubernetes:use-pool-namespaces config is enabled.",
+		tokenClusterKey:               "Token used to connect to the cluster,",
+		userClusterKey:                "User used to connect to the cluster.",
+		passwordClusterKey:            "Password used to connect to the cluster.",
+		overcommitClusterKey:          "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		namespaceLabelsKey:            "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
+		externalPolicyLocalKey:        "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
+		disableHeadlessKey:            "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
+		maxSurgeKey:                   "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
+		maxUnavailableKey:             "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
+		singlePoolKey:                 "Set to use entire cluster to a pool instead only designated nodes. Defaults do false.",
+		ephemeralStorageKey:           fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
+		preStopSleepKey:               fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
+		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
+		buildPlanKey:                  "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
+		enableLogsFromAPIServerKey:    "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 	}
 )
 
@@ -104,6 +103,10 @@ var TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, 
 
 var VPAClientForConfig = func(conf *rest.Config) (vpaclientset.Interface, error) {
 	return vpaclientset.NewForConfig(conf)
+}
+
+var BackendConfigClientForConfig = func(conf *rest.Config) (backendConfigClientSet.Interface, error) {
+	return backendConfigClientSet.NewForConfig(conf)
 }
 
 var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
