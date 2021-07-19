@@ -980,7 +980,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	if len(e.Envs) == 0 {
+	if e.ManagedBy == "" && len(e.Envs) == 0 {
 		msg := "You must provide the list of environment variables"
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}

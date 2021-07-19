@@ -1576,7 +1576,7 @@ func (app *App) Envs() map[string]bind.EnvVar {
 
 // SetEnvs saves a list of environment variables in the app.
 func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
-	if len(setEnvs.Envs) == 0 {
+	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
 		return nil
 	}
 
@@ -1587,7 +1587,7 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 		}
 	}
 
-	if setEnvs.Writer != nil {
+	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
 	}
 

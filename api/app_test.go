@@ -3414,6 +3414,64 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestSetEnvCanPruneAllVariables(c *check.C) {
+	a := app.App{
+		Name:      "black-dog",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Env: map[string]bind.EnvVar{
+			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
+			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	d := apiTypes.Envs{
+		Envs:        []apiTypes.Env{},
+		PruneUnused: true,
+		ManagedBy:   "terraform",
+	}
+
+	v, err := json.Marshal(d)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewReader(v)
+
+	url := fmt.Sprintf("/apps/%s/env", a.Name)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	app, err := app.GetByName(context.TODO(), "black-dog")
+	c.Assert(err, check.IsNil)
+
+	_, hasOldVar := app.Env["OLDENV"]
+	c.Assert(hasOldVar, check.Equals, false)
+
+	expected0 := bind.EnvVar{Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"}
+	c.Assert(app.Env["CMDLINE"], check.DeepEquals, expected0)
+
+	c.Assert(recorder.Body.String(), check.Matches,
+		`.*---- Pruning OLDENV from environment variables ----.*
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.env.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestSetEnvDontPruneWhenMissingManagedBy(c *check.C) {
 	a := app.App{
 		Name:      "black-dog",
