@@ -48,7 +48,7 @@ func init() {
 }
 
 var (
-	_                       jaeger.Sampler = &tsuruJaegerSampler{}
+	_                       jaeger.Sampler = (*tsuruJaegerSampler)(nil)
 	writeOperations         []string       = []string{"POST", "PUT", "DELETE"}
 	writeOperationsDenyList []string       = []string{"POST /node/status"}
 )

@@ -6,8 +6,8 @@ package auth
 
 import "context"
 
-var _ TeamStorage = &MockTeamStorage{}
-var _ TeamService = &MockTeamService{}
+var _ TeamStorage = (*MockTeamStorage)(nil)
+var _ TeamService = (*MockTeamService)(nil)
 
 // MockTeamStorage implements TeamStorage interface
 type MockTeamStorage struct {

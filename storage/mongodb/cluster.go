@@ -20,7 +20,7 @@ const clusterCollection = "provisioner_clusters"
 
 type clusterStorage struct{}
 
-var _ provision.ClusterStorage = &clusterStorage{}
+var _ provision.ClusterStorage = (*clusterStorage)(nil)
 
 type cluster struct {
 	Name        string `bson:"_id"`

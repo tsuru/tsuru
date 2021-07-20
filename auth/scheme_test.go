@@ -12,7 +12,7 @@ import (
 
 type TestScheme struct{}
 
-var _ Scheme = &TestScheme{}
+var _ Scheme = (*TestScheme)(nil)
 
 func (t TestScheme) AppLogin(ctx context.Context, appName string) (Token, error) {
 	return nil, nil

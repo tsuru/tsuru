@@ -14,7 +14,7 @@ import (
 	imageTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
-var _ imageTypes.PlatformImageService = &platformImageService{}
+var _ imageTypes.PlatformImageService = (*platformImageService)(nil)
 
 type platformImageService struct {
 	storage imageTypes.PlatformImageStorage

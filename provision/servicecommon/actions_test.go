@@ -31,7 +31,7 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
-var _ ServiceManager = &recordManager{}
+var _ ServiceManager = (*recordManager)(nil)
 
 func Test(t *testing.T) {
 	check.TestingT(t)

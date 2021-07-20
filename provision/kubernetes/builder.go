@@ -20,7 +20,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ provision.BuilderKubeClient = &KubeClient{}
+var _ provision.BuilderKubeClient = (*KubeClient)(nil)
 
 func (p *kubernetesProvisioner) GetClient(a provision.App) (provision.BuilderKubeClient, error) {
 	return &KubeClient{}, nil

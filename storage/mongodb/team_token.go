@@ -31,7 +31,7 @@ type teamToken struct {
 	Roles        []auth.RoleInstance `bson:",omitempty"`
 }
 
-var _ auth.TeamTokenStorage = &teamTokenStorage{}
+var _ auth.TeamTokenStorage = (*teamTokenStorage)(nil)
 
 func teamTokensCollection(conn *db.Storage) *dbStorage.Collection {
 	c := conn.Collection(teamsTokensCollectionName)

@@ -30,8 +30,8 @@ type PullAndCreateClient struct {
 	*docker.Client
 }
 
-var _ provision.BuilderDockerClient = &PullAndCreateClient{}
-var _ provision.ExecDockerClient = &PullAndCreateClient{}
+var _ provision.BuilderDockerClient = (*PullAndCreateClient)(nil)
+var _ provision.ExecDockerClient = (*PullAndCreateClient)(nil)
 
 func (c *PullAndCreateClient) SetTimeout(timeout time.Duration) {
 	c.Client.HTTPClient.Timeout = timeout

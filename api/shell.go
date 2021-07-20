@@ -24,7 +24,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-var _ io.ReadWriteCloser = &cmdLogger{}
+var _ io.ReadWriteCloser = (*cmdLogger)(nil)
 
 type cmdLogger struct {
 	sync.Mutex

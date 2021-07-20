@@ -40,7 +40,7 @@ type brokerClient struct {
 	client  osb.Client
 }
 
-var _ ServiceClient = &brokerClient{}
+var _ ServiceClient = (*brokerClient)(nil)
 
 func newClient(b serviceTypes.Broker, service string) (*brokerClient, error) {
 	broker := brokerClient{

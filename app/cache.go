@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 )
 
-var _ cache.AppCacheService = &cacheService{}
+var _ cache.AppCacheService = (*cacheService)(nil)
 
 type cacheService struct {
 	storage cache.CacheStorage

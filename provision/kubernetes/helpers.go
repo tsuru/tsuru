@@ -967,7 +967,7 @@ func (q *fixedSizeQueue) Next() *remotecommand.TerminalSize {
 	return q.sz
 }
 
-var _ remotecommand.TerminalSizeQueue = &fixedSizeQueue{}
+var _ remotecommand.TerminalSizeQueue = (*fixedSizeQueue)(nil)
 
 type execOpts struct {
 	client       *ClusterClient

@@ -25,7 +25,7 @@ func webhookCollection(conn *db.Storage) *dbStorage.Collection {
 	return coll
 }
 
-var _ event.WebhookStorage = &webhookStorage{}
+var _ event.WebhookStorage = (*webhookStorage)(nil)
 
 func (s *webhookStorage) Insert(w event.Webhook) error {
 	conn, err := db.Conn()

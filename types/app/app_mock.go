@@ -45,7 +45,7 @@ func (a *MockApp) GetUpdatePlatform() bool {
 	return a.UpdatePlatform
 }
 
-var _ AppService = &MockAppService{}
+var _ AppService = (*MockAppService)(nil)
 
 type MockAppService struct {
 	Apps []App

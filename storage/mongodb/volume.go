@@ -20,7 +20,7 @@ const (
 	volumeBindsCollectionName = "volume_binds"
 )
 
-var _ volume.VolumeStorage = &volumeStorage{}
+var _ volume.VolumeStorage = (*volumeStorage)(nil)
 
 func volumesCollection(conn *db.Storage) *dbStorage.Collection {
 	return conn.Collection(volumeCollectionName)

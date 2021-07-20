@@ -17,7 +17,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var _ authTypes.Token = &tokenWrapper{}
+var _ authTypes.Token = (*tokenWrapper)(nil)
 
 type tokenWrapper struct {
 	oauth2.Token

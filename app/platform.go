@@ -23,7 +23,7 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-var _ appTypes.PlatformService = &platformService{}
+var _ appTypes.PlatformService = (*platformService)(nil)
 
 type platformService struct {
 	storage appTypes.PlatformStorage

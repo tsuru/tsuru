@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/types/app"
 )
 
-var _ app.PlatformStorage = &PlatformStorage{}
+var _ app.PlatformStorage = (*PlatformStorage)(nil)
 
 const platformsCollectionName = "platforms"
 

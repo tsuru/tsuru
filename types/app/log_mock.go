@@ -6,7 +6,7 @@ package app
 
 import "context"
 
-var _ AppLogService = &MockAppLogService{}
+var _ AppLogService = (*MockAppLogService)(nil)
 
 type MockAppLogService struct{}
 

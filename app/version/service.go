@@ -17,7 +17,7 @@ type appVersionService struct {
 	storage appTypes.AppVersionStorage
 }
 
-var _ appTypes.AppVersionService = &appVersionService{}
+var _ appTypes.AppVersionService = (*appVersionService)(nil)
 
 func AppVersionService() (appTypes.AppVersionService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()

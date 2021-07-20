@@ -128,7 +128,7 @@ var defaultLogsProvisionerGetter = func(ctx context.Context, a appTypes.App) (pr
 	return nil, provision.ErrLogsUnavailable
 }
 
-var _ appTypes.LogWatcher = &multiWatcher{}
+var _ appTypes.LogWatcher = (*multiWatcher)(nil)
 
 type multiWatcher struct {
 	subWatchers []appTypes.LogWatcher

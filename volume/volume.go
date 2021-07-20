@@ -24,7 +24,7 @@ type volumeService struct {
 	storage volumeTypes.VolumeStorage
 }
 
-var _ volumeTypes.VolumeService = &volumeService{}
+var _ volumeTypes.VolumeService = (*volumeService)(nil)
 
 func VolumeService() (volumeTypes.VolumeService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()

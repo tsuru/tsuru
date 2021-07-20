@@ -12,8 +12,8 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ Builder = &MockBuilder{}
-var _ PlatformBuilder = &MockBuilder{}
+var _ Builder = (*MockBuilder)(nil)
+var _ PlatformBuilder = (*MockBuilder)(nil)
 
 type MockBuilder struct {
 	OnBuild          func(provision.BuilderDeploy, provision.App, *event.Event, *BuildOpts) (appTypes.AppVersion, error)
