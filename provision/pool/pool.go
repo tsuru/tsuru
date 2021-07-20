@@ -157,6 +157,42 @@ func (p *Pool) GetPlans() ([]string, error) {
 	return nil, ErrPoolHasNoPlan
 }
 
+func (p *Pool) GetDefaultPlan() (string, error) {
+	constraints, err := getConstraintsForPool(p.Name, ConstraintTypePlan)
+	if err != nil {
+		return "", err
+	}
+	defaultPlan, err := servicemanager.Plan.DefaultPlan(p.ctx)
+	if err != nil {
+		return "", err
+	}
+	constraint := constraints[ConstraintTypePlan]
+	if constraint == nil || len(constraint.Values) == 0 {
+		return defaultPlan.Name, nil
+	}
+	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
+		var allowed map[poolConstraintType][]string
+		allowed, err = p.allowedValues()
+		if err != nil {
+			return "", err
+		}
+		if len(allowed[ConstraintTypePlan]) == 1 {
+			return allowed[ConstraintTypePlan][0], nil
+		}
+		return defaultPlan.Name, nil
+	}
+	plans, err := servicemanager.Plan.List(p.ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, plan := range plans {
+		if constraint.Values[0] == plan.Name {
+			return plan.Name, nil
+		}
+	}
+	return defaultPlan.Name, nil
+}
+
 func (p *Pool) GetDefaultRouter() (string, error) {
 	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeRouter)
 	if err != nil {

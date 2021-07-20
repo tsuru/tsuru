@@ -42,9 +42,10 @@ type S struct {
 	conn        *db.Storage
 	team        authTypes.Team
 	user        *auth.User
+	plan        appTypes.Plan
+	defaultPlan appTypes.Plan
 	provisioner *provisiontest.FakeProvisioner
 	builder     *builder.MockBuilder
-	defaultPlan appTypes.Plan
 	Pool        string
 	zeroLock    map[string]interface{}
 	mockService servicemock.MockService
@@ -195,10 +196,22 @@ func setupMocks(s *S) {
 	}
 
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
+		if &s.plan != nil {
+			return []appTypes.Plan{s.defaultPlan, s.plan}, nil
+		}
 		return []appTypes.Plan{s.defaultPlan}, nil
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &s.defaultPlan, nil
+	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == s.defaultPlan.Name {
+			return &s.defaultPlan, nil
+		}
+		if &s.plan != nil && s.plan.Name == name {
+			return &s.plan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
 	}
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
