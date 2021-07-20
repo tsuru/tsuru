@@ -106,6 +106,12 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == plan.Name {
+			return &plan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
+	}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 }

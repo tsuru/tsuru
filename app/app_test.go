@@ -2517,15 +2517,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	myPlan := appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
-	}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, myPlan.Name)
-		return &myPlan, nil
-	}
-
+	s.plan = appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100}
 	team := authTypes.Team{Name: "myteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
@@ -2567,7 +2559,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Deploys:     7,
 		Pool:        "test",
 		Description: "description",
-		Plan:        myPlan,
+		Plan:        s.plan,
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
@@ -4778,14 +4770,7 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 }
 
 func (s *S) TestUpdatePlan(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, plan.Name)
-		return &plan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, plan}, nil
-	}
+	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -4797,19 +4782,12 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, plan.Name)
-		return &plan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, plan}, nil
-	}
+	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -4821,23 +4799,16 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, plan.Name)
-		return &plan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, plan}, nil
-	}
+	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
-		Values:    []string{plan.Name},
+		Values:    []string{s.plan.Name},
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
@@ -4850,14 +4821,7 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, plan.Name)
-		return &plan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, plan}, nil
-	}
+	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -4868,7 +4832,7 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
 	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp)
@@ -4889,14 +4853,7 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, plan.Name)
-		return &plan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, plan}, nil
-	}
+	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
 	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -4907,7 +4864,7 @@ func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Plan, check.DeepEquals, plan)
+	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
 	c.Assert(routertest.FakeRouter.HasBackend(dbApp.Name), check.Equals, true)
 	routes, err := routertest.FakeRouter.Routes(context.TODO(), dbApp)
@@ -5050,6 +5007,9 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 		return []appTypes.Plan{s.defaultPlan, plan}, nil
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == s.defaultPlan.Name {
+			return &s.defaultPlan, nil
+		}
 		c.Assert(name, check.Equals, plan.Name)
 		return &plan, nil
 	}

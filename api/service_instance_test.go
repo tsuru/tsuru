@@ -122,6 +122,12 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &defaultPlan, nil
 	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == defaultPlan.Name {
+			return &defaultPlan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
+	}
 	s.mockService.Pool.OnFindByName = func(poolName string) (*provisionTypes.Pool, error) {
 		if poolName == "my-pool" || poolName == "test1" {
 			return &provisionTypes.Pool{
