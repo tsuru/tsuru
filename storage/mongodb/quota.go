@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-var _ quota.QuotaStorage = &quotaStorage{}
+var _ quota.QuotaStorage = (*quotaStorage)(nil)
 
 type quotaStorage struct {
 	collection string

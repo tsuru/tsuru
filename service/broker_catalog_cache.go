@@ -18,7 +18,7 @@ import (
 
 const defaultExpiration = 1 * time.Hour
 
-var _ service.ServiceBrokerCatalogCacheService = &serviceBrokerCatalogCacheService{}
+var _ service.ServiceBrokerCatalogCacheService = (*serviceBrokerCatalogCacheService)(nil)
 
 type serviceBrokerCatalogCacheService struct {
 	storage cache.CacheStorage

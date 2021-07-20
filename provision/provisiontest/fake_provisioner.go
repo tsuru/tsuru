@@ -1502,7 +1502,7 @@ type AutoScaleProvisioner struct {
 	autoscales map[string][]provision.AutoScaleSpec
 }
 
-var _ provision.AutoScaleProvisioner = &AutoScaleProvisioner{}
+var _ provision.AutoScaleProvisioner = (*AutoScaleProvisioner)(nil)
 
 func (p *AutoScaleProvisioner) GetAutoScale(ctx context.Context, app provision.App) ([]provision.AutoScaleSpec, error) {
 	if p.autoscales == nil {

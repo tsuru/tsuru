@@ -653,7 +653,7 @@ type poolService struct {
 	storage provisionTypes.PoolStorage
 }
 
-var _ provisionTypes.PoolService = &poolService{}
+var _ provisionTypes.PoolService = (*poolService)(nil)
 
 func PoolStorage() (provisionTypes.PoolStorage, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()

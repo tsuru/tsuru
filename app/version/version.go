@@ -22,7 +22,7 @@ type appVersionImpl struct {
 	versionInfo *appTypes.AppVersionInfo
 }
 
-var _ appTypes.AppVersion = &appVersionImpl{}
+var _ appTypes.AppVersion = (*appVersionImpl)(nil)
 
 func (v *appVersionImpl) BuildImageName() string {
 	return image.AppBuildImageName(v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())

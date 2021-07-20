@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 )
 
-var _ ActionLimiter = &LocalLimiter{}
+var _ ActionLimiter = (*LocalLimiter)(nil)
 var noop = func() {}
 
 type ActionLimiter interface {

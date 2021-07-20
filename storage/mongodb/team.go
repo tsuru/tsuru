@@ -18,7 +18,7 @@ const teamsCollectionName = "teams"
 
 type TeamStorage struct{}
 
-var _ auth.TeamStorage = &TeamStorage{}
+var _ auth.TeamStorage = (*TeamStorage)(nil)
 
 type team struct {
 	Name         string `bson:"_id"`

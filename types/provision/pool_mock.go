@@ -6,8 +6,8 @@ package provision
 
 import "context"
 
-var _ PoolStorage = &MockPoolStorage{}
-var _ PoolService = &MockPoolService{}
+var _ PoolStorage = (*MockPoolStorage)(nil)
+var _ PoolService = (*MockPoolService)(nil)
 
 type MockPoolStorage struct {
 	OnFindAll    func() ([]Pool, error)

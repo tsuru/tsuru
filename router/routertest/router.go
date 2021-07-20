@@ -483,7 +483,7 @@ type tlsRouter struct {
 	Keys  map[string]string
 }
 
-var _ router.TLSRouter = &tlsRouter{}
+var _ router.TLSRouter = (*tlsRouter)(nil)
 
 func (r *tlsRouter) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
 	r.Certs[cname] = certificate
@@ -518,7 +518,7 @@ type optsRouter struct {
 	Opts map[string]map[string]string
 }
 
-var _ router.OptsRouter = &optsRouter{}
+var _ router.OptsRouter = (*optsRouter)(nil)
 
 func (r *optsRouter) AddBackendOpts(ctx context.Context, app router.App, opts map[string]string) error {
 	r.Opts[app.GetName()] = opts
@@ -535,7 +535,7 @@ type infoRouter struct {
 	Info map[string]string
 }
 
-var _ router.InfoRouter = &infoRouter{}
+var _ router.InfoRouter = (*infoRouter)(nil)
 
 func (r *infoRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return r.Info, nil
@@ -552,7 +552,7 @@ type statusRouter struct {
 	StatusDetail string
 }
 
-var _ router.StatusRouter = &statusRouter{}
+var _ router.StatusRouter = (*statusRouter)(nil)
 
 func (r *statusRouter) GetBackendStatus(ctx context.Context, app router.App) (router.BackendStatus, string, error) {
 	return r.Status, r.StatusDetail, nil
@@ -569,7 +569,7 @@ type prefixRouter struct {
 	prefixRoutes map[string][]appTypes.RoutableAddresses
 }
 
-var _ router.PrefixRouter = &prefixRouter{}
+var _ router.PrefixRouter = (*prefixRouter)(nil)
 
 func (r *prefixRouter) RoutesPrefix(ctx context.Context, app router.App) ([]appTypes.RoutableAddresses, error) {
 	backendName, err := router.Retrieve(app.GetName())

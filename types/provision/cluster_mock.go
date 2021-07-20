@@ -6,8 +6,8 @@ package provision
 
 import "context"
 
-var _ ClusterStorage = &MockClusterStorage{}
-var _ ClusterService = &MockClusterService{}
+var _ ClusterStorage = (*MockClusterStorage)(nil)
+var _ ClusterService = (*MockClusterService)(nil)
 
 // MockClusterStorage implements ClusterStorage interface
 type MockClusterStorage struct {

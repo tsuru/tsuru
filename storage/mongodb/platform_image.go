@@ -16,7 +16,7 @@ import (
 
 const platformImageCollectionName = "platform_images"
 
-var _ image.PlatformImageStorage = &PlatformImageStorage{}
+var _ image.PlatformImageStorage = (*PlatformImageStorage)(nil)
 
 type PlatformImageStorage struct{}
 

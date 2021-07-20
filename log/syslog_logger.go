@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-var _ Logger = &syslogLogger{}
+var _ Logger = (*syslogLogger)(nil)
 
 func NewSyslogLogger(tag string, debug bool) (Logger, error) {
 	priority := syslog.LOG_LOCAL0 | syslog.LOG_INFO

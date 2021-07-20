@@ -19,7 +19,7 @@ type ConfigGetter interface {
 	Hash() (string, error)
 }
 
-var _ ConfigGetter = &delegateConfigGetter{}
+var _ ConfigGetter = (*delegateConfigGetter)(nil)
 
 type delegateConfigGetter struct {
 	*config.Configuration

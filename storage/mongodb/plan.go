@@ -16,7 +16,7 @@ import (
 
 const plansCollectionName = "plans"
 
-var _ app.PlanStorage = &PlanStorage{}
+var _ app.PlanStorage = (*PlanStorage)(nil)
 
 type PlanStorage struct{}
 

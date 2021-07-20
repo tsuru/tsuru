@@ -56,7 +56,7 @@ func init() {
 	prometheus.MustRegister(requestErrors)
 }
 
-var _ ServiceClient = &endpointClient{}
+var _ ServiceClient = (*endpointClient)(nil)
 
 type validationError struct {
 	Msg           string   `json:"msg"`

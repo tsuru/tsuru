@@ -62,7 +62,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var _ clientset.Interface = (*Clientset)(nil)
 
 // TsuruV1 retrieves the TsuruV1Client
 func (c *Clientset) TsuruV1() tsuruv1.TsuruV1Interface {

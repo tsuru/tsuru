@@ -25,7 +25,7 @@ const (
 	defaultStaleTimeout   = 50 * time.Second
 )
 
-var _ trackerTypes.InstanceService = &instanceTracker{}
+var _ trackerTypes.InstanceService = (*instanceTracker)(nil)
 
 func InstanceService() (trackerTypes.InstanceService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()

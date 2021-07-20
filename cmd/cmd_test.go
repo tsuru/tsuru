@@ -984,7 +984,7 @@ func (e recordingExiter) value() int {
 	return int(e)
 }
 
-var _ Cancelable = &CancelableCommand{}
+var _ Cancelable = (*CancelableCommand)(nil)
 
 type CancelableCommand struct {
 	running  chan struct{}

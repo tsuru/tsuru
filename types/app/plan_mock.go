@@ -6,7 +6,7 @@ package app
 
 import "context"
 
-var _ PlanStorage = &MockPlanStorage{}
+var _ PlanStorage = (*MockPlanStorage)(nil)
 
 // MockPlanStorage implements PlanStorage interface
 type MockPlanStorage struct {

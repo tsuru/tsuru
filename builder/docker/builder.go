@@ -32,7 +32,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var _ builder.Builder = &dockerBuilder{}
+var _ builder.Builder = (*dockerBuilder)(nil)
 
 const (
 	defaultArchiveName = "archive.tar.gz"

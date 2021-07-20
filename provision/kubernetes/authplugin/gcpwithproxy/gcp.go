@@ -242,7 +242,7 @@ type conditionalTransport struct {
 	resetCache     map[string]string
 }
 
-var _ net.RoundTripperWrapper = &conditionalTransport{}
+var _ net.RoundTripperWrapper = (*conditionalTransport)(nil)
 
 func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if len(req.Header.Get("Authorization")) != 0 {

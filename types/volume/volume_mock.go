@@ -8,7 +8,7 @@ import (
 	"context"
 )
 
-var _ VolumeStorage = &MockVolumeStorage{}
+var _ VolumeStorage = (*MockVolumeStorage)(nil)
 
 type MockVolumeStorage struct {
 	volumes []Volume

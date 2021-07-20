@@ -22,7 +22,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ builder.Builder = &dockerBuilder{}
+var _ builder.Builder = (*dockerBuilder)(nil)
 
 func (b *dockerBuilder) PlatformBuild(opts appTypes.PlatformOptions) error {
 	return b.buildPlatform(opts)

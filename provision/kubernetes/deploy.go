@@ -796,7 +796,7 @@ type serviceManager struct {
 	writer io.Writer
 }
 
-var _ servicecommon.ServiceManager = &serviceManager{}
+var _ servicecommon.ServiceManager = (*serviceManager)(nil)
 
 func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, deployedVersion int, preserveOldVersions bool) error {
 	depGroups, err := deploymentsDataForApp(ctx, m.client, a)

@@ -4,7 +4,7 @@
 
 package service
 
-var _ ServiceBrokerService = &MockServiceBrokerService{}
+var _ ServiceBrokerService = (*MockServiceBrokerService)(nil)
 
 // MockServiceBrokerService implements ServiceBrokerService interface
 type MockServiceBrokerService struct {

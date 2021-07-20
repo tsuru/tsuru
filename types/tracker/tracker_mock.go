@@ -6,7 +6,7 @@ package tracker
 
 import "context"
 
-var _ InstanceService = &MockInstanceService{}
+var _ InstanceService = (*MockInstanceService)(nil)
 
 // MockInstanceService implements InstanceService interface
 type MockInstanceService struct {

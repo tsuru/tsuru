@@ -6,7 +6,7 @@ package service
 
 import "context"
 
-var _ ServiceBrokerCatalogCacheService = &MockServiceBrokerCatalogCacheService{}
+var _ ServiceBrokerCatalogCacheService = (*MockServiceBrokerCatalogCacheService)(nil)
 
 // MockServiceBrokerCatalogCacheService implements ServiceBrokerCatalogCacheService interface
 type MockServiceBrokerCatalogCacheService struct {

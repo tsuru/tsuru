@@ -20,7 +20,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-var _ builder.Builder = &kubernetesBuilder{}
+var _ builder.Builder = (*kubernetesBuilder)(nil)
 
 type kubernetesBuilder struct{}
 

@@ -6,8 +6,8 @@ package cache
 
 import "context"
 
-var _ CacheStorage = &MockCacheStorage{}
-var _ AppCacheService = &MockAppCacheService{}
+var _ CacheStorage = (*MockCacheStorage)(nil)
+var _ AppCacheService = (*MockAppCacheService)(nil)
 
 // MockCacheStorage implements CacheStorage interface
 type MockCacheStorage struct {

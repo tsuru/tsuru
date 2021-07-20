@@ -15,7 +15,7 @@ import (
 
 const PoolCollectionName = "pool"
 
-var _ provision.PoolStorage = &PoolStorage{}
+var _ provision.PoolStorage = (*PoolStorage)(nil)
 
 type PoolStorage struct{}
 

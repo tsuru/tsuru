@@ -14,7 +14,7 @@ import (
 
 type serviceBrokerStorage struct{}
 
-var _ service.ServiceBrokerStorage = &serviceBrokerStorage{}
+var _ service.ServiceBrokerStorage = (*serviceBrokerStorage)(nil)
 
 func serviceBrokerCollection(conn *db.Storage) *dbStorage.Collection {
 	coll := conn.Collection("service_broker")
