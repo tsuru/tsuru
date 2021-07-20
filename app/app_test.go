@@ -362,6 +362,54 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 	c.Assert(retrievedApp.GetRouters(), check.DeepEquals, []appTypes.AppRouter{{Name: "fake-tls", Opts: map[string]string{}}})
 }
 
+func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    pool.ConstraintTypePlan,
+		Values:   []string{"large", "huge"},
+	})
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrievedApp.Plan.Name, check.Equals, "large")
+}
+
+func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    pool.ConstraintTypePlan,
+		Values:   []string{"l*", "huge"},
+	})
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrievedApp.Plan.Name, check.Equals, "large")
+}
+
 func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	myPlan := appTypes.Plan{
 		Name:     "myplan",
