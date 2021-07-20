@@ -78,6 +78,12 @@ func (s *SyncSuite) SetUpTest(c *check.C) {
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
 		return &plan, nil
 	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == plan.Name {
+			return &plan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
+	}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{s.team}, nil
 	}

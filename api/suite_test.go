@@ -48,6 +48,8 @@ type S struct {
 	team        *authTypes.Team
 	user        *auth.User
 	token       auth.Token
+	plan        appTypes.Plan
+	defaultPlan appTypes.Plan
 	provisioner *provisiontest.FakeProvisioner
 	Pool        string
 	testServer  http.Handler
@@ -159,8 +161,7 @@ func (s *S) setupMocks() {
 	s.mockService.Team.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-
-	defaultPlan := appTypes.Plan{
+	s.defaultPlan = appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
 		Swap:     1024,
@@ -168,10 +169,22 @@ func (s *S) setupMocks() {
 		Default:  true,
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{defaultPlan}, nil
+		if &s.plan != nil {
+			return []appTypes.Plan{s.defaultPlan, s.plan}, nil
+		}
+		return []appTypes.Plan{s.defaultPlan}, nil
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
-		return &defaultPlan, nil
+		return &s.defaultPlan, nil
+	}
+	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
+		if name == s.defaultPlan.Name {
+			return &s.defaultPlan, nil
+		}
+		if &s.plan != nil && s.plan.Name == name {
+			return &s.plan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
 	}
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
 		return nil

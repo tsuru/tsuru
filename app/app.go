@@ -352,8 +352,24 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	}
 	var plan *appTypes.Plan
 	var err error
+	err = app.SetPool()
+	if err != nil {
+		return err
+	}
+	appPool, err := pool.GetPoolByName(ctx, app.GetPool())
+	if err != nil {
+		return err
+	}
+	defaultPlanForPool, err := appPool.GetDefaultPlan()
+	if err != nil {
+		return err
+	}
 	if app.Plan.Name == "" {
-		plan, err = servicemanager.Plan.DefaultPlan(ctx)
+		if defaultPlanForPool != "" {
+			plan, err = servicemanager.Plan.FindByName(ctx, defaultPlanForPool)
+		} else {
+			plan, err = servicemanager.Plan.DefaultPlan(ctx)
+		}
 	} else {
 		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
@@ -361,10 +377,6 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		return err
 	}
 	app.Plan = *plan
-	err = app.SetPool()
-	if err != nil {
-		return err
-	}
 	err = app.configureCreateRouters()
 	if err != nil {
 		return err

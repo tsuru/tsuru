@@ -1040,18 +1040,11 @@ func (s *S) TestCreateAppAdminSingleTeam(c *check.C) {
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
-	expectedPlan := appTypes.Plan{
+	s.plan = appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
 		Swap:     5,
 		CpuShare: 10,
-	}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, expectedPlan.Name)
-		return &expectedPlan, nil
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{expectedPlan}, nil
 	}
 	data := "name=someapp&platform=zend&plan=myplan"
 	b := strings.NewReader(data)
@@ -1079,7 +1072,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
-	c.Assert(gotApp.Plan, check.DeepEquals, expectedPlan)
+	c.Assert(gotApp.Plan, check.DeepEquals, s.plan)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("someapp"),
 		Owner:  token.GetUserName(),
@@ -1899,6 +1892,7 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	plans := []appTypes.Plan{
 		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
 		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
+		s.defaultPlan,
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		if name == plans[0].Name {
@@ -1906,6 +1900,9 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 		}
 		if name == plans[1].Name {
 			return &plans[1], nil
+		}
+		if name == s.defaultPlan.Name {
+			return &s.defaultPlan, nil
 		}
 		c.Errorf("plan name not expected, got: %s", name)
 		return nil, nil
@@ -2002,17 +1999,8 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
-	plan := appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
-	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		if name == plan.Name {
-			return &plan, nil
-		}
-		return nil, appTypes.ErrPlanNotFound
-	}
-	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{plan}, nil
-	}
-	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: plan}
+	s.plan = appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
+	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: s.plan}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("plan=hiperplan")
