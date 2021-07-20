@@ -154,6 +154,7 @@ func (s *S) SetUpTest(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
+	s.plan = appTypes.Plan{}
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
 	err = pool.AddPool(context.TODO(), opts)
@@ -196,7 +197,7 @@ func setupMocks(s *S) {
 	}
 
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		if &s.plan != nil {
+		if s.plan.Name != "" {
 			return []appTypes.Plan{s.defaultPlan, s.plan}, nil
 		}
 		return []appTypes.Plan{s.defaultPlan}, nil
@@ -208,7 +209,7 @@ func setupMocks(s *S) {
 		if name == s.defaultPlan.Name {
 			return &s.defaultPlan, nil
 		}
-		if &s.plan != nil && s.plan.Name == name {
+		if s.plan.Name == name {
 			return &s.plan, nil
 		}
 		return nil, appTypes.ErrPlanNotFound

@@ -168,8 +168,9 @@ func (s *S) setupMocks() {
 		CpuShare: 100,
 		Default:  true,
 	}
+	s.plan = appTypes.Plan{}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		if &s.plan != nil {
+		if s.plan.Name != "" {
 			return []appTypes.Plan{s.defaultPlan, s.plan}, nil
 		}
 		return []appTypes.Plan{s.defaultPlan}, nil
@@ -181,7 +182,7 @@ func (s *S) setupMocks() {
 		if name == s.defaultPlan.Name {
 			return &s.defaultPlan, nil
 		}
-		if &s.plan != nil && s.plan.Name == name {
+		if s.plan.Name == name {
 			return &s.plan, nil
 		}
 		return nil, appTypes.ErrPlanNotFound
