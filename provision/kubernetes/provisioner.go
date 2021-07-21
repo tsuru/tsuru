@@ -551,8 +551,8 @@ func (p *kubernetesProvisioner) Restart(ctx context.Context, a provision.App, pr
 	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Restart: true}, w)
 }
 
-func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true}, nil)
+func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, nUnits int) error {
+	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Increment: nUnits}, nil)
 }
 
 func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {

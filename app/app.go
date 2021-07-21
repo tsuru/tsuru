@@ -2143,7 +2143,8 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	).Execute(ctx, app1, app2)
 }
 
-func (app *App) removePastUnitsAnnotation() {
+func (app *App) consumePastUnitsAnnotation() int {
+	nUnits := 1
 	for _, annotation := range app.Metadata.Annotations {
 		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) {
 			annotation.Delete = true
@@ -2156,9 +2157,12 @@ func (app *App) removePastUnitsAnnotation() {
 					},
 				},
 			}
+			nUnits, _ = strconv.Atoi(annotation.Value)
 			app.Update(deleteAnnotation)
 		}
 	}
+
+	return nUnits
 }
 
 // Start starts the app calling the provisioner.Start method and
@@ -2178,13 +2182,13 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	err = prov.Start(ctx, app, process, version)
+	nUnits := app.consumePastUnitsAnnotation()
+	err = prov.Start(ctx, app, process, version, nUnits)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
 	}
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-	app.removePastUnitsAnnotation()
 	return err
 }
 
