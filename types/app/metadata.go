@@ -6,11 +6,21 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/types/quota"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+const (
+	// Annotations max size according to
+	// https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
+	totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
+	tsuruPrefix                   = "tsuru.io/"
+	PastUnitsAnnotationPrefix     = tsuruPrefix + "past-units-"
 )
 
 // Metadata represents the user defined labels and annotations
@@ -26,14 +36,8 @@ type MetadataItem struct {
 	Delete bool   `json:"delete,omitempty" bson:"-"`
 }
 
-// Annotations max size according to
-// https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
-const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
-
-const tsuruPrefix = "tsuru.io/"
-
-func (m *Metadata) Validate() error {
-	errs := validateAnnotations(m.Annotations)
+func (m *Metadata) Validate(appQuota *quota.Quota) error {
+	errs := validateAnnotations(m.Annotations, appQuota)
 	errs.Append(validateLabels(m.Labels))
 	if errs.Len() > 0 {
 		return errs.ToError()
@@ -49,7 +53,18 @@ func (m Metadata) Label(v string) (string, bool) {
 	return getItem(m.Labels, v)
 }
 
-func validateAnnotations(items []MetadataItem) *errors.MultiError {
+func validatePastUnitsAnnotation(appQuota *quota.Quota, value string) error {
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		return err
+	}
+	if v > appQuota.Limit {
+		return &quota.QuotaExceededError{Requested: uint(v), Available: uint(appQuota.Limit)}
+	}
+	return nil
+}
+
+func validateAnnotations(items []MetadataItem, appQuota *quota.Quota) *errors.MultiError {
 	allErrs := errors.NewMultiError()
 	fldPath := field.NewPath("metadata.annotations")
 	var totalSize int64
@@ -58,6 +73,13 @@ func validateAnnotations(items []MetadataItem) *errors.MultiError {
 			continue
 		}
 		if strings.HasPrefix(item.Name, tsuruPrefix) {
+			if strings.HasPrefix(item.Name, PastUnitsAnnotationPrefix) {
+				err := validatePastUnitsAnnotation(appQuota, item.Value)
+				if err != nil {
+					allErrs.Add(err)
+				}
+				continue
+			}
 			allErrs.Add(fmt.Errorf("prefix tsuru.io/ is private"))
 		}
 		for _, msg := range validation.IsQualifiedName(strings.ToLower(item.Name)) {
