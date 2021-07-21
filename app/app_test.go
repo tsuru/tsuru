@@ -410,6 +410,50 @@ func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 	c.Assert(retrievedApp.Plan.Name, check.Equals, "large")
 }
 
+func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.C) {
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    pool.ConstraintTypePlan,
+		Values:   []string{"blah*"},
+	})
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err.Error(), check.Equals, "no plan found for pool")
+}
+
+func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr: "pool1",
+		Field:    pool.ConstraintTypePlan,
+		Values:   []string{"*"},
+	})
+	a := App{
+		Name:      "appname",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(context.TODO(), &a, s.user)
+	retrievedApp, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrievedApp.Plan.Name, check.Equals, "default-plan")
+}
+
 func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	myPlan := appTypes.Plan{
 		Name:     "myplan",
@@ -457,11 +501,19 @@ func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
+		return []appTypes.Plan{s.defaultPlan, s.plan, myPlan}, nil
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		c.Assert(name, check.Equals, myPlan.Name)
-		return &myPlan, nil
+		if name == s.defaultPlan.Name {
+			return &s.defaultPlan, nil
+		}
+		if s.plan.Name == name {
+			return &s.plan, nil
+		}
+		if name == "myplan" {
+			return &myPlan, nil
+		}
+		return nil, appTypes.ErrPlanNotFound
 	}
 	a := App{
 		Name:      "appname",

@@ -350,7 +350,6 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		}
 		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.GetName()}
 	}
-	var plan *appTypes.Plan
 	var err error
 	err = app.SetPool()
 	if err != nil {
@@ -360,17 +359,11 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	defaultPlanForPool, err := appPool.GetDefaultPlan()
+	plan, err := appPool.GetDefaultPlan()
 	if err != nil {
 		return err
 	}
-	if app.Plan.Name == "" {
-		if defaultPlanForPool != "" {
-			plan, err = servicemanager.Plan.FindByName(ctx, defaultPlanForPool)
-		} else {
-			plan, err = servicemanager.Plan.DefaultPlan(ctx)
-		}
-	} else {
+	if app.Plan.Name != "" {
 		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
 	if err != nil {
