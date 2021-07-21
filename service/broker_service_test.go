@@ -1,8 +1,6 @@
 package service
 
 import (
-	"testing"
-
 	"github.com/tsuru/config"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	"github.com/tsuru/tsuru/types/service"
@@ -14,8 +12,6 @@ type BrokerSuite struct {
 }
 
 var _ = check.Suite(&BrokerSuite{})
-
-func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *BrokerSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)

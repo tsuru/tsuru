@@ -33,13 +33,13 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be a Service.")
 		}
-		endpoint, err := service.getClient("production")
-		if err != nil {
-			return nil, err
-		}
 		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
 			return nil, errors.New("Second parameter must be a *ServiceInstance.")
+		}
+		endpoint, err := service.getClientForPool(ctx.Context, instance.Pool)
+		if err != nil {
+			return nil, err
 		}
 		evt, ok := ctx.Params[2].(*event.Event)
 		if !ok {
@@ -60,12 +60,12 @@ var notifyCreateServiceInstance = action.Action{
 		if !ok {
 			return
 		}
-		endpoint, err := service.getClient("production")
-		if err != nil {
-			return
-		}
 		instance, ok := ctx.Params[1].(*ServiceInstance)
 		if !ok {
+			return
+		}
+		endpoint, err := service.getClientForPool(ctx.Context, instance.Pool)
+		if err != nil {
 			return
 		}
 		evt, ok := ctx.Params[2].(*event.Event)
@@ -188,13 +188,13 @@ var notifyUpdateServiceInstance = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be a Service.")
 		}
-		endpoint, err := service.getClient("production")
-		if err != nil {
-			return nil, err
-		}
 		instance, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
 			return nil, errors.New("Second parameter must be a ServiceInstance.")
+		}
+		endpoint, err := service.getClientForPool(ctx.Context, instance.Pool)
+		if err != nil {
+			return nil, err
 		}
 		evt, ok := ctx.Params[3].(*event.Event)
 		if !ok {
@@ -268,7 +268,7 @@ var bindAppEndpointAction = &action.Action{
 		if err != nil {
 			return nil, err
 		}
-		endpoint, err := s.getClient("production")
+		endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool)
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +281,7 @@ var bindAppEndpointAction = &action.Action{
 			log.Errorf("[bind-app-endpoint backward] could not service from instance: %s", err)
 			return
 		}
-		endpoint, err := s.getClient("production")
+		endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool)
 		if err != nil {
 			log.Errorf("[bind-app-endpoint backward] could not get endpoint: %s", err)
 			return
@@ -472,7 +472,7 @@ var unbindAppEndpoint = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		if endpoint, err := s.getClient("production"); err == nil {
+		if endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool); err == nil {
 			err := endpoint.UnbindApp(ctx.Context, args.serviceInstance, args.app, args.event, args.requestID)
 			if err != nil && err != ErrInstanceNotFoundInAPI {
 				if args.forceRemove {
@@ -495,7 +495,7 @@ var unbindAppEndpoint = action.Action{
 			log.Errorf("[unbind-app-endpoint backward] failed to rebind app in endpoint: %s", err)
 			return
 		}
-		if endpoint, err := s.getClient("production"); err == nil {
+		if endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool); err == nil {
 			_, err := endpoint.BindApp(ctx.Context, args.serviceInstance, args.app, args.params, args.event, args.requestID)
 			if err != nil {
 				log.Errorf("[unbind-app-endpoint backward] failed to rebind app in endpoint: %s", err)

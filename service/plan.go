@@ -18,7 +18,7 @@ type Plan struct {
 }
 
 func GetPlansByService(ctx context.Context, svc Service, pool, requestID string) ([]Plan, error) {
-	endpoint, err := svc.getClient("production")
+	endpoint, err := svc.getClientForPool(ctx, pool)
 	if err != nil {
 		return []Plan{}, nil
 	}

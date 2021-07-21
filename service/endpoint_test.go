@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-
 	check "gopkg.in/check.v1"
 )
 

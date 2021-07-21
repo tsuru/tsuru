@@ -180,6 +180,43 @@ func (s *ProvisionSuite) TestServiceCreate(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *ProvisionSuite) TestServiceCreateMultipleEndpoints(c *check.C) {
+	v := url.Values{}
+	v.Set("id", "some-service")
+	v.Set("username", "test")
+	v.Set("password", "xxxx")
+	v.Set("team", "tsuruteam")
+	v.Set("endpoints.cluster1", "cluster1.com")
+	v.Set("endpoints.cluster2", "cluster2.com")
+	recorder, request := s.makeRequest(http.MethodPost, "/services", v.Encode(), c)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	query := bson.M{"_id": "some-service"}
+	var rService service.Service
+	err := s.conn.Services().Find(query).One(&rService)
+	c.Assert(err, check.IsNil)
+	c.Assert(rService.Name, check.Equals, "some-service")
+	c.Assert(rService.Endpoint["cluster1"], check.Equals, "cluster1.com")
+	c.Assert(rService.Endpoint["cluster2"], check.Equals, "cluster2.com")
+	c.Assert(rService.Password, check.Equals, "xxxx")
+	c.Assert(rService.Username, check.Equals, "test")
+	c.Assert(rService.OwnerTeams, check.DeepEquals, []string{s.team.Name})
+	c.Assert(rService.IsMultiCluster, check.Equals, false)
+	c.Assert(eventtest.EventDesc{
+		Target: serviceTarget("some-service"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service.create",
+		StartCustomData: []map[string]interface{}{
+			{"name": "team", "value": "tsuruteam"},
+			{"name": "username", "value": "test"},
+			{"name": "endpoints.cluster1", "value": "cluster1.com"},
+			{"name": "endpoints.cluster2", "value": "cluster2.com"},
+			{"name": "id", "value": "some-service"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *ProvisionSuite) TestServiceCreateNameExists(c *check.C) {
 	recorder, request := s.makeRequestToCreateHandler(c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -234,7 +271,7 @@ func (s *ProvisionSuite) TestServiceCreateWithoutTeamUserWithMultiplePermissions
 	c.Assert(recorder.Body.String(), check.Equals, "You must provide a team responsible for this service in the manifest file.\n")
 }
 
-func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestIfTheServiceDoesNotHaveAProductionEndpoint(c *check.C) {
+func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestIfTheServiceDoesNotHaveAnyEndpoints(c *check.C) {
 	v := url.Values{}
 	v.Set("id", "some-service")
 	v.Set("password", "xxxx")
@@ -242,7 +279,7 @@ func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestIfTheServiceDoesNotHa
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
+	c.Assert(recorder.Body.String(), check.Equals, "At least one endpoint is required\n")
 }
 
 func (s *ProvisionSuite) TestServiceCreateReturnsBadRequestWithoutPassword(c *check.C) {
@@ -394,7 +431,7 @@ func (s *ProvisionSuite) TestServiceUpdateReturnsBadRequestWithoutProductionEndp
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Service production endpoint is required\n")
+	c.Assert(recorder.Body.String(), check.Equals, "At least one endpoint is required\n")
 }
 
 func (s *ProvisionSuite) TestServiceUpdateReturns404WhenTheServiceDoesNotExist(c *check.C) {
