@@ -77,7 +77,8 @@ var (
 		Name: "tsuru_node_status_not_found",
 		Help: "The number of not found nodes received in tsuru node status.",
 	})
-	envVarNameRegexp = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
+	envVarNameRegexp   = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
+	allProcessesString = "all-processes"
 )
 
 func init() {
@@ -482,7 +483,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if tags != nil {
 		app.Tags = tags
 	}
-	err = args.UpdateData.Metadata.Validate()
+	quota, err := app.GetQuota()
+	if err != nil {
+		return err
+	}
+	err = args.UpdateData.Metadata.Validate(quota)
 	if err != nil {
 		return err
 	}
@@ -1308,6 +1313,34 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	if err != nil {
 		return err
 	}
+	annotationSuffix := process
+	if annotationSuffix == "" {
+		annotationSuffix = allProcessesString
+	}
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	app.Metadata.Annotations = append(app.Metadata.Annotations, appTypes.MetadataItem{
+		Name:  appTypes.PastUnitsAnnotationPrefix + annotationSuffix,
+		Value: strconv.Itoa(len(units)),
+	})
+	upArgs := UpdateAppArgs{
+		UpdateData: App{
+			Metadata: appTypes.Metadata{
+				Annotations: []appTypes.MetadataItem{
+					{
+						Name:  appTypes.PastUnitsAnnotationPrefix + annotationSuffix,
+						Value: strconv.Itoa(len(units)),
+					},
+				},
+			},
+		},
+	}
+	err = app.Update(upArgs)
+	if err != nil {
+		return err
+	}
 	err = prov.Stop(ctx, app, process, version)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
@@ -2111,6 +2144,28 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	).Execute(ctx, app1, app2)
 }
 
+func (app *App) consumePastUnitsAnnotation(process string) int {
+	nUnits := 1
+	for _, annotation := range app.Metadata.Annotations {
+		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) && (annotation.Value == process || annotation.Value == allProcessesString) {
+			annotation.Delete = true
+			nUnits, _ = strconv.Atoi(annotation.Value)
+			deleteAnnotation := UpdateAppArgs{
+				UpdateData: App{
+					Metadata: appTypes.Metadata{
+						Annotations: []appTypes.MetadataItem{
+							annotation,
+						},
+					},
+				},
+			}
+			app.Update(deleteAnnotation)
+			break
+		}
+	}
+	return nUnits
+}
+
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
 func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr string) error {
@@ -2128,7 +2183,8 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	err = prov.Start(ctx, app, process, version)
+	nUnits := app.consumePastUnitsAnnotation(process)
+	err = prov.Start(ctx, app, process, version, nUnits)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
@@ -2675,6 +2731,14 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 	if version != "" && version != "0" {
 		v, err := servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, version)
 		return versionProv, v, err
+	}
+
+	if version == "" {
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
+		if err != nil {
+			return versionProv, latest, err
+		}
+		return versionProv, latest, nil
 	}
 
 	return versionProv, nil, nil

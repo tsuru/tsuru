@@ -359,7 +359,7 @@ type Provisioner interface {
 	// Start starts the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the
 	// process is empty, Start will start all units of the application.
-	Start(context.Context, App, string, appTypes.AppVersion) error
+	Start(context.Context, App, string, appTypes.AppVersion, int) error
 
 	// Stop stops the units of the application, with an optional string
 	// parameter representing the name of the process to start. When the

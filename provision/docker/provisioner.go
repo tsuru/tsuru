@@ -301,7 +301,7 @@ func (p *dockerProvisioner) Restart(ctx context.Context, a provision.App, proces
 	return err
 }
 
-func (p *dockerProvisioner) Start(ctx context.Context, app provision.App, process string, _ appTypes.AppVersion) error {
+func (p *dockerProvisioner) Start(ctx context.Context, app provision.App, process string, _ appTypes.AppVersion, nUnits int) error {
 	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))

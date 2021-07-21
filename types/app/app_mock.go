@@ -4,7 +4,9 @@
 
 package app
 
-import "context"
+import (
+	"context"
+)
 
 type MockApp struct {
 	Name, TeamOwner, Platform, PlatformVersion, Pool string
