@@ -77,7 +77,8 @@ var (
 		Name: "tsuru_node_status_not_found",
 		Help: "The number of not found nodes received in tsuru node status.",
 	})
-	envVarNameRegexp = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
+	envVarNameRegexp   = regexp.MustCompile("^[a-zA-Z][-_a-zA-Z0-9]*$")
+	allProcessesString = "all-processes"
 )
 
 func init() {
@@ -1314,7 +1315,7 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	}
 	annotationSuffix := process
 	if annotationSuffix == "" {
-		annotationSuffix = "all-processes"
+		annotationSuffix = allProcessesString
 	}
 	units, err := app.Units()
 	if err != nil {
@@ -2143,11 +2144,12 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	).Execute(ctx, app1, app2)
 }
 
-func (app *App) consumePastUnitsAnnotation() int {
+func (app *App) consumePastUnitsAnnotation(process string) int {
 	nUnits := 1
 	for _, annotation := range app.Metadata.Annotations {
-		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) {
+		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) && (annotation.Value == process || annotation.Value == allProcessesString) {
 			annotation.Delete = true
+			nUnits, _ = strconv.Atoi(annotation.Value)
 			deleteAnnotation := UpdateAppArgs{
 				UpdateData: App{
 					Metadata: appTypes.Metadata{
@@ -2157,11 +2159,10 @@ func (app *App) consumePastUnitsAnnotation() int {
 					},
 				},
 			}
-			nUnits, _ = strconv.Atoi(annotation.Value)
 			app.Update(deleteAnnotation)
+			break
 		}
 	}
-
 	return nUnits
 }
 
@@ -2182,7 +2183,7 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	nUnits := app.consumePastUnitsAnnotation()
+	nUnits := app.consumePastUnitsAnnotation(process)
 	err = prov.Start(ctx, app, process, version, nUnits)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
