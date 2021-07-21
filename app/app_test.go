@@ -449,6 +449,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan.Name, check.Equals, "default-plan")

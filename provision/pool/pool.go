@@ -172,12 +172,13 @@ func (p *Pool) GetDefaultPlan() (*appTypes.Plan, error) {
 	}
 	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
 		var allowed map[poolConstraintType][]string
+		var plan *appTypes.Plan
 		allowed, err = p.allowedValues()
 		if err != nil {
 			return nil, err
 		}
 		if len(allowed[ConstraintTypePlan]) > 0 {
-			plan, err := servicemanager.Plan.FindByName(p.ctx, allowed[ConstraintTypePlan][0])
+			plan, err = servicemanager.Plan.FindByName(p.ctx, allowed[ConstraintTypePlan][0])
 			if err != nil {
 				return nil, err
 			}
