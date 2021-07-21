@@ -1738,14 +1738,6 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return app.Swap(ctx, app1, app2, cnameOnly)
 }
 
-func getLatestVersion(version string, app app.App) (string, error) {
-	versions, err := app.DeployedVersions()
-	if err != nil {
-		return "", err
-	}
-	return strconv.Itoa(versions[len(versions)-1]), nil
-}
-
 // title: app start
 // path: /apps/{app}/start
 // method: POST
