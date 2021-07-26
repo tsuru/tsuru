@@ -162,7 +162,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[0])
+				err = s.p.Stop(context.TODO(), a, "web", versions[0], nil)
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -171,7 +171,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[2])
+				err = s.p.Stop(context.TODO(), a, "web", versions[2], nil)
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -180,7 +180,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[1])
+				err = s.p.Stop(context.TODO(), a, "web", versions[1], nil)
 				c.Assert(err, check.IsNil)
 				wait()
 			},

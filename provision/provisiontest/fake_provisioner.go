@@ -1242,7 +1242,7 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return false
 }
 
-func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]

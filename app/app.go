@@ -1341,7 +1341,7 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	if err != nil {
 		return err
 	}
-	err = prov.Stop(ctx, app, process, version)
+	err = prov.Stop(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
@@ -2144,26 +2144,31 @@ func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
 	).Execute(ctx, app1, app2)
 }
 
-func (app *App) consumePastUnitsAnnotation(process string) int {
+func (app *App) consumePastUnitsAnnotation(process string) (int, error) {
 	nUnits := 1
+	var err error
 	for _, annotation := range app.Metadata.Annotations {
-		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) && (annotation.Value == process || annotation.Value == allProcessesString) {
-			annotation.Delete = true
-			nUnits, _ = strconv.Atoi(annotation.Value)
-			deleteAnnotation := UpdateAppArgs{
-				UpdateData: App{
-					Metadata: appTypes.Metadata{
-						Annotations: []appTypes.MetadataItem{
-							annotation,
+		if strings.HasPrefix(annotation.Name, appTypes.PastUnitsAnnotationPrefix) {
+			if strings.HasSuffix(annotation.Name, process) || (strings.HasSuffix(annotation.Name, allProcessesString)) {
+				annotation.Delete = true
+				nUnits, err = strconv.Atoi(annotation.Value)
+				if err != nil {
+					return 1, err
+				}
+				deleteAnnotation := UpdateAppArgs{
+					UpdateData: App{
+						Metadata: appTypes.Metadata{
+							Annotations: []appTypes.MetadataItem{
+								annotation,
+							},
 						},
 					},
-				},
+				}
+				app.Update(deleteAnnotation)
 			}
-			app.Update(deleteAnnotation)
-			break
 		}
 	}
-	return nUnits
+	return nUnits, nil
 }
 
 // Start starts the app calling the provisioner.Start method and
@@ -2183,7 +2188,10 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	nUnits := app.consumePastUnitsAnnotation(process)
+	nUnits, err := app.consumePastUnitsAnnotation(process)
+	if err != nil {
+		fmt.Fprintln(w, "couldn't parse past units annotation value, assuming 1")
+	}
 	err = prov.Start(ctx, app, process, version, nUnits)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)

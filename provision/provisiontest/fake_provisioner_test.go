@@ -461,7 +461,7 @@ func (s *S) TestStop(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(context.TODO(), app)
-	err := p.Stop(context.TODO(), app, "", nil)
+	err := p.Stop(context.TODO(), app, "", nil, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Stops(app, ""), check.Equals, 1)
 }

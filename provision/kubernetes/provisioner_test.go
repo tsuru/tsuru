@@ -1173,7 +1173,7 @@ func (s *S) TestStopStart(c *check.C) {
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.Stop(context.TODO(), a, "", version)
+	err = s.p.Stop(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)

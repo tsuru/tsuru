@@ -457,6 +457,79 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
+func stopProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResourceSynced(ctx, client, a)
+	if err != nil {
+		return err
+	}
+	if process == "" {
+		var cmdData dockercommon.ContainerCmdsData
+		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
+		if err != nil {
+			return err
+		}
+		_, process, err = dockercommon.ProcessCmdForVersion(process, cmdData)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
+	if err != nil {
+		return err
+	}
+	if dep.Spec.Replicas == nil {
+		return errors.New("process already stopped")
+	}
+	return patchReplicas(ctx, client, a, 0, dep, version, w, process)
+}
+
+func patchReplicas(ctx context.Context, client *ClusterClient, a provision.App, replicas int, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
+	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, replicas)
+	patchType, patch, err := replicasPatch(replicas)
+	if err != nil {
+		return err
+	}
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+	newDep, err := client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	events, err := client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = monitorDeployment(ctx, client, newDep, a, process, w, events.ResourceVersion, version)
+	if err != nil {
+		if _, ok := err.(provision.ErrUnitStartup); ok {
+			return err
+		}
+		return provision.ErrUnitStartup{Err: err}
+	}
+	return nil
+}
+
+func ensureProcessName(processName string, version appTypes.AppVersion) (string, error) {
+	if processName == "" {
+		var cmdData dockercommon.ContainerCmdsData
+		cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+		if err != nil {
+			return "", err
+		}
+		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+	}
+	return processName, nil
+}
+
 func changeUnits(ctx context.Context, a provision.App, units int, processName string, version appTypes.AppVersion, w io.Writer) error {
 	if units == 0 {
 		return errors.New("cannot change 0 units")
@@ -469,16 +542,9 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	if processName == "" {
-		var cmdData dockercommon.ContainerCmdsData
-		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
-		if err != nil {
-			return err
-		}
-		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	processName, err = ensureProcessName(processName, version)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	dep, err := deploymentForVersion(ctx, client, a, processName, version.Version())
 	if k8sErrors.IsNotFound(err) {
@@ -498,31 +564,8 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if w == nil {
 		w = ioutil.Discard
 	}
-	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, newReplicas)
-	patchType, patch, err := replicasPatch(newReplicas)
-	if err != nil {
-		return err
-	}
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return err
-	}
-	newDep, err := client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	events, err := client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	_, err = monitorDeployment(ctx, client, newDep, a, processName, w, events.ResourceVersion, version)
-	if err != nil {
-		if _, ok := err.(provision.ErrUnitStartup); ok {
-			return err
-		}
-		return provision.ErrUnitStartup{Err: err}
-	}
-	return nil
+
+	return patchReplicas(ctx, client, a, newReplicas, dep, version, w, processName)
 }
 
 func replicasPatch(replicas int) (types.PatchType, []byte, error) {
@@ -555,8 +598,8 @@ func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, proc
 	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Increment: nUnits}, nil)
 }
 
-func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, nil)
+func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	return stopProcess(ctx, a, process, version, w)
 }
 
 func (p *kubernetesProvisioner) Sleep(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
