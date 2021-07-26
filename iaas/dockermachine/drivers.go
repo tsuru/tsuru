@@ -19,7 +19,6 @@ import (
 	"github.com/docker/machine/drivers/virtualbox"
 	"github.com/docker/machine/drivers/vmwarefusion"
 	"github.com/docker/machine/drivers/vmwarevcloudair"
-	"github.com/docker/machine/drivers/vmwarevsphere"
 	"github.com/docker/machine/libmachine/drivers/plugin"
 	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/pkg/errors"
@@ -57,8 +56,6 @@ func RunDriver(driverName string) error {
 		plugin.RegisterDriver(vmwarefusion.NewDriver("", ""))
 	case "vmwarevcloudair":
 		plugin.RegisterDriver(vmwarevcloudair.NewDriver("", ""))
-	case "vmwarevsphere":
-		plugin.RegisterDriver(vmwarevsphere.NewDriver("", ""))
 	case "cloudstack":
 		plugin.RegisterDriver(cloudstack.NewDriver("", ""))
 	default:
