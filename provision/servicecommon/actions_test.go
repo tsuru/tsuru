@@ -130,7 +130,7 @@ func (m *recordManager) DeployService(ctx context.Context, opts DeployServiceOpt
 	return nil
 }
 
-func (m *recordManager) CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveVersions bool, newVersionSpec ProcessSpec) error {
+func (m *recordManager) CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveVersions bool) error {
 	call := managerCall{
 		action:           "cleanup",
 		app:              a,

@@ -20,7 +20,6 @@ const (
 	// https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
 	totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
 	tsuruPrefix                   = "tsuru.io/"
-	PastUnitsAnnotationPrefix     = tsuruPrefix + "past-units-"
 )
 
 // Metadata represents the user defined labels and annotations
@@ -36,8 +35,8 @@ type MetadataItem struct {
 	Delete bool   `json:"delete,omitempty" bson:"-"`
 }
 
-func (m *Metadata) Validate(appQuota *quota.Quota) error {
-	errs := validateAnnotations(m.Annotations, appQuota)
+func (m *Metadata) Validate() error {
+	errs := validateAnnotations(m.Annotations)
 	errs.Append(validateLabels(m.Labels))
 	if errs.Len() > 0 {
 		return errs.ToError()
@@ -64,7 +63,7 @@ func validatePastUnitsAnnotation(appQuota *quota.Quota, value string) error {
 	return nil
 }
 
-func validateAnnotations(items []MetadataItem, appQuota *quota.Quota) *errors.MultiError {
+func validateAnnotations(items []MetadataItem) *errors.MultiError {
 	allErrs := errors.NewMultiError()
 	fldPath := field.NewPath("metadata.annotations")
 	var totalSize int64
@@ -73,13 +72,6 @@ func validateAnnotations(items []MetadataItem, appQuota *quota.Quota) *errors.Mu
 			continue
 		}
 		if strings.HasPrefix(item.Name, tsuruPrefix) {
-			if strings.HasPrefix(item.Name, PastUnitsAnnotationPrefix) {
-				err := validatePastUnitsAnnotation(appQuota, item.Value)
-				if err != nil {
-					allErrs.Add(err)
-				}
-				continue
-			}
 			allErrs.Add(fmt.Errorf("prefix tsuru.io/ is private"))
 		}
 		for _, msg := range validation.IsQualifiedName(strings.ToLower(item.Name)) {

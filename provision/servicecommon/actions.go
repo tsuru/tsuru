@@ -52,7 +52,7 @@ type ServiceManager interface {
 	RemoveService(ctx context.Context, a provision.App, processName string, versionNumber int) error
 	CurrentLabels(ctx context.Context, a provision.App, processName string, versionNumber int) (*provision.LabelSet, *int32, error)
 	DeployService(ctx context.Context, o DeployServiceOpts) error
-	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool, newVersionSpec ProcessSpec) error
+	CleanupServices(ctx context.Context, a provision.App, versionNumber int, preserveOldVersions bool) error
 }
 
 type DeployServiceOpts struct {
@@ -279,7 +279,7 @@ var removeOldServices = &action.Action{
 		if err != nil {
 			log.Errorf("ignored error removing old services for app %s: %+v", args.app.GetName(), err)
 		}
-		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions, args.newVersionSpec)
+		err = args.manager.CleanupServices(ctx.Context, args.app, args.newVersion.Version(), args.preserveVersions)
 		if err != nil {
 			log.Errorf("ignored error cleaning up services for app %s: %+v", args.app.GetName(), err)
 		}
