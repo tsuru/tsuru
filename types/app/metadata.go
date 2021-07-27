@@ -6,11 +6,9 @@ package app
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/types/quota"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -50,17 +48,6 @@ func (m Metadata) Annotation(v string) (string, bool) {
 
 func (m Metadata) Label(v string) (string, bool) {
 	return getItem(m.Labels, v)
-}
-
-func validatePastUnitsAnnotation(appQuota *quota.Quota, value string) error {
-	v, err := strconv.Atoi(value)
-	if err != nil {
-		return err
-	}
-	if v > appQuota.Limit {
-		return &quota.QuotaExceededError{Requested: uint(v), Available: uint(appQuota.Limit)}
-	}
-	return nil
 }
 
 func validateAnnotations(items []MetadataItem) *errors.MultiError {
