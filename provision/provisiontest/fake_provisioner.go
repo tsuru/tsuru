@@ -964,7 +964,7 @@ func (p *FakeProvisioner) Restart(ctx context.Context, app provision.App, proces
 	return nil
 }
 
-func (p *FakeProvisioner) Start(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, nUnits int) error {
+func (p *FakeProvisioner) Start(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]

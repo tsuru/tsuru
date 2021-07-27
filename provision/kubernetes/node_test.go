@@ -202,7 +202,7 @@ func (s *S) TestNodeUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, 1)
+	err = s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode(context.TODO(), "192.168.99.1")
@@ -398,7 +398,7 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, 1)
+	err = s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode(context.TODO(), "192.168.99.1")

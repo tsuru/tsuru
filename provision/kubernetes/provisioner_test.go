@@ -623,7 +623,7 @@ func (s *S) TestUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, 1)
+	err = s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
@@ -838,7 +838,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, 1)
+	err := s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -871,7 +871,7 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, 1)
+	err := s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -903,7 +903,7 @@ func (s *S) TestUnitsStarting(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, 1)
+	err := s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -939,7 +939,7 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, 1)
+	err := s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -1179,7 +1179,7 @@ func (s *S) TestStopStart(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(context.TODO(), a, "", version, 1)
+	err = s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
@@ -2312,7 +2312,7 @@ func (s *S) TestSleepStart(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(context.TODO(), a, "", version, 1)
+	err = s.p.Start(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
