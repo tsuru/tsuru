@@ -561,6 +561,12 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 		return errors.New("cannot change 0 units")
 	}
 	client, dep, err := getClientAndDeployment(ctx, a, processName, version)
+	if k8sErrors.IsNotFound(err) {
+		return servicecommon.ChangeUnits(ctx, &serviceManager{
+			client: client,
+			writer: w,
+		}, a, units, processName, version)
+	}
 	if err != nil {
 		return err
 	}
