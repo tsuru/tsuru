@@ -433,15 +433,15 @@ func getClientAndDeployment(ctx context.Context, a provision.App, process string
 	}
 	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
-		return nil, nil, err
+		return client, nil, err
 	}
 	process, err = ensureProcessName(process, version)
 	if err != nil {
-		return nil, nil, err
+		return client, nil, err
 	}
 	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
 	if err != nil {
-		return nil, nil, err
+		return client, nil, err
 	}
 
 	return client, dep, nil
@@ -480,6 +480,21 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
+func appendPastUnitsAnnotation(patch []byte, oldReplicas int, process string) ([]byte, error) {
+	pastUnitsAnnotation := strings.Replace(pastUnitsAnnotationPrefix, "/", "~1", 1) + process
+	annotationMapPatch, err := json.Marshal(map[string]interface{}{
+		"op":    "replace",
+		"path":  "/metadata/annotations/" + pastUnitsAnnotation,
+		"value": strconv.Itoa(oldReplicas),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	patch = append(patch, annotationMapPatch...)
+	return patch, nil
+}
+
 func stopProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	client, dep, err := getClientAndDeployment(ctx, a, process, version)
 	if err != nil {
@@ -488,7 +503,15 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 	if dep.Spec.Replicas == nil {
 		return errors.New("process already stopped")
 	}
-	return patchReplicas(ctx, client, a, 0, dep, version, w, process)
+	patchType, patch, err := replicasPatch(0, process)
+	if err != nil {
+		return err
+	}
+	patch, err = appendPastUnitsAnnotation(patch, int(*dep.Spec.Replicas), process)
+	if err != nil {
+		return err
+	}
+	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
 }
 
 func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
@@ -506,19 +529,20 @@ func startProcess(ctx context.Context, a provision.App, process string, version 
 	if err != nil {
 		return err
 	}
-	pastUnits, err := parsePastUnitsAnnotation(dep, process)
+	newReplicas, err := parsePastUnitsAnnotation(dep, process)
 	if err != nil {
 		return err
 	}
-	return patchReplicas(ctx, client, a, pastUnits, dep, version, w, process)
+	patchType, patch, err := replicasPatch(newReplicas, process)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(w, "---- Starting %d units ----\n", newReplicas)
+	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
 }
 
-func patchReplicas(ctx context.Context, client *ClusterClient, a provision.App, replicas int, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
-	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, replicas)
-	patchType, patch, err := replicasPatch(replicas, int(*dep.Spec.Replicas), process)
-	if err != nil {
-		return err
-	}
+func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -578,25 +602,23 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if w == nil {
 		w = ioutil.Discard
 	}
-
-	return patchReplicas(ctx, client, a, newReplicas, dep, version, w, processName)
+	patchType, patch, err := replicasPatch(newReplicas, processName)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, newReplicas)
+	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, processName)
 }
 
-func replicasPatch(replicas, oldReplicas int, process string) (types.PatchType, []byte, error) {
+func replicasPatch(replicas int, process string) (types.PatchType, []byte, error) {
 	if process == "" {
 		process = defaultPastUnitsValue
 	}
-	pastUnitsAnnotation := strings.Replace(pastUnitsAnnotationPrefix, "/", "~1", 1) + process
 	patch, err := json.Marshal([]interface{}{
 		map[string]interface{}{
 			"op":    "replace",
 			"path":  "/spec/replicas",
 			"value": replicas,
-		},
-		map[string]interface{}{
-			"op":    "replace",
-			"path":  "/metadata/annotations/" + pastUnitsAnnotation,
-			"value": strconv.Itoa(oldReplicas),
 		},
 	})
 	if err != nil {
