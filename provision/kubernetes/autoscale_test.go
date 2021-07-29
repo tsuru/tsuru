@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"strconv"
@@ -162,7 +163,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[0], nil)
+				err = s.p.Stop(context.TODO(), a, "web", versions[0], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -171,7 +172,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[2], nil)
+				err = s.p.Stop(context.TODO(), a, "web", versions[2], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -180,7 +181,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[1], nil)
+				err = s.p.Stop(context.TODO(), a, "web", versions[1], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},

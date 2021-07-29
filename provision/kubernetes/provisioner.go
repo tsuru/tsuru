@@ -459,20 +459,40 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
-func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process string) (types.PatchType, []byte, error) {
+func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process string, annotations map[string]string) (types.PatchType, []byte, error) {
 	pastUnitsAnnotation := strings.Replace(pastUnitsAnnotationPrefix, "/", "~1", 1) + process
-	patch, err := json.Marshal([]interface{}{
-		map[string]interface{}{
-			"op":    "replace",
-			"path":  "/spec/replicas",
-			"value": newReplicas,
-		},
-		map[string]interface{}{
-			"op":    "replace",
-			"path":  "/metadata/annotations/" + pastUnitsAnnotation,
-			"value": strconv.Itoa(oldReplicas),
-		},
-	})
+	var patch []byte
+	var err error
+	switch len(annotations) {
+	case 0:
+		patch, err = json.Marshal([]interface{}{
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/replicas",
+				"value": newReplicas,
+			},
+			map[string]interface{}{
+				"op":   "add",
+				"path": "/metadata/annotations",
+				"value": map[string]string{
+					pastUnitsAnnotationPrefix + process: strconv.Itoa(oldReplicas),
+				},
+			},
+		})
+	default:
+		patch, err = json.Marshal([]interface{}{
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/replicas",
+				"value": newReplicas,
+			},
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/metadata/annotations/" + pastUnitsAnnotation,
+				"value": strconv.Itoa(oldReplicas),
+			},
+		})
+	}
 	if err != nil {
 		return "", nil, err
 	}
@@ -512,7 +532,7 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 			fmt.Fprintf(w, "process already stopped\n")
 			continue
 		}
-		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), process)
+		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), process, dep.Annotations)
 		if err != nil {
 			return err
 		}
