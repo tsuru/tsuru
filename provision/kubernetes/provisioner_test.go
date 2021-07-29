@@ -623,7 +623,16 @@ func (s *S) TestUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
@@ -838,7 +847,16 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -871,7 +889,16 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -903,7 +930,16 @@ func (s *S) TestUnitsStarting(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -939,7 +975,16 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -2312,7 +2357,16 @@ func (s *S) TestSleepStart(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)

@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -202,7 +205,16 @@ func (s *S) TestNodeUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode(context.TODO(), "192.168.99.1")
@@ -398,7 +410,16 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version, nil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	node, err := s.p.GetNode(context.TODO(), "192.168.99.1")

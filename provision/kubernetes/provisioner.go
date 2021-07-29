@@ -426,27 +426,6 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	return versions, nil
 }
 
-func getClientAndDeployment(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) (*ClusterClient, *appsv1.Deployment, error) {
-	client, err := clusterForPool(ctx, a.GetPool())
-	if err != nil {
-		return nil, nil, err
-	}
-	err = ensureAppCustomResourceSynced(ctx, client, a)
-	if err != nil {
-		return client, nil, err
-	}
-	process, err = ensureProcessName(process, version)
-	if err != nil {
-		return client, nil, err
-	}
-	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
-	if err != nil {
-		return client, nil, err
-	}
-
-	return client, dep, nil
-}
-
 func changeState(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, state servicecommon.ProcessState, w io.Writer) error {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
@@ -480,38 +459,69 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
-func appendPastUnitsAnnotation(patch []byte, oldReplicas int, process string) ([]byte, error) {
+func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process string) (types.PatchType, []byte, error) {
 	pastUnitsAnnotation := strings.Replace(pastUnitsAnnotationPrefix, "/", "~1", 1) + process
-	annotationMapPatch, err := json.Marshal(map[string]interface{}{
-		"op":    "replace",
-		"path":  "/metadata/annotations/" + pastUnitsAnnotation,
-		"value": strconv.Itoa(oldReplicas),
+	patch, err := json.Marshal([]interface{}{
+		map[string]interface{}{
+			"op":    "replace",
+			"path":  "/spec/replicas",
+			"value": newReplicas,
+		},
+		map[string]interface{}{
+			"op":    "replace",
+			"path":  "/metadata/annotations/" + pastUnitsAnnotation,
+			"value": strconv.Itoa(oldReplicas),
+		},
 	})
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	patch = append(patch, annotationMapPatch...)
-	return patch, nil
+	return types.JSONPatchType, patch, nil
 }
 
 func stopProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	client, dep, err := getClientAndDeployment(ctx, a, process, version)
+	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
 	}
-	if dep.Spec.Replicas == nil {
-		return errors.New("process already stopped")
-	}
-	patchType, patch, err := replicasPatch(0, process)
+	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
 		return err
 	}
-	patch, err = appendPastUnitsAnnotation(patch, int(*dep.Spec.Replicas), process)
-	if err != nil {
-		return err
+	processes := []string{}
+	if process == "" {
+		var allProcesses map[string][]string
+		allProcesses, err = version.Processes()
+		if err != nil {
+			return err
+		}
+		for processName := range allProcesses {
+			processes = append(processes, processName)
+		}
+	} else {
+		processes = []string{process}
 	}
-	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
+	for _, process := range processes {
+		dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
+		if err != nil {
+			return err
+		}
+
+		if dep.Spec.Replicas == nil {
+			fmt.Fprintf(w, "process already stopped\n")
+			continue
+		}
+		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), process)
+		if err != nil {
+			return err
+		}
+		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
@@ -525,21 +535,47 @@ func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, erro
 }
 
 func startProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	client, dep, err := getClientAndDeployment(ctx, a, process, version)
+	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
 	}
-	newReplicas, err := parsePastUnitsAnnotation(dep, process)
+	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
 		return err
 	}
-	patchType, patch, err := replicasPatch(newReplicas, process)
-	if err != nil {
-		return err
+	processes := []string{}
+	if process == "" {
+		var allProcesses map[string][]string
+		allProcesses, err = version.Processes()
+		if err != nil {
+			return err
+		}
+		for processName := range allProcesses {
+			processes = append(processes, processName)
+		}
+	} else {
+		processes = []string{process}
 	}
-
-	fmt.Fprintf(w, "---- Starting %d units ----\n", newReplicas)
-	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
+	for _, process := range processes {
+		dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
+		if err != nil {
+			return err
+		}
+		newReplicas, err := parsePastUnitsAnnotation(dep, process)
+		if err != nil {
+			return err
+		}
+		patchType, patch, err := replicasPatch(newReplicas, process)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, process)
+		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
@@ -584,7 +620,19 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if units == 0 {
 		return errors.New("cannot change 0 units")
 	}
-	client, dep, err := getClientAndDeployment(ctx, a, processName, version)
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResourceSynced(ctx, client, a)
+	if err != nil {
+		return err
+	}
+	process, err := ensureProcessName(processName, version)
+	if err != nil {
+		return err
+	}
+	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
 	if k8sErrors.IsNotFound(err) {
 		return servicecommon.ChangeUnits(ctx, &serviceManager{
 			client: client,
@@ -611,9 +659,6 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 }
 
 func replicasPatch(replicas int, process string) (types.PatchType, []byte, error) {
-	if process == "" {
-		process = defaultPastUnitsValue
-	}
 	patch, err := json.Marshal([]interface{}{
 		map[string]interface{}{
 			"op":    "replace",
