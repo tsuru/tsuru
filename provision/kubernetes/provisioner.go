@@ -65,7 +65,6 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
 	defaultPreStopSleepSeconds                 = 10
-	defaultPastUnitsValue                      = "all-processes"
 	pastUnitsAnnotationKey                     = "tsuru.io/past-units"
 )
 
