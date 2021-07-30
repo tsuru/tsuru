@@ -1225,7 +1225,7 @@ func (s *S) TestStopStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(dep.Annotations, check.DeepEquals, map[string]string{"tsuru.io/past-units-web": "2"})
+	c.Assert(dep.Annotations, check.DeepEquals, map[string]string{"tsuru.io/past-units": "2"})
 	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})

@@ -66,7 +66,7 @@ const (
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
 	defaultPreStopSleepSeconds                 = 10
 	defaultPastUnitsValue                      = "all-processes"
-	pastUnitsAnnotationPrefix                  = "tsuru.io/past-units-"
+	pastUnitsAnnotationKey                     = "tsuru.io/past-units"
 )
 
 var defaultEphemeralStorageLimit = resource.MustParse("100Mi")
@@ -459,8 +459,7 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
-func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process string, annotations map[string]string) (types.PatchType, []byte, error) {
-	pastUnitsAnnotation := strings.Replace(pastUnitsAnnotationPrefix, "/", "~1", 1) + process
+func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, annotations map[string]string) (types.PatchType, []byte, error) {
 	var patch []byte
 	var err error
 	switch len(annotations) {
@@ -475,11 +474,12 @@ func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process 
 				"op":   "add",
 				"path": "/metadata/annotations",
 				"value": map[string]string{
-					pastUnitsAnnotationPrefix + process: strconv.Itoa(oldReplicas),
+					pastUnitsAnnotationKey: strconv.Itoa(oldReplicas),
 				},
 			},
 		})
 	default:
+		key := strings.Replace(pastUnitsAnnotationKey, "/", "~1", 1)
 		patch, err = json.Marshal([]interface{}{
 			map[string]interface{}{
 				"op":    "replace",
@@ -488,7 +488,7 @@ func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, process 
 			},
 			map[string]interface{}{
 				"op":    "replace",
-				"path":  "/metadata/annotations/" + pastUnitsAnnotation,
+				"path":  "/metadata/annotations/" + key,
 				"value": strconv.Itoa(oldReplicas),
 			},
 		})
@@ -532,7 +532,7 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 			fmt.Fprintf(w, "process already stopped\n")
 			continue
 		}
-		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), process, dep.Annotations)
+		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
 		if err != nil {
 			return err
 		}
@@ -548,7 +548,7 @@ func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, erro
 	if process == "" {
 		process = defaultPastUnitsValue
 	}
-	if s, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationPrefix+process]; ok {
+	if s, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationKey]; ok {
 		return strconv.Atoi(s)
 	}
 	return 1, nil
