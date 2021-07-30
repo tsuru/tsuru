@@ -545,9 +545,6 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 }
 
 func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
-	if process == "" {
-		process = defaultPastUnitsValue
-	}
 	if s, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationKey]; ok {
 		return strconv.Atoi(s)
 	}
