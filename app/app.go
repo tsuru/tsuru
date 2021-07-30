@@ -2128,9 +2128,6 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	if err != nil {
-		fmt.Fprintln(w, "couldn't parse past units annotation value, assuming 1")
-	}
 	err = prov.Start(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
