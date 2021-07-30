@@ -1215,12 +1215,22 @@ func (s *S) TestStopStart(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
 	err = s.p.Stop(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Annotations, check.DeepEquals, map[string]string{"tsuru.io/past-units-web": "2"})
+	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "tsuru.io/app-name=myapp",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(svcs.Items), check.Equals, 3)
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
@@ -1229,7 +1239,7 @@ func (s *S) TestStopStart(c *check.C) {
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	c.Assert(units, check.HasLen, 2)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
