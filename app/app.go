@@ -2677,14 +2677,6 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 		return versionProv, v, err
 	}
 
-	if version == "" {
-		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
-		if err != nil {
-			return versionProv, latest, err
-		}
-		return versionProv, latest, nil
-	}
-
 	return versionProv, nil, nil
 }
 

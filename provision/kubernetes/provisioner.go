@@ -508,36 +508,45 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 	if err != nil {
 		return err
 	}
-	processes := []string{}
-	if process == "" {
-		var allProcesses map[string][]string
-		allProcesses, err = version.Processes()
+
+	versions := []appTypes.AppVersion{}
+	if version == nil {
+		versions, err = versionsForAppProcess(ctx, client, a, process)
 		if err != nil {
 			return err
-		}
-		for processName := range allProcesses {
-			processes = append(processes, processName)
 		}
 	} else {
-		processes = []string{process}
+		versions = append(versions, version)
 	}
-	for _, process := range processes {
-		dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
-		if err != nil {
-			return err
+
+	for _, v := range versions {
+		processes := []string{}
+		if process == "" {
+			processes, err = allProcessesForVersion(v)
+			if err != nil {
+				return err
+			}
+		} else {
+			processes = []string{process}
 		}
 
-		if dep.Spec.Replicas == nil {
-			fmt.Fprintf(w, "process already stopped\n")
-			continue
-		}
-		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
-		if err != nil {
-			return err
-		}
-		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
-		if err != nil {
-			return err
+		for _, p := range processes {
+			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
+			if err != nil {
+				return err
+			}
+			if dep.Spec.Replicas == nil {
+				fmt.Fprintf(w, "process already stopped\n")
+				continue
+			}
+			patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
+			if err != nil {
+				return err
+			}
+			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -550,6 +559,19 @@ func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, erro
 	return 1, nil
 }
 
+func allProcessesForVersion(version appTypes.AppVersion) ([]string, error) {
+	processes := []string{}
+	allProcesses, err := version.Processes()
+	if err != nil {
+		return nil, err
+	}
+	for processName := range allProcesses {
+		processes = append(processes, processName)
+	}
+
+	return processes, nil
+}
+
 func startProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
@@ -559,36 +581,46 @@ func startProcess(ctx context.Context, a provision.App, process string, version 
 	if err != nil {
 		return err
 	}
-	processes := []string{}
-	if process == "" {
-		var allProcesses map[string][]string
-		allProcesses, err = version.Processes()
+
+	versions := []appTypes.AppVersion{}
+	if version == nil {
+		versions, err = versionsForAppProcess(ctx, client, a, process)
 		if err != nil {
 			return err
-		}
-		for processName := range allProcesses {
-			processes = append(processes, processName)
 		}
 	} else {
-		processes = []string{process}
+		versions = append(versions, version)
 	}
-	for _, process := range processes {
-		dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
-		if err != nil {
-			return err
+
+	for _, v := range versions {
+		processes := []string{}
+		if process == "" {
+			processes, err = allProcessesForVersion(v)
+			if err != nil {
+				return err
+			}
+		} else {
+			processes = []string{process}
 		}
-		newReplicas, err := parsePastUnitsAnnotation(dep, process)
-		if err != nil {
-			return err
-		}
-		patchType, patch, err := replicasPatch(newReplicas, process)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, process)
-		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, process)
-		if err != nil {
-			return err
+
+		for _, p := range processes {
+			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
+			if err != nil {
+				return err
+			}
+			newReplicas, err := parsePastUnitsAnnotation(dep, p)
+			if err != nil {
+				return err
+			}
+			patchType, patch, err := replicasPatch(newReplicas, p)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, p)
+			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
