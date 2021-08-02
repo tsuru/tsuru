@@ -520,7 +520,7 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 	}
 
 	for _, v := range versions {
-		processes := []string{}
+		var processes []string
 		if process == "" {
 			processes, err = allProcessesForVersion(v)
 			if err != nil {
@@ -593,7 +593,7 @@ func startProcess(ctx context.Context, a provision.App, process string, version 
 	}
 
 	for _, v := range versions {
-		processes := []string{}
+		var processes []string
 		if process == "" {
 			processes, err = allProcessesForVersion(v)
 			if err != nil {
