@@ -17,6 +17,7 @@ import (
 	osb "github.com/pmorie/go-open-service-broker-client/v2"
 	osbfake "github.com/pmorie/go-open-service-broker-client/v2/fake"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
@@ -154,6 +155,14 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
+
+	service.Name = "per-cluster-endpoing"
+	service.Endpoint = map[string]string{"my-cluster": "https://my.cluster"}
+	err = Create(*service)
+	c.Assert(err, check.IsNil)
+	se, err = Get(context.TODO(), service.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(se.Endpoint["my-cluster"], check.Equals, "https://my.cluster")
 }
 
 func (s *S) TestCreateServiceValidation(c *check.C) {
@@ -181,7 +190,7 @@ func (s *S) TestCreateServiceValidation(c *check.C) {
 	service.Password = "abcde"
 	service.Endpoint = nil
 	err = Create(*service)
-	c.Assert(err, check.ErrorMatches, "Service production endpoint is required")
+	c.Assert(err, check.ErrorMatches, "At least one endpoint is required")
 	service.Endpoint = endpt
 	service.OwnerTeams = []string{}
 	err = Create(*service)
@@ -244,6 +253,83 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^Unknown endpoint: staging$")
 	c.Assert(cli, check.IsNil)
+}
+
+func (s *S) TestGetClientMultipleEndpoints(c *check.C) {
+	endpoints := map[string]string{
+		"production": "http://mysql.api.com",
+		"other":      "http://my.other.com",
+	}
+	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
+	cli, err := service.getClient("other", "production")
+	expected := &endpointClient{
+		serviceName: "redis",
+		endpoint:    endpoints["other"],
+		username:    "redis",
+		password:    "abcde",
+	}
+	c.Assert(err, check.IsNil)
+	c.Assert(cli, check.DeepEquals, expected)
+
+	cli, err = service.getClient("invalid", "production")
+	expected = &endpointClient{
+		serviceName: "redis",
+		endpoint:    endpoints["production"],
+		username:    "redis",
+		password:    "abcde",
+	}
+	c.Assert(err, check.IsNil)
+	c.Assert(cli, check.DeepEquals, expected)
+}
+
+func (s *S) TestGetClientForPool(c *check.C) {
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "fool-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name: "fool-cluster",
+		}, nil
+	}
+	endpoints := map[string]string{
+		"production":   "http://mysql.api.com",
+		"fool-cluster": "http://fitz.fool.com",
+	}
+	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
+	cli, err := service.getClientForPool(context.Background(), "fool-pool")
+	expected := &endpointClient{
+		serviceName: "redis",
+		endpoint:    "http://fitz.fool.com",
+		username:    "redis",
+		password:    "abcde",
+	}
+	c.Assert(err, check.IsNil)
+	c.Assert(cli, check.DeepEquals, expected)
+}
+
+func (s *S) TestGetClientForPoolWithNoClusterEndpoint(c *check.C) {
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "fool-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name: "fool-cluster",
+		}, nil
+	}
+	endpoints := map[string]string{
+		"production":     "http://mysql.api.com",
+		"dragon-cluster": "http://fitz.fool.com",
+	}
+	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
+	cli, err := service.getClientForPool(context.Background(), "fool-pool")
+	expected := &endpointClient{
+		serviceName: "redis",
+		endpoint:    "http://mysql.api.com",
+		username:    "redis",
+		password:    "abcde",
+	}
+	c.Assert(err, check.IsNil)
+	c.Assert(cli, check.DeepEquals, expected)
 }
 
 func (s *S) TestGetUsername(c *check.C) {

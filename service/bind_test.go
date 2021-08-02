@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
-	"testing"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -43,10 +42,6 @@ type BindSuite struct {
 }
 
 var _ = check.Suite(&BindSuite{})
-
-func TestT(t *testing.T) {
-	check.TestingT(t)
-}
 
 func (s *BindSuite) SetUpSuite(c *check.C) {
 	var err error

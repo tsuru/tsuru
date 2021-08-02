@@ -113,7 +113,7 @@ func DeleteInstance(ctx context.Context, si *ServiceInstance, evt *event.Event, 
 	if err != nil {
 		return err
 	}
-	endpoint, err := s.getClient("production")
+	endpoint, err := s.getClientForPool(ctx, si.Pool)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	endpoint, err := s.getClient("production")
+	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	endpoint, err := s.getClient("production")
+	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	endpoint, err := s.getClient("production")
+	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
 	if err != nil {
 		return err
 	}
@@ -394,7 +394,7 @@ func (si *ServiceInstance) Status(requestID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	endpoint, err := s.getClient("production")
+	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
 	if err != nil {
 		return "", err
 	}
@@ -594,7 +594,7 @@ func ProxyInstance(ctx context.Context, instance *ServiceInstance, path string, 
 	if err != nil {
 		return err
 	}
-	endpoint, err := service.getClient("production")
+	endpoint, err := service.getClientForPool(ctx, instance.Pool)
 	if err != nil {
 		return err
 	}

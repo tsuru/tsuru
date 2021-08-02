@@ -43,7 +43,6 @@ import (
 	_ "github.com/tsuru/tsuru/router/galebv2"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
-	_ "github.com/tsuru/tsuru/router/vulcand"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"

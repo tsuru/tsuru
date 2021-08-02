@@ -1084,6 +1084,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	if err != nil {
 		return err
 	}
+	enableServiceLinks := false
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
@@ -1091,6 +1092,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 			Labels:    args.labels.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
+			EnableServiceLinks: &enableServiceLinks,
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(args.app),
 			NodeSelector:       nodeSelector,

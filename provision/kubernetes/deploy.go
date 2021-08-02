@@ -74,7 +74,7 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 	if err != nil {
 		return nil, err
 	}
-	upgradeRoundTripper := spdy.NewSpdyRoundTripper(tlsConfig, true, false)
+	upgradeRoundTripper := spdy.NewRoundTripper(tlsConfig, true, false)
 	upgradeRoundTripper.Dialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 10 * time.Second,
