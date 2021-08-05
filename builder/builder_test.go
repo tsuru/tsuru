@@ -17,8 +17,8 @@ type S struct{}
 
 var _ = check.Suite(S{})
 
-func callPlatformWithError(appTypes.PlatformOptions) error {
-	return errors.New("something is wrong")
+func callPlatformWithError(appTypes.PlatformOptions) ([]string, error) {
+	return nil, errors.New("something is wrong")
 }
 
 func callPlatformRemoveWithError(string) error {
@@ -62,7 +62,7 @@ func (s S) TestPlatformBuild(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
+	_, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.IsNil)
 }
 
@@ -75,12 +75,12 @@ func (s S) TestPlatformBuildError(c *check.C) {
 	}
 	Register("builder1", &b1)
 	Register("builder2", &b2)
-	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
+	_, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
 }
 
 func (s S) TestPlatformBuildNoBuilder(c *check.C) {
-	err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
+	_, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
 }
 

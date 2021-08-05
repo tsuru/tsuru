@@ -6,6 +6,8 @@ package app
 
 import (
 	"context"
+
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
 type MockApp struct {
@@ -13,6 +15,7 @@ type MockApp struct {
 	Deploys                                          uint
 	UpdatePlatform                                   bool
 	TeamsName                                        []string
+	Registry                                         imgTypes.ImageRegistry
 }
 
 func (a *MockApp) GetName() string {
@@ -45,6 +48,10 @@ func (a *MockApp) GetDeploys() uint {
 
 func (a *MockApp) GetUpdatePlatform() bool {
 	return a.UpdatePlatform
+}
+
+func (a *MockApp) GetRegistry() (imgTypes.ImageRegistry, error) {
+	return a.Registry, nil
 }
 
 var _ AppService = &MockAppService{}

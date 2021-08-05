@@ -99,7 +99,7 @@ func (m *MockService) ResetPlatform() {
 func (m *MockService) ResetPlatformImage() {
 	m.PlatformImage.OnNewImage = nil
 	m.PlatformImage.OnCurrentImage = nil
-	m.PlatformImage.OnAppendImage = nil
+	m.PlatformImage.OnAppendImages = nil
 	m.PlatformImage.OnDeleteImages = nil
 	m.PlatformImage.OnListImages = nil
 	m.PlatformImage.OnListImagesOrDefault = nil

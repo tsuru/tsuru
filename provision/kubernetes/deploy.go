@@ -1354,7 +1354,11 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				continue
 			}
 		}
-		version := servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
+		var version appTypes.AppVersion
+		version, err = servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
+		if err != nil {
+			return err
+		}
 		var svcPorts []apiv1.ServicePort
 		svcPorts, err = loadServicePorts(version, process)
 		if err != nil {
@@ -1812,7 +1816,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 		Spec: apiv1.PodSpec{
 			EnableServiceLinks: &serviceLinks,
 			ImagePullSecrets:   pullSecrets,
-			ServiceAccountName: serviceAccountNameForApp(params.app),
+			ServiceAccountName: params.client.buildServiceAccount(params.app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
 			Volumes: append(deployAgentEngineVolumes(pullSecrets), append([]apiv1.Volume{
@@ -1895,10 +1899,11 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
-			Affinity:         affinity,
-			ImagePullSecrets: pullSecrets,
-			Volumes:          deployAgentEngineVolumes(pullSecrets),
-			RestartPolicy:    apiv1.RestartPolicyNever,
+			Affinity:           affinity,
+			ImagePullSecrets:   pullSecrets,
+			Volumes:            deployAgentEngineVolumes(pullSecrets),
+			RestartPolicy:      apiv1.RestartPolicyNever,
+			ServiceAccountName: client.buildServiceAccount(nil),
 			Containers: []apiv1.Container{
 				{
 					Name:         conf.name,
