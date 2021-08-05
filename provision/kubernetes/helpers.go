@@ -1085,6 +1085,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	if err != nil {
 		return err
 	}
+
 	enableServiceLinks := false
 	containerRequirements := apiv1.ResourceRequirements{}
 	if args.requirements != nil {
@@ -1093,6 +1094,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 			Requests: *args.requirements,
 		}
 	}
+
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
