@@ -13,11 +13,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -146,12 +149,55 @@ func (c *KubeClient) DownloadFromContainer(ctx context.Context, app provision.Ap
 	return reader, nil
 }
 
-func (c *KubeClient) BuildImage(ctx context.Context, name string, images []string, inputStream io.Reader, output io.Writer) error {
-	buildPodName := fmt.Sprintf("%s-image-build", name)
-	client, err := clusterForPoolOrAny(ctx, "")
+func (c *KubeClient) BuildPlatformImages(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
+	regsMap := map[imgTypes.ImageRegistry]*ClusterClient{}
+	err := forEachCluster(ctx, func(cli *ClusterClient) error {
+		if cli.DisablePlatformBuild() {
+			return nil
+		}
+		regsMap[cli.registry()] = cli
+		return nil
+	})
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	var builtImages []string
+	for reg, client := range regsMap {
+		var inputStream io.Reader
+		if len(opts.Data) > 0 {
+			inputStream = builder.CompressDockerFile(opts.Data)
+		} else if opts.RollbackVersion != 0 {
+			var rollbackImg string
+			rollbackImg, err = servicemanager.PlatformImage.FindImage(ctx, reg, opts.Name, fmt.Sprintf("v%d", opts.RollbackVersion))
+			if err != nil {
+				return builtImages, err
+			}
+			inputStream = builder.CompressDockerFile([]byte(fmt.Sprintf("FROM %s", rollbackImg)))
+		}
+
+		imageName := servicemanager.PlatformImage.NewImage(ctx, reg, opts.Name, opts.Version)
+		images := []string{imageName}
+		repo, _ := image.SplitImageName(imageName)
+		for _, tag := range opts.ExtraTags {
+			images = append(images, fmt.Sprintf("%s:%s", repo, tag))
+		}
+		err = c.buildImages(ctx, client, opts.Name, images, inputStream, opts.Output)
+		if err != nil {
+			return builtImages, err
+		}
+		builtImages = append(builtImages, imageName)
+	}
+	return builtImages, nil
+}
+
+func (c *KubeClient) buildImages(ctx context.Context, client *ClusterClient, name string, images []string, inputStream io.Reader, output io.Writer) error {
+	fmt.Fprintf(output, "---- Building platform %s on cluster %s ----\n", name, client.Name)
+	for _, img := range images {
+		fmt.Fprintf(output, " ---> Destination image: %s\n", img)
+	}
+	fmt.Fprint(output, "---- Starting build ----\n")
+	buildPodName := fmt.Sprintf("%s-image-build", name)
 	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, client.Namespace())
 	params := createPodParams{
 		client:            client,

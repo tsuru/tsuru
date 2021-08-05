@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -307,6 +308,12 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 func (s *S) TestBuildImage(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
+		c.Assert(plat, check.Equals, "myplatform")
+		c.Assert(version, check.Equals, 1)
+		return "tsuru/myplatform:v1"
+	}
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
@@ -315,7 +322,7 @@ func (s *S) TestBuildImage(c *check.C) {
 		c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:latest"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:v1,tsuru/myplatform:latest"},
 			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
@@ -329,16 +336,28 @@ func (s *S) TestBuildImage(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
 	out := &safe.Buffer{}
-	err := client.BuildImage(context.TODO(), "myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out)
+	imgs, err := client.BuildPlatformImages(context.TODO(), appTypes.PlatformOptions{
+		Name:      "myplatform",
+		Version:   1,
+		Output:    out,
+		ExtraTags: []string{"latest"},
+		Data:      []byte("FROM tsuru/myplatform"),
+	})
 	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.DeepEquals, []string{"tsuru/myplatform:v1"})
 }
 
 func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
 		return nil, provTypes.ErrNoCluster
+	}
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
+		c.Assert(plat, check.Equals, "myplatform")
+		c.Assert(version, check.Equals, 1)
+		return "tsuru/myplatform:v1"
 	}
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
@@ -350,7 +369,7 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 		c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 		c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 			{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:latest"},
+			{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "tsuru/myplatform:v1"},
 			{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 			{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
@@ -364,11 +383,16 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 		})
 		return false, nil, nil
 	})
-	inputStream := strings.NewReader("FROM tsuru/myplatform")
 	client := KubeClient{}
 	out := &safe.Buffer{}
-	err := client.BuildImage(context.Background(), "myplatform", []string{"tsuru/myplatform:latest"}, ioutil.NopCloser(inputStream), out)
+	imgs, err := client.BuildPlatformImages(context.TODO(), appTypes.PlatformOptions{
+		Name:    "myplatform",
+		Version: 1,
+		Output:  out,
+		Data:    []byte("FROM tsuru/myplatform"),
+	})
 	c.Assert(err, check.IsNil)
+	c.Assert(imgs, check.DeepEquals, []string{"tsuru/myplatform:v1"})
 }
 
 func (s *S) TestDownloadFromContainer(c *check.C) {

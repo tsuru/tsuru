@@ -43,7 +43,7 @@ var builders = make(map[string]Builder)
 // PlatformBuilder is a builder where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
 type PlatformBuilder interface {
-	PlatformBuild(context.Context, appTypes.PlatformOptions) error
+	PlatformBuild(context.Context, appTypes.PlatformOptions) ([]string, error)
 	PlatformRemove(ctx context.Context, name string) error
 }
 
@@ -83,26 +83,29 @@ func Registry() ([]Builder, error) {
 	return registry, nil
 }
 
-func PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
+func PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	builders, err := Registry()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	opts.ExtraTags = []string{"latest"}
 	multiErr := tsuruErrors.NewMultiError()
+	var builtImgs []string
 	for _, b := range builders {
 		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformBuild(ctx, opts)
+			var imgs []string
+			imgs, err := platformBuilder.PlatformBuild(ctx, opts)
+			builtImgs = append(builtImgs, imgs...)
 			if err == nil {
-				return nil
+				return builtImgs, nil
 			}
 			multiErr.Add(err)
 		}
 	}
 	if multiErr.Len() > 0 {
-		return multiErr
+		return builtImgs, multiErr
 	}
-	return errors.New("No builder available")
+	return builtImgs, errors.New("No builder available")
 }
 
 func PlatformRemove(ctx context.Context, name string) error {

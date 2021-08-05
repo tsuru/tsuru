@@ -47,10 +47,10 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	builder.DefaultBuilder = "fake"
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	servicemock.SetMockService(&s.mockService)
-	s.mockService.PlatformImage.OnNewImage = func(name string) (string, error) {
-		return "tsuru/" + name + ":v1", nil
+	s.mockService.PlatformImage.OnNewVersion = func(name string) (int, error) {
+		return 1, nil
 	}
-	s.mockService.PlatformImage.OnAppendImage = func(name, image string) error {
+	s.mockService.PlatformImage.OnAppendImages = func(name string, versions int, images []string) error {
 		return nil
 	}
 }
@@ -110,8 +110,8 @@ func (s *PlatformSuite) TestPlatformCreateWithStorageError(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformCreateWithProvisionerError(c *check.C) {
-	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) error {
-		return errors.New("something wrong happened")
+	s.builder.OnPlatformBuild = func(appTypes.PlatformOptions) ([]string, error) {
+		return nil, errors.New("something wrong happened")
 	}
 	name := "test-platform-add"
 	ps := &platformService{
@@ -206,9 +206,9 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	args := make(map[string]string)
 	args["disabled"] = ""
 
-	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) error {
+	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) ([]string, error) {
 		c.Assert(o.Data, check.NotNil)
-		return nil
+		return nil, nil
 	}
 	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
@@ -543,29 +543,8 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *PlatformSuite) TestPlatformRollbackInvalidImage(c *check.C) {
-	name := "test-platform-rollback"
-	image := "tsuru/no-valid-image"
-	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
-		return "", nil
-	}
-	ps := &platformService{
-		storage: &appTypes.MockPlatformStorage{
-			OnFindByName: func(n string) (*appTypes.Platform, error) {
-				return nil, nil
-			},
-		},
-	}
-	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, ImageName: image})
-	c.Assert(err.Error(), check.Equals, "Image tsuru/no-valid-image not found in platform \"test-platform-rollback\"")
-}
-
 func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	name := "test-platform-rollback"
-	image := "tsuru/test-platform-rollback:v1"
-	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
-		return image, nil
-	}
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
 			OnFindByName: func(n string) (*appTypes.Platform, error) {
@@ -576,10 +555,10 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 			},
 		},
 	}
-	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) error {
-		c.Assert(o.Data, check.NotNil)
-		return nil
+	s.builder.OnPlatformBuild = func(o appTypes.PlatformOptions) ([]string, error) {
+		c.Assert(o.RollbackVersion, check.Equals, 1)
+		return nil, nil
 	}
-	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, ImageName: image})
+	err := ps.Rollback(context.TODO(), appTypes.PlatformOptions{Name: name, RollbackVersion: 1})
 	c.Assert(err, check.IsNil)
 }

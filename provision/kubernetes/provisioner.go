@@ -40,6 +40,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	appsv1 "k8s.io/api/apps/v1"
@@ -93,6 +94,7 @@ var (
 	_ provision.AutoScaleProvisioner     = &kubernetesProvisioner{}
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
+	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
@@ -2089,4 +2091,12 @@ func (p *kubernetesProvisioner) DeployedVersions(ctx context.Context, a provisio
 		versions = append(versions, v)
 	}
 	return versions, nil
+}
+
+func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.App) (imgTypes.ImageRegistry, error) {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return "", err
+	}
+	return client.registry(), nil
 }

@@ -10,25 +10,33 @@ import (
 )
 
 type PlatformImage struct {
-	Name   string
-	Images []string
-	Count  int
+	Name     string
+	Versions []RegistryVersion
+	Count    int
 }
 
+type RegistryVersion struct {
+	Version int
+	Images  []string
+}
+
+type ImageRegistry string
+
 type PlatformImageService interface {
-	NewImage(context.Context, string) (string, error)
-	CurrentImage(context.Context, string) (string, error)
-	AppendImage(context.Context, string, string) error
+	NewVersion(context.Context, string) (int, error)
+	NewImage(context.Context, ImageRegistry, string, int) string
+	CurrentImage(context.Context, ImageRegistry, string) (string, error)
+	AppendImages(context.Context, string, int, []string) error
 	DeleteImages(context.Context, string) error
 	ListImages(context.Context, string) ([]string, error)
 	ListImagesOrDefault(context.Context, string) ([]string, error)
-	FindImage(context.Context, string, string) (string, error)
+	FindImage(context.Context, ImageRegistry, string, string) (string, error)
 }
 
 type PlatformImageStorage interface {
 	Upsert(context.Context, string) (*PlatformImage, error)
 	FindByName(context.Context, string) (*PlatformImage, error)
-	Append(context.Context, string, string) error
+	Append(context.Context, string, int, []string) error
 	Delete(context.Context, string) error
 }
 

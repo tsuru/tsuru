@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/tsuru/safe"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,6 +19,12 @@ import (
 func (s *S) TestPlatformBuild(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
+		c.Assert(plat, check.Equals, "myplatform")
+		c.Assert(version, check.Equals, 1)
+		return "tsuru/myplatform:v1"
+	}
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		containers := pod.Spec.Containers
@@ -40,11 +47,11 @@ func (s *S) TestPlatformBuild(c *check.C) {
 	})
 	opts := appTypes.PlatformOptions{
 		Name:      "myplatform",
-		ImageName: "tsuru/myplatform:v1",
+		Version:   1,
 		ExtraTags: []string{"latest"},
 		Data:      []byte("dockerfile data"),
 		Output:    &safe.Buffer{},
 	}
-	err := s.b.PlatformBuild(context.TODO(), opts)
+	_, err := s.b.PlatformBuild(context.TODO(), opts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }

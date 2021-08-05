@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -20,12 +21,27 @@ type appVersionImpl struct {
 	storage     appTypes.AppVersionStorage
 	app         appTypes.App
 	versionInfo *appTypes.AppVersionInfo
+	reg         imgTypes.ImageRegistry
+}
+
+func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, app appTypes.App, versionInfo *appTypes.AppVersionInfo) (*appVersionImpl, error) {
+	reg, err := app.GetRegistry()
+	if err != nil {
+		return nil, err
+	}
+	return &appVersionImpl{
+		ctx:         ctx,
+		storage:     storage,
+		app:         app,
+		versionInfo: versionInfo,
+		reg:         reg,
+	}, nil
 }
 
 var _ appTypes.AppVersion = &appVersionImpl{}
 
 func (v *appVersionImpl) BuildImageName() string {
-	return image.AppBuildImageName(v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())
+	return image.AppBuildImageName(v.reg, v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())
 }
 
 func (v *appVersionImpl) CommitBuildImage() error {
@@ -38,7 +54,7 @@ func (v *appVersionImpl) CommitBuildImage() error {
 }
 
 func (v *appVersionImpl) BaseImageName() string {
-	return fmt.Sprintf("%s:v%d", image.AppBasicImageName(v.app.GetName()), v.versionInfo.Version)
+	return fmt.Sprintf("%s:v%d", image.AppBasicImageName(v.reg, v.app.GetName()), v.versionInfo.Version)
 }
 
 func (v *appVersionImpl) CommitBaseImage() error {
