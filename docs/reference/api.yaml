@@ -3211,7 +3211,7 @@ paths:
         - Bearer: []
   /1.0/roles:
     post:
-      operationId: addRole
+      operationId: CreateRole
       description: create a role
       parameters:
         - name: role_name
@@ -3301,13 +3301,16 @@ paths:
           required: true
           in: path
           type: string
+        - name: PermissionData
+          required: true 
+          in: body 
+          schema:
+            $ref: "#/definitions/PermissionData"
       produces:
         - application/json
       responses:
         "200":
           description: Permission created.
-          schema:
-            $ref: "#/definitions/PermissionData"
         "400":
           description: Invalid data
           schema:
@@ -3318,6 +3321,34 @@ paths:
             $ref: "#/definitions/ErrorMessage"
         "409":
           description: Permission not a allowed
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/roles{role_name}/permissions/{permission}:
+    delete:
+      operationId: RemovePermission
+      description: remove a permission
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: permission
+          required: true
+          in: path
+          type: string
+      responses:
+        "200":
+          description: Permission removed.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Not found
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -3397,7 +3428,7 @@ paths:
       consumes:
         - application/json
       parameters:
-        - name: DefaultRoleAdd
+        - name: defaulRole
           required: true
           in: body
           schema:
@@ -4560,10 +4591,10 @@ definitions:
     properties:
       name:
         type: string
-      contexttype:
-        type: string
-      registry:
-        type: boolean
+      permission:
+        type: array
+        items:
+          type: string
   RoleAssignData:
     description: Assign a role
     type: object
@@ -4585,8 +4616,10 @@ definitions:
     properties:
       name:
         type: string
-      envname:
-        type: string
+      rolesmap:
+        type: object
+        additionalProperties:
+          type: string
   PermissionUser:
     description: Permission of an user.
     type: object
