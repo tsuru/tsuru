@@ -1054,6 +1054,7 @@ type runSinglePodArgs struct {
 	envs         []apiv1.EnvVar
 	name         string
 	image        string
+	requirements *apiv1.ResourceList
 	app          provision.App
 }
 
@@ -1085,6 +1086,13 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 		return err
 	}
 	enableServiceLinks := false
+	containerRequirements := apiv1.ResourceRequirements{}
+	if args.requirements != nil {
+		containerRequirements = apiv1.ResourceRequirements{
+			Limits:   *args.requirements,
+			Requests: *args.requirements,
+		}
+	}
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
@@ -1106,6 +1114,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 					Stdin:     true,
 					StdinOnce: true,
 					TTY:       tty,
+					Resources: containerRequirements,
 				},
 			},
 		},

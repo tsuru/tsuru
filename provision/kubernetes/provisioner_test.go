@@ -2156,7 +2156,7 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
-func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
+func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string]interface{}{
@@ -2188,6 +2188,17 @@ func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
 	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
 	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	podList, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(podList.Items, check.HasLen, 3)
+	// expectedResourceRequirements := &apiv1.ResourceList{
+	// 	apiv1.ResourceMemory: *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
+	// 	apiv1.ResourceCPU:    *resource.NewMilliQuantity(int64(a.GetMilliCPU()), resource.DecimalSI),
+	// }
+	// c.Assert(execPod.Spec.Containers[0].Resources.Limits, check.DeepEquals, expectedResourceRequirements)
+	// c.Assert(execPod.Spec.Containers[0].Resources.Requests, check.DeepEquals, expectedResourceRequirements)
 }
 
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {

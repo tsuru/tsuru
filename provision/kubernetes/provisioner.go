@@ -1587,7 +1587,9 @@ func (p *kubernetesProvisioner) ExecuteCommand(ctx context.Context, opts provisi
 		termSize: size,
 		tty:      opts.Stdin != nil,
 	}
-	if len(opts.Units) == 0 {
+
+	isIsolated := len(opts.Units) == 0
+	if isIsolated {
 		return runIsolatedCmdPod(ctx, client, eOpts)
 	}
 	for _, u := range opts.Units {
@@ -1626,6 +1628,17 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 	for _, envData := range appEnvs {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
+
+	var requirements *apiv1.ResourceList
+	memory := opts.app.GetMemory()
+	cpu := opts.app.GetMilliCPU()
+	if memory > 0 && cpu > 0 {
+		requirements = &apiv1.ResourceList{
+			apiv1.ResourceMemory: *resource.NewQuantity(memory, resource.BinarySI),
+			apiv1.ResourceCPU:    *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI),
+		}
+	}
+
 	return runPod(ctx, runSinglePodArgs{
 		client:       client,
 		eventsOutput: opts.eventsOutput,
@@ -1638,6 +1651,7 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		cmds:         opts.cmds,
 		envs:         envs,
 		name:         baseName,
+		requirements: requirements,
 		app:          opts.app,
 	})
 }
