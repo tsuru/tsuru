@@ -511,9 +511,9 @@ func (s *PlatformSuite) TestPlatformInfoDefaultImage(c *check.C) {
 
 func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	name := "myplatform"
-	imageName := "tsuru/myplatform:v1"
+	imageName := "tsuru/myplatform:v9"
 	s.mockService.Platform.OnRollback = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.ImageName, check.Equals, imageName)
+		c.Assert(opts.RollbackVersion, check.Equals, 9)
 		c.Assert(opts.Name, check.Equals, name)
 		return nil
 	}

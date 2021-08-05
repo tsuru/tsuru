@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -255,6 +256,8 @@ type App interface {
 	ListTags() []string
 
 	GetMetadata() appTypes.Metadata
+
+	GetRegistry() (imgTypes.ImageRegistry, error)
 }
 
 type BuilderDockerClient interface {
@@ -295,7 +298,7 @@ type InspectData struct {
 
 type BuilderKubeClient interface {
 	BuildPod(context.Context, App, *event.Event, io.Reader, appTypes.AppVersion) error
-	BuildImage(ctx context.Context, name string, images []string, inputStream io.Reader, output io.Writer) error
+	BuildPlatformImages(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error)
 	ImageTagPushAndInspect(context.Context, App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
 	DownloadFromContainer(context.Context, App, *event.Event, string) (io.ReadCloser, error)
 }
@@ -686,6 +689,10 @@ type NodeCheckResult struct {
 	Name       string
 	Err        string
 	Successful bool
+}
+
+type MultiRegistryProvisioner interface {
+	RegistryForApp(ctx context.Context, a App) (imgTypes.ImageRegistry, error)
 }
 
 type provisionerFactory func() (Provisioner, error)

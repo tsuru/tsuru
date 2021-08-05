@@ -40,6 +40,7 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -189,7 +190,7 @@ func (s *S) SetUpTest(c *check.C) {
 		return nil
 	}
 
-	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
+	s.mockService.PlatformImage.OnCurrentImage = func(reg imgTypes.ImageRegistry, name string) (string, error) {
 		return "tsuru/" + name + ":v1", nil
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()

@@ -15,7 +15,7 @@ var (
 type MockPlatformImageStorage struct {
 	OnUpsert     func(string) (*PlatformImage, error)
 	OnFindByName func(string) (*PlatformImage, error)
-	OnAppend     func(string, string) error
+	OnAppend     func(string, int, []string) error
 	OnDelete     func(string) error
 }
 
@@ -27,8 +27,8 @@ func (m *MockPlatformImageStorage) FindByName(ctx context.Context, name string) 
 	return m.OnFindByName(name)
 }
 
-func (m *MockPlatformImageStorage) Append(ctx context.Context, name, image string) error {
-	return m.OnAppend(name, image)
+func (m *MockPlatformImageStorage) Append(ctx context.Context, name string, version int, images []string) error {
+	return m.OnAppend(name, version, images)
 }
 
 func (m *MockPlatformImageStorage) Delete(ctx context.Context, name string) error {
@@ -37,34 +37,42 @@ func (m *MockPlatformImageStorage) Delete(ctx context.Context, name string) erro
 
 // MockPlatformImageService implements PlatformImageService interface
 type MockPlatformImageService struct {
-	OnNewImage            func(string) (string, error)
-	OnCurrentImage        func(string) (string, error)
-	OnAppendImage         func(string, string) error
+	OnNewVersion          func(string) (int, error)
+	OnNewImage            func(ImageRegistry, string, int) string
+	OnCurrentImage        func(ImageRegistry, string) (string, error)
+	OnAppendImages        func(string, int, []string) error
 	OnDeleteImages        func(string) error
 	OnListImages          func(string) ([]string, error)
 	OnListImagesOrDefault func(string) ([]string, error)
-	OnFindImage           func(string, string) (string, error)
+	OnFindImage           func(ImageRegistry, string, string) (string, error)
 }
 
-func (m *MockPlatformImageService) NewImage(ctx context.Context, platformName string) (string, error) {
+func (m *MockPlatformImageService) NewVersion(ctx context.Context, platformName string) (int, error) {
 	if m.OnNewImage == nil {
-		return "", nil
+		return 0, nil
 	}
-	return m.OnNewImage(platformName)
+	return m.OnNewVersion(platformName)
 }
 
-func (m *MockPlatformImageService) CurrentImage(ctx context.Context, platformName string) (string, error) {
+func (m *MockPlatformImageService) NewImage(ctx context.Context, reg ImageRegistry, platformName string, version int) string {
+	if m.OnNewImage == nil {
+		return ""
+	}
+	return m.OnNewImage(reg, platformName, version)
+}
+
+func (m *MockPlatformImageService) CurrentImage(ctx context.Context, reg ImageRegistry, platformName string) (string, error) {
 	if m.OnCurrentImage == nil {
 		return "", nil
 	}
-	return m.OnCurrentImage(platformName)
+	return m.OnCurrentImage(reg, platformName)
 }
 
-func (m *MockPlatformImageService) AppendImage(ctx context.Context, platformName, imageID string) error {
-	if m.OnAppendImage == nil {
+func (m *MockPlatformImageService) AppendImages(ctx context.Context, platformName string, version int, imageID []string) error {
+	if m.OnAppendImages == nil {
 		return nil
 	}
-	return m.OnAppendImage(platformName, imageID)
+	return m.OnAppendImages(platformName, version, imageID)
 }
 
 func (m *MockPlatformImageService) DeleteImages(ctx context.Context, platformName string) error {
@@ -88,9 +96,9 @@ func (m *MockPlatformImageService) ListImagesOrDefault(ctx context.Context, plat
 	return m.OnListImagesOrDefault(platformName)
 }
 
-func (m *MockPlatformImageService) FindImage(ctx context.Context, platformName, image string) (string, error) {
+func (m *MockPlatformImageService) FindImage(ctx context.Context, reg ImageRegistry, platformName, image string) (string, error) {
 	if m.OnFindImage == nil {
 		return image, nil
 	}
-	return m.OnFindImage(platformName, image)
+	return m.OnFindImage(reg, platformName, image)
 }

@@ -15,13 +15,14 @@ type Platform struct {
 }
 
 type PlatformOptions struct {
-	Name      string
-	ImageName string
-	ExtraTags []string
-	Args      map[string]string
-	Input     io.Reader
-	Output    io.Writer
-	Data      []byte
+	Name            string
+	Version         int
+	ExtraTags       []string
+	Args            map[string]string
+	Input           io.Reader
+	Output          io.Writer
+	Data            []byte
+	RollbackVersion int
 }
 
 type PlatformService interface {

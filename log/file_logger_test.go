@@ -29,11 +29,6 @@ func (s *FileLoggerSuite) SetUpTest(c *check.C) {
 	s.fl.logger = log.New(s.b, "", log.LstdFlags)
 }
 
-func (s *FileLoggerSuite) TestNewFileLoggerReturnsALogger(c *check.C) {
-	_, ok := s.l.(Logger)
-	c.Assert(ok, check.Equals, true)
-}
-
 func (s *FileLoggerSuite) TestNewWriterLogger(c *check.C) {
 	var buf bytes.Buffer
 	logger := NewWriterLogger(&buf, true)

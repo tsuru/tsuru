@@ -43,6 +43,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -1603,7 +1604,8 @@ func (s *S) TestUpdateAppPlatformWithVersion(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
-	s.mockService.PlatformImage.OnFindImage = func(name, image string) (string, error) {
+	s.mockService.PlatformImage.OnFindImage = func(reg imgTypes.ImageRegistry, name, image string) (string, error) {
+		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
 		c.Assert(name, check.Equals, "myplatform")
 		c.Assert(image, check.Equals, "v1")
 		return "tsuru/myplatform:v1", nil

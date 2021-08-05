@@ -104,7 +104,7 @@ type AppVersionService interface {
 	VersionByImageOrVersion(ctx context.Context, app App, image string) (AppVersion, error)
 	LatestSuccessfulVersion(ctx context.Context, app App) (AppVersion, error)
 	NewAppVersion(ctx context.Context, args NewVersionArgs) (AppVersion, error)
-	AppVersionFromInfo(context.Context, App, AppVersionInfo) AppVersion
+	AppVersionFromInfo(context.Context, App, AppVersionInfo) (AppVersion, error)
 }
 
 type AppVersionStorage interface {

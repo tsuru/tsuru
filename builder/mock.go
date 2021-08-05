@@ -17,7 +17,7 @@ var _ PlatformBuilder = &MockBuilder{}
 
 type MockBuilder struct {
 	OnBuild          func(provision.BuilderDeploy, provision.App, *event.Event, *BuildOpts) (appTypes.AppVersion, error)
-	OnPlatformBuild  func(appTypes.PlatformOptions) error
+	OnPlatformBuild  func(appTypes.PlatformOptions) ([]string, error)
 	OnPlatformRemove func(string) error
 }
 
@@ -28,9 +28,9 @@ func (b *MockBuilder) Build(ctx context.Context, p provision.BuilderDeploy, app 
 	return b.OnBuild(p, app, evt, opts)
 }
 
-func (b *MockBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
+func (b *MockBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	if b.OnPlatformBuild == nil {
-		return nil
+		return nil, nil
 	}
 	return b.OnPlatformBuild(opts)
 }

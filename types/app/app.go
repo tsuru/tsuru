@@ -7,6 +7,8 @@ package app
 import (
 	"context"
 	"net/url"
+
+	"github.com/tsuru/tsuru/types/app/image"
 )
 
 type App interface {
@@ -16,6 +18,7 @@ type App interface {
 	GetTeamsName() []string
 	GetPlatform() string
 	GetPlatformVersion() string
+	GetRegistry() (image.ImageRegistry, error)
 	GetDeploys() uint
 	GetUpdatePlatform() bool
 }

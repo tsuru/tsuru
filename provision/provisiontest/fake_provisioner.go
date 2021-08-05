@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -368,6 +369,10 @@ func (app *FakeApp) ListTags() []string {
 
 func (app *FakeApp) GetMetadata() appTypes.Metadata {
 	return app.Metadata
+}
+
+func (app *FakeApp) GetRegistry() (imgTypes.ImageRegistry, error) {
+	return "", nil
 }
 
 type Cmd struct {
