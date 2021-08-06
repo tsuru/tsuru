@@ -1054,7 +1054,7 @@ type runSinglePodArgs struct {
 	envs         []apiv1.EnvVar
 	name         string
 	image        string
-	requirements *apiv1.ResourceList
+	requirements apiv1.ResourceRequirements
 	app          provision.App
 }
 
@@ -1087,14 +1087,6 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	}
 
 	enableServiceLinks := false
-	containerRequirements := apiv1.ResourceRequirements{}
-	if args.requirements != nil {
-		containerRequirements = apiv1.ResourceRequirements{
-			Limits:   *args.requirements,
-			Requests: *args.requirements,
-		}
-	}
-
 	pod := &apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
@@ -1116,7 +1108,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 					Stdin:     true,
 					StdinOnce: true,
 					TTY:       tty,
-					Resources: containerRequirements,
+					Resources: args.requirements,
 				},
 			},
 		},
@@ -1337,4 +1329,29 @@ func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, 
 			"memory": memoryBytes,
 		},
 	}, nil
+}
+
+func getAppResourceRequirements(app provision.App, client *ClusterClient, overcommit int64) (apiv1.ResourceRequirements, error) {
+	resourceLimits := apiv1.ResourceList{}
+	resourceRequests := apiv1.ResourceList{}
+	memory := app.GetMemory()
+	if memory != 0 {
+		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
+		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
+	}
+	cpu := app.GetMilliCPU()
+	if cpu != 0 {
+		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI)
+		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu)/overcommit, resource.DecimalSI)
+	}
+	ephemeral, err := client.ephemeralStorage(app.GetPool())
+	if err != nil {
+		return apiv1.ResourceRequirements{}, err
+	}
+	if ephemeral.Value() > 0 {
+		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
+		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
+	}
+
+	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
 }
