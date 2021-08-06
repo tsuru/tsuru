@@ -3971,7 +3971,7 @@ func (s *S) TestAppAvailable(c *check.C) {
 	version := newSuccessfulAppVersion(c, &a)
 	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", version, nil)
 	c.Assert(a.available(), check.Equals, true)
-	s.provisioner.Stop(context.TODO(), &a, "", version)
+	s.provisioner.Stop(context.TODO(), &a, "", version, nil)
 	c.Assert(a.available(), check.Equals, false)
 }
 

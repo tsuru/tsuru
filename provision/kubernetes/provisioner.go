@@ -65,6 +65,7 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
 	defaultPreStopSleepSeconds                 = 10
+	pastUnitsAnnotationKey                     = "tsuru.io/past-units"
 )
 
 var defaultEphemeralStorageLimit = resource.MustParse("100Mi")
@@ -457,6 +458,212 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	return multiErr.ToError()
 }
 
+func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, annotations map[string]string) (types.PatchType, []byte, error) {
+	var patch []byte
+	var err error
+	switch len(annotations) {
+	case 0:
+		patch, err = json.Marshal([]interface{}{
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/replicas",
+				"value": newReplicas,
+			},
+			map[string]interface{}{
+				"op":   "add",
+				"path": "/metadata/annotations",
+				"value": map[string]string{
+					pastUnitsAnnotationKey: strconv.Itoa(oldReplicas),
+				},
+			},
+		})
+	default:
+		key := strings.Replace(pastUnitsAnnotationKey, "/", "~1", 1)
+		patch, err = json.Marshal([]interface{}{
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/spec/replicas",
+				"value": newReplicas,
+			},
+			map[string]interface{}{
+				"op":    "replace",
+				"path":  "/metadata/annotations/" + key,
+				"value": strconv.Itoa(oldReplicas),
+			},
+		})
+	}
+	if err != nil {
+		return "", nil, err
+	}
+
+	return types.JSONPatchType, patch, nil
+}
+
+func stopProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResourceSynced(ctx, client, a)
+	if err != nil {
+		return err
+	}
+
+	versions := []appTypes.AppVersion{}
+	if version == nil {
+		versions, err = versionsForAppProcess(ctx, client, a, process)
+		if err != nil {
+			return err
+		}
+	} else {
+		versions = append(versions, version)
+	}
+
+	for _, v := range versions {
+		var processes []string
+		if process == "" {
+			processes, err = allProcessesForVersion(v)
+			if err != nil {
+				return err
+			}
+		} else {
+			processes = []string{process}
+		}
+
+		for _, p := range processes {
+			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
+			if err != nil {
+				return err
+			}
+			if dep.Spec.Replicas == nil {
+				fmt.Fprintf(w, "process already stopped\n")
+				continue
+			}
+			patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
+			if err != nil {
+				return err
+			}
+			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
+	if s, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationKey]; ok {
+		return strconv.Atoi(s)
+	}
+	return 1, nil
+}
+
+func allProcessesForVersion(version appTypes.AppVersion) ([]string, error) {
+	processes := []string{}
+	allProcesses, err := version.Processes()
+	if err != nil {
+		return nil, err
+	}
+	for processName := range allProcesses {
+		processes = append(processes, processName)
+	}
+
+	return processes, nil
+}
+
+func startProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+	err = ensureAppCustomResourceSynced(ctx, client, a)
+	if err != nil {
+		return err
+	}
+
+	versions := []appTypes.AppVersion{}
+	if version == nil {
+		versions, err = versionsForAppProcess(ctx, client, a, process)
+		if err != nil {
+			return err
+		}
+	} else {
+		versions = append(versions, version)
+	}
+
+	for _, v := range versions {
+		var processes []string
+		if process == "" {
+			processes, err = allProcessesForVersion(v)
+			if err != nil {
+				return err
+			}
+		} else {
+			processes = []string{process}
+		}
+
+		for _, p := range processes {
+			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
+			if err != nil {
+				return err
+			}
+			newReplicas, err := parsePastUnitsAnnotation(dep, p)
+			if err != nil {
+				return err
+			}
+			patchType, patch, err := replicasPatch(newReplicas, p)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, p)
+			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+	newDep, err := client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	events, err := client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	_, err = monitorDeployment(ctx, client, newDep, a, process, w, events.ResourceVersion, version)
+	if err != nil {
+		if _, ok := err.(provision.ErrUnitStartup); ok {
+			return err
+		}
+		return provision.ErrUnitStartup{Err: err}
+	}
+	return nil
+}
+
+func ensureProcessName(processName string, version appTypes.AppVersion) (string, error) {
+	if processName == "" {
+		var cmdData dockercommon.ContainerCmdsData
+		cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
+		if err != nil {
+			return "", err
+		}
+		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+	}
+	return processName, nil
+}
+
 func changeUnits(ctx context.Context, a provision.App, units int, processName string, version appTypes.AppVersion, w io.Writer) error {
 	if units == 0 {
 		return errors.New("cannot change 0 units")
@@ -469,18 +676,11 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	if processName == "" {
-		var cmdData dockercommon.ContainerCmdsData
-		cmdData, err = dockercommon.ContainerCmdsDataFromVersion(version)
-		if err != nil {
-			return err
-		}
-		_, processName, err = dockercommon.ProcessCmdForVersion(processName, cmdData)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	process, err := ensureProcessName(processName, version)
+	if err != nil {
+		return err
 	}
-	dep, err := deploymentForVersion(ctx, client, a, processName, version.Version())
+	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
 	if k8sErrors.IsNotFound(err) {
 		return servicecommon.ChangeUnits(ctx, &serviceManager{
 			client: client,
@@ -498,34 +698,15 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if w == nil {
 		w = ioutil.Discard
 	}
+	patchType, patch, err := replicasPatch(newReplicas, processName)
+	if err != nil {
+		return err
+	}
 	fmt.Fprintf(w, "---- Patching from %d to %d units ----\n", *dep.Spec.Replicas, newReplicas)
-	patchType, patch, err := replicasPatch(newReplicas)
-	if err != nil {
-		return err
-	}
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return err
-	}
-	newDep, err := client.AppsV1().Deployments(ns).Patch(ctx, dep.Name, patchType, patch, metav1.PatchOptions{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	events, err := client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", ""))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	_, err = monitorDeployment(ctx, client, newDep, a, processName, w, events.ResourceVersion, version)
-	if err != nil {
-		if _, ok := err.(provision.ErrUnitStartup); ok {
-			return err
-		}
-		return provision.ErrUnitStartup{Err: err}
-	}
-	return nil
+	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, processName)
 }
 
-func replicasPatch(replicas int) (types.PatchType, []byte, error) {
+func replicasPatch(replicas int, process string) (types.PatchType, []byte, error) {
 	patch, err := json.Marshal([]interface{}{
 		map[string]interface{}{
 			"op":    "replace",
@@ -551,12 +732,12 @@ func (p *kubernetesProvisioner) Restart(ctx context.Context, a provision.App, pr
 	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true, Restart: true}, w)
 }
 
-func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true}, nil)
+func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	return startProcess(ctx, a, process, version, w)
 }
 
-func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, nil)
+func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
+	return stopProcess(ctx, a, process, version, w)
 }
 
 func (p *kubernetesProvisioner) Sleep(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {

@@ -839,7 +839,8 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
 		svcVersion := labels.AppVersion()
-		_, inUseProcess := processInUse[labels.AppProcess()]
+		process := labels.AppProcess()
+		_, inUseProcess := processInUse[process]
 		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
 
 		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
