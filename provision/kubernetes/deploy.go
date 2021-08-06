@@ -38,7 +38,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -655,25 +654,9 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
-	resourceLimits := apiv1.ResourceList{}
-	resourceRequests := apiv1.ResourceList{}
-	memory := a.GetMemory()
-	if memory != 0 {
-		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
-		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
-	}
-	cpu := a.GetMilliCPU()
-	if cpu != 0 {
-		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI)
-		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu)/overcommit, resource.DecimalSI)
-	}
-	ephemeral, err := client.ephemeralStorage(a.GetPool())
+	resourceRequirements, err := getAppResourceRequirements(a, client, overcommit)
 	if err != nil {
 		return nil, nil, err
-	}
-	if ephemeral.Value() > 0 {
-		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
-		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
 	}
 	volumes, mounts, err := createVolumesForApp(ctx, client, a)
 	if err != nil {
@@ -757,13 +740,10 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 							Env:            appEnvs(a, process, version, false),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
-							Resources: apiv1.ResourceRequirements{
-								Limits:   resourceLimits,
-								Requests: resourceRequests,
-							},
-							VolumeMounts: mounts,
-							Ports:        containerPorts,
-							Lifecycle:    &lifecycle,
+							Resources:      resourceRequirements,
+							VolumeMounts:   mounts,
+							Ports:          containerPorts,
+							Lifecycle:      &lifecycle,
 						},
 					},
 				},
