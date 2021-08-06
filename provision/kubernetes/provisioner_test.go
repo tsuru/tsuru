@@ -2293,7 +2293,8 @@ func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		shouldFail = false
-		ephemeral, err := s.clusterClient.ephemeralStorage(a.GetPool())
+		var ephemeral resource.Quantity
+		ephemeral, err = s.clusterClient.ephemeralStorage(a.GetPool())
 		c.Assert(err, check.IsNil)
 		expectedLimits := &apiv1.ResourceList{
 			apiv1.ResourceMemory:           *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
