@@ -1075,7 +1075,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
-        - certificate
+        - app
       security:
         - Bearer: []
   /1.0/apps/{app}/deploy:
@@ -3238,6 +3238,10 @@ paths:
           description: Role already exists
           schema:
             $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
     put:
       operationId: UpdateRole
       description: update a role
@@ -3366,13 +3370,16 @@ paths:
           required: true
           in: path
           type: string
+        - name: roleAssgin
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RoleAssignData"
       produces:
         - application/json
       responses:
         "200":
           description: Role assigned.
-          schema:
-            $ref: "#/definitions/RoleAssignData"
         "400":
           description: Invalid data.
           schema:
@@ -4569,7 +4576,9 @@ definitions:
     properties:
       name:
         type: string
-      contexttype:
+      contextType:
+        type: string
+      newName:
         type: string
       description:
         type: string
@@ -4601,25 +4610,24 @@ definitions:
     properties:
       name:
         type: string
-      email:
-        type: string
       contextvalue:
         type: string
-      user:
-        type: array
-        items:
-          type: object
-          $ref: "#/definitions/User"
+      roletarget:
+        type: string
+      sufix:
+        type: string
+      version:
+        type: string
   RoleDefaultData:
     description: Default a role
     type: object
     properties:
-      name:
-        type: string
       rolesmap:
         type: object
         additionalProperties:
-          type: string
+          type: array
+          items:
+            type: string
   PermissionUser:
     description: Permission of an user.
     type: object
