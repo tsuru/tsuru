@@ -2408,8 +2408,8 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "img1",
-		DeployInspectImage:                  "img2",
+		deploySidecarImage:                  "img1",
+		deployInspectImage:                  "img2",
 		APITimeout:                          10 * time.Second,
 		PodReadyTimeout:                     6 * time.Second,
 		PodRunningTimeout:                   2 * time.Minute,
@@ -2423,8 +2423,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.4",
-		DeployInspectImage:                  "tsuru/deploy-agent:0.8.4",
+		deploySidecarImage:                  "tsuru/deploy-agent:0.8.4",
+		deployInspectImage:                  "tsuru/deploy-agent:0.8.4",
 		APITimeout:                          60 * time.Second,
 		PodReadyTimeout:                     time.Minute,
 		PodRunningTimeout:                   10 * time.Minute,

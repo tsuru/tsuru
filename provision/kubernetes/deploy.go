@@ -198,10 +198,9 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 
 func createImageBuildPod(ctx context.Context, params createPodParams) error {
 	params.mainContainer = "build-cont"
-	kubeConf := getKubeConfig()
 	pod, err := newDeployAgentImageBuildPod(ctx, params.client, params.sourceImage, params.podName, deployAgentConfig{
 		name:              params.mainContainer,
-		image:             kubeConf.DeploySidecarImage,
+		image:             params.client.deploySidecarImage(),
 		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
 		destinationImages: params.destinationImages,
 		inputFile:         params.inputFile,
@@ -290,7 +289,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		}
 		pod, err := newDeployAgentPod(ctx, params, deployAgentConfig{
 			name:              params.mainContainer,
-			image:             kubeConf.DeploySidecarImage,
+			image:             params.client.deploySidecarImage(),
 			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
 			destinationImages: params.destinationImages,
 			inputFile:         params.inputFile,
@@ -1680,7 +1679,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		podName:     params.podName,
 	}, deployAgentConfig{
 		name:              inspectContainer,
-		image:             kubeConf.DeployInspectImage,
+		image:             params.client.deployInspectImage(),
 		cmd:               "cat >/dev/null && /bin/deploy-agent",
 		destinationImages: params.destinationImages,
 		sourceImage:       params.sourceImage,

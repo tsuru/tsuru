@@ -18,6 +18,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -64,6 +65,7 @@ const (
 	baseServicesAnnotations       = "base-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
+	sidecarRegistryKey            = "sidecar-registry"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	defaultLogsFromAPIServer      = false
@@ -93,6 +95,7 @@ var (
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
+		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
 	}
 )
 
@@ -520,6 +523,35 @@ func (c *ClusterClient) DisablePlatformBuild() bool {
 	}
 	d, _ := strconv.ParseBool(disable)
 	return d
+}
+
+func (c *ClusterClient) sideCarImage(imgName string) string {
+	if c.CustomData == nil {
+		return imgName
+	}
+	newRepo, ok := c.CustomData[sidecarRegistryKey]
+	if !ok {
+		return imgName
+	}
+	_, img, tag := image.ParseImageParts(imgName)
+	if tag == "" {
+		tag = "latest"
+	}
+	fullImg := fmt.Sprintf("%s:%s", img, tag)
+	if newRepo != "" {
+		fullImg = fmt.Sprintf("%s/%s", newRepo, fullImg)
+	}
+	return fullImg
+}
+
+func (c *ClusterClient) deploySidecarImage() string {
+	conf := getKubeConfig()
+	return c.sideCarImage(conf.deploySidecarImage)
+}
+
+func (c *ClusterClient) deployInspectImage() string {
+	conf := getKubeConfig()
+	return c.sideCarImage(conf.deployInspectImage)
 }
 
 func (c *ClusterClient) configForContext(context, key string) string {

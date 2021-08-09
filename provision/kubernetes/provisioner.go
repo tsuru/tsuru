@@ -115,8 +115,8 @@ func GetProvisioner() *kubernetesProvisioner {
 
 type kubernetesConfig struct {
 	LogLevel           int
-	DeploySidecarImage string
-	DeployInspectImage string
+	deploySidecarImage string
+	deployInspectImage string
 	APITimeout         time.Duration
 	// PodReadyTimeout is the timeout for a pod to become ready after already
 	// running.
@@ -141,13 +141,13 @@ type kubernetesConfig struct {
 func getKubeConfig() kubernetesConfig {
 	conf := kubernetesConfig{}
 	conf.LogLevel, _ = config.GetInt("kubernetes:log-level")
-	conf.DeploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
-	if conf.DeploySidecarImage == "" {
-		conf.DeploySidecarImage = defaultSidecarImageName
+	conf.deploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
+	if conf.deploySidecarImage == "" {
+		conf.deploySidecarImage = defaultSidecarImageName
 	}
-	conf.DeployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
-	if conf.DeployInspectImage == "" {
-		conf.DeployInspectImage = defaultSidecarImageName
+	conf.deployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
+	if conf.deployInspectImage == "" {
+		conf.deployInspectImage = defaultSidecarImageName
 	}
 	apiTimeout, _ := config.GetFloat("kubernetes:api-timeout")
 	if apiTimeout != 0 {
