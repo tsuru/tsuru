@@ -352,9 +352,6 @@ func registryAuth(img string) registryAuthConfig {
 	}
 	username, _ := config.GetString("docker:registry-auth:username")
 	password, _ := config.GetString("docker:registry-auth:password")
-	if len(username) == 0 && len(password) == 0 {
-		return registryAuthConfig{}
-	}
 	insecure, _ := config.GetBool("docker:registry-auth:insecure")
 	return registryAuthConfig{
 		username:  username,
