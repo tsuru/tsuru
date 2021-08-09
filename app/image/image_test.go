@@ -56,6 +56,7 @@ func (s *S) TestParseImageParts(c *check.C) {
 		{"registry:5000/app-img:v1", "registry:5000", "app-img", "v1"},
 		{"registry.io/app-img:v1", "registry.io", "app-img", "v1"},
 		{"localhost/app-img:v1", "localhost", "app-img", "v1"},
+		{"registry.io/a/b/c/app-img:v1", "registry.io", "a/b/c/app-img", "v1"},
 	}
 
 	for _, t := range tt {
