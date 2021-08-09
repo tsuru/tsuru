@@ -4426,7 +4426,7 @@ func (s *S) TestShellToUnit(c *check.C) {
 	allExecs := s.provisioner.AllExecs()
 	c.Assert(allExecs, check.HasLen, 1)
 	c.Assert(allExecs[unit.GetID()], check.HasLen, 1)
-	c.Assert(allExecs[unit.GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; [ -x /bin/bash ] && /bin/bash -l || sh -l"})
+	c.Assert(allExecs[unit.GetID()][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; [ $(command -v bash) ] && bash -l || sh -l"})
 }
 
 func (s *S) TestShellNoUnits(c *check.C) {
@@ -4449,7 +4449,7 @@ func (s *S) TestShellNoUnits(c *check.C) {
 	allExecs := s.provisioner.AllExecs()
 	c.Assert(allExecs, check.HasLen, 1)
 	c.Assert(allExecs["isolated"], check.HasLen, 1)
-	c.Assert(allExecs["isolated"][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; [ -x /bin/bash ] && /bin/bash -l || sh -l"})
+	c.Assert(allExecs["isolated"][0].Cmds, check.DeepEquals, []string{"/bin/sh", "-c", "[ -f /home/application/apprc ] && source /home/application/apprc; [ -d /home/application/current ] && cd /home/application/current; [ $(command -v bash) ] && bash -l || sh -l"})
 }
 
 func (s *S) TestSetCertificateForApp(c *check.C) {
