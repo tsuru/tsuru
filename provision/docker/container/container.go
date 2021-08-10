@@ -497,7 +497,8 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 
 	pidsLimit, _ := config.GetInt("docker:pids-limit")
 	if pidsLimit > 0 {
-		hostConfig.PidsLimit = int64(pidsLimit)
+		limit := int64(pidsLimit)
+		hostConfig.PidsLimit = &limit
 	}
 
 	return &hostConfig, nil

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ajg/form"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
@@ -101,6 +102,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	form.DefaultEncoder = form.DefaultEncoder.UseJSONTags(false)
 	app.TestLogWriterWaitOnClose = true
 	rand.Seed(time.Now().UnixNano())
 	err := config.ReadConfigFile("testdata/config.yaml")

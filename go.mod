@@ -3,7 +3,6 @@ module github.com/tsuru/tsuru
 go 1.12
 
 require (
-	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
@@ -14,24 +13,21 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/codegangsta/cli v1.19.1 // indirect
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
-	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
-	github.com/docker/docker v20.10.2+incompatible
-	github.com/docker/go-connections v0.4.0 // indirect
-	github.com/docker/libnetwork v0.8.0-dev.2.0.20180706232811-d00ceed44cc4 // indirect
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/exoscale/egoscale v0.9.23 // indirect
 	github.com/felixge/fgprof v0.9.1
-	github.com/fsouza/go-dockerclient v0.0.0-20180427001620-3a206030a28a
+	github.com/fsouza/go-dockerclient v1.7.3
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/google/go-querystring v0.0.0-20150414214848-547ef5ac9797 // indirect
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
-	github.com/gorilla/mux v1.7.0
+	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
@@ -40,9 +36,6 @@ require (
 	github.com/kr/pretty v0.2.0
 	github.com/mattn/go-shellwords v1.0.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opentracing-contrib/go-stdlib v1.0.1-0.20201028152118-adbfc141dfc2
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
@@ -62,8 +55,6 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/ugorji/go/codec v1.1.7
-	github.com/vishvananda/netlink v1.0.0 // indirect
-	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	github.com/vmware/govcloudair v0.0.2 // indirect
 	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
 	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420

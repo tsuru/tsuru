@@ -365,7 +365,8 @@ func (p *dockerProvisioner) runCommandInContainer(ctx context.Context, version a
 	}
 	pidsLimit, _ := config.GetInt("docker:pids-limit")
 	if pidsLimit > 0 {
-		createOptions.HostConfig.PidsLimit = int64(pidsLimit)
+		limit := int64(pidsLimit)
+		createOptions.HostConfig.PidsLimit = &limit
 	}
 	cluster := p.Cluster()
 	schedOpts := &container.SchedulerOpts{
