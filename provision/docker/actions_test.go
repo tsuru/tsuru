@@ -176,7 +176,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(cont.HostAddr, check.Equals, "127.0.0.1")
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	cc, err := dcli.InspectContainer(cont.ID)
+	cc, err := dcli.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
 	c.Assert(cc.Config.User, check.Equals, "ubuntu")
@@ -193,7 +193,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cont = r.(*container.Container)
 	defer cont.Remove(s.p.ClusterClient(), s.p.ActionLimiter())
-	cc, err = dcli.InspectContainer(cont.ID)
+	cc, err = dcli.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.Config.User, check.Equals, "")
 }
@@ -209,7 +209,7 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	}
 	context := action.BWContext{FWResult: conta, Params: []interface{}{args}}
 	createContainer.Backward(context)
-	_, err = dcli.InspectContainer(conta.ID)
+	_, err = dcli.InspectContainerWithOptions(docker.InspectContainerOptions{ID: conta.ID})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.FitsTypeOf, &docker.NoSuchContainer{})
 }
@@ -708,7 +708,7 @@ func (s *S) TestStartContainerBackward(c *check.C) {
 		provisioner: s.p,
 	}}}
 	startContainer.Backward(context)
-	cc, err := dcli.InspectContainer(conta.ID)
+	cc, err := dcli.InspectContainerWithOptions(docker.InspectContainerOptions{ID: conta.ID})
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
 }
