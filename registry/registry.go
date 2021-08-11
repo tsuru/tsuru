@@ -114,6 +114,9 @@ func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (strin
 	if resp.StatusCode == http.StatusNotFound {
 		return "", ErrDigestNotFound
 	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", errors.Errorf("invalid status reading manifest for %v:%v: %v", image, tag, resp.StatusCode)
+	}
 	digest := resp.Header.Get("Docker-Content-Digest")
 	if digest == "" {
 		return "", errors.Errorf("empty digest returned for image %v:%v", image, tag)
@@ -183,7 +186,10 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 	}
 	authHeaders := registryAuth(server)
 	if r.client == nil {
-		r.client = tsuruNet.Dial15Full300ClientNoKeepAlive
+		r.client, err = tsuruNet.WithProxyFromConfig(*tsuruNet.Dial15Full300ClientNoKeepAlive, server)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, scheme := range []string{"https", "http"} {
 		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)

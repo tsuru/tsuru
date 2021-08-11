@@ -6,10 +6,13 @@ package net
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/tsuru/config"
 )
 
 func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int, followRedirects bool) *http.Client {
@@ -89,7 +92,27 @@ func ProxyTransport(proxyURL string) (*http.Transport, error) {
 	if err != nil {
 		return nil, err
 	}
+	if u.Host == "" {
+		u = &url.URL{Host: proxyURL, Scheme: "http"}
+	}
 	return &http.Transport{
 		Proxy: http.ProxyURL(u),
 	}, nil
+}
+
+func WithProxyFromConfig(cli http.Client, dstHostOrURL string) (*http.Client, error) {
+	proxyURL, ok := proxyFromConfig(dstHostOrURL)
+	if !ok {
+		return &cli, nil
+	}
+	return WithProxy(cli, proxyURL)
+}
+
+func proxyFromConfig(dstHostOrURL string) (string, bool) {
+	host := URLToHost(dstHostOrURL)
+	proxyURL, err := config.GetString(fmt.Sprintf("proxy:%s", host))
+	if err != nil || proxyURL == "" {
+		return "", false
+	}
+	return proxyURL, true
 }

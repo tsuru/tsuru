@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tsuru/config"
 	check "gopkg.in/check.v1"
 )
 
@@ -111,4 +112,21 @@ func (s *S) TestClient(c *check.C) {
 
 		fmt.Println(testCase.name, "OK")
 	}
+}
+
+func (s *S) TestProxyFromConfig(c *check.C) {
+	config.Set("proxy:gcr.io", "my.proxy:8123")
+	defer config.Unset("proxy")
+
+	proxy, ok := proxyFromConfig("gcr.io")
+	c.Assert(proxy, check.Equals, "my.proxy:8123")
+	c.Assert(ok, check.Equals, true)
+
+	proxy, ok = proxyFromConfig("other.io")
+	c.Assert(proxy, check.Equals, "")
+	c.Assert(ok, check.Equals, false)
+
+	proxy, ok = proxyFromConfig("http://gcr.io/xyz")
+	c.Assert(proxy, check.Equals, "my.proxy:8123")
+	c.Assert(ok, check.Equals, true)
 }

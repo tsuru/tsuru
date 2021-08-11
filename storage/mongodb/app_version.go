@@ -311,17 +311,20 @@ func (s *appVersionStorage) DeleteVersionIDs(ctx context.Context, appName string
 	if err != nil {
 		return errors.WithMessage(err, "failed to generate uuid v4")
 	}
-	unset := bson.M{}
-	for _, version := range versions {
-		unset[fmt.Sprintf("versions.%d", version)] = ""
-	}
-	return s.baseUpdate(ctx, appName, bson.M{
-		"$unset": unset,
+	fullChange := bson.M{
 		"$set": bson.M{
 			"updatedat":   time.Now().UTC(),
 			"updatedhash": uuidV4.String(),
 		},
-	}, opts...)
+	}
+	unset := bson.M{}
+	for _, version := range versions {
+		unset[fmt.Sprintf("versions.%d", version)] = ""
+	}
+	if len(unset) > 0 {
+		fullChange["$unset"] = unset
+	}
+	return s.baseUpdate(ctx, appName, fullChange, opts...)
 }
 
 func (s *appVersionStorage) MarkToRemoval(ctx context.Context, appName string, opts ...*appTypes.AppVersionWriteOptions) error {
