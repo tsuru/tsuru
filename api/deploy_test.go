@@ -971,7 +971,8 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
-	c.Assert(result[0].Image, check.Equals, "v2")
+	c.Assert(result[0].Image, check.Equals, "registry.tsuru.globoi.com/tsuru/app-example:v2")
+	c.Assert(result[0].Version, check.Equals, 2)
 	c.Assert(result[0].App, check.Equals, "myblog")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.In(time.UTC))
 }
