@@ -121,8 +121,8 @@ func (s *S) TestListAppDeploysWithImage(c *check.C) {
 		{App: "g1", Timestamp: time.Now(), Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"},
 	}
 	expectedDeploy := []DeployData{
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "v2"},
-		{App: "g1", Timestamp: time.Now(), Image: "v1"},
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "registry.somewhere/tsuru/app-example:v2", Version: 2},
+		{App: "g1", Timestamp: time.Now(), Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", Version: 1},
 	}
 	insertDeploysAsEvents(insert, c)
 	expected := []DeployData{expectedDeploy[1], expectedDeploy[0]}
@@ -195,7 +195,8 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	insertDeploysAsEvents(insert, c)
 	expected := []DeployData{insert[1], insert[0]}
 	expected[0].CanRollback = true
-	expected[0].Image = fmt.Sprintf("v%d", version.Version())
+	expected[0].Image = "registry.somewhere/tsuru/app-ge:v1"
+	expected[0].Version = version.Version()
 	normalizeTS(expected)
 	f := &Filter{}
 	f.ExtraIn("teams", team.Name)
