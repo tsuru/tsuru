@@ -36,7 +36,7 @@ func backendConfigNameForApp(a provision.App, process string) string {
 }
 
 func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision.App, processName string, hc *provTypes.TsuruYamlHealthcheck) (bool, error) {
-	if hc == nil {
+	if hc == nil || hc.Path == "" {
 		return false, nil
 	}
 	crdExists := false
