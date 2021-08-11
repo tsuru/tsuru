@@ -86,9 +86,11 @@ var (
 type gcpAuthProvider struct {
 	tokenSource oauth2.TokenSource
 	persister   restclient.AuthProviderConfigPersister
+	hasProxy    bool
 }
 
 func newGCPAuthProvider(_ string, gcpConfig map[string]string, persister restclient.AuthProviderConfigPersister) (restclient.AuthProvider, error) {
+	explicitProxy := gcpConfig["http-proxy"] != ""
 	ts, err := tokenSource(gcpConfig)
 	if err != nil {
 		return nil, err
@@ -97,7 +99,7 @@ func newGCPAuthProvider(_ string, gcpConfig map[string]string, persister restcli
 	if err != nil {
 		return nil, err
 	}
-	return &gcpAuthProvider{cts, persister}, nil
+	return &gcpAuthProvider{cts, persister, explicitProxy}, nil
 }
 
 func tokenSource(gcpConfig map[string]string) (oauth2.TokenSource, error) {
@@ -113,15 +115,15 @@ func tokenSource(gcpConfig map[string]string) (oauth2.TokenSource, error) {
 
 	httpProxy := gcpConfig["http-proxy"]
 	ctx := context.Background()
+	client := tsuruNet.Dial15Full60ClientNoKeepAlive
 	if httpProxy != "" {
-		client := tsuruNet.Dial15Full60ClientNoKeepAlive
-		client, err := tsuruNet.WithProxy(*client, httpProxy)
+		var err error
+		client, err = tsuruNet.WithProxy(*client, httpProxy)
 		if err != nil {
 			return nil, err
 		}
-
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
 	}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
 
 	ts, err := google.DefaultTokenSource(ctx, scopes...)
 	if err != nil {
@@ -150,7 +152,12 @@ func (g *gcpAuthProvider) WrapTransport(rt http.RoundTripper) http.RoundTripper 
 	} else {
 		resetCache = make(map[string]string)
 	}
-	return &conditionalTransport{&oauth2.Transport{Source: g.tokenSource, Base: rt}, g.persister, resetCache}
+	return &conditionalTransport{
+		oauthTransport: &oauth2.Transport{Source: g.tokenSource, Base: rt},
+		persister:      g.persister,
+		resetCache:     resetCache,
+		hasProxy:       g.hasProxy,
+	}
 }
 
 func (g *gcpAuthProvider) Login() error { return nil }
@@ -240,16 +247,26 @@ type conditionalTransport struct {
 	oauthTransport *oauth2.Transport
 	persister      restclient.AuthProviderConfigPersister
 	resetCache     map[string]string
+	hasProxy       bool
 }
 
 var _ net.RoundTripperWrapper = &conditionalTransport{}
 
 func (t *conditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if len(req.Header.Get("Authorization")) != 0 {
-		return t.oauthTransport.Base.RoundTrip(req)
+	transport := *t.oauthTransport
+	if !t.hasProxy {
+		newCli, err := tsuruNet.WithProxyFromConfig(http.Client{Transport: transport.Base}, req.URL.Host)
+		if err != nil {
+			return nil, err
+		}
+		transport.Base = newCli.Transport
 	}
 
-	res, err := t.oauthTransport.RoundTrip(req)
+	if len(req.Header.Get("Authorization")) != 0 {
+		return transport.Base.RoundTrip(req)
+	}
+
+	res, err := transport.RoundTrip(req)
 
 	if err != nil {
 		return nil, err
