@@ -514,7 +514,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts = filterGCEvents(evts)
 	c.Assert(evts, check.HasLen, 1)
-	if !c.Check(strings.Contains(evts[0].Error, "empty digest returned for image"), check.Equals, true) {
+	if !c.Check(strings.Contains(evts[0].Error, "invalid status reading manifest for tsuru/app-myapp:v2: 500"), check.Equals, true) {
 		fmt.Println(evts[0].Error)
 	}
 
