@@ -745,6 +745,40 @@ func deploymentForVersion(ctx context.Context, client *ClusterClient, a provisio
 	return depsData[0].dep, nil
 }
 
+func filterEachDeploymentVersion(ctx context.Context, client *ClusterClient, a provision.App, process string, version appTypes.AppVersion, fn func(deploymentInfo, appTypes.AppVersion) error) error {
+	versions := []appTypes.AppVersion{}
+	if version == nil {
+		var err error
+		versions, err = versionsForAppProcess(ctx, client, a, process)
+		if err != nil {
+			return err
+		}
+	} else {
+		versions = append(versions, version)
+	}
+
+	groupedDeps, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return err
+	}
+	for _, version := range versions {
+		depInfos, ok := groupedDeps.versioned[version.Version()]
+		if !ok {
+			continue
+		}
+		for _, depInfo := range depInfos {
+			if process != "" && depInfo.process != process {
+				continue
+			}
+			err = fn(depInfo, version)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func cleanupSingleDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment) error {
 	err := client.AppsV1().Deployments(dep.Namespace).Delete(ctx, dep.Name, metav1.DeleteOptions{
 		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),

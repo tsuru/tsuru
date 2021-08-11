@@ -511,47 +511,22 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 		return err
 	}
 
-	versions := []appTypes.AppVersion{}
-	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process)
+	return filterEachDeploymentVersion(ctx, client, a, process, version, func(depInfo deploymentInfo, version appTypes.AppVersion) error {
+		dep := depInfo.dep
+		if dep.Spec.Replicas == nil || *dep.Spec.Replicas == 0 {
+			fmt.Fprintf(w, "process already stopped\n")
+			return nil
+		}
+		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
 		if err != nil {
 			return err
 		}
-	} else {
-		versions = append(versions, version)
-	}
-
-	for _, v := range versions {
-		var processes []string
-		if process == "" {
-			processes, err = allProcessesForVersion(v)
-			if err != nil {
-				return err
-			}
-		} else {
-			processes = []string{process}
+		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, depInfo.process)
+		if err != nil {
+			return err
 		}
-
-		for _, p := range processes {
-			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
-			if err != nil {
-				return err
-			}
-			if dep.Spec.Replicas == nil {
-				fmt.Fprintf(w, "process already stopped\n")
-				continue
-			}
-			patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
-			if err != nil {
-				return err
-			}
-			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
@@ -559,19 +534,6 @@ func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, erro
 		return strconv.Atoi(s)
 	}
 	return 1, nil
-}
-
-func allProcessesForVersion(version appTypes.AppVersion) ([]string, error) {
-	processes := []string{}
-	allProcesses, err := version.Processes()
-	if err != nil {
-		return nil, err
-	}
-	for processName := range allProcesses {
-		processes = append(processes, processName)
-	}
-
-	return processes, nil
 }
 
 func startProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
@@ -584,48 +546,23 @@ func startProcess(ctx context.Context, a provision.App, process string, version 
 		return err
 	}
 
-	versions := []appTypes.AppVersion{}
-	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process)
+	return filterEachDeploymentVersion(ctx, client, a, process, version, func(depInfo deploymentInfo, version appTypes.AppVersion) error {
+		dep := depInfo.dep
+		newReplicas, err := parsePastUnitsAnnotation(dep, depInfo.process)
 		if err != nil {
 			return err
 		}
-	} else {
-		versions = append(versions, version)
-	}
-
-	for _, v := range versions {
-		var processes []string
-		if process == "" {
-			processes, err = allProcessesForVersion(v)
-			if err != nil {
-				return err
-			}
-		} else {
-			processes = []string{process}
+		patchType, patch, err := replicasPatch(newReplicas, depInfo.process)
+		if err != nil {
+			return err
 		}
-
-		for _, p := range processes {
-			dep, err := deploymentForVersion(ctx, client, a, p, v.Version())
-			if err != nil {
-				return err
-			}
-			newReplicas, err := parsePastUnitsAnnotation(dep, p)
-			if err != nil {
-				return err
-			}
-			patchType, patch, err := replicasPatch(newReplicas, p)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, p)
-			err = patchDeployment(ctx, client, a, patchType, patch, dep, v, w, p)
-			if err != nil {
-				return err
-			}
+		fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, depInfo.process)
+		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, depInfo.process)
+		if err != nil {
+			return err
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
