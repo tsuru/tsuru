@@ -227,6 +227,11 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 		if err != nil {
 			return err
 		}
+	} else {
+		client, err = tsuruNet.WithProxyFromConfig(*client, hook.URL)
+		if err != nil {
+			return err
+		}
 	}
 	reqStart := time.Now()
 	rsp, err := client.Do(req)

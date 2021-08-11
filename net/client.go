@@ -72,7 +72,7 @@ func insecure(client *http.Client) *http.Client {
 }
 
 func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
-	newTransport, err := ProxyTransport(proxyURL)
+	newTransport, err := proxyTransport(proxyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func WithProxy(cli http.Client, proxyURL string) (*http.Client, error) {
 	return &cli, nil
 }
 
-func ProxyTransport(proxyURL string) (*http.Transport, error) {
+func proxyTransport(proxyURL string) (*http.Transport, error) {
 	u, err := url.Parse(proxyURL)
 	if err != nil {
 		return nil, err
