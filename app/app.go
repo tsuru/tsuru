@@ -93,6 +93,8 @@ const (
 
 	TsuruServicesEnvVar = "TSURU_SERVICES"
 	defaultAppDir       = "/home/application/current"
+
+	routerNone = "none"
 )
 
 // App is the main type in tsuru. An app represents a real world application.
@@ -406,6 +408,11 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 
 func (app *App) configureCreateRouters() error {
 	if len(app.Routers) > 0 {
+		return nil
+	}
+	if app.Router == routerNone {
+		app.Router = ""
+		app.RouterOpts = nil
 		return nil
 	}
 	var err error
