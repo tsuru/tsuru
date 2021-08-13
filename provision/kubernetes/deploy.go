@@ -792,8 +792,10 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion)
-
+			toKeep := (depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion))
+			if _, ok := depData.dep.Annotations[pastUnitsAnnotationKey]; ok {
+				toKeep = true
+			}
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{process: depData.process, version: depData.version}] = struct{}{}
@@ -850,6 +852,21 @@ func (m *serviceManager) RemoveService(ctx context.Context, a provision.App, pro
 	return multiErrors.ToError()
 }
 
+func consumePastUnitsAnnotation(replicas *int32, dep *appsv1.Deployment) (*int32, error) {
+	if replicas == nil {
+		replicas = new(int32)
+	}
+	if pastReplicas, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationKey]; ok {
+		intReplicas, err := strconv.Atoi(pastReplicas)
+		if err != nil {
+			return nil, err
+		}
+		*replicas = int32(intReplicas)
+	}
+
+	return replicas, nil
+}
+
 func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, process string, versionNumber int) (*provision.LabelSet, *int32, error) {
 	dep, err := deploymentForVersion(ctx, m.client, a, process, versionNumber)
 	if err != nil {
@@ -860,7 +877,13 @@ func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, pro
 	}
 	depLabels := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
 	podLabels := labelOnlySetFromMetaPrefix(&dep.Spec.Template.ObjectMeta, false)
-	return depLabels.Merge(podLabels), dep.Spec.Replicas, nil
+
+	replicas, err := consumePastUnitsAnnotation(dep.Spec.Replicas, dep)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return depLabels.Merge(podLabels), replicas, nil
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"

@@ -529,42 +529,6 @@ func stopProcess(ctx context.Context, a provision.App, process string, version a
 	})
 }
 
-func parsePastUnitsAnnotation(dep *appsv1.Deployment, process string) (int, error) {
-	if s, ok := dep.ObjectMeta.Annotations[pastUnitsAnnotationKey]; ok {
-		return strconv.Atoi(s)
-	}
-	return 1, nil
-}
-
-func startProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	client, err := clusterForPool(ctx, a.GetPool())
-	if err != nil {
-		return err
-	}
-	err = ensureAppCustomResourceSynced(ctx, client, a)
-	if err != nil {
-		return err
-	}
-
-	return filterEachDeploymentVersion(ctx, client, a, process, version, func(depInfo deploymentInfo, version appTypes.AppVersion) error {
-		dep := depInfo.dep
-		newReplicas, err := parsePastUnitsAnnotation(dep, depInfo.process)
-		if err != nil {
-			return err
-		}
-		patchType, patch, err := replicasPatch(newReplicas, depInfo.process)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(w, "---- Starting %d units of process %s ----\n", newReplicas, depInfo.process)
-		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, depInfo.process)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-}
-
 func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
@@ -672,7 +636,7 @@ func (p *kubernetesProvisioner) Restart(ctx context.Context, a provision.App, pr
 }
 
 func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	return startProcess(ctx, a, process, version, w)
+	return changeState(ctx, a, process, version, servicecommon.ProcessState{Start: true}, w)
 }
 
 func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
