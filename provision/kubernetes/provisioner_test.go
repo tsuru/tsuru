@@ -624,14 +624,6 @@ func (s *S) TestUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil)
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
@@ -653,6 +645,44 @@ func (s *S) TestUnits(c *check.C) {
 	}
 	restarts := int32(0)
 	ready := false
+	expected := []provision.Unit{
+		{
+			AppName:     "myapp",
+			ProcessName: "web",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Version:     1,
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+				{Scheme: "http", Host: "192.168.99.1:30003"},
+			},
+			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
+		},
+		{
+			AppName:     "myapp",
+			ProcessName: "worker",
+			Type:        "python",
+			IP:          "192.168.99.1",
+			Status:      "started",
+			Version:     1,
+			Address:     &url.URL{Scheme: "http", Host: "192.168.99.1:30001"},
+			Addresses: []url.URL{
+				{Scheme: "http", Host: "192.168.99.1:30001"},
+				{Scheme: "http", Host: "192.168.99.1:30002"},
+				{Scheme: "http", Host: "192.168.99.1:30003"},
+			},
+			Routable: true,
+			Restarts: &restarts,
+			Ready:    &ready,
+		},
+	}
+	fmt.Printf("\n%+v\n", units)
+	fmt.Printf("\n%+v\n", expected)
 	c.Assert(units, check.DeepEquals, []provision.Unit{
 		{
 			AppName:     "myapp",
