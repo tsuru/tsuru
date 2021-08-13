@@ -40,6 +40,7 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -623,7 +624,16 @@ func (s *S) TestUnits(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err = s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err := s.p.Units(context.TODO(), a)
@@ -838,7 +848,16 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -871,7 +890,16 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -903,7 +931,16 @@ func (s *S) TestUnitsStarting(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -939,7 +976,16 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
@@ -1170,21 +1216,31 @@ func (s *S) TestStopStart(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.Stop(context.TODO(), a, "", version)
+	err = s.p.Stop(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Annotations, check.DeepEquals, map[string]string{"tsuru.io/past-units": "2"})
+	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "tsuru.io/app-name=myapp",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(svcs.Items), check.Equals, 3)
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(context.TODO(), a, "", version)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
+	c.Assert(units, check.HasLen, 2)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
@@ -2101,40 +2157,6 @@ func (s *S) TestExecuteCommandWithStdinNoSize(c *check.C) {
 	c.Assert(s.mock.Stream["myapp-web"].Urls[0].Query()["command"], check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "mycmd", "arg1"})
 }
 
-func (s *S) TestExecuteCommandWithStdinNoUnits(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	err := s.p.AddUnits(context.TODO(), a, 2, "web", version, nil)
-	c.Assert(err, check.IsNil)
-	wait()
-	buf := safe.NewBuffer([]byte("echo test"))
-	conn := &provisiontest.FakeConn{Buf: buf}
-	s.mock.HandleSize = true
-	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
-		App:    a,
-		Stdin:  conn,
-		Stdout: conn,
-		Stderr: conn,
-		Width:  99,
-		Height: 42,
-		Term:   "xterm",
-	})
-	rollback()
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(s.mock.Stream["myapp-isolated-run"].Stdin, check.Equals, "echo test")
-	var sz remotecommand.TerminalSize
-	err = json.Unmarshal([]byte(s.mock.Stream["myapp-isolated-run"].Resize), &sz)
-	c.Assert(err, check.IsNil)
-	c.Assert(sz, check.DeepEquals, remotecommand.TerminalSize{Width: 99, Height: 42})
-	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls, check.HasLen, 1)
-	c.Assert(s.mock.Stream["myapp-isolated-run"].Urls[0].Path, check.DeepEquals, "/api/v1/namespaces/default/pods/myapp-isolated-run/attach")
-}
-
 func (s *S) TestExecuteCommandUnitNotFound(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -2255,6 +2277,51 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 	})
 }
 
+func (s *S) TestExecuteCommandNoUnitsCheckPodRequirements(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	a.MilliCPU = 250000
+	a.Memory = 100000
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	shouldFail := true
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		shouldFail = false
+		var ephemeral resource.Quantity
+		ephemeral, err = s.clusterClient.ephemeralStorage(a.GetPool())
+		c.Assert(err, check.IsNil)
+		expectedLimits := &apiv1.ResourceList{
+			apiv1.ResourceMemory:           *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
+			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.GetMilliCPU()), resource.DecimalSI),
+			apiv1.ResourceEphemeralStorage: ephemeral,
+		}
+		expectedRequests := &apiv1.ResourceList{
+			apiv1.ResourceMemory:           *resource.NewQuantity(a.GetMemory(), resource.BinarySI),
+			apiv1.ResourceCPU:              *resource.NewMilliQuantity(int64(a.GetMilliCPU()), resource.DecimalSI),
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+		}
+		c.Assert(pod.Spec.Containers[0].Resources.Limits, check.DeepEquals, *expectedLimits)
+		c.Assert(pod.Spec.Containers[0].Resources.Requests, check.DeepEquals, *expectedRequests)
+
+		return false, nil, nil
+	})
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Cmds:   []string{"mycmd", "arg1", "arg2"},
+	})
+	c.Assert(shouldFail, check.Equals, false)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -2312,7 +2379,16 @@ func (s *S) TestSleepStart(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-	err = s.p.Start(context.TODO(), a, "", version)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
 	units, err = s.p.Units(context.TODO(), a)
@@ -2332,8 +2408,8 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "img1",
-		DeployInspectImage:                  "img2",
+		deploySidecarImage:                  "img1",
+		deployInspectImage:                  "img2",
 		APITimeout:                          10 * time.Second,
 		PodReadyTimeout:                     6 * time.Second,
 		PodRunningTimeout:                   2 * time.Minute,
@@ -2347,8 +2423,8 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		DeploySidecarImage:                  "tsuru/deploy-agent:0.8.4",
-		DeployInspectImage:                  "tsuru/deploy-agent:0.8.4",
+		deploySidecarImage:                  "tsuru/deploy-agent:0.8.4",
+		deployInspectImage:                  "tsuru/deploy-agent:0.8.4",
 		APITimeout:                          60 * time.Second,
 		PodReadyTimeout:                     time.Minute,
 		PodRunningTimeout:                   10 * time.Minute,

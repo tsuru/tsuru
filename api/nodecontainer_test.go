@@ -206,6 +206,8 @@ func (s *S) TestNodeContainerInfoLimited(c *check.C) {
 }
 
 func (s *S) TestNodeContainerCreate(c *check.C) {
+	zero := int64(0)
+	falseV := false
 	doReq := func(cont nodecontainer.NodeContainerConfig, expected []nodecontainer.NodeContainerConfigGroup, pool ...string) {
 		values, err := form.EncodeToValues(cont)
 		c.Assert(err, check.IsNil)
@@ -233,9 +235,10 @@ func (s *S) TestNodeContainerCreate(c *check.C) {
 		sort.Sort(nodecontainer.NodeContainerConfigGroupSlice(configEntries))
 		c.Assert(configEntries, check.DeepEquals, expected)
 	}
+	emptyHostConfig := docker.HostConfig{MemorySwappiness: &zero, PidsLimit: &zero, OOMKillDisable: &falseV}
 	doReq(nodecontainer.NodeContainerConfig{Name: "c1", Config: docker.Config{Image: "img1"}}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}, HostConfig: emptyHostConfig},
 		}},
 	})
 	c.Assert(eventtest.EventDesc{
@@ -253,10 +256,10 @@ func (s *S) TestNodeContainerCreate(c *check.C) {
 		HostConfig: docker.HostConfig{Memory: 256, Privileged: true},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}, HostConfig: emptyHostConfig},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"A=1"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256, Privileged: true, MemorySwappiness: &zero, PidsLimit: &zero, OOMKillDisable: &falseV}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
@@ -265,10 +268,10 @@ func (s *S) TestNodeContainerCreate(c *check.C) {
 		HostConfig: docker.HostConfig{Memory: 256},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}, HostConfig: emptyHostConfig},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256}},
+			"": {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256, MemorySwappiness: &zero, PidsLimit: &zero, OOMKillDisable: &falseV}},
 		}},
 	})
 	doReq(nodecontainer.NodeContainerConfig{
@@ -276,11 +279,11 @@ func (s *S) TestNodeContainerCreate(c *check.C) {
 		Config: docker.Config{Env: []string{"X=1"}},
 	}, []nodecontainer.NodeContainerConfigGroup{
 		{Name: "c1", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}},
+			"": {Name: "c1", Config: docker.Config{Image: "img1", Healthcheck: &docker.HealthConfig{}}, HostConfig: emptyHostConfig},
 		}},
 		{Name: "c2", ConfigPools: map[string]nodecontainer.NodeContainerConfig{
-			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256}},
-			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}, Healthcheck: &docker.HealthConfig{}}},
+			"":   {Name: "c2", Config: docker.Config{Env: []string{"Z=9"}, Image: "img2", Healthcheck: &docker.HealthConfig{}}, HostConfig: docker.HostConfig{Memory: 256, MemorySwappiness: &zero, PidsLimit: &zero, OOMKillDisable: &falseV}},
+			"p1": {Name: "c2", Config: docker.Config{Env: []string{"X=1"}, Healthcheck: &docker.HealthConfig{}}, HostConfig: emptyHostConfig},
 		}},
 	}, "p1")
 }

@@ -13,6 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+const (
+	// Annotations max size according to
+	// https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
+	totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
+	tsuruPrefix                   = "tsuru.io/"
+)
+
 // Metadata represents the user defined labels and annotations
 type Metadata struct {
 	Labels      []MetadataItem `json:"labels"`
@@ -25,12 +32,6 @@ type MetadataItem struct {
 	Value  string `json:"value,omitempty"`
 	Delete bool   `json:"delete,omitempty" bson:"-"`
 }
-
-// Annotations max size according to
-// https://github.com/kubernetes/apimachinery/blob/master/pkg/api/validation/objectmeta.go
-const totalAnnotationSizeLimitB int = 256 * (1 << 10) // 256 kB
-
-const tsuruPrefix = "tsuru.io/"
 
 func (m *Metadata) Validate() error {
 	errs := validateAnnotations(m.Annotations)

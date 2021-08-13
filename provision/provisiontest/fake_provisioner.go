@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -368,6 +369,10 @@ func (app *FakeApp) ListTags() []string {
 
 func (app *FakeApp) GetMetadata() appTypes.Metadata {
 	return app.Metadata
+}
+
+func (app *FakeApp) GetRegistry() (imgTypes.ImageRegistry, error) {
+	return "", nil
 }
 
 type Cmd struct {
@@ -964,7 +969,7 @@ func (p *FakeProvisioner) Restart(ctx context.Context, app provision.App, proces
 	return nil
 }
 
-func (p *FakeProvisioner) Start(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Start(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
@@ -1242,7 +1247,7 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return false
 }
 
-func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
+func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]

@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"sort"
 	"strconv"
@@ -162,7 +163,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[0])
+				err = s.p.Stop(context.TODO(), a, "web", versions[0], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -171,7 +172,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[2])
+				err = s.p.Stop(context.TODO(), a, "web", versions[2], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -180,7 +181,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.Stop(context.TODO(), a, "web", versions[1])
+				err = s.p.Stop(context.TODO(), a, "web", versions[1], &bytes.Buffer{})
 				c.Assert(err, check.IsNil)
 				wait()
 			},
@@ -196,10 +197,16 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		c.Logf("test %d", i)
 		tt.scenario()
 
-		hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		hpas, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
 		c.Assert(err, check.IsNil)
-		c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
-		c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
+		for _, hpa := range hpas.Items {
+			dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), hpa.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+			c.Assert(err, check.IsNil)
+			if dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0 {
+				c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
+				c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
+			}
+		}
 	}
 }
 

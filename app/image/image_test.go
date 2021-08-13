@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	"gopkg.in/check.v1"
 )
 
@@ -55,6 +56,7 @@ func (s *S) TestParseImageParts(c *check.C) {
 		{"registry:5000/app-img:v1", "registry:5000", "app-img", "v1"},
 		{"registry.io/app-img:v1", "registry.io", "app-img", "v1"},
 		{"localhost/app-img:v1", "localhost", "app-img", "v1"},
+		{"registry.io/a/b/c/app-img:v1", "registry.io", "a/b/c/app-img", "v1"},
 	}
 
 	for _, t := range tt {
@@ -66,10 +68,10 @@ func (s *S) TestParseImageParts(c *check.C) {
 }
 
 func (s *S) TestGetBuildImage(c *check.C) {
-	s.mockService.PlatformImage.OnFindImage = func(name, version string) (string, error) {
+	s.mockService.PlatformImage.OnFindImage = func(reg imgTypes.ImageRegistry, name, version string) (string, error) {
 		return "tsuru/" + name + ":" + version, nil
 	}
-	s.mockService.PlatformImage.OnCurrentImage = func(name string) (string, error) {
+	s.mockService.PlatformImage.OnCurrentImage = func(reg imgTypes.ImageRegistry, name string) (string, error) {
 		return "tsuru/" + name + ":v1", nil
 	}
 	tests := []struct {

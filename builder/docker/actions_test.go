@@ -66,7 +66,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	defer cont.Remove(builderClient(client), limiter())
 	c.Assert(cont, check.FitsTypeOf, container.Container{})
 	c.Assert(cont.ID, check.Not(check.Equals), "")
-	cc, err := client.InspectContainer(cont.ID)
+	cc, err := client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
 	c.Assert(cc.Config.User, check.Equals, "ubuntu")
@@ -84,7 +84,7 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	}
 	context := action.BWContext{FWResult: cont, Params: []interface{}{args}}
 	createContainer.Backward(context)
-	_, err = client.InspectContainer(cont.ID)
+	_, err = client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.FitsTypeOf, &docker.NoSuchContainer{})
 }
@@ -143,7 +143,7 @@ func (s *S) TestStartContainerBackward(c *check.C) {
 		client:      builderClient(client),
 	}}}
 	startContainer.Backward(context)
-	cc, err := client.InspectContainer(cont.ID)
+	cc, err := client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.IsNil)
 	c.Assert(cc.State.Running, check.Equals, false)
 }
@@ -172,7 +172,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imageID, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
-	_, err = client.InspectContainer(cont.ID)
+	_, err = client.InspectContainerWithOptions(docker.InspectContainerOptions{ID: cont.ID})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Matches, "No such container.*")
 	err = client.RemoveImage("tsuru/app-mightyapp:v1")

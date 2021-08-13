@@ -6,6 +6,7 @@ package registry
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
@@ -63,7 +65,7 @@ func RemoveImage(ctx context.Context, imageName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag)
 	}
-	err = r.removeImage(ctx, image, digest)
+	err = r.removeImage(ctx, image, tag, digest)
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest)
 	}
@@ -91,7 +93,7 @@ func RemoveAppImages(ctx context.Context, appName string) error {
 			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag))
 			continue
 		}
-		err = r.removeImage(ctx, image, digest)
+		err = r.removeImage(ctx, image, tag, digest)
 		if err != nil {
 			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest))
 			if errors.Cause(err) == ErrDeleteDisabled {
@@ -111,6 +113,9 @@ func (r dockerRegistry) getDigest(ctx context.Context, image, tag string) (strin
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
 		return "", ErrDigestNotFound
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", errors.Errorf("invalid status reading manifest for %v:%v: %v", image, tag, resp.StatusCode)
 	}
 	digest := resp.Header.Get("Docker-Content-Digest")
 	if digest == "" {
@@ -141,8 +146,20 @@ func (r dockerRegistry) getImageTags(ctx context.Context, image string) ([]strin
 	return it.Tags, nil
 }
 
-func (r dockerRegistry) removeImage(ctx context.Context, image, digest string) error {
-	path := fmt.Sprintf("/v2/%s/manifests/%s", image, digest)
+func (r dockerRegistry) removeImage(ctx context.Context, image, tag, digest string) error {
+	// GCR/GAR registries implementation do not completely follow docker
+	// registry spec. They require the image tag to be deleted prior to
+	// deleting the manifest. Here we try deleting the tag first and then
+	// proceed to delete the digest regardless of errors in the previous step.
+	tagPath := fmt.Sprintf("/v2/%s/manifests/%s", image, tag)
+	err := r.removeImagePath(ctx, tagPath)
+	if err != nil {
+		log.Errorf("ignored error trying to delete tag from registry %q: %v", tagPath, err)
+	}
+	return r.removeImagePath(ctx, fmt.Sprintf("/v2/%s/manifests/%s", image, digest))
+}
+
+func (r dockerRegistry) removeImagePath(ctx context.Context, path string) error {
 	resp, err := r.doRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
@@ -167,8 +184,12 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 	if u != nil && u.Host != "" {
 		server = u.Host
 	}
+	authHeaders := registryAuth(server)
 	if r.client == nil {
-		r.client = tsuruNet.Dial15Full300ClientNoKeepAlive
+		r.client, err = tsuruNet.WithProxyFromConfig(*tsuruNet.Dial15Full300ClientNoKeepAlive, server)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, scheme := range []string{"https", "http"} {
 		endpoint := fmt.Sprintf("%s://%s%s", scheme, server, path)
@@ -180,13 +201,12 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 		if ctx != nil {
 			req = req.WithContext(ctx)
 		}
+		req.Header = http.Header{}
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
-		username, _ := config.GetString("docker:registry-auth:username")
-		password, _ := config.GetString("docker:registry-auth:password")
-		if len(username) > 0 || len(password) > 0 {
-			req.SetBasicAuth(username, password)
+		for k, v := range authHeaders {
+			req.Header[k] = v
 		}
 		resp, err = r.client.Do(req)
 		if err != nil {
@@ -198,4 +218,38 @@ func (r *dockerRegistry) doRequest(ctx context.Context, method, path string, hea
 		return resp, nil
 	}
 	return nil, err
+}
+
+func registryAuth(registry string) http.Header {
+	authConfig, err := docker.NewAuthConfigurationsFromCredsHelpers(registry)
+	if err != nil {
+		configs, err := docker.NewAuthConfigurationsFromDockerCfg()
+		if err == nil {
+			if config, ok := configs.Configs[registry]; ok {
+				authConfig = &config
+			}
+		}
+	}
+	if authConfig == nil {
+		username, _ := config.GetString("docker:registry-auth:username")
+		password, _ := config.GetString("docker:registry-auth:password")
+		authConfig = &docker.AuthConfiguration{
+			Username: username,
+			Password: password,
+		}
+	}
+
+	headers := http.Header{}
+	if *authConfig == (docker.AuthConfiguration{}) {
+		return headers
+	}
+
+	if authConfig.RegistryToken != "" {
+		headers.Set("Authorization", "Bearer "+authConfig.RegistryToken)
+	} else if authConfig.Username != "" || authConfig.Password != "" {
+		basic := base64.StdEncoding.EncodeToString([]byte(authConfig.Username + ":" + authConfig.Password))
+		headers.Set("Authorization", "Basic "+basic)
+	}
+
+	return headers
 }

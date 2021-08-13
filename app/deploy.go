@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +43,7 @@ const (
 	DeployRebuild      DeployKind = "rebuild"
 )
 
-var reImageVersion = regexp.MustCompile("v[0-9]+$")
+var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
 
 type DeployData struct {
 	ID          bson.ObjectId `bson:"_id,omitempty"`
@@ -52,6 +53,7 @@ type DeployData struct {
 	Commit      string
 	Error       string
 	Image       string
+	Version     int
 	Log         string
 	User        string
 	Origin      string
@@ -159,12 +161,12 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 	var endData map[string]string
 	if err = evt.EndData(&endData); err == nil {
 		data.Image = endData["image"]
+		if reImageVersion.MatchString(data.Image) {
+			parts := reImageVersion.FindStringSubmatch(data.Image)
+			data.Version, _ = strconv.Atoi(parts[1])
+		}
 		if validImages != nil {
 			data.CanRollback = validImages.Includes(data.Image)
-			if reImageVersion.MatchString(data.Image) {
-				parts := reImageVersion.FindAllStringSubmatch(data.Image, -1)
-				data.Image = parts[0][0]
-			}
 		}
 	} else {
 		log.Errorf("cannot decode the event's end custom data value: event %s - %v", evt.UniqueID, err)

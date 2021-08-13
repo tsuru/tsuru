@@ -41,11 +41,30 @@ func (s *PlatformImageSuite) TestFindPlatformByNameNotFound(c *check.C) {
 func (s *PlatformImageSuite) TestPlatformImageAppend(c *check.C) {
 	p, err := s.PlatformImageStorage.Upsert(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
-	err = s.PlatformImageStorage.Append(context.TODO(), p.Name, "tsuru/myplatform:v1")
+	err = s.PlatformImageStorage.Append(context.TODO(), p.Name, 1, []string{"tsuru/myplatform:v1"})
+	c.Assert(err, check.IsNil)
+	err = s.PlatformImageStorage.Append(context.TODO(), p.Name, 1, []string{"other.registry/tsuru/myplatform:v1"})
+	c.Assert(err, check.IsNil)
+	err = s.PlatformImageStorage.Append(context.TODO(), p.Name, 2, []string{"tsuru/myplatform:v2"})
+	c.Assert(err, check.IsNil)
+	err = s.PlatformImageStorage.Append(context.TODO(), p.Name, 3, []string{"tsuru/myplatform:v3", "registy.tsuru/plat:v3"})
 	c.Assert(err, check.IsNil)
 	platform, err := s.PlatformImageStorage.FindByName(context.TODO(), "myplatform")
 	c.Assert(err, check.IsNil)
-	c.Assert(platform.Images, check.DeepEquals, []string{"tsuru/myplatform:v1"})
+	c.Assert(platform.Versions, check.DeepEquals, []image.RegistryVersion{
+		{
+			Version: 1,
+			Images:  []string{"tsuru/myplatform:v1", "other.registry/tsuru/myplatform:v1"},
+		},
+		{
+			Version: 2,
+			Images:  []string{"tsuru/myplatform:v2"},
+		},
+		{
+			Version: 3,
+			Images:  []string{"tsuru/myplatform:v3", "registy.tsuru/plat:v3"},
+		},
+	})
 }
 
 func (s *PlatformImageSuite) TestDeletePlatform(c *check.C) {

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
 func ImageHistorySize() int {
@@ -56,27 +57,31 @@ func ParseImageParts(imageName string) (registry string, image string, tag strin
 	return registry, parts[0], parts[1]
 }
 
-func AppBasicImageName(appName string) string {
-	return fmt.Sprintf("%s/app-%s", basicImageName("tsuru"), appName)
+func AppBasicImageName(reg imgTypes.ImageRegistry, appName string) string {
+	return fmt.Sprintf("%s/app-%s", basicImageName(reg, "tsuru"), appName)
 }
 
-func AppBuildImageName(appName, tag, team string, version int) string {
+func AppBuildImageName(reg imgTypes.ImageRegistry, appName, tag, team string, version int) string {
 	if tag == "" {
 		tag = fmt.Sprintf("v%d-builder", version)
 	}
-	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(appName, team), tag)
+	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(reg, appName, team), tag)
 }
 
-func appBasicBuilderImageName(appName, teamName string) string {
+func appBasicBuilderImageName(reg imgTypes.ImageRegistry, appName, teamName string) string {
 	if teamName == "" {
 		teamName = "tsuru"
 	}
-	return fmt.Sprintf("%s/app-%s", basicImageName(teamName), appName)
+	return fmt.Sprintf("%s/app-%s", basicImageName(reg, teamName), appName)
 }
 
-func basicImageName(repoName string) string {
+func basicImageName(reg imgTypes.ImageRegistry, repoName string) string {
 	parts := make([]string, 0, 2)
-	registry, _ := config.GetString("docker:registry")
+	registry := string(reg)
+	if registry != "" {
+		return registry
+	}
+	registry, _ = config.GetString("docker:registry")
 	if registry != "" {
 		parts = append(parts, registry)
 	}
@@ -115,9 +120,13 @@ func usePlatformImage(app appTypes.App) bool {
 }
 
 func getPlatformImage(ctx context.Context, app appTypes.App) (string, error) {
+	reg, err := app.GetRegistry()
+	if err != nil {
+		return "", err
+	}
 	version := app.GetPlatformVersion()
 	if version != "latest" {
-		return servicemanager.PlatformImage.FindImage(ctx, app.GetPlatform(), version)
+		return servicemanager.PlatformImage.FindImage(ctx, reg, app.GetPlatform(), version)
 	}
-	return servicemanager.PlatformImage.CurrentImage(ctx, app.GetPlatform())
+	return servicemanager.PlatformImage.CurrentImage(ctx, reg, app.GetPlatform())
 }

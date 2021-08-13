@@ -1296,6 +1296,91 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	c.Assert(backendConfig.Spec, check.DeepEquals, expectedBackendConfig.Spec)
 }
 
+func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
+	}
+	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	hc := provTypes.TsuruYamlHealthcheck{
+		Command: []string{"curl", "x"},
+	}
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cm1",
+			"p2":  "cmd2",
+		},
+		"healthcheck": hc,
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.NotNil)
+	dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+	_, err = s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
+	}
+	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "cm1",
+			"p2":  "cmd2",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"web": servicecommon.ProcessState{Start: true},
+		"p2":  servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+	dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
+	_, err = s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
 func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()

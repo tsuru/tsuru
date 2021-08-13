@@ -18,6 +18,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -25,6 +26,7 @@ import (
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -62,6 +64,10 @@ const (
 	buildPlanKey                  = "build-plan"
 	baseServicesAnnotations       = "base-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
+	registryKey                   = "registry"
+	sidecarRegistryKey            = "sidecar-registry"
+	buildServiceAccountKey        = "build-service-account"
+	disablePlatformBuildKey       = "disable-platform-build"
 	defaultLogsFromAPIServer      = false
 
 	dialTimeout  = 30 * time.Second
@@ -86,6 +92,10 @@ var (
 		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
 		buildPlanKey:                  "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
 		enableLogsFromAPIServerKey:    "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
+		registryKey:                   "Allow a custom registry to be used on this cluster.",
+		buildServiceAccountKey:        "Custom service account used in build containers.",
+		disablePlatformBuildKey:       "Disable platform image build in cluster.",
+		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
 	}
 )
 
@@ -485,6 +495,65 @@ func (c *ClusterClient) SinglePool() (bool, error) {
 	return strconv.ParseBool(singlePool)
 }
 
+func (c *ClusterClient) registry() imgTypes.ImageRegistry {
+	if c.CustomData == nil {
+		return ""
+	}
+	return imgTypes.ImageRegistry(c.CustomData[registryKey])
+}
+
+func (c *ClusterClient) buildServiceAccount(a provision.App) string {
+	if c.CustomData == nil && a != nil {
+		return serviceAccountNameForApp(a)
+	}
+	sa, ok := c.CustomData[buildServiceAccountKey]
+	if !ok && a != nil {
+		return serviceAccountNameForApp(a)
+	}
+	return sa
+}
+
+func (c *ClusterClient) DisablePlatformBuild() bool {
+	if c.CustomData == nil {
+		return false
+	}
+	disable, ok := c.CustomData[disablePlatformBuildKey]
+	if !ok {
+		return false
+	}
+	d, _ := strconv.ParseBool(disable)
+	return d
+}
+
+func (c *ClusterClient) sideCarImage(imgName string) string {
+	if c.CustomData == nil {
+		return imgName
+	}
+	newRepo, ok := c.CustomData[sidecarRegistryKey]
+	if !ok {
+		return imgName
+	}
+	_, img, tag := image.ParseImageParts(imgName)
+	if tag == "" {
+		tag = "latest"
+	}
+	fullImg := fmt.Sprintf("%s:%s", img, tag)
+	if newRepo != "" {
+		fullImg = fmt.Sprintf("%s/%s", newRepo, fullImg)
+	}
+	return fullImg
+}
+
+func (c *ClusterClient) deploySidecarImage() string {
+	conf := getKubeConfig()
+	return c.sideCarImage(conf.deploySidecarImage)
+}
+
+func (c *ClusterClient) deployInspectImage() string {
+	conf := getKubeConfig()
+	return c.sideCarImage(conf.deployInspectImage)
+}
+
 func (c *ClusterClient) configForContext(context, key string) string {
 	if v, ok := c.CustomData[context+":"+key]; ok {
 		return v
@@ -544,21 +613,6 @@ func clusterForPool(ctx context.Context, pool string) (*ClusterClient, error) {
 		return nil, err
 	}
 	return NewClusterClient(clust)
-}
-
-func clusterForPoolOrAny(ctx context.Context, pool string) (*ClusterClient, error) {
-	clust, err := clusterForPool(ctx, pool)
-	if err == nil {
-		return clust, err
-	}
-	if err == provTypes.ErrNoCluster {
-		var clusters []provTypes.Cluster
-		clusters, err = servicemanager.Cluster.FindByProvisioner(ctx, provisionerName)
-		if err == nil {
-			return NewClusterClient(&clusters[0])
-		}
-	}
-	return nil, err
 }
 
 func allClusters(ctx context.Context) ([]*ClusterClient, error) {

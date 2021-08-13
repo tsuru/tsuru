@@ -172,30 +172,55 @@ func (s *S) TestGCStartAppNotFound(c *check.C) {
 	err := gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 	c.Assert(regDeleteCalls, check.DeepEquals, []string{
+		"/v2/tsuru/app-myapp/manifests/v0",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0",
+		"/v2/tsuru/app-myapp/manifests/v1",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1",
+		"/v2/tsuru/app-myapp/manifests/v2",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2",
+		"/v2/tsuru/app-myapp/manifests/v3",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
+		"/v2/tsuru/app-myapp/manifests/v4",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v4",
+		"/v2/tsuru/app-myapp/manifests/v5",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v5",
+		"/v2/tsuru/app-myapp/manifests/v6",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v6",
+		"/v2/tsuru/app-myapp/manifests/v7",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v7",
+		"/v2/tsuru/app-myapp/manifests/v8",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v8",
+		"/v2/tsuru/app-myapp/manifests/v9",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v9",
+		"/v2/tsuru/app-myapp/manifests/v10",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v10",
+		"/v2/tsuru/app-myapp/manifests/v11",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11",
+		"/v2/tsuru/app-myapp/manifests/my-custom-tag",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/my-custom-tag",
+		"/v2/tsuru/app-myapp/manifests/v0-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v0-builder",
+		"/v2/tsuru/app-myapp/manifests/v1-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v1-builder",
+		"/v2/tsuru/app-myapp/manifests/v2-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
+		"/v2/tsuru/app-myapp/manifests/v3-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
+		"/v2/tsuru/app-myapp/manifests/v4-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v4-builder",
+		"/v2/tsuru/app-myapp/manifests/v5-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v5-builder",
+		"/v2/tsuru/app-myapp/manifests/v6-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v6-builder",
+		"/v2/tsuru/app-myapp/manifests/v7-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v7-builder",
+		"/v2/tsuru/app-myapp/manifests/v8-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v8-builder",
+		"/v2/tsuru/app-myapp/manifests/v9-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v9-builder",
+		"/v2/tsuru/app-myapp/manifests/v10-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v10-builder",
+		"/v2/tsuru/app-myapp/manifests/v11-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v11-builder",
 	})
 	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), fakeApp)
@@ -249,6 +274,10 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v2-builder",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3",
 		"/v2/tsuru/app-myapp/manifests//v2/tsuru/app-myapp/manifests/v3-builder",
+		"/v2/tsuru/app-myapp/manifests/v2",
+		"/v2/tsuru/app-myapp/manifests/v2-builder",
+		"/v2/tsuru/app-myapp/manifests/v3",
+		"/v2/tsuru/app-myapp/manifests/v3-builder",
 	})
 	versions, err := servicemanager.AppVersion.AppVersions(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -485,7 +514,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evts = filterGCEvents(evts)
 	c.Assert(evts, check.HasLen, 1)
-	if !c.Check(strings.Contains(evts[0].Error, "empty digest returned for image"), check.Equals, true) {
+	if !c.Check(strings.Contains(evts[0].Error, "invalid status reading manifest for tsuru/app-myapp:v2: 500"), check.Equals, true) {
 		fmt.Println(evts[0].Error)
 	}
 

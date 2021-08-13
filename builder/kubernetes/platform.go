@@ -6,10 +6,8 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -21,7 +19,7 @@ var (
 	_ builder.PlatformBuilder = &kubernetesBuilder{}
 )
 
-func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) error {
+func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	return b.buildPlatform(ctx, opts)
 }
 
@@ -30,18 +28,12 @@ func (b *kubernetesBuilder) PlatformRemove(ctx context.Context, name string) err
 	return nil
 }
 
-func (b *kubernetesBuilder) buildPlatform(ctx context.Context, opts appTypes.PlatformOptions) error {
+func (b *kubernetesBuilder) buildPlatform(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	client, err := getKubeClient()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	inputStream := builder.CompressDockerFile(opts.Data)
-	images := []string{opts.ImageName}
-	imageName, _ := image.SplitImageName(opts.ImageName)
-	for _, tag := range opts.ExtraTags {
-		images = append(images, fmt.Sprintf("%s:%s", imageName, tag))
-	}
-	return client.BuildImage(ctx, opts.Name, images, inputStream, opts.Output)
+	return client.BuildPlatformImages(ctx, opts)
 }
 
 func getKubeClient() (provision.BuilderKubeClient, error) {

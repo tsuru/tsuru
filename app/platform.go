@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"strconv"
 
@@ -52,25 +51,34 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 	if err != nil {
 		return err
 	}
-	opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
+	opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
-	err = builder.PlatformBuild(ctx, opts)
+	imgs, err := builder.PlatformBuild(ctx, opts)
+	multiErr := tsuruErrors.NewMultiError()
+	if len(imgs) > 0 {
+		appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
+		if appendErr != nil {
+			multiErr.Add(appendErr)
+		}
+	}
 	if err != nil {
+		multiErr.Add(err)
 		if imgErr := servicemanager.PlatformImage.DeleteImages(ctx, opts.Name); imgErr != nil {
+			multiErr.Add(imgErr)
 			log.Errorf("unable to remove platform images: %s", imgErr)
 		}
 		dbErr := s.storage.Delete(ctx, p)
 		if dbErr != nil {
+			multiErr.Add(dbErr)
 			return tsuruErrors.NewMultiError(
 				errors.Wrapf(dbErr, "unable to rollback platform add"),
 				errors.Wrapf(err, "original platform add error"),
 			)
 		}
-		return err
 	}
-	return servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
+	return multiErr.ToError()
 }
 
 // List implements List method of PlatformService interface
@@ -113,17 +121,23 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 			return appTypes.ErrMissingFileContent
 		}
 		opts.Data = data
-		opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
+		opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 		if err != nil {
 			return err
 		}
-		err = builder.PlatformBuild(ctx, opts)
-		if err != nil {
-			return err
+		imgs, err := builder.PlatformBuild(ctx, opts)
+		multiErr := tsuruErrors.NewMultiError()
+		if len(imgs) > 0 {
+			appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
+			if appendErr != nil {
+				multiErr.Add(appendErr)
+			}
 		}
-		err = servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
 		if err != nil {
-			return err
+			multiErr.Add(err)
+		}
+		if multiErr.Len() > 0 {
+			return multiErr.ToError()
 		}
 		var apps []App
 		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
@@ -184,32 +198,30 @@ func (s *platformService) Rollback(ctx context.Context, opts appTypes.PlatformOp
 	if opts.Name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
-	if opts.ImageName == "" {
+	if opts.RollbackVersion == 0 {
 		return appTypes.ErrPlatformImageMissing
 	}
 	_, err := s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
-	image, err := servicemanager.PlatformImage.FindImage(ctx, opts.Name, opts.ImageName)
+	opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
-	if image == "" {
-		return fmt.Errorf("Image %s not found in platform %q", opts.ImageName, opts.Name)
+	imgs, err := builder.PlatformBuild(ctx, opts)
+	multiErr := tsuruErrors.NewMultiError()
+	if len(imgs) > 0 {
+		appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
+		if appendErr != nil {
+			multiErr.Add(appendErr)
+		}
 	}
-	opts.Data = []byte("FROM " + image)
-	opts.ImageName, err = servicemanager.PlatformImage.NewImage(ctx, opts.Name)
 	if err != nil {
-		return err
+		multiErr.Add(err)
 	}
-	err = builder.PlatformBuild(ctx, opts)
-	if err != nil {
-		return err
-	}
-	err = servicemanager.PlatformImage.AppendImage(ctx, opts.Name, opts.ImageName)
-	if err != nil {
-		return err
+	if multiErr.Len() > 0 {
+		return multiErr.ToError()
 	}
 	conn, err := db.Conn()
 	if err != nil {

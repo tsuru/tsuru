@@ -45,6 +45,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -92,6 +93,8 @@ const (
 
 	TsuruServicesEnvVar = "TSURU_SERVICES"
 	defaultAppDir       = "/home/application/current"
+
+	routerNone = "none"
 )
 
 // App is the main type in tsuru. An app represents a real world application.
@@ -378,7 +381,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	app.Owner = user.Email
 	app.Tags = processTags(app.Tags)
 	if app.Platform != "" {
-		app.Platform, app.PlatformVersion, err = getPlatformNameAndVersion(ctx, app.Platform)
+		app.Platform, app.PlatformVersion, err = app.getPlatformNameAndVersion(ctx, app.Platform)
 		if err != nil {
 			return err
 		}
@@ -405,6 +408,11 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 
 func (app *App) configureCreateRouters() error {
 	if len(app.Routers) > 0 {
+		return nil
+	}
+	if app.Router == routerNone {
+		app.Router = ""
+		app.RouterOpts = nil
 		return nil
 	}
 	var err error
@@ -494,7 +502,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
-		p, v, err = getPlatformNameAndVersion(app.ctx, platform)
+		p, v, err = app.getPlatformNameAndVersion(app.ctx, platform)
 		if err != nil {
 			return err
 		}
@@ -548,15 +556,19 @@ func validateVolumes(ctx context.Context, app *App) error {
 	return nil
 }
 
-func getPlatformNameAndVersion(ctx context.Context, platform string) (string, string, error) {
+func (app *App) getPlatformNameAndVersion(ctx context.Context, platform string) (string, string, error) {
 	repo, version := image.SplitImageName(platform)
 	p, err := servicemanager.Platform.FindByName(ctx, repo)
 	if err != nil {
 		return "", "", err
 	}
+	reg, err := app.GetRegistry()
+	if err != nil {
+		return "", "", err
+	}
 
 	if version != "latest" {
-		_, err := servicemanager.PlatformImage.FindImage(ctx, p.Name, version)
+		_, err = servicemanager.PlatformImage.FindImage(ctx, reg, p.Name, version)
 		if err != nil {
 			return p.Name, "", err
 		}
@@ -1313,7 +1325,7 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	if err != nil {
 		return err
 	}
-	err = prov.Stop(ctx, app, process, version)
+	err = prov.Stop(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
@@ -2133,7 +2145,7 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-	err = prov.Start(ctx, app, process, version)
+	err = prov.Start(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
@@ -2390,7 +2402,7 @@ func (app *App) Shell(opts provision.ExecOptions) error {
 		return provision.ProvisionerNotSupported{Prov: prov, Action: "running shell"}
 	}
 	opts.App = app
-	opts.Cmds = cmdsForExec("bash -l")
+	opts.Cmds = cmdsForExec("[ $(command -v bash) ] && bash -l || sh -l")
 	return execProv.ExecuteCommand(app.ctx, opts)
 }
 
@@ -2760,4 +2772,16 @@ func envInSet(envName string, envs []bind.EnvVar) bool {
 		}
 	}
 	return false
+}
+
+func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return "", err
+	}
+	registryProv, ok := prov.(provision.MultiRegistryProvisioner)
+	if !ok {
+		return "", nil
+	}
+	return registryProv.RegistryForApp(app.ctx, app)
 }

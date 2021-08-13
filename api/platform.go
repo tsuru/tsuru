@@ -6,10 +6,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -246,11 +250,22 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	image := InputValue(r, "image")
-	if image == "" {
+	version := InputValue(r, "image")
+	if version == "" {
 		return &tErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "you cannot rollback without an image name",
+		}
+	}
+	versionInt, err := strconv.Atoi(version)
+	if err != nil {
+		_, tag := image.SplitImageName(version)
+		versionInt, err = strconv.Atoi(strings.TrimPrefix(tag, "v"))
+	}
+	if err != nil {
+		return &tErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("invalid image version %q", version),
 		}
 	}
 	canUpdatePlatform := permission.Check(t, permission.PermPlatformUpdate)
@@ -278,9 +293,9 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	err = servicemanager.Platform.Rollback(ctx, appTypes.PlatformOptions{
-		Name:      name,
-		ImageName: image,
-		Output:    evt,
+		Name:            name,
+		RollbackVersion: versionInt,
+		Output:          evt,
 	})
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

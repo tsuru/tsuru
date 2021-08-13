@@ -38,7 +38,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -199,10 +198,9 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 
 func createImageBuildPod(ctx context.Context, params createPodParams) error {
 	params.mainContainer = "build-cont"
-	kubeConf := getKubeConfig()
 	pod, err := newDeployAgentImageBuildPod(ctx, params.client, params.sourceImage, params.podName, deployAgentConfig{
 		name:              params.mainContainer,
-		image:             kubeConf.DeploySidecarImage,
+		image:             params.client.deploySidecarImage(),
 		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
 		destinationImages: params.destinationImages,
 		inputFile:         params.inputFile,
@@ -291,7 +289,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		}
 		pod, err := newDeployAgentPod(ctx, params, deployAgentConfig{
 			name:              params.mainContainer,
-			image:             kubeConf.DeploySidecarImage,
+			image:             params.client.deploySidecarImage(),
 			cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && %[2]s", params.inputFile, strings.Join(params.cmds[2:], " ")),
 			destinationImages: params.destinationImages,
 			inputFile:         params.inputFile,
@@ -353,9 +351,6 @@ func registryAuth(img string) registryAuthConfig {
 	}
 	username, _ := config.GetString("docker:registry-auth:username")
 	password, _ := config.GetString("docker:registry-auth:password")
-	if len(username) == 0 && len(password) == 0 {
-		return registryAuthConfig{}
-	}
 	insecure, _ := config.GetBool("docker:registry-auth:insecure")
 	return registryAuthConfig{
 		username:  username,
@@ -655,25 +650,9 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
-	resourceLimits := apiv1.ResourceList{}
-	resourceRequests := apiv1.ResourceList{}
-	memory := a.GetMemory()
-	if memory != 0 {
-		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
-		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
-	}
-	cpu := a.GetMilliCPU()
-	if cpu != 0 {
-		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI)
-		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu)/overcommit, resource.DecimalSI)
-	}
-	ephemeral, err := client.ephemeralStorage(a.GetPool())
+	resourceRequirements, err := getAppResourceRequirements(a, client, overcommit)
 	if err != nil {
 		return nil, nil, err
-	}
-	if ephemeral.Value() > 0 {
-		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
-		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
 	}
 	volumes, mounts, err := createVolumesForApp(ctx, client, a)
 	if err != nil {
@@ -757,13 +736,10 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 							Env:            appEnvs(a, process, version, false),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
-							Resources: apiv1.ResourceRequirements{
-								Limits:   resourceLimits,
-								Requests: resourceRequests,
-							},
-							VolumeMounts: mounts,
-							Ports:        containerPorts,
-							Lifecycle:    &lifecycle,
+							Resources:      resourceRequirements,
+							VolumeMounts:   mounts,
+							Ports:          containerPorts,
+							Lifecycle:      &lifecycle,
 						},
 					},
 				},
@@ -839,7 +815,8 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 	for _, svc := range svcs {
 		labels := labelSetFromMeta(&svc.ObjectMeta)
 		svcVersion := labels.AppVersion()
-		_, inUseProcess := processInUse[labels.AppProcess()]
+		process := labels.AppProcess()
+		_, inUseProcess := processInUse[process]
 		_, inUseVersion := versionInUse[processVersionKey{process: labels.AppProcess(), version: svcVersion}]
 
 		toKeep := inUseVersion || (svcVersion == 0 && inUseProcess)
@@ -1376,7 +1353,11 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				continue
 			}
 		}
-		version := servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
+		var version appTypes.AppVersion
+		version, err = servicemanager.AppVersion.AppVersionFromInfo(ctx, a, vInfo)
+		if err != nil {
+			return err
+		}
 		var svcPorts []apiv1.ServicePort
 		svcPorts, err = loadServicePorts(version, process)
 		if err != nil {
@@ -1698,7 +1679,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		podName:     params.podName,
 	}, deployAgentConfig{
 		name:              inspectContainer,
-		image:             kubeConf.DeployInspectImage,
+		image:             params.client.deployInspectImage(),
 		cmd:               "cat >/dev/null && /bin/deploy-agent",
 		destinationImages: params.destinationImages,
 		sourceImage:       params.sourceImage,
@@ -1834,7 +1815,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 		Spec: apiv1.PodSpec{
 			EnableServiceLinks: &serviceLinks,
 			ImagePullSecrets:   pullSecrets,
-			ServiceAccountName: serviceAccountNameForApp(params.app),
+			ServiceAccountName: params.client.buildServiceAccount(params.app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
 			Volumes: append(deployAgentEngineVolumes(pullSecrets), append([]apiv1.Volume{
@@ -1917,10 +1898,11 @@ func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sou
 			Annotations: annotations.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
-			Affinity:         affinity,
-			ImagePullSecrets: pullSecrets,
-			Volumes:          deployAgentEngineVolumes(pullSecrets),
-			RestartPolicy:    apiv1.RestartPolicyNever,
+			Affinity:           affinity,
+			ImagePullSecrets:   pullSecrets,
+			Volumes:            deployAgentEngineVolumes(pullSecrets),
+			RestartPolicy:      apiv1.RestartPolicyNever,
+			ServiceAccountName: client.buildServiceAccount(nil),
 			Containers: []apiv1.Container{
 				{
 					Name:         conf.name,
