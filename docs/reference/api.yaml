@@ -1020,6 +1020,64 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/apps/{app}/certificate:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    put:
+      operationId: certificateSet
+      description: Create a certificate
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: certificateData
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/CertificateSetData"
+      responses:
+        "201":
+          description: Certificate created
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Certificate already exists
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
+    delete:
+      operationId: CertificatUnset
+      description: Unset app certificate.
+      responses:
+        "200":
+          description: Certificate deleted
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Certificate not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.0/apps/{app}/deploy:
     parameters:
       - name: app
@@ -3151,6 +3209,272 @@ paths:
         - volume
       security:
         - Bearer: []
+  /1.0/roles:
+    post:
+      operationId: CreateRole
+      description: create a role
+      parameters:
+        - name: role_name
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RoleAddData"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Role created           
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Role already exists
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+    put:
+      operationId: UpdateRole
+      description: update a role
+      consumes:
+        - application/json
+      parameters:
+        - name: role_name
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RoleUpdateData" 
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Role updated          
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/roles/{role_name}:
+    delete:
+      operationId: DeleteRole
+      description: delete a role
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+      responses:
+        "200":
+          description: Role deleted.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Role  not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/roles/{role_name}/permissions:
+    post:
+      operationId: PermissionAdd
+      description: add a permission
+      consumes:
+        - application/json
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: PermissionData
+          required: true 
+          in: body 
+          schema:
+            $ref: "#/definitions/PermissionData"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Permission created.
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: Permission not a allowed
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/roles{role_name}/permissions/{permission}:
+    delete:
+      operationId: RemovePermission
+      description: remove a permission
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: permission
+          required: true
+          in: path
+          type: string
+      responses:
+        "200":
+          description: Permission removed.
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1,0/roles/{role_name}/user:
+    post:
+      operationId: Role assign
+      description: assign a role
+      consumes:
+        - application/json
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: roleAssgin
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RoleAssignData"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Role assigned.
+        "400":
+          description: Invalid data.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Role not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/roles/{role_name}/user/{email}:
+    delete:
+      operationId: DissociateRole
+      description: Dissociate a role from user
+      parameters:
+        - name: role_name
+          required: true
+          in: path
+          type: string
+        - name: email
+          required: true
+          in: path
+          type: string
+      responses:
+        "200":
+          description: Role dissociated.
+        "400":
+          description: Invalid data.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Role or token not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+  /1.0/role/default:
+    post:
+      operationId: DefaultRoleAdd
+      description: add a default role
+      consumes:
+        - application/json
+      parameters:
+        - name: defaulRole
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/RoleDefaultData"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Default role created.
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
+    delete:
+      operationId: RoleDefaultDelete
+      description: Delete a Default role
+      responses:
+        "200":
+          description: Default role deleted.
+        "400":
+          description: Invalid data.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - auth
+      security:
+        - Bearer: []
   /1.6/roles/{role_name}/token:
     post:
       operationId: AssignRoleToToken
@@ -4236,6 +4560,28 @@ definitions:
         type: object
         additionalProperties:
           type: string
+  RoleAddData:
+    description: Role of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contexttype:
+        type: string
+      description:
+        type: string
+  RoleUpdateData:
+    description: Role of an user.
+    type: object
+    properties:
+      name:
+        type: string
+      contextType:
+        type: string
+      newName:
+        type: string
+      description:
+        type: string
   RoleUser:
     description: Role of an user.
     type: object
@@ -4248,6 +4594,40 @@ definitions:
         type: string
       group:
         type: string
+  PermissionData:
+    description: Add a permission
+    type: object
+    properties:
+      name:
+        type: string
+      permission:
+        type: array
+        items:
+          type: string
+  RoleAssignData:
+    description: Assign a role
+    type: object
+    properties:
+      name:
+        type: string
+      contextvalue:
+        type: string
+      roletarget:
+        type: string
+      sufix:
+        type: string
+      version:
+        type: string
+  RoleDefaultData:
+    description: Default a role
+    type: object
+    properties:
+      rolesmap:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
   PermissionUser:
     description: Permission of an user.
     type: object
@@ -4545,6 +4925,19 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSpec"
+  CertificateSetData:
+    type: object
+    properties:
+      cname:
+        type: string
+      certificate:
+        type: string
+        format: byte
+        x-go-custom-type: "[]byte"
+      key:
+        type: string
+        format: byte
+        x-go-custom-type: "[]byte"
   AppDeployOptions:
     type: object
     required:
