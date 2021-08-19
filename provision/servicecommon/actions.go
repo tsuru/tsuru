@@ -184,6 +184,9 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 		return oldLabels, err
 	}
 	if isStopped || pState.Stop {
+		if oldLabels.realReplicas > 0 {
+			labels.SetPastUnits(oldLabels.realReplicas)
+		}
 		oldLabels.realReplicas = 0
 		labels.SetStopped()
 	}

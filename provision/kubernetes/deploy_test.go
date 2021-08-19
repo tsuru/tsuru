@@ -903,7 +903,11 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(dep, check.IsNil)
+				c.Assert(dep, check.NotNil)
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
+				ls := labelSetFromMeta(&dep.ObjectMeta)
+				c.Assert(ls.IsStopped(), check.Equals, true)
+				c.Assert(ls.PastUnits(), check.Equals, 3)
 			},
 		},
 		{
@@ -920,9 +924,10 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
+				c.Assert(ls.HasPastUnits(), check.Equals, false)
 			},
 		},
 		{
@@ -939,9 +944,10 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(*dep.Spec.Replicas, check.Equals, int32(1))
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(3))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
+				c.Assert(ls.HasPastUnits(), check.Equals, false)
 			},
 		},
 		{
@@ -958,7 +964,11 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {},
 			},
 			fn: func(dep *appsv1.Deployment) {
-				c.Assert(dep, check.IsNil)
+				c.Assert(dep, check.NotNil)
+				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
+				ls := labelSetFromMeta(&dep.ObjectMeta)
+				c.Assert(ls.IsStopped(), check.Equals, true)
+				c.Assert(ls.PastUnits(), check.Equals, 3)
 			},
 		},
 		{

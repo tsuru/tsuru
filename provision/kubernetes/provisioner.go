@@ -66,7 +66,6 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
 	defaultPreStopSleepSeconds                 = 10
-	pastUnitsAnnotationKey                     = "tsuru.io/past-units"
 )
 
 var defaultEphemeralStorageLimit = resource.MustParse("100Mi")
@@ -446,6 +445,13 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	} else {
 		versions = append(versions, version)
 	}
+	if len(versions) == 0 {
+		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
+		if err != nil {
+			return err
+		}
+		versions = append(versions, version)
+	}
 
 	var multiErr tsuruErrors.MultiError
 	for _, v := range versions {
@@ -458,75 +464,6 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 		}
 	}
 	return multiErr.ToError()
-}
-
-func replicasPatchWithPastUnitsAnnotation(newReplicas, oldReplicas int, annotations map[string]string) (types.PatchType, []byte, error) {
-	var patch []byte
-	var err error
-	switch len(annotations) {
-	case 0:
-		patch, err = json.Marshal([]interface{}{
-			map[string]interface{}{
-				"op":    "replace",
-				"path":  "/spec/replicas",
-				"value": newReplicas,
-			},
-			map[string]interface{}{
-				"op":   "add",
-				"path": "/metadata/annotations",
-				"value": map[string]string{
-					pastUnitsAnnotationKey: strconv.Itoa(oldReplicas),
-				},
-			},
-		})
-	default:
-		key := strings.Replace(pastUnitsAnnotationKey, "/", "~1", 1)
-		patch, err = json.Marshal([]interface{}{
-			map[string]interface{}{
-				"op":    "replace",
-				"path":  "/spec/replicas",
-				"value": newReplicas,
-			},
-			map[string]interface{}{
-				"op":    "replace",
-				"path":  "/metadata/annotations/" + key,
-				"value": strconv.Itoa(oldReplicas),
-			},
-		})
-	}
-	if err != nil {
-		return "", nil, err
-	}
-
-	return types.JSONPatchType, patch, nil
-}
-
-func stopProcess(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	client, err := clusterForPool(ctx, a.GetPool())
-	if err != nil {
-		return err
-	}
-	err = ensureAppCustomResourceSynced(ctx, client, a)
-	if err != nil {
-		return err
-	}
-
-	return filterEachDeploymentVersion(ctx, client, a, process, version, func(depInfo deploymentInfo, version appTypes.AppVersion) error {
-		dep := depInfo.dep
-		if dep.Spec.Replicas == nil || *dep.Spec.Replicas == 0 {
-			fmt.Fprintf(w, "process already stopped\n")
-			return nil
-		}
-		patchType, patch, err := replicasPatchWithPastUnitsAnnotation(0, int(*dep.Spec.Replicas), dep.Annotations)
-		if err != nil {
-			return err
-		}
-		err = patchDeployment(ctx, client, a, patchType, patch, dep, version, w, depInfo.process)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
 }
 
 func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App, patchType types.PatchType, patch []byte, dep *appsv1.Deployment, version appTypes.AppVersion, w io.Writer, process string) error {
@@ -554,7 +491,6 @@ func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App
 
 func ensureProcessName(processName string, version appTypes.AppVersion) (string, error) {
 	if processName == "" {
-		var cmdData dockercommon.ContainerCmdsData
 		cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 		if err != nil {
 			return "", err
@@ -579,19 +515,25 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil {
 		return err
 	}
-	process, err := ensureProcessName(processName, version)
+	processName, err = ensureProcessName(processName, version)
 	if err != nil {
 		return err
 	}
-	dep, err := deploymentForVersion(ctx, client, a, process, version.Version())
-	if k8sErrors.IsNotFound(err) {
+	dep, err := deploymentForVersion(ctx, client, a, processName, version.Version())
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	if dep == nil || (dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0) {
+		if dep != nil {
+			depLabels := labelOnlySetFromMeta(&dep.ObjectMeta)
+			if depLabels.HasPastUnits() {
+				units = units - depLabels.PastUnits()
+			}
+		}
 		return servicecommon.ChangeUnits(ctx, &serviceManager{
 			client: client,
 			writer: w,
 		}, a, units, processName, version)
-	}
-	if err != nil {
-		return err
 	}
 	zero := int32(0)
 	if dep.Spec.Replicas == nil {
@@ -640,7 +582,7 @@ func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, proc
 }
 
 func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
-	return stopProcess(ctx, a, process, version, w)
+	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, w)
 }
 
 func (p *kubernetesProvisioner) Sleep(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
