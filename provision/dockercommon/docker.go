@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/net"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
@@ -52,7 +51,7 @@ func (c *PullAndCreateClient) PullAndCreateContainer(opts docker.CreateContainer
 		return nil, "", err
 	}
 	cont, err := c.Client.CreateContainer(opts)
-	return cont, net.URLToHost(c.Client.Endpoint()), err
+	return cont, tsuruNet.URLToHost(c.Client.Endpoint()), err
 }
 
 type Client interface {
@@ -124,7 +123,7 @@ func PushImage(client Client, name, tag string, authconfig docker.AuthConfigurat
 			Name:              name,
 			Tag:               tag,
 			OutputStream:      &buf,
-			InactivityTimeout: net.StreamInactivityTimeout,
+			InactivityTimeout: tsuruNet.StreamInactivityTimeout,
 		}
 		if authconfig == (docker.AuthConfiguration{}) {
 			authconfig = RegistryAuthConfig(name)
@@ -157,7 +156,7 @@ func GetNodeByHost(c *cluster.Cluster, host string) (cluster.Node, error) {
 		return cluster.Node{}, err
 	}
 	for _, node := range nodes {
-		if net.URLToHost(node.Address) == host {
+		if tsuruNet.URLToHost(node.Address) == host {
 			return node, nil
 		}
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
-	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"gopkg.in/check.v1"
 )
@@ -37,21 +36,21 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 			return provisioner, nil
 		},
 	}
-	servicemanager.App = &app.MockAppService{
-		Apps: []app.App{
-			&app.MockApp{Name: "myapp", Pool: "mypool"},
+	servicemanager.App = &appTypes.MockAppService{
+		Apps: []appTypes.App{
+			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
 		},
 	}
 }
 
 func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
-	err := s.tsuruLogService.Enqueue(&app.Applog{
+	err := s.tsuruLogService.Enqueue(&appTypes.Applog{
 		AppName: "myapp",
 		Message: "Fake message from tsuru logs",
 	})
 	c.Check(err, check.IsNil)
 
-	logs, err := s.provisionerWrapper.List(context.TODO(), app.ListLogArgs{
+	logs, err := s.provisionerWrapper.List(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	sort.SliceStable(logs, func(i, j int) bool {
@@ -64,12 +63,12 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 }
 
 func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
-	watcher, err := s.provisionerWrapper.Watch(context.TODO(), app.ListLogArgs{
+	watcher, err := s.provisionerWrapper.Watch(context.TODO(), appTypes.ListLogArgs{
 		AppName: "myapp",
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.tsuruLogService.Enqueue(&app.Applog{
+	err = s.tsuruLogService.Enqueue(&appTypes.Applog{
 		AppName: "myapp",
 		Message: "Fake message from tsuru logs",
 	})
@@ -104,14 +103,14 @@ loop:
 }
 
 func (s *ProvisionerWrapperSuite) Test_MultiWatcher(c *check.C) {
-	watcher1 := app.NewMockLogWatcher()
-	watcher2 := app.NewMockLogWatcher()
+	watcher1 := appTypes.NewMockLogWatcher()
+	watcher2 := appTypes.NewMockLogWatcher()
 	mw := newMultiWatcher(watcher1, watcher2)
 
 	now := time.Now()
-	watcher1.Enqueue(app.Applog{Message: "from watcher 1", Date: now})
-	watcher2.Enqueue(app.Applog{Message: "from watcher 2", Date: now.Add(time.Second)})
-	appLogs := []app.Applog{}
+	watcher1.Enqueue(appTypes.Applog{Message: "from watcher 1", Date: now})
+	watcher2.Enqueue(appTypes.Applog{Message: "from watcher 2", Date: now.Add(time.Second)})
+	appLogs := []appTypes.Applog{}
 
 	for {
 		appLog := <-mw.Chan()

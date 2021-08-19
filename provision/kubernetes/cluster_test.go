@@ -13,18 +13,15 @@ import (
 	"sort"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/elazarl/goproxy"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -217,7 +214,7 @@ func (s *S) TestClusterInitClientByKubeConfigWithProxyANDTLS(c *check.C) {
 	k8s, err := kubernetes.NewForConfig(restConfig)
 	c.Assert(err, check.IsNil)
 
-	endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", v1.GetOptions{})
+	endpoint, err := k8s.CoreV1().Endpoints("default").Get(context.Background(), "kubernetes", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(endpoint.Subsets[0].Addresses[0].IP, check.Equals, "1.2.3.4")
 }

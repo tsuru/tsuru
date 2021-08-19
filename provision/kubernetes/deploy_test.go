@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/testing"
 	ktesting "k8s.io/client-go/testing"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
@@ -1839,7 +1838,7 @@ func (s *S) TestServiceManagerDeployServiceProgressMessages(c *check.C) {
 		return false, nil, nil
 	})
 	s.client.PrependWatchReactor("events", func(action ktesting.Action) (handled bool, ret watch.Interface, err error) {
-		requirements := action.(testing.WatchActionImpl).GetWatchRestrictions().Fields.Requirements()
+		requirements := action.(ktesting.WatchActionImpl).GetWatchRestrictions().Fields.Requirements()
 		for _, req := range requirements {
 			if req.Value == "Pod" {
 				close(watchPodCalled)

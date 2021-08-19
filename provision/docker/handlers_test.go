@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fsouza/go-dockerclient/testing"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
@@ -125,9 +124,9 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.clusterSess.DB(databaseName))
 }
 
-func startFakeDockerNode(c *check.C) (*testing.DockerServer, func()) {
+func startFakeDockerNode(c *check.C) (*dtesting.DockerServer, func()) {
 	pong := make(chan struct{})
-	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		if strings.Contains(r.URL.Path, "ping") {
 			close(pong)
 		}

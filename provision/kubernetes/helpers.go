@@ -28,7 +28,6 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1291,40 +1290,40 @@ func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (*appTypes
 	return plan, nil
 }
 
-func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (v1.ResourceRequirements, error) {
+func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (apiv1.ResourceRequirements, error) {
 	var plan *appTypes.Plan
 	// first, try to get the build plan from apps pool
 	plan, err := getPoolBuildPlan(ctx, app.GetPool())
 	if err != nil {
-		return v1.ResourceRequirements{}, err
+		return apiv1.ResourceRequirements{}, err
 	}
 	// if pools build plan is nil, try to get it from the cluster
 	if plan == nil {
 		plan, err = getClusterBuildPlan(ctx, cluster)
 		if err != nil {
-			return v1.ResourceRequirements{}, err
+			return apiv1.ResourceRequirements{}, err
 		}
 		// if neither pool build plan or cluster build plan are set, return no error and an empty ResourceRequirement
 		if plan == nil {
-			return v1.ResourceRequirements{}, nil
+			return apiv1.ResourceRequirements{}, nil
 		}
 	}
 
 	cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(plan.CPUMilli)))
 	if err != nil {
-		return v1.ResourceRequirements{}, err
+		return apiv1.ResourceRequirements{}, err
 	}
 	memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(plan.Memory, 10))
 	if err != nil {
-		return v1.ResourceRequirements{}, err
+		return apiv1.ResourceRequirements{}, err
 	}
 
-	return v1.ResourceRequirements{
-		Limits: v1.ResourceList{
+	return apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
 			"cpu":    cpu,
 			"memory": memoryBytes,
 		},
-		Requests: v1.ResourceList{
+		Requests: apiv1.ResourceList{
 			"cpu":    cpu,
 			"memory": memoryBytes,
 		},

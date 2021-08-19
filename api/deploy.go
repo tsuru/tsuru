@@ -13,7 +13,6 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -142,7 +141,7 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 // responses:
 //   410: Gone
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return &errors.HTTP{Code: http.StatusGone, Message: "diff deploy is deprecated, this call does nothing"}
+	return &tsuruErrors.HTTP{Code: http.StatusGone, Message: "diff deploy is deprecated, this call does nothing"}
 }
 
 // title: rollback
