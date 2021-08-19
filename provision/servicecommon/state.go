@@ -45,7 +45,7 @@ func ChangeUnits(ctx context.Context, manager ServiceManager, a provision.App, u
 		return errors.New("units can only be modified after the first deploy")
 	}
 	err := RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, ProcessSpec{
-		processName: ProcessState{Increment: units},
+		processName: ProcessState{Increment: units, Start: true},
 	})
 	if err != nil {
 		return errors.WithStack(err)
