@@ -39,6 +39,7 @@ var (
 	ErrMultiClusterServiceRequiresPool          = errors.New("multi-cluster service instance requires a pool")
 	ErrMultiClusterPoolDoesNotMatch             = errors.New("pools between app and multi-cluster service instance does not match")
 	ErrRegularServiceInstanceCannotBelongToPool = errors.New("regular (non-multi-cluster) service instance cannot belong to a pool")
+	ErrRevokeInstanceTeamOwnerAccess            = errors.New("cannot revoke the instance's team owner access")
 	instanceNameRegexp                          = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
@@ -410,6 +411,9 @@ func (si *ServiceInstance) Grant(teamName string) error {
 }
 
 func (si *ServiceInstance) Revoke(teamName string) error {
+	if teamName == si.TeamOwner {
+		return ErrRevokeInstanceTeamOwnerAccess
+	}
 	team, err := servicemanager.Team.FindByName(si.ctx, teamName)
 	if err != nil {
 		return err

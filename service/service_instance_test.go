@@ -970,6 +970,31 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	c.Assert(si.Teams, check.DeepEquals, []string{})
 }
 
+func (s *InstanceSuite) TestRevokeTeamOwner(c *check.C) {
+	user := &auth.User{Email: "user@tsuru.io", Password: "12345"}
+	err := s.conn.Users().Insert(user)
+	c.Assert(err, check.IsNil)
+	team := authTypes.Team{Name: "team-one"}
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return nil, fmt.Errorf("should not pass here")
+	}
+	srvc := Service{Name: "service-one", Teams: []string{team.Name}}
+	err = s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Insert(&ServiceInstance{
+		Name:        "instance-one",
+		ServiceName: srvc.Name,
+		TeamOwner:   "team-one",
+		Teams:       []string{team.Name},
+	})
+	c.Assert(err, check.IsNil)
+	si, err := GetServiceInstance(context.TODO(), "service-one", "instance-one")
+	c.Assert(err, check.IsNil)
+	err = si.Revoke(team.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "cannot revoke the instance's team owner access")
+}
+
 func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	var reqs []*http.Request
 	var mut sync.Mutex
