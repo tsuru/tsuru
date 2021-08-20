@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	annotationEnableVPA = "app.tsuru.io/enable-vpa"
-
 	vpaCRDName = "verticalpodautoscalers.autoscaling.k8s.io"
 )
 
@@ -360,7 +358,7 @@ func ensureVPAIfEnabled(ctx context.Context, client *ClusterClient, a provision.
 		return nil
 	}
 
-	rawEnableVPA, _ := a.GetMetadata().Annotation(annotationEnableVPA)
+	rawEnableVPA, _ := a.GetMetadata().Annotation(AnnotationEnableVPA)
 	if enableVPA, _ := strconv.ParseBool(rawEnableVPA); enableVPA {
 		err = ensureVPA(ctx, client, a, process)
 	} else {

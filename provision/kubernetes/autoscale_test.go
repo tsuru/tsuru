@@ -333,7 +333,7 @@ func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 			scenario: func() {
 				a.Metadata.Update(appTypes.Metadata{
 					Annotations: []appTypes.MetadataItem{
-						{Name: annotationEnableVPA, Value: "true"},
+						{Name: AnnotationEnableVPA, Value: "true"},
 					},
 				})
 			},

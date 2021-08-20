@@ -498,15 +498,36 @@ func ensureNamespace(ctx context.Context, client *ClusterClient, namespace strin
 	return nil
 }
 
-func ensureServiceAccount(ctx context.Context, client *ClusterClient, name string, labels *provision.LabelSet, namespace string) error {
+func ensureServiceAccount(ctx context.Context, client *ClusterClient, name string, labels *provision.LabelSet, namespace string, appMeta *appTypes.Metadata) error {
+	var annotations map[string]string
+	if appMeta != nil {
+		saAnnotationsRaw, ok := appMeta.Annotation(AnnotationServiceAccountAnnotations)
+		if ok {
+			json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+		}
+	}
+
 	svcAccount := apiv1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels.ToLabels(),
+			Name:        name,
+			Labels:      labels.ToLabels(),
+			Annotations: annotations,
 		},
 	}
-	_, err := client.CoreV1().ServiceAccounts(namespace).Create(ctx, &svcAccount, metav1.CreateOptions{})
-	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+	existingSA, err := client.CoreV1().ServiceAccounts(namespace).Get(ctx, svcAccount.Name, metav1.GetOptions{})
+	if k8sErrors.IsNotFound(err) {
+		existingSA = nil
+	} else if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if existingSA == nil {
+		_, err = client.CoreV1().ServiceAccounts(namespace).Create(ctx, &svcAccount, metav1.CreateOptions{})
+	} else {
+		svcAccount.ResourceVersion = existingSA.ResourceVersion
+		_, err = client.CoreV1().ServiceAccounts(namespace).Update(ctx, &svcAccount, metav1.UpdateOptions{})
+	}
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
@@ -522,7 +543,8 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	if err != nil {
 		return err
 	}
-	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns)
+	appMeta := a.GetMetadata()
+	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns, &appMeta)
 }
 
 func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {

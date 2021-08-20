@@ -184,7 +184,7 @@ func (m *nodeContainerManager) deployNodeContainerForCluster(ctx context.Context
 		Provisioner:       provisionerName,
 		Prefix:            tsuruLabelPrefix,
 	})
-	err = ensureServiceAccount(ctx, client, serviceAccountName, accountLabels, ns)
+	err = ensureServiceAccount(ctx, client, serviceAccountName, accountLabels, ns, nil)
 	if err != nil {
 		return err
 	}
