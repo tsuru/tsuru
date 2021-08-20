@@ -1186,6 +1186,47 @@ paths:
         - app
       security:
         - Bearer: []
+  /1.0/apps/{app}/run:
+    parameters:
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    post:
+      operationId: AppRun
+      description: run commands inside an app
+      parameters:
+        - name: opts
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AppRunOpts"
+          description: Options to run commands inside an app
+      consumes:
+        - application/json
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Envs updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - app
+      security:
+        - Bearer: []
   /1.0/apps/{app}/env:
     parameters:
       - name: app
@@ -5072,6 +5113,16 @@ definitions:
         items:
           type: string
       error:
+        type: string
+  AppRunOpts:
+    description: App Run options
+    type: object
+    properties:
+      once:
+        type: boolean
+      isolated:
+        type: boolean
+      command:
         type: string
   Plan:
     description: App plan.
