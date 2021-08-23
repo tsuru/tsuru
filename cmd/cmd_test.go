@@ -144,6 +144,25 @@ Use glb help <commandname> to get more information about a command.
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
+func (s *S) TestImplicitSubTopicsHelp(c *check.C) {
+	globalManager.Register(&TopicCommand{name: "topic-subtopic-bar"})
+	globalManager.Register(&TopicCommand{name: "topic-subtopic-baz"})
+	context := Context{[]string{"topic", "subtopic"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	command := help{manager: globalManager}
+	err := command.Run(&context, nil)
+	c.Assert(err, check.IsNil)
+	expected := `Client version: 1.0.
+
+The following commands are available in the "topic subtopic" topic:
+
+  topic subtopic bar   Desc topic-subtopic-bar
+  topic subtopic baz   Desc topic-subtopic-baz
+
+Use glb help <commandname> to get more information about a command.
+`
+	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestNormalizedCommandsExec(c *check.C) {
 	cmds := map[string]*TopicCommand{
 		"foo":             {name: "foo"},

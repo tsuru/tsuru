@@ -54,6 +54,7 @@ type Lookup func(context *Context) error
 type Manager struct {
 	Commands      map[string]Command
 	topics        map[string]string
+	topicCommands map[string][]Command
 	name          string
 	stdout        io.Writer
 	stderr        io.Writer
@@ -68,7 +69,17 @@ type Manager struct {
 }
 
 func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
-	manager := &Manager{name: name, version: ver, versionHeader: verHeader, stdout: stdout, stderr: stderr, stdin: stdin, lookup: lookup}
+	manager := &Manager{
+		name:          name,
+		version:       ver,
+		versionHeader: verHeader,
+		stdout:        stdout,
+		stderr:        stderr,
+		stdin:         stdin,
+		lookup:        lookup,
+		topics:        map[string]string{},
+		topicCommands: map[string][]Command{},
+	}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
@@ -96,6 +107,17 @@ func (m *Manager) Register(command Command) {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.Commands[name] = command
+
+	parts := strings.Split(name, "-")
+
+	for i := 1; i < len(parts); i++ {
+		topic := strings.Join(parts[0:i], " ")
+		if _, ok := m.topics[topic]; !ok {
+			m.topics[topic] = ""
+		}
+
+		m.topicCommands[topic] = append(m.topicCommands[topic], command)
+	}
 }
 
 func (m *Manager) RegisterDeprecated(command Command, oldName string) {
@@ -144,8 +166,8 @@ func (m *Manager) RegisterTopic(name, content string) {
 	if m.topics == nil {
 		m.topics = make(map[string]string)
 	}
-	_, found := m.topics[name]
-	if found {
+	value := m.topics[name]
+	if value != "" {
 		panic(fmt.Sprintf("topic already registered: %s", name))
 	}
 	m.topics[name] = content
@@ -201,7 +223,7 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
-		if msg, isTopic := m.tryImplicitTopic(name); len(args) == 1 && isTopic {
+		if msg, isTopic := m.tryImplicitTopic(args); isTopic {
 			fmt.Fprint(m.stdout, msg)
 			return
 		}
@@ -382,23 +404,29 @@ func (m *Manager) finisher() exiter {
 
 var topicRE = regexp.MustCompile(`(?s)^(.*)\n*$`)
 
-func (m *Manager) tryImplicitTopic(name string) (string, bool) {
-	var group []string
-	for k := range m.Commands {
-		if strings.HasPrefix(k, name+"-") {
-			group = append(group, k)
-		}
+func (m *Manager) tryImplicitTopic(args []string) (string, bool) {
+	topicName := strings.Join(args, " ")
+
+	topic, isExplicit := m.topics[topicName]
+	commands := m.topicCommands[topicName]
+
+	if len(commands) == 0 && !isExplicit {
+		return "", false
 	}
-	topic, isExplicit := m.topics[name]
-	if len(group) > 0 {
+
+	if len(commands) > 0 {
 		if len(topic) > 0 {
 			topic = topicRE.ReplaceAllString(topic, "$1\n\n")
 		}
-		topic += fmt.Sprintf("The following commands are available in the %q topic:\n\n", name)
+
+		topic += fmt.Sprintf("The following commands are available in the %q topic:\n\n", topicName)
+		var group []string
+		for _, command := range commands {
+			group = append(group, command.Info().Name)
+		}
 		topic += m.dumpCommands(group)
-	} else if !isExplicit {
-		return "", false
 	}
+
 	return topic, true
 }
 
@@ -584,7 +612,7 @@ func (c *help) Run(context *Context, client *Client) error {
 				output += fmt.Sprintf("\nMaximum # of arguments: %d", info.MaxArgs)
 			}
 			output += "\n"
-		} else if msg, ok := c.manager.tryImplicitTopic(context.Args[0]); ok {
+		} else if msg, ok := c.manager.tryImplicitTopic(context.Args); ok {
 			output += msg
 		} else {
 			return errors.Errorf("command %q does not exist.", context.Args[0])
