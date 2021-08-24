@@ -374,7 +374,7 @@ func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
 	return externalPolicyLocal, err
 }
 
-func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
+func (c *ClusterClient) OvercommitFactor(pool string) (float64, error) {
 	if c.CustomData == nil {
 		return 1, nil
 	}
@@ -382,8 +382,8 @@ func (c *ClusterClient) OvercommitFactor(pool string) (int64, error) {
 	if overcommitConf == "" {
 		return 1, nil
 	}
-	overcommit, err := strconv.Atoi(overcommitConf)
-	return int64(overcommit), err
+	overcommit, err := strconv.ParseFloat(overcommitConf, 64)
+	return overcommit, err
 }
 
 func (c *ClusterClient) LogsFromAPIServerEnabled() bool {

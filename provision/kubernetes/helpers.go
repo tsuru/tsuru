@@ -1330,18 +1330,18 @@ func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, 
 	}, nil
 }
 
-func getAppResourceRequirements(app provision.App, client *ClusterClient, overcommit int64) (apiv1.ResourceRequirements, error) {
+func getAppResourceRequirements(app provision.App, client *ClusterClient, overcommit float64) (apiv1.ResourceRequirements, error) {
 	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
 	memory := app.GetMemory()
 	if memory != 0 {
 		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
-		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(memory/overcommit, resource.BinarySI)
+		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(overcommitedValue(memory, overcommit), resource.BinarySI)
 	}
-	cpu := app.GetMilliCPU()
-	if cpu != 0 {
-		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu), resource.DecimalSI)
-		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpu)/overcommit, resource.DecimalSI)
+	cpuMilli := int64(app.GetMilliCPU())
+	if cpuMilli != 0 {
+		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(cpuMilli, resource.DecimalSI)
+		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(overcommitedValue(cpuMilli, overcommit), resource.DecimalSI)
 	}
 	ephemeral, err := client.ephemeralStorage(app.GetPool())
 	if err != nil {
@@ -1353,4 +1353,11 @@ func getAppResourceRequirements(app provision.App, client *ClusterClient, overco
 	}
 
 	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
+}
+
+func overcommitedValue(v int64, overcommit float64) int64 {
+	if overcommit == 1 {
+		return v
+	}
+	return int64(float64(v) / overcommit)
 }

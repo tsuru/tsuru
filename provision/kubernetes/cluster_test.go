@@ -311,18 +311,22 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 		"overcommit-factor":         "2",
 		"my-pool:overcommit-factor": "3",
 		"invalid:overcommit-factor": "a",
+		"float:overcommit-factor":   "1.5",
 	}}
 	client, err := NewClusterClient(&c1)
 	c.Assert(err, check.IsNil)
 	ovf, err := client.OvercommitFactor("my-pool")
 	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, int64(3))
+	c.Assert(ovf, check.Equals, float64(3))
 	ovf, err = client.OvercommitFactor("global")
 	c.Assert(err, check.IsNil)
-	c.Assert(ovf, check.Equals, int64(2))
+	c.Assert(ovf, check.Equals, float64(2))
 	ovf, err = client.OvercommitFactor("invalid")
 	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
-	c.Assert(ovf, check.Equals, int64(0))
+	c.Assert(ovf, check.Equals, float64(0))
+	ovf, err = client.OvercommitFactor("float")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(1.5))
 }
 
 func (s *S) TestClusterSinglePool(c *check.C) {
