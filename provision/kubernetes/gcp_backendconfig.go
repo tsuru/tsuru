@@ -39,6 +39,11 @@ func ensureBackendConfig(ctx context.Context, client *ClusterClient, a provision
 	if hc == nil || hc.Path == "" {
 		return false, nil
 	}
+	err := ensureHealthCheckDefaults(hc)
+	if err != nil {
+		return false, err
+	}
+
 	crdExists := false
 	exists, err := backendConfigCRDExists(ctx, client)
 	if err != nil {
