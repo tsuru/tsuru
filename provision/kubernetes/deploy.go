@@ -38,6 +38,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
@@ -60,6 +61,11 @@ const (
 	defaultUdpPortName      = "udp-default"
 	backendConfigCRDName    = "backendconfigs.cloud.google.com"
 	backendConfigKey        = "cloud.google.com/backend-config"
+)
+
+var (
+	sleepyContainerCpuQuota    = resource.NewQuantity(100*1024*1024, resource.BinarySI)
+	sleepyContainerMemoryQuota = resource.NewMilliQuantity(100, resource.DecimalSI)
 )
 
 type InspectData struct {
@@ -2006,8 +2012,17 @@ func newSleepyContainer(params createPodParams, uid *int64, envs []apiv1.EnvVar,
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: uid,
 		},
-		Resources: params.quota,
-		Command:   []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
+		Resources: apiv1.ResourceRequirements{
+			Limits: apiv1.ResourceList{
+				"cpu":    *sleepyContainerCpuQuota,
+				"memory": *sleepyContainerMemoryQuota,
+			},
+			Requests: apiv1.ResourceList{
+				"cpu":    *sleepyContainerCpuQuota,
+				"memory": *sleepyContainerMemoryQuota,
+			},
+		},
+		Command: []string{"/bin/sh", "-ec", fmt.Sprintf("while [ ! -f %s ]; do sleep 5; done", buildIntercontainerDone)},
 		VolumeMounts: append([]apiv1.VolumeMount{
 			{Name: "intercontainer", MountPath: buildIntercontainerPath},
 		}, mounts...),

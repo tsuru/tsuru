@@ -3095,11 +3095,20 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
-		Name:      "myapp-v1-build",
-		Image:     "myimg",
-		Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-		Resources: apiv1.ResourceRequirements{},
-		Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+		Name:    "myapp-v1-build",
+		Image:   "myimg",
+		Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+		Resources: apiv1.ResourceRequirements{
+			Limits: apiv1.ResourceList{
+				"cpu":    *sleepyContainerCpuQuota,
+				"memory": *sleepyContainerMemoryQuota,
+			},
+			Requests: apiv1.ResourceList{
+				"cpu":    *sleepyContainerCpuQuota,
+				"memory": *sleepyContainerMemoryQuota,
+			},
+		},
+		Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 		SecurityContext: &apiv1.SecurityContext{
 			RunAsUser: &runAsUser,
 		},
@@ -3156,12 +3165,12 @@ func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
 	})
 	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			"cpu":    cpuQuota,
-			"memory": memoryQuota,
+			"cpu":    *sleepyContainerCpuQuota,
+			"memory": *sleepyContainerMemoryQuota,
 		},
 		Requests: apiv1.ResourceList{
-			"cpu":    cpuQuota,
-			"memory": memoryQuota,
+			"cpu":    *sleepyContainerCpuQuota,
+			"memory": *sleepyContainerMemoryQuota,
 		},
 	})
 }
@@ -3214,12 +3223,12 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
 	})
 	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
-			"cpu":    cpuQuota,
-			"memory": memoryQuota,
+			"cpu":    *sleepyContainerCpuQuota,
+			"memory": *sleepyContainerMemoryQuota,
 		},
 		Requests: apiv1.ResourceList{
-			"cpu":    cpuQuota,
-			"memory": memoryQuota,
+			"cpu":    *sleepyContainerCpuQuota,
+			"memory": *sleepyContainerMemoryQuota,
 		},
 	})
 }
@@ -3342,11 +3351,20 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 			}},
 		{
-			Name:      "myapp-v1-deploy",
-			Image:     version.BuildImageName(),
-			Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
-			Resources: apiv1.ResourceRequirements{},
-			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
+			Name:    "myapp-v1-deploy",
+			Image:   version.BuildImageName(),
+			Command: []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
+			Resources: apiv1.ResourceRequirements{
+				Limits: apiv1.ResourceList{
+					"cpu":    *sleepyContainerCpuQuota,
+					"memory": *sleepyContainerMemoryQuota,
+				},
+				Requests: apiv1.ResourceList{
+					"cpu":    *sleepyContainerCpuQuota,
+					"memory": *sleepyContainerMemoryQuota,
+				},
+			},
+			Env: []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
 			SecurityContext: &apiv1.SecurityContext{
 				RunAsUser: &runAsUser,
 			},
