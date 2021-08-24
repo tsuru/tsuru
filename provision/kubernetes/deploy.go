@@ -64,8 +64,8 @@ const (
 )
 
 var (
-	sleepyContainerCpuQuota    = resource.NewQuantity(100*1024*1024, resource.BinarySI)
-	sleepyContainerMemoryQuota = resource.NewMilliQuantity(100, resource.DecimalSI)
+	sleepyContainerCpuQuota    = resource.NewMilliQuantity(100, resource.DecimalSI)
+	sleepyContainerMemoryQuota = resource.NewQuantity(100*1024*1024, resource.BinarySI)
 )
 
 type InspectData struct {
