@@ -85,6 +85,12 @@ func (s *S) TestPlatformCurrentImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/myplatform:v1")
 
+	config.Set("docker:registry", "reg1.com")
+	img, err = service.CurrentImage(context.TODO(), "", platformName)
+	config.Unset("docker:registry")
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, "reg1.com/tsuru/myplatform:v1")
+
 	storage.OnFindByName = func(n string) (*imageTypes.PlatformImage, error) {
 		c.Assert(n, check.Equals, platformName)
 		return &imageTypes.PlatformImage{
