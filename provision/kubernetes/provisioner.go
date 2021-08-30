@@ -68,7 +68,14 @@ const (
 	defaultPreStopSleepSeconds                 = 10
 )
 
-var defaultEphemeralStorageLimit = resource.MustParse("100Mi")
+var (
+	defaultEphemeralStorageLimit = resource.MustParse("100Mi")
+	podAllowedReasonsToFail      = map[string]bool{
+		"shutdown":     true,
+		"evicted":      true,
+		"nodeaffinity": true,
+	}
+)
 
 type kubernetesProvisioner struct {
 	mu                 sync.Mutex
@@ -625,7 +632,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 	}
 	var units []provision.Unit
 	for _, pod := range pods {
-		if isTerminating(pod) || isEvicted(pod) || isFailedByNodeAffinity(pod) {
+		if isTerminating(pod) || podIsAllowedToFail(pod) {
 			continue
 		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
@@ -742,12 +749,9 @@ func isTerminating(pod apiv1.Pod) bool {
 	return pod.Spec.ActiveDeadlineSeconds != nil && *pod.Spec.ActiveDeadlineSeconds >= int64(0) || pod.DeletionTimestamp != nil
 }
 
-func isEvicted(pod apiv1.Pod) bool {
-	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "evicted"
-}
-
-func isFailedByNodeAffinity(pod apiv1.Pod) bool {
-	return pod.Status.Phase == apiv1.PodFailed && strings.ToLower(pod.Status.Reason) == "nodeaffinity"
+func podIsAllowedToFail(pod apiv1.Pod) bool {
+	reason := strings.ToLower(pod.Status.Reason)
+	return pod.Status.Phase == apiv1.PodFailed && podAllowedReasonsToFail[reason]
 }
 
 func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
