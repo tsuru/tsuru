@@ -3225,6 +3225,8 @@ func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	memoryQuota, err := resource.ParseQuantity("4294967296") // 4Gi
 	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Name, check.Equals, "committer-cont")
+	c.Assert(containers[1].Name, check.Equals, "myapp-v1-build")
 	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
 			"cpu":    cpuQuota,
@@ -3243,6 +3245,73 @@ func (s *S) TestCreatePodContainersWithClusterBuildPlan(c *check.C) {
 		Requests: apiv1.ResourceList{
 			"cpu":    cpuQuota,
 			"memory": memoryQuota,
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithClusterBuildPlanAndSidecarBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(plan string) (*appTypes.Plan, error) {
+		if plan == "c1m1" {
+			return &appTypes.Plan{
+				Name:     "c1m1",
+				CPUMilli: 1000,
+				Memory:   int64(1073741824),
+			}, nil
+		}
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 2000,
+			Memory:   int64(4294967296),
+		}, nil
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	s.clusterClient.CustomData[buildPlanKey] = "c2m4"
+	s.clusterClient.CustomData[buildPlanSideCarKey] = "c1m1"
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuotaBuild, _ := resource.ParseQuantity("2000m")           // 2vCPU
+	memoryQuotaBuild, _ := resource.ParseQuantity("4294967296")   // 4Gi
+	cpuQuotaSideCar, _ := resource.ParseQuantity("1000m")         // 1vCPU
+	memoryQuotaSideCar, _ := resource.ParseQuantity("1073741824") // 1Gi
+	c.Assert(containers[0].Name, check.Equals, "committer-cont")
+	c.Assert(containers[1].Name, check.Equals, "myapp-v1-build")
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuotaSideCar,
+			"memory": memoryQuotaSideCar,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuotaSideCar,
+			"memory": memoryQuotaSideCar,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuotaBuild,
+			"memory": memoryQuotaBuild,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuotaBuild,
+			"memory": memoryQuotaBuild,
 		},
 	})
 }
@@ -3283,6 +3352,8 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	memoryQuota, err := resource.ParseQuantity("2147483648") // 2Gi
 	c.Assert(err, check.IsNil)
+	c.Assert(containers[0].Name, check.Equals, "committer-cont")
+	c.Assert(containers[1].Name, check.Equals, "myapp-v1-build")
 	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
 		Limits: apiv1.ResourceList{
 			"cpu":    cpuQuota,
@@ -3301,6 +3372,73 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
 		Requests: apiv1.ResourceList{
 			"cpu":    cpuQuota,
 			"memory": memoryQuota,
+		},
+	})
+}
+
+func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlan(c *check.C) {
+	s.mockService.Plan.OnFindByName = func(plan string) (*appTypes.Plan, error) {
+		if plan == "c0.5m1" {
+			return &appTypes.Plan{
+				Name:     "c0.5m1",
+				CPUMilli: 500,
+				Memory:   int64(1073741824),
+			}, nil
+		}
+		return &appTypes.Plan{
+			Name:     "c2m4",
+			CPUMilli: 1000,
+			Memory:   int64(2147483648),
+		}, nil
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	err = pool.PoolUpdate(context.TODO(), "test-default", pool.UpdatePoolOptions{Labels: map[string]string{buildPlanKey: "c1m2", buildPlanSideCarKey: "c0.5m1"}})
+	c.Assert(err, check.IsNil)
+	err = createPod(context.Background(), createPodParams{
+		client:            s.clusterClient,
+		app:               a,
+		cmds:              dockercommon.ArchiveBuildCmds(a, "file:///home/application/archive.tar.gz"),
+		sourceImage:       "myimg",
+		destinationImages: []string{"destimg"},
+		inputFile:         "/home/application/archive.tar.gz",
+		podName:           "myapp-v1-build",
+	})
+	c.Assert(err, check.IsNil)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pods.Items, check.HasLen, 1)
+	containers := pods.Items[0].Spec.Containers
+	c.Assert(containers, check.HasLen, 2)
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	cpuQuotaBuild, _ := resource.ParseQuantity("1000m")           // 1vCPU
+	memoryQuotaBuild, _ := resource.ParseQuantity("2147483648")   // 2Gi
+	cpuQuotaSideCar, _ := resource.ParseQuantity("500m")          // 0.5vCPU
+	memoryQuotaSideCar, _ := resource.ParseQuantity("1073741824") // 1Gi
+	c.Assert(containers[0].Name, check.Equals, "committer-cont")
+	c.Assert(containers[1].Name, check.Equals, "myapp-v1-build")
+	c.Assert(containers[0].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuotaSideCar,
+			"memory": memoryQuotaSideCar,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuotaSideCar,
+			"memory": memoryQuotaSideCar,
+		},
+	})
+	c.Assert(containers[1].Resources, check.DeepEquals, apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			"cpu":    cpuQuotaBuild,
+			"memory": memoryQuotaBuild,
+		},
+		Requests: apiv1.ResourceList{
+			"cpu":    cpuQuotaBuild,
+			"memory": memoryQuotaBuild,
 		},
 	})
 }
