@@ -1261,73 +1261,82 @@ func isPodReady(pod *apiv1.Pod) bool {
 	return true
 }
 
-func getPoolBuildPlan(ctx context.Context, poolName string) (*appTypes.Plan, error) {
-	var plan *appTypes.Plan
+func getPoolBuildPlan(ctx context.Context, poolName string) (map[string]*appTypes.Plan, error) {
+	plans := make(map[string]*appTypes.Plan)
 	pool, err := pool.GetPoolByName(ctx, poolName)
 	if err != nil {
 		return nil, err
 	}
-	if planName := pool.GetBuildPlan(); planName != "" {
-		plan, err = servicemanager.Plan.FindByName(ctx, planName)
+	poolBuildPlan := pool.GetBuildPlan()
+	if _, ok := poolBuildPlan[buildPlanKey]; !ok {
+		return nil, nil
+	}
+	for planKey, planName := range poolBuildPlan {
+		plan, err := servicemanager.Plan.FindByName(ctx, planName)
 		if err != nil {
 			return nil, err
 		}
-		return plan, nil
+		plans[planKey] = plan
 	}
-
-	return nil, nil
+	return plans, nil
 }
 
-func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (*appTypes.Plan, error) {
-	var plan *appTypes.Plan
-	var err error
-	if planName, ok := cluster.CustomData[buildPlanKey]; ok {
-		plan, err = servicemanager.Plan.FindByName(ctx, planName)
-		if err != nil {
-			return nil, err
+func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (map[string]*appTypes.Plan, error) {
+	if _, ok := cluster.CustomData[buildPlanKey]; !ok {
+		return nil, nil
+	}
+	plans := make(map[string]*appTypes.Plan)
+	for _, buildPlanItem := range []string{buildPlanKey, buildPlanSideCarKey} {
+		if planName, ok := cluster.CustomData[buildPlanItem]; ok {
+			plan, err := servicemanager.Plan.FindByName(ctx, planName)
+			if err != nil {
+				return nil, err
+			}
+			plans[buildPlanItem] = plan
 		}
 	}
-	return plan, nil
+	return plans, nil
 }
 
-func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (apiv1.ResourceRequirements, error) {
-	var plan *appTypes.Plan
+func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (map[string]apiv1.ResourceRequirements, error) {
+	k8sBuildPlans := make(map[string]apiv1.ResourceRequirements)
 	// first, try to get the build plan from apps pool
-	plan, err := getPoolBuildPlan(ctx, app.GetPool())
+	plans, err := getPoolBuildPlan(ctx, app.GetPool())
 	if err != nil {
-		return apiv1.ResourceRequirements{}, err
+		return nil, err
 	}
 	// if pools build plan is nil, try to get it from the cluster
-	if plan == nil {
-		plan, err = getClusterBuildPlan(ctx, cluster)
+	if plans == nil {
+		plans, err = getClusterBuildPlan(ctx, cluster)
 		if err != nil {
-			return apiv1.ResourceRequirements{}, err
+			return nil, err
 		}
-		// if neither pool build plan or cluster build plan are set, return no error and an empty ResourceRequirement
-		if plan == nil {
-			return apiv1.ResourceRequirements{}, nil
+		// if neither pool build plan or cluster build plan are set, return no error and nil
+		if plans == nil {
+			return nil, nil
 		}
 	}
-
-	cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(plan.CPUMilli)))
-	if err != nil {
-		return apiv1.ResourceRequirements{}, err
+	for planKey, planName := range plans {
+		cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(planName.CPUMilli)))
+		if err != nil {
+			return nil, err
+		}
+		memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(planName.Memory, 10))
+		if err != nil {
+			return nil, err
+		}
+		k8sBuildPlans[planKey] = apiv1.ResourceRequirements{
+			Limits: apiv1.ResourceList{
+				"cpu":    cpu,
+				"memory": memoryBytes,
+			},
+			Requests: apiv1.ResourceList{
+				"cpu":    cpu,
+				"memory": memoryBytes,
+			},
+		}
 	}
-	memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(plan.Memory, 10))
-	if err != nil {
-		return apiv1.ResourceRequirements{}, err
-	}
-
-	return apiv1.ResourceRequirements{
-		Limits: apiv1.ResourceList{
-			"cpu":    cpu,
-			"memory": memoryBytes,
-		},
-		Requests: apiv1.ResourceList{
-			"cpu":    cpu,
-			"memory": memoryBytes,
-		},
-	}, nil
+	return k8sBuildPlans, nil
 }
 
 func getAppResourceRequirements(app provision.App, client *ClusterClient, overcommit float64) (apiv1.ResourceRequirements, error) {

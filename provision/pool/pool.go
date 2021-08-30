@@ -42,8 +42,9 @@ var (
 )
 
 const (
-	affinityKey  = "affinity"
-	buildPlanKey = "build-plan"
+	affinityKey         = "affinity"
+	buildPlanKey        = "build-plan"
+	buildPlanSideCarKey = "build-plan-sidecar"
 )
 
 type Pool struct {
@@ -86,11 +87,17 @@ func (p *Pool) GetAffinity() (*apiv1.Affinity, error) {
 	return nil, nil
 }
 
-func (p *Pool) GetBuildPlan() string {
-	if plan, ok := p.Labels[buildPlanKey]; ok {
-		return plan
+func (p *Pool) GetBuildPlan() map[string]string {
+	if _, ok := p.Labels[buildPlanKey]; !ok {
+		return nil
 	}
-	return ""
+	plans := make(map[string]string)
+	for _, buildPlanItem := range []string{buildPlanKey, buildPlanSideCarKey} {
+		if plan, ok := p.Labels[buildPlanItem]; ok {
+			plans[buildPlanItem] = plan
+		}
+	}
+	return plans
 }
 
 func (p *Pool) GetProvisioner() (provision.Provisioner, error) {

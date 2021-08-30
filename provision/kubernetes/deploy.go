@@ -1839,7 +1839,14 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
-	params.quota = quota
+	var deployAgentPlan apiv1.ResourceRequirements
+	if buildPlan, ok := quota[buildPlanKey]; ok {
+		params.quota = buildPlan
+		deployAgentPlan = buildPlan
+	}
+	if buildPlanSidecar, ok := quota[buildPlanSideCarKey]; ok {
+		deployAgentPlan = buildPlanSidecar
+	}
 	return apiv1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        params.podName,
@@ -1864,7 +1871,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 			RestartPolicy: apiv1.RestartPolicyNever,
 			Containers: []apiv1.Container{
 				newSleepyContainer(params, uid, appEnvs(params.app, "", nil, true), mounts...),
-				newDeployAgentContainer(conf, pullSecrets, params.quota),
+				newDeployAgentContainer(conf, pullSecrets, deployAgentPlan),
 			},
 		},
 	}, nil

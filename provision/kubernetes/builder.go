@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ provision.BuilderKubeClient = &KubeClient{}
@@ -47,9 +48,13 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	}
 	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, ns)
 	inputFile := "/home/application/archive.tar.gz"
-	quota, err := getResourceRequirementsForBuildPod(ctx, a, client)
+	buildPlans, err := getResourceRequirementsForBuildPod(ctx, a, client)
 	if err != nil {
 		return err
+	}
+	quota := v1.ResourceRequirements{}
+	if plan, ok := buildPlans[buildPlanKey]; ok {
+		quota = plan
 	}
 	params := createPodParams{
 		app:               a,
