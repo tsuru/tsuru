@@ -2402,7 +2402,7 @@ func (app *App) Shell(opts provision.ExecOptions) error {
 		return provision.ProvisionerNotSupported{Prov: prov, Action: "running shell"}
 	}
 	opts.App = app
-	opts.Cmds = cmdsForExec("[ $(command -v bash) ] && bash -l || sh -l")
+	opts.Cmds = cmdsForExec("[ $(command -v bash) ] && exec bash -l || exec sh -l")
 	return execProv.ExecuteCommand(app.ctx, opts)
 }
 
