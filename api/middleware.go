@@ -204,7 +204,7 @@ func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
 
 func InputValues(r *http.Request, field string) ([]string, bool) {
 	parseForm(r)
-	switch r.Header.Get("Content-Type") {
+	switch getContentType(r) {
 	case "application/json":
 		data, err := context.GetBody(r)
 		if err != nil {
@@ -248,7 +248,7 @@ func InputFields(r *http.Request, exclude ...string) url.Values {
 	parseForm(r)
 	baseValues := r.Form
 	excludeSet := set.FromSlice(exclude)
-	switch r.Header.Get("Content-Type") {
+	switch getContentType(r) {
 	case "application/json":
 		data, err := context.GetBody(r)
 		if err != nil {
@@ -303,7 +303,7 @@ func ParseJSON(r *http.Request, dst interface{}) error {
 }
 
 func ParseInput(r *http.Request, dst interface{}) error {
-	contentType := r.Header.Get("Content-Type")
+	contentType := getContentType(r)
 	switch contentType {
 	case "application/json":
 		return ParseJSON(r, dst)
@@ -344,7 +344,7 @@ func parseForm(r *http.Request) error {
 		readCloser.Closer = r.Body
 		r.Body = &readCloser
 	}
-	contentType := r.Header.Get("Content-Type")
+	contentType := getContentType(r)
 	var err error
 	if strings.HasPrefix(contentType, "multipart") {
 		err = r.ParseMultipartForm(defaultMaxMemory)
@@ -355,4 +355,9 @@ func parseForm(r *http.Request) error {
 		readCloser.Reader = &buf
 	}
 	return err
+}
+
+func getContentType(r *http.Request) string {
+	parts := strings.Split(r.Header.Get("Content-Type"), ";")
+	return parts[0]
 }

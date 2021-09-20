@@ -486,6 +486,13 @@ func (s *S) TestInputValues(c *check.C) {
 			expected:    []string{"a", "x"},
 			qs:          "foo=x",
 		},
+		{
+			body:        `{"foo": "x"}`,
+			contentType: "application/json; charset=utf8",
+			present:     true,
+			field:       `foo`,
+			expected:    []string{"x"},
+		},
 	}
 	for i, tt := range tests {
 		c.Logf("test %d: %#v", i, tt)
@@ -589,6 +596,12 @@ func (s *S) TestInputFields(c *check.C) {
 			present:     true,
 			expected:    url.Values{"foo": {"x", "a"}},
 			qs:          "foo=x",
+		},
+		{
+			body:        `{"foo": "bar"}`,
+			contentType: "application/json; charset=utf-8",
+			present:     true,
+			expected:    url.Values{"foo": {"bar"}},
 		},
 	}
 	for i, tt := range tests {
