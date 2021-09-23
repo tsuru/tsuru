@@ -61,8 +61,11 @@ func (s *S) TestAppVersionImpl_ImageNames(c *check.C) {
 				config.Unset("docker:repository-namespace")
 				defer config.Set("docker:repository-namespace", "tsuru")
 			}
-			c.Check(tt.spec.BaseImageName(), check.Equals, tt.wantedBase)
-			c.Check(tt.spec.BuildImageName(), check.Equals, tt.wantedBuild)
+			testBaseImage, err := tt.spec.BaseImageName()
+			c.Check(err, check.IsNil)
+			testBuildImage, err := tt.spec.BuildImageName()
+			c.Check(testBaseImage, check.Equals, tt.wantedBase)
+			c.Check(testBuildImage, check.Equals, tt.wantedBuild)
 		}()
 	}
 }

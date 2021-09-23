@@ -55,8 +55,10 @@ func (s *S) TestBuilderArchiveURL(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
-	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, testBuildImage)
 	c.Assert(version.VersionInfo().DeployImage, check.Equals, "")
 }
 
@@ -110,8 +112,10 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
-	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, testBuildImage)
 	c.Assert(version.VersionInfo().DeployImage, check.Equals, "")
 }
 
@@ -182,7 +186,9 @@ func (s *S) TestBuilderImageID(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
@@ -299,7 +305,9 @@ func (s *S) TestBuilderImageIDWithExposedPort(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().ExposedPorts, check.DeepEquals, []string{"80/tcp"})
 }
 
@@ -348,7 +356,9 @@ func (s *S) TestBuilderImageIDWithProcfile(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
@@ -405,7 +415,9 @@ func (s *S) TestBuilderImageIDWithEntrypointAndCmd(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"/bin/sh", "-c", "python test.py"}}
@@ -478,7 +490,9 @@ hooks:
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	customdata, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	c.Assert(customdata, check.DeepEquals, provTypes.TsuruYamlData{
@@ -580,9 +594,11 @@ func (s *S) TestBuilderImageIDWithHooks(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 	c.Assert(logBuffer.String(), check.Matches, `(?s).*---> Running "echo \\"running build hook\\"".+running build hook.*`)
 	c.Assert(atomic.LoadInt32(&containerDeleteCount), check.Equals, int32(3))
 }
@@ -610,7 +626,9 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v1-builder")
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, s.team.Name+"/app-myapp:v1-builder")
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	err = version.CommitSuccessful()
@@ -632,7 +650,9 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	}
 	version, err = s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:v2-builder")
+	testBuildImagev2, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImagev2, check.Equals, s.team.Name+"/app-myapp:v2-builder")
 }
 
 func (s *S) TestBuilderImageBuilded(c *check.C) {
@@ -685,8 +705,10 @@ func (s *S) TestBuilderImageBuilded(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BaseImageName(), check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 	c.Assert(bopts.IsTsuruBuilderImage, check.Equals, true)
 }

@@ -37,9 +37,9 @@ func IsInvalidVersionError(err error) bool {
 
 type AppVersion interface {
 	Version() int
-	BuildImageName() string
+	BuildImageName() (string, error)
 	CommitBuildImage() error
-	BaseImageName() string
+	BaseImageName() (string, error)
 	CommitBaseImage() error
 	CommitSuccessful() error
 	MarkToRemoval() error

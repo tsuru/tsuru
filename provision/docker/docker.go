@@ -62,18 +62,22 @@ func (p *dockerProvisioner) deployPipeline(ctx context.Context, app provision.Ap
 	if evt == nil {
 		writer = ioutil.Discard
 	}
+	newBaseImage, err := version.BaseImageName()
+	if err != nil {
+		return "", err
+	}
 	args := runContainerActionsArgs{
 		app:           app,
 		imageID:       version.VersionInfo().BuildImage,
 		commands:      commands,
 		writer:        writer,
 		isDeploy:      true,
-		buildingImage: version.BaseImageName(),
+		buildingImage: newBaseImage,
 		provisioner:   p,
 		event:         evt,
 		version:       version,
 	}
-	err := container.RunPipelineWithRetry(ctx, pipeline, args)
+	err = container.RunPipelineWithRetry(ctx, pipeline, args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err

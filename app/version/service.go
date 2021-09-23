@@ -66,7 +66,11 @@ func (s *appVersionService) VersionByPendingImage(ctx context.Context, app appTy
 		if err != nil {
 			return nil, err
 		}
-		if vi.BaseImageName() == imageID {
+		baseImage, err := vi.BaseImageName()
+		if err != nil {
+			return nil, err
+		}
+		if baseImage == imageID {
 			return vi, nil
 		}
 	}

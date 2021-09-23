@@ -59,6 +59,10 @@ var createContainer = action.Action{
 		if err := checkCanceled(args.event); err != nil {
 			return nil, err
 		}
+		buildImage, err := args.version.BuildImageName()
+		if err != nil {
+			return nil, err
+		}
 		contName := args.app.GetName() + "-" + randomString()
 		cont := container.Container{
 			Container: types.Container{
@@ -67,12 +71,12 @@ var createContainer = action.Action{
 				Type:          args.app.GetPlatform(),
 				Name:          contName,
 				Image:         args.imageID,
-				BuildingImage: args.version.BuildImageName(),
+				BuildingImage: buildImage,
 				ExposedPort:   args.exposedPort,
 			},
 		}
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
-		err := cont.Create(&container.CreateArgs{
+		err = cont.Create(&container.CreateArgs{
 			ImageID:     args.imageID,
 			Commands:    args.commands,
 			App:         args.app,

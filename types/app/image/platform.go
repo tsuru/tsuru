@@ -24,7 +24,7 @@ type ImageRegistry string
 
 type PlatformImageService interface {
 	NewVersion(context.Context, string) (int, error)
-	NewImage(context.Context, ImageRegistry, string, int) string
+	NewImage(context.Context, ImageRegistry, string, int) (string, error)
 	CurrentImage(context.Context, ImageRegistry, string) (string, error)
 	AppendImages(context.Context, string, int, []string) error
 	DeleteImages(context.Context, string) error
