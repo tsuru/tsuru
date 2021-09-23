@@ -1092,15 +1092,19 @@ func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newVersion(c, a, nil)
-	err := createDeployPod(context.Background(), createPodParams{
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		podName:           "myapp-v1-deploy",
 	})
 	c.Assert(err, check.IsNil)
-	version, err = servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, version.BaseImageName())
+	version, err = servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, testBaseImage)
 	c.Assert(err, check.IsNil)
 	procs, err := version.Processes()
 	c.Assert(err, check.IsNil)
@@ -1929,8 +1933,10 @@ func (s *S) TestDeployRollback(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	img, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: rollbackEvt})
+	testBaseImage, err := version1.BaseImageName()
+	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, version1.BaseImageName())
+	c.Assert(img, check.Equals, testBaseImage)
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)

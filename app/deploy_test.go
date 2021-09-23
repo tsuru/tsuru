@@ -188,9 +188,11 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &a)
+	testBaseImage, err := version.BaseImageName()
+	c.Check(err, check.IsNil)
 	insert := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		{App: "ge", Timestamp: time.Now(), Image: version.BaseImageName()},
+		{App: "ge", Timestamp: time.Now(), Image: testBaseImage},
 	}
 	insertDeploysAsEvents(insert, c)
 	expected := []DeployData{insert[1], insert[0]}
@@ -912,16 +914,18 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	imgID, err := Deploy(context.TODO(), DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		Image:        version.BaseImageName(),
+		Image:        testBaseImage,
 		Rollback:     true,
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
-	c.Assert(imgID, check.Equals, version.BaseImageName())
+	c.Assert(imgID, check.Equals, testBaseImage)
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)
@@ -954,8 +958,10 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	c.Assert(writer.String(), check.Matches, "(?s).*Builder deploy called.*")
-	c.Assert(imgID, check.Equals, version.BaseImageName())
+	c.Assert(imgID, check.Equals, testBaseImage)
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "otherapp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, check.Equals, true)

@@ -28,11 +28,14 @@ func (s *S) TestPlatformNewImage(c *check.C) {
 			},
 		},
 	}
-	img1 := service.NewImage(context.TODO(), "", "myplatform", 1)
+	img1, err := service.NewImage(context.TODO(), "", "myplatform", 1)
+	c.Check(err, check.IsNil)
 	c.Assert(img1, check.Equals, "tsuru/myplatform:v1")
-	img2 := service.NewImage(context.TODO(), "", "myplatform", 2)
+	img2, err := service.NewImage(context.TODO(), "", "myplatform", 2)
+	c.Check(err, check.IsNil)
 	c.Assert(img2, check.Equals, "tsuru/myplatform:v2")
-	img3 := service.NewImage(context.TODO(), imageTypes.ImageRegistry("reg1.com/tsuru"), "myplatform", 3)
+	img3, err := service.NewImage(context.TODO(), imageTypes.ImageRegistry("reg1.com/tsuru"), "myplatform", 3)
+	c.Check(err, check.IsNil)
 	c.Assert(img3, check.Equals, "reg1.com/tsuru/myplatform:v3")
 }
 
@@ -50,9 +53,11 @@ func (s *S) TestPlatformNewImageWithRegistry(c *check.C) {
 			},
 		},
 	}
-	img1 := service.NewImage(context.TODO(), "", "myplatform", 1)
+	img1, err := service.NewImage(context.TODO(), "", "myplatform", 1)
+	c.Check(err, check.IsNil)
 	c.Assert(img1, check.Equals, "localhost:3030/tsuru/myplatform:v1")
-	img2 := service.NewImage(context.TODO(), imageTypes.ImageRegistry("reg1.com/tsuru"), "myplatform", 2)
+	img2, err := service.NewImage(context.TODO(), imageTypes.ImageRegistry("reg1.com/tsuru"), "myplatform", 2)
+	c.Check(err, check.IsNil)
 	c.Assert(img2, check.Equals, "reg1.com/tsuru/myplatform:v2")
 }
 

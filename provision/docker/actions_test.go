@@ -157,12 +157,16 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	version, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
 	cont := &container.Container{Container: types.Container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}}
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	args := runContainerActionsArgs{
 		app:           app,
-		imageID:       version.BuildImageName(),
+		imageID:       testBuildImage,
 		commands:      cmds,
 		provisioner:   s.p,
-		buildingImage: version.BaseImageName(),
+		buildingImage: testBaseImage,
 		isDeploy:      true,
 		version:       version,
 	}
@@ -182,7 +186,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	c.Assert(cc.Config.User, check.Equals, "ubuntu")
 	args = runContainerActionsArgs{
 		app:         app,
-		imageID:     version.BaseImageName(),
+		imageID:     testBaseImage,
 		commands:    cmds,
 		provisioner: s.p,
 		version:     version,
@@ -877,7 +881,9 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	version, err := newVersionForApp(s.p, app, nil)
 	c.Assert(err, check.IsNil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: testBaseImage}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",

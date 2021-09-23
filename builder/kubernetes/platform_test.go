@@ -19,11 +19,11 @@ import (
 func (s *S) TestPlatformBuild(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
-	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) (string, error) {
 		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
 		c.Assert(plat, check.Equals, "myplatform")
 		c.Assert(version, check.Equals, 1)
-		return "tsuru/myplatform:v1"
+		return "tsuru/myplatform:v1", nil
 	}
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)

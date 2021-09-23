@@ -157,7 +157,9 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	version := newVersionForApp(c, client, app, nil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: version.BaseImageName()}}
+	baseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: baseImage}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -240,7 +242,9 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	version := newVersionForApp(c, client, app, nil)
-	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: version.BuildImageName()}}
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: "mightyapp", ID: "myid123", BuildingImage: testBuildImage}}
 	err = cont.Create(&container.CreateArgs{
 		App:      app,
 		ImageID:  "tsuru/python",
@@ -257,7 +261,7 @@ func (s *S) TestUpdateAppBuilderImageForward(c *check.C) {
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	_, err = updateAppBuilderImage.Forward(context)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.VersionInfo().BuildImage, check.Equals, version.BuildImageName())
+	c.Assert(version.VersionInfo().BuildImage, check.Equals, testBuildImage)
 }
 
 func (s *S) newContainer(c *check.C, client *docker.Client) *container.Container {
@@ -274,11 +278,13 @@ func (s *S) newContainer(c *check.C, client *docker.Client) *container.Container
 	version := newVersionForApp(c, client, fakeApp, nil)
 	routertest.FakeRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: container.AppName})
 	routertest.FakeRouter.AddRoutes(context.TODO(), fakeApp, []*url.URL{container.Address()})
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	ports := map[docker.Port]struct{}{
 		docker.Port(s.port + "/tcp"): {},
 	}
 	config := docker.Config{
-		Image:        version.BuildImageName(),
+		Image:        testBuildImage,
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
@@ -287,7 +293,7 @@ func (s *S) newContainer(c *check.C, client *docker.Client) *container.Container
 	cont, err := client.CreateContainer(createOptions)
 	c.Assert(err, check.IsNil)
 	container.ID = cont.ID
-	container.Image = version.BuildImageName()
+	container.Image = testBuildImage
 	container.Name = createOptions.Name
 	return &container
 }
@@ -308,8 +314,10 @@ func newVersionForApp(c *check.C, client *docker.Client, a provision.App, custom
 		CustomData: customData,
 	})
 	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	client.PullImage(docker.PullImageOptions{
-		Repository: version.BuildImageName(),
+		Repository: testBuildImage,
 	}, docker.AuthConfiguration{})
 	return version
 }

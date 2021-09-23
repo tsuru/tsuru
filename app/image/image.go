@@ -7,6 +7,7 @@ package image
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -57,31 +58,62 @@ func ParseImageParts(imageName string) (registry string, image string, tag strin
 	return registry, parts[0], parts[1]
 }
 
-func AppBasicImageName(reg imgTypes.ImageRegistry, appName string) string {
-	return fmt.Sprintf("%s/app-%s", basicImageName(reg, "tsuru"), appName)
+func AppBasicImageName(reg imgTypes.ImageRegistry, appName string) (string, error) {
+	imageName, err := basicImageName(reg, "tsuru")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/app-%s", imageName, appName), nil
 }
 
-func AppBuildImageName(reg imgTypes.ImageRegistry, appName, tag, team string, version int) string {
+func AppBuildImageName(reg imgTypes.ImageRegistry, appName, tag, team string, version int) (string, error) {
 	if tag == "" {
 		tag = fmt.Sprintf("v%d-builder", version)
 	}
-	return fmt.Sprintf("%s:%s", appBasicBuilderImageName(reg, appName, team), tag)
+	imageName, err := appBasicBuilderImageName(reg, appName, team)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%s", imageName, tag), nil
 }
 
-func appBasicBuilderImageName(reg imgTypes.ImageRegistry, appName, teamName string) string {
+func appBasicBuilderImageName(reg imgTypes.ImageRegistry, appName, teamName string) (string, error) {
 	if teamName == "" {
 		teamName = "tsuru"
 	}
-	return fmt.Sprintf("%s/app-%s", basicImageName(reg, teamName), appName)
+	imageName, err := basicImageName(reg, teamName)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/app-%s", imageName, appName), nil
 }
-
-func basicImageName(reg imgTypes.ImageRegistry, repoName string) string {
+func resolveName(name string) (newname string, err error) {
+	host, port, err := net.SplitHostPort(name)
+	if err != nil {
+		return "", err
+	}
+	addr, err := net.LookupHost(host)
+	if err != nil {
+		return "", err
+	}
+	newname = net.JoinHostPort(addr[0], port)
+	return newname, nil
+}
+func basicImageName(reg imgTypes.ImageRegistry, repoName string) (string, error) {
+	var err error
 	parts := make([]string, 0, 2)
 	registry := string(reg)
 	if registry != "" {
-		return registry
+		return registry, nil
 	}
 	registry, _ = config.GetString("docker:registry")
+	resolve, _ := config.GetBool("docker:resolve-registry-name")
+	if resolve {
+		registry, err = resolveName(registry)
+		if err != nil {
+			return "", err
+		}
+	}
 	if registry != "" {
 		parts = append(parts, registry)
 	}
@@ -90,7 +122,7 @@ func basicImageName(reg imgTypes.ImageRegistry, repoName string) string {
 		repoNamespace = repoName
 	}
 	parts = append(parts, repoNamespace)
-	return strings.Join(parts, "/")
+	return strings.Join(parts, "/"), nil
 }
 
 // GetBuildImage returns the image name from app or plaftorm.

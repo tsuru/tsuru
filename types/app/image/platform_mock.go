@@ -38,7 +38,7 @@ func (m *MockPlatformImageStorage) Delete(ctx context.Context, name string) erro
 // MockPlatformImageService implements PlatformImageService interface
 type MockPlatformImageService struct {
 	OnNewVersion          func(string) (int, error)
-	OnNewImage            func(ImageRegistry, string, int) string
+	OnNewImage            func(ImageRegistry, string, int) (string, error)
 	OnCurrentImage        func(ImageRegistry, string) (string, error)
 	OnAppendImages        func(string, int, []string) error
 	OnDeleteImages        func(string) error
@@ -54,9 +54,9 @@ func (m *MockPlatformImageService) NewVersion(ctx context.Context, platformName 
 	return m.OnNewVersion(platformName)
 }
 
-func (m *MockPlatformImageService) NewImage(ctx context.Context, reg ImageRegistry, platformName string, version int) string {
+func (m *MockPlatformImageService) NewImage(ctx context.Context, reg ImageRegistry, platformName string, version int) (string, error) {
 	if m.OnNewImage == nil {
-		return ""
+		return "", nil
 	}
 	return m.OnNewImage(reg, platformName, version)
 }
