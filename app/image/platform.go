@@ -104,6 +104,7 @@ func (s *platformImageService) ListImages(ctx context.Context, platformName stri
 // PlatformListImagesOrDefault returns basicImageName when platform is empty
 // for backwards compatibility
 func (s *platformImageService) ListImagesOrDefault(ctx context.Context, platformName string) ([]string, error) {
+	var err error
 	imgs, err := s.ListImages(ctx, platformName)
 	if err != nil && err == imageTypes.ErrPlatformImageNotFound {
 		imageNew, err := platformBasicImageName("", platformName)

@@ -64,6 +64,7 @@ func (s *S) TestAppVersionImpl_ImageNames(c *check.C) {
 			testBaseImage, err := tt.spec.BaseImageName()
 			c.Check(err, check.IsNil)
 			testBuildImage, err := tt.spec.BuildImageName()
+			c.Check(err, check.IsNil)
 			c.Check(testBaseImage, check.Equals, tt.wantedBase)
 			c.Check(testBuildImage, check.Equals, tt.wantedBuild)
 		}()

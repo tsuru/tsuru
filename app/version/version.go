@@ -50,6 +50,9 @@ func (v *appVersionImpl) CommitBuildImage() error {
 		return err
 	}
 	v.versionInfo.BuildImage, err = v.BuildImageName()
+	if err != nil {
+		return err
+	}
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
 }
 
