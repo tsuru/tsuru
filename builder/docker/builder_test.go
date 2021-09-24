@@ -705,10 +705,10 @@ func (s *S) TestBuilderImageBuilded(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	testBaseImage, err := version.BaseImageName()
+	testBasImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
-	c.Assert(testBaseImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
+	c.Assert(testBasImage, check.Equals, u.Host+"/tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBasImage)
 	c.Assert(bopts.IsTsuruBuilderImage, check.Equals, true)
 }
