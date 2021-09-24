@@ -52,22 +52,20 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	if err != nil {
 		return err
 	}
-<<<<<<< HEAD
 	quota := v1.ResourceRequirements{}
 	if plan, ok := buildPlans[buildPlanKey]; ok {
 		quota = plan
-=======
-	testBuildImage, err := version.BuildImageName()
+	}
+	buildImage, err := version.BuildImageName()
 	if err != nil {
 		return err
->>>>>>> 0ec241427 (Refactor:buildImage and BaseImage)
 	}
 	params := createPodParams{
 		app:               a,
 		client:            client,
 		podName:           buildPodName,
 		sourceImage:       baseImage,
-		destinationImages: []string{testBuildImage},
+		destinationImages: []string{buildImage},
 		attachInput:       archiveFile,
 		attachOutput:      evt,
 		inputFile:         inputFile,
@@ -94,12 +92,12 @@ func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App
 	if err != nil {
 		return provision.InspectData{}, err
 	}
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
 	baseImage, err := version.BaseImageName()
 	if err != nil {
-
+		return provision.InspectData{}, err
 	}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 	destImages := []string{baseImage}
 	repository, tag := image.SplitImageName(baseImage)
 	if tag != "latest" {
