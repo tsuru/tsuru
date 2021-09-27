@@ -1340,7 +1340,6 @@ func (p *kubernetesProvisioner) internalNodeUpdate(ctx context.Context, opts pro
 }
 
 func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
-	var err error
 	client, err := clusterForPool(ctx, args.App.GetPool())
 	if err != nil {
 		return "", err
