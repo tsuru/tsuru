@@ -1355,8 +1355,8 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 			return "", nsErr
 		}
 		defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, deployPodName, ns)
-		BaseImage, err := args.Version.BaseImageName()
-		if err != nil {
+		BaseImage, biErr := args.Version.BaseImageName()
+		if biErr != nil {
 			return "", err
 		}
 		params := createPodParams{
