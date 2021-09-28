@@ -1355,16 +1355,16 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 			return "", nsErr
 		}
 		defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, deployPodName, ns)
-		BaseImage, biErr := args.Version.BaseImageName()
+		baseImage, biErr := args.Version.BaseImageName()
 		if biErr != nil {
-			return "", err
+			return "", biErr
 		}
 		params := createPodParams{
 			app:               args.App,
 			client:            client,
 			podName:           deployPodName,
 			sourceImage:       args.Version.VersionInfo().BuildImage,
-			destinationImages: []string{BaseImage},
+			destinationImages: []string{baseImage},
 			attachOutput:      args.Event,
 			attachInput:       strings.NewReader("."),
 			inputFile:         "/dev/null",
