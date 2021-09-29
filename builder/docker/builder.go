@@ -188,7 +188,11 @@ func pushImageToRegistry(ctx context.Context, client provision.BuilderDockerClie
 	if err != nil {
 		return nil, err
 	}
-	repo, tag := image.SplitImageName(newVersion.BaseImageName())
+	newBaseImage, err := newVersion.BaseImageName()
+	if err != nil {
+		return nil, err
+	}
+	repo, tag := image.SplitImageName(newBaseImage)
 	err = client.TagImage(imageID, docker.TagImageOptions{Repo: repo, Tag: tag, Force: true})
 	if err != nil {
 		return nil, err
@@ -197,7 +201,7 @@ func pushImageToRegistry(ctx context.Context, client provision.BuilderDockerClie
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newVersion.BaseImageName())
+	fmt.Fprintf(evt, "---- Pushing image %q to tsuru ----\n", newBaseImage)
 	pushOpts := docker.PushImageOptions{
 		Name:              repo,
 		Tag:               tag,
@@ -206,7 +210,7 @@ func pushImageToRegistry(ctx context.Context, client provision.BuilderDockerClie
 		InactivityTimeout: net.StreamInactivityTimeout,
 		RawJSONStream:     true,
 	}
-	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newVersion.BaseImageName()))
+	err = client.PushImage(pushOpts, dockercommon.RegistryAuthConfig(newBaseImage))
 	if err != nil {
 		return nil, err
 	}

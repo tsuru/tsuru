@@ -1132,7 +1132,9 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	version := newSuccessfulAppVersion(c, &a)
 	v := url.Values{}
 	v.Set("origin", "rollback")
-	v.Set("image", version.BaseImageName())
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	v.Set("image", testBaseImage)
 	u := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", u, strings.NewReader(v.Encode()))
 	c.Assert(err, check.IsNil)
@@ -1155,13 +1157,13 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 			"kind":       "rollback",
 			"archiveurl": "",
 			"user":       s.token.GetUserName(),
-			"image":      version.BaseImageName(),
+			"image":      testBaseImage,
 			"origin":     "rollback",
 			"build":      false,
 			"rollback":   true,
 		},
 		EndCustomData: map[string]interface{}{
-			"image": version.BaseImageName(),
+			"image": testBaseImage,
 		},
 	}, eventtest.HasEvent)
 }

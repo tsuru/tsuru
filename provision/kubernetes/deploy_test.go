@@ -122,6 +122,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	podLabels["app.kubernetes.io/version"] = "v1"
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
@@ -171,7 +173,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
-							Image: version.BaseImageName(),
+							Image: testBaseImage,
 							Command: []string{
 								"/bin/sh",
 								"-lc",
@@ -2617,6 +2619,8 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	maxSurge := intstr.FromString("100%")
 	maxUnavailable := intstr.FromInt(0)
 	expectedUID := int64(1000)
+	testBaseImage, err := version2.BaseImageName()
+	c.Assert(err, check.IsNil)
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1-v2",
@@ -2667,7 +2671,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1-v2",
-							Image: version2.BaseImageName(),
+							Image: testBaseImage,
 							Command: []string{
 								"/bin/sh",
 								"-lc",
@@ -3449,11 +3453,15 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
@@ -3489,7 +3497,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/provisioner":         "kubernetes",
 			},
 			Annotations: map[string]string{
-				"tsuru.io/build-image": version.BaseImageName(),
+				"tsuru.io/build-image": testBaseImage,
 			},
 		},
 		Spec: apiv1.PodSpec{
@@ -3548,7 +3556,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			Resources: apiv1.ResourceRequirements{},
 			Env: []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: testBaseImage + ",tsuru/app-myapp:latest"},
 				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: ""},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: ""},
@@ -3562,7 +3570,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 			}},
 		{
 			Name:      "myapp-v1-deploy",
-			Image:     version.BuildImageName(),
+			Image:     testBuildImage,
 			Command:   []string{"/bin/sh", "-ec", `while [ ! -f /tmp/intercontainer/done ]; do sleep 5; done`},
 			Resources: apiv1.ResourceRequirements{},
 			Env:       []apiv1.EnvVar{{Name: "TSURU_HOST", Value: ""}},
@@ -3588,11 +3596,15 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
@@ -3628,7 +3640,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 				"tsuru.io/provisioner":         "kubernetes",
 			},
 			Annotations: map[string]string{
-				"tsuru.io/build-image": version.BaseImageName(),
+				"tsuru.io/build-image": testBaseImage,
 			},
 		},
 		Spec: apiv1.PodSpec{
@@ -3688,7 +3700,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(containers[0].Command[:2], check.DeepEquals, []string{"sh", "-ec"})
 	c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
 		{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",registry.example.com/tsuru/app-myapp:latest"},
+		{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: testBaseImage + ",registry.example.com/tsuru/app-myapp:latest"},
 		{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 		{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
@@ -3714,11 +3726,15 @@ func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
@@ -3861,11 +3877,15 @@ func (s *S) TestCreateDeployPodProgress(c *check.C) {
 	})
 	buf := safe.NewBuffer(nil)
 	version := newVersion(c, a, nil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
@@ -3895,11 +3915,15 @@ func (s *S) TestCreateDeployPodAttachFail(c *check.C) {
 		w.Write([]byte("ignored"))
 	}
 	version := newVersion(c, a, nil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
 	err = createDeployPod(context.Background(), createPodParams{
 		client:            s.clusterClient,
 		app:               a,
-		sourceImage:       version.BuildImageName(),
-		destinationImages: []string{version.BaseImageName()},
+		sourceImage:       testBuildImage,
+		destinationImages: []string{testBaseImage},
 		inputFile:         "/dev/null",
 		attachInput:       strings.NewReader("."),
 		attachOutput:      buf,
@@ -4936,6 +4960,8 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	}
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	legacyDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
@@ -4984,7 +5010,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 					Containers: []apiv1.Container{
 						{
 							Name:  "myapp-p1",
-							Image: version.BaseImageName(),
+							Image: testBaseImage,
 							Command: []string{
 								"/bin/sh",
 								"-lc",

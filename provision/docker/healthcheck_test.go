@@ -80,7 +80,9 @@ func (s *S) TestHealthcheckCustomHeaders(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -116,7 +118,9 @@ func (s *S) TestHealthcheckShortTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -146,7 +150,9 @@ func (s *S) TestHealthcheckHTTPS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -184,7 +190,9 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -218,7 +226,9 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -272,7 +282,9 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -311,7 +323,9 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -340,7 +354,9 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	config.Set("docker:healthcheck:max-time", 1)
 	defer config.Unset("docker:healthcheck:max-time")
@@ -390,7 +406,9 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 	c.Assert(err, check.IsNil)
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: version.BaseImageName()}}
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	cont := container.Container{Container: types.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: testBaseImage}}
 	buf := bytes.Buffer{}
 	yamlData, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)

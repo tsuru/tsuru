@@ -40,7 +40,7 @@ func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, 
 
 var _ appTypes.AppVersion = &appVersionImpl{}
 
-func (v *appVersionImpl) BuildImageName() string {
+func (v *appVersionImpl) BuildImageName() (string, error) {
 	return image.AppBuildImageName(v.reg, v.app.GetName(), v.versionInfo.CustomBuildTag, v.app.GetTeamOwner(), v.Version())
 }
 
@@ -49,12 +49,19 @@ func (v *appVersionImpl) CommitBuildImage() error {
 	if err != nil {
 		return err
 	}
-	v.versionInfo.BuildImage = v.BuildImageName()
+	v.versionInfo.BuildImage, err = v.BuildImageName()
+	if err != nil {
+		return err
+	}
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
 }
 
-func (v *appVersionImpl) BaseImageName() string {
-	return fmt.Sprintf("%s:v%d", image.AppBasicImageName(v.reg, v.app.GetName()), v.versionInfo.Version)
+func (v *appVersionImpl) BaseImageName() (string, error) {
+	newImage, err := image.AppBasicImageName(v.reg, v.app.GetName())
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:v%d", newImage, v.versionInfo.Version), nil
 }
 
 func (v *appVersionImpl) CommitBaseImage() error {
@@ -62,7 +69,10 @@ func (v *appVersionImpl) CommitBaseImage() error {
 	if err != nil {
 		return err
 	}
-	v.versionInfo.DeployImage = v.BaseImageName()
+	v.versionInfo.DeployImage, err = v.BaseImageName()
+	if err != nil {
+		return err
+	}
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
 }
 

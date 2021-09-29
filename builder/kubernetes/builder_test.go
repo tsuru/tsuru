@@ -38,7 +38,9 @@ func (s *S) TestArchiveFile(c *check.C) {
 	}
 	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
+	testBuildImage, err := img.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, "tsuru/app-myapp:v1-builder")
 }
 
 func (s *S) TestArchiveFileWithTag(c *check.C) {
@@ -60,7 +62,9 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 	}
 	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img.BuildImageName(), check.Equals, s.team.Name+"/app-myapp:mytag")
+	testBuildImage, err := img.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, s.team.Name+"/app-myapp:mytag")
 }
 
 func (s *S) TestArchiveURL(c *check.C) {
@@ -110,9 +114,11 @@ func (s *S) TestImageID(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 }
 
 func (s *S) TestImageIDWithExposedPorts(c *check.C) {
@@ -138,9 +144,11 @@ func (s *S) TestImageIDWithExposedPorts(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 	sort.Strings(version.VersionInfo().ExposedPorts)
 	c.Assert(version.VersionInfo().ExposedPorts, check.DeepEquals, []string{"8000/tcp", "8001/tcp"})
 }
@@ -168,9 +176,11 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 	processes, err := version.Processes()
 	c.Assert(err, check.IsNil)
 	expectedProcesses := map[string][]string{"web": {"test.sh"}}
@@ -232,9 +242,11 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 
 	customdata, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
@@ -305,9 +317,11 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BaseImageName(), check.Equals, "tsuru/app-myapp:v1")
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBaseImage, check.Equals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().BuildImage, check.Equals, "")
-	c.Assert(version.VersionInfo().DeployImage, check.Equals, version.BaseImageName())
+	c.Assert(version.VersionInfo().DeployImage, check.Equals, testBaseImage)
 	customdata, err := version.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	c.Assert(customdata, check.DeepEquals, provTypes.TsuruYamlData{
@@ -362,7 +376,9 @@ func (s *S) TestRebuild(c *check.C) {
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(version.BuildImageName(), check.Equals, "tsuru/app-myapp:v1-builder")
+	testBuildImage, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage, check.Equals, "tsuru/app-myapp:v1-builder")
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
 	err = version.CommitSuccessful()
@@ -373,5 +389,7 @@ func (s *S) TestRebuild(c *check.C) {
 	}
 	version, err = s.b.Build(context.TODO(), s.p, a, evt, &bopts)
 	c.Assert(err, check.IsNil)
-	c.Assert(version.BuildImageName(), check.Equals, "tsuru/app-myapp:v2-builder")
+	testBuildImage2, err := version.BuildImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(testBuildImage2, check.Equals, "tsuru/app-myapp:v2-builder")
 }

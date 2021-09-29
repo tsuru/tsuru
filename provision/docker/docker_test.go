@@ -73,10 +73,22 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 			return nil, err
 		}
 		if opts != nil && opts.Status == provision.StatusBuilding.String() {
-			imageID = version.BuildImageName()
-			container.BuildingImage = version.BaseImageName()
+			testBuildImage, err := version.BuildImageName()
+			if err != nil {
+				return nil, err
+			}
+			testBaseImage, err := version.BaseImageName()
+			if err != nil {
+				return nil, err
+			}
+			imageID = testBuildImage
+			container.BuildingImage = testBaseImage
 		} else {
-			imageID = version.BaseImageName()
+			testBaseImage, err := version.BaseImageName()
+			if err != nil {
+				return nil, err
+			}
+			imageID = testBaseImage
 		}
 	} else {
 		err := p.Cluster().PullImage(docker.PullImageOptions{
@@ -164,8 +176,12 @@ func newVersionForApp(p *dockerProvisioner, a provision.App, customData map[stri
 	if err != nil {
 		return nil, err
 	}
+	testBuildImage, err := version.BuildImageName()
+	if err != nil {
+		return nil, err
+	}
 	p.Cluster().PullImage(docker.PullImageOptions{
-		Repository: version.BuildImageName(),
+		Repository: testBuildImage,
 	}, docker.AuthConfiguration{})
 	return version, nil
 }
@@ -229,7 +245,9 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, version.BaseImageName())
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(cont2.Image, check.Equals, testBaseImage)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
 }
 
@@ -251,7 +269,9 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	c.Assert(cont.ID, check.Not(check.Equals), "")
 	cont2, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
-	c.Assert(cont2.Image, check.Equals, version.BaseImageName())
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
+	c.Assert(cont2.Image, check.Equals, testBaseImage)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
 }
 

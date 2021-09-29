@@ -492,10 +492,12 @@ func (s *S) TestRollbackDeploy(c *check.C) {
 		Allowed: event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(context.TODO(), app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
-		Image:        version.BaseImageName(),
+		Image:        testBaseImage,
 		Rollback:     true,
 		Event:        evt,
 	})
@@ -534,10 +536,12 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	version, err := newSuccessfulVersionForApp(s.p, &a, nil)
 	c.Assert(err, check.IsNil)
+	testBaseImage, err := version.BaseImageName()
+	c.Assert(err, check.IsNil)
 	_, err = app.Deploy(ctx, app.DeployOptions{
 		App:          &a,
 		OutputStream: w,
-		Image:        version.BaseImageName(),
+		Image:        testBaseImage,
 		Rollback:     true,
 		Event:        evt,
 	})

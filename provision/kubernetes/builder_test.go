@@ -253,9 +253,11 @@ func (s *S) TestImageTagPushAndInspectWithRegistryAuth(c *check.C) {
 			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
 trap end EXIT
 cat >/dev/null && /bin/deploy-agent`)
+			testBaseImage, err := version.BaseImageName()
+			c.Assert(err, check.IsNil)
 			c.Assert(containers[1].Env, check.DeepEquals, []apiv1.EnvVar{
 				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: version.BaseImageName() + ",registry.example.com/tsuru/app-myapp:latest"},
+				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: testBaseImage + ",registry.example.com/tsuru/app-myapp:latest"},
 				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: "registry.example.com/tsuru/app-myapp:tag1"},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
 				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
@@ -308,11 +310,11 @@ func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 func (s *S) TestBuildImage(c *check.C) {
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()
-	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) (string, error) {
 		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
 		c.Assert(plat, check.Equals, "myplatform")
 		c.Assert(version, check.Equals, 1)
-		return "tsuru/myplatform:v1"
+		return "tsuru/myplatform:v1", nil
 	}
 	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -353,11 +355,11 @@ func (s *S) TestBuildImageNoDefaultPool(c *check.C) {
 	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
 		return nil, provTypes.ErrNoCluster
 	}
-	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) string {
+	s.mockService.PlatformImage.OnNewImage = func(reg imgTypes.ImageRegistry, plat string, version int) (string, error) {
 		c.Assert(reg, check.Equals, imgTypes.ImageRegistry(""))
 		c.Assert(plat, check.Equals, "myplatform")
 		c.Assert(version, check.Equals, 1)
-		return "tsuru/myplatform:v1"
+		return "tsuru/myplatform:v1", nil
 	}
 	_, rollback := s.mock.NoAppReactions(c)
 	defer rollback()

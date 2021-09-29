@@ -56,12 +56,16 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	if plan, ok := buildPlans[buildPlanKey]; ok {
 		quota = plan
 	}
+	buildImage, err := version.BuildImageName()
+	if err != nil {
+		return err
+	}
 	params := createPodParams{
 		app:               a,
 		client:            client,
 		podName:           buildPodName,
 		sourceImage:       baseImage,
-		destinationImages: []string{version.BuildImageName()},
+		destinationImages: []string{buildImage},
 		attachInput:       archiveFile,
 		attachOutput:      evt,
 		inputFile:         inputFile,
@@ -88,10 +92,14 @@ func (c *KubeClient) ImageTagPushAndInspect(ctx context.Context, a provision.App
 	if err != nil {
 		return provision.InspectData{}, err
 	}
+	baseImage, err := version.BaseImageName()
+	if err != nil {
+		return provision.InspectData{}, err
+	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	destImages := []string{version.BaseImageName()}
-	repository, tag := image.SplitImageName(version.BaseImageName())
+	destImages := []string{baseImage}
+	repository, tag := image.SplitImageName(baseImage)
 	if tag != "latest" {
 		destImages = append(destImages, fmt.Sprintf("%s:latest", repository))
 	}
@@ -181,7 +189,10 @@ func (c *KubeClient) BuildPlatformImages(ctx context.Context, opts appTypes.Plat
 			inputStream = builder.CompressDockerFile([]byte(fmt.Sprintf("FROM %s", rollbackImg)))
 		}
 
-		imageName := servicemanager.PlatformImage.NewImage(ctx, reg, opts.Name, opts.Version)
+		imageName, err := servicemanager.PlatformImage.NewImage(ctx, reg, opts.Name, opts.Version)
+		if err != nil {
+			return nil, err
+		}
 		images := []string{imageName}
 		repo, _ := image.SplitImageName(imageName)
 		for _, tag := range opts.ExtraTags {

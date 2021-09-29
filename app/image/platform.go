@@ -44,19 +44,31 @@ func (s *platformImageService) NewVersion(ctx context.Context, platformName stri
 	return p.Count, nil
 }
 
-func (s *platformImageService) NewImage(ctx context.Context, reg imageTypes.ImageRegistry, platformName string, version int) string {
-	return fmt.Sprintf("%s/%s:v%d", basicImageName(reg, "tsuru"), platformName, version)
+func (s *platformImageService) NewImage(ctx context.Context, reg imageTypes.ImageRegistry, platformName string, version int) (string, error) {
+	imageName, err := basicImageName(reg, "tsuru")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s:v%d", imageName, platformName, version), nil
 }
 
 func (s *platformImageService) CurrentImage(ctx context.Context, reg imageTypes.ImageRegistry, platformName string) (string, error) {
 	img, err := s.storage.FindByName(ctx, platformName)
 	if err != nil {
 		log.Errorf("Couldn't find images for platform %q, fallback to default image name. Error: %s", platformName, err)
-		return platformBasicImageName(reg, platformName), nil
+		imageNew, err := platformBasicImageName(reg, platformName)
+		if err != nil {
+			return "", err
+		}
+		return imageNew, nil
 	}
 	if len(img.Versions) == 0 && img.Count > 0 {
 		log.Errorf("Couldn't find valid images for platform %q", platformName)
-		return platformBasicImageName(reg, platformName), nil
+		imageNew, err := platformBasicImageName(reg, platformName)
+		if err != nil {
+			return "", err
+		}
+		return imageNew, nil
 	}
 	if len(img.Versions) == 0 {
 		return "", imageTypes.ErrPlatformImageNotFound
@@ -94,7 +106,11 @@ func (s *platformImageService) ListImages(ctx context.Context, platformName stri
 func (s *platformImageService) ListImagesOrDefault(ctx context.Context, platformName string) ([]string, error) {
 	imgs, err := s.ListImages(ctx, platformName)
 	if err != nil && err == imageTypes.ErrPlatformImageNotFound {
-		return []string{platformBasicImageName("", platformName)}, nil
+		imageNew, iErr := platformBasicImageName("", platformName)
+		if iErr != nil {
+			return nil, err
+		}
+		return []string{imageNew}, nil
 	}
 	return imgs, err
 }
@@ -124,8 +140,12 @@ func (s *platformImageService) FindImage(ctx context.Context, reg imageTypes.Ima
 	return findImageByRegistry(reg, *foundVersion)
 }
 
-func platformBasicImageName(reg imageTypes.ImageRegistry, platformName string) string {
-	return fmt.Sprintf("%s/%s:latest", basicImageName(reg, "tsuru"), platformName)
+func platformBasicImageName(reg imageTypes.ImageRegistry, platformName string) (string, error) {
+	imageNew, err := basicImageName(reg, "tsuru")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s:latest", imageNew, platformName), nil
 }
 
 func findImageByRegistry(reg imageTypes.ImageRegistry, imgVersion imageTypes.RegistryVersion) (string, error) {
