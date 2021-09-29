@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/kr/pretty"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -24,31 +25,12 @@ import (
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
-func (s *S) TestProvisionerSetAutoScale(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
-	wait()
+func toInt32Ptr(i int32) *int32 {
+	return &i
+}
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
-		MinUnits:   1,
-		MaxUnits:   2,
-		AverageCPU: "500m",
-	})
-	c.Assert(err, check.IsNil)
-
-	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	cpu := resource.MustParse("500m")
-	c.Assert(hpa, check.DeepEquals, &autoscalingv2.HorizontalPodAutoscaler{
+func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalPodAutoscaler {
+	return &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-web",
 			Namespace: "default",
@@ -76,7 +58,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 			},
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
-			MinReplicas: func(i int32) *int32 { return &i }(1),
+			MinReplicas: toInt32Ptr(1),
 			MaxReplicas: int32(2),
 			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
 				APIVersion: "apps/v1",
@@ -87,16 +69,134 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 				{
 					Type: autoscalingv2.ResourceMetricSourceType,
 					Resource: &autoscalingv2.ResourceMetricSource{
-						Name: "cpu",
-						Target: autoscalingv2.MetricTarget{
-							Type:         autoscalingv2.AverageValueMetricType,
-							AverageValue: &cpu,
-						},
+						Name:   "cpu",
+						Target: tg,
 					},
 				},
 			},
 		},
+	}
+}
+
+func (s *S) TestProvisionerSetAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	cpu := resource.MustParse("500m")
+	tests := []struct {
+		scenario       func()
+		expectedTarget autoscalingv2.MetricTarget
+	}{
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:         autoscalingv2.AverageValueMetricType,
+				AverageValue: &cpu,
+			},
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50%",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:         autoscalingv2.AverageValueMetricType,
+				AverageValue: &cpu,
+			},
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:         autoscalingv2.AverageValueMetricType,
+				AverageValue: &cpu,
+			},
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				defer func() { a.MilliCPU = 0 }()
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:               autoscalingv2.UtilizationMetricType,
+				AverageUtilization: toInt32Ptr(50),
+			},
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				defer func() { a.MilliCPU = 0 }()
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50%",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:               autoscalingv2.UtilizationMetricType,
+				AverageUtilization: toInt32Ptr(50),
+			},
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				defer func() { a.MilliCPU = 0 }()
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50",
+				})
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: autoscalingv2.MetricTarget{
+				Type:               autoscalingv2.UtilizationMetricType,
+				AverageUtilization: toInt32Ptr(50),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt.scenario()
+
+		ns, err := s.client.AppNamespace(context.TODO(), a)
+		c.Assert(err, check.IsNil)
+		hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		expected := testHPAWithTarget(tt.expectedTarget)
+		c.Assert(hpa, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(hpa, expected)))
+	}
+
 }
 
 func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
@@ -468,4 +568,112 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 			},
 		},
 	})
+}
+
+func (s *S) TestEnsureHPA(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	cpu := resource.MustParse("80000m")
+	_ = cpu.String()
+	initialHPA := testHPAWithTarget(autoscalingv2.MetricTarget{
+		Type:         autoscalingv2.AverageValueMetricType,
+		AverageValue: &cpu,
+	})
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	c.Assert(err, check.IsNil)
+
+	newHPA, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(newHPA, check.DeepEquals, initialHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, initialHPA)))
+}
+
+func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	a.MilliCPU = 2000
+
+	cpu := resource.MustParse("800m")
+	_ = cpu.String()
+	initialHPA := testHPAWithTarget(autoscalingv2.MetricTarget{
+		Type:         autoscalingv2.AverageValueMetricType,
+		AverageValue: &cpu,
+	})
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	c.Assert(err, check.IsNil)
+
+	expectedHPA := testHPAWithTarget(autoscalingv2.MetricTarget{
+		Type:               autoscalingv2.UtilizationMetricType,
+		AverageUtilization: toInt32Ptr(80),
+	})
+
+	newHPA, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
+
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	c.Assert(err, check.IsNil)
+
+	newHPA, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
+}
+
+func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	a.MilliCPU = 2000
+
+	cpu := resource.MustParse("80000m")
+	_ = cpu.String()
+	initialHPA := testHPAWithTarget(autoscalingv2.MetricTarget{
+		Type:         autoscalingv2.AverageValueMetricType,
+		AverageValue: &cpu,
+	})
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
+	c.Assert(err, check.ErrorMatches, `autoscale cpu value cannot be greater than 95%`)
 }

@@ -76,7 +76,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	err = spec.Validate(quota.Limit)
+	err = spec.Validate(quota.Limit, &a)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,

@@ -13,6 +13,8 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -22,7 +24,6 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -581,7 +582,37 @@ type RecommendedProcessResources struct {
 	Memory string `json:"memory"`
 }
 
-func (s AutoScaleSpec) Validate(quotaLimit int) error {
+func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
+	rawCPU := strings.TrimSuffix(s.AverageCPU, "%")
+	cpu, err := strconv.Atoi(rawCPU)
+	if err != nil {
+		rawCPU = strings.TrimSuffix(s.AverageCPU, "m")
+		cpu, err = strconv.Atoi(rawCPU)
+		if err != nil {
+			return 0, errors.Errorf("unable to parse value %q as autoscale cpu percentage", s.AverageCPU)
+		}
+		cpu = cpu / 10
+	}
+
+	cpuLimit := a.GetMilliCPU()
+	if cpuLimit == 0 {
+		// No cpu limit is set in app, the AverageCPU value must be considered
+		// as absolute milli cores and we cannot validate it.
+		return cpu * 10, nil
+	}
+
+	if cpu > 95 {
+		return 0, errors.New("autoscale cpu value cannot be greater than 95%")
+	}
+
+	if cpu < 20 {
+		return 0, errors.New("autoscale cpu value cannot be less than 20%")
+	}
+
+	return cpu, nil
+}
+
+func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
@@ -591,9 +622,9 @@ func (s AutoScaleSpec) Validate(quotaLimit int) error {
 	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
 		return errors.New("maximum units cannot be greater than quota limit")
 	}
-	_, err := resource.ParseQuantity(s.AverageCPU)
+	_, err := s.ToCPUValue(a)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse average CPU")
+		return err
 	}
 	return nil
 }

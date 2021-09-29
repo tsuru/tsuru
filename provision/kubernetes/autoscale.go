@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -163,11 +164,21 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpe
 	if hpa.Spec.MinReplicas != nil {
 		spec.MinUnits = uint(*hpa.Spec.MinReplicas)
 	}
-	if len(hpa.Spec.Metrics) > 0 &&
-		hpa.Spec.Metrics[0].Resource != nil &&
-		hpa.Spec.Metrics[0].Resource.Target.AverageValue != nil {
-		spec.AverageCPU = hpa.Spec.Metrics[0].Resource.Target.AverageValue.String()
+
+	cpuValue := int64(0)
+	if len(hpa.Spec.Metrics) > 0 && hpa.Spec.Metrics[0].Resource != nil {
+		if hpa.Spec.Metrics[0].Resource.Target.AverageUtilization != nil {
+			cpuValue = int64(*hpa.Spec.Metrics[0].Resource.Target.AverageUtilization)
+			cpuValue = cpuValue * 10
+		} else if hpa.Spec.Metrics[0].Resource.Target.AverageValue != nil {
+			cpuValue = hpa.Spec.Metrics[0].Resource.Target.AverageValue.MilliValue()
+		}
 	}
+
+	if cpuValue > 0 {
+		spec.AverageCPU = fmt.Sprintf("%dm", cpuValue)
+	}
+
 	return spec
 }
 
@@ -180,7 +191,11 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil {
 		return err
 	}
-	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, process), metav1.DeleteOptions{})
+	depInfo, err := minimumAutoScaleVersion(ctx, client, a, process)
+	if err != nil {
+		return err
+	}
+	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -213,17 +228,31 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	cpu, err := resource.ParseQuantity(spec.AverageCPU)
+	labels = labels.WithoutIsolated().WithoutRoutable()
+	minUnits := int32(spec.MinUnits)
+
+	hpaName := hpaNameForApp(a, depInfo.process)
+
+	cpuValue, err := spec.ToCPUValue(a)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	labels = labels.WithoutIsolated().WithoutRoutable()
-	minUnits := int32(spec.MinUnits)
+	target := autoscalingv2.MetricTarget{}
+	if a.GetMilliCPU() > 0 {
+		target.Type = autoscalingv2.UtilizationMetricType
+		val := int32(cpuValue)
+		target.AverageUtilization = &val
+	} else {
+		target.Type = autoscalingv2.AverageValueMetricType
+		target.AverageValue = resource.NewMilliQuantity(int64(cpuValue), resource.DecimalSI)
+		// Fill string value for easier tests
+		_ = target.AverageValue.String()
+	}
 
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   hpaNameForApp(a, depInfo.process),
+			Name:   hpaName,
 			Labels: labels.ToLabels(),
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
@@ -238,11 +267,8 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 				{
 					Type: autoscalingv2.ResourceMetricSourceType,
 					Resource: &autoscalingv2.ResourceMetricSource{
-						Name: "cpu",
-						Target: autoscalingv2.MetricTarget{
-							Type:         autoscalingv2.AverageValueMetricType,
-							AverageValue: &cpu,
-						},
+						Name:   "cpu",
+						Target: target,
 					},
 				},
 			},
@@ -254,14 +280,14 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return err
 	}
 
-	existing, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(ctx, hpa.Name, metav1.GetOptions{})
+	existingHPA, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
-		existing = nil
+		existingHPA = nil
 	} else if err != nil {
 		return errors.WithStack(err)
 	}
-	if existing != nil {
-		hpa.ResourceVersion = existing.ResourceVersion
+	if existingHPA != nil {
+		hpa.ResourceVersion = existingHPA.ResourceVersion
 		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
 	} else {
 		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
