@@ -219,17 +219,17 @@ func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (str
 	params["command"] = command
 	params["response"] = "json"
 	params["apiKey"] = apiKey
-	var sorted_keys []string
+	var sortedKeys []string
 	for k := range params {
-		sorted_keys = append(sorted_keys, k)
+		sortedKeys = append(sortedKeys, k)
 	}
-	sort.Strings(sorted_keys)
-	var string_params []string
-	for _, key := range sorted_keys {
+	sort.Strings(sortedKeys)
+	var stringParams []string
+	for _, key := range sortedKeys {
 		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(params[key]))
-		string_params = append(string_params, queryStringParam)
+		stringParams = append(stringParams, queryStringParam)
 	}
-	queryString := strings.Join(string_params, "&")
+	queryString := strings.Join(stringParams, "&")
 	digest := hmac.New(sha1.New, []byte(secretKey))
 	digest.Write([]byte(strings.ToLower(queryString)))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
