@@ -60,7 +60,7 @@ Create the tsuru installer config files with:
 $ tsuru install config init
 ```
 
-Replace the tsuru API image tag with the latest tag in `install-compose.yml`:
+In `install-compose.yml`, replace the tsuru API image tag with the latest tag.
 
 ```
 $ sed -i'' -e 's/api:v1/api:latest/g' install-compose.yml
@@ -74,8 +74,8 @@ $ $GOPATH/bin/tsuru install create -c install-config.yml -e install-compose.yml
 
 ### Testing
 
-If everything's gone well you have the tsuru running in a VirtualBox VM.
-Call `app-list` to see tsuru working, this command needs to return one app called tsuru-dashboard.
+If all goes well, you should now have the tsuru running in a VirtualBox VM.
+To see tsuru working, call `app-list`. This command should return tsuru-dashboard as one of the apps.
 
 ```
 $ tsuru app-list
