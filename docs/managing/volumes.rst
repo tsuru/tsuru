@@ -54,7 +54,7 @@ client.
 Example
 =======
 
-Supose an ``ebs`` volume plan is registered in tsuru configuration, one can create a volume using:
+Suppose an ``ebs`` volume plan is registered in tsuru configuration, one can create a volume using:
 
 .. tabs::
 

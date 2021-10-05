@@ -441,7 +441,7 @@ Identity provider public certificate.
 auth:saml:sp-entityid
 +++++++++++++++++++++
 
-Service provider entitiy id.
+Service provider entity id.
 
 auth:saml:sp-sign-request
 +++++++++++++++++++++++++
@@ -1069,7 +1069,7 @@ Used to create shared volumes for apps.
 docker:sharedfs:hostdir
 +++++++++++++++++++++++
 
-Directory on host machine to access shared data with instaled apps.
+Directory on host machine to access shared data with installed apps.
 
 docker:sharedfs:mountpoint
 ++++++++++++++++++++++++++
@@ -1347,7 +1347,7 @@ Security configuration
 events:suppress-sensitive-envs
 ++++++++++++++++++++++++++++++
 
-Boolean value used to enable supression of sensitive environment variables on `tsuru event-info` and tsuru-dashboard.
+Boolean value used to enable suppression of sensitive environment variables on `tsuru event-info` and tsuru-dashboard.
 Defaults to ``false``, will be ``true`` in next minor version.
 
 Volume plans configuration

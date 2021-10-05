@@ -1429,7 +1429,7 @@ paths:
         '200':
           description: Ok
         '400':
-          description: Invald data
+          description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
         '401':
@@ -1475,7 +1475,7 @@ paths:
         '200':
           description: Ok
         '400':
-          description: Invald data
+          description: Invalid data
           schema:
             $ref: '#/definitions/ErrorMessage'
         '401':

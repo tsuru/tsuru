@@ -422,7 +422,7 @@ components:
       properties:
         address:
           type: string
-          description: Adress that the application is published.
+          description: Address that the application is published.
     Addresses:
       type: object
       properties:

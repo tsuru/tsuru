@@ -25,7 +25,7 @@ adding the specifics of each platform. They are a great way to learn how to crea
 An example
 ==========
 
-Let's supose we wanted to create a nodejs platform. First, let's define it's Dockerfile:
+Let's suppose we wanted to create a nodejs platform. First, let's define it's Dockerfile:
 
 .. highlight:: bash
 

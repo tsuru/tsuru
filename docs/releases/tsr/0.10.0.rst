@@ -103,7 +103,7 @@ Other improvements in tsr 0.10.0
   is disabled" (issue `#402 <https://github.com/tsuru/tsuru/issues/402>`_).
 
 * Improve user actions tracking. All app-related actions now use the
-  ``app=<appname>`` format.  Currently, these informations are available only
+  ``app=<appname>`` format.  Currently, these information are available only
   in the database now, but in the future tsuru will expose all actions to
   admins, and may expose all actions of a user to themself.
 
@@ -143,7 +143,7 @@ Other improvements in tsr 0.10.0
     - General grammar and RST syntax fixes in the documentation (thanks
       Alessandro Corbelli, Lucas Weiblen, Marc Abramowitz and Rogério Yokomizo);
     - Improve the :doc:`contributing page </contributing/index>`;
-    - Properly document the :doc:`states of appplication units
+    - Properly document the :doc:`states of application units
       </using/unit-states>`;
     - Split client documentation pages from the tsuru-server docs, there are
       now dedicated documentation sites for `crane
@@ -194,9 +194,9 @@ tsuru-server 0.10.0 also include some changes in the API. Please refer to the
 
 * ``/apps/{appname}/ssh``: new shell route to access app containers. In
   previous versions of API this route was in provision/docker package and just
-  allowed admin access to app containers.  Now, standart users and admin users
+  allowed admin access to app containers.  Now, standard users and admin users
   can access app containers through ssh. Admins can access any app in tsuru
-  and standart users can only access your apps.
+  and standard users can only access your apps.
 
 * ``/deploys``: allow non-admin users to issue requests to this endpoint. The
   response will list only deployments of applications that the user has access

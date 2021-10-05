@@ -36,7 +36,7 @@ schedulers as tsuru provisioners. These experiments have the potential of
 motivating us to change the default provisioner used in tsuru and remove a
 whole bunch of code from tsuru.
 
-To allow a seemless experience, first, a ``provisioner`` attribute was added to
+To allow a seamless experience, first, a ``provisioner`` attribute was added to
 pools. It can be set using ``tsuru pool-add --provisioner`` and ``tsuru
 pool-update --provisioner``. This allows changing the provisioner of single
 pool, you can also set the default provisioner in the :ref:`config file
@@ -62,7 +62,7 @@ IaaS integration with Docker Machine
 ------------------------------------
 
 Apart from containers orchestration one thing that sets tsuru apart is the
-ability to also orchestrate virtual machines. This is acomplished using tsuru
+ability to also orchestrate virtual machines. This is accomplished using tsuru
 :ref:`managed nodes <installing_managed_nodes>`. Previously we had support for
 only 3 IaaS providers: Amazon EC2, Digital Ocean and Cloudstack.
 

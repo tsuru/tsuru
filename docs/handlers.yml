@@ -959,7 +959,7 @@ handlers:
     produce: application/x-json-stream
     responses:
       200: Ok
-      400: Invald data
+      400: Invalid data
       401: Unauthorized
       404: Not found
   - title: get autoscale config
@@ -1008,7 +1008,7 @@ handlers:
     consume: application/x-www-form-urlencoded
     responses:
       200: Ok
-      400: Invald data
+      400: Invalid data
       401: Unauthorized
   - title: node container info
     path: /docker/nodecontainers/{name}
@@ -1130,7 +1130,7 @@ handlers:
     consume: application/x-www-form-urlencoded
     responses:
       200: Ok
-      400: Invald data
+      400: Invalid data
       401: Unauthorized
       404: Not found
   - title: autoscale set rule

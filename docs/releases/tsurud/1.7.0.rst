@@ -42,11 +42,11 @@ TLS certificates are now reloaded automatically by the server. This allows
 certificate updates without API downtime. The reload interval can be customized
 in ``tls:auto-reload:interval`` setting in ``tsuru.conf`` file.
 
-Allow dinamically created clusters (`#2255 <https://github.com/tsuru/tsuru/pull/2255>`_)
+Allow dynamically created clusters (`#2255 <https://github.com/tsuru/tsuru/pull/2255>`_)
 ----------------------------------------------------------------------------------------
 
 Cluster-related commands like ``cluster-add`` and ``cluster-update`` can
-dinamically provision clusters in cloud providers like Google Kubernetes Engine,
+dynamically provision clusters in cloud providers like Google Kubernetes Engine,
 Amazon EKS and Azure Kubernetes Service.
 
 Add support to Kubernetes traffic policy local (`#2230 <https://github.com/tsuru/tsuru/issues/2230>`_)

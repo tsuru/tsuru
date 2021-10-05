@@ -20,19 +20,19 @@ What's new in tsr 0.5.0
 Stability and Consistency
 -------------------------
 
-One of the main feature on this release is improve the stability and consitency
+One of the main feature on this release is improve the stability and consistency
 of the tsuru API.
 
-* prevent inconsitency caused by problems on deploy (`#803
+* prevent inconsistency caused by problems on deploy (`#803
   <https://github.com/tsuru/tsuru/issues/803>`_) / (`#804
   <https://github.com/tsuru/tsuru/issues/804>`_)
 * units information is not updated by collector (`#806
   <https://github.com/tsuru/tsuru/issues/806>`_)
 * fixed log listener on multiple API hosts (`#762
   <https://github.com/tsuru/tsuru/issues/762>`_)
-* prevent inconsitency caused by simultaneous operations in an application
+* prevent inconsistency caused by simultaneous operations in an application
   (`#789 <https://github.com/tsuru/tsuru/issues/789>`_)
-* prevent inconsitency cause by simultaneous ``env-set`` calls (`#820
+* prevent inconsistency cause by simultaneous ``env-set`` calls (`#820
   <https://github.com/tsuru/tsuru/issues/820>`_)
 * store information about errors and identify flawed application deployments
   (`#816 <https://github.com/tsuru/tsuru/issues/816>`_)

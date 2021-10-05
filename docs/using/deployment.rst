@@ -25,7 +25,7 @@ Let's go a little deeper through each of those topics.
 1. Requirements
 +++++++++++++++
 
-Every well writen application nowdays has well defined dependencies. In Python,
+Every well written application nowadays has well defined dependencies. In Python,
 everything is on a requirements.txt or like file, in Ruby, they go on Gemfile,
 Node.js has the package.json, and so on. Some of those dependencies also have
 operational system level dependencies, like the Nokogiri Ruby gem or

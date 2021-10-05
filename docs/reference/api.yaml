@@ -1459,7 +1459,7 @@ paths:
         - application/x-json-stream
       responses:
         "200":
-          description: App stoped
+          description: App stopped
         "401":
           description: Unauthorized
           schema:
@@ -3738,7 +3738,7 @@ paths:
             $ref: "#/definitions/EventCancelArgs"
       responses:
         "204":
-          description: Event cancelation requested.
+          description: Event cancellation requested.
         "400":
           description: Invalid data
           schema:
