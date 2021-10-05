@@ -21,7 +21,7 @@ New features
 
 * Support for cancelable events, right now, only the deploy event is cancelable.
   This means users can use the ``tsuru event-cancel`` command to ask for the
-  cancelation of a deploy. tsuru will do it's best to try cancelling it.
+  cancellation of a deploy. tsuru will do it's best to try cancelling it.
 
 .. _migrations-1.1.0:
 

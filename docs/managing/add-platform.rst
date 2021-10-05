@@ -9,7 +9,7 @@ Installing platforms
 A platform is a well defined pack with installed dependencies for a language or
 framework that a group of applications will need.
 
-Platforms are defined as Dockerfiles and tsuru already have a number of supported ones listed bellow:
+Platforms are defined as Dockerfiles and tsuru already have a number of supported ones listed below:
 
 - Go_
 - Java_

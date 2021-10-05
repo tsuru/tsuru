@@ -60,7 +60,7 @@ Other improvements in tsr 0.8.0
 - Allow platform customization of environment for new units. This allow the use
   of virtualenv in the Python platform (contributes to fixing issue `#928
   <https://github.com/tsuru/tsuru/issues/928>`_)
-- Improve tsuru API acccess log (issue `#608
+- Improve tsuru API access log (issue `#608
   <https://github.com/tsuru/tsuru/issues/608>`_)
 - Do not prevent users from running commands on units that are in the "error"
   state (issue `#876 <https://github.com/tsuru/tsuru/issues/876>`_)

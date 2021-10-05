@@ -95,7 +95,7 @@ package``, then the user can deploy the code using ``tsuru app deploy``:
     OK
 
 Done! Now you can access your project in the address displayed in the output of
-`tsuru app list`.  Remeber to add ``/helloweb/``.
+`tsuru app list`.  Remember to add ``/helloweb/``.
 
 You can also deploy you application to the / address, renaming the WAR to
 ROOT.war and redeploying it:

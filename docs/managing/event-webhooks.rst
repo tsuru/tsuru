@@ -7,7 +7,7 @@ Event webhooks
 ++++++++++++++
 
 Event webhooks allow integrating tsuru events with external systems. You can create an event
-webhook to notify the occurence of specific event types. When you create an event webhook,
+webhook to notify the occurrence of specific event types. When you create an event webhook,
 tsuru makes a request to the specified URL for every event according specific filters.
 
 For more info on the client commands for handling webhooks, check
@@ -77,7 +77,7 @@ Notifying every successful app deploy to a `Slack <https://slack.com/>`_ channel
 
           resource "tsuru_webhook" "my-webhook" {
              name        = "my-webhook"
-             description = "all sucessful deploys"
+             description = "all successful deploys"
              url         = "https://hooks.slack.com/services/..."
              team_owner  = "myteam"
              method      = "POST"

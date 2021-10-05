@@ -85,7 +85,7 @@ As you can see from bind output, we use environment variables to connect to the
 MySQL server. Next step is update your app to use these variables to
 connect in the database.
 
-After update it and deploy the new version your app will be able to comunicate with service.
+After update it and deploy the new version your app will be able to communicate with service.
 
 More tools
 ==========

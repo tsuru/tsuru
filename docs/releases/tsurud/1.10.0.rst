@@ -37,5 +37,5 @@ Bug fixes
 
 * Fix pods status whe exit reason == NodeAfinity
 * Fix handling of long lines in tsuru app log
-* Fix escape dollar in environment varible values
+* Fix escape dollar in environment variable values
 * Fix remotion of stale deployment pods

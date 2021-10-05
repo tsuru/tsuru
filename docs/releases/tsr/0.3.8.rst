@@ -23,4 +23,4 @@ API
 Docker
 ------
 
-    * deploy hook support enviroment variables with space.
+    * deploy hook support environment variables with space.

@@ -54,7 +54,7 @@ Other improvements
 
 * provision/kubernetes: Configurable max surge and unavailable in deploys (`#2385 <https://github.com/tsuru/tsuru/pull/2385>`_)
 
-* provision/kubernetes: Improved errors and cancelation for image deploys (`#2388 <https://github.com/tsuru/tsuru/pull/2388>`_)
+* provision/kubernetes: Improved errors and cancellation for image deploys (`#2388 <https://github.com/tsuru/tsuru/pull/2388>`_)
 
 * provision/kubernetes: Remove '-base' suffix for base deployments (`#2395 <https://github.com/tsuru/tsuru/pull/2395>`_)
 

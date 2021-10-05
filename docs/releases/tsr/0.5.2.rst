@@ -31,7 +31,7 @@ Improvements
 Bug fixes
 =========
 
-* Check if node exists before excludind it (mongo doesn't return an error if I
+* Check if node exists before excluding it (mongo doesn't return an error if I
   try to remove a node which not exists from a pool) (`#840
   <https://github.com/tsuru/tsuru/issues/840>`_).
 * Fix race condition in unit-remove that prevented the command from removing

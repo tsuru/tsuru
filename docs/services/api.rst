@@ -386,7 +386,7 @@ Additional info about an instance
 =================================
 
 When the user run ``tsuru service-info <service>`` or
-``tsuru service-instance-info``, tsuru will get informations
+``tsuru service-instance-info``, tsuru will get information
 from all instances. This is an optional endpoint in the service API. Some
 services does not provide any extra information for instances. Example of
 request:

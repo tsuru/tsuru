@@ -54,7 +54,7 @@ New features
   webhook when the filter is matched by the event. See the
   :doc:`webhooks reference</managing/event-webhooks>` for more details.
 
-* Added support for deploy cancelation in kubernetes provisioner (`#2030
+* Added support for deploy cancellation in kubernetes provisioner (`#2030
   <https://github.com/tsuru/tsuru/issues/2030>`_)
 
 * Added support for deploy rollback in kubernetes provisioner (`#1938
@@ -104,7 +104,7 @@ Bug fixes
 * Pods with Terminating status no longer show as app units in kubernetes
   provisioner. (`#2039 <https://github.com/tsuru/tsuru/issues/2039>`_)
 
-* Disabled kubernetes nodes correclty show up as disabled in the node list.
+* Disabled kubernetes nodes correctly show up as disabled in the node list.
   (`#2038 <https://github.com/tsuru/tsuru/issues/2038>`_)
 
 * Ensure authentication information is sent to registry based on tsuru.conf

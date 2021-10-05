@@ -40,7 +40,7 @@ paths:
               $ref: '#/components/schemas/InstanceForm'
       responses:
         201:
-          description: Instance succesfully created
+          description: Instance successfully created
         default:
           $ref: '#/components/schemas/Error'
   /resources/{name}:

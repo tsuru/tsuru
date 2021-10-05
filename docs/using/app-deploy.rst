@@ -41,7 +41,7 @@ As an example we can deploy a tutorial app named ``hello world``:
 
     $ tsuru app deploy -a helloworld .
 
-With the command bellow we'll be able to deploy our first app ``helloworld`` that is situated on the current directory (``"."``).
+With the command below we'll be able to deploy our first app ``helloworld`` that is situated on the current directory (``"."``).
 
 Ignoring files and directories
 ++++++++++++++++++++++++++++++

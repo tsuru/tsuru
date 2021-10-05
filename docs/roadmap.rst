@@ -12,7 +12,7 @@ We use GitHub's milestones to releases' planning and anyone is free to
 suggest an issue to a milestone, and discuss about any issue in the next tsuru
 release.
 
-At globo.com, we have goals by quarter of a year (short term goals bellow), but
+At globo.com, we have goals by quarter of a year (short term goals below), but
 it doesn't mean that there's only one release per quarter. We also have internal
 goals and our focus will be on these. But they are not immutable and we can 
 change any goal at any time as community need. Our releases have one or more
