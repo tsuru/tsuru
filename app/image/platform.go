@@ -147,7 +147,6 @@ func platformBasicImageName(reg imageTypes.ImageRegistry, platformName string) (
 	}
 	return fmt.Sprintf("%s/%s:latest", imageNew, platformName), nil
 }
-
 func findImageByRegistry(reg imageTypes.ImageRegistry, imgVersion imageTypes.RegistryVersion) (string, error) {
 	if len(imgVersion.Images) == 0 {
 		return "", imageTypes.ErrPlatformImageNotFound
@@ -160,6 +159,14 @@ func findImageByRegistry(reg imageTypes.ImageRegistry, imgVersion imageTypes.Reg
 		}
 	}
 	defaultReg, _ := config.GetString("docker:registry")
+	resolve, _ := config.GetBool("docker:resolve-registry-name")
+	if resolve {
+		var err error
+		defaultReg, err = resolveName(defaultReg)
+		if err != nil {
+			return "", nil
+		}
+	}
 	for _, img := range imgVersion.Images {
 		if strings.HasPrefix(img, defaultReg) {
 			return img, nil
