@@ -99,9 +99,10 @@ func resolveName(name string) (newname string, err error) {
 	for _, addr := range addrs {
 		if ipv4 := net.ParseIP(addr).To4(); ipv4 != nil {
 			newname = net.JoinHostPort(ipv4.String(), port)
+			return newname, nil
 		}
 	}
-	return newname, nil
+	return name, nil
 }
 func basicImageName(reg imgTypes.ImageRegistry, repoName string) (string, error) {
 	var err error
