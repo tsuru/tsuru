@@ -97,8 +97,8 @@ func resolveName(name string) (newname string, err error) {
 		return "", err
 	}
 	for _, addr := range addrs {
-		if len(addr) > 8 {
-			newname = net.JoinHostPort(addr, port)
+		if ipv4 := net.ParseIP(addr).To4(); ipv4 != nil {
+			newname = net.JoinHostPort(ipv4.String(), port)
 		}
 	}
 	return newname, nil
