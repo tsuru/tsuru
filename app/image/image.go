@@ -92,12 +92,17 @@ func resolveName(name string) (newname string, err error) {
 	if err != nil {
 		return "", err
 	}
-	addr, err := net.LookupHost(host)
+	addrs, err := net.LookupHost(host)
 	if err != nil {
 		return "", err
 	}
-	newname = net.JoinHostPort(addr[0], port)
-	return newname, nil
+	for _, addr := range addrs {
+		if ipv4 := net.ParseIP(addr).To4(); ipv4 != nil {
+			newname = net.JoinHostPort(ipv4.String(), port)
+			return newname, nil
+		}
+	}
+	return name, nil
 }
 func basicImageName(reg imgTypes.ImageRegistry, repoName string) (string, error) {
 	var err error

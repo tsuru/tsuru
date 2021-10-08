@@ -1,5 +1,6 @@
 *.test
 .vscode/
+.DS_Store
 dist-*
 cmd/tsurud/tsurud
 docs/_build
