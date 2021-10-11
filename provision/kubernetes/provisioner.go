@@ -64,7 +64,7 @@ const (
 	defaultPodRunningTimeout                   = 10 * time.Minute
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
-	defaultSidecarImageName                    = "tsuru/deploy-agent:0.8.4"
+	defaultSidecarImageName                    = "tsuru/deploy-agent:0.10.1"
 	defaultPreStopSleepSeconds                 = 10
 )
 
