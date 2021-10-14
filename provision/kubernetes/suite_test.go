@@ -97,7 +97,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	stopClusterController(s.p, s.clusterClient)
+	stopClusterController(context.TODO(), s.p, s.clusterClient)
 }
 
 func (s *S) SetUpTest(c *check.C) {

@@ -123,7 +123,7 @@ func LeanContainerCmdsWithExtra(processName string, cmdData ContainerCmdsData, a
 		before += " && "
 	}
 	if processName == "" {
-		processName = "web"
+		processName = provision.WebProcessName
 	}
 	allCmds := []string{
 		"/bin/sh",

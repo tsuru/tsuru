@@ -16,9 +16,10 @@ import (
 const dynamicRouterCollectionName = "dynamic_routers"
 
 type dynamicRouter struct {
-	Name   string `bson:"_id"`
-	Type   string
-	Config map[string]interface{} `bson:",omitempty"`
+	Name           string `bson:"_id"`
+	Type           string
+	ReadinessGates []string               `bson:",omitempty"`
+	Config         map[string]interface{} `bson:",omitempty"`
 }
 
 type dynamicRouterStorage struct{}

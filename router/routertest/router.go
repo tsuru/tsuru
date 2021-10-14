@@ -33,7 +33,9 @@ var InfoRouter = infoRouter{
 
 var StatusRouter = statusRouter{
 	fakeRouter: newFakeRouter(),
-	Status:     router.BackendStatusReady,
+	Status: router.RouterBackendStatus{
+		Status: router.BackendStatusReady,
+	},
 }
 
 var TLSRouter = tlsRouter{
@@ -548,20 +550,20 @@ func (r *infoRouter) Reset() {
 
 type statusRouter struct {
 	fakeRouter
-	Status       router.BackendStatus
-	StatusDetail string
+	Status router.RouterBackendStatus
 }
 
 var _ router.StatusRouter = &statusRouter{}
 
-func (r *statusRouter) GetBackendStatus(ctx context.Context, app router.App) (router.BackendStatus, string, error) {
-	return r.Status, r.StatusDetail, nil
+func (r *statusRouter) GetBackendStatus(ctx context.Context, app router.App, path string) (router.RouterBackendStatus, error) {
+	return r.Status, nil
 }
 
 func (r *statusRouter) Reset() {
 	r.fakeRouter.Reset()
-	r.Status = router.BackendStatusReady
-	r.StatusDetail = ""
+	r.Status = router.RouterBackendStatus{
+		Status: router.BackendStatusReady,
+	}
 }
 
 type prefixRouter struct {

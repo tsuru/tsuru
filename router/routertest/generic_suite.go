@@ -793,9 +793,9 @@ func (s *RouterSuite) TestGetStatus(c *check.C) {
 	}
 	err := s.Router.AddBackend(s.ctx, testBackend1)
 	c.Assert(err, check.IsNil)
-	status, _, err := statusRouter.GetBackendStatus(s.ctx, testBackend1)
+	status, err := statusRouter.GetBackendStatus(s.ctx, testBackend1, "")
 	c.Assert(err, check.IsNil)
-	c.Assert(status, check.Equals, router.BackendStatusReady)
+	c.Assert(status.Status, check.Equals, router.BackendStatusReady)
 	err = s.Router.RemoveBackend(s.ctx, testBackend1)
 	c.Assert(err, check.IsNil)
 }

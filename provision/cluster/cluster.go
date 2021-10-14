@@ -18,7 +18,7 @@ import (
 )
 
 type ClusteredProvisioner interface {
-	InitializeCluster(c *provTypes.Cluster) error
+	InitializeCluster(ctx context.Context, c *provTypes.Cluster) error
 	ValidateCluster(c *provTypes.Cluster) error
 	DeleteCluster(ctx context.Context, c *provTypes.Cluster) error
 	ClusterHelp() provTypes.ClusterHelpInfo
@@ -179,7 +179,7 @@ func (s *clusterService) initCluster(ctx context.Context, c provTypes.Cluster, i
 	}
 
 	if clusterProv, ok := prov.(ClusteredProvisioner); ok {
-		err = clusterProv.InitializeCluster(&c)
+		err = clusterProv.InitializeCluster(ctx, &c)
 	}
 	return err
 }

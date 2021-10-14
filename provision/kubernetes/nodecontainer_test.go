@@ -26,10 +26,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
+	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
+	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
 func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
@@ -46,6 +49,9 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
 		ClusterInterface:       clusterClient1,
 	}
 	clusterClient1.Interface = client1
@@ -63,6 +69,9 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
 		ClusterInterface:       clusterClient2,
 	}
 	clusterClient2.Interface = client2
@@ -82,6 +91,9 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		Clientset:              fake.NewSimpleClientset(),
 		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
 		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
 		ClusterInterface:       clusterClient2,
 	}
 	clusterClient3.Interface = client3

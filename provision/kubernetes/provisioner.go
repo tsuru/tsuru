@@ -272,12 +272,12 @@ func initLocalCluster() {
 	}
 }
 
-func (p *kubernetesProvisioner) InitializeCluster(c *provTypes.Cluster) error {
+func (p *kubernetesProvisioner) InitializeCluster(ctx context.Context, c *provTypes.Cluster) error {
 	clusterClient, err := NewClusterClient(c)
 	if err != nil {
 		return err
 	}
-	stopClusterController(p, clusterClient)
+	stopClusterController(ctx, p, clusterClient)
 	_, err = getClusterController(p, clusterClient)
 	return err
 }
@@ -318,7 +318,7 @@ func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
 }
 
 func (p *kubernetesProvisioner) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
-	stopClusterControllerByName(p, c.Name)
+	stopClusterControllerByName(ctx, p, c.Name)
 	return nil
 }
 
@@ -408,6 +408,18 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 	err = client.CoreV1().ServiceAccounts(tsuruApp.Spec.NamespaceName).Delete(ctx, tsuruApp.Spec.ServiceAccountName, metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		multiErrors.Add(errors.WithStack(err))
+	}
+	err = p.deleteAllAutoScale(ctx, app)
+	if err != nil {
+		multiErrors.Add(err)
+	}
+	err = deleteAllVPA(ctx, client, app)
+	if err != nil {
+		multiErrors.Add(err)
+	}
+	err = deleteAllBackendConfig(ctx, client, app)
+	if err != nil {
+		multiErrors.Add(err)
 	}
 	return multiErrors.ToError()
 }
@@ -832,17 +844,6 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
-	if err != nil {
-		if err != appTypes.ErrNoVersionsAvailable {
-			return nil, err
-		}
-		return nil, nil
-	}
-	webProcessName, err := version.WebProcess()
-	if err != nil {
-		return nil, err
-	}
 	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
@@ -860,6 +861,15 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 	if err != nil {
 		return nil, err
 	}
+
+	processSet := set.Set{}
+	for _, svc := range svcs {
+		ls := labelOnlySetFromMeta(&svc.ObjectMeta)
+		if ls.IsRoutable() {
+			processSet.Add(ls.AppProcess())
+		}
+	}
+	webProcessName := provision.MainAppProcess(processSet.ToList())
 
 	var allAddrs []appTypes.RoutableAddresses
 	for _, svc := range svcs {
@@ -1045,9 +1055,9 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		// we priorize the web process without versioning
 		// in the most cases will be address used to bind related services
 		// the list of services will send to tsuru services, then they uses the first address to automatic bind
-		if iProcess == "web" && iVersion == "" {
+		if iProcess == provision.WebProcessName && iVersion == "" {
 			return true
-		} else if jProcess == "web" && jVersion == "" {
+		} else if jProcess == provision.WebProcessName && jVersion == "" {
 			return false
 		}
 
@@ -1611,7 +1621,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 
 func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
 	err := forEachCluster(ctx, func(client *ClusterClient) error {
-		stopClusterController(p, client)
+		stopClusterController(ctx, p, client)
 		return nil
 	})
 	if err == provTypes.ErrNoCluster {

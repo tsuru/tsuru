@@ -103,7 +103,7 @@ func imageBuild(ctx context.Context, client provision.BuilderKubeClient, a provi
 		if len(cmds) == 0 {
 			return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 		}
-		procfile["web"] = cmds
+		procfile[provision.WebProcessName] = cmds
 	}
 	for k, v := range procfile {
 		fmt.Fprintf(evt, " ---> Process %q found with commands: %q\n", k, v)

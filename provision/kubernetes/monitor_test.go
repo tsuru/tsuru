@@ -107,14 +107,14 @@ func (s *S) TestPodListeners(c *check.C) {
 
 	clusterController, err := getClusterController(s.p, s.clusterClient)
 	c.Assert(err, check.IsNil)
-	clusterController.addPodListener("my-app", "listerner1", podListener1)
-	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
-	clusterController.addPodListener("my-app", "listerner2", podListener2)
-	clusterController.removePodListener("my-app", "listerner1")
-	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 1)
+	clusterController.addPodListener("listerner1", podListener1)
+	c.Assert(clusterController.podListeners, check.HasLen, 2)
+	clusterController.addPodListener("listerner2", podListener2)
+	clusterController.removePodListener("listerner1")
+	c.Assert(clusterController.podListeners, check.HasLen, 2)
 
-	_, contains := clusterController.podListeners["my-app"]["listerner2"]
+	_, contains := clusterController.podListeners["listerner2"]
 	c.Assert(contains, check.Equals, true)
-	clusterController.removePodListener("my-app", "listerner2")
-	c.Assert(clusterController.podListeners["my-app"], check.HasLen, 0)
+	clusterController.removePodListener("listerner2")
+	c.Assert(clusterController.podListeners, check.HasLen, 1)
 }

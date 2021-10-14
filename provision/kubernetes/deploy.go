@@ -32,9 +32,12 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	routerTypes "github.com/tsuru/tsuru/types/router"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -423,7 +426,7 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 		hc.AllowedFailures = 3
 	}
 	if hc.Method != http.MethodGet {
-		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+		return errors.New("healthcheck: only GET method is supported in kubernetes provisioner")
 	}
 
 	return nil
@@ -594,7 +597,7 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string, w io.Writer) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	extra := []string{}
 
@@ -712,6 +715,25 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	serviceLinks := false
 
+	routers := a.GetRouters()
+	conditionSet := set.Set{}
+	for _, r := range routers {
+		var planRouter routerTypes.PlanRouter
+		_, planRouter, err = router.GetWithPlanRouter(ctx, r.Name)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, condition := range planRouter.ReadinessGates {
+			conditionSet.Add(condition)
+		}
+	}
+	var readinessGates []apiv1.PodReadinessGate
+	for condition := range conditionSet {
+		readinessGates = append(readinessGates, apiv1.PodReadinessGate{
+			ConditionType: apiv1.PodConditionType(condition),
+		})
+	}
+
 	deployment := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        depName,
@@ -745,11 +767,12 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 					SecurityContext: &apiv1.PodSecurityContext{
 						RunAsUser: uid,
 					},
-					RestartPolicy: apiv1.RestartPolicyAlways,
-					NodeSelector:  nodeSelector,
-					Affinity:      affinity,
-					Volumes:       volumes,
-					Subdomain:     headlessServiceName(a, process),
+					RestartPolicy:  apiv1.RestartPolicyAlways,
+					NodeSelector:   nodeSelector,
+					Affinity:       affinity,
+					Volumes:        volumes,
+					Subdomain:      headlessServiceName(a, process),
+					ReadinessGates: readinessGates,
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
@@ -1230,7 +1253,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
+	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector, m.writer)
 	if err != nil {
 		return err
 	}
@@ -1265,15 +1288,18 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return provision.ErrUnitStartup{Err: err}
 	}
 
+	backendCfgexists, err := ensureBackendConfig(ctx, backendConfigArgs{
+		client:  m.client,
+		app:     opts.App,
+		process: opts.ProcessName,
+		writer:  m.writer,
+		version: opts.Version,
+	})
+	if err != nil {
+		return err
+	}
+
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
-	yamlData, err := opts.Version.TsuruYamlData()
-	if err != nil {
-		return err
-	}
-	backendCfgexists, err := ensureBackendConfig(ctx, m.client, opts.App, opts.ProcessName, yamlData.Healthcheck)
-	if err != nil {
-		return err
-	}
 	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists, opts.PreserveVersions)
 	if err != nil {
 		return err

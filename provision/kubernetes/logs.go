@@ -124,7 +124,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 		go watcher.watchPod(pod, false)
 	}
 
-	clusterController.addPodListener(args.AppName, watcher.id, watcher)
+	clusterController.addPodListener(watcher.id, watcher)
 
 	return watcher, nil
 }
@@ -334,7 +334,7 @@ func (k *k8sLogsWatcher) Chan() <-chan appTypes.Applog {
 
 func (k *k8sLogsWatcher) Close() {
 	k.once.Do(func() {
-		k.clusterController.removePodListener(k.logArgs.AppName, k.id)
+		k.clusterController.removePodListener(k.id)
 		k.done()
 		k.wg.Wait()
 		close(k.ch)
@@ -342,6 +342,11 @@ func (k *k8sLogsWatcher) Close() {
 }
 
 func (k *k8sLogsWatcher) OnPodEvent(pod *apiv1.Pod) {
+	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
+	if k.logArgs.AppName != appName {
+		return
+	}
+
 	_, alreadyWatching := k.watchingPods[pod.ObjectMeta.Name]
 	podMatches := matchPod(pod, k.logArgs)
 	if !alreadyWatching && podMatches && loggablePod(&pod.Status) {

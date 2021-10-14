@@ -16,9 +16,30 @@ var (
 )
 
 type DynamicRouter struct {
-	Name   string
-	Type   string
-	Config map[string]interface{}
+	Name           string
+	Type           string
+	ReadinessGates []string
+	Config         map[string]interface{}
+}
+
+type PlanRouter struct {
+	Name           string                 `json:"name"`
+	Type           string                 `json:"type"`
+	Info           map[string]string      `json:"info"`
+	Config         map[string]interface{} `json:"config"`
+	ReadinessGates []string               `json:"readinessGates"`
+	Dynamic        bool                   `json:"dynamic"`
+	Default        bool                   `json:"default"`
+}
+
+func (r *DynamicRouter) ToPlanRouter() PlanRouter {
+	return PlanRouter{
+		Name:           r.Name,
+		Type:           r.Type,
+		Config:         r.Config,
+		ReadinessGates: r.ReadinessGates,
+		Dynamic:        true,
+	}
 }
 
 type DynamicRouterService interface {
