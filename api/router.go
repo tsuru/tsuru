@@ -174,7 +174,7 @@ contexts:
 	filteredRouters := routers
 	if !global {
 		routersAllowed := make(map[string]struct{})
-		filteredRouters = []router.PlanRouter{}
+		filteredRouters = []routerTypes.PlanRouter{}
 		pools, err := pool.ListPossiblePools(ctx, teams)
 		if err != nil {
 			return err

@@ -7,10 +7,10 @@ package version
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -103,16 +103,9 @@ func (v *appVersionImpl) WebProcess() (string, error) {
 	}
 	var processes []string
 	for name := range allProcesses {
-		if name == "web" || len(v.versionInfo.Processes) == 1 {
-			return name, nil
-		}
 		processes = append(processes, name)
 	}
-	sort.Strings(processes)
-	if len(processes) > 0 {
-		return processes[0], nil
-	}
-	return "", nil
+	return provision.MainAppProcess(processes), nil
 }
 
 func (v *appVersionImpl) CommitSuccessful() error {

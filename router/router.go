@@ -80,37 +80,41 @@ func configType(name string) (string, string, error) {
 
 // Get gets the named router from the registry.
 func Get(ctx context.Context, name string) (Router, error) {
-	r, _, err := GetWithType(ctx, name)
+	r, _, err := GetWithPlanRouter(ctx, name)
 	return r, err
 }
 
-func GetWithType(ctx context.Context, name string) (Router, string, error) {
+func GetWithPlanRouter(ctx context.Context, name string) (Router, router.PlanRouter, error) {
+	var planRouter router.PlanRouter
+
 	dr, err := servicemanager.DynamicRouter.Get(ctx, name)
 	if err != nil && err != router.ErrDynamicRouterNotFound {
-		return nil, "", err
+		return nil, planRouter, err
 	}
 	var routerType string
 	var config ConfigGetter
 	if dr != nil {
 		routerType = dr.Type
 		config = configGetterFromData(dr.Config)
+		planRouter = dr.ToPlanRouter()
 	} else {
 		var prefix string
 		routerType, prefix, err = configType(name)
 		if err != nil {
-			return nil, "", &ErrRouterNotFound{Name: name}
+			return nil, planRouter, &ErrRouterNotFound{Name: name}
 		}
 		config = ConfigGetterFromPrefix(prefix)
+		planRouter = legacyConfigToPlanRouter(name)
 	}
 	factory, ok := routers[routerType]
 	if !ok {
-		return nil, "", errors.Errorf("unknown router: %q.", routerType)
+		return nil, planRouter, errors.Errorf("unknown router: %q.", routerType)
 	}
 	r, err := factory(name, config)
 	if err != nil {
-		return nil, "", err
+		return nil, planRouter, err
 	}
-	return r, routerType, nil
+	return r, planRouter, nil
 }
 
 // Default returns the default router
@@ -220,8 +224,20 @@ var (
 	BackendStatusNotReady = BackendStatus("not ready")
 )
 
+type RouterBackendStatus struct {
+	Status BackendStatus `json:"status"`
+	Detail string        `json:"detail"`
+	Checks []URLCheck    `json:"checks,omitempty"`
+}
+
+type URLCheck struct {
+	Address string `json:"address"`
+	Status  int    `json:"status"`
+	Error   string `json:"error"`
+}
+
 type StatusRouter interface {
-	GetBackendStatus(ctx context.Context, app App) (status BackendStatus, detail string, err error)
+	GetBackendStatus(ctx context.Context, app App, path string) (status RouterBackendStatus, err error)
 }
 
 type RouterError struct {
@@ -425,16 +441,7 @@ func Swap(ctx context.Context, r Router, backend1, backend2 App, cnameOnly bool)
 	return swapBackends(ctx, r, backend1, backend2)
 }
 
-type PlanRouter struct {
-	Name    string                 `json:"name"`
-	Type    string                 `json:"type"`
-	Info    map[string]string      `json:"info"`
-	Config  map[string]interface{} `json:"config"`
-	Dynamic bool                   `json:"dynamic"`
-	Default bool                   `json:"default"`
-}
-
-func ListWithInfo(ctx context.Context) ([]PlanRouter, error) {
+func ListWithInfo(ctx context.Context) ([]router.PlanRouter, error) {
 	routers, err := List(ctx)
 	if err != nil {
 		return nil, err
@@ -468,7 +475,7 @@ func fetchRouterInfo(ctx context.Context, name string) (map[string]string, error
 	return nil, nil
 }
 
-func List(ctx context.Context) ([]PlanRouter, error) {
+func List(ctx context.Context) ([]router.PlanRouter, error) {
 	allRouters, err := listConfigRouters()
 	if err != nil {
 		return nil, err
@@ -478,12 +485,7 @@ func List(ctx context.Context) ([]PlanRouter, error) {
 		return nil, err
 	}
 	for _, r := range dynamicRouters {
-		allRouters = append(allRouters, PlanRouter{
-			Name:    r.Name,
-			Type:    r.Type,
-			Config:  r.Config,
-			Dynamic: true,
-		})
+		allRouters = append(allRouters, r.ToPlanRouter())
 	}
 	sort.Slice(allRouters, func(i, j int) bool {
 		return allRouters[i].Name < allRouters[j].Name
@@ -491,13 +493,13 @@ func List(ctx context.Context) ([]PlanRouter, error) {
 	return allRouters, nil
 }
 
-func listConfigRouters() ([]PlanRouter, error) {
+func listConfigRouters() ([]router.PlanRouter, error) {
 	routerConfig, err := config.Get("routers")
 	var routers map[interface{}]interface{}
 	if err == nil {
 		routers, _ = routerConfig.(map[interface{}]interface{})
 	}
-	routersList := make([]PlanRouter, 0, len(routers))
+	routersList := make([]router.PlanRouter, 0, len(routers))
 	var keys []string
 	for key := range routers {
 		keys = append(keys, key.(string))
@@ -509,37 +511,56 @@ func listConfigRouters() ([]PlanRouter, error) {
 	dockerRouter, _ := config.GetString("docker:router")
 	sort.Strings(keys)
 	for _, value := range keys {
-		var routerType string
-		var defaultFlag bool
-		routerProperties, _ := routers[value].(map[interface{}]interface{})
-		if routerProperties != nil {
-			routerType, _ = routerProperties["type"].(string)
-			defaultFlag, _ = routerProperties["default"].(bool)
+		planRouter := legacyConfigToPlanRouter(value)
+		if planRouter.Name == dockerRouter {
+			planRouter.Default = true
 		}
-		if routerType == "" {
-			routerType = value
-		}
-		if !defaultFlag {
-			defaultFlag = value == dockerRouter
-		}
-		var config map[string]interface{}
-		if routerProperties != nil {
-			configRaw := internalConfig.ConvertEntries(routerProperties)
-			config, _ = configRaw.(map[string]interface{})
-			delete(config, "type")
-			delete(config, "default")
-			if len(config) == 0 {
-				config = nil
-			}
-		}
-		routersList = append(routersList, PlanRouter{
-			Name:    value,
-			Type:    routerType,
-			Config:  config,
-			Default: defaultFlag,
-		})
+		routersList = append(routersList, planRouter)
 	}
 	return routersList, nil
+}
+
+func legacyConfigToPlanRouter(name string) router.PlanRouter {
+	routerConfig, err := config.Get("routers")
+	var routers map[interface{}]interface{}
+	if err == nil {
+		routers, _ = routerConfig.(map[interface{}]interface{})
+	}
+	var routerType string
+	var defaultFlag bool
+	var readinessGates []string
+	routerProperties, _ := routers[name].(map[interface{}]interface{})
+	if routerProperties != nil {
+		routerType, _ = routerProperties["type"].(string)
+		defaultFlag, _ = routerProperties["default"].(bool)
+		readinessGatesRaw, ok := routerProperties["readinessGates"].([]interface{})
+		if ok {
+			for _, readinessGate := range readinessGatesRaw {
+				readinessGates = append(readinessGates, fmt.Sprint(readinessGate))
+			}
+		}
+	}
+	if routerType == "" {
+		routerType = name
+	}
+	var config map[string]interface{}
+	if routerProperties != nil {
+		configRaw := internalConfig.ConvertEntries(routerProperties)
+		config, _ = configRaw.(map[string]interface{})
+		delete(config, "type")
+		delete(config, "default")
+		delete(config, "readinessGates")
+		if len(config) == 0 {
+			config = nil
+		}
+	}
+	return router.PlanRouter{
+		Name:           name,
+		Type:           routerType,
+		Config:         config,
+		ReadinessGates: readinessGates,
+		Default:        defaultFlag,
+	}
 }
 
 // validCName returns true if the cname is not a subdomain of

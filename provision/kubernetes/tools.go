@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // Copyright 2019 tsuru authors. All rights reserved.

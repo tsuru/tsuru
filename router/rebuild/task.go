@@ -86,7 +86,7 @@ func process(key interface{}) error {
 	if !ok {
 		return errors.Errorf("unable to convert key to appName: %#v", key)
 	}
-	return runRoutesRebuildOnce(appName, true, nil)
+	return RunRoutesRebuildOnce(appName, true, nil)
 }
 
 func Initialize(finder func(string) (RebuildApp, error)) error {
@@ -111,7 +111,7 @@ func getTask() *rebuildTask {
 	return value.(*rebuildTask)
 }
 
-func runRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
+func RunRoutesRebuildOnce(appName string, lock bool, w io.Writer) (err error) {
 	task := getTask()
 	if task == nil {
 		return errors.New("no appFinder available")
@@ -182,7 +182,7 @@ func EnqueueRoutesRebuild(appName string) {
 }
 
 func routesRebuildOrEnqueueOptionalLock(appName string, lock bool, w io.Writer) {
-	err := runRoutesRebuildOnce(appName, lock, w)
+	err := RunRoutesRebuildOnce(appName, lock, w)
 	if err == nil {
 		return
 	}

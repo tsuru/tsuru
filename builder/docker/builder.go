@@ -141,7 +141,7 @@ func imageBuild(ctx context.Context, client provision.BuilderDockerClient, app p
 	procfile := version.GetProcessesFromProcfile(procfileBuf.String())
 	if len(procfile) == 0 {
 		fmt.Fprintln(evt, "  ---> Procfile not found, using entrypoint and cmd")
-		procfile["web"] = append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
+		procfile[provision.WebProcessName] = append(imageInspect.Config.Entrypoint, imageInspect.Config.Cmd...)
 	}
 	for k, v := range procfile {
 		fmt.Fprintf(evt, "  ---> Process %q found with commands: %q\n", k, v)

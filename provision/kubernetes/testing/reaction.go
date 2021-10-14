@@ -24,11 +24,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
 	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	tsuruv1client "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/typed/tsuru/v1"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/rebuild"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -147,6 +149,14 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-default",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
 	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
@@ -160,6 +170,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 			deployPodReady.Wait()
 			wg.Wait()
 		}, func() {
+			rebuild.Shutdown(context.Background())
 			rollbackDeployment()
 			deployPodReady.Wait()
 			wg.Wait()

@@ -182,6 +182,20 @@ func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpe
 	return spec
 }
 
+func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provision.App) error {
+	scaleSpecs, err := p.GetAutoScale(ctx, a)
+	if err != nil {
+		return err
+	}
+	for _, spec := range scaleSpecs {
+		err = p.RemoveAutoScale(ctx, a, spec.Process)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision.App, process string) error {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
@@ -513,4 +527,42 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		specs = append(specs, hpaToSpec(hpa))
 	}
 	return specs, nil
+}
+
+func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) error {
+	cli, err := VPAClientForConfig(client.RestConfig())
+	if err != nil {
+		return err
+	}
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	existingVPAs, err := cli.AutoscalingV1().VerticalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
+	})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	for _, vpa := range existingVPAs.Items {
+		err = cli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }

@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ const (
 	PoolMetadataName   = "pool"
 	IaaSIDMetadataName = "iaas-id"
 	IaaSMetadataName   = "iaas"
+	WebProcessName     = "web"
 )
 
 var (
@@ -844,4 +846,17 @@ func IsStartupError(err error) (*ErrUnitStartup, bool) {
 	}
 
 	return nil, false
+}
+
+func MainAppProcess(processes []string) string {
+	if len(processes) == 0 {
+		return ""
+	}
+	for _, p := range processes {
+		if p == WebProcessName {
+			return p
+		}
+	}
+	sort.Strings(processes)
+	return processes[0]
 }

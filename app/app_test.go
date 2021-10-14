@@ -5538,8 +5538,8 @@ func (s *S) TestGetRoutersWithAddrError(c *check.C) {
 func (s *S) TestGetRoutersWithAddrWithStatus(c *check.C) {
 	config.Set("routers:mystatus:type", "fake-status")
 	defer config.Unset("routers:mystatus")
-	routertest.StatusRouter.Status = router.BackendStatusNotReady
-	routertest.StatusRouter.StatusDetail = "burn"
+	routertest.StatusRouter.Status.Status = router.BackendStatusNotReady
+	routertest.StatusRouter.Status.Detail = "burn"
 	defer routertest.StatusRouter.Reset()
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)

@@ -2342,6 +2342,7 @@ func (s *S) TestSleepStart(c *check.C) {
 func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:deploy-sidecar-image", "img1")
 	config.Set("kubernetes:deploy-inspect-image", "img2")
+	config.Set("kubernetes:placeholder-image", "img3")
 	config.Set("kubernetes:api-timeout", 10)
 	config.Set("kubernetes:pod-ready-timeout", 6)
 	config.Set("kubernetes:pod-running-timeout", 2*60)

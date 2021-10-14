@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/kubernetes/readinessgates"
 	"github.com/tsuru/tsuru/router/rebuild"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,9 +54,8 @@ var eventKindsIgnoreRebuild = []string{
 }
 
 type podListener interface {
-	OnPodEvent(*apiv1.Pod)
+	OnPodEvent(pod *apiv1.Pod)
 }
-type podListeners map[string]podListener
 
 type clusterController struct {
 	mu                      sync.Mutex
@@ -72,7 +72,8 @@ type clusterController struct {
 	cancel                  context.CancelFunc
 	resourceReadyCache      map[types.NamespacedName]bool
 	startedAt               time.Time
-	podListeners            map[string]podListeners
+	okOnly                  *readinessgates.OKOnly
+	podListeners            map[string]podListener
 	podListenersMu          sync.RWMutex
 	wg                      sync.WaitGroup
 	leader                  int32
@@ -98,36 +99,41 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		cancel:             cancel,
 		resourceReadyCache: make(map[types.NamespacedName]bool),
 		startedAt:          time.Now(),
-		podListeners:       make(map[string]podListeners),
+		podListeners:       make(map[string]podListener),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
-		c.stop()
+		c.stop(ctx)
 		return nil, err
 	}
-	err = c.start()
+	informer, err := c.start()
 	if err != nil {
-		c.stop()
+		c.stop(ctx)
 		return nil, err
 	}
+	c.okOnly = readinessgates.NewOKOnlyReadinessGate(informer, cluster, cluster.RestConfig())
+	c.addPodListener("ok-only-rediness-gate", c.okOnly)
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
 }
 
-func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
-	stopClusterControllerByName(p, cluster.Name)
+func stopClusterController(ctx context.Context, p *kubernetesProvisioner, cluster *ClusterClient) {
+	stopClusterControllerByName(ctx, p, cluster.Name)
 }
 
-func stopClusterControllerByName(p *kubernetesProvisioner, clusterName string) {
+func stopClusterControllerByName(ctx context.Context, p *kubernetesProvisioner, clusterName string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if c, ok := p.clusterControllers[clusterName]; ok {
-		c.stop()
+		c.stop(ctx)
 	}
 	delete(p.clusterControllers, clusterName)
 }
 
-func (c *clusterController) stop() {
+func (c *clusterController) stop(ctx context.Context) {
+	if c.okOnly != nil {
+		c.okOnly.Shutdown(ctx)
+	}
 	close(c.stopCh)
 	// HACK(cezarsa): ridiculous hack trying to prevent race condition
 	// described in https://github.com/kubernetes/kubernetes/pull/83112. As
@@ -144,10 +150,10 @@ func (c *clusterController) isLeader() bool {
 	return atomic.LoadInt32(&c.leader) == 1
 }
 
-func (c *clusterController) start() error {
+func (c *clusterController) start() (v1informers.PodInformer, error) {
 	informer, err := c.getPodInformerWait(false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -197,7 +203,7 @@ func (c *clusterController) start() error {
 		},
 	})
 
-	return nil
+	return informer, nil
 }
 
 func (c *clusterController) onAdd(obj interface{}) error {
@@ -243,34 +249,23 @@ func (c *clusterController) notifyPodChanges(pod *apiv1.Pod) {
 	c.podListenersMu.RLock()
 	defer c.podListenersMu.RUnlock()
 
-	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
-	listeners, contains := c.podListeners[appName]
-	if !contains {
-		return
-	}
-
-	for _, listener := range listeners {
+	for _, listener := range c.podListeners {
 		listener.OnPodEvent(pod)
 	}
 }
 
-func (c *clusterController) addPodListener(appName string, key string, listener podListener) {
+func (c *clusterController) addPodListener(key string, listener podListener) {
 	c.podListenersMu.Lock()
 	defer c.podListenersMu.Unlock()
 
-	if c.podListeners[appName] == nil {
-		c.podListeners[appName] = make(podListeners)
-	}
-	c.podListeners[appName][key] = listener
+	c.podListeners[key] = listener
 }
 
-func (c *clusterController) removePodListener(appName string, key string) {
+func (c *clusterController) removePodListener(key string) {
 	c.podListenersMu.Lock()
 	defer c.podListenersMu.Unlock()
 
-	if c.podListeners[appName] != nil {
-		delete(c.podListeners[appName], key)
-	}
+	delete(c.podListeners, key)
 }
 
 func (c *clusterController) enqueuePodDelete(pod *apiv1.Pod) {

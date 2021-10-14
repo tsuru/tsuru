@@ -323,7 +323,7 @@ type clusterProv struct {
 	callCluster *provTypes.Cluster
 }
 
-func (p *clusterProv) InitializeCluster(c *provTypes.Cluster) error {
+func (p *clusterProv) InitializeCluster(ctx context.Context, c *provTypes.Cluster) error {
 	p.callCluster = c
 	return nil
 }
@@ -415,7 +415,7 @@ func (p *provisionClusterProv) DeleteCluster(ctx context.Context, c *provTypes.C
 	return nil
 }
 
-func (p *provisionClusterProv) InitializeCluster(c *provTypes.Cluster) error {
+func (p *provisionClusterProv) InitializeCluster(ctx context.Context, c *provTypes.Cluster) error {
 	p.callLog = append(p.callLog, []string{"InitializeCluster"})
 	return nil
 }

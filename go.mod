@@ -59,6 +59,7 @@ require (
 	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
 	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015
 	golang.org/x/tools v0.1.1 // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075

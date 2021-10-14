@@ -1484,10 +1484,12 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
 			HealthCheck: &backendconfigv1.HealthCheckConfig{
-				CheckIntervalSec: intervalSec,
-				TimeoutSec:       timeoutSec,
-				Type:             &protocolType,
-				RequestPath:      &hc.Path,
+				CheckIntervalSec:   intervalSec,
+				TimeoutSec:         timeoutSec,
+				Type:               &protocolType,
+				RequestPath:        &hc.Path,
+				HealthyThreshold:   int64PointerFromInt(1),
+				UnhealthyThreshold: int64PointerFromInt(4),
 			},
 		},
 	}
@@ -1520,7 +1522,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 
 	backendConfig, err := s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(backendConfig.Spec, check.DeepEquals, expectedBackendConfig.Spec)
+	c.Assert(backendConfig.Spec.HealthCheck, check.DeepEquals, expectedBackendConfig.Spec.HealthCheck)
 }
 
 func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
@@ -1565,10 +1567,12 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 		},
 		Spec: backendconfigv1.BackendConfigSpec{
 			HealthCheck: &backendconfigv1.HealthCheckConfig{
-				CheckIntervalSec: intervalSec,
-				TimeoutSec:       timeoutSec,
-				Type:             &protocolType,
-				RequestPath:      &hc.Path,
+				CheckIntervalSec:   intervalSec,
+				TimeoutSec:         timeoutSec,
+				Type:               &protocolType,
+				RequestPath:        &hc.Path,
+				HealthyThreshold:   int64PointerFromInt(1),
+				UnhealthyThreshold: int64PointerFromInt(4),
 			},
 		},
 	}
@@ -1617,6 +1621,25 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 
+	httpProto := "HTTP"
+	hcPath := "/"
+	expectedBackendConfig := backendconfigv1.BackendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Namespace: "default",
+		},
+		Spec: backendconfigv1.BackendConfigSpec{
+			HealthCheck: &backendconfigv1.HealthCheckConfig{
+				CheckIntervalSec:   int64PointerFromInt(61),
+				TimeoutSec:         int64PointerFromInt(60),
+				Type:               &httpProto,
+				RequestPath:        &hcPath,
+				HealthyThreshold:   int64PointerFromInt(1),
+				UnhealthyThreshold: int64PointerFromInt(3),
+			},
+		},
+	}
+
 	hc := provTypes.TsuruYamlHealthcheck{
 		Command: []string{"curl", "x"},
 	}
@@ -1645,8 +1668,9 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
-	_, err = s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	backendConfig, err := s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(backendConfig.Spec.HealthCheck, check.DeepEquals, expectedBackendConfig.Spec.HealthCheck)
 }
 
 func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
@@ -1685,8 +1709,28 @@ func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
 	dep, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.Containers[0].ReadinessProbe, check.IsNil)
-	_, err = s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
-	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	httpProto := "HTTP"
+	hcPath := "/"
+	expectedBackendConfig := backendconfigv1.BackendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      provision.AppProcessName(a, "web", 0, ""),
+			Namespace: "default",
+		},
+		Spec: backendconfigv1.BackendConfigSpec{
+			HealthCheck: &backendconfigv1.HealthCheckConfig{
+				CheckIntervalSec:   int64PointerFromInt(61),
+				TimeoutSec:         int64PointerFromInt(60),
+				Type:               &httpProto,
+				RequestPath:        &hcPath,
+				HealthyThreshold:   int64PointerFromInt(1),
+				UnhealthyThreshold: int64PointerFromInt(3),
+			},
+		},
+	}
+	backendConfig, err := s.client.BackendClientset.CloudV1().BackendConfigs(nsName).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(backendConfig.Spec.HealthCheck, check.DeepEquals, expectedBackendConfig.Spec.HealthCheck)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
@@ -2381,7 +2425,7 @@ func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
-	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner with use_in_router set")
+	c.Assert(err, check.ErrorMatches, "healthcheck: only GET method is supported in kubernetes provisioner")
 }
 
 func (s *S) TestServiceManagerDeployServiceWithUID(c *check.C) {

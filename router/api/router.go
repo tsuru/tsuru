@@ -98,11 +98,6 @@ type backendResp struct {
 	Addresses []string `json:"addresses"`
 }
 
-type statusResp struct {
-	Status router.BackendStatus `json:"status"`
-	Detail string               `json:"detail"`
-}
-
 type capability string
 
 var (
@@ -587,25 +582,29 @@ func (r *apiRouterWithInfo) GetInfo(ctx context.Context) (map[string]string, err
 	return result, nil
 }
 
-func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, app router.App) (router.BackendStatus, string, error) {
+func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, app router.App, path string) (router.RouterBackendStatus, error) {
+	rsp := router.RouterBackendStatus{}
 	backendName, err := router.Retrieve(app.GetName())
 	if err != nil {
-		return "", "", err
+		return rsp, err
 	}
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
-		return "", "", err
+		return rsp, err
 	}
-	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status", backendName), headers, nil)
+	qs := url.Values{}
+	if path != "" {
+		qs.Add("checkpath", path)
+	}
+	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status?%s", backendName, qs.Encode()), headers, nil)
 	if err != nil {
-		return "", "", err
+		return rsp, err
 	}
-	var status statusResp
-	err = json.Unmarshal(data, &status)
+	err = json.Unmarshal(data, &rsp)
 	if err != nil {
-		return "", "", err
+		return rsp, err
 	}
-	return status.Status, status.Detail, nil
+	return rsp, nil
 }
 
 func (r *apiRouterWithPrefix) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
