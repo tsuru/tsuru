@@ -1429,7 +1429,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 
 	if baseSvcPorts != nil {
 		var annotations map[string]string
-		annotations, err = m.client.BaseServiceAnnotations()
+		annotations, err = m.client.ServiceAnnotations(baseServicesAnnotations)
 		if err != nil {
 			return errors.WithMessage(err, "could not to parse base services annotations")
 		}
@@ -1455,7 +1455,14 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 
 	headlessPorts := deepCopyPorts(baseSvcPorts)
 
+	addAllServicesAnnotations, err := m.client.ServiceAnnotations(allServicesAnnotations)
+	if err != nil {
+		return errors.WithMessage(err, "could not to parse all services annotations")
+	}
 	for _, svcData := range svcsToCreate {
+		if addAllServicesAnnotations != nil {
+			svcData.annotations = addAllServicesAnnotations
+		}
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        svcData.name,

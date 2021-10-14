@@ -430,7 +430,7 @@ abc.io/name: test`,
 		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
 		client, err := NewClusterClient(&c1)
 		c.Assert(err, check.IsNil)
-		annotations, err := client.BaseServiceAnnotations()
+		annotations, err := client.ServiceAnnotations(baseServicesAnnotations)
 		if tt.expectedErr {
 			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
 			c.Assert(annotations, check.Equals, nil)
