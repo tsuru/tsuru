@@ -1461,7 +1461,12 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	}
 	for _, svcData := range svcsToCreate {
 		if addAllServicesAnnotations != nil {
-			svcData.annotations = addAllServicesAnnotations
+			if svcData.annotations == nil {
+				svcData.annotations = addAllServicesAnnotations
+			}
+			for k, v := range addAllServicesAnnotations {
+				svcData.annotations[k] = v
+			}
 		}
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
