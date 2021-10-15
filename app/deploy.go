@@ -82,17 +82,21 @@ func findValidImages(ctx context.Context, appNames []string) (set.Set, error) {
 
 // ListDeploys returns the list of deploy that match a given filter.
 func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]DeployData, error) {
-	appsList, err := List(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-	apps := make([]string, len(appsList))
-	for i, a := range appsList {
-		apps[i] = a.GetName()
+	var rawFilter bson.M
+	if !filter.IsEmpty() {
+		appsList, err := List(ctx, filter)
+		if err != nil {
+			return nil, err
+		}
+		apps := make([]string, len(appsList))
+		for i, a := range appsList {
+			apps[i] = a.GetName()
+		}
+		rawFilter = bson.M{"target.value": bson.M{"$in": apps}}
 	}
 	evts, err := event.List(&event.Filter{
 		Target:    event.Target{Type: event.TargetTypeApp},
-		Raw:       bson.M{"target.value": bson.M{"$in": apps}},
+		Raw:       rawFilter,
 		KindNames: []string{permission.PermAppDeploy.FullName()},
 		KindType:  event.KindTypePermission,
 		Limit:     limit,

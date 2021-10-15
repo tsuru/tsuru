@@ -1842,6 +1842,13 @@ type Filter struct {
 	Extra       map[string][]string
 }
 
+func (f *Filter) IsEmpty() bool {
+	if f == nil {
+		return true
+	}
+	return reflect.DeepEqual(f, &Filter{})
+}
+
 func (f *Filter) ExtraIn(name string, value string) {
 	if f.Extra == nil {
 		f.Extra = make(map[string][]string)

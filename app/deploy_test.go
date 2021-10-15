@@ -212,6 +212,11 @@ func (s *S) TestListFilteredDeploys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	normalizeTS(deploys)
 	c.Assert(deploys, check.DeepEquals, []DeployData{expected[1]})
+	f = &Filter{}
+	deploys, err = ListDeploys(context.TODO(), f, 0, 0)
+	c.Assert(err, check.IsNil)
+	normalizeTS(deploys)
+	c.Assert(deploys, check.DeepEquals, []DeployData{expected[0], expected[1]})
 }
 
 func normalizeTS(deploys []DeployData) {
