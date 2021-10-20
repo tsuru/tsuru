@@ -3148,7 +3148,7 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "tsuru/deploy-agent:0.10.1",
+		Image: "tsuru/deploy-agent:0.10.2",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: containerdRunVolume, MountPath: containerdRunDir},
