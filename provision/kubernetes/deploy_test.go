@@ -3148,7 +3148,7 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 	runAsUser := int64(1000)
 	c.Assert(containers[0], check.DeepEquals, apiv1.Container{
 		Name:  "committer-cont",
-		Image: "tsuru/deploy-agent:0.10.1",
+		Image: "tsuru/deploy-agent:0.10.2",
 		VolumeMounts: []apiv1.VolumeMount{
 			{Name: "dockersock", MountPath: dockerSockPath},
 			{Name: containerdRunVolume, MountPath: containerdRunDir},
@@ -3538,7 +3538,7 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []apiv1.Container{
 		{
 			Name:  "committer-cont",
-			Image: "tsuru/deploy-agent:0.10.1",
+			Image: "tsuru/deploy-agent:0.10.2",
 			VolumeMounts: []apiv1.VolumeMount{
 				{Name: "dockersock", MountPath: dockerSockPath},
 				{Name: containerdRunVolume, MountPath: containerdRunDir},
@@ -3779,7 +3779,7 @@ func (s *S) TestCreateImageBuildPodContainer(c *check.C) {
 		{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
 		{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 	})
-	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.10.1")
+	c.Assert(containers[0].Image, check.DeepEquals, "tsuru/deploy-agent:0.10.2")
 	cmds := cleanCmds(containers[0].Command[2])
 	c.Assert(cmds, check.Equals, `mkdir -p $(dirname /data/context.tar.gz) && cat >/data/context.tar.gz && tsuru_unit_agent`)
 
