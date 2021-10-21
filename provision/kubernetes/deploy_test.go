@@ -377,8 +377,10 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
 	s.clusterClient.CustomData[baseServicesAnnotations] = `{"myannotation.io/name": "test"}`
+	s.clusterClient.CustomData[allServicesAnnotations] = `{"myannotation.io/name2": "test"}`
 	defer func() {
 		delete(s.clusterClient.CustomData, baseServicesAnnotations)
+		delete(s.clusterClient.CustomData, allServicesAnnotations)
 	}()
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
@@ -404,12 +406,15 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 	srv, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
-		"myannotation.io/name": "test",
+		"myannotation.io/name":  "test",
+		"myannotation.io/name2": "test",
 	})
 
 	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(srv.Annotations, check.IsNil)
+	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
+		"myannotation.io/name2": "test",
+	})
 }
 
 func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotations(c *check.C) {

@@ -64,6 +64,7 @@ const (
 	buildPlanKey                  = "build-plan"
 	buildPlanSideCarKey           = "build-plan-sidecar"
 	baseServicesAnnotations       = "base-services-annotations"
+	allServicesAnnotations        = "all-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
 	sidecarRegistryKey            = "sidecar-registry"
@@ -397,13 +398,13 @@ func (c *ClusterClient) LogsFromAPIServerEnabled() bool {
 	return enabled
 }
 
-func (c *ClusterClient) BaseServiceAnnotations() (map[string]string, error) {
+func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error) {
 	annotations := map[string]string{}
 	if c.CustomData == nil {
 		return nil, nil
 	}
 
-	annotationsRaw := c.CustomData[baseServicesAnnotations]
+	annotationsRaw := c.CustomData[key]
 	if annotationsRaw == "" {
 		return nil, nil
 	}
