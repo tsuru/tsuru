@@ -16,7 +16,7 @@ Fixing typos and enhancing the documentation
 
 Don't hesitate to contribute any rephrasing or enhancement in the documentation.
 
-tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_,
+tsuru documentation is written using `Sphinx <https://www.sphinx-doc.org/>`_,
 which uses `RST <http://docutils.sourceforge.net/rst.html>`_.
 
 Check out these documentation tools to learn how to write and update the documentation.
