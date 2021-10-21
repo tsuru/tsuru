@@ -39,7 +39,7 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1278,10 +1278,10 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+	backendConfigCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
 	}
-	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -1361,10 +1361,10 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+	backendConfigCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
 	}
-	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -1442,10 +1442,10 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+	backendConfigCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
 	}
-	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -1487,10 +1487,10 @@ func (s *S) TestEnsureBackendConfigWithCommandHC(c *check.C) {
 func (s *S) TestEnsureBackendConfigWithNoHC(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	backendConfigCRD := &v1beta1.CustomResourceDefinition{
+	backendConfigCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: backendConfigCRDName},
 	}
-	_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
+	_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), backendConfigCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
@@ -5152,10 +5152,10 @@ func (s *S) TestServiceManagerDeployServiceWithVPA(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	vpaCRD := &v1beta1.CustomResourceDefinition{
+	vpaCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
 	}
-	_, err = s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
+	_, err = s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 	a.Metadata.Update(appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{

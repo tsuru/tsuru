@@ -46,6 +46,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
+	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1718,6 +1719,40 @@ func ensureCustomResourceDefinitions(ctx context.Context, client *ClusterClient)
 		return err
 	}
 	toCreate := appCustomResourceDefinition()
+	_, err = extClient.ApiextensionsV1().CustomResourceDefinitions().Create(ctx, toCreate, metav1.CreateOptions{})
+	if err != nil && !k8sErrors.IsAlreadyExists(err) {
+		if k8sErrors.IsNotFound(err) {
+			return ensureCustomResourceDefinitionsV1Beta(ctx, client)
+		}
+		return err
+	}
+	timeout := time.After(time.Minute)
+loop:
+	for {
+		crd, errGet := extClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, toCreate.GetName(), metav1.GetOptions{})
+		if errGet != nil {
+			return errGet
+		}
+		for _, c := range crd.Status.Conditions {
+			if c.Type == extensionsv1.Established && c.Status == extensionsv1.ConditionTrue {
+				break loop
+			}
+		}
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout waiting for custom resource definition creation")
+		case <-time.After(time.Second):
+		}
+	}
+	return nil
+}
+
+func ensureCustomResourceDefinitionsV1Beta(ctx context.Context, client *ClusterClient) error {
+	extClient, err := ExtensionsClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	toCreate := appCustomResourceDefinitionV1Beta()
 	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Create(ctx, toCreate, metav1.CreateOptions{})
 	if err != nil && !k8sErrors.IsAlreadyExists(err) {
 		return err
@@ -1743,7 +1778,37 @@ loop:
 	return nil
 }
 
-func appCustomResourceDefinition() *v1beta1.CustomResourceDefinition {
+func appCustomResourceDefinition() *extensionsv1.CustomResourceDefinition {
+	preserveUnknownFields := true
+	return &extensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "apps.tsuru.io"},
+		Spec: extensionsv1.CustomResourceDefinitionSpec{
+			Group: "tsuru.io",
+			Scope: extensionsv1.NamespaceScoped,
+			Versions: []extensionsv1.CustomResourceDefinitionVersion{
+				{
+					Name:    "v1",
+					Served:  true,
+					Storage: true,
+					Schema: &extensionsv1.CustomResourceValidation{
+						OpenAPIV3Schema: &extensionsv1.JSONSchemaProps{
+							Type:                   "object",
+							XPreserveUnknownFields: &preserveUnknownFields,
+						},
+					},
+				},
+			},
+			Names: extensionsv1.CustomResourceDefinitionNames{
+				Plural:   "apps",
+				Singular: "app",
+				Kind:     "App",
+				ListKind: "AppList",
+			},
+		},
+	}
+}
+
+func appCustomResourceDefinitionV1Beta() *v1beta1.CustomResourceDefinition {
 	return &v1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: "apps.tsuru.io"},
 		Spec: v1beta1.CustomResourceDefinitionSpec{

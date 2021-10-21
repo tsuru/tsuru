@@ -344,18 +344,7 @@ func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provi
 }
 
 func vpaCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
-	extClient, err := ExtensionsClientForConfig(client.restConfig)
-	if err != nil {
-		return false, err
-	}
-	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, vpaCRDName, metav1.GetOptions{})
-	if k8sErrors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return crdExists(ctx, client, vpaCRDName)
 }
 
 func ensureAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) error {

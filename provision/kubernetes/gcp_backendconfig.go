@@ -17,18 +17,7 @@ func int64PointerFromInt(v int) *int64 {
 }
 
 func backendConfigCRDExists(ctx context.Context, client *ClusterClient) (bool, error) {
-	extClient, err := ExtensionsClientForConfig(client.restConfig)
-	if err != nil {
-		return false, err
-	}
-	_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, backendConfigCRDName, metav1.GetOptions{})
-	if k8sErrors.IsNotFound(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return crdExists(ctx, client, backendConfigCRDName)
 }
 
 func backendConfigNameForApp(a provision.App, process string) string {

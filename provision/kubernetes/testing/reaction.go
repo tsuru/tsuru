@@ -35,9 +35,10 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -106,8 +107,8 @@ func (c *ClientWrapper) TsuruV1() tsuruv1client.TsuruV1Interface {
 	return c.TsuruClientset.TsuruV1()
 }
 
-func (c *ClientWrapper) ApiextensionsV1beta1() apiextensionsv1beta1.ApiextensionsV1beta1Interface {
-	return c.ApiExtensionsClientset.ApiextensionsV1beta1()
+func (c *ClientWrapper) ApiextensionsV1() apiextensionsv1.ApiextensionsV1Interface {
+	return c.ApiExtensionsClientset.ApiextensionsV1()
 }
 
 func (c *ClientWrapper) CoreV1() v1core.CoreV1Interface {
@@ -450,9 +451,20 @@ func (s *KubeMock) AppReaction(a provision.App, c *check.C) ktesting.ReactionFun
 
 func (s *KubeMock) CRDReaction(c *check.C) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		crd := action.(ktesting.CreateAction).GetObject().(*v1beta1.CustomResourceDefinition)
-		crd.Status.Conditions = []v1beta1.CustomResourceDefinitionCondition{
-			{Type: v1beta1.Established, Status: v1beta1.ConditionTrue},
+		obj := action.(ktesting.CreateAction).GetObject()
+		crd, ok := obj.(*extensionsv1beta1.CustomResourceDefinition)
+		if ok {
+			crd.Status.Conditions = []extensionsv1beta1.CustomResourceDefinitionCondition{
+				{Type: extensionsv1beta1.Established, Status: extensionsv1beta1.ConditionTrue},
+			}
+		} else {
+			crdV1, ok := obj.(*extensionsv1.CustomResourceDefinition)
+			if !ok {
+				return false, nil, errors.Errorf("invalid crd object %#v", obj)
+			}
+			crdV1.Status.Conditions = []extensionsv1.CustomResourceDefinitionCondition{
+				{Type: extensionsv1.Established, Status: extensionsv1.ConditionTrue},
+			}
 		}
 		return false, nil, nil
 	}

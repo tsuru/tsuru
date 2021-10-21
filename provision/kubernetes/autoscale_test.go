@@ -18,7 +18,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -420,10 +420,10 @@ func (s *S) TestEnsureVPAIfEnabled(c *check.C) {
 		{
 			name: "with crd, no annotation",
 			scenario: func() {
-				vpaCRD := &v1beta1.CustomResourceDefinition{
+				vpaCRD := &extensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
 				}
-				_, err := s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
+				_, err := s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
 				c.Assert(err, check.IsNil)
 			},
 			expectedVPA: nil,
@@ -549,10 +549,10 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(rec, check.IsNil)
 
-	vpaCRD := &v1beta1.CustomResourceDefinition{
+	vpaCRD := &extensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: "verticalpodautoscalers.autoscaling.k8s.io"},
 	}
-	_, err = s.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
+	_, err = s.client.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), vpaCRD, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)

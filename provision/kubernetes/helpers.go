@@ -1370,3 +1370,21 @@ func overcommitedValue(v int64, overcommit float64) int64 {
 	}
 	return int64(float64(v) / overcommit)
 }
+
+func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool, error) {
+	extClient, err := ExtensionsClientForConfig(client.restConfig)
+	if err != nil {
+		return false, err
+	}
+	_, err = extClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if k8sErrors.IsNotFound(err) {
+		_, err = extClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	}
+	if k8sErrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
