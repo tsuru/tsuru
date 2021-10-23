@@ -5,10 +5,10 @@
 package provision
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/pkg/errors"
 	check "gopkg.in/check.v1"
 )
 
@@ -193,4 +193,45 @@ func (ProvisionSuite) TestNodeToSpecExtraData(c *check.C) {
 		Status:   "c",
 		Pool:     "a",
 	})
+}
+
+func (ProvisionSuite) TestValidate(c *check.C) {
+	var tests = []struct {
+		input    AutoScaleSpec
+		expected string
+	}{
+		{
+			AutoScaleSpec{
+				MinUnits: 0,
+				MaxUnits: 10,
+			},
+			"minimum units must be greater than 0",
+		},
+		{
+			AutoScaleSpec{
+				MinUnits: 11,
+				MaxUnits: 10,
+			},
+			"maximum units must be greater than minimum units",
+		},
+		{
+			AutoScaleSpec{
+				MinUnits: 10,
+				MaxUnits: 10,
+			},
+			"maximum units must be greater than minimum units",
+		},
+		{
+			AutoScaleSpec{
+				MinUnits: 10,
+				MaxUnits: 20,
+			},
+			"maximum units cannot be greater than quota limit",
+		},
+	}
+
+	for _, test := range tests {
+		err := test.input.Validate(10, nil)
+		c.Check(err, check.ErrorMatches, test.expected)
+	}
 }

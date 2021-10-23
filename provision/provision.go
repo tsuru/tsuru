@@ -616,7 +616,7 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
-	if s.MaxUnits < s.MinUnits {
+	if s.MaxUnits <= s.MinUnits {
 		return errors.New("maximum units must be greater than minimum units")
 	}
 	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
