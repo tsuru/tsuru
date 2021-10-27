@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://tsuru.io/resources/images/brand.svg" alt="Tsuru Logo" width="100">
+  <img alt="Tsuru Logo" src="https://tsuru.io/resources/images/brand.svg" width="100">
 </h1>
 
 <p align="center">
