@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://tsuru.io/resources//images/icons/tsuru-fb-icon.png" alt="Tsuru Logo" width="100">
+  <img src="https://tsuru.io/resources/images/brand.svg" alt="Tsuru Logo" width="100">
 </h1>
 
 <p align="center">
