@@ -1,7 +1,13 @@
-# tsuru
+<h1 align="center">
+  <br>
+  <img src="https://tsuru.io/resources//images/icons/tsuru-fb-icon.png" alt="Tsuru Logo" width="100">
+</h1>
 
-[![Build Status](https://github.com/tsuru/tsuru/workflows/ci/badge.svg?branch=main)](https://github.com/tsuru/tsuru/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/tsuru/tsuru)](https://goreportcard.com/report/github.com/tsuru/tsuru)
+<p align="center">
+  <img alt="Build Status" src="https://github.com/tsuru/tsuru/workflows/ci/badge.svg?branch=main">
+
+  <img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/tsuru/tsuru">
+</p>
 
 ## What is tsuru?
 
