@@ -106,7 +106,10 @@ func updateList(list []MetadataItem, newItems []MetadataItem) []MetadataItem {
 				continue
 			}
 		}
-		list = append(list, item)
+
+		if !item.Delete {
+			list = append(list, item)
+		}
 	}
 	return list
 }
