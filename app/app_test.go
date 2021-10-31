@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -3959,6 +3960,33 @@ func (s *S) TestAppUnits(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
+}
+
+func (s *S) TestAppUnitsWithAutoscaler(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "autoscaleProv"
+	provisioner := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
+	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
+		return provisioner, nil
+	})
+	defer provision.Unregister("autoscaleProv")
+
+	a := App{Name: "anycolor", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	err = provisioner.SetAutoScale(context.TODO(), &a, provision.AutoScaleSpec{
+		Process:    "web",
+		Version:    1,
+		MinUnits:   1,
+		MaxUnits:   5,
+		AverageCPU: "70",
+	})
+	c.Assert(err, check.IsNil)
+
+	err = a.AddUnits(1, "web", "1", io.Discard)
+	c.Assert(err.Error(), check.Equals, "cannot add units to an app with autoscaler configured, please update autoscale settings")
 }
 
 func (s *S) TestAppAvailable(c *check.C) {

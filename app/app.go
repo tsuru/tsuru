@@ -820,6 +820,12 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
+
+	err := app.ensureNoAutoscaler(process)
+	if err != nil {
+		return err
+	}
+
 	units, err := app.Units()
 	if err != nil {
 		return err
@@ -845,12 +851,37 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 	return nil
 }
 
+func (app *App) ensureNoAutoscaler(process string) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
+	if ok {
+		autoscales, err := autoscaleProv.GetAutoScale(app.ctx, app)
+		if err != nil {
+			return err
+		}
+
+		for _, as := range autoscales {
+			if as.Process == process {
+				return errors.New("cannot add units to an app with autoscaler configured, please update autoscale settings")
+			}
+		}
+	}
+	return nil
+}
+
 // RemoveUnits removes n units from the app. It's a process composed of
 // multiple steps:
 //
 //     1. Remove units from the provisioner
 //     2. Update quota
 func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
+	err := app.ensureNoAutoscaler(process)
+	if err != nil {
+		return err
+	}
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
