@@ -1256,7 +1256,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	if err != nil {
 		return err
 	}
-	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists)
+	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists, opts.PreserveVersions)
 	if err != nil {
 		return err
 	}
@@ -1336,7 +1336,7 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD bool) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD bool, newVersion bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -1415,12 +1415,16 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			labels.ReplaceIsIsolatedRunWithNew()
 		}
 
-		svcsToCreate = append(svcsToCreate, svcCreateData{
-			name:     serviceNameForApp(a, process, versionNumber),
-			labels:   labels.ToLabels(),
-			selector: labels.ToVersionSelector(),
-			ports:    svcPorts,
-		})
+		// only add new services if a new version is specified
+		// if no new version is specified we only create the default service and the headless service
+		if newVersion {
+			svcsToCreate = append(svcsToCreate, svcCreateData{
+				name:     serviceNameForApp(a, process, versionNumber),
+				labels:   labels.ToLabels(),
+				selector: labels.ToVersionSelector(),
+				ports:    svcPorts,
+			})
+		}
 
 		if depInfo[0].isRoutable {
 			baseSvcPorts = deepCopyPorts(svcPorts)

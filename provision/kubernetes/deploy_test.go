@@ -259,6 +259,144 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
+	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	srvHeadless, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srvHeadless, check.DeepEquals, &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1-units",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-routable":         "true",
+				"tsuru.io/is-headless-service": "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+					Name:       "http-headless-1",
+				},
+			},
+			ClusterIP: "None",
+			Type:      apiv1.ServiceTypeClusterIP,
+		},
+	})
+	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "app-myapp",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+		},
+	})
+}
+
+func (s *S) TestServiceManagerDeployServiceWithNewVersionFlagShouldCreateV1Service(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:              a,
+		Version:          version,
+		PreserveVersions: true,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	srv, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(srv, check.DeepEquals, &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"app":                          "myapp-p1",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/instance":   "myapp-p1",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-routable":         "true",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-team":            "admin",
+				"tsuru.io/app-process":         "p1",
+				"tsuru.io/app-platform":        "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/builder":             "",
+			},
+		},
+		Spec: apiv1.ServiceSpec{
+			Selector: map[string]string{
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/is-build":    "false",
+				"tsuru.io/is-routable": "true",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Protocol:   "TCP",
+					Port:       int32(8888),
+					TargetPort: intstr.FromInt(8888),
+					Name:       "http-default-1",
+				},
+			},
+			Type:                  apiv1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+		},
+	})
 	srvV1, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedSvcV1 := &apiv1.Service{
@@ -357,19 +495,6 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 			Type:      apiv1.ServiceTypeClusterIP,
 		},
 	})
-	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "app-myapp",
-			Namespace: nsName,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/app-name":    "myapp",
-				"tsuru.io/provisioner": "kubernetes",
-			},
-		},
-	})
 }
 
 func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
@@ -407,12 +532,6 @@ func (s *S) TestServiceManagerDeployServiceWithCustomAnnotations(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
 		"myannotation.io/name":  "test",
-		"myannotation.io/name2": "test",
-	})
-
-	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(srv.Annotations, check.DeepEquals, map[string]string{
 		"myannotation.io/name2": "test",
 	})
 }
@@ -3024,6 +3143,85 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:              a,
+		Version:          version1,
+		PreserveVersions: false,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+		"p2": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), a.Name, []int{version1.Version()})
+	c.Assert(err, check.IsNil)
+
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:              a,
+		Version:          version2,
+		PreserveVersions: false,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version1 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cm2",
+		},
+	})
+	version2 := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version1,
 	}, servicecommon.ProcessSpec{
@@ -3044,14 +3242,15 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 	c.Check(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
+	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
-		App:     a,
-		Version: version2,
+		App:              a,
+		Version:          version2,
+		PreserveVersions: true,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
@@ -3060,22 +3259,28 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
 
 	dep, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
+	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+
+	depP2, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(depP2.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
+
+	depV2, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(depV2.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+	// TODO: need to run DeployService pipeline, so that ensureServices is rerun and myapp-p1-v1 is created
+	// _, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
+	// c.Check(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
