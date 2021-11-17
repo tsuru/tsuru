@@ -1415,13 +1415,14 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			labels.ReplaceIsIsolatedRunWithNew()
 		}
 
-		avoidServiceVersion, err := m.client.AvoidMultipleServices()
+		shouldAvoidServiceVersion := false
+		shouldAvoidServiceVersion, err = m.client.AvoidMultipleServices()
 		if err != nil {
 			return err
 		}
 		// only add new services if a new version is specified
 		// if no new version is specified we only create the default service and the headless service
-		if newVersion && avoidServiceVersion {
+		if newVersion && !shouldAvoidServiceVersion {
 			svcsToCreate = append(svcsToCreate, svcCreateData{
 				name:     serviceNameForApp(a, process, versionNumber),
 				labels:   labels.ToLabels(),
