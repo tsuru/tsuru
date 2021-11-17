@@ -3231,9 +3231,6 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	err = servicemanager.AppVersion.DeleteVersionIDs(context.TODO(), a.Name, []int{version1.Version()})
-	c.Assert(err, check.IsNil)
-
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "1")
@@ -3269,18 +3266,29 @@ func (s *S) TestServiceManagerDeployServiceWithRemovedProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(depV2.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
 
+	svcList, err := s.client.Clientset.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Check(err, check.IsNil)
+	c.Check(len(svcList.Items), check.Equals, 6)
+
+	// check all p1 services that should've been created
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
-	// TODO: need to run DeployService pipeline, so that ensureServices is rerun and myapp-p1-v1 is created
-	// _, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	// c.Check(err, check.IsNil)
+	// check all p2 services that should still exist from first deployment
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
+
+	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-units", metav1.GetOptions{})
+	c.Check(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
@@ -4247,9 +4255,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-
 	waitDep()
 	reaction := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(ktesting.CreateAction).GetObject()
@@ -4286,9 +4291,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackFullTimeout(c *check.C) {
 	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"], check.Equals, "1")
 
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
@@ -5056,14 +5058,6 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	c.Check(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2-v2", metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
 	c.Check(rolloutFailureCalled, check.Equals, true)
 	c.Check(evt.Done(err), check.IsNil)
 	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*`)
@@ -5128,8 +5122,6 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, "2")
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)

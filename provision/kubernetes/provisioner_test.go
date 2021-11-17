@@ -1339,45 +1339,6 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 			},
 		},
 		{
-			Prefix: "v1.version",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version.other.process",
-			ExtraData: map[string]string{
-				"service":   "myapp-other-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version.web.process",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-			},
-		},
-		{
 			Prefix: "web.process",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
@@ -1423,32 +1384,6 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 			Prefix: "",
 			ExtraData: map[string]string{
 				"service":   "myapp-web",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
-				"namespace": "default",
-			},
-			Addresses: []*url.URL{
-				{
-					Scheme: "http",
-					Host:   "192.168.99.1:30000",
-				},
-			},
-		},
-		{
-			Prefix: "v1.version.web.process",
-			ExtraData: map[string]string{
-				"service":   "myapp-web-v1",
 				"namespace": "default",
 			},
 			Addresses: []*url.URL{
@@ -1519,7 +1454,7 @@ func (s *S) TestDeploy(c *check.C) {
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 	})
 }
 
@@ -1568,7 +1503,7 @@ func (s *S) TestDeployWithDisabledUnitRegister(c *check.C) {
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 	})
 }
 
@@ -1636,7 +1571,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		NamespaceName:      "tsuru-test-default",
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 	})
 }
 
@@ -1696,8 +1631,6 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, Process: "web"},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
 		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},
-		{Domain: "myapp-jobs-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "jobs"},
-		{Domain: "myapp-web-v1.default.svc.cluster.local", Protocol: "", Port: 0, Version: "1", Process: "web"},
 	})
 }
 
@@ -1812,7 +1745,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		NamespaceName:      "default",
 		ServiceAccountName: "app-myapp",
 		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units", "myapp-web-v1"}},
+		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
 		Configs: &provTypes.TsuruYamlKubernetesConfig{
 			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{
@@ -2495,7 +2428,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 3)
+	c.Assert(len(sList.Items), check.Equals, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	var recreatedPods bool
@@ -2575,7 +2508,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	wait()
 	sList, err := s.client.CoreV1().Services("default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 3)
+	c.Assert(len(sList.Items), check.Equals, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
@@ -2645,7 +2578,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 3)
+	c.Assert(len(sList.Items), check.Equals, 2)
 	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
 	buf := new(bytes.Buffer)
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
