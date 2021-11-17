@@ -190,3 +190,24 @@ func (s *S) TestLabelSet_Merge(c *check.C) {
 	}
 	c.Assert(ls, check.DeepEquals, expected)
 }
+
+func (s *S) TestPDBLabels(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "haskell", 42)
+	app.TeamOwner = "team-one"
+	ls := provision.PDBLabels(provision.PDBLabelsOpts{
+		App:         app,
+		Prefix:      "tsuru.io/",
+		Process:     "web",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
+		Labels: map[string]string{
+			"is-tsuru":    "true",
+			"provisioner": "kubernetes",
+			"app-name":    "myapp",
+			"app-process": "web",
+			"app-team":    "team-one",
+		},
+		Prefix: "tsuru.io/",
+	})
+}
