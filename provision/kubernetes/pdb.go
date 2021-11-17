@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/tsuru/tsuru/provision"
@@ -41,25 +40,6 @@ func ensurePDB(ctx context.Context, client *ClusterClient, app provision.App, pr
 	return nil
 }
 
-func removePDB(ctx context.Context, client *ClusterClient, app provision.App, process string) error {
-	ns, err := client.AppNamespace(ctx, app)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Removing PDB from process: %s\n", pdbNameForApp(app, process))
-
-	err = client.PolicyV1beta1().
-		PodDisruptionBudgets(ns).
-		Delete(ctx, pdbNameForApp(app, process), metav1.DeleteOptions{})
-
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-
-	return nil
-}
-
 func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]policyv1beta1.PodDisruptionBudget, error) {
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
@@ -81,12 +61,7 @@ func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App
 		return nil, err
 	}
 
-	var pdbs []policyv1beta1.PodDisruptionBudget
-	for _, pdb := range pdbList.Items {
-		pdbs = append(pdbs, pdb)
-	}
-
-	return pdbs, nil
+	return pdbList.Items, nil
 }
 
 func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App) error {
