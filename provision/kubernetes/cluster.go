@@ -70,6 +70,7 @@ const (
 	sidecarRegistryKey            = "sidecar-registry"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
+	minAvailablePDBKey            = "min-available-pdb"
 	defaultLogsFromAPIServer      = false
 	versionedServices             = "enable-versioned-services"
 
@@ -101,6 +102,7 @@ var (
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
+		minAvailablePDBKey:            fmt.Sprintf("Minimum number (or percentage) of available units to be set on PodDisruptionBudget for each Tsuru process. This config may be prefixed with `<pool-name>:` Defaults to %d.", defaultMinAvailablePDB),
 	}
 )
 
@@ -583,6 +585,16 @@ func (c *ClusterClient) RestConfig() *rest.Config {
 
 func (c *ClusterClient) GetCluster() *provTypes.Cluster {
 	return c.Cluster
+}
+
+func (c *ClusterClient) minAvailablePDB(pool string) intstr.IntOrString {
+	if str := c.configForContext(pool, minAvailablePDBKey); str != "" {
+		return intstr.Parse(str)
+	}
+	if str := c.CustomData[minAvailablePDBKey]; str != "" {
+		return intstr.Parse(str)
+	}
+	return intstr.FromInt(defaultMinAvailablePDB)
 }
 
 type clusterApp struct {
