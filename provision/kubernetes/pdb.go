@@ -45,22 +45,18 @@ func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App
 	if err != nil {
 		return nil, err
 	}
-
 	ls := provision.PDBLabels(provision.PDBLabelsOpts{
 		App:    app,
 		Prefix: tsuruLabelPrefix,
 	}).ToPDBSelector()
-
 	pdbList, err := client.PolicyV1beta1().
 		PodDisruptionBudgets(ns).
 		List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set(ls)).String(),
 		})
-
 	if err != nil {
 		return nil, err
 	}
-
 	return pdbList.Items, nil
 }
 
@@ -69,17 +65,19 @@ func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App
 	if err != nil {
 		return err
 	}
-
-	ls := provision.PDBLabels(provision.PDBLabelsOpts{
-		App:    app,
-		Prefix: tsuruLabelPrefix,
-	}).ToPDBSelector()
-
-	return client.PolicyV1beta1().
-		PodDisruptionBudgets(ns).
-		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set(ls)).String(),
-		})
+	pdbs, err := allPDBsForApp(ctx, client, app)
+	if err != nil {
+		return err
+	}
+	for _, pdb := range pdbs {
+		err = client.PolicyV1beta1().
+			PodDisruptionBudgets(ns).
+			Delete(ctx, pdb.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func newPDB(ctx context.Context, client *ClusterClient, app provision.App, process string) (*policyv1beta1.PodDisruptionBudget, error) {
@@ -87,22 +85,17 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 	if err != nil {
 		return nil, err
 	}
-
 	defaultMinAvailable := client.minAvailablePDB(app.GetPool())
-
 	autoscaleSpecs, err := getAutoScale(ctx, client, app, process)
 	if err != nil {
 		return nil, err
 	}
-
 	var minAvailableByProcess *intstr.IntOrString
 	if len(autoscaleSpecs) > 0 {
 		minAvailableByProcess = intOrStringPtr(intstr.FromInt(int(autoscaleSpecs[0].MinUnits)))
 	}
-
 	routableLabels := pdbLabels(app, process)
 	routableLabels.SetIsRoutable()
-
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(app, process),
