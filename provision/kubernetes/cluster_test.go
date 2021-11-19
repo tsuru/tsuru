@@ -399,7 +399,7 @@ func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
 	}{
 		{
 			customData: map[string]string{
-				"avoid-multiple-services": "",
+				"enable-versioned-services": "",
 			},
 			expected: struct {
 				val bool
@@ -408,7 +408,7 @@ func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
 		},
 		{
 			customData: map[string]string{
-				"avoid-multiple-services": "true",
+				"enable-versioned-services": "true",
 			},
 			expected: struct {
 				val bool
@@ -417,7 +417,7 @@ func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
 		},
 		{
 			customData: map[string]string{
-				"avoid-multiple-services": "0",
+				"enable-versioned-services": "0",
 			},
 			expected: struct {
 				val bool
@@ -426,7 +426,7 @@ func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
 		},
 		{
 			customData: map[string]string{
-				"avoid-multiple-services": "a",
+				"enable-versioned-services": "a",
 			},
 			expected: struct {
 				val bool
@@ -438,7 +438,7 @@ func (s *S) TestClusterAvoidMultipleServicesFlag(c *check.C) {
 		c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: tt.customData}
 		client, err := NewClusterClient(&c1)
 		c.Assert(err, check.IsNil)
-		ovf, err := client.AvoidMultipleServices()
+		ovf, err := client.EnableVersionedServices()
 		if tt.expected.err {
 			c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
 			c.Assert(ovf, check.Equals, false)
