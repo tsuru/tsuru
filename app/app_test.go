@@ -110,6 +110,27 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
+func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
+	a := App{
+		Name:      "myapp",
+		Platform:  "go",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+		Router:    "none",
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDelete,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = Delete(context.TODO(), &a, evt, "")
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestDeleteSwappedApp(c *check.C) {
 	a := App{
 		Name:      "ritual",

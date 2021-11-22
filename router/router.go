@@ -550,6 +550,10 @@ func ValidCName(cname, domain string) bool {
 
 func IsSwapped(name string) (bool, string, error) {
 	backendName, err := Retrieve(name)
+	if err != nil && err == ErrBackendNotFound {
+		// NOTE: apps created with "none" router don't have entry on routers collection.
+		return false, "", nil
+	}
 	if err != nil {
 		return false, "", err
 	}
