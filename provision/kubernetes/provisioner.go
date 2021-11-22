@@ -1678,6 +1678,21 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
 
+	pdbs, err := allPDBsForApp(ctx, client, a)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(pdbs, func(i, j int) bool {
+		return pdbs[i].Name < pdbs[j].Name
+	})
+	for _, pdb := range pdbs {
+		if appCRD.Spec.PodDisruptionBudgets == nil {
+			appCRD.Spec.PodDisruptionBudgets = make(map[string][]string)
+		}
+		process := labelSetFromMeta(&pdb.ObjectMeta).AppProcess()
+		appCRD.Spec.PodDisruptionBudgets[process] = append(appCRD.Spec.PodDisruptionBudgets[process], pdb.Name)
+	}
+
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {
 		return nil, err
