@@ -45,14 +45,12 @@ func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App
 	if err != nil {
 		return nil, err
 	}
-	ls := provision.PDBLabels(provision.PDBLabelsOpts{
-		App:    app,
-		Prefix: tsuruLabelPrefix,
-	}).ToPDBSelector()
-	pdbList, err := client.PolicyV1beta1().
-		PodDisruptionBudgets(ns).
+	pdbList, err := client.PolicyV1beta1().PodDisruptionBudgets(ns).
 		List(ctx, metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set(ls)).String(),
+			LabelSelector: labels.SelectorFromSet(labels.Set(provision.PDBLabels(provision.PDBLabelsOpts{
+				App:    app,
+				Prefix: tsuruLabelPrefix,
+			}).ToPDBSelector())).String(),
 		})
 	if err != nil {
 		return nil, err
@@ -70,9 +68,7 @@ func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App
 		return err
 	}
 	for _, pdb := range pdbs {
-		err = client.PolicyV1beta1().
-			PodDisruptionBudgets(ns).
-			Delete(ctx, pdb.Name, metav1.DeleteOptions{})
+		err = client.PolicyV1beta1().PodDisruptionBudgets(ns).Delete(ctx, pdb.Name, metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}

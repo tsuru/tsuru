@@ -5531,6 +5531,67 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 	})
 }
 
+func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+		"p2": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+
+	newVersion := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: newVersion,
+		Event:   evt,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	c.Assert(evt.Log(), check.Matches, "Cleaning up PDB")
+}
+
 func (s *S) TestGetImagePullSecrets(c *check.C) {
 	tests := []struct {
 		config      map[string]interface{}
