@@ -5562,13 +5562,8 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
+	var buffer bytes.Buffer
+	m.writer = &buffer
 
 	newVersion := newCommittedVersion(c, a, map[string]interface{}{
 		"processes": map[string]interface{}{
@@ -5578,7 +5573,6 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: newVersion,
-		Event:   evt,
 	}, servicecommon.ProcessSpec{
 		"p1": servicecommon.ProcessState{Start: true},
 	})
@@ -5589,7 +5583,7 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	c.Assert(err, check.IsNil)
 	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	c.Assert(evt.Log(), check.Matches, "Cleaning up PDB")
+	c.Assert(strings.Contains(buffer.String(), "Cleaning up PDB myapp-p2"), check.Equals, true)
 }
 
 func (s *S) TestGetImagePullSecrets(c *check.C) {
