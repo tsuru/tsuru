@@ -100,7 +100,7 @@ var (
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
-		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} of the app",
+		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 	}
 )
 
