@@ -5583,7 +5583,7 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	c.Assert(err, check.IsNil)
 	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	c.Assert(strings.Contains(buffer.String(), "Cleaning up PDB myapp-p2"), check.Equals, true)
+	c.Assert(strings.Contains(buffer.String(), "Cleaning up PodDisruptionBudget myapp-p2"), check.Equals, true)
 }
 
 func (s *S) TestGetImagePullSecrets(c *check.C) {
