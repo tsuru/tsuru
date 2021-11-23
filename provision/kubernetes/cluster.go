@@ -71,6 +71,7 @@ const (
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	defaultLogsFromAPIServer      = false
+	versionedServices             = "enable-versioned-services"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -99,6 +100,7 @@ var (
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
+		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 	}
 )
 
@@ -496,6 +498,17 @@ func (c *ClusterClient) SinglePool() (bool, error) {
 		return false, nil
 	}
 	return strconv.ParseBool(singlePool)
+}
+
+func (c *ClusterClient) EnableVersionedServices() (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	enable, ok := c.CustomData[versionedServices]
+	if enable == "" || !ok {
+		return false, nil
+	}
+	return strconv.ParseBool(enable)
 }
 
 func (c *ClusterClient) registry() imgTypes.ImageRegistry {
