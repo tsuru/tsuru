@@ -107,6 +107,10 @@ func vpaNameForApp(a provision.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
 
+func pdbNameForApp(a provision.App, process string) string {
+	return provision.AppProcessName(a, process, 0, "")
+}
+
 func execCommandPodNameForApp(a provision.App) string {
 	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("%s-isolated-run", name)

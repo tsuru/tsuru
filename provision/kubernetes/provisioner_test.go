@@ -1276,6 +1276,9 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	serviceAccounts, err := s.client.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceAccounts.Items, check.HasLen, 0)
+	pdbList, err := s.client.PolicyV1beta1().PodDisruptionBudgets(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pdbList.Items, check.HasLen, 0)
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 0)
@@ -1451,10 +1454,11 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName:      "default",
-		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		NamespaceName:        "default",
+		ServiceAccountName:   "app-myapp",
+		Deployments:          map[string][]string{"web": {"myapp-web"}},
+		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
 	})
 }
 
@@ -1500,10 +1504,11 @@ func (s *S) TestDeployWithDisabledUnitRegister(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName:      "default",
-		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		NamespaceName:        "default",
+		ServiceAccountName:   "app-myapp",
+		Deployments:          map[string][]string{"web": {"myapp-web"}},
+		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
 	})
 }
 
@@ -1568,10 +1573,11 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName:      "tsuru-test-default",
-		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		NamespaceName:        "tsuru-test-default",
+		ServiceAccountName:   "app-myapp",
+		Deployments:          map[string][]string{"web": {"myapp-web"}},
+		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
 	})
 }
 
@@ -1742,10 +1748,11 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(len(appList.Items), check.Equals, 1)
 	expected := tsuruv1.AppSpec{
-		NamespaceName:      "default",
-		ServiceAccountName: "app-myapp",
-		Deployments:        map[string][]string{"web": {"myapp-web"}},
-		Services:           map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		NamespaceName:        "default",
+		ServiceAccountName:   "app-myapp",
+		Deployments:          map[string][]string{"web": {"myapp-web"}},
+		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
+		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
 		Configs: &provTypes.TsuruYamlKubernetesConfig{
 			Groups: map[string]provTypes.TsuruYamlKubernetesGroup{
 				"pod1": map[string]provTypes.TsuruYamlKubernetesProcessConfig{

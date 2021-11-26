@@ -862,6 +862,24 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 		}
 	}
 
+	pdbs, err := allPDBsForApp(ctx, m.client, a)
+	if err != nil {
+		multiErrors.Add(err)
+	}
+	for _, pdb := range pdbs {
+		labels := labelSetFromMeta(&pdb.ObjectMeta)
+		process := labels.AppProcess()
+		if _, toKeep := processInUse[process]; toKeep {
+			continue
+		}
+
+		fmt.Fprintf(m.writer, " ---> Cleaning up PodDisruptionBudget %s\n", pdb.Name)
+		err = m.client.PolicyV1beta1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{})
+		if err != nil {
+			multiErrors.Add(err)
+		}
+	}
+
 	return multiErrors.ToError()
 }
 
@@ -1264,6 +1282,11 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	err = ensureAutoScale(ctx, m.client, opts.App, opts.ProcessName)
 	if err != nil {
 		return errors.Wrap(err, "unable to ensure auto scale is configured")
+	}
+
+	err = ensurePDB(ctx, m.client, opts.App, opts.ProcessName)
+	if err != nil {
+		return errors.Wrap(err, "unable to ensure pod disruption budget")
 	}
 
 	return nil

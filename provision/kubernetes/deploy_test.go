@@ -38,7 +38,10 @@ import (
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	apiv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -493,6 +496,44 @@ func (s *S) TestServiceManagerDeployServiceWithNewVersionFlagShouldCreateV1Servi
 			},
 			ClusterIP: "None",
 			Type:      apiv1.ServiceTypeClusterIP,
+		},
+	})
+	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "app-myapp",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+		},
+	})
+	pdb, err := s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pdb, check.DeepEquals, &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/provisioner": "kubernetes",
+				"tsuru.io/app-team":    "admin",
+			},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{Type: intstr.Int, IntVal: int32(0)},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":    "myapp",
+					"tsuru.io/app-process": "p1",
+					"tsuru.io/is-routable": "true",
+				},
+			},
 		},
 	})
 }
@@ -5378,6 +5419,171 @@ func (s *S) TestServiceManagerDeployServiceWithVPA(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.client.VPAClientset.AutoscalingV1().VerticalPodAutoscalers(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	s.clusterClient.CustomData["min-available-pdb"] = "90%"
+	defer func() {
+		delete(s.clusterClient.CustomData, "min-available-pdb")
+	}()
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(nsName).Create(context.TODO(), &autoscalingv2beta2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+			},
+		},
+		Spec: autoscalingv2beta2.HorizontalPodAutoscalerSpec{
+			MinReplicas: func(n int32) *int32 { return &n }(10),
+			MaxReplicas: int32(100),
+			Metrics: []autoscalingv2beta2.MetricSpec{{
+				Type: autoscalingv2beta2.ResourceMetricSourceType,
+				Resource: &autoscalingv2beta2.ResourceMetricSource{
+					Name: corev1.ResourceCPU,
+					Target: autoscalingv2beta2.MetricTarget{
+						Type:               autoscalingv2beta2.UtilizationMetricType,
+						AverageUtilization: func(n int32) *int32 { return &n }(80),
+					},
+				},
+			}},
+		},
+	}, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+		"p2": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	_, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	pdb, err := s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pdb, check.DeepEquals, &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p1",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p1",
+				"tsuru.io/provisioner": "kubernetes",
+				"tsuru.io/app-team":    "admin",
+			},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{Type: intstr.Int, IntVal: int32(10)},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":    "myapp",
+					"tsuru.io/app-process": "p1",
+					"tsuru.io/is-routable": "true",
+				},
+			},
+		},
+	})
+	pdb, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pdb, check.DeepEquals, &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-p2",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "p2",
+				"tsuru.io/provisioner": "kubernetes",
+				"tsuru.io/app-team":    "admin",
+			},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable: &intstr.IntOrString{Type: intstr.String, StrVal: "90%"},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":    "myapp",
+					"tsuru.io/app-process": "p2",
+					"tsuru.io/is-routable": "true",
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+		"p2": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	var buffer bytes.Buffer
+	m.writer = &buffer
+
+	newVersion := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: newVersion,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	c.Assert(strings.Contains(buffer.String(), "Cleaning up PodDisruptionBudget myapp-p2"), check.Equals, true)
 }
 
 func (s *S) TestGetImagePullSecrets(c *check.C) {

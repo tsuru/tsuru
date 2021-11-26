@@ -159,6 +159,10 @@ func (s *LabelSet) ToHPASelector() map[string]string {
 	return withPrefix(subMap(s.Labels, keys...), s.Prefix)
 }
 
+func (s *LabelSet) ToPDBSelector() map[string]string {
+	return s.ToHPASelector()
+}
+
 func (s *LabelSet) AppName() string {
 	return s.getLabel(LabelAppName)
 }
@@ -627,6 +631,26 @@ func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 		labels[k] = v
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
+}
+
+type PDBLabelsOpts struct {
+	App         App
+	Prefix      string
+	Process     string
+	Provisioner string
+}
+
+func PDBLabels(opts PDBLabelsOpts) *LabelSet {
+	return &LabelSet{
+		Labels: map[string]string{
+			labelIsTsuru:      strconv.FormatBool(true),
+			labelProvisioner:  opts.Provisioner,
+			LabelAppName:      opts.App.GetName(),
+			LabelAppProcess:   opts.Process,
+			LabelAppTeamOwner: opts.App.GetTeamOwner(),
+		},
+		Prefix: opts.Prefix,
+	}
 }
 
 func withPrefix(m map[string]string, prefix string) map[string]string {

@@ -67,6 +67,7 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.10.2"
 	defaultPreStopSleepSeconds                 = 10
+	defaultMinAvailablePDB                     = 0
 )
 
 var (
@@ -400,6 +401,9 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 				}
 			}
 		}
+	}
+	if err = removeAllPDBs(ctx, client, app); err != nil {
+		multiErrors.Add(errors.WithStack(err))
 	}
 	err = client.CoreV1().ServiceAccounts(tsuruApp.Spec.NamespaceName).Delete(ctx, tsuruApp.Spec.ServiceAccountName, metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
@@ -1345,7 +1349,6 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 	if err != nil {
 		return "", err
 	}
-
 	if err = ensureAppCustomResourceSynced(ctx, client, args.App); err != nil {
 		return "", err
 	}
@@ -1674,6 +1677,21 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 
 	appCRD.Spec.Services = services
 	appCRD.Spec.Deployments = deployments
+
+	pdbs, err := allPDBsForApp(ctx, client, a)
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(pdbs, func(i, j int) bool {
+		return pdbs[i].Name < pdbs[j].Name
+	})
+	for _, pdb := range pdbs {
+		if appCRD.Spec.PodDisruptionBudgets == nil {
+			appCRD.Spec.PodDisruptionBudgets = make(map[string][]string)
+		}
+		process := labelSetFromMeta(&pdb.ObjectMeta).AppProcess()
+		appCRD.Spec.PodDisruptionBudgets[process] = append(appCRD.Spec.PodDisruptionBudgets[process], pdb.Name)
+	}
 
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {

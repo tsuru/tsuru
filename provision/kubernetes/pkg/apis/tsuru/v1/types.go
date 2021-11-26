@@ -22,11 +22,12 @@ type App struct {
 
 // AppSpec is the spec for a App resource
 type AppSpec struct {
-	NamespaceName      string                               `json:"namespaceName"`
-	ServiceAccountName string                               `json:"serviceAccountName"`
-	Deployments        map[string][]string                  `json:"deployments"`
-	Services           map[string][]string                  `json:"services"`
-	Configs            *provision.TsuruYamlKubernetesConfig `json:"configs"`
+	NamespaceName        string                               `json:"namespaceName"`
+	ServiceAccountName   string                               `json:"serviceAccountName"`
+	Deployments          map[string][]string                  `json:"deployments"`
+	Services             map[string][]string                  `json:"services"`
+	PodDisruptionBudgets map[string][]string                  `json:"podDisruptionBudgets"`
+	Configs              *provision.TsuruYamlKubernetesConfig `json:"configs"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
