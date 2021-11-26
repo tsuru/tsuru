@@ -64,6 +64,8 @@ var (
 	ErrCannotOrphanApp   = errors.New("cannot revoke access from this team, as it's the unique team with access to the app")
 	ErrDisabledPlatform  = errors.New("Disabled Platform, only admin users can create applications with the platform")
 
+	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
+
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
 
 	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
@@ -2231,6 +2233,11 @@ func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[
 }
 
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
+	for _, r := range app.GetRouters() {
+		if appRouter.Name == r.Name {
+			return ErrRouterAlreadyLinked
+		}
+	}
 	defer rebuild.RoutesRebuildOrEnqueue(app.Name)
 	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
