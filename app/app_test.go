@@ -5456,6 +5456,20 @@ func (s *S) TestAppAddRouter(c *check.C) {
 	c.Assert(addrs, check.DeepEquals, []string{"myapp.fakerouter.com", "myapp.faketlsrouter.com"})
 }
 
+func (s *S) TestAppAddRouterWithAlreadyLinkedRouter(c *check.C) {
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	routers, err := app.GetRoutersWithAddr()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
+		{Name: "fake", Address: "myapp.fakerouter.com", Type: "fake"},
+	})
+	err = app.AddRouter(appTypes.AppRouter{Name: "fake"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.DeepEquals, ErrRouterAlreadyLinked)
+}
+
 func (s *S) TestAppRemoveRouter(c *check.C) {
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
