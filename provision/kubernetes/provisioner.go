@@ -1685,10 +1685,8 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 	sort.Slice(pdbs, func(i, j int) bool {
 		return pdbs[i].Name < pdbs[j].Name
 	})
+	appCRD.Spec.PodDisruptionBudgets = make(map[string][]string)
 	for _, pdb := range pdbs {
-		if appCRD.Spec.PodDisruptionBudgets == nil {
-			appCRD.Spec.PodDisruptionBudgets = make(map[string][]string)
-		}
 		process := labelSetFromMeta(&pdb.ObjectMeta).AppProcess()
 		appCRD.Spec.PodDisruptionBudgets[process] = append(appCRD.Spec.PodDisruptionBudgets[process], pdb.Name)
 	}
