@@ -514,3 +514,51 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 	}
 	return specs, nil
 }
+
+func allHPAsForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	hpaList, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return hpaList.Items, nil
+}
+
+func removeAllHPAs(ctx context.Context, client *ClusterClient, a provision.App) error {
+	hpas, err := allHPAsForApp(ctx, client, a)
+	if err != nil {
+		return err
+	}
+
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	for _, hpa := range hpas {
+		err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(ctx, hpa.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

@@ -402,6 +402,9 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 			}
 		}
 	}
+	if err = removeAllHPAs(ctx, client, app); err != nil {
+		multiErrors.Add(errors.WithStack(err))
+	}
 	if err = removeAllPDBs(ctx, client, app); err != nil {
 		multiErrors.Add(errors.WithStack(err))
 	}
