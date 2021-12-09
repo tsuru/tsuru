@@ -1241,7 +1241,7 @@ func (s *S) TestStopStart(c *check.C) {
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(svcs.Items), check.Equals, 3)
+	c.Assert(len(svcs.Items), check.Equals, 2)
 }
 
 func (s *S) TestProvisionerDestroy(c *check.C) {
@@ -2482,7 +2482,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(len(sList.Items), check.Equals, 0)
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(sList.Items), check.Equals, 3)
+	c.Assert(len(sList.Items), check.Equals, 2)
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {

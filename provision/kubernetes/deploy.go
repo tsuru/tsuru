@@ -1299,7 +1299,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return err
 	}
 	fmt.Fprintf(m.writer, "\n---- Ensuring services [%s] ----\n", opts.ProcessName)
-	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists)
+	err = m.ensureServices(ctx, opts.App, opts.ProcessName, labels, opts.Version, backendCfgexists, opts.PreserveVersions)
 	if err != nil {
 		return err
 	}
@@ -1384,7 +1384,7 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD bool) error {
+func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -1475,17 +1475,13 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				selector: labels.ToVersionSelector(),
 				ports:    svcPorts,
 			})
-		} else {
-			for _, dep := range depInfo {
-				if !dep.isBase {
-					svcsToCreate = append(svcsToCreate, svcCreateData{
-						name:     serviceNameForApp(a, process, versionNumber),
-						labels:   labels.ToLabels(),
-						selector: labels.ToVersionSelector(),
-						ports:    svcPorts,
-					})
-				}
-			}
+		} else if len(depData.versioned) > 1 && preserveOldVersions {
+			svcsToCreate = append(svcsToCreate, svcCreateData{
+				name:     serviceNameForApp(a, process, versionNumber),
+				labels:   labels.ToLabels(),
+				selector: labels.ToVersionSelector(),
+				ports:    svcPorts,
+			})
 		}
 
 		if depInfo[0].isRoutable {
