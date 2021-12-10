@@ -264,6 +264,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		_ = target.AverageValue.String()
 	}
 
+	policyMin := autoscalingv2.MinPolicySelect
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   hpaName,
@@ -276,6 +277,27 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 				APIVersion: appsv1.SchemeGroupVersion.String(),
 				Kind:       "Deployment",
 				Name:       depInfo.dep.Name,
+			},
+			// FIXME(cezarsa): We should probably support letting the users
+			// customize the behavior directly. Meanwhile, we'll use a safer
+			// default to prevent the autoscaler from scaling down too fast
+			// poossibly disrupting the app.
+			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+				ScaleDown: &autoscalingv2.HPAScalingRules{
+					SelectPolicy: &policyMin,
+					Policies: []autoscalingv2.HPAScalingPolicy{
+						{
+							Type:          autoscalingv2.PercentScalingPolicy,
+							Value:         10,
+							PeriodSeconds: 60,
+						},
+						{
+							Type:          autoscalingv2.PodsScalingPolicy,
+							Value:         3,
+							PeriodSeconds: 60,
+						},
+					},
+				},
 			},
 			Metrics: []autoscalingv2.MetricSpec{
 				{
