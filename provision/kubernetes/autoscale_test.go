@@ -30,6 +30,7 @@ func toInt32Ptr(i int32) *int32 {
 }
 
 func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalPodAutoscaler {
+	policyMin := autoscalingv2.MinPolicySelect
 	return &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-web",
@@ -64,6 +65,23 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 				APIVersion: "apps/v1",
 				Kind:       "Deployment",
 				Name:       "myapp-web",
+			},
+			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+				ScaleDown: &autoscalingv2.HPAScalingRules{
+					SelectPolicy: &policyMin,
+					Policies: []autoscalingv2.HPAScalingPolicy{
+						{
+							Type:          autoscalingv2.PercentScalingPolicy,
+							Value:         10,
+							PeriodSeconds: 60,
+						},
+						{
+							Type:          autoscalingv2.PodsScalingPolicy,
+							Value:         3,
+							PeriodSeconds: 60,
+						},
+					},
+				},
 			},
 			Metrics: []autoscalingv2.MetricSpec{
 				{
