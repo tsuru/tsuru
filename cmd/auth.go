@@ -16,7 +16,7 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruNet "github.com/tsuru/tsuru/net"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 )
 
 type loginScheme struct {

@@ -16,8 +16,8 @@ import (
 	"syscall"
 
 	"github.com/tsuru/gnuflag"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/websocket"
+	terminal "golang.org/x/term"
 )
 
 var httpRegexp = regexp.MustCompile(`^http`)

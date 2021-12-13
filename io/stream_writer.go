@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/jsonmessage"
-	"golang.org/x/crypto/ssh/terminal"
+	terminal "golang.org/x/term"
 )
 
 type wrapWriter struct {
