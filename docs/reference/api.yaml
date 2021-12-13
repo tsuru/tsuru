@@ -4204,6 +4204,10 @@ definitions:
         type: string
       type:
         type: string
+      readinessGates:
+        type: array
+        items:
+          type: string
       config:
         type: object
   PlanRouter:
@@ -4224,6 +4228,10 @@ definitions:
         type: boolean
       dynamic:
         type: boolean
+      readinessGates:
+        type: array
+        items:
+          type: string
   ErrorMessage:
     description: Error message.
     type: string
