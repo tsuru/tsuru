@@ -12,5 +12,6 @@ Installing
 
 .. toctree::
 
+    installing-minikube
     using-tsuru-installer
     installing-tsuru-components
