@@ -1227,7 +1227,7 @@ func (s *S) TestStopStart(c *check.C) {
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(len(svcs.Items), check.Equals, 0)
+	c.Assert(len(svcs.Items), check.Equals, 2)
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)

@@ -728,10 +728,13 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		}
 	}
 	var readinessGates []apiv1.PodReadinessGate
-	for condition := range conditionSet {
-		readinessGates = append(readinessGates, apiv1.PodReadinessGate{
-			ConditionType: apiv1.PodConditionType(condition),
-		})
+
+	if process == webProcessName {
+		for condition := range conditionSet {
+			readinessGates = append(readinessGates, apiv1.PodReadinessGate{
+				ConditionType: apiv1.PodConditionType(condition),
+			})
+		}
 	}
 
 	deployment := appsv1.Deployment{
@@ -832,22 +835,21 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 
 	fmt.Fprint(m.writer, "\n---- Cleaning up resources ----\n")
 
+	baseVersion, err := baseVersionForApp(ctx, m.client, a)
+	if err != nil {
+		return err
+	}
+
 	processInUse := map[string]struct{}{}
 	versionInUse := map[processVersionKey]struct{}{}
 	multiErrors := tsuruErrors.NewMultiError()
 	for _, depsData := range depGroups.versioned {
 		for _, depData := range depsData {
-			toKeep := depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion)
+			toKeep := (depData.isBase && depData.version == baseVersion) ||
+				(depData.replicas > 0 && (preserveOldVersions || depData.version == deployedVersion))
 			if toKeep {
 				processInUse[depData.process] = struct{}{}
 				versionInUse[processVersionKey{process: depData.process, version: depData.version}] = struct{}{}
-				continue
-			}
-
-			// Stopped apps deployments should be kept but their services can
-			// be removed.
-			depLabels := labelOnlySetFromMeta(&depData.dep.ObjectMeta)
-			if depLabels.HasPastUnits() {
 				continue
 			}
 
@@ -929,14 +931,7 @@ func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, pro
 	}
 	depLabels := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
 	podLabels := labelOnlySetFromMetaPrefix(&dep.Spec.Template.ObjectMeta, false)
-
-	replicas := dep.Spec.Replicas
-	if depLabels.HasPastUnits() {
-		past := int32(depLabels.PastUnits())
-		replicas = &past
-	}
-
-	return depLabels.Merge(podLabels).WithoutPastUnits(), replicas, nil
+	return depLabels.Merge(podLabels), dep.Spec.Replicas, nil
 }
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
@@ -1361,7 +1356,12 @@ func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App
 		return result, nil
 	}
 
-	if depData.base.dep != nil {
+	baseVersion, err := baseVersionForApp(ctx, m.client, a)
+	if err != nil {
+		return result, err
+	}
+
+	if depData.base.dep != nil || (baseVersion != 0 && baseVersion != version.Version()) {
 		labels.ReplaceIsIsolatedRunWithNew()
 		result.name = deploymentNameForApp(a, process, version.Version())
 		result.selector = labels.ToVersionSelector()
@@ -1421,6 +1421,22 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 	var baseSvcPorts []apiv1.ServicePort
 	var svcsToCreate []svcCreateData
 
+	baseVersion, err := baseVersionForApp(ctx, m.client, a)
+	if err != nil {
+		return err
+	}
+
+	createVersionedSvcs, err := m.client.EnableVersionedServices()
+	if err != nil {
+		return err
+	}
+	for versionNumber := range depData.versioned {
+		if versionNumber != baseVersion && preserveOldVersions {
+			createVersionedSvcs = true
+			break
+		}
+	}
+
 	for versionNumber, depInfo := range depData.versioned {
 		if len(depInfo) == 0 {
 			continue
@@ -1463,19 +1479,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			labels.ReplaceIsIsolatedRunWithNew()
 		}
 
-		enableServiceByVersion := false
-		enableServiceByVersion, err = m.client.EnableVersionedServices()
-		if err != nil {
-			return err
-		}
-		if enableServiceByVersion {
-			svcsToCreate = append(svcsToCreate, svcCreateData{
-				name:     serviceNameForApp(a, process, versionNumber),
-				labels:   labels.ToLabels(),
-				selector: labels.ToVersionSelector(),
-				ports:    svcPorts,
-			})
-		} else if len(depData.versioned) > 1 && preserveOldVersions {
+		if createVersionedSvcs {
 			svcsToCreate = append(svcsToCreate, svcCreateData{
 				name:     serviceNameForApp(a, process, versionNumber),
 				labels:   labels.ToLabels(),
@@ -1559,9 +1563,12 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			return errors.WithStack(err)
 		}
 	}
-	err = m.createHeadlessService(ctx, headlessPorts, ns, a, process, routableLabels.WithoutVersion())
-	if err != nil {
-		return err
+
+	if baseVersion == currentVersion.Version() {
+		err = m.createHeadlessService(ctx, headlessPorts, ns, a, process, routableLabels.WithoutVersion())
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

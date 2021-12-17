@@ -510,7 +510,11 @@ func patchDeployment(ctx context.Context, client *ClusterClient, a provision.App
 		}
 		return provision.ErrUnitStartup{Err: err}
 	}
-	return nil
+	sm := &serviceManager{
+		client: client,
+		writer: w,
+	}
+	return sm.CleanupServices(ctx, a, version.Version(), true)
 }
 
 func ensureProcessName(processName string, version appTypes.AppVersion) (string, error) {

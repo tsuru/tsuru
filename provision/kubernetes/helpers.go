@@ -527,11 +527,18 @@ func baseVersionForApp(ctx context.Context, client *ClusterClient, a provision.A
 		return 0, err
 	}
 
-	if depData.base.dep == nil {
+	if len(depData.bases) == 0 || depData.bases[0].dep == nil {
 		return 0, nil
 	}
 
-	return depData.base.version, nil
+	var latestBase int
+	for _, base := range depData.bases {
+		if base.version > latestBase {
+			latestBase = base.version
+		}
+	}
+
+	return latestBase, nil
 }
 
 func allDeploymentsForApp(ctx context.Context, client *ClusterClient, a provision.App) ([]appsv1.Deployment, error) {
@@ -661,6 +668,12 @@ type groupedDeployments struct {
 	count     int
 }
 
+type groupedDeploymentsAll struct {
+	versioned map[int][]deploymentInfo
+	bases     []deploymentInfo
+	count     int
+}
+
 type deploymentInfo struct {
 	dep        *appsv1.Deployment
 	process    string
@@ -676,19 +689,28 @@ func deploymentsDataForProcess(ctx context.Context, client *ClusterClient, a pro
 	if err != nil {
 		return groupedDeployments{}, err
 	}
-	return groupDeployments(deps), nil
+	var base deploymentInfo
+	grouped := groupDeployments(deps)
+	if len(grouped.bases) > 0 {
+		base = grouped.bases[0]
+	}
+	return groupedDeployments{
+		versioned: grouped.versioned,
+		base:      base,
+		count:     grouped.count,
+	}, nil
 }
 
-func deploymentsDataForApp(ctx context.Context, client *ClusterClient, a provision.App) (groupedDeployments, error) {
+func deploymentsDataForApp(ctx context.Context, client *ClusterClient, a provision.App) (groupedDeploymentsAll, error) {
 	deps, err := allDeploymentsForApp(ctx, client, a)
 	if err != nil {
-		return groupedDeployments{}, err
+		return groupedDeploymentsAll{}, err
 	}
 	return groupDeployments(deps), nil
 }
 
-func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
-	result := groupedDeployments{
+func groupDeployments(deps []appsv1.Deployment) groupedDeploymentsAll {
+	result := groupedDeploymentsAll{
 		versioned: make(map[int][]deploymentInfo),
 	}
 	result.count = len(deps)
@@ -724,7 +746,7 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeployments {
 		}
 		result.versioned[version] = append(result.versioned[version], di)
 		if isBase {
-			result.base = di
+			result.bases = append(result.bases, di)
 		}
 	}
 	return result
