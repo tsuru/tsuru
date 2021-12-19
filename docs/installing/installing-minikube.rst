@@ -49,7 +49,7 @@ Now let's install the chart!
 
 ::
 
-    $ helm install --name tsuru tsuru/tsuru-stack –create-namespace --namespace tsuru-system
+    $ helm install tsuru tsuru/tsuru-stack --create-namespace --namespace tsuru-system
 
 Now you have tsuru installed!!
 
@@ -73,8 +73,8 @@ Use to make a specific kubernetes api request. That means the system running it 
 
 ::
 
-    $ kubectl port-forward -namespace tsuru-system svc/tsuru-api 8080:80 &
-    $ kubectl port-forward -namespace tsuru-system svc/tsuru-ingress-nginx-controller 8890:80 &
+    $ kubectl port-forward --namespace tsuru-system svc/tsuru-api 8080:80 &
+    $ kubectl port-forward --namespace tsuru-system svc/tsuru-ingress-nginx-controller 8890:80 &
 
 
 Obs: If you specified a port when you installed helm it will have to use the same port in tsuru-ingress-nginx-controller.
@@ -96,7 +96,7 @@ Create one team:
 
 ::
 
-   $ tsuru team-create admin
+   $ tsuru team create admin
 
 Build Platforms:
 
@@ -104,8 +104,8 @@ Build Platforms:
 
 ::
 
-   $ tsuru platform-add python
-   $ tsuru platform-add go
+   $ tsuru platform add python
+   $ tsuru platform add go
 
 Create and Deploy tsuru-dashboard app:
 
@@ -113,8 +113,8 @@ Create and Deploy tsuru-dashboard app:
 
 ::
 
-   $ tsuru app-create dashboard
-   $ tsuru app-deploy -a dashboard -i tsuru/dashboard
+   $ tsuru app create dashboard
+   $ tsuru app deploy -a dashboard --image tsuru/dashboard
 
 Create an app to test:
 
@@ -122,10 +122,12 @@ Create an app to test:
 
 ::
 
-   $ mkdir example-go && cd example-go
-   $ git clone https://github.com/tsuru/platforms.git && cd platforms/examples/go
-   $ tsuru app-create example-go go
-   $ tsuru app-deploy -a example-go .
+   $ mkdir example-go
+   $ cd example-go
+   $ git clone https://github.com/tsuru/platforms.git
+   $ cd platforms/examples/go
+   $ tsuru app create example-go go
+   $ tsuru app deploy -a example-go .
 
 Check the app info and get the url:
 
@@ -133,4 +135,4 @@ Check the app info and get the url:
 
 ::
 
-   $ tsuru app-info -a example-go
+   $ tsuru app info -a example-go
