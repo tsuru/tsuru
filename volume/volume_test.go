@@ -740,9 +740,15 @@ func (s *S) TestListByFilter(c *check.C) {
 		{filter: &volumeTypes.Filter{Pools: []string{"otherpool", "mypool"}}, expected: volumes},
 	}
 	for _, tt := range tests {
-		vols, err := vs.ListByFilter(context.TODO(), tt.filter)
+		volsWithBind, err := vs.ListByFilter(context.TODO(), tt.filter)
 		c.Assert(err, check.IsNil)
-		sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
+		sort.Slice(volsWithBind, func(i, j int) bool { return volsWithBind[i].Name < volsWithBind[j].Name })
+
+		vols := make([]volumeTypes.Volume, 0, len(volsWithBind))
+		for _, v := range volsWithBind {
+			vols = append(vols, v.Volume)
+		}
+
 		c.Assert(vols, check.DeepEquals, tt.expected)
 	}
 }

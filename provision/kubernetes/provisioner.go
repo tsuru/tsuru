@@ -382,7 +382,8 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 		multiErrors.Add(errors.WithStack(err))
 	} else {
 		for _, vol := range vols {
-			volumeBinds, err := servicemanager.Volume.Binds(ctx, &vol)
+			var volumeBinds []volumeTypes.VolumeBind
+			volumeBinds, err = servicemanager.Volume.Binds(ctx, &vol)
 			if err != nil {
 				continue
 			}
