@@ -382,13 +382,13 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 		multiErrors.Add(errors.WithStack(err))
 	} else {
 		for _, vol := range vols {
-			vol.Binds, err = servicemanager.Volume.Binds(ctx, &vol)
+			volumeBinds, err := servicemanager.Volume.Binds(ctx, &vol)
 			if err != nil {
 				continue
 			}
 
 			bindedToOtherApps := false
-			for _, b := range vol.Binds {
+			for _, b := range volumeBinds {
 				if b.ID.App != app.GetName() {
 					bindedToOtherApps = true
 					break

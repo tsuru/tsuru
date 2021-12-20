@@ -702,21 +702,18 @@ func (s *S) TestListByFilter(c *check.C) {
 		{
 			Name:      "v1",
 			Plan:      volumeTypes.VolumePlan{Name: "p1"},
-			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "mypool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v2",
 			Plan:      volumeTypes.VolumePlan{Name: "p1"},
-			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "otherpool",
 			TeamOwner: "myteam",
 		},
 		{
 			Name:      "v3",
 			Plan:      volumeTypes.VolumePlan{Name: "p1"},
-			Binds:     []volumeTypes.VolumeBind{},
 			Pool:      "mypool",
 			TeamOwner: "otherteam",
 		},

@@ -13,7 +13,7 @@ type MockVolumeService struct {
 	OnUpdate                     func(ctx context.Context, v *Volume) error
 	OnGet                        func(ctx context.Context, appName string) (*Volume, error)
 	OnListByApp                  func(ctx context.Context, appName string) ([]Volume, error)
-	OnListByFilter               func(ctx context.Context, f *Filter) ([]Volume, error)
+	OnListByFilter               func(ctx context.Context, f *Filter) ([]VolumeWithBinds, error)
 	OnDelete                     func(ctx context.Context, v *Volume) error
 	OnBindApp                    func(ctx context.Context, opts *BindOpts) error
 	OnUnbindApp                  func(ctx context.Context, opts *BindOpts) error
@@ -65,7 +65,7 @@ func (m *MockVolumeService) ListByApp(ctx context.Context, appName string) ([]Vo
 	return nil, nil
 }
 
-func (m *MockVolumeService) ListByFilter(ctx context.Context, f *Filter) ([]Volume, error) {
+func (m *MockVolumeService) ListByFilter(ctx context.Context, f *Filter) ([]VolumeWithBinds, error) {
 	if m.OnListByFilter != nil {
 		return m.OnListByFilter(ctx, f)
 	}

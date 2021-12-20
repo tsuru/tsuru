@@ -109,19 +109,25 @@ func (s *volumeService) ListByApp(ctx context.Context, appName string) ([]volume
 	})
 }
 
-func (s *volumeService) ListByFilter(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.Volume, error) {
+func (s *volumeService) ListByFilter(ctx context.Context, f *volumeTypes.Filter) ([]volumeTypes.VolumeWithBinds, error) {
 	volumes, err := s.storage.ListByFilter(ctx, f)
 	if err != nil {
 		return nil, err
 	}
-	for i := range volumes {
-		volumes[i].Binds, err = s.Binds(ctx, &volumes[i])
+
+	volumesWithBinds := make([]volumeTypes.VolumeWithBinds, len(volumes))
+	for i, v := range volumes {
+		volumesWithBinds[i].Volume = v
+	}
+
+	for i := range volumesWithBinds {
+		volumesWithBinds[i].Binds, err = s.Binds(ctx, &volumes[i])
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return volumes, nil
+	return volumesWithBinds, nil
 }
 
 func (s *volumeService) Delete(ctx context.Context, v *volumeTypes.Volume) error {
@@ -175,29 +181,14 @@ func (s *volumeService) UnbindApp(ctx context.Context, opts *volumeTypes.BindOpt
 }
 
 func (s *volumeService) Binds(ctx context.Context, v *volumeTypes.Volume) ([]volumeTypes.VolumeBind, error) {
-	if v.Binds != nil {
-		return v.Binds, nil
-	}
-
 	binds, err := s.storage.Binds(ctx, v.Name)
 	if err != nil {
 		return nil, err
 	}
-	v.Binds = binds
 	return binds, nil
 }
 
 func (s *volumeService) BindsForApp(ctx context.Context, v *volumeTypes.Volume, appName string) ([]volumeTypes.VolumeBind, error) {
-	if v != nil && v.Binds != nil {
-		binds := []volumeTypes.VolumeBind{}
-		for _, bind := range v.Binds {
-			if bind.ID.App == appName {
-				binds = append(binds, bind)
-			}
-		}
-		return binds, nil
-	}
-
 	var volumeName string
 	if v != nil {
 		volumeName = v.Name

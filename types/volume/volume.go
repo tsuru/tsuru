@@ -42,7 +42,6 @@ type Volume struct {
 	Plan      VolumePlan
 	TeamOwner string
 	Status    string
-	Binds     []VolumeBind      `bson:"-"`
 	Opts      map[string]string `bson:",omitempty"`
 }
 
@@ -52,6 +51,11 @@ func (v *Volume) UnmarshalPlan(result interface{}) error {
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(json.Unmarshal(jsonData, result))
+}
+
+type VolumeWithBinds struct {
+	Volume
+	Binds []VolumeBind
 }
 
 type BindOpts struct {
@@ -72,7 +76,7 @@ type VolumeService interface {
 	Update(ctx context.Context, v *Volume) error
 	Delete(ctx context.Context, v *Volume) error
 	ListByApp(ctx context.Context, appName string) ([]Volume, error)
-	ListByFilter(ctx context.Context, f *Filter) ([]Volume, error)
+	ListByFilter(ctx context.Context, f *Filter) ([]VolumeWithBinds, error)
 	ListPlans(ctx context.Context) (map[string][]VolumePlan, error)
 	CheckPoolVolumeConstraints(ctx context.Context, volume Volume) error
 	Get(ctx context.Context, name string) (*Volume, error)

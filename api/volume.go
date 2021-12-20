@@ -91,16 +91,17 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
+	volumeWithBinds := &volumeTypes.VolumeWithBinds{Volume: *v}
 	canRead := permission.Check(t, permission.PermVolumeRead, contextsForVolume(v)...)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-	v.Binds, err = servicemanager.Volume.Binds(ctx, v)
+	volumeWithBinds.Binds, err = servicemanager.Volume.Binds(ctx, v)
 	if err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(&v)
+	return json.NewEncoder(w).Encode(&volumeWithBinds)
 }
 
 // title: volume create
