@@ -32,12 +32,14 @@ func ensurePDB(ctx context.Context, client *ClusterClient, app provision.App, pr
 	if reflect.DeepEqual(pdb.Spec, existingPDB.Spec) {
 		return nil
 	}
-	pdb.ResourceVersion = existingPDB.ResourceVersion
-	_, err = client.PolicyV1beta1().PodDisruptionBudgets(pdb.Namespace).Update(ctx, pdb, metav1.UpdateOptions{})
+	// NOTE: Kubernetes 1.14 or below does not allow updating PDB resources as so
+	// we've to recreate the object to get around that.
+	err = client.PolicyV1beta1().PodDisruptionBudgets(existingPDB.Namespace).Delete(ctx, existingPDB.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = client.PolicyV1beta1().PodDisruptionBudgets(pdb.Namespace).Create(ctx, pdb, metav1.CreateOptions{})
+	return err
 }
 
 func allPDBsForApp(ctx context.Context, client *ClusterClient, app provision.App) ([]policyv1beta1.PodDisruptionBudget, error) {
