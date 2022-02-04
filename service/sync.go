@@ -136,6 +136,7 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		InternalKind: "bindsyncer",
+		DisableLock:  true,
 		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.GetName())),
 	})
 	if err != nil {

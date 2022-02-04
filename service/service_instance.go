@@ -261,6 +261,9 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
+	if s.DisableBindUnit {
+		return nil
+	}
 	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
 	if err != nil {
 		return err

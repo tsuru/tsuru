@@ -96,6 +96,12 @@ func parseService(r *http.Request) (service.Service, error) {
 	if err == nil {
 		s.IsMultiCluster = multiCluster
 	}
+
+	disableBindUnit, err := strconv.ParseBool(InputValue(r, "disable-bind-unit"))
+	if err == nil {
+		s.DisableBindUnit = disableBindUnit
+	}
+
 	team := InputValue(r, "team")
 	if team != "" {
 		s.OwnerTeams = []string{team}

@@ -39,6 +39,9 @@ type Service struct {
 	// This field is immutable (after creating Service).
 	IsMultiCluster bool `bson:"is_multi_cluster"`
 
+	// DisableBindUnit indicates that the service receives no bind unit events.
+	DisableBindUnit bool `bson:"disable_bind_unit"`
+
 	ctx context.Context
 }
 

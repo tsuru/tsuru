@@ -1263,6 +1263,41 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
 }
 
+func (s *InstanceSuite) TestBindUnitWhenDisabled(c *check.C) {
+	serviceCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serviceCalled = true
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+
+	serv := Service{
+		Name:            "mysql",
+		Endpoint:        map[string]string{"production": ts.URL},
+		DisableBindUnit: true,
+		Password:        "s3cr3t",
+		OwnerTeams:      []string{s.team.Name},
+	}
+	err := Create(serv)
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeApp("myapp", "static", 2)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.GetName()},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	err = si.BindUnit(a, &units[0])
+	c.Assert(err, check.IsNil)
+
+	c.Assert(serviceCalled, check.Equals, false)
+}
+
 func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	var reqs []*http.Request
 	var mut sync.Mutex
