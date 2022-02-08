@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/kubernetes/readinessgates"
 	"github.com/tsuru/tsuru/router/rebuild"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,7 +71,6 @@ type clusterController struct {
 	cancel                  context.CancelFunc
 	resourceReadyCache      map[types.NamespacedName]bool
 	startedAt               time.Time
-	okOnly                  *readinessgates.OKOnly
 	podListeners            map[string]podListener
 	podListenersMu          sync.RWMutex
 	wg                      sync.WaitGroup
@@ -106,13 +104,11 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	informer, err := c.start()
+	_, err = c.start()
 	if err != nil {
 		c.stop(ctx)
 		return nil, err
 	}
-	c.okOnly = readinessgates.NewOKOnlyReadinessGate(informer, cluster, cluster.RestConfig())
-	c.addPodListener("ok-only-rediness-gate", c.okOnly)
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
 }
@@ -131,9 +127,6 @@ func stopClusterControllerByName(ctx context.Context, p *kubernetesProvisioner, 
 }
 
 func (c *clusterController) stop(ctx context.Context) {
-	if c.okOnly != nil {
-		c.okOnly.Shutdown(ctx)
-	}
 	close(c.stopCh)
 	// HACK(cezarsa): ridiculous hack trying to prevent race condition
 	// described in https://github.com/kubernetes/kubernetes/pull/83112. As
