@@ -433,10 +433,66 @@ func (s *S) TestSimplifiedAppList(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Platform, check.Equals, "")
 	app1u, _ := apps[0].Units()
 	c.Assert(app1u, check.HasLen, 0)
 	c.Assert(apps[1].Name, check.Equals, app2.Name)
 	c.Assert(app1u, check.HasLen, 0)
+}
+
+func (s *S) TestExtendedAppList(c *check.C) {
+	p := pool.Pool{Name: "pool1"}
+	opts := pool.AddPoolOptions{Name: p.Name, Public: true}
+	err := pool.AddPool(context.TODO(), opts)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{
+		Name:        "app1",
+		Platform:    "zend",
+		Description: "app1",
+		TeamOwner:   s.team.Name,
+		CName:       []string{"cname.app1"},
+		Pool:        "pool1",
+		Tags:        []string{},
+	}
+	err = app.CreateApp(context.TODO(), &app1, s.user)
+	c.Assert(err, check.IsNil)
+	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
+	app2 := app.App{
+		Name:        "app2",
+		Platform:    "zend",
+		Description: "app2",
+		TeamOwner:   s.team.Name,
+		CName:       []string{"cname.app2"},
+		Pool:        "pool1",
+		Lock: appTypes.AppLock{
+			Locked:      true,
+			Reason:      "wanted",
+			Owner:       s.user.Email,
+			AcquireDate: acquireDate,
+		},
+		Tags: []string{"a"},
+	}
+	err = app.CreateApp(context.TODO(), &app2, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps?extended=true", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 2)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[0].Description, check.Equals, app1.Description)
+	c.Assert(apps[0].Platform, check.Equals, app1.Platform)
+	app1u, _ := apps[0].Units()
+	c.Assert(app1u, check.HasLen, 0)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+	c.Assert(apps[1].Description, check.Equals, app2.Description)
 }
 
 func (s *S) TestAppList(c *check.C) {
