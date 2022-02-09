@@ -2065,6 +2065,7 @@ func (c deployAgentConfig) asEnvs() []apiv1.EnvVar {
 
 func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalObjectReference, quota apiv1.ResourceRequirements) apiv1.Container {
 	conf.registryAuth = registryAuth(conf.destinationImages[0])
+	privileged := true
 	return apiv1.Container{
 		Name:  conf.name,
 		Image: conf.image,
@@ -2082,6 +2083,11 @@ func newDeployAgentContainer(conf deployAgentConfig, pullSecrets []apiv1.LocalOb
 				trap end EXIT
 				%[2]s
 			`, buildIntercontainerDone, conf.cmd),
+		},
+		SecurityContext: &apiv1.SecurityContext{
+			// NOTE(nettoclaudio): deploy-agent container should be privileged to run buildctl on GKE.
+			// See more: https://github.com/moby/buildkit/issues/2441
+			Privileged: &privileged,
 		},
 	}
 }

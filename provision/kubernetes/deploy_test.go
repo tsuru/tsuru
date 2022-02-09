@@ -3251,6 +3251,9 @@ func (s *S) TestCreatePodContainers(c *check.C) {
 			{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
 			{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
 		},
+		SecurityContext: &apiv1.SecurityContext{
+			Privileged: func(b bool) *bool { return &b }(true),
+		},
 	})
 	c.Assert(containers[1], check.DeepEquals, apiv1.Container{
 		Name:      "myapp-v1-build",
@@ -3640,7 +3643,11 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
 				{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
 				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
-			}},
+			},
+			SecurityContext: &apiv1.SecurityContext{
+				Privileged: func(b bool) *bool { return &b }(true),
+			},
+		},
 		{
 			Name:      "myapp-v1-deploy",
 			Image:     testBuildImage,
