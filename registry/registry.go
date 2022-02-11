@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -70,6 +71,42 @@ func RemoveImage(ctx context.Context, imageName string) error {
 		return errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest)
 	}
 	return nil
+}
+
+// RemoveAppImageVersion removes all app images from version specified at the remote registry v2 server, returning an error
+// in case of failure.
+func RemoveAppImageVersion(ctx context.Context, appName, versionStr string) error {
+	registry, _ := config.GetString("docker:registry")
+	if registry == "" {
+		// Nothing to do if no registry is set
+		return nil
+	}
+	r := &dockerRegistry{server: registry}
+	image := fmt.Sprintf("tsuru/app-%s", appName)
+	tags, err := r.getImageTags(ctx, image)
+	if err != nil {
+		return err
+	}
+	multi := tsuruErrors.NewMultiError()
+	for _, tag := range tags {
+		// only remove images with the specified version tag
+		if !strings.HasPrefix(tag, fmt.Sprintf("v%s", versionStr)) {
+			continue
+		}
+		digest, err := r.getDigest(ctx, image, tag)
+		if err != nil {
+			multi.Add(errors.Wrapf(err, "failed to get digest for image %s/%s:%s on registry", r.server, image, tag))
+			continue
+		}
+		err = r.removeImage(ctx, image, tag, digest)
+		if err != nil {
+			multi.Add(errors.Wrapf(err, "failed to remove image %s/%s:%s/%s on registry", r.server, image, tag, digest))
+			if errors.Cause(err) == ErrDeleteDisabled {
+				break
+			}
+		}
+	}
+	return multi.ToError()
 }
 
 // RemoveAppImages removes all app images from a remote registry v2 server, returning an error

@@ -776,6 +776,73 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	return nil
 }
 
+// DeleteVersion deletes an app version.
+func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr string) error {
+	w = app.withLogWriter(w)
+	msg := fmt.Sprintf("\n ---> Deleting version %s of app %s", versionStr, app.Name)
+	fmt.Fprintf(w, "%s\n", msg)
+	var hasErrors bool
+	defer func() {
+		var problems string
+		if hasErrors {
+			problems = " Some errors occurred during removal."
+		}
+		fmt.Fprintf(w, "---- Done removing application.%s\n", problems)
+	}()
+
+	logErr := func(msg string, err error) {
+		msg = fmt.Sprintf("%s: %s", msg, err)
+		fmt.Fprintf(w, "%s\n", msg)
+		log.Errorf("[delete-app-version: %s-%s] %s", app.Name, versionStr, msg)
+		hasErrors = true
+	}
+	err := registry.RemoveAppImageVersion(ctx, app.Name, versionStr)
+	if err != nil {
+		log.Errorf("failed to remove images from registry for app %s: %s", app.Name, err)
+	}
+
+	_, version, err := app.explicitVersion(versionStr)
+	if err != nil {
+		return err
+	}
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+
+	versionInt, err := strconv.Atoi(versionStr)
+	if err != nil {
+		return err
+	}
+
+	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
+		var imgs []string
+		if version.VersionInfo().BuildImage != "" {
+			imgs = append(imgs, version.VersionInfo().BuildImage)
+		}
+		if version.VersionInfo().DeployImage != "" {
+			imgs = append(imgs, version.VersionInfo().DeployImage)
+		}
+		for _, img := range imgs {
+			err = cleanProv.CleanImage(app.Name, img)
+			if err != nil {
+				log.Errorf("failed to remove image %q from provisioner %s: %s", img, app.Name, err)
+			}
+		}
+	}
+
+	if err := servicemanager.AppVersion.DeleteVersionIDs(ctx, app.Name, []int{versionInt}); err != nil {
+		logErr("Unable to remove app version from db", err)
+	}
+
+	err = prov.DestroyVersion(ctx, app, version)
+	if err != nil {
+		logErr("Unable to destroy app in provisioner", err)
+	}
+
+	return nil
+}
+
 func (app *App) BindUnit(unit *provision.Unit) error {
 	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {

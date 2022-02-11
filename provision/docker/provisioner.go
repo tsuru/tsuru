@@ -455,6 +455,10 @@ func (p *dockerProvisioner) Destroy(ctx context.Context, app provision.App) erro
 	return pipeline.Execute(ctx, args)
 }
 
+func (p *dockerProvisioner) DestroyVersion(ctx context.Context, app provision.App, version appTypes.AppVersion) error {
+	return errors.New("version removal not available for docker provisioner")
+}
+
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, yamlData provTypes.TsuruYamlData, w io.Writer) error {
 	if yamlData.Hooks == nil {
 		return nil
