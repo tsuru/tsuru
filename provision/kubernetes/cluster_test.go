@@ -21,7 +21,6 @@ import (
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -550,14 +549,17 @@ func (s *S) TestClustersForApps(c *check.C) {
 	c.Assert(cApps[1].apps, check.DeepEquals, []provision.App{a2, a3})
 }
 
-func (s *S) TestClusterMinAvailablePDB(c *check.C) {
+func (s *S) TestClusterDisablePDB(c *check.C) {
 	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(c1.minAvailablePDB("mypool"), check.Equals, intstr.FromInt(0))
-	c2, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"min-available-pdb": "1"}})
+	c.Assert(c1.disablePDB("mypool"), check.Equals, false)
+	c2, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool2:disable-pdb": "false"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(c2.minAvailablePDB("mypool"), check.Equals, intstr.FromInt(1))
-	c3, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"min-available-pdb": "1", "mypool:min-available-pdb": "90%"}})
+	c.Assert(c2.disablePDB("mypool"), check.Equals, true)
+	c3, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "false", "mypool:disable-pdb": "true"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(c3.minAvailablePDB("mypool"), check.Equals, intstr.FromString("90%"))
+	c.Assert(c3.disablePDB("mypool"), check.Equals, true)
+	c4, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"disable-pdb": "true", "mypool:disable-pdb": "false"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(c4.disablePDB("mypool"), check.Equals, false)
 }

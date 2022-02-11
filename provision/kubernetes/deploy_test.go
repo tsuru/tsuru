@@ -5270,10 +5270,6 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
-	s.clusterClient.CustomData["min-available-pdb"] = "90%"
-	defer func() {
-		delete(s.clusterClient.CustomData, "min-available-pdb")
-	}()
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
@@ -5339,7 +5335,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 			},
 		},
 		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable: &intstr.IntOrString{Type: intstr.Int, IntVal: int32(10)},
+			MinAvailable: &intstr.IntOrString{Type: intstr.Int, IntVal: int32(9)},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/app-name":    "myapp",

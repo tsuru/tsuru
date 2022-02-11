@@ -70,7 +70,7 @@ const (
 	sidecarRegistryKey            = "sidecar-registry"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
-	minAvailablePDBKey            = "min-available-pdb"
+	disablePDBKey                 = "disable-pdb"
 	defaultLogsFromAPIServer      = false
 	versionedServices             = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
@@ -103,8 +103,8 @@ var (
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
-		minAvailablePDBKey:            fmt.Sprintf("Minimum number (or percentage) of available units to be set on PodDisruptionBudget for each Tsuru process. This config may be prefixed with `<pool-name>:` Defaults to %d.", defaultMinAvailablePDB),
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
+		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
 	}
 )
 
@@ -589,14 +589,17 @@ func (c *ClusterClient) GetCluster() *provTypes.Cluster {
 	return c.Cluster
 }
 
-func (c *ClusterClient) minAvailablePDB(pool string) intstr.IntOrString {
-	if str := c.configForContext(pool, minAvailablePDBKey); str != "" {
-		return intstr.Parse(str)
+func (c *ClusterClient) disablePDB(pool string) bool {
+	if disable := c.configForContext(pool, disablePDBKey); disable != "" {
+		d, _ := strconv.ParseBool(disable)
+		return d
 	}
-	if str := c.CustomData[minAvailablePDBKey]; str != "" {
-		return intstr.Parse(str)
+	disable, ok := c.CustomData[disablePDBKey]
+	if !ok {
+		return false
 	}
-	return intstr.FromInt(defaultMinAvailablePDB)
+	d, _ := strconv.ParseBool(disable)
+	return d
 }
 
 func (c *ClusterClient) dockerConfigJSON() string {
