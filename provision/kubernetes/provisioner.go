@@ -366,10 +366,7 @@ func (p *kubernetesProvisioner) DestroyVersion(ctx context.Context, a provision.
 	if err != nil {
 		return err
 	}
-	if err := p.removeResourcesFromVersion(ctx, client, app, a, version); err != nil {
-		return err
-	}
-	return tclient.TsuruV1().Apps(client.Namespace()).Delete(ctx, a.GetName(), metav1.DeleteOptions{})
+	return p.removeResourcesFromVersion(ctx, client, app, a, version)
 }
 
 func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, client *ClusterClient, tsuruApp *tsuruv1.App, app provision.App, version appTypes.AppVersion) error {

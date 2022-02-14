@@ -831,13 +831,13 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		}
 	}
 
-	if err := servicemanager.AppVersion.DeleteVersionIDs(ctx, app.Name, []int{versionInt}); err != nil {
-		logErr("Unable to remove app version from db", err)
-	}
-
 	err = prov.DestroyVersion(ctx, app, version)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
+	}
+
+	if err := servicemanager.AppVersion.DeleteVersionIDs(ctx, app.Name, []int{versionInt}); err != nil {
+		logErr("Unable to remove app version from db", err)
 	}
 
 	return nil
