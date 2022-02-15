@@ -419,6 +419,16 @@ func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, 
 		}
 	}
 
+	for _, process := range processes {
+		if err := p.deleteHPAByVersionProcessPair(ctx, app, process, version.Version()); err != nil {
+			multiErrors.Add(err)
+		}
+
+		if err := deleteVPAsByVersion(ctx, client, app, version.Version()); err != nil {
+			multiErrors.Add(err)
+		}
+	}
+
 	return multiErrors.ToError()
 }
 
