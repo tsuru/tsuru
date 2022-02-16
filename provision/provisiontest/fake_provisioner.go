@@ -994,6 +994,19 @@ func (p *FakeProvisioner) Destroy(ctx context.Context, app provision.App) error 
 	return nil
 }
 
+func (p *FakeProvisioner) DestroyVersion(ctx context.Context, app provision.App, version appTypes.AppVersion) error {
+	if err := p.getError("DestroyVersion"); err != nil {
+		return err
+	}
+	if !p.Provisioned(app) {
+		return errNotProvisioned
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	delete(p.apps, app.GetName())
+	return nil
+}
+
 func (p *FakeProvisioner) AddUnits(ctx context.Context, app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
 	_, err := p.AddUnitsToNode(app, n, process, w, "")
 	return err
