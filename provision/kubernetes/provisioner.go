@@ -382,13 +382,15 @@ func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, 
 	depList := []*appsv1.Deployment{}
 	svcList := []apiv1.Service{}
 	for _, process := range processes {
-		dep, err := deploymentForVersion(ctx, client, app, process, version.Version())
+		var dep *appsv1.Deployment
+		dep, err = deploymentForVersion(ctx, client, app, process, version.Version())
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}
 		depList = append(depList, dep)
 
-		svcs, err := allServicesForAppProcess(ctx, client, app, process)
+		var svcs []apiv1.Service
+		svcs, err = allServicesForAppProcess(ctx, client, app, process)
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return err
 		}
