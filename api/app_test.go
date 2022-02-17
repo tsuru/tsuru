@@ -764,6 +764,43 @@ func (s *S) TestDelete(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestDeleteVersion(c *check.C) {
+	myApp := &app.App{
+		Name:      "myversiontodelete",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+	}
+	err := app.CreateApp(context.TODO(), myApp, s.user)
+	c.Assert(err, check.IsNil)
+	newSuccessfulAppVersion(c, myApp)
+	newSuccessfulAppVersion(c, myApp)
+	myApp, err = app.GetByName(context.TODO(), myApp.Name)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/"+"2", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	role, err := permission.NewRole("deleter", "app", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.delete")
+	c.Assert(err, check.IsNil)
+	err = s.user.AddRole("deleter", myApp.Name)
+	c.Assert(err, check.IsNil)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(myApp.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": myApp.Name},
+			{"name": ":version", "value": "2"},
+			{"name": ":mux-path-template", "value": "/apps/{app}/{version}"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
 	myApp := app.App{Name: "app-to-delete", Platform: "zend"}
 	err := s.conn.Apps().Insert(myApp)

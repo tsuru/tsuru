@@ -1812,7 +1812,7 @@ func deleteVersion(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateStart,
+	allowed := permission.Check(t, permission.PermAppUpdate,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -1820,9 +1820,9 @@ func deleteVersion(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
-		Kind:          permission.PermAppUpdateStart,
+		Kind:          permission.PermAppUpdate,
 		Owner:         t,
-		CustomData:    event.FormToCustomData(InputFields(r)),
+		CustomData:    event.FormToCustomData(r.URL.Query()),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
 		Cancelable:    true,
