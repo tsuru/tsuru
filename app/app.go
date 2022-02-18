@@ -67,7 +67,6 @@ var (
 	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
 
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
-
 	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
 	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
 	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
@@ -787,7 +786,7 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		if hasErrors {
 			problems = " Some errors occurred during removal."
 		}
-		fmt.Fprintf(w, "---- Done removing application.%s\n", problems)
+		fmt.Fprintf(w, "---- Done removing application version %s.%s\n", versionStr, problems)
 	}()
 
 	logErr := func(msg string, err error) {

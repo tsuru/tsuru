@@ -110,6 +110,51 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
+func (s *S) TestDeleteVersion(c *check.C) {
+	a := App{
+		Name:      "ritual",
+		Platform:  "ruby",
+		Owner:     s.user.Email,
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	app, err := GetByName(context.TODO(), a.Name)
+	c.Assert(err, check.IsNil)
+	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
+	c.Assert(err, check.IsNil)
+	version1 := newSuccessfulAppVersion(c, app)
+	version2 := newSuccessfulAppVersion(c, app)
+	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersions.Count, check.Equals, 2)
+	evt, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.Name},
+		Kind:     permission.PermAppUpdate,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+	err = a.DeleteVersion(context.TODO(), evt, strconv.Itoa(version2.Version()))
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
+	app, err = GetByName(context.TODO(), app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
+	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
+	c.Assert(err, check.IsNil)
+	_, err = router.Retrieve(a.Name)
+	c.Assert(err, check.IsNil)
+	appVersions, err = servicemanager.AppVersion.AppVersions(context.TODO(), app)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appVersions.Versions), check.Equals, 1)
+	v1, ok := appVersions.Versions[version1.Version()]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(v1.Version, check.Equals, version1.Version())
+	_, ok = appVersions.Versions[version2.Version()]
+	c.Assert(ok, check.Equals, false)
+}
+
 func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
 	a := App{
 		Name:      "myapp",
