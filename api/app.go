@@ -1805,7 +1805,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //   401: Unauthorized
 //   404: App not found
 //   404: Version not found
-func deleteVersion(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func deleteVersion(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	version := r.URL.Query().Get(":version")
 	a, err := getAppFromContext(appName, r)

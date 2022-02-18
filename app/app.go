@@ -796,6 +796,7 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		log.Errorf("[delete-app-version: %s-%s] %s", app.Name, versionStr, msg)
 		hasErrors = true
 	}
+
 	err := registry.RemoveAppImageVersion(ctx, app.Name, versionStr)
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", app.Name, err)
