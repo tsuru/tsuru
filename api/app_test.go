@@ -776,7 +776,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	newSuccessfulAppVersion(c, myApp)
 	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/"+"2", nil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/versions/"+"2", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -796,7 +796,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": ":app", "value": myApp.Name},
 			{"name": ":version", "value": "2"},
-			{"name": ":mux-path-template", "value": "/apps/{app}/{version}"},
+			{"name": ":mux-path-template", "value": "/apps/{app}/versions/{version}"},
 		},
 	}, eventtest.HasEvent)
 }
