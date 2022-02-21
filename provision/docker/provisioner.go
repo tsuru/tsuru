@@ -53,6 +53,7 @@ var (
 	mainDockerProvisioner *dockerProvisioner
 
 	ErrUnitRecreationCanceled = errors.New("unit creation canceled by user action")
+	ErrMultipleVersions       = errors.New("docker provisioner does not support multiple versions")
 )
 
 const (
@@ -355,7 +356,7 @@ func (p *dockerProvisioner) Sleep(ctx context.Context, app provision.App, proces
 
 func (p *dockerProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
 	if args.PreserveVersions {
-		return "", errors.New("docker provisioner does not support multiple versions")
+		return "", ErrMultipleVersions
 	}
 	if args.Version.VersionInfo().DeployImage != "" {
 		err := p.deploy(ctx, args.App, args.Version, args.Event)
@@ -453,6 +454,10 @@ func (p *dockerProvisioner) Destroy(ctx context.Context, app provision.App) erro
 		&provisionUnbindOldUnits,
 	)
 	return pipeline.Execute(ctx, args)
+}
+
+func (p *dockerProvisioner) DestroyVersion(ctx context.Context, app provision.App, version appTypes.AppVersion) error {
+	return ErrMultipleVersions
 }
 
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container.Container, yamlData provTypes.TsuruYamlData, w io.Writer) error {

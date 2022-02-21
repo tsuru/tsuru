@@ -67,7 +67,6 @@ var (
 	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
 
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
-
 	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
 	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
 	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
@@ -773,6 +772,44 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
 	}
+	return nil
+}
+
+// DeleteVersion deletes an app version.
+func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr string) error {
+	w = app.withLogWriter(w)
+	msg := fmt.Sprintf("\n ---> Deleting version %s of app %s", versionStr, app.Name)
+	fmt.Fprintf(w, "%s\n", msg)
+	var hasErrors bool
+	defer func() {
+		var problems string
+		if hasErrors {
+			problems = " Some errors occurred during removal."
+		}
+		fmt.Fprintf(w, "---- Done removing application version %s.%s\n", versionStr, problems)
+	}()
+
+	logErr := func(msg string, err error) {
+		msg = fmt.Sprintf("%s: %s", msg, err)
+		fmt.Fprintf(w, "%s\n", msg)
+		log.Errorf("[delete-app-version: %s-%s] %s", app.Name, versionStr, msg)
+		hasErrors = true
+	}
+
+	_, version, err := app.explicitVersion(versionStr)
+	if err != nil {
+		return err
+	}
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+
+	err = prov.DestroyVersion(ctx, app, version)
+	if err != nil {
+		logErr("Unable to destroy app in provisioner", err)
+	}
+
 	return nil
 }
 

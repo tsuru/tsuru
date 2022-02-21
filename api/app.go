@@ -86,6 +86,53 @@ func getApp(ctx stdContext.Context, name string) (*app.App, error) {
 	return a, nil
 }
 
+// title: app version delete
+// path: /apps/{app}/versions/{version}
+// method: DELETE
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   401: Unauthorized
+//   404: App not found
+//   404: Version not found
+func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	appName := r.URL.Query().Get(":app")
+	versionString := r.URL.Query().Get(":version")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdate,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:        appTarget(appName),
+		Kind:          permission.PermAppUpdate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(r.URL.Query()),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
+		Cancelable:    true,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	ctx, cancel := evt.CancelableContext(a.Context())
+	defer cancel()
+	a.ReplaceContext(ctx)
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	return a.DeleteVersion(ctx, evt, versionString)
+}
+
 // title: remove app
 // path: /apps/{name}
 // method: DELETE

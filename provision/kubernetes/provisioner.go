@@ -353,6 +353,87 @@ func (p *kubernetesProvisioner) Destroy(ctx context.Context, a provision.App) er
 	return tclient.TsuruV1().Apps(client.Namespace()).Delete(ctx, a.GetName(), metav1.DeleteOptions{})
 }
 
+func (p *kubernetesProvisioner) DestroyVersion(ctx context.Context, a provision.App, version appTypes.AppVersion) error {
+	client, err := clusterForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+	tclient, err := TsuruClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+	app, err := tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	return p.removeResourcesFromVersion(ctx, client, app, a, version)
+}
+
+func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, client *ClusterClient, tsuruApp *tsuruv1.App, app provision.App, version appTypes.AppVersion) error {
+	allProcesses, err := version.Processes()
+	if err != nil {
+		return err
+	}
+	processes := []string{}
+	for processName := range allProcesses {
+		processes = append(processes, processName)
+	}
+
+	depList := []*appsv1.Deployment{}
+	svcList := []apiv1.Service{}
+	for _, process := range processes {
+		var dep *appsv1.Deployment
+		dep, err = deploymentForVersion(ctx, client, app, process, version.Version())
+		if err != nil {
+			return err
+		}
+		depList = append(depList, dep)
+
+		var svcs []apiv1.Service
+		svcs, err = allServicesForAppProcess(ctx, client, app, process)
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
+		}
+
+		for _, svc := range svcs {
+			labels := labelSetFromMeta(&svc.ObjectMeta)
+			svcVersion := labels.AppVersion()
+			if svcVersion == version.Version() {
+				svcList = append(svcList, svc)
+			}
+		}
+	}
+
+	multiErrors := tsuruErrors.NewMultiError()
+	for _, dd := range depList {
+		err = cleanupSingleDeployment(ctx, client, dd)
+		if err != nil {
+			multiErrors.Add(err)
+		}
+	}
+
+	for _, ss := range svcList {
+		err = client.CoreV1().Services(tsuruApp.Spec.NamespaceName).Delete(ctx, ss.Name, metav1.DeleteOptions{
+			PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
+		})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			multiErrors.Add(errors.WithStack(err))
+		}
+	}
+
+	for _, process := range processes {
+		if err := p.deleteHPAByVersionAndProcess(ctx, app, process, version.Version()); err != nil {
+			multiErrors.Add(err)
+		}
+
+		if err := deleteVPAsByVersion(ctx, client, app, version.Version()); err != nil {
+			multiErrors.Add(err)
+		}
+	}
+
+	return multiErrors.ToError()
+}
+
 func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *ClusterClient, tsuruApp *tsuruv1.App, app provision.App) error {
 	deps, err := allDeploymentsForAppNS(ctx, client, tsuruApp.Spec.NamespaceName, app)
 	if err != nil {

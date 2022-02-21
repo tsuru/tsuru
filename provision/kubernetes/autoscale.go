@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -20,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
+	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 )
 
 const (
@@ -191,6 +193,22 @@ func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provis
 		err = p.RemoveAutoScale(ctx, a, spec.Process)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (p *kubernetesProvisioner) deleteHPAByVersionAndProcess(ctx context.Context, a provision.App, process string, version int) error {
+	scaleSpecs, err := p.GetAutoScale(ctx, a)
+	if err != nil {
+		return err
+	}
+	for _, spec := range scaleSpecs {
+		if strings.Compare(process, spec.Process) == 0 && spec.Version == version {
+			err = p.RemoveAutoScale(ctx, a, spec.Process)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -551,14 +569,10 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 	return specs, nil
 }
 
-func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) error {
-	cli, err := VPAClientForConfig(client.RestConfig())
+func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a provision.App) (*vpav1.VerticalPodAutoscalerList, error) {
+	ns, err := clusterClient.AppNamespace(ctx, a)
 	if err != nil {
-		return err
-	}
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
@@ -568,23 +582,85 @@ func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) e
 		},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	existingVPAs, err := cli.AutoscalingV1().VerticalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+	existingVPAs, err := vpaClient.AutoscalingV1().VerticalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
 	})
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
-			return nil
+			return nil, nil
 		}
+		return nil, err
+	}
+
+	return existingVPAs, nil
+}
+
+func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient vpaclientset.Interface, a provision.App, version int) (*vpav1.VerticalPodAutoscalerList, error) {
+	ns, err := clusterClient.AppNamespace(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
+		App: a,
+		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
+			Prefix:      tsuruLabelPrefix,
+			Provisioner: provisionerName,
+		},
+		Version: version,
+	})
+	if err != nil {
+		return nil, err
+	}
+	vpasForVersion, err := vpaClient.AutoscalingV1().VerticalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
+	})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return vpasForVersion, nil
+}
+
+func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) error {
+	vpaCli, err := VPAClientForConfig(client.RestConfig())
+	if err != nil {
+		return err
+	}
+	vpaList, err := allVPAsForApp(ctx, client, vpaCli, a)
+	if err != nil {
 		return err
 	}
 
-	for _, vpa := range existingVPAs.Items {
-		err = cli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
+	for _, vpa := range vpaList.Items {
+		err = vpaCli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
 	}
+	return nil
+}
+
+func deleteVPAsByVersion(ctx context.Context, client *ClusterClient, a provision.App, version int) error {
+	vpaCli, err := VPAClientForConfig(client.RestConfig())
+	if err != nil {
+		return err
+	}
+	vpaList, err := vpasForVersion(ctx, client, vpaCli, a, version)
+	if err != nil {
+		return err
+	}
+
+	for _, vpa := range vpaList.Items {
+		err = vpaCli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return errors.WithStack(err)
+		}
+	}
+
 	return nil
 }

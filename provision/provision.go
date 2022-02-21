@@ -346,6 +346,9 @@ type Provisioner interface {
 	// Destroy is called when tsuru is destroying the app.
 	Destroy(context.Context, App) error
 
+	// DestroyVersion is called when tsuru is destroying an app version.
+	DestroyVersion(context.Context, App, appTypes.AppVersion) error
+
 	// AddUnits adds units to an app. The first parameter is the app, the
 	// second is the number of units to be added.
 	//
