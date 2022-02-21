@@ -123,7 +123,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	version1 := newSuccessfulAppVersion(c, app)
+	newSuccessfulAppVersion(c, app)
 	version2 := newSuccessfulAppVersion(c, app)
 	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
@@ -138,21 +138,11 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	err = a.DeleteVersion(context.TODO(), evt, strconv.Itoa(version2.Version()))
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	app, err = GetByName(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
 	_, err = router.Retrieve(a.Name)
 	c.Assert(err, check.IsNil)
-	appVersions, err = servicemanager.AppVersion.AppVersions(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(appVersions.Versions), check.Equals, 1)
-	v1, ok := appVersions.Versions[version1.Version()]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(v1.Version, check.Equals, version1.Version())
-	_, ok = appVersions.Versions[version2.Version()]
-	c.Assert(ok, check.Equals, false)
 }
 
 func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {

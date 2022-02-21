@@ -805,34 +805,9 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		return err
 	}
 
-	versionInt, err := strconv.Atoi(versionStr)
-	if err != nil {
-		return err
-	}
-
-	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
-		var imgs []string
-		if version.VersionInfo().BuildImage != "" {
-			imgs = append(imgs, version.VersionInfo().BuildImage)
-		}
-		if version.VersionInfo().DeployImage != "" {
-			imgs = append(imgs, version.VersionInfo().DeployImage)
-		}
-		for _, img := range imgs {
-			err = cleanProv.CleanImage(app.Name, img)
-			if err != nil {
-				log.Errorf("failed to remove image %q from provisioner %s: %s", img, app.Name, err)
-			}
-		}
-	}
-
 	err = prov.DestroyVersion(ctx, app, version)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
-	}
-
-	if err := servicemanager.AppVersion.DeleteVersionIDs(ctx, app.Name, []int{versionInt}); err != nil {
-		logErr("Unable to remove app version from db", err)
 	}
 
 	return nil
