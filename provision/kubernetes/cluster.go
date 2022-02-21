@@ -73,6 +73,7 @@ const (
 	minAvailablePDBKey            = "min-available-pdb"
 	defaultLogsFromAPIServer      = false
 	versionedServices             = "enable-versioned-services"
+	dockerConfigJSONKey           = "docker-config-json"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -103,6 +104,7 @@ var (
 		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		minAvailablePDBKey:            fmt.Sprintf("Minimum number (or percentage) of available units to be set on PodDisruptionBudget for each Tsuru process. This config may be prefixed with `<pool-name>:` Defaults to %d.", defaultMinAvailablePDB),
+		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 	}
 )
 
@@ -595,6 +597,10 @@ func (c *ClusterClient) minAvailablePDB(pool string) intstr.IntOrString {
 		return intstr.Parse(str)
 	}
 	return intstr.FromInt(defaultMinAvailablePDB)
+}
+
+func (c *ClusterClient) dockerConfigJSON() string {
+	return c.CustomData[dockerConfigJSONKey]
 }
 
 type clusterApp struct {

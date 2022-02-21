@@ -7,6 +7,8 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/docker/cli/cli/config/configfile"
+	dockerclitypes "github.com/docker/cli/cli/config/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/pkg/errors"
@@ -1898,14 +1902,14 @@ func (s *S) TestServiceManagerDeployServiceWithRegistryAuth(c *check.C) {
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(dep.Spec.Template.Spec.ImagePullSecrets, check.DeepEquals, []apiv1.LocalObjectReference{
-		{Name: "registry-myreg.com"},
+		{Name: "docker-config-tsuru"},
 	})
 	secrets, err := s.client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(secrets.Items, check.DeepEquals, []apiv1.Secret{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "registry-myreg.com",
+				Name:      "docker-config-tsuru",
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
@@ -3665,6 +3669,8 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 }
 
 func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
+	s.clusterClient.CustomData["docker-config-json"] = `{"credHelpers": {"gcr.io": "gcr"}}`
+	defer delete(s.clusterClient.CustomData, "docker-config-json")
 	config.Set("docker:registry", "registry.example.com")
 	defer config.Unset("docker:registry")
 	config.Set("docker:registry-auth:username", "user")
@@ -3691,6 +3697,24 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
+	secret, err := s.client.CoreV1().Secrets(ns).Get(context.TODO(), "docker-config-tsuru", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(secret.Type, check.DeepEquals, apiv1.SecretTypeDockerConfigJson)
+	var cf configfile.ConfigFile
+	err = json.Unmarshal(secret.Data[".dockerconfigjson"], &cf)
+	c.Assert(err, check.IsNil)
+	c.Assert(cf, check.DeepEquals, configfile.ConfigFile{
+		AuthConfigs: map[string]dockerclitypes.AuthConfig{
+			"registry.example.com": {
+				Username: "user",
+				Password: "pwd",
+				Auth:     base64.StdEncoding.EncodeToString([]byte("user:pwd")),
+			},
+		},
+		CredentialHelpers: map[string]string{
+			"gcr.io": "gcr",
+		},
+	})
 	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(pods.Items, check.HasLen, 1)
@@ -3730,7 +3754,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 			NodeSelector:       map[string]string{"tsuru.io/pool": "test-default"},
 			ImagePullSecrets: []apiv1.LocalObjectReference{
 				{
-					Name: "registry-registry.example.com",
+					Name: "docker-config-tsuru",
 				},
 			},
 			Volumes: []apiv1.Volume{
@@ -3754,7 +3778,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 					Name: dockerConfigVolume,
 					VolumeSource: apiv1.VolumeSource{
 						Secret: &apiv1.SecretVolumeSource{
-							SecretName: "registry-registry.example.com",
+							SecretName: "docker-config-tsuru",
 							Items: []apiv1.KeyToPath{
 								{
 									Key:  apiv1.DockerConfigJsonKey,
@@ -5421,7 +5445,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			},
 			images: []string{"myreg1.com/tsuru/go"},
 			expectedRef: []apiv1.LocalObjectReference{
-				{Name: "registry-myreg1.com"},
+				{Name: "docker-config-tsuru"},
 			},
 		},
 		{
@@ -5441,7 +5465,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			},
 			images: []string{"otherreg.com/tsuru/go", "myreg1.com/tsuru/go"},
 			expectedRef: []apiv1.LocalObjectReference{
-				{Name: "registry-myreg1.com"},
+				{Name: "docker-config-tsuru"},
 			},
 		},
 		{
@@ -5466,7 +5490,7 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			},
 			images: []string{"tsuru/go"},
 			expectedRef: []apiv1.LocalObjectReference{
-				{Name: "registry-default"},
+				{Name: "docker-config-tsuru"},
 			},
 		},
 	}

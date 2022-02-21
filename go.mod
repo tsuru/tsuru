@@ -14,7 +14,9 @@ require (
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/digitalocean/godo v0.0.0-20170404195252-dfa802149cae
+	github.com/docker/cli v20.10.12+incompatible
 	github.com/docker/docker v20.10.8+incompatible
+	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/machine v0.7.1-0.20190902101342-b170508bf44c
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect

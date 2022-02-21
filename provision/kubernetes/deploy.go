@@ -20,7 +20,8 @@ import (
 	"strings"
 	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/cli/cli/config/configfile"
+	dockerclitypes "github.com/docker/cli/cli/config/types"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -242,34 +243,39 @@ func getImagePullSecrets(ctx context.Context, client *ClusterClient, namespace s
 }
 
 func ensureAuthSecret(ctx context.Context, client *ClusterClient, namespace string, reg registryAuthConfig) (string, error) {
-	if reg.username == "" && reg.password == "" {
+	var cf configfile.ConfigFile
+	dc := client.dockerConfigJSON()
+	if dc != "" {
+		if err := json.Unmarshal([]byte(dc), &cf); err != nil {
+			return "", errors.Wrap(err, "could not decode custom Docker config from JSON")
+		}
+	}
+	if reg.username == "" && reg.password == "" && dc == "" {
 		return "", nil
 	}
-	authEncoded := base64.StdEncoding.EncodeToString([]byte(reg.username + ":" + reg.password))
-	conf := map[string]map[string]dockerTypes.AuthConfig{
-		"auths": {
-			reg.imgDomain: {
-				Username: reg.username,
-				Password: reg.password,
-				Auth:     authEncoded,
-			},
-		},
+	if reg.username != "" || reg.password != "" {
+		if cf.AuthConfigs == nil {
+			cf.AuthConfigs = make(map[string]dockerclitypes.AuthConfig)
+		}
+		cf.AuthConfigs[reg.imgDomain] = dockerclitypes.AuthConfig{
+			Username: reg.username,
+			Password: reg.password,
+			Auth:     base64.StdEncoding.EncodeToString([]byte(reg.username + ":" + reg.password)),
+		}
 	}
-	serializedConf, err := json.Marshal(conf)
+	serializedConf, err := json.Marshal(cf)
 	if err != nil {
-		return "", err
-	}
-	if reg.imgDomain == "" {
-		reg.imgDomain = "default"
+		return "", errors.Wrap(err, "could not encode Docker config to JSON")
 	}
 	secret := &apiv1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: registrySecretName(reg.imgDomain),
+			Name:      "docker-config-tsuru",
+			Namespace: namespace,
 		},
+		Type: apiv1.SecretTypeDockerConfigJson,
 		Data: map[string][]byte{
 			apiv1.DockerConfigJsonKey: serializedConf,
 		},
-		Type: apiv1.SecretTypeDockerConfigJson,
 	}
 	_, err = client.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil && k8sErrors.IsNotFound(err) {
