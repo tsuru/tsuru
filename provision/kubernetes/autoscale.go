@@ -198,7 +198,7 @@ func (p *kubernetesProvisioner) deleteAllAutoScale(ctx context.Context, a provis
 	return nil
 }
 
-func (p *kubernetesProvisioner) deleteHPAByVersionProcessPair(ctx context.Context, a provision.App, process string, version int) error {
+func (p *kubernetesProvisioner) deleteHPAByVersionAndProcess(ctx context.Context, a provision.App, process string, version int) error {
 	scaleSpecs, err := p.GetAutoScale(ctx, a)
 	if err != nil {
 		return err

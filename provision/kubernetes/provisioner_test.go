@@ -40,6 +40,7 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1282,6 +1283,65 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(appList.Items), check.Equals, 0)
+}
+
+func (s *S) TestProvisionerDestroyVersion(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	deployEvent, err := event.New(&event.Opts{
+		Target:      event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:        permission.PermAppDeploy,
+		Owner:       s.token,
+		Allowed:     event.Allowed(permission.PermAppDeploy),
+		DisableLock: true,
+	})
+	c.Assert(err, check.IsNil)
+	customData1 := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version1 := newCommittedVersion(c, a, customData1)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: deployEvent})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	wait()
+
+	customData2 := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version2 := newCommittedVersion(c, a, customData2)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvent, PreserveVersions: true})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	wait()
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	services, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(services.Items, check.HasLen, 4)
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-v2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	err = s.p.DestroyVersion(context.TODO(), a, version2)
+	c.Assert(err, check.IsNil)
+	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(deps.Items, check.HasLen, 1)
+	services, err = s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(services.Items, check.HasLen, 3)
+	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-web-v2", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	serviceAccounts, err := s.client.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceAccounts.Items, check.HasLen, 1)
+	pdbList, err := s.client.PolicyV1beta1().PodDisruptionBudgets(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(pdbList.Items, check.HasLen, 1)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 1)
 }
 
 func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {

@@ -384,7 +384,7 @@ func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, 
 	for _, process := range processes {
 		var dep *appsv1.Deployment
 		dep, err = deploymentForVersion(ctx, client, app, process, version.Version())
-		if err != nil && !k8sErrors.IsNotFound(err) {
+		if err != nil {
 			return err
 		}
 		depList = append(depList, dep)
@@ -422,7 +422,7 @@ func (p *kubernetesProvisioner) removeResourcesFromVersion(ctx context.Context, 
 	}
 
 	for _, process := range processes {
-		if err := p.deleteHPAByVersionProcessPair(ctx, app, process, version.Version()); err != nil {
+		if err := p.deleteHPAByVersionAndProcess(ctx, app, process, version.Version()); err != nil {
 			multiErrors.Add(err)
 		}
 
