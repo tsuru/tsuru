@@ -617,9 +617,6 @@ func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
 	})
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -652,6 +649,9 @@ func deleteVPAsByVersion(ctx context.Context, client *ClusterClient, a provision
 	}
 	vpaList, err := vpasForVersion(ctx, client, vpaCli, a, version)
 	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
