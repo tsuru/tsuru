@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"math"
 	"reflect"
 
 	"github.com/tsuru/tsuru/provision"
@@ -20,6 +21,9 @@ func ensurePDB(ctx context.Context, client *ClusterClient, app provision.App, pr
 	pdb, err := newPDB(ctx, client, app, process)
 	if err != nil {
 		return err
+	}
+	if pdb == nil {
+		return nil
 	}
 	existingPDB, err := client.PolicyV1beta1().PodDisruptionBudgets(pdb.Namespace).Get(ctx, pdb.Name, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
@@ -79,21 +83,37 @@ func removeAllPDBs(ctx context.Context, client *ClusterClient, app provision.App
 }
 
 func newPDB(ctx context.Context, client *ClusterClient, app provision.App, process string) (*policyv1beta1.PodDisruptionBudget, error) {
-	ns, err := client.AppNamespace(ctx, app)
-	if err != nil {
-		return nil, err
+	if client.disablePDB(app.GetPool()) {
+		return nil, nil
 	}
-	defaultMinAvailable := client.minAvailablePDB(app.GetPool())
+	maxUnavailableByProcess := intstr.FromString("10%")
 	autoscaleSpecs, err := getAutoScale(ctx, client, app, process)
 	if err != nil {
 		return nil, err
 	}
 	var minAvailableByProcess *intstr.IntOrString
 	if len(autoscaleSpecs) > 0 {
-		minAvailableByProcess = intOrStringPtr(intstr.FromInt(int(autoscaleSpecs[0].MinUnits)))
+		minAvailableByProcess = intOrStringPtr(intstr.FromInt(int(math.Floor(float64(autoscaleSpecs[0].MinUnits) * 0.9))))
+	}
+	ns, err := client.AppNamespace(ctx, app)
+	if err != nil {
+		return nil, err
 	}
 	routableLabels := pdbLabels(app, process)
 	routableLabels.SetIsRoutable()
+	if minAvailableByProcess != nil {
+		return &policyv1beta1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pdbNameForApp(app, process),
+				Namespace: ns,
+				Labels:    pdbLabels(app, process).ToLabels(),
+			},
+			Spec: policyv1beta1.PodDisruptionBudgetSpec{
+				MinAvailable: minAvailableByProcess,
+				Selector:     &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
+			},
+		}, nil
+	}
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(app, process),
@@ -101,8 +121,8 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 			Labels:    pdbLabels(app, process).ToLabels(),
 		},
 		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable: intstr.ValueOrDefault(minAvailableByProcess, defaultMinAvailable),
-			Selector:     &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
+			MaxUnavailable: &maxUnavailableByProcess,
+			Selector:       &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
 		},
 	}, nil
 }

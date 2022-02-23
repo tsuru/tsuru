@@ -37,7 +37,7 @@ func (s *S) TestNewPDB(c *check.C) {
 					},
 				},
 				Spec: policyv1beta1.PodDisruptionBudgetSpec{
-					MinAvailable: intOrStringPtr(intstr.FromInt(0)),
+					MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"tsuru.io/app-name":    "myapp",
@@ -48,71 +48,15 @@ func (s *S) TestNewPDB(c *check.C) {
 				},
 			},
 		},
-		"with custom min available for PDB in the cluster": {
+		"when disable PDB for cluster/pool": {
 			setup: func() (teardown func()) {
-				s.clusterClient.CustomData["min-available-pdb"] = "1"
+				s.clusterClient.CustomData["test-default:disable-pdb"] = "true"
 				return func() {
-					delete(s.clusterClient.CustomData, "min-available-pdb")
+					delete(s.clusterClient.CustomData, "test-default:disable-pdb")
 				}
 			},
-			expected: &policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myapp-p1",
-					Namespace: "default",
-					Labels: map[string]string{
-						"tsuru.io/is-tsuru":    "true",
-						"tsuru.io/app-name":    "myapp",
-						"tsuru.io/app-process": "p1",
-						"tsuru.io/app-team":    "admin",
-						"tsuru.io/provisioner": "kubernetes",
-					},
-				},
-				Spec: policyv1beta1.PodDisruptionBudgetSpec{
-					MinAvailable: intOrStringPtr(intstr.FromInt(1)),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"tsuru.io/app-name":    "myapp",
-							"tsuru.io/app-process": "p1",
-							"tsuru.io/is-routable": "true",
-						},
-					},
-				},
-			},
+			expected: nil,
 		},
-		"with custom min available for PDB specific for pool": {
-			setup: func() (teardown func()) {
-				s.clusterClient.CustomData["min-available-pdb"] = "1"
-				s.clusterClient.CustomData["test-default:min-available-pdb"] = "99%"
-				return func() {
-					delete(s.clusterClient.CustomData, "min-available-pdb")
-					delete(s.clusterClient.CustomData, "test-default:min-available-pdb")
-				}
-			},
-			expected: &policyv1beta1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myapp-p1",
-					Namespace: "default",
-					Labels: map[string]string{
-						"tsuru.io/is-tsuru":    "true",
-						"tsuru.io/app-name":    "myapp",
-						"tsuru.io/app-process": "p1",
-						"tsuru.io/app-team":    "admin",
-						"tsuru.io/provisioner": "kubernetes",
-					},
-				},
-				Spec: policyv1beta1.PodDisruptionBudgetSpec{
-					MinAvailable: intOrStringPtr(intstr.FromString("99%")),
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"tsuru.io/app-name":    "myapp",
-							"tsuru.io/app-process": "p1",
-							"tsuru.io/is-routable": "true",
-						},
-					},
-				},
-			},
-		},
-
 		"with min avaible from app's HPA": {
 			setup: func() (teardown func()) {
 				pdb, err := s.clusterClient.AutoscalingV2beta2().HorizontalPodAutoscalers("default").Create(context.TODO(), &autoscalingv2beta2.HorizontalPodAutoscaler{
@@ -150,7 +94,7 @@ func (s *S) TestNewPDB(c *check.C) {
 					},
 				},
 				Spec: policyv1beta1.PodDisruptionBudgetSpec{
-					MinAvailable: intOrStringPtr(intstr.FromInt(10)),
+					MinAvailable: intOrStringPtr(intstr.FromInt(9)),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"tsuru.io/app-name":    "myapp",

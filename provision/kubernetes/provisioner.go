@@ -67,7 +67,6 @@ const (
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
 	defaultSidecarImageName                    = "tsuru/deploy-agent:0.10.2"
 	defaultPreStopSleepSeconds                 = 10
-	defaultMinAvailablePDB                     = 0
 )
 
 var (
