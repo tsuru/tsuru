@@ -37,7 +37,7 @@ func (s *S) TestNewPDB(c *check.C) {
 					},
 				},
 				Spec: policyv1beta1.PodDisruptionBudgetSpec{
-					MinAvailable: intOrStringPtr(intstr.FromString("90%")),
+					MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"tsuru.io/app-name":    "myapp",

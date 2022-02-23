@@ -86,7 +86,7 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 	if client.disablePDB(app.GetPool()) {
 		return nil, nil
 	}
-	defaultMinAvailable := intstr.FromString("90%")
+	maxUnavailableByProcess := intstr.FromString("10%")
 	autoscaleSpecs, err := getAutoScale(ctx, client, app, process)
 	if err != nil {
 		return nil, err
@@ -101,6 +101,19 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 	}
 	routableLabels := pdbLabels(app, process)
 	routableLabels.SetIsRoutable()
+	if minAvailableByProcess != nil {
+		return &policyv1beta1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pdbNameForApp(app, process),
+				Namespace: ns,
+				Labels:    pdbLabels(app, process).ToLabels(),
+			},
+			Spec: policyv1beta1.PodDisruptionBudgetSpec{
+				MinAvailable: minAvailableByProcess,
+				Selector:     &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
+			},
+		}, nil
+	}
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(app, process),
@@ -108,8 +121,8 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 			Labels:    pdbLabels(app, process).ToLabels(),
 		},
 		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable: intstr.ValueOrDefault(minAvailableByProcess, defaultMinAvailable),
-			Selector:     &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
+			MaxUnavailable: &maxUnavailableByProcess,
+			Selector:       &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
 		},
 	}, nil
 }

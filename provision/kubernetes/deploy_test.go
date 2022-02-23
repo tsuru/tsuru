@@ -5360,7 +5360,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 			},
 		},
 		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable: &intstr.IntOrString{Type: intstr.String, StrVal: "90%"},
+			MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "10%"},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/app-name":    "myapp",
