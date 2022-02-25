@@ -670,7 +670,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	maxSurge := client.maxSurge(a.GetPool())
 	maxUnavailable := client.maxUnavailable(a.GetPool())
-
+	dnsConfig := dnsConfigNdots(client, a)
 	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, a, client)
 	if err != nil {
 		return nil, nil, err
@@ -782,6 +782,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 					Volumes:        volumes,
 					Subdomain:      headlessServiceName(a, process),
 					ReadinessGates: readinessGates,
+					DNSConfig:      dnsConfig,
 					Containers: []apiv1.Container{
 						{
 							Name:           depName,
@@ -1875,6 +1876,7 @@ type deployAgentConfig struct {
 }
 
 func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployAgentConfig) (apiv1.Pod, error) {
+	dnsConfig := dnsConfigNdots(params.client, params.app)
 	if len(conf.destinationImages) == 0 {
 		return apiv1.Pod{}, errors.Errorf("no destination images provided")
 	}
@@ -1947,6 +1949,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 			ServiceAccountName: params.client.buildServiceAccount(params.app),
 			NodeSelector:       nodeSelector,
 			Affinity:           affinity,
+			DNSConfig:          dnsConfig,
 			Volumes: append(deployAgentEngineVolumes(pullSecrets), append([]apiv1.Volume{
 				{
 					Name: "intercontainer",
@@ -1962,6 +1965,21 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 			},
 		},
 	}, nil
+}
+
+func dnsConfigNdots(client *ClusterClient, app provision.App) *apiv1.PodDNSConfig {
+	dnsConfigNdots := client.dnsConfigNdots(app.GetPool())
+	var dnsConfig *apiv1.PodDNSConfig
+	if dnsConfigNdots.IntVal > 0 {
+		ndots := dnsConfigNdots.String()
+		dnsConfig = &apiv1.PodDNSConfig{
+			Options: []apiv1.PodDNSConfigOption{{
+				Name:  "ndots",
+				Value: &ndots,
+			}},
+		}
+	}
+	return dnsConfig
 }
 
 func newDeployAgentImageBuildPod(ctx context.Context, client *ClusterClient, sourceImage string, podName string, conf deployAgentConfig) (apiv1.Pod, error) {
