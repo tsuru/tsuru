@@ -2536,6 +2536,36 @@ func (s *S) TestServiceManagerDeploySinglePoolEnable(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.NodeSelector, check.DeepEquals, map[string]string(nil))
 }
 
+func (s *S) TestServiceManagerDeployDnsConfigNdotsEnable(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	s.clusterClient.CustomData[dnsConfigNdotsKey] = "1"
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	dnsConfigNdotsValue := "1"
+	c.Assert(dep.Spec.Template.Spec.DNSConfig, check.DeepEquals, &apiv1.PodDNSConfig{Options: []apiv1.PodDNSConfigOption{{Name: "ndots", Value: &dnsConfigNdotsValue}}})
+}
+
 func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
@@ -3460,7 +3490,7 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlan(c *check.C) {
 	})
 }
 
-func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlan(c *check.C) {
+func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlanAndDnsConfigNdots(c *check.C) {
 	s.mockService.Plan.OnFindByName = func(plan string) (*appTypes.Plan, error) {
 		if plan == "c0.5m1" {
 			return &appTypes.Plan{
@@ -3475,6 +3505,7 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlan(c *check
 			Memory:   int64(2147483648),
 		}, nil
 	}
+	s.clusterClient.CustomData[dnsConfigNdotsKey] = "1"
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
@@ -3498,6 +3529,8 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlan(c *check
 	c.Assert(pods.Items, check.HasLen, 1)
 	containers := pods.Items[0].Spec.Containers
 	c.Assert(containers, check.HasLen, 2)
+	dnsConfigNdotsValue := "1"
+	c.Assert(pods.Items[0].Spec.DNSConfig, check.DeepEquals, &apiv1.PodDNSConfig{Options: []apiv1.PodDNSConfigOption{{Name: "ndots", Value: &dnsConfigNdotsValue}}})
 	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 	cpuQuotaBuild, _ := resource.ParseQuantity("1000m")           // 1vCPU
 	memoryQuotaBuild, _ := resource.ParseQuantity("2147483648")   // 2Gi

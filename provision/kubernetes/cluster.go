@@ -74,6 +74,7 @@ const (
 	defaultLogsFromAPIServer      = false
 	versionedServices             = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
+	dnsConfigNdotsKey             = "dns-config-ndots"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -105,6 +106,7 @@ var (
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
+		dnsConfigNdotsKey:             "Number of dots in the domain name to be used in the search list for DNS lookups. Default to uses kubernetes default value (5).",
 	}
 )
 
@@ -491,6 +493,14 @@ func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
 		return defaultUnvailable
 	}
 	return intstr.Parse(maxUnavailable)
+}
+
+func (c *ClusterClient) dnsConfigNdots(pool string) intstr.IntOrString {
+	DNSConfigNdots := c.configForContext(pool, dnsConfigNdotsKey)
+	if DNSConfigNdots == "" {
+		return intstr.FromInt(0)
+	}
+	return intstr.Parse(DNSConfigNdots)
 }
 
 func (c *ClusterClient) SinglePool() (bool, error) {
