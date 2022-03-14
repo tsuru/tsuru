@@ -28,8 +28,9 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 		units   int
 	}
 	type deployStep struct {
-		procs      []string
-		newVersion bool
+		procs            []string
+		newVersion       bool
+		overrideVersions bool
 	}
 	type stepDef struct {
 		*stopStep
@@ -73,9 +74,9 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					},
 				},
 				{
-					deployStep: &deployStep{procs: []string{"p1"}},
+					deployStep: &deployStep{procs: []string{"p1"}, overrideVersions: true},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p1", 4, 1)
+						s.hasDepWithVersion(c, "myapp-p1", 4, 2)
 						s.hasSvc(c, "myapp-p1")
 
 						s.noDep(c, "myapp-p1-v3")
@@ -189,6 +190,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 						App:              a,
 						Version:          version,
 						PreserveVersions: step.deployStep.newVersion,
+						OverrideVersions: step.deployStep.overrideVersions,
 					}, procSpec)
 					c.Assert(err, check.IsNil)
 					waitDep()
