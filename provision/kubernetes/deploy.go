@@ -1256,7 +1256,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return errors.WithStack(err)
 	}
 
-	if !opts.PreserveVersions {
+	if opts.OverrideVersions {
 		var deps *appsv1.DeploymentList
 		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s", opts.App.GetName(), opts.ProcessName)
 		deps, err = m.client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
@@ -1265,7 +1265,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-		if deps != nil {
+		if deps.Items != nil {
 			opts.Replicas = len(deps.Items)
 		}
 	}

@@ -311,6 +311,7 @@ type DeployArgs struct {
 	Version          appTypes.AppVersion
 	Event            *event.Event
 	PreserveVersions bool
+	OverrideVersions bool
 }
 
 // BuilderDeploy is a provisioner that allows deploy builded image.

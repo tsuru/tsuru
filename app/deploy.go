@@ -411,6 +411,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		Version:          version,
 		Event:            evt,
 		PreserveVersions: opts.NewVersion,
+		OverrideVersions: opts.OverrideVersions,
 	})
 }
 
