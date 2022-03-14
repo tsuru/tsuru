@@ -1258,7 +1258,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 
 	if opts.OverrideVersions {
 		var deps *appsv1.DeploymentList
-		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s", opts.App.GetName(), opts.ProcessName)
+		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s, tsuru.io/is-routable=true", opts.App.GetName(), opts.ProcessName)
 		deps, err = m.client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
 			LabelSelector: processSelector,
 		})
