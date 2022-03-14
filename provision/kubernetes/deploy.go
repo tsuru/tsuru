@@ -1257,14 +1257,17 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	if !opts.PreserveVersions {
+		var deps *appsv1.DeploymentList
 		processSelector := fmt.Sprintf("tsuru.io/app-name=%s, tsuru.io/app-process=%s", opts.App.GetName(), opts.ProcessName)
-		deps, err := m.client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
+		deps, err = m.client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{
 			LabelSelector: processSelector,
 		})
-		if err != nil {
+		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-		opts.Replicas = len(deps.Items)
+		if deps != nil {
+			opts.Replicas = len(deps.Items)
+		}
 	}
 
 	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector, m.writer)
