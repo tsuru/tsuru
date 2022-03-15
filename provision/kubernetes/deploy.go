@@ -1266,7 +1266,11 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 			return errors.WithStack(err)
 		}
 		if deps.Items != nil {
-			opts.Replicas = len(deps.Items)
+			totalReplicas := 0
+			for _, dep := range deps.Items {
+				totalReplicas += int(*dep.Spec.Replicas)
+			}
+			opts.Replicas = totalReplicas
 		}
 	}
 
