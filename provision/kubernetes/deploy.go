@@ -1268,7 +1268,9 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		if deps.Items != nil {
 			totalReplicas := 0
 			for _, dep := range deps.Items {
-				totalReplicas += int(*dep.Spec.Replicas)
+				if dep.Spec.Replicas != nil {
+					totalReplicas += int(*dep.Spec.Replicas)
+				}
 			}
 			opts.Replicas = totalReplicas
 		}
