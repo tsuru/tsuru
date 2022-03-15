@@ -31,6 +31,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 		procs            []string
 		newVersion       bool
 		overrideVersions bool
+		routable         bool
 	}
 	type stepDef struct {
 		*stopStep
@@ -64,7 +65,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					},
 				},
 				{
-					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
+					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true, routable: true},
 					check: func() {
 						s.hasDepWithVersion(c, "myapp-p1", 2, 1)
 						s.hasDepWithVersion(c, "myapp-p1-v3", 3, 1)
@@ -194,6 +195,10 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					}, procSpec)
 					c.Assert(err, check.IsNil)
 					waitDep()
+					if step.deployStep.routable {
+						err = a.SetRoutable(context.TODO(), version, true)
+						c.Assert(err, check.IsNil)
+					}
 				}
 				if step.unitStep != nil {
 					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
