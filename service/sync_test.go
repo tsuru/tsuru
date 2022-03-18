@@ -357,3 +357,42 @@ func (s *SyncSuite) TestBindSyncerError(c *check.C) {
 		`error 0: failed to unbind unit "wrong" for mysql\(my-mysql\): Failed to unbind \("/resources/my-mysql/bind"\): invalid response: my awful error.*`+
 		`error 1: failed to bind unit "my-app-0" for mysql2\(my-mysql\): Failed to bind the instance "mysql2/my-mysql" to the unit "10.10.10.1": invalid response: my awful error.*`)
 }
+
+func (s *SyncSuite) TestBindSyncerServiceWithBindOfUnitsDisabled(c *check.C) {
+	originalLogger := log.DefaultTarget
+	defer func() { log.DefaultTarget = originalLogger }()
+	var buffer bytes.Buffer
+	log.DefaultTarget.SetLogger(log.NewWriterLogger(&buffer, true))
+	a := &app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, &s.user)
+	c.Assert(err, check.IsNil)
+	err = service.Create(service.Service{
+		Name:            "mysql",
+		Endpoint:        map[string]string{"production": "https://example.com"},
+		Password:        "s3cr3t",
+		OwnerTeams:      []string{s.team.Name},
+		DisableBindUnit: true,
+	})
+	c.Assert(err, check.IsNil)
+	err = s.conn.ServiceInstances().Insert(&service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.GetName()},
+	})
+	c.Assert(err, check.IsNil)
+	ch := make(chan struct{}, 1)
+	err = service.InitializeSync(func() ([]bind.App, error) {
+		defer func() { ch <- struct{}{} }()
+		return []bind.App{a}, nil
+	})
+	c.Assert(err, check.IsNil)
+	<-ch
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	shutdown.Do(ctx, ioutil.Discard)
+	cancel()
+	events, err := event.All()
+	c.Assert(err, check.IsNil)
+	c.Assert(events, check.HasLen, 0)
+	c.Assert(buffer.String(), check.Matches, `(?s).*\[bind-syncer\] ignoring sync of units against the service mysql as it's disabled.*`)
+}

@@ -131,6 +131,7 @@ func (b *bindSyncer) Shutdown(ctx context.Context) error {
 }
 
 func (b *bindSyncer) sync(a bind.App) (err error) {
+	ctx := context.Background()
 	binds := make(map[string][]string)
 	unbinds := make(map[string][]string)
 	evt, err := event.NewInternal(&event.Opts{
@@ -170,8 +171,16 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	if err != nil {
 		return errors.WithMessage(err, "error retrieving service instances bound to app")
 	}
+	servicesByName, err := getServicesByName(ctx, instances)
+	if err != nil {
+		return errors.WithMessage(err, "error retrieving services bound to app")
+	}
 	multiErr := tsuruErrors.NewMultiError()
 	for _, instance := range instances {
+		if s, found := servicesByName[instance.ServiceName]; found && s.DisableBindUnit {
+			log.Debugf("[bind-syncer] ignoring sync of units against the service %s as it's disabled", instance.ServiceName)
+			continue
+		}
 		boundUnits := make(map[Unit]struct{})
 		for _, u := range instance.BoundUnits {
 			if u.AppName != a.GetName() {
@@ -207,4 +216,19 @@ func (b *bindSyncer) sync(a bind.App) (err error) {
 	}
 	log.Debugf("[bind-syncer] finished sync for app %q", a.GetName())
 	return multiErr.ToError()
+}
+
+func getServicesByName(ctx context.Context, instances []ServiceInstance) (map[string]Service, error) {
+	servicesByName := make(map[string]Service)
+	for _, i := range instances {
+		if _, found := servicesByName[i.ServiceName]; found {
+			continue
+		}
+		s, err := Get(ctx, i.ServiceName)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get service %s", i.ServiceName)
+		}
+		servicesByName[i.ServiceName] = s
+	}
+	return servicesByName, nil
 }
