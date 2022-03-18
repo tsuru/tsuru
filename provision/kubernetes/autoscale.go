@@ -588,9 +588,6 @@ func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient 
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
 	})
 	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -629,14 +626,19 @@ func deleteAllVPA(ctx context.Context, client *ClusterClient, a provision.App) e
 		return err
 	}
 	vpaList, err := allVPAsForApp(ctx, client, vpaCli, a)
+	if k8sErrors.IsNotFound(err) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
 
-	for _, vpa := range vpaList.Items {
-		err = vpaCli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return errors.WithStack(err)
+	if vpaList.Items != nil {
+		for _, vpa := range vpaList.Items {
+			err = vpaCli.AutoscalingV1().VerticalPodAutoscalers(vpa.Namespace).Delete(ctx, vpa.Name, metav1.DeleteOptions{})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return errors.WithStack(err)
+			}
 		}
 	}
 	return nil
