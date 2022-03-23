@@ -18,7 +18,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -67,7 +66,7 @@ const (
 	allServicesAnnotations        = "all-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
-	sidecarRegistryKey            = "sidecar-registry"
+	sidecarImageKey               = "sidecar-image"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	disablePDBKey                 = "disable-pdb"
@@ -102,7 +101,7 @@ var (
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
-		sidecarRegistryKey:            "Override for deploy sidecar image registry.",
+		sidecarImageKey:               "Override for deploy sidecar image.",
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
@@ -559,19 +558,11 @@ func (c *ClusterClient) sideCarImage(imgName string) string {
 	if c.CustomData == nil {
 		return imgName
 	}
-	newRepo, ok := c.CustomData[sidecarRegistryKey]
+	newImage, ok := c.CustomData[sidecarImageKey]
 	if !ok {
 		return imgName
 	}
-	_, img, tag := image.ParseImageParts(imgName)
-	if tag == "" {
-		tag = "latest"
-	}
-	fullImg := fmt.Sprintf("%s:%s", img, tag)
-	if newRepo != "" {
-		fullImg = fmt.Sprintf("%s/%s", newRepo, fullImg)
-	}
-	return fullImg
+	return newImage
 }
 
 func (c *ClusterClient) deploySidecarImage() string {
