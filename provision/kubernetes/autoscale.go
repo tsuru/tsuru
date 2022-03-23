@@ -231,6 +231,11 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
+	err = ensurePDB(ctx, client, a, process)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	return nil
 }
 
@@ -346,6 +351,10 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	} else {
 		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
 	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	err = ensurePDB(ctx, client, a, depInfo.process)
 	if err != nil {
 		return errors.WithStack(err)
 	}
