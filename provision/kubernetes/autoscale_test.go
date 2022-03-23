@@ -18,10 +18,12 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 )
 
@@ -341,21 +343,71 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	wait()
 
 	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
-		MinUnits:   1,
-		MaxUnits:   2,
+		MinUnits:   5,
+		MaxUnits:   20,
 		AverageCPU: "500m",
 	})
 	c.Assert(err, check.IsNil)
-
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-
+	existingPDB, err := s.client.PolicyV1beta1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	pdb_expected := &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pdbNameForApp(a, "web"),
+			Namespace: ns,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-process": "web",
+				"tsuru.io/app-team":    "",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable: intOrStringPtr(intstr.FromInt(4)),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":    "myapp",
+					"tsuru.io/app-process": "web",
+					"tsuru.io/is-routable": "true",
+				},
+			},
+		},
+	}
+	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	existingPDB, err = s.client.PolicyV1beta1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	pdb_expected = &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pdbNameForApp(a, "web"),
+			Namespace: ns,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/app-team":    "",
+				"tsuru.io/app-process": "web",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"tsuru.io/app-name":    "myapp",
+					"tsuru.io/app-process": "web",
+					"tsuru.io/is-routable": "true",
+				},
+			},
+		},
+	}
+	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
 }
 
 func (s *S) TestProvisionerGetAutoScale(c *check.C) {
