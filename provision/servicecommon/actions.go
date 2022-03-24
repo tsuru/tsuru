@@ -41,6 +41,7 @@ type pipelineArgs struct {
 	newVersionSpec   ProcessSpec
 	event            *event.Event
 	preserveVersions bool
+	overrideVersions bool
 }
 
 type labelReplicas struct {
@@ -62,6 +63,7 @@ type DeployServiceOpts struct {
 	Replicas         int
 	Version          appTypes.AppVersion
 	PreserveVersions bool
+	OverrideVersions bool
 }
 
 // RunServicePipeline runs a pipeline for deploy a service with multiple
@@ -103,6 +105,7 @@ func RunServicePipeline(ctx context.Context, manager ServiceManager, oldVersionN
 		newVersion:       args.Version,
 		newVersionSpec:   newSpec,
 		event:            args.Event,
+		overrideVersions: args.OverrideVersions,
 	})
 }
 
@@ -247,6 +250,7 @@ var updateServices = &action.Action{
 				Replicas:         labels.realReplicas,
 				Version:          args.newVersion,
 				PreserveVersions: args.preserveVersions,
+				OverrideVersions: args.overrideVersions,
 			})
 
 			if err != nil {

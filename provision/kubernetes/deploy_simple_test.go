@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/tsuru/tsuru/app"
@@ -28,8 +29,10 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 		units   int
 	}
 	type deployStep struct {
-		procs      []string
-		newVersion bool
+		procs            []string
+		newVersion       bool
+		overrideVersions bool
+		routable         bool
 	}
 	type stepDef struct {
 		*stopStep
@@ -47,113 +50,162 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p1", 1, 1)
-						s.hasSvc(c, "myapp-p1")
+						s.hasDepWithVersion(c, "myapp0-p1", 1, 1)
+						s.hasSvc(c, "myapp0-p1")
 
-						s.noSvc(c, "myapp-p1-v1")
+						s.noSvc(c, "myapp0-p1-v1")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p1", 2, 1)
-						s.hasSvc(c, "myapp-p1")
+						s.hasDepWithVersion(c, "myapp0-p1", 2, 1)
+						s.hasSvc(c, "myapp0-p1")
 
-						s.noSvc(c, "myapp-p1-v2")
+						s.noSvc(c, "myapp0-p1-v2")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p1", 2, 1)
-						s.hasDepWithVersion(c, "myapp-p1-v3", 3, 1)
-						s.hasSvc(c, "myapp-p1")
-						s.hasSvc(c, "myapp-p1-v2")
-						s.hasSvc(c, "myapp-p1-v3")
+						s.hasDepWithVersion(c, "myapp0-p1", 2, 1)
+						s.hasDepWithVersion(c, "myapp0-p1-v3", 3, 1)
+						s.hasSvc(c, "myapp0-p1")
+						s.hasSvc(c, "myapp0-p1-v2")
+						s.hasSvc(c, "myapp0-p1-v3")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p1", 4, 1)
-						s.hasSvc(c, "myapp-p1")
+						s.hasDepWithVersion(c, "myapp0-p1", 4, 1)
+						s.hasSvc(c, "myapp0-p1")
 
-						s.noDep(c, "myapp-p1-v3")
-						s.noSvc(c, "myapp-p1-v2")
-						s.noSvc(c, "myapp-p1-v3")
-						s.noSvc(c, "myapp-p1-v4")
+						s.noDep(c, "myapp0-p1-v3")
+						s.noSvc(c, "myapp0-p1-v2")
+						s.noSvc(c, "myapp0-p1-v3")
+						s.noSvc(c, "myapp0-p1-v4")
 					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p2"}},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 1)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
+						s.hasSvc(c, "myapp0-p2")
 
-						s.noDep(c, "myapp-p1")
-						s.noSvc(c, "myapp-p1")
-						s.noSvc(c, "myapp-p2-v5")
+						s.noDep(c, "myapp0-p1")
+						s.noSvc(c, "myapp0-p1")
+						s.noSvc(c, "myapp0-p2-v5")
 					},
 				},
 				{
 					unitStep: &unitStep{version: 4, units: 2, proc: "p1"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 1)
-						s.hasSvc(c, "myapp-p2")
-						s.hasDepWithVersion(c, "myapp-p1-v4", 4, 2)
-						s.hasSvc(c, "myapp-p1-v4")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
+						s.hasSvc(c, "myapp0-p2")
+						s.hasDepWithVersion(c, "myapp0-p1-v4", 4, 2)
+						s.hasSvc(c, "myapp0-p1-v4")
 
-						s.noDep(c, "myapp-p1")
-						s.noSvc(c, "myapp-p2-v5")
-						s.noSvc(c, "myapp-p1")
+						s.noDep(c, "myapp0-p1")
+						s.noSvc(c, "myapp0-p2-v5")
+						s.noSvc(c, "myapp0-p1")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 4, proc: "p1"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 1)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
+						s.hasSvc(c, "myapp0-p2")
 
-						s.noDep(c, "myapp-p1-v4")
-						s.noDep(c, "myapp-p1")
-						s.noSvc(c, "myapp-p1-v4")
-						s.noSvc(c, "myapp-p1")
-						s.noSvc(c, "myapp-p2-v5")
+						s.noDep(c, "myapp0-p1-v4")
+						s.noDep(c, "myapp0-p1")
+						s.noSvc(c, "myapp0-p1-v4")
+						s.noSvc(c, "myapp0-p1")
+						s.noSvc(c, "myapp0-p2-v5")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 0)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 0)
+						s.hasSvc(c, "myapp0-p2")
 					},
 				},
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 1)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
+						s.hasSvc(c, "myapp0-p2")
 					},
 				},
 				{
 					unitStep: &unitStep{version: 5, units: 2, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 3)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
+						s.hasSvc(c, "myapp0-p2")
 					},
 				},
 				{
 					stopStep: &stopStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 0)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 0)
+						s.hasSvc(c, "myapp0-p2")
 					},
 				},
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp-p2", 5, 3)
-						s.hasSvc(c, "myapp-p2")
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
+						s.hasSvc(c, "myapp0-p2")
+					},
+				},
+			},
+		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2"}},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
+						s.hasSvc(c, "myapp1-p1")
+
+						s.noSvc(c, "myapp1-p1-v1")
+					},
+				},
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2"}, newVersion: true, routable: true},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp1-p1-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp1-p2-v2", 2, 1)
+						s.hasSvc(c, "myapp1-p1")
+						s.hasSvc(c, "myapp1-p1-v2")
+						s.hasSvc(c, "myapp1-p2-v2")
+					},
+				},
+				{
+					unitStep: &unitStep{version: 2, units: 2, proc: "p1"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp1-p1-v2", 2, 3)
+
+						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp1-p2-v2", 2, 1)
+						s.hasSvc(c, "myapp1-p1")
+						s.hasSvc(c, "myapp1-p1-v2")
+						s.hasSvc(c, "myapp1-p2-v2")
+					},
+				},
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2"}, overrideVersions: true, routable: true},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp1-p1", 3, 4)
+						s.hasDepWithVersion(c, "myapp1-p2", 3, 2)
+						s.hasSvc(c, "myapp1-p1")
+
+						s.noDep(c, "myapp1-p1-v2")
+						s.noDep(c, "myapp1-p2-v2")
+						s.noSvc(c, "myapp1-p1-v2")
+						s.noSvc(c, "myapp1-p2-v2")
 					},
 				},
 			},
@@ -165,7 +217,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 			waitDep := s.mock.DeploymentReactions(c)
 			defer waitDep()
 			m := serviceManager{client: s.clusterClient}
-			a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+			appName := fmt.Sprintf("myapp%d", i)
+			a := &app.App{Name: appName, TeamOwner: s.team.Name}
 			err := app.CreateApp(context.TODO(), a, s.user)
 			c.Assert(err, check.IsNil)
 			for j, step := range tt.steps {
@@ -189,9 +242,14 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 						App:              a,
 						Version:          version,
 						PreserveVersions: step.deployStep.newVersion,
+						OverrideVersions: step.deployStep.overrideVersions,
 					}, procSpec)
 					c.Assert(err, check.IsNil)
 					waitDep()
+					if step.deployStep.routable {
+						err = a.SetRoutable(context.TODO(), version, true)
+						c.Assert(err, check.IsNil)
+					}
 				}
 				if step.unitStep != nil {
 					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
