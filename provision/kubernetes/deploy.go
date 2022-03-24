@@ -1265,14 +1265,16 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		if err != nil && !k8sErrors.IsNotFound(err) {
 			return errors.WithStack(err)
 		}
-		if deps.Items != nil {
-			totalReplicas := 0
+		totalReplicas := 0
+		if deps != nil {
 			for _, dep := range deps.Items {
 				if dep.Spec.Replicas != nil {
 					totalReplicas += int(*dep.Spec.Replicas)
 				}
 			}
-			opts.Replicas = totalReplicas
+			if totalReplicas > 0 {
+				opts.Replicas = totalReplicas
+			}
 		}
 	}
 
