@@ -125,8 +125,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.update.quota",
 	"user.update.password",
 	"user.update.reset",
-	"user.update.key.add",
-	"user.update.key.remove",
 ).addWithCtx(
 	"service", []permTypes.ContextType{permTypes.CtxService, permTypes.CtxTeam},
 ).addWithCtx(
