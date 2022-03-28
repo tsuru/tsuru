@@ -596,8 +596,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(ls.IsStopped(), check.Equals, true)
-				c.Assert(ls.HasPastUnits(), check.Equals, true)
-				c.Assert(ls.PastUnits(), check.Equals, 0)
 			},
 		},
 		{

@@ -147,12 +147,6 @@ func rawLabelsAndReplicas(ctx context.Context, args *pipelineArgs, processName s
 		return nil, err
 	}
 
-	if labels != nil && labels.HasPastUnits() {
-		past := int32(labels.PastUnits())
-		replicas = &past
-		labels = labels.WithoutPastUnits()
-	}
-
 	if labels == nil {
 		return &labelReplicas{}, nil
 	}
@@ -194,7 +188,6 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 		return oldLabels, err
 	}
 	if isStopped || pState.Stop {
-		labels.SetPastUnits(oldLabels.realReplicas)
 		oldLabels.realReplicas = 0
 		labels.SetStopped()
 	}
