@@ -300,7 +300,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					}
 				}
 				if step.unitStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -313,7 +314,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					waitDep()
 				}
 				if step.stopStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -326,7 +328,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					waitDep()
 				}
 				if step.startStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -344,7 +347,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.restartStep.proc)
 						c.Assert(err, check.IsNil)
 					} else {
-						version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
+						var version appTypes.AppVersion
+						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
 						c.Assert(err, check.IsNil)
 						versions = append(versions, version)
 					}
