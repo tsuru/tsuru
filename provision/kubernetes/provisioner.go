@@ -612,9 +612,6 @@ func ensureProcessName(processName string, version appTypes.AppVersion) (string,
 }
 
 func changeUnits(ctx context.Context, a provision.App, units int, processName string, version appTypes.AppVersion, w io.Writer) error {
-	if units == 0 {
-		return errors.New("cannot change 0 units")
-	}
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
@@ -631,13 +628,7 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return err
 	}
-	if dep == nil || (dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0) {
-		if dep != nil {
-			depLabels := labelOnlySetFromMeta(&dep.ObjectMeta)
-			if depLabels.HasPastUnits() {
-				units = units - depLabels.PastUnits()
-			}
-		}
+	if dep == nil {
 		return servicecommon.ChangeUnits(ctx, &serviceManager{
 			client: client,
 			writer: w,
@@ -648,6 +639,9 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 		dep.Spec.Replicas = &zero
 	}
 	newReplicas := int(*dep.Spec.Replicas) + units
+	if newReplicas < 0 {
+		newReplicas = 0
+	}
 	if w == nil {
 		w = ioutil.Discard
 	}
