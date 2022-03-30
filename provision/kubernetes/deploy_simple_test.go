@@ -217,6 +217,47 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				},
 			},
 		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{procs: []string{"p1"}},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.noSvc(c, "myapp2-p1-v1")
+					},
+				},
+				{
+					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+
+						s.hasSvc(c, "myapp2-p1-v2")
+						s.hasSvc(c, "myapp2-p1-v1")
+					},
+				},
+				{
+					stopStep: &stopStep{proc: "p1", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p1-v2")
+					},
+				},
+				{
+					restartStep: &restartStep{proc: "p1"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p1-v2")
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
