@@ -195,6 +195,9 @@ func (s *S) setupMocks() {
 	s.mockService.UserQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
 		return &s.user.Quota, nil
 	}
+	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
+		return &quota.UnlimitedQuota, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {
