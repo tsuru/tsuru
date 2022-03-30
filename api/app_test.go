@@ -48,6 +48,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -6882,4 +6883,131 @@ func (s *S) TestFollowLogs(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(msgSlice, check.HasLen, 1)
 	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
+}
+
+func (s *S) TestGetAppInfoWithQuota(c *check.C) {
+	a := app.App{Name: "my-awesome-app", Platform: "awesome-platform", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	s.mockService.AppQuota.OnGet = func(qi quota.QuotaItem) (*quota.Quota, error) {
+		c.Assert(qi.GetName(), check.Equals, "my-awesome-app")
+		return &quota.Quota{InUse: 100, Limit: 777}, nil
+	}
+	request, err := http.NewRequest("GET", "/apps/my-awesome-app", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadInfo,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got.Quota, check.Equals, quota.Quota{InUse: 100, Limit: 777})
+}
+
+func (s *S) TestGetAppInfoWithServiceInstanceBinds(c *check.C) {
+	a := app.App{Name: "my-awesome-app", Platform: "awesome-platform", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	service1 := service.Service{
+		Name:       "service-1",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err = service.Create(service1)
+	c.Assert(err, check.IsNil)
+	instance1 := service.ServiceInstance{
+		ServiceName: service1.Name,
+		Name:        service1.Name + "-1",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance1)
+	c.Assert(err, check.IsNil)
+	instance2 := service.ServiceInstance{
+		ServiceName: service1.Name,
+		Name:        service1.Name + "-2",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.Name},
+		PlanName:    "some-example",
+	}
+	err = s.conn.ServiceInstances().Insert(instance2)
+	c.Assert(err, check.IsNil)
+	service2 := service.Service{
+		Name:       "service-2",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err = service.Create(service2)
+	c.Assert(err, check.IsNil)
+	instance3 := service.ServiceInstance{
+		ServiceName: service2.Name,
+		Name:        service2.Name + "-1",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.Name},
+		PlanName:    "another-plan",
+	}
+	err = s.conn.ServiceInstances().Insert(instance3)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps/my-awesome-app", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadInfo,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	got := make(map[string]interface{})
+	err = json.Unmarshal(recorder.Body.Bytes(), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got["serviceInstanceBinds"], check.DeepEquals, []interface{}{
+		map[string]interface{}{"service": "service-1", "instance": "service-1-1", "plan": ""},
+		map[string]interface{}{"service": "service-1", "instance": "service-1-2", "plan": "some-example"},
+		map[string]interface{}{"service": "service-2", "instance": "service-2-1", "plan": "another-plan"},
+	})
+}
+
+func (s *S) TestGetAppInfoWithVolumeBinds(c *check.C) {
+	a := app.App{Name: "my-awesome-app", Platform: "awesome-platform", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	s.mockService.VolumeService.OnBindsForApp = func(_ context.Context, _ *volume.Volume, appName string) ([]volume.VolumeBind, error) {
+		c.Assert(appName, check.Equals, "my-awesome-app")
+		return []volume.VolumeBind{
+			{ID: volume.VolumeBindID{Volume: "volume-1", App: "my-awesome-app", MountPoint: "/mnt/data/v01"}},
+			{ID: volume.VolumeBindID{Volume: "volume-2", App: "my-awesome-app", MountPoint: "/mnt/data/v02"}},
+			{ID: volume.VolumeBindID{Volume: "volume-1", App: "my-awesome-app", MountPoint: "/mnt/data/v001"}, ReadOnly: true},
+		}, nil
+	}
+	request, err := http.NewRequest("GET", "/apps/my-awesome-app", nil)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadInfo,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	got := make(map[string]interface{})
+	err = json.Unmarshal(recorder.Body.Bytes(), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got["volumeBinds"], check.DeepEquals, []interface{}{
+		map[string]interface{}{"ID": map[string]interface{}{"Volume": "volume-1", "App": "my-awesome-app", "MountPoint": "/mnt/data/v01"}, "ReadOnly": false},
+		map[string]interface{}{"ID": map[string]interface{}{"Volume": "volume-2", "App": "my-awesome-app", "MountPoint": "/mnt/data/v02"}, "ReadOnly": false},
+		map[string]interface{}{"ID": map[string]interface{}{"Volume": "volume-1", "App": "my-awesome-app", "MountPoint": "/mnt/data/v001"}, "ReadOnly": true},
+	})
 }

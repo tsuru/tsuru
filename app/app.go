@@ -227,7 +227,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if version := app.GetPlatformVersion(); version != "latest" {
 		result["platform"] = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
-
 	prov, err := app.getProvisioner()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get provisioner name: %+v", err))
@@ -235,17 +234,14 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if prov != nil {
 		provisionerName := prov.GetName()
 		result["provisioner"] = provisionerName
-
 		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
 		if clusterErr != nil && clusterErr != provisionTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
-
 		if cluster != nil {
 			result["cluster"] = cluster.Name
 		}
 	}
-
 	result["teams"] = app.Teams
 	units, err := app.Units()
 	result["units"] = units
@@ -281,6 +277,13 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["tags"] = app.Tags
 	result["routers"] = routers
 	result["metadata"] = app.Metadata
+	q, err := app.GetQuota()
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
+	}
+	if q != nil {
+		result["quota"] = *q
+	}
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
 	}
@@ -298,7 +301,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if autoscaleRec != nil {
 		result["autoscaleRecommendation"] = autoscaleRec
 	}
-
 	unitMetrics, err := app.UnitsMetrics()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
@@ -306,7 +308,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if unitMetrics != nil {
 		result["unitsMetrics"] = unitMetrics
 	}
-
 	volumeBinds, err := servicemanager.Volume.BindsForApp(app.ctx, nil, app.Name)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get volume binds: %+v", err))
@@ -314,7 +315,18 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if volumeBinds != nil {
 		result["volumeBinds"] = volumeBinds
 	}
-
+	sis, err := service.GetServiceInstancesBoundToApp(app.Name)
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get service instance bound to app: %+v", err))
+	}
+	result["serviceInstanceBinds"] = make([]interface{}, 0)
+	for _, si := range sis {
+		result["serviceInstanceBinds"] = append(result["serviceInstanceBinds"].([]interface{}), map[string]interface{}{
+			"service":  si.ServiceName,
+			"instance": si.Name,
+			"plan":     si.PlanName,
+		})
+	}
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}
