@@ -28,6 +28,7 @@ var (
 	PermAppReadDeploy                    = PermissionRegistry.get("app.read.deploy")                     // [global app team pool]
 	PermAppReadEnv                       = PermissionRegistry.get("app.read.env")                        // [global app team pool]
 	PermAppReadEvents                    = PermissionRegistry.get("app.read.events")                     // [global app team pool]
+	PermAppReadInfo                      = PermissionRegistry.get("app.read.info")                       // [global app team pool]
 	PermAppReadLog                       = PermissionRegistry.get("app.read.log")                        // [global app team pool]
 	PermAppReadMetric                    = PermissionRegistry.get("app.read.metric")                     // [global app team pool]
 	PermAppReadRouter                    = PermissionRegistry.get("app.read.router")                     // [global app team pool]

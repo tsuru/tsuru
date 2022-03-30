@@ -333,18 +333,16 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppRead,
+	canRead := permission.Check(t, permission.PermAppReadInfo,
 		contextsForApp(&a)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-
 	err = a.FillInternalAddresses()
 	if err != nil {
 		return err
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&a)
 }
