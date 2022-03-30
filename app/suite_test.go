@@ -214,6 +214,9 @@ func setupMocks(s *S) {
 		}
 		return nil, appTypes.ErrPlanNotFound
 	}
+	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+		return &quota.UnlimitedQuota, nil
+	}
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: app,

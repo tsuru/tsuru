@@ -2829,6 +2829,11 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"ReadOnly": true,
 			},
 		},
+		"quota": map[string]interface{}{
+			"inuse": float64(0),
+			"limit": float64(-1),
+		},
+		"serviceInstanceBinds": []interface{}{},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2937,6 +2942,11 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 				},
 			},
 		},
+		"quota": map[string]interface{}{
+			"inuse": float64(0),
+			"limit": float64(-1),
+		},
+		"serviceInstanceBinds": []interface{}{},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -2996,6 +3006,11 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		},
 		"tags":        nil,
 		"provisioner": "fake",
+		"quota": map[string]interface{}{
+			"inuse": float64(0),
+			"limit": float64(-1),
+		},
+		"serviceInstanceBinds": []interface{}{},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -3071,6 +3086,11 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		},
 		"tags":        []interface{}{"tag a", "tag b"},
 		"provisioner": "fake",
+		"quota": map[string]interface{}{
+			"inuse": float64(0),
+			"limit": float64(-1),
+		},
+		"serviceInstanceBinds": []interface{}{},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -3078,6 +3098,209 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "my-pool", Default: false})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:            "my-awesome-app",
+		Platform:        "awesome-platform",
+		PlatformVersion: "v1",
+		Teams:           []string{"team-one"},
+		CName:           []string{"my-awesome-app.mycompany.com"},
+		Owner:           "admin@example.com",
+		Deploys:         1,
+		Pool:            "my-pool",
+		Description:     "Awesome description about my-awesome-app",
+		Plan:            appTypes.Plan{Name: "small", CPUMilli: 1000, Memory: 128},
+		TeamOwner:       "team-one",
+		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+	}
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
+	c.Assert(err, check.IsNil)
+	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+		return &quota.Quota{InUse: 100, Limit: 777}, nil
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]interface{}{
+		"name":        "my-awesome-app",
+		"platform":    "awesome-platform:v1",
+		"teams":       []interface{}{"team-one"},
+		"units":       []interface{}{},
+		"ip":          "my-awesome-app.fakerouter.com",
+		"cname":       []interface{}{"my-awesome-app.mycompany.com"},
+		"owner":       "admin@example.com",
+		"deploys":     float64(1),
+		"pool":        "my-pool",
+		"description": "Awesome description about my-awesome-app",
+		"teamowner":   "team-one",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "small",
+			"cpumilli": float64(1000),
+			"memory":   float64(128),
+			"swap":     float64(0),
+			"cpushare": float64(0),
+			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
+		},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      nil,
+		},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"routers": []interface{}{
+			map[string]interface{}{
+				"name":      "fake",
+				"address":   "my-awesome-app.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{"opt1": "val1"},
+			},
+		},
+		"tags":        nil,
+		"provisioner": "fake",
+		"quota": map[string]interface{}{
+			"inuse": float64(100),
+			"limit": float64(777),
+		},
+		"serviceInstanceBinds": []interface{}{},
+	})
+
+}
+
+func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "my-pool", Default: false})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:            "my-awesome-app",
+		Platform:        "awesome-platform",
+		PlatformVersion: "v1",
+		Teams:           []string{"team-one"},
+		CName:           []string{"my-awesome-app.mycompany.com"},
+		Owner:           "admin@example.com",
+		Deploys:         1,
+		Pool:            "my-pool",
+		Description:     "Awesome description about my-awesome-app",
+		Plan:            appTypes.Plan{Name: "small", CPUMilli: 1000, Memory: 128},
+		TeamOwner:       "team-one",
+		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+	}
+	s.mockService.Team.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
+		return []authTypes.Team{{Name: "team-one"}}, nil
+	}
+	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
+	c.Assert(err, check.IsNil)
+	service1 := service.Service{
+		Name:       "service-1",
+		Teams:      []string{"team-one"},
+		OwnerTeams: []string{"team-one"},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err = service.Create(service1)
+	c.Assert(err, check.IsNil)
+	instance1 := service.ServiceInstance{
+		ServiceName: service1.Name,
+		Name:        service1.Name + "-1",
+		Teams:       []string{"team-one"},
+		Apps:        []string{app.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance1)
+	c.Assert(err, check.IsNil)
+	instance2 := service.ServiceInstance{
+		ServiceName: service1.Name,
+		Name:        service1.Name + "-2",
+		Teams:       []string{"team-one"},
+		Apps:        []string{app.Name},
+		PlanName:    "some-example",
+	}
+	err = s.conn.ServiceInstances().Insert(instance2)
+	c.Assert(err, check.IsNil)
+	service2 := service.Service{
+		Name:       "service-2",
+		Teams:      []string{"team-one"},
+		OwnerTeams: []string{"team-one"},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err = service.Create(service2)
+	c.Assert(err, check.IsNil)
+	instance3 := service.ServiceInstance{
+		ServiceName: service2.Name,
+		Name:        service2.Name + "-1",
+		Teams:       []string{"team-one"},
+		Apps:        []string{app.Name},
+		PlanName:    "another-plan",
+	}
+	err = s.conn.ServiceInstances().Insert(instance3)
+	c.Assert(err, check.IsNil)
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]interface{}{
+		"name":        "my-awesome-app",
+		"platform":    "awesome-platform:v1",
+		"teams":       []interface{}{"team-one"},
+		"units":       []interface{}{},
+		"ip":          "my-awesome-app.fakerouter.com",
+		"cname":       []interface{}{"my-awesome-app.mycompany.com"},
+		"owner":       "admin@example.com",
+		"deploys":     float64(1),
+		"pool":        "my-pool",
+		"description": "Awesome description about my-awesome-app",
+		"teamowner":   "team-one",
+		"lock":        s.zeroLock,
+		"plan": map[string]interface{}{
+			"name":     "small",
+			"cpumilli": float64(1000),
+			"memory":   float64(128),
+			"swap":     float64(0),
+			"cpushare": float64(0),
+			"router":   "fake",
+			"override": map[string]interface{}{
+				"cpumilli": nil,
+				"memory":   nil,
+			},
+		},
+		"metadata": map[string]interface{}{
+			"annotations": nil,
+			"labels":      nil,
+		},
+		"router":     "fake",
+		"routeropts": map[string]interface{}{"opt1": "val1"},
+		"routers": []interface{}{
+			map[string]interface{}{
+				"name":      "fake",
+				"address":   "my-awesome-app.fakerouter.com",
+				"addresses": nil,
+				"type":      "fake",
+				"opts":      map[string]interface{}{"opt1": "val1"},
+			},
+		},
+		"tags":        nil,
+		"provisioner": "fake",
+		"quota": map[string]interface{}{
+			"inuse": float64(0),
+			"limit": float64(-1),
+		},
+		"serviceInstanceBinds": []interface{}{
+			map[string]interface{}{"service": "service-1", "instance": "service-1-1", "plan": ""},
+			map[string]interface{}{"service": "service-1", "instance": "service-1-2", "plan": "some-example"},
+			map[string]interface{}{"service": "service-2", "instance": "service-2-1", "plan": "another-plan"},
+		},
+	})
 }
 
 func (s *S) TestRun(c *check.C) {
