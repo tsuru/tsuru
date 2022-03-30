@@ -504,12 +504,15 @@ func (p *kubernetesProvisioner) removeResources(ctx context.Context, client *Clu
 	return multiErrors.ToError()
 }
 
-func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]appTypes.AppVersion, error) {
+func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provision.App, process string, ignoreBaseDepIfStopped bool) ([]appTypes.AppVersion, error) {
 	grouped, err := deploymentsDataForApp(ctx, client, a)
 	if err != nil {
 		return nil, err
 	}
 
+	if ignoreBaseDepIfStopped {
+		grouped.versioned = ignoreBaseDep(grouped.versioned)
+	}
 	versionSet := map[int]struct{}{}
 	for v, deps := range grouped.versioned {
 		for _, depData := range deps {
@@ -542,7 +545,7 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 
 	var versions []appTypes.AppVersion
 	if version == nil {
-		versions, err = versionsForAppProcess(ctx, client, a, process)
+		versions, err = versionsForAppProcess(ctx, client, a, process, true)
 		if err != nil {
 			return err
 		}
@@ -1664,7 +1667,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
-	versions, err := versionsForAppProcess(ctx, client, old, "")
+	versions, err := versionsForAppProcess(ctx, client, old, "", false)
 	if err != nil {
 		return err
 	}

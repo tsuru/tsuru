@@ -303,7 +303,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				if step.restartStep != nil {
 					var versions []appTypes.AppVersion
 					if step.restartStep.version == 0 {
-						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.restartStep.proc)
+						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.restartStep.proc, true)
 						c.Assert(err, check.IsNil)
 					} else {
 						var version appTypes.AppVersion
