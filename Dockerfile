@@ -9,7 +9,7 @@ RUN set -x && \
     make tsurud
 
 FROM alpine:${alpine_version}
-COPY --from=builder /go/src/github.com/tsuru/tsuru/tsurud /usr/local/bin/tsurud
+COPY --from=builder /go/src/github.com/tsuru/tsuru/build/tsurud /usr/local/bin/tsurud
 COPY /etc/tsuru-custom.conf /etc/tsuru/tsuru.conf
 RUN set -x && \
     apk add --no-cache ca-certificates
