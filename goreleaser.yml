@@ -3,11 +3,11 @@
 builds:
 - main: ./cmd/tsurud
   binary: tsurud
-  ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}}
+  ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}} -X github.com/tsuru/tsuru/api.Version={{ .Version }}
   goos:
-    - linux
+  - linux
   goarch:
-    - amd64
+  - amd64
 
 # Archive customization
 archives:
@@ -17,4 +17,4 @@ archives:
     amd64: amd64
     linux: linux
   files:
-    - etc/tsuru.conf
+  - etc/tsuru.conf
