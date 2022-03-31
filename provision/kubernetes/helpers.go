@@ -764,7 +764,7 @@ func deploymentForVersion(ctx context.Context, client *ClusterClient, a provisio
 	}
 
 	if len(depsData) > 1 {
-		return nil, errors.Errorf("to many deployments for same version %d and process %q: %d", versionNumber, process, len(depsData))
+		return nil, errors.Errorf("too many deployments for same version %d and process %q: %d", versionNumber, process, len(depsData))
 	}
 
 	return depsData[0].dep, nil
