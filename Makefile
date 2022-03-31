@@ -30,7 +30,7 @@ lint: metalint
 	misc/check-contributors.sh
 
 metalint:
-	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.39.0
+	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.45.2
 	echo "$$(go list ./... | grep -v /vendor/)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
 		time golangci-lint run -c ./.golangci.yml
 

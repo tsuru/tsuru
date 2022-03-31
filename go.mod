@@ -64,6 +64,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
+	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.1 // indirect
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/bsm/ratelimit.v1 v1.0.0-20160220154919-db14e161995a // indirect

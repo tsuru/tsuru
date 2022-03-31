@@ -14,6 +14,8 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var ErrUnauthorized = &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "You don't have permission to do this action"}
@@ -96,7 +98,7 @@ func (s *PermissionScheme) Identifier() string {
 	parts := s.nameParts()
 	var str string
 	for i := len(parts) - 1; i >= 0; i-- {
-		str += strings.Replace(strings.Title(parts[i]), "-", "", -1)
+		str += strings.Replace(cases.Title(language.English).String(parts[i]), "-", "", -1)
 	}
 	if str == "" {
 		return "All"
