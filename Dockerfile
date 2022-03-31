@@ -1,18 +1,17 @@
-FROM --platform=$BUILDPLATFORM golang:alpine as builder
+ARG alpine_version=3.15
+ARG golang_version=1.17
 
-ARG TARGETARCH
-ENV GOARCH=$TARGETARCH
-
-RUN apk add --no-cache git
+FROM --platform=${BUILDPLATFORM} golang:${golang_version}-alpine${alpine_version} AS builder
 COPY . /go/src/github.com/tsuru/tsuru
 WORKDIR /go/src/github.com/tsuru/tsuru
-ENV GO111MODULE=on
-RUN CGO_ENABLED=0 go build -ldflags "-X github.com/tsuru/tsuru/cmd.GitHash=`git rev-parse HEAD`" ./cmd/tsurud/
+RUN set -x && \
+    apk add --update --no-cache bash git make && \
+    make tsurud
 
-FROM alpine
-
-RUN apk add --no-cache ca-certificates
-COPY --from=builder /go/src/github.com/tsuru/tsuru/tsurud /bin/tsurud
-ADD /etc/tsuru-custom.conf /etc/tsuru/tsuru.conf
+FROM alpine:${alpine_version}
+COPY --from=builder /go/src/github.com/tsuru/tsuru/tsurud /usr/local/bin/tsurud
+COPY /etc/tsuru-custom.conf /etc/tsuru/tsuru.conf
+RUN set -x && \
+    apk add --no-cache ca-certificates
 EXPOSE 8080
-ENTRYPOINT ["/bin/tsurud", "api"]
+ENTRYPOINT ["/usr/local/bin/tsurud", "api"]

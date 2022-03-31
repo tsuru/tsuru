@@ -86,7 +86,7 @@ binaries: tsurud
 tsurud: $(TSR_BIN)
 
 $(TSR_BIN):
-	go build -o $(TSR_BIN) $(TSR_SRC)
+	CGO_ENABLED=0 go build -trimpath -ldflags '-s -w -X github.com/tsuru/tsuru/cmd.GitHash=$(shell git rev-parse HEAD) -X github.com/tsuru/tsuru/api.Version=$(shell git describe --tags --abbrev=0)' -o $(TSR_BIN) $(TSR_SRC)
 
 run-tsurud-api: $(TSR_BIN)
 	$(TSR_BIN) api
