@@ -511,7 +511,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	}
 
 	if ignoreBaseDepIfStopped {
-		grouped.versioned = ignoreBaseDep(grouped.versioned)
+		ignoreBaseDep(grouped.versioned)
 	}
 	versionSet := map[int]struct{}{}
 	for v, deps := range grouped.versioned {

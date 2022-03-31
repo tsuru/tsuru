@@ -1415,7 +1415,7 @@ func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool
 	return true, nil
 }
 
-func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) map[int][]deploymentInfo {
+func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
 	removeElementReturnOrdered := func(slice []deploymentInfo, index int) []deploymentInfo {
 		return append(slice[:index], slice[index+1:]...)
 	}
@@ -1434,6 +1434,4 @@ func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) map[int][]deployment
 			}
 		}
 	}
-
-	return versionedGroup
 }
