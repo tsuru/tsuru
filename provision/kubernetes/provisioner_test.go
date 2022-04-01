@@ -1221,9 +1221,8 @@ func (s *S) TestStopStart(c *check.C) {
 	wait()
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	_, err = s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(dep.Labels["tsuru.io/past-units"], check.Equals, "2")
 	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})
@@ -1235,9 +1234,6 @@ func (s *S) TestStopStart(c *check.C) {
 	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
 	c.Assert(err, check.IsNil)
 	wait()
-	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 2)
 	svcs, err = s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "tsuru.io/app-name=myapp",
 	})

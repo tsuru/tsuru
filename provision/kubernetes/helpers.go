@@ -764,7 +764,7 @@ func deploymentForVersion(ctx context.Context, client *ClusterClient, a provisio
 	}
 
 	if len(depsData) > 1 {
-		return nil, errors.Errorf("two many deployments for same version %d and process %q: %d", versionNumber, process, len(depsData))
+		return nil, errors.Errorf("too many deployments for same version %d and process %q: %d", versionNumber, process, len(depsData))
 	}
 
 	return depsData[0].dep, nil
@@ -1413,4 +1413,25 @@ func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool
 		return false, err
 	}
 	return true, nil
+}
+
+func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
+	removeElementReturnOrdered := func(slice []deploymentInfo, index int) []deploymentInfo {
+		return append(slice[:index], slice[index+1:]...)
+	}
+
+	for versionNum, deps := range versionedGroup {
+		for processIndex, depData := range deps {
+			if depData.replicas == 0 {
+				if state, ok := depData.dep.Labels["tsuru.io/is-stopped"]; ok {
+					if stopped, _ := strconv.ParseBool(state); stopped {
+						versionedGroup[versionNum] = removeElementReturnOrdered(versionedGroup[versionNum], processIndex)
+						if len(versionedGroup[versionNum]) == 0 {
+							delete(versionedGroup, versionNum)
+						}
+					}
+				}
+			}
+		}
+	}
 }

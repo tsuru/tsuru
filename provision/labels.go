@@ -60,8 +60,6 @@ const (
 	labelClusterMetadata = "tsuru.io/cluster"
 
 	labelCustomTagsPrefix = "custom-tag-"
-
-	labelPastUnits = "past-units"
 )
 
 type LabelSet struct {
@@ -364,23 +362,6 @@ func (s *LabelSet) SetVersion(version int) {
 	versionStr := fmt.Sprintf("v%d", version)
 	s.RawLabels["version"] = versionStr
 	s.RawLabels["app.kubernetes.io/version"] = versionStr
-}
-
-func (s *LabelSet) SetPastUnits(pastUnits int) {
-	s.addLabel(labelPastUnits, strconv.Itoa(pastUnits))
-}
-
-func (s *LabelSet) HasPastUnits() bool {
-	return s.hasLabel(labelPastUnits)
-}
-
-func (s *LabelSet) PastUnits() int {
-	v, _ := strconv.Atoi(s.getLabel(labelPastUnits))
-	return v
-}
-
-func (s *LabelSet) WithoutPastUnits() *LabelSet {
-	return s.without(labelPastUnits)
 }
 
 func (s *LabelSet) addLabel(k, v string) {

@@ -569,7 +569,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(replicas, check.Equals, 3)
+				c.Assert(replicas, check.Equals, 1)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -586,7 +586,7 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 				{Start: true}, {Increment: 2}, {Stop: true}, {Restart: true},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(replicas, check.Equals, 3)
+				c.Assert(replicas, check.Equals, 1)
 				c.Assert(ls.IsStopped(), check.Equals, false)
 			},
 		},
@@ -596,8 +596,6 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(ls.IsStopped(), check.Equals, true)
-				c.Assert(ls.HasPastUnits(), check.Equals, true)
-				c.Assert(ls.PastUnits(), check.Equals, 0)
 			},
 		},
 		{

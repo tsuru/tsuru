@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -9,12 +10,17 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (s *S) TestServiceManagerDeployMulti(c *check.C) {
+	type restartStep struct {
+		proc    string
+		version int
+	}
 	type stopStep struct {
 		proc    string
 		version int
@@ -35,6 +41,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 		routable         bool
 	}
 	type stepDef struct {
+		*restartStep
 		*stopStep
 		*startStep
 		*unitStep
@@ -155,7 +162,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
 						s.hasSvc(c, "myapp0-p2")
 					},
 				},
@@ -210,6 +217,47 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				},
 			},
 		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{procs: []string{"p1"}},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.noSvc(c, "myapp2-p1-v1")
+					},
+				},
+				{
+					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+
+						s.hasSvc(c, "myapp2-p1-v2")
+						s.hasSvc(c, "myapp2-p1-v1")
+					},
+				},
+				{
+					stopStep: &stopStep{proc: "p1", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p1-v2")
+					},
+				},
+				{
+					restartStep: &restartStep{proc: "p1"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p1-v2")
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -252,7 +300,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					}
 				}
 				if step.unitStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -265,7 +314,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					waitDep()
 				}
 				if step.stopStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -278,7 +328,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					waitDep()
 				}
 				if step.startStep != nil {
-					version, err := servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
+					var version appTypes.AppVersion
+					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
 					c.Assert(err, check.IsNil)
 					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
 						App:              a,
@@ -289,6 +340,27 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					})
 					c.Assert(err, check.IsNil)
 					waitDep()
+				}
+				if step.restartStep != nil {
+					var versions []appTypes.AppVersion
+					if step.restartStep.version == 0 {
+						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.restartStep.proc, true)
+						c.Assert(err, check.IsNil)
+					} else {
+						var version appTypes.AppVersion
+						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
+						c.Assert(err, check.IsNil)
+						versions = append(versions, version)
+					}
+
+					for _, v := range versions {
+						err = servicecommon.ChangeAppState(context.TODO(), &serviceManager{
+							client: s.clusterClient,
+							writer: bytes.NewBuffer(nil),
+						}, a, step.restartStep.proc, servicecommon.ProcessState{Start: true, Restart: true}, v)
+						c.Assert(err, check.IsNil)
+						waitDep()
+					}
 				}
 				step.check()
 			}
