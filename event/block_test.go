@@ -76,16 +76,22 @@ func (s *S) TestListBlocks(c *check.C) {
 
 func (s *S) TestCheckIsBlocked(c *check.C) {
 	blocks := map[string]*Block{
-		"blockApp":             {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
-		"blockAllDeploys":      {KindName: "app.deploy", Reason: "maintenance"},
-		"blockAllNodes":        {Target: Target{Type: TargetTypeNode}},
-		"blockUser":            {OwnerName: "blocked-user"},
-		"blockMachineTemplate": {KindName: "machine.template"},
+		"blockApp":                       {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
+		"blockAllDeploys":                {KindName: "app.deploy", Reason: "maintenance"},
+		"blockAllNodes":                  {Target: Target{Type: TargetTypeNode}},
+		"blockUser":                      {OwnerName: "blocked-user"},
+		"blockMachineTemplate":           {KindName: "machine.template"},
+		"blockCreateAppInPool":           {KindName: "app.create", ExtraFields: map[string]string{"pool": "pool2"}},
+		"blockCreateAppInPoolAndCluster": {KindName: "app.create", ExtraFields: map[string]string{"pool": "pool1", "cluster": "c1"}},
 	}
 	for _, b := range blocks {
 		err := AddBlock(b)
 		c.Assert(err, check.IsNil)
 	}
+	bsonDataBlockedPoolCluster, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}, {"name": "cluster", "value": "c1"}})
+	bsonDataBlockedPool, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool2"}, {"name": "cluster", "value": "c2"}})
+	bsonDataAllowedPool, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}})
+	bsonDataUnhandledFields, _ := makeBSONRaw([]map[string]interface{}{{"foo": "bar"}})
 	tt := []struct {
 		event     *Event
 		blockedBy *Block
@@ -101,6 +107,10 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template"}}}, blocks["blockMachineTemplate"]},
 		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template.create"}}}, blocks["blockMachineTemplate"]},
 		{&Event{eventData: eventData{Kind: Kind{Name: "machine.create"}}}, nil},
+		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPoolCluster}}, blocks["blockCreateAppInPoolAndCluster"]},
+		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPool}}, blocks["blockCreateAppInPool"]},
+		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataAllowedPool}}, nil},
+		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataUnhandledFields}}, nil},
 	}
 	for i, t := range tt {
 		errBlock := checkIsBlocked(t.event)
