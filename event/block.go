@@ -39,14 +39,15 @@ func (e ErrEventBlocked) Error() string {
 }
 
 type Block struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	StartTime time.Time
-	EndTime   time.Time `bson:"endtime,omitempty"`
-	KindName  string
-	OwnerName string
-	Target    Target `bson:"target,omitempty"`
-	Reason    string
-	Active    bool
+	ID          bson.ObjectId `bson:"_id,omitempty"`
+	StartTime   time.Time
+	EndTime     time.Time `bson:"endtime,omitempty"`
+	KindName    string
+	OwnerName   string
+	Target      Target            `bson:"target,omitempty"`
+	ExtraFields map[string]string `bson:"extraFields,omitempty"`
+	Reason      string
+	Active      bool
 }
 
 func (b *Block) Blocks(e *Event) bool {
@@ -58,6 +59,23 @@ func (b *Block) Blocks(e *Event) bool {
 	}
 	if !(e.Target == b.Target || b.Target == Target{} || (b.Target.Type == e.Target.Type && b.Target.Value == "")) {
 		return false
+	}
+	if b.ExtraFields != nil {
+		var eventCustomData []map[string]interface{}
+		e.StartCustomData.Unmarshal(&eventCustomData)
+		for k, v := range b.ExtraFields {
+			matchedFields := false
+			for i := range eventCustomData {
+				if value, ok := eventCustomData[i]["value"].(string); ok && value == v {
+					if name, ok := eventCustomData[i]["name"].(string); ok && name == k {
+						matchedFields = true
+					}
+				}
+			}
+			if !matchedFields {
+				return false
+			}
+		}
 	}
 	return true
 }
