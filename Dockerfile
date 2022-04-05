@@ -2,7 +2,7 @@ ARG alpine_version=3.15
 ARG golang_version=1.17
 
 FROM --platform=${BUILDPLATFORM} golang:${golang_version}-alpine${alpine_version} AS builder
-COPY . /go/src/github.com/tsuru/tsuru
+COPY . .git /go/src/github.com/tsuru/tsuru
 WORKDIR /go/src/github.com/tsuru/tsuru
 RUN set -x && \
     apk add --update --no-cache bash git make && \
