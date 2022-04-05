@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -152,30 +153,30 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	var wantedPerms []*permission.PermissionScheme
-	if updateData.Description != "" {
+	if si.Description != updateData.Description {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateDescription)
 		si.Description = updateData.Description
 	}
-	if updateData.TeamOwner != "" {
+	if si.TeamOwner != updateData.TeamOwner {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTeamowner)
 		si.TeamOwner = updateData.TeamOwner
 	}
-	if updateData.Tags != nil {
-		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
-		si.Tags = updateData.Tags
-	}
-	if updateData.Plan != "" {
+	if si.PlanName != updateData.Plan {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdatePlan)
 		si.PlanName = updateData.Plan
 	}
-	if updateData.Parameters != nil {
+	if !reflect.DeepEqual(si.Tags, updateData.Tags) {
+		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateTags)
+		si.Tags = updateData.Tags
+	}
+	if !reflect.DeepEqual(si.Parameters, updateData.Parameters) {
 		wantedPerms = append(wantedPerms, permission.PermServiceInstanceUpdateParameters)
 		si.Parameters = updateData.Parameters
 	}
 	if len(wantedPerms) == 0 {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "Neither the description, team owner, tags, plan or plan parameters were set. You must define at least one.",
+			Message: "Neither description, team owner, tags, plan nor plan parameters were set. You must define at least one.",
 		}
 	}
 	for _, perm := range wantedPerms {

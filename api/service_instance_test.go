@@ -5,6 +5,7 @@
 package api
 
 import (
+	"bytes"
 	stdContext "context"
 	"encoding/json"
 	stdErrors "errors"
@@ -522,35 +523,19 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 }
 
 func makeRequestToUpdateServiceInstance(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	values := url.Values{}
-	for k, v := range params {
-		switch value := v.(type) {
-		case string:
-			values.Add(k, value)
-		case []string:
-			for _, str := range value {
-				values.Add(k, str)
-			}
-		}
-	}
-	b := strings.NewReader(values.Encode())
-	url := fmt.Sprintf("/services/%s/instances/%s", serviceName, instanceName)
-	request, err := http.NewRequest("PUT", url, b)
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(params)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	url := fmt.Sprintf("/services/%s/instances/%s", serviceName, instanceName)
+	request, err := http.NewRequest("PUT", url, &body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "bearer "+token)
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check.C) {
-	requestIDHeader := "RequestID"
-	config.Set("request-id-header", requestIDHeader)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
@@ -563,13 +548,16 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
+		"plan":        "",
+		"teamowner":   s.team.Name,
+		"tags":        []string{},
+		"parameters":  map[string]interface{}{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateDescription,
 		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
 	})
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
-	request.Header.Set(requestIDHeader, "test")
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
@@ -596,10 +584,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
@@ -611,7 +595,11 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 	c.Assert(err, check.IsNil)
 	t := authTypes.Team{Name: "changed"}
 	params := map[string]interface{}{
-		"teamowner": t.Name,
+		"description": "",
+		"plan":        "",
+		"teamowner":   t.Name,
+		"tags":        []string{},
+		"parameters":  map[string]interface{}{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTeamowner,
@@ -643,10 +631,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
@@ -658,7 +642,11 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"tag": []string{"tag b", "tag c"},
+		"description": "",
+		"plan":        "",
+		"teamowner":   s.team.Name,
+		"tag":         []string{"tag b", "tag c"},
+		"parameters":  map[string]interface{}{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
@@ -690,10 +678,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
@@ -705,7 +689,11 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"tag": []string{""},
+		"description": "",
+		"teamowner":   s.team.Name,
+		"plan":        "",
+		"tag":         []string{},
+		"parameters":  map[string]interface{}{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdateTags,
@@ -766,10 +754,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutPermissions(c *ch
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
-	}))
-	defer ts.Close()
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
@@ -781,7 +765,11 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"plan": "newplan",
+		"description": "",
+		"teamowner":   s.team.Name,
+		"plan":        "newplan",
+		"tags":        []string{},
+		"parameters":  map[string]interface{}{},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
@@ -790,6 +778,9 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.PlanName, check.Equals, "newplan")
 	c.Assert(eventtest.EventDesc{
 		Target: serviceInstanceTarget("mysql", "brainsql"),
 		Owner:  token.GetUserName(),
@@ -798,29 +789,39 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlan(c *check.C) {
 			{"name": "plan", "value": "newplan"},
 		},
 	}, eventtest.HasEvent)
-	instance, err := service.GetServiceInstance(stdContext.TODO(), "mysql", "brainsql")
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.PlanName, check.Equals, "newplan")
 }
 
-func (s *ServiceInstanceSuite) TestUpdateServiceInstanceEmptyFields(c *check.C) {
+func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithoutChanges(c *check.C) {
 	si := service.ServiceInstance{
 		Name:        "brainsql",
 		ServiceName: "mysql",
+		Description: "Awesome description about brainsql",
 		Apps:        []string{"other"},
 		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		PlanName:    "large",
+		Tags:        []string{"A", "B"},
+		Parameters: map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
 	}
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"description": "",
-		"teamowner":   "",
-		"parameters":  "",
+		"description": "Awesome description about brainsql",
+		"teamowner":   s.team.Name,
+		"plan":        "large",
+		"tags":        []string{"A", "B"},
+		"parameters": map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
 	}
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Neither the description, team owner, tags, plan or plan parameters were set. You must define at least one.\n")
+	c.Assert(recorder.Body.String(), check.Equals, "Neither description, team owner, tags, plan nor plan parameters were set. You must define at least one.\n")
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.C) {
@@ -838,8 +839,14 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 	err := s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
-		"parameters.storage":  "ssd",
-		"parameters.replicas": "5",
+		"description": "",
+		"plan":        "large",
+		"teamowner":   s.team.Name,
+		"tags":        []string{},
+		"parameters": map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
 	}
 	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", s.token.GetValue(), c)
 	s.testServer.ServeHTTP(recorder, request)
@@ -878,6 +885,13 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"description": "changed",
+		"plan":        "large",
+		"teamowner":   s.team.Name,
+		"tags":        []string{},
+		"parameters": map[string]interface{}{
+			"storage":  "ssd",
+			"replicas": "5",
+		},
 	}
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
 		Scheme:  permission.PermServiceInstanceUpdatePlan,
