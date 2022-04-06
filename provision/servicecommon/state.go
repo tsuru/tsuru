@@ -31,6 +31,9 @@ func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App
 	}
 	spec := ProcessSpec{}
 	for _, procName := range processes {
+		if replicas, ok := version.VersionInfo().PastUnits[procName]; ok && (state.Start && !state.Restart) {
+			state.Increment = replicas
+		}
 		spec[procName] = state
 	}
 	err = RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)
