@@ -81,8 +81,8 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		"blockAllNodes":                  {Target: Target{Type: TargetTypeNode}},
 		"blockUser":                      {OwnerName: "blocked-user"},
 		"blockMachineTemplate":           {KindName: "machine.template"},
-		"blockCreateAppInPool":           {KindName: "app.create", ExtraFields: map[string]string{"pool": "pool2"}},
-		"blockCreateAppInPoolAndCluster": {KindName: "app.create", ExtraFields: map[string]string{"pool": "pool1", "cluster": "c1"}},
+		"blockCreateAppInPool":           {KindName: "app.create", Conditions: map[string]string{"pool": "pool2"}},
+		"blockCreateAppInPoolAndCluster": {KindName: "app.create", Conditions: map[string]string{"pool": "pool1", "cluster": "c1"}},
 	}
 	for _, b := range blocks {
 		err := AddBlock(b)
