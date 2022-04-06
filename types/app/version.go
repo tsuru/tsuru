@@ -50,6 +50,7 @@ type AppVersion interface {
 	AddData(AddVersionDataArgs) error
 	String() string
 	ToggleEnabled(enabled bool, reason string) error
+	UpdatePastUnits(process string, replicas int) error
 }
 
 type AddVersionDataArgs struct {
@@ -84,6 +85,7 @@ type AppVersionInfo struct {
 	Disabled         bool                   `json:"disabled"`
 	DeploySuccessful bool                   `json:"deploySuccessful"`
 	MarkedToRemoval  bool                   `json:"markedToRemoval"`
+	PastUnits        map[string]int         `json:"pastUnits"`
 }
 
 type NewVersionArgs struct {
