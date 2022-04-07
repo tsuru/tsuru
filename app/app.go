@@ -1392,6 +1392,82 @@ func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Wr
 	return nil
 }
 
+type vpPair struct {
+	version int
+	process string
+}
+
+func cleanupOtherProcesses(vpMap map[vpPair]int, process string) {
+	for pair := range vpMap {
+		if strings.Compare(pair.process, process) != 0 {
+			delete(vpMap, pair)
+		}
+	}
+}
+
+func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []provision.Unit, process string) map[vpPair]int {
+	pastUnitsMap := map[vpPair]int{}
+	if version == nil {
+		for _, unit := range units {
+			vp := vpPair{
+				version: unit.Version,
+				process: unit.ProcessName,
+			}
+			if _, ok := pastUnitsMap[vp]; !ok {
+				pastUnitsMap[vp] = 1
+			}
+			pastUnitsMap[vp] += 1
+		}
+	} else {
+		for _, unit := range units {
+			if unit.Version != version.Version() {
+				continue
+			}
+			vp := vpPair{
+				version: unit.Version,
+				process: unit.ProcessName,
+			}
+			if _, ok := pastUnitsMap[vp]; !ok {
+				pastUnitsMap[vp] = 1
+			} else {
+				pastUnitsMap[vp] += 1
+			}
+		}
+	}
+
+	if process != "" {
+		cleanupOtherProcesses(pastUnitsMap, process)
+	}
+
+	return pastUnitsMap
+}
+
+func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion, process string) error {
+	units, err := app.provisioner.Units(ctx, app)
+	if err != nil {
+		return err
+	}
+
+	vpMap := generateVersionProcessPastUnitsMap(version, units, process)
+
+	// 1- get each version by version number
+	// 2- add field {Process: "xpto", Replicas: 12345}
+	// 3- call UpdateVersionPastUnits -> updates it in storage
+	for vp, replicas := range vpMap {
+		versionStr := strconv.Itoa(vp.version)
+		v, err := app.getVersion(ctx, versionStr)
+		if err != nil {
+			return err
+		}
+		err = v.UpdatePastUnits(vp.process, replicas)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr string) error {
 	w = app.withLogWriter(w)
 	msg := fmt.Sprintf("\n ---> Stopping the process %q", process)
@@ -1407,6 +1483,12 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	if err != nil {
 		return err
 	}
+
+	err = app.updatePastUnits(ctx, version, process)
+	if err != nil {
+		return err
+	}
+
 	err = prov.Stop(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
