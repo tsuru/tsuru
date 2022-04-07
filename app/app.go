@@ -1392,6 +1392,7 @@ func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Wr
 	return nil
 }
 
+// vpPair represents each version-process pair
 type vpPair struct {
 	version int
 	process string
@@ -1450,9 +1451,6 @@ func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion
 
 	vpMap := generateVersionProcessPastUnitsMap(version, units, process)
 
-	// 1- get each version by version number
-	// 2- add field {Process: "xpto", Replicas: 12345}
-	// 3- call UpdateVersionPastUnits -> updates it in storage
 	for vp, replicas := range vpMap {
 		versionStr := strconv.Itoa(vp.version)
 		v, err := app.getVersion(ctx, versionStr)

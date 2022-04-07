@@ -600,7 +600,7 @@ func (s *S) TestAddUnitsToNode(c *check.C) {
 		Address: "http://n1:123",
 	})
 	c.Assert(err, check.IsNil)
-	_, err = p.AddUnitsToNode(app, 2, "web", nil, "nother")
+	_, err = p.AddUnitsToNode(app, 2, "web", nil, "nother", nil)
 	c.Assert(err, check.IsNil)
 	allUnits := p.GetUnits(app)
 	c.Assert(allUnits, check.HasLen, 2)
@@ -1096,7 +1096,7 @@ func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
 	p.Provision(context.TODO(), app)
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
-	p.AddUnitsToNode(app, 4, "web", nil, "mynode1")
+	p.AddUnitsToNode(app, 4, "web", nil, "mynode1", nil)
 	w := bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "global"},
@@ -1135,8 +1135,8 @@ func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode3", Pool: "mypool2"})
-	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1")
-	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3")
+	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1", nil)
+	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3", nil)
 	w := bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "global"},
@@ -1174,8 +1174,8 @@ func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
 	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
 		"pool": "mypool",
 	}})
-	p.AddUnitsToNode(app, 2, "web", nil, "mynode1")
-	p.AddUnitsToNode(app, 2, "web", nil, "mynode2")
+	p.AddUnitsToNode(app, 2, "web", nil, "mynode1", nil)
+	p.AddUnitsToNode(app, 2, "web", nil, "mynode2", nil)
 	w := bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "global"},

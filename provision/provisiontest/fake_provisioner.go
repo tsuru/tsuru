@@ -1008,11 +1008,11 @@ func (p *FakeProvisioner) DestroyVersion(ctx context.Context, app provision.App,
 }
 
 func (p *FakeProvisioner) AddUnits(ctx context.Context, app provision.App, n uint, process string, version appTypes.AppVersion, w io.Writer) error {
-	_, err := p.AddUnitsToNode(app, n, process, w, "")
+	_, err := p.AddUnitsToNode(app, n, process, w, "", version)
 	return err
 }
 
-func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string) ([]provision.Unit, error) {
+func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string, version appTypes.AppVersion) ([]provision.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
 		return nil, err
 	}
@@ -1029,6 +1029,11 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 	platform := app.GetPlatform()
 	length := uint(len(pApp.units))
 	var addresses []*url.URL
+
+	var versionNum int
+	if version != nil {
+		versionNum = version.Version()
+	}
 	for i := uint(0); i < n; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		var hostAddr string
@@ -1053,6 +1058,7 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 				Scheme: "http",
 				Host:   fmt.Sprintf("%s:%d", hostAddr, val),
 			},
+			Version: versionNum,
 		}
 		addresses = append(addresses, unit.Address)
 		pApp.units = append(pApp.units, unit)

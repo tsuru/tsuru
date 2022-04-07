@@ -1045,7 +1045,7 @@ func (s *S) TestNodeRebalanceEmptyBodyHandler(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
+	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/node/rebalance", nil)
@@ -1086,7 +1086,7 @@ func (s *S) TestNodeRebalanceFilters(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1")
+	_, err = s.provisioner.AddUnitsToNode(&a, 4, "web", nil, "n1", nil)
 	c.Assert(err, check.IsNil)
 	opts := provision.RebalanceNodesOptions{
 		MetadataFilter: map[string]string{"pool": "pool1"},
