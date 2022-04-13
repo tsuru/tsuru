@@ -157,7 +157,8 @@ func (v *appVersionImpl) UpdatePastUnits(process string, replicas int) error {
 	if err != nil {
 		return err
 	}
-	v.versionInfo.PastUnits[process] = replicas
+
+	v.versionInfo.PastUnits = map[string]int{process: replicas}
 
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
 }

@@ -116,8 +116,8 @@ func (s *AppVersionSuite) TestAppVersionStorage_AppVersions(c *check.C) {
 	c.Assert(versions.AppName, check.Equals, "myapp")
 	c.Assert(versions.Count, check.Equals, 2)
 	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 }
 
@@ -165,14 +165,14 @@ func (s *AppVersionSuite) TestAppVersionStorage_AllAppVersions(c *check.C) {
 	c.Assert(allVersions[0].Count, check.Equals, 1)
 	c.Assert(allVersions[0].UpdatedAt.Unix() <= time.Now().UTC().Unix(), check.Equals, true)
 	c.Assert(allVersions[0].Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 
 	c.Assert(allVersions[1].AppName, check.Equals, "myapp2")
 	c.Assert(allVersions[1].Count, check.Equals, 1)
 	c.Assert(allVersions[1].UpdatedAt.Unix() <= time.Now().UTC().Unix(), check.Equals, true)
 	c.Assert(allVersions[1].Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 }
 
@@ -206,7 +206,7 @@ func (s *AppVersionSuite) TestAppVersionStorage_DeleteVersionIDs(c *check.C) {
 	c.Assert(versions.LastSuccessfulVersion, check.DeepEquals, 0)
 	c.Assert(versions.UpdatedAt.IsZero(), check.Equals, false)
 	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 }
 

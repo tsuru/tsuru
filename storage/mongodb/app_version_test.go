@@ -129,6 +129,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			8: {
 				Version:          8,
@@ -145,6 +146,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			9: {
 				Version:          9,
@@ -161,6 +163,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			10: {
 				Version:          10,
@@ -177,6 +180,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			11: {
 				Version:          11,
@@ -193,6 +197,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			12: {
 				Version:          12,
@@ -204,6 +209,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp2.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			13: {
 				Version:          13,
@@ -215,6 +221,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp2.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			15: {
 				Version:          15,
@@ -226,6 +233,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp2.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			16: {
 				Version:          16,
@@ -237,6 +245,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp2.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			17: {
 				Version:          17,
@@ -248,6 +257,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				Processes: map[string][]string{
 					"web": {"python myapp2.py"},
 				},
+				PastUnits: map[string]int{},
 			},
 			19: {
 				Version:          19,
@@ -258,6 +268,7 @@ func (s *appVersionSuite) TestLegacyImport(c *check.C) {
 				ExposedPorts:     []string{},
 				CustomBuildTag:   "mycustomtag",
 				DeploySuccessful: false,
+				PastUnits:        map[string]int{},
 			},
 		},
 	}
@@ -335,6 +346,7 @@ func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
 				},
 				CustomData:   map[string]interface{}{},
 				ExposedPorts: []string{},
+				PastUnits:    map[string]int{},
 			},
 			2: {
 				Version:          2,
@@ -346,6 +358,7 @@ func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
 				},
 				CustomData:   map[string]interface{}{},
 				ExposedPorts: []string{},
+				PastUnits:    map[string]int{},
 			},
 			3: {
 				Version:        3,
@@ -354,6 +367,7 @@ func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
 				CustomData:     map[string]interface{}{},
 				Processes:      map[string][]string{},
 				ExposedPorts:   []string{},
+				PastUnits:      map[string]int{},
 			},
 			4: {
 				Version:        4,
@@ -362,6 +376,7 @@ func (s *appVersionSuite) TestLegacyImportWithSuccessfulLastCount(c *check.C) {
 				CustomData:     map[string]interface{}{},
 				Processes:      map[string][]string{},
 				ExposedPorts:   []string{},
+				PastUnits:      map[string]int{},
 			},
 		},
 	}

@@ -2561,9 +2561,12 @@ func (s *S) TestStopPastUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
-	pastUnits := version.VersionInfo().PastUnits
+	var updatedVersion appTypes.AppVersion
+	updatedVersion, err = a.getVersion(context.TODO(), strconv.Itoa(version.Version()))
+	c.Assert(err, check.IsNil)
+	pastUnits := updatedVersion.VersionInfo().PastUnits
 	c.Assert(pastUnits, check.HasLen, 1)
-	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 1})
+	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 2})
 }
 
 func (s *S) TestSleep(c *check.C) {
