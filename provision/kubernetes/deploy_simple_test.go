@@ -258,6 +258,62 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				},
 			},
 		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2"}},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp3-p2", 1, 1)
+						s.hasSvc(c, "myapp3-p1")
+						s.hasSvc(c, "myapp3-p2")
+						s.noSvc(c, "myapp3-p1-v1")
+						s.noSvc(c, "myapp3-p2-v1")
+					},
+				},
+				{
+					unitStep: &unitStep{proc: "p1", version: 1, units: 2},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p1", 1, 3)
+					},
+				},
+				{
+					unitStep: &unitStep{proc: "p2", version: 1, units: 3},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
+					},
+				},
+				{
+					stopStep: &stopStep{proc: "p1", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
+						s.noSvc(c, "myapp3-p1-v1")
+					},
+				},
+				{
+					stopStep: &stopStep{proc: "p2", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p2", 1, 0)
+						s.hasDepWithVersion(c, "myapp3-p1", 1, 0)
+						s.noSvc(c, "myapp3-p2-v1")
+					},
+				},
+				{
+					startStep: &startStep{proc: "p1", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p1", 1, 3)
+						s.hasSvc(c, "myapp3-p1-v1")
+					},
+				},
+				{
+					startStep: &startStep{proc: "p2", version: 1},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
+						s.hasSvc(c, "myapp3-p2-v1")
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -331,13 +387,14 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
 					c.Assert(err, check.IsNil)
-					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
-						App:              a,
-						Version:          version,
-						PreserveVersions: true,
-					}, servicecommon.ProcessSpec{
-						step.startStep.proc: servicecommon.ProcessState{Start: true},
-					})
+					// err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
+					// 	App:              a,
+					// 	Version:          version,
+					// 	PreserveVersions: true,
+					// }, servicecommon.ProcessSpec{
+					// 	step.startStep.proc: servicecommon.ProcessState{Start: true},
+					// })
+					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.startStep.proc, servicecommon.ProcessState{Start: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
 				}
