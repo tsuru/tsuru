@@ -359,13 +359,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
 					c.Assert(err, check.IsNil)
-					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
-						App:              a,
-						Version:          version,
-						PreserveVersions: true,
-					}, servicecommon.ProcessSpec{
-						step.unitStep.proc: servicecommon.ProcessState{Increment: step.unitStep.units, Start: true},
-					})
+					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.unitStep.proc, servicecommon.ProcessState{Increment: step.units, Start: true}, version)
+
 					c.Assert(err, check.IsNil)
 					waitDep()
 				}
@@ -373,13 +368,8 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
-					err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
-						App:              a,
-						Version:          version,
-						PreserveVersions: true,
-					}, servicecommon.ProcessSpec{
-						step.stopStep.proc: servicecommon.ProcessState{Stop: true},
-					})
+					s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
+					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.stopStep.proc, servicecommon.ProcessState{Stop: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
 				}
@@ -387,13 +377,6 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
 					c.Assert(err, check.IsNil)
-					// err = servicecommon.RunServicePipeline(context.TODO(), &m, version.Version(), provision.DeployArgs{
-					// 	App:              a,
-					// 	Version:          version,
-					// 	PreserveVersions: true,
-					// }, servicecommon.ProcessSpec{
-					// 	step.startStep.proc: servicecommon.ProcessState{Start: true},
-					// })
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.startStep.proc, servicecommon.ProcessState{Start: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
@@ -445,4 +428,19 @@ func (s *S) noSvc(c *check.C, name string) {
 func (s *S) noDep(c *check.C, name string) {
 	_, err := s.client.Clientset.AppsV1().Deployments("default").Get(context.TODO(), name, metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p string) {
+	nameLabel := "tsuru.io/app-name=" + appName
+	versionLabel := "tsuru.io/app-version=" + strconv.Itoa(v.Version())
+	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: versionLabel + "," + nameLabel,
+	})
+	c.Assert(err, check.IsNil)
+	for _, dep := range deps.Items {
+		if dep.Spec.Replicas != nil {
+			err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
+			c.Assert(err, check.IsNil)
+		}
+	}
 }
