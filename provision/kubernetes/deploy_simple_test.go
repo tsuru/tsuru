@@ -162,7 +162,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
 						s.hasSvc(c, "myapp0-p2")
 					},
 				},
@@ -295,21 +295,18 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					check: func() {
 						s.hasDepWithVersion(c, "myapp3-p2", 1, 0)
 						s.hasDepWithVersion(c, "myapp3-p1", 1, 0)
-						s.noSvc(c, "myapp3-p2-v1")
 					},
 				},
 				{
 					startStep: &startStep{proc: "p1", version: 1},
 					check: func() {
 						s.hasDepWithVersion(c, "myapp3-p1", 1, 3)
-						s.hasSvc(c, "myapp3-p1-v1")
 					},
 				},
 				{
 					startStep: &startStep{proc: "p2", version: 1},
 					check: func() {
 						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
-						s.hasSvc(c, "myapp3-p2-v1")
 					},
 				},
 			},
@@ -350,6 +347,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					}, procSpec)
 					c.Assert(err, check.IsNil)
 					waitDep()
+					a.Deploys++
 					if step.deployStep.routable {
 						err = a.SetRoutable(context.TODO(), version, true)
 						c.Assert(err, check.IsNil)
@@ -359,8 +357,7 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.unitStep.version))
 					c.Assert(err, check.IsNil)
-					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.unitStep.proc, servicecommon.ProcessState{Increment: step.units, Start: true}, version)
-
+					err = servicecommon.ChangeUnits(context.TODO(), &m, a, step.unitStep.units, step.unitStep.proc, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
 				}
@@ -431,16 +428,17 @@ func (s *S) noDep(c *check.C, name string) {
 }
 
 func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p string) {
-	nameLabel := "tsuru.io/app-name=" + appName
-	versionLabel := "tsuru.io/app-version=" + strconv.Itoa(v.Version())
+	nameLabel := "app=" + appName + "-" + p
 	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: versionLabel + "," + nameLabel,
+		LabelSelector: nameLabel,
 	})
 	c.Assert(err, check.IsNil)
 	for _, dep := range deps.Items {
-		if dep.Spec.Replicas != nil {
-			err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
-			c.Assert(err, check.IsNil)
+		if version, ok := dep.Spec.Template.Labels["tsuru.io/app-version"]; ok {
+			if dep.Spec.Replicas != nil && strconv.Itoa(v.Version()) == version {
+				err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
+				c.Assert(err, check.IsNil)
+			}
 		}
 	}
 }
