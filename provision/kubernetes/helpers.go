@@ -1092,10 +1092,10 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	if err != nil {
 		return err
 	}
-	nodeSelector := provision.NodeLabels(provision.NodeLabelsOpts{
-		Pool:   args.app.GetPool(),
-		Prefix: tsuruLabelPrefix,
-	}).ToNodeByPoolSelector()
+	nodeSelector, affinity, err := defineSelectorAndAffinity(ctx, args.app, args.client)
+	if err != nil {
+		return err
+	}
 	pullSecrets, err := getImagePullSecrets(ctx, args.client, args.image)
 	if err != nil {
 		return err
@@ -1119,6 +1119,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 			Labels:    args.labels.ToLabels(),
 		},
 		Spec: apiv1.PodSpec{
+			Affinity:           affinity,
 			EnableServiceLinks: &enableServiceLinks,
 			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: serviceAccountNameForApp(args.app),

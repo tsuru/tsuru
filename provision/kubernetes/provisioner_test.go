@@ -2345,6 +2345,41 @@ func (s *S) TestExecuteCommandNoUnitsPodFailed(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `(?s)invalid pod phase "Failed".*`)
 }
 
+func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
+	s.clusterClient.CustomData["disable-default-node-selector"] = "true"
+	defer delete(s.clusterClient.CustomData, "disable-default-node-selector")
+	s.mock.IgnorePool = true
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	var checked bool
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Labels["tsuru.io/app-name"], check.Equals, "myapp")
+		c.Assert(pod.Labels["tsuru.io/is-isolated-run"], check.Equals, "true")
+		c.Assert(pod.Spec.NodeSelector, check.IsNil)
+		c.Assert(pod.Spec.Affinity, check.IsNil)
+		checked = true
+		return false, nil, nil
+	})
+	stdout, stderr := safe.NewBuffer(nil), safe.NewBuffer(nil)
+	err = s.p.ExecuteCommand(context.TODO(), provision.ExecOptions{
+		App:    a,
+		Stdout: stdout,
+		Stderr: stderr,
+		Cmds:   []string{"sh", "-l"},
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(checked, check.Equals, true)
+}
+
 func (s *S) TestStartupMessage(c *check.C) {
 	s.mock.MockfakeNodes(c)
 	msg, err := s.p.StartupMessage()
