@@ -70,5 +70,3 @@ func (s *S) TestNewPDB(c *check.C) {
 		}
 	}
 }
-
-func int32Ptr(n int32) *int32 { return &n }

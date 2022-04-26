@@ -367,7 +367,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 			},
 		},
 		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable: intOrStringPtr(intstr.FromInt(4)),
+			MaxUnavailable: &intstr.IntOrString{Type: 1, StrVal: "10%"},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"tsuru.io/app-name":    "myapp",
