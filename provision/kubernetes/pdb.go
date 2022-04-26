@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"math"
 	"reflect"
 
 	"github.com/tsuru/tsuru/provision"
@@ -87,33 +86,14 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 		return nil, nil
 	}
 	maxUnavailableByProcess := intstr.FromString("10%")
-	autoscaleSpecs, err := getAutoScale(ctx, client, app, process)
-	if err != nil {
-		return nil, err
-	}
-	var minAvailableByProcess *intstr.IntOrString
-	if len(autoscaleSpecs) > 0 {
-		minAvailableByProcess = intOrStringPtr(intstr.FromInt(int(math.Floor(float64(autoscaleSpecs[0].MinUnits) * 0.9))))
-	}
+
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {
 		return nil, err
 	}
 	routableLabels := pdbLabels(app, process)
 	routableLabels.SetIsRoutable()
-	if minAvailableByProcess != nil {
-		return &policyv1beta1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      pdbNameForApp(app, process),
-				Namespace: ns,
-				Labels:    pdbLabels(app, process).ToLabels(),
-			},
-			Spec: policyv1beta1.PodDisruptionBudgetSpec{
-				MinAvailable: minAvailableByProcess,
-				Selector:     &metav1.LabelSelector{MatchLabels: routableLabels.ToRoutableSelector()},
-			},
-		}, nil
-	}
+
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(app, process),
