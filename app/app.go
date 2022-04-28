@@ -1400,7 +1400,7 @@ type vpPair struct {
 
 func cleanupOtherProcesses(vpMap map[vpPair]int, process string) {
 	for pair := range vpMap {
-		if strings.Compare(pair.process, process) != 0 {
+		if pair.process != process {
 			delete(vpMap, pair)
 		}
 	}
