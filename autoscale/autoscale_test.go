@@ -118,7 +118,7 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -175,7 +175,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 func (s *S) TestAutoScaleConfigRunOnceNoRebalance(c *check.C) {
 	config.Set("docker:auto-scale:prevent-rebalance", true)
 	defer config.Unset("docker:auto-scale:prevent-rebalance")
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -248,7 +248,7 @@ func (s *S) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -281,7 +281,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 5, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 5, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -314,7 +314,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesRoundUp(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 3, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 3, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -345,7 +345,7 @@ func (s *S) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	s.p.PrepareFailure("AddNode:http://n3:3", errors.New("error adding node"))
-	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -389,7 +389,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *
 	})
 	c.Assert(err, check.IsNil)
 	s.p.PrepareFailure("AddNode:http://n3:3", errors.New("my error adding node"))
-	_, err = s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 6, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -426,7 +426,7 @@ func (s *S) TestAutoScaleConfigRunOnceMultipleNodesAddNodesErrorRunRebalance(c *
 
 func (s *S) TestAutoScaleConfigRunOnceSingleNodeAddNodesErrorNoRebalance(c *check.C) {
 	s.p.PrepareFailure("AddNode:http://n2:2", errors.New("my error adding node"))
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -467,7 +467,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()
@@ -508,7 +508,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -553,7 +553,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
@@ -595,7 +595,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -641,7 +641,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	_, err := s.p.AddUnitsToNode(s.appInstance, 9, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 9, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -707,7 +707,7 @@ func (s *S) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *ch
 func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -743,7 +743,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil
 	}
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -769,9 +769,9 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -813,11 +813,11 @@ func (s *S) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -852,9 +852,9 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -898,11 +898,11 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNodes(c *check.C)
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n3:3", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -946,9 +946,9 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 1, "web", nil, "n2:2", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	a.runOnce()
@@ -961,7 +961,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 }
 
 func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	_, err = event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
@@ -985,7 +985,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err := s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
 	_, err = event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeApp, Value: s.appInstance.GetName()},
@@ -1047,9 +1047,9 @@ func (s *S) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	}
 	err = s.conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1")
+	_, err = s.p.AddUnitsToNode(s.appInstance, 4, "web", nil, "n1:1", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.AddUnitsToNode(appInstance2, 6, "web", nil, "nx:9")
+	_, err = s.p.AddUnitsToNode(appInstance2, 6, "web", nil, "nx:9", nil)
 	c.Assert(err, check.IsNil)
 	a := newConfig()
 	err = a.runOnce()

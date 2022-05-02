@@ -116,8 +116,8 @@ func (s *S) TestAppVersionService_AppVersions(c *check.C) {
 	c.Assert(versions.AppName, check.DeepEquals, "myapp")
 	c.Assert(versions.Count, check.DeepEquals, 2)
 	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
-		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		1: {Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 }
 
@@ -169,13 +169,13 @@ func (s *S) TestAppVersionService_AllAppVersions(c *check.C) {
 	c.Assert(allVersions[0].AppName, check.Equals, "myapp1")
 	c.Assert(allVersions[0].Count, check.Equals, 1)
 	c.Assert(allVersions[0].Versions[1], check.DeepEquals, appTypes.AppVersionInfo{
-		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{},
+		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{},
 	})
 
 	c.Assert(allVersions[1].AppName, check.Equals, "myapp2")
 	c.Assert(allVersions[1].Count, check.Equals, 1)
 	c.Assert(allVersions[1].Versions[1], check.DeepEquals, appTypes.AppVersionInfo{
-		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{},
+		Version: 1, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{},
 	})
 }
 
@@ -206,7 +206,7 @@ func (s *S) TestAppVersionService_DeleteVersionIDs(c *check.C) {
 	c.Assert(versions.Count, check.Equals, 2)
 	c.Assert(versions.LastSuccessfulVersion, check.Equals, 0)
 	c.Assert(versions.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{
-		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}},
+		2: {Version: 2, CustomData: map[string]interface{}{}, Processes: map[string][]string{}, ExposedPorts: []string{}, PastUnits: map[string]int{}},
 	})
 }
 

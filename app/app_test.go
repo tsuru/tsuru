@@ -1123,7 +1123,7 @@ func (s *S) TestUpdateNodeStatus(c *check.C) {
 		Address: "addr1",
 	})
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
 	c.Assert(err, check.IsNil)
 	unitStates := []provision.UnitStatusData{
 		{ID: units[0].ID, Status: provision.Status("started")},
@@ -1229,7 +1229,7 @@ func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
 	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
 	c.Assert(err, check.IsNil)
 	unitStates := []provision.UnitStatusData{
 		{ID: units[0].ID, Status: provision.Status("started")},
@@ -2537,15 +2537,36 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	newSuccessfulAppVersion(c, &a)
+	err = a.AddUnits(2, "web", "", nil)
+	c.Assert(err, check.IsNil)
 	err = a.Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
 	for _, u := range units {
 		c.Assert(u.Status, check.Equals, provision.StatusStopped)
 	}
+}
+
+func (s *S) TestStopPastUnits(c *check.C) {
+	a := App{Name: "app", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	version := newSuccessfulAppVersion(c, &a)
+	err = a.AddUnits(2, "web", strconv.Itoa(version.Version()), nil)
+	c.Assert(err, check.IsNil)
+	err = a.Stop(context.TODO(), &buf, "", "")
+	c.Assert(err, check.IsNil)
+	var updatedVersion appTypes.AppVersion
+	updatedVersion, err = a.getVersion(context.TODO(), strconv.Itoa(version.Version()))
+	c.Assert(err, check.IsNil)
+	pastUnits := updatedVersion.VersionInfo().PastUnits
+	c.Assert(pastUnits, check.HasLen, 1)
+	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 2})
 }
 
 func (s *S) TestSleep(c *check.C) {
@@ -2732,7 +2753,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	}
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	_, err = s.provisioner.AddUnitsToNode(&app, 1, "web", nil, "addr1")
+	_, err = s.provisioner.AddUnitsToNode(&app, 1, "web", nil, "addr1", nil)
 	c.Assert(err, check.IsNil)
 
 	units, err := app.Units()

@@ -12,6 +12,12 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
+func patchWithPastUnits(process string, pastUnitsMap map[string]int, state *ProcessState) {
+	if replicas, ok := pastUnitsMap[process]; ok && (state.Start && !state.Restart) {
+		state.Increment = replicas
+	}
+}
+
 func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App, process string, state ProcessState, version appTypes.AppVersion) error {
 	var (
 		processes []string
@@ -31,6 +37,7 @@ func ChangeAppState(ctx context.Context, manager ServiceManager, a provision.App
 	}
 	spec := ProcessSpec{}
 	for _, procName := range processes {
+		patchWithPastUnits(procName, version.VersionInfo().PastUnits, &state)
 		spec[procName] = state
 	}
 	err = RunServicePipeline(ctx, manager, version.Version(), provision.DeployArgs{App: a, Version: version, PreserveVersions: true}, spec)

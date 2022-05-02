@@ -152,6 +152,21 @@ func (v *appVersionImpl) AddData(args appTypes.AddVersionDataArgs) error {
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
 }
 
+func (v *appVersionImpl) UpdatePastUnits(process string, replicas int) error {
+	err := v.refresh()
+	if err != nil {
+		return err
+	}
+
+	if v.versionInfo.PastUnits == nil {
+		v.versionInfo.PastUnits = map[string]int{process: replicas}
+	} else {
+		v.versionInfo.PastUnits[process] = replicas
+	}
+
+	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)
+}
+
 func (v *appVersionImpl) ToggleEnabled(enabled bool, reason string) error {
 	err := v.refresh()
 	if err != nil {

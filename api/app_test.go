@@ -2616,7 +2616,7 @@ func (s *S) TestSetNodeStatus(c *check.C) {
 		Address: "addr1",
 	})
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
 	c.Assert(err, check.IsNil)
 	status := []string{"started", "error", "stopped"}
 	unitsStatus := []provision.UnitStatusData{
@@ -2666,7 +2666,7 @@ func (s *S) TestSetNodeStatusNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 3, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1")
+	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
 	c.Assert(err, check.IsNil)
 	unitsStatus := []provision.UnitStatusData{
 		{ID: units[0].ID, Status: "started"},
