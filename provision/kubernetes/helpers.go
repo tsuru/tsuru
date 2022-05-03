@@ -1417,22 +1417,30 @@ func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool
 }
 
 func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
-	removeElementReturnOrdered := func(slice []deploymentInfo, index int) []deploymentInfo {
-		return append(slice[:index], slice[index+1:]...)
-	}
+	filterDeploymentInfo := func(deps []deploymentInfo) []deploymentInfo {
+		newDeps := []deploymentInfo{}
 
-	for versionNum, deps := range versionedGroup {
-		for processIndex, depData := range deps {
+		for _, depData := range deps {
 			if depData.replicas == 0 {
 				if state, ok := depData.dep.Labels["tsuru.io/is-stopped"]; ok {
 					if stopped, _ := strconv.ParseBool(state); stopped {
-						versionedGroup[versionNum] = removeElementReturnOrdered(versionedGroup[versionNum], processIndex)
-						if len(versionedGroup[versionNum]) == 0 {
-							delete(versionedGroup, versionNum)
-						}
+						continue
 					}
 				}
 			}
+			newDeps = append(newDeps, depData)
+		}
+
+		return newDeps
+	}
+
+	for versionNum, deps := range versionedGroup {
+		newDeps := filterDeploymentInfo(deps)
+
+		if len(newDeps) > 0 {
+			versionedGroup[versionNum] = newDeps
+		} else {
+			delete(versionedGroup, versionNum)
 		}
 	}
 }
