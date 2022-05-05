@@ -14,8 +14,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 )
 
-const blockListLimit = 25
-
 type ErrActiveEventBlockNotFound struct {
 	id string
 }
@@ -137,7 +135,8 @@ func listBlocks(query bson.M) ([]Block, error) {
 	}
 	defer conn.Close()
 	var blocks []Block
-	err = conn.EventBlocks().Find(query).Sort("-starttime").Limit(blockListLimit).All(&blocks)
+
+	err = conn.EventBlocks().Find(query).Sort("-starttime").All(&blocks)
 	if err != nil {
 		return nil, err
 	}
@@ -148,10 +147,12 @@ func checkIsBlocked(evt *Event) error {
 	if evt.Target.Type == TargetTypeEventBlock {
 		return nil
 	}
+
 	blocks, err := listBlocks(bson.M{"active": true})
 	if err != nil {
 		return err
 	}
+
 	for _, b := range blocks {
 		if b.Blocks(evt) {
 			return ErrEventBlocked{event: evt, block: &b}
