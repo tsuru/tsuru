@@ -12,11 +12,9 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (s *S) TestServiceManagerDeployMulti(c *check.C) {
+func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 	type restartStep struct {
 		proc    string
 		version int
@@ -168,149 +166,6 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				},
 			},
 		},
-		{
-			steps: []stepDef{
-				{
-					deployStep: &deployStep{procs: []string{"p1", "p2"}},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
-						s.hasSvc(c, "myapp1-p1")
-
-						s.noSvc(c, "myapp1-p1-v1")
-					},
-				},
-				{
-					deployStep: &deployStep{procs: []string{"p1", "p2"}, newVersion: true, routable: true},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
-						s.hasDepWithVersion(c, "myapp1-p1-v2", 2, 1)
-						s.hasDepWithVersion(c, "myapp1-p2-v2", 2, 1)
-						s.hasSvc(c, "myapp1-p1")
-						s.hasSvc(c, "myapp1-p1-v2")
-						s.hasSvc(c, "myapp1-p2-v2")
-					},
-				},
-				{
-					unitStep: &unitStep{version: 2, units: 2, proc: "p1"},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp1-p1-v2", 2, 3)
-
-						s.hasDepWithVersion(c, "myapp1-p1", 1, 1)
-						s.hasDepWithVersion(c, "myapp1-p2-v2", 2, 1)
-						s.hasSvc(c, "myapp1-p1")
-						s.hasSvc(c, "myapp1-p1-v2")
-						s.hasSvc(c, "myapp1-p2-v2")
-					},
-				},
-				{
-					deployStep: &deployStep{procs: []string{"p1", "p2"}, overrideVersions: true, routable: true},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp1-p1", 3, 4)
-						s.hasDepWithVersion(c, "myapp1-p2", 3, 2)
-						s.hasSvc(c, "myapp1-p1")
-
-						s.noDep(c, "myapp1-p1-v2")
-						s.noDep(c, "myapp1-p2-v2")
-						s.noSvc(c, "myapp1-p1-v2")
-						s.noSvc(c, "myapp1-p2-v2")
-					},
-				},
-			},
-		},
-		{
-			steps: []stepDef{
-				{
-					deployStep: &deployStep{procs: []string{"p1"}},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
-						s.hasSvc(c, "myapp2-p1")
-						s.noSvc(c, "myapp2-p1-v1")
-					},
-				},
-				{
-					deployStep: &deployStep{procs: []string{"p1"}, newVersion: true},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
-						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
-						s.hasSvc(c, "myapp2-p1")
-
-						s.hasSvc(c, "myapp2-p1-v2")
-						s.hasSvc(c, "myapp2-p1-v1")
-					},
-				},
-				{
-					stopStep: &stopStep{proc: "p1", version: 1},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
-						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
-						s.hasSvc(c, "myapp2-p1")
-						s.hasSvc(c, "myapp2-p1-v2")
-					},
-				},
-				{
-					restartStep: &restartStep{proc: "p1"},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
-						s.hasDepWithVersion(c, "myapp2-p1-v2", 2, 1)
-						s.hasSvc(c, "myapp2-p1")
-						s.hasSvc(c, "myapp2-p1-v2")
-					},
-				},
-			},
-		},
-		{
-			steps: []stepDef{
-				{
-					deployStep: &deployStep{procs: []string{"p1", "p2"}},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p1", 1, 1)
-						s.hasDepWithVersion(c, "myapp3-p2", 1, 1)
-						s.hasSvc(c, "myapp3-p1")
-						s.hasSvc(c, "myapp3-p2")
-						s.noSvc(c, "myapp3-p1-v1")
-						s.noSvc(c, "myapp3-p2-v1")
-					},
-				},
-				{
-					unitStep: &unitStep{proc: "p1", version: 1, units: 2},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p1", 1, 3)
-					},
-				},
-				{
-					unitStep: &unitStep{proc: "p2", version: 1, units: 3},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
-					},
-				},
-				{
-					stopStep: &stopStep{proc: "p1", version: 1},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
-						s.noSvc(c, "myapp3-p1-v1")
-					},
-				},
-				{
-					stopStep: &stopStep{proc: "p2", version: 1},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p2", 1, 0)
-						s.hasDepWithVersion(c, "myapp3-p1", 1, 0)
-					},
-				},
-				{
-					startStep: &startStep{proc: "p1", version: 1},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p1", 1, 3)
-					},
-				},
-				{
-					startStep: &startStep{proc: "p2", version: 1},
-					check: func() {
-						s.hasDepWithVersion(c, "myapp3-p2", 1, 4)
-					},
-				},
-			},
-		},
 	}
 
 	for i, tt := range tests {
@@ -402,43 +257,5 @@ func (s *S) TestServiceManagerDeployMulti(c *check.C) {
 				step.check()
 			}
 		}()
-	}
-}
-
-func (s *S) hasDepWithVersion(c *check.C, name string, version, replicas int) {
-	dep, err := s.client.Clientset.AppsV1().Deployments("default").Get(context.TODO(), name, metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Check(*dep.Spec.Replicas, check.Equals, int32(replicas))
-	c.Check(dep.Spec.Template.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(version))
-}
-
-func (s *S) hasSvc(c *check.C, name string) {
-	_, err := s.client.Clientset.CoreV1().Services("default").Get(context.TODO(), name, metav1.GetOptions{})
-	c.Check(err, check.IsNil)
-}
-
-func (s *S) noSvc(c *check.C, name string) {
-	_, err := s.client.Clientset.CoreV1().Services("default").Get(context.TODO(), name, metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-}
-
-func (s *S) noDep(c *check.C, name string) {
-	_, err := s.client.Clientset.AppsV1().Deployments("default").Get(context.TODO(), name, metav1.GetOptions{})
-	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-}
-
-func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p string) {
-	nameLabel := "app=" + appName + "-" + p
-	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: nameLabel,
-	})
-	c.Assert(err, check.IsNil)
-	for _, dep := range deps.Items {
-		if version, ok := dep.Spec.Template.Labels["tsuru.io/app-version"]; ok {
-			if dep.Spec.Replicas != nil && strconv.Itoa(v.Version()) == version {
-				err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
-				c.Assert(err, check.IsNil)
-			}
-		}
 	}
 }
