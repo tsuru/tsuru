@@ -1698,8 +1698,6 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&rebuildAppRoutes,
 		&removeOldAppResources,
 	}
-
-	fmt.Printf("\n\n\n\nHELLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n\n\n\n")
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
