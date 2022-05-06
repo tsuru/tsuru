@@ -1668,7 +1668,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
-	versions, err := versionsForAppProcess(ctx, client, old, "", false)
+	versions, err := versionsForAppProcess(ctx, client, old, "", true)
 	if err != nil {
 		return err
 	}
