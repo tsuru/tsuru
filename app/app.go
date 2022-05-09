@@ -535,7 +535,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	actions := []*action.Action{
 		&saveApp,
 	}
-	if newProv.GetName() == oldProv.GetName() {
+	if newProv.GetName() != oldProv.GetName() {
 		actions = append(actions, &updateAppProvisioner)
 	}
 	if newProv.GetName() != oldProv.GetName() {
