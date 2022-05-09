@@ -512,12 +512,12 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	}
 
 	if ignoreBaseDepIfStopped {
-		fmt.Printf("DEBUG: ignoring base dep if stopped\n")
+		log.Debug("DEBUG: ignoring base dep if stopped\n")
 		ignoreBaseDep(grouped.versioned)
-		fmt.Printf("DEBUG: printing remaining deps after ignoreBaseDep filter\n")
+		log.Debug("DEBUG: printing remaining deps after ignoreBaseDep filter\n")
 		for _, deps := range grouped.versioned {
 			for _, dep := range deps {
-				fmt.Printf("DEBUG: %s\n", dep.dep.Name)
+				log.Debugf("DEBUG: %s\n", dep.dep.Name)
 			}
 		}
 	}
@@ -1694,7 +1694,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			&destroyOldApp,
 		}
 
-		fmt.Fprintf(w, "\n\n\nDEBUG: not in the same cluster, adding new deploy pipeline...\n\n\n")
+		log.Debugf("\n\n\nDEBUG: not in the same cluster, adding new deploy pipeline...\n\n\n")
 
 		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
@@ -1709,7 +1709,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&removeOldAppResources,
 	}
 
-	fmt.Printf("\n\n\nDEBUG: not in the same namespace, adding new deploy pipeline...\n\n\n")
+	log.Debugf("\n\n\nDEBUG: not in the same namespace, adding new deploy pipeline...\n\n\n")
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
