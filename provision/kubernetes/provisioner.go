@@ -1687,7 +1687,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			&destroyOldApp,
 		}
 
-		fmt.Printf("\n\n\n[DEBUG] not in the same cluster, adding new deploy pipeline...\n\n\n")
+		fmt.Fprintf(w, "\n\n\nDEBUG: not in the same cluster, adding new deploy pipeline...\n\n\n")
 
 		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
@@ -1702,7 +1702,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&removeOldAppResources,
 	}
 
-	fmt.Printf("\n\n\n[DEBUG] not in the same namespace, adding new deploy pipeline...\n\n\n")
+	fmt.Printf("\n\n\nDEBUG: not in the same namespace, adding new deploy pipeline...\n\n\n")
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
