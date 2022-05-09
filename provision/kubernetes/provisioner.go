@@ -1686,6 +1686,9 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			&rebuildAppRoutes,
 			&destroyOldApp,
 		}
+
+		fmt.Printf("\n\n\n[DEBUG] not in the same cluster, adding new deploy pipeline...\n\n\n")
+
 		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
@@ -1698,6 +1701,8 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&rebuildAppRoutes,
 		&removeOldAppResources,
 	}
+
+	fmt.Printf("\n\n\n[DEBUG] not in the same namespace, adding new deploy pipeline...\n\n\n")
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
