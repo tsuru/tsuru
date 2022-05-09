@@ -512,14 +512,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	}
 
 	if ignoreBaseDepIfStopped {
-		log.Debug("DEBUG: ignoring base dep if stopped\n")
 		ignoreBaseDep(grouped.versioned)
-		log.Debug("DEBUG: printing remaining deps after ignoreBaseDep filter\n")
-		for _, deps := range grouped.versioned {
-			for _, dep := range deps {
-				log.Debugf("DEBUG: %s\n", dep.dep.Name)
-			}
-		}
 	}
 	versionSet := map[int]struct{}{}
 	for v, deps := range grouped.versioned {
@@ -1694,8 +1687,6 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			&destroyOldApp,
 		}
 
-		log.Debugf("\n\n\nDEBUG: not in the same cluster, adding new deploy pipeline...\n\n\n")
-
 		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
@@ -1709,7 +1700,6 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&removeOldAppResources,
 	}
 
-	log.Debugf("\n\n\nDEBUG: not in the same namespace, adding new deploy pipeline...\n\n\n")
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 
