@@ -1417,20 +1417,24 @@ func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool
 }
 
 func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
+	isBaseAndIsStopped := func(depData deploymentInfo) bool {
+		if depData.replicas == 0 {
+			if state, ok := depData.dep.Labels["tsuru.io/is-stopped"]; ok && depData.isBase {
+				if stopped, _ := strconv.ParseBool(state); stopped {
+					return true
+				}
+			}
+		}
+		return false
+	}
 	filterDeploymentInfo := func(deps []deploymentInfo) []deploymentInfo {
 		newDeps := []deploymentInfo{}
-
 		for _, depData := range deps {
-			if depData.replicas == 0 {
-				if state, ok := depData.dep.Labels["tsuru.io/is-stopped"]; ok {
-					if stopped, _ := strconv.ParseBool(state); stopped {
-						continue
-					}
-				}
+			if isBaseAndIsStopped(depData) {
+				continue
 			}
 			newDeps = append(newDeps, depData)
 		}
-
 		return newDeps
 	}
 
