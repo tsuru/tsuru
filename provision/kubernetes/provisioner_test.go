@@ -2575,6 +2575,258 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	c.Assert(len(sList.Items), check.Equals, 2)
 }
 
+func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "test-pool-2",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-pool-2",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
+	defer rebuild.Shutdown(context.Background())
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	{
+		customData := map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version1 := newCommittedVersion(c, a, customData)
+		img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+		wait()
+		customData = map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version2 := newCommittedVersion(c, a, customData)
+		img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+		wait()
+	}
+	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 4)
+	contains := func(name string, svcList []apiv1.Service) bool {
+		for _, svc := range svcList {
+			if svc.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	c.Assert(contains("myapp-web", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	buf := new(bytes.Buffer)
+	var recreatedPods bool
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+			"tsuru.io/pool": newApp.GetPool(),
+		})
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		recreatedPods = true
+		return true, nil, nil
+	})
+	s.client.PrependReactor("create", "services", func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		srv.Spec.Ports = []apiv1.ServicePort{
+			{
+				NodePort: int32(30002),
+			},
+		}
+		return false, nil, nil
+	})
+	_, err = s.client.CoreV1().Nodes().Create(context.TODO(), &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-test-pool-2",
+			Labels: map[string]string{"tsuru.io/pool": "test-pool-2"},
+		},
+		Status: apiv1.NodeStatus{
+			Addresses: []apiv1.NodeAddress{{Type: apiv1.NodeInternalIP, Address: "192.168.100.1"}},
+		},
+	}, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.Contains(buf.String(), "Done updating units"), check.Equals, true)
+	c.Assert(recreatedPods, check.Equals, true)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "tsuru-test-pool-2")
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 4)
+	c.Assert(contains("myapp-web", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
+}
+
+func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBase(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "test-pool-2",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-pool-2",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
+	defer rebuild.Shutdown(context.Background())
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version1 := newCommittedVersion(c, a, customData)
+	img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	customData = map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version2 := newCommittedVersion(c, a, customData)
+	img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+	wait()
+
+	err = s.p.Stop(context.TODO(), a, "", version1, &bytes.Buffer{})
+	c.Assert(err, check.IsNil)
+
+	depList, err := s.client.AppsV1().Deployments("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(depList.Items), check.Equals, 2)
+	depListContains := func(name string, deps []appsv1.Deployment) bool {
+		for _, dep := range deps {
+			if dep.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	c.Assert(depListContains("myapp-web", depList.Items), check.Equals, true)
+	c.Assert(depListContains("myapp-web-v2", depList.Items), check.Equals, true)
+	svcListContains := func(name string, deps []apiv1.Service) bool {
+		for _, dep := range deps {
+			if dep.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	sList, err := s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(svcListContains("myapp-web", sList.Items), check.Equals, true)
+	c.Assert(svcListContains("myapp-web-v1", sList.Items), check.Equals, true)
+	c.Assert(svcListContains("myapp-web-v2", sList.Items), check.Equals, true)
+	c.Assert(svcListContains("myapp-web-units", sList.Items), check.Equals, true)
+	baseDep, err := s.client.AppsV1().Deployments("tsuru-test-default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(baseDep.Spec.Replicas, check.NotNil)
+	c.Assert(*baseDep.Spec.Replicas, check.Equals, int32(0))
+	newApp := a
+	newApp.Pool = "test-pool-2"
+	buf := new(bytes.Buffer)
+	var recreatedPods bool
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+			"tsuru.io/pool": newApp.GetPool(),
+		})
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		recreatedPods = true
+		return true, nil, nil
+	})
+	s.client.PrependReactor("create", "services", func(action ktesting.Action) (bool, runtime.Object, error) {
+		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
+		srv.Spec.Ports = []apiv1.ServicePort{
+			{
+				NodePort: int32(30002),
+			},
+		}
+		return false, nil, nil
+	})
+	_, err = s.client.CoreV1().Nodes().Create(context.TODO(), &apiv1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-test-pool-2",
+			Labels: map[string]string{"tsuru.io/pool": "test-pool-2"},
+		},
+		Status: apiv1.NodeStatus{
+			Addresses: []apiv1.NodeAddress{{Type: apiv1.NodeInternalIP, Address: "192.168.100.1"}},
+		},
+	}, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.Contains(buf.String(), "Done updating units"), check.Equals, true)
+	c.Assert(recreatedPods, check.Equals, true)
+	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(appList.Items), check.Equals, 1)
+	c.Assert(appList.Items[0].GetName(), check.DeepEquals, a.GetName())
+	c.Assert(appList.Items[0].Spec.NamespaceName, check.DeepEquals, "tsuru-test-pool-2")
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	for _, svc := range sList.Items {
+		fmt.Printf("%s\n", svc.Name)
+	}
+	c.Assert(len(sList.Items), check.Equals, 3)
+}
+
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "nfs")
 	defer config.Unset("volume-plans")
