@@ -75,6 +75,7 @@ var (
 		"shutdown":     true,
 		"evicted":      true,
 		"nodeaffinity": true,
+		"terminated":   true,
 	}
 )
 
