@@ -2,14 +2,14 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-:title: Installing Tsuru in a Google Kubernetes Engine cluster with Helm
+:title: Installing Tsuru on Google Kubernetes Engine cluster with Helm
 
 .. _installing_tsuru_gke:
 
-Installing Tsuru in a Google Kubernetes Engine cluster with Helm
-================================================================
+Installing Tsuru on Google Kubernetes Engine cluster with Helm
+==============================================================
 
-This post will show how to install and configure Tsuru in a GKE Helm.
+This post will show how to install and configure Tsuru on GKE with Helm.
 All steps in this guide were done in Kubernetes v1.22.0. While it might work for almost all Kubernetes versions, some versions may break something. Feel free to report us in that case.
 You need to have both gcloud and kubectl previously installed on your machine, if you don't have it yet, you can install it `here <https://cloud.google.com/sdk/docs/install/>`_, with gcloud and `kubectl <https://kubernetes.io/docs/tasks/tools/>`_ properly installed, let's get started.
 To create a Kubernetes cluster using gcloud, run the command:
