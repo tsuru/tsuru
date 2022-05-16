@@ -13,6 +13,7 @@ With tsuru, you don’t need to think about servers at all. As an application de
 
 Links:
 
+- Landing page: https://tsuru.io
 - Full Documentation: https://docs.tsuru.io/main/
 - How to Contribute: https://docs.tsuru.io/stable/contributing/
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
@@ -44,7 +45,10 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 
 ### Install Guides
 
-* [Minikube](https://docs.tsuru.io/main/installing/installing-minikube.html)
+* [Minikube](https://docs.
+
+
+/main/installing/installing-minikube.html)
 * [GKE - Google Kubernetes Engine](https://docs.tsuru.io/main/installing/installing-gke.html)
 
 
