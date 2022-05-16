@@ -18,6 +18,18 @@ Links:
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
 
+
+Popular plataforms supported:
+
+- [Python](https://github.com/tsuru/platforms/tree/master/python)
+- [Nodejs](https://github.com/tsuru/platforms/tree/master/nodejs)
+- [GO](https://github.com/tsuru/platforms/tree/master/go)
+- [Ruby](https://github.com/tsuru/platforms/tree/master/ruby)
+- [PHP](https://github.com/tsuru/platforms/tree/master/php)
+- [Perl](https://github.com/tsuru/platforms/tree/master/perl)
+- [Lua](https://github.com/tsuru/platforms/tree/master/lua)
+- [Java](https://github.com/tsuru/platforms/tree/master/java)
+
 ## Quick Start
 
 ### Getting tsuru-client
