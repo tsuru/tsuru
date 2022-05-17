@@ -1668,10 +1668,11 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
-	versions, err := versionsForAppProcess(ctx, client, old, "", true)
+	versions, err := versionsForAppProcess(ctx, client, old, "", false)
 	if err != nil {
 		return err
 	}
+
 	params := updatePipelineParams{
 		old:      old,
 		new:      new,
@@ -1680,6 +1681,9 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		versions: versions,
 	}
 	if !sameCluster {
+		if len(versions) > 1 {
+			return &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
+		}
 		actions := []*action.Action{
 			&provisionNewApp,
 			&restartApp,
@@ -1692,6 +1696,9 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
 	if sameNamespace {
 		return nil
+	}
+	if len(versions) > 1 {
+		return &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
 	}
 	actions := []*action.Action{
 		&updateAppCR,
