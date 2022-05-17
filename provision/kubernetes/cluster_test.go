@@ -210,6 +210,7 @@ func (s *S) TestClusterInitClientByKubeConfigWithProxyANDTLS(c *check.C) {
 	}
 	restConfig, err := getRestConfigByKubeConfig(&c1)
 	c.Assert(err, check.IsNil)
+	c.Assert(restConfig.APIPath, check.DeepEquals, "/api")
 
 	k8s, err := kubernetes.NewForConfig(restConfig)
 	c.Assert(err, check.IsNil)
