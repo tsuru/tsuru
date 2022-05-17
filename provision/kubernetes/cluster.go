@@ -219,6 +219,7 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 	}
 
 	kubeConf := getKubeConfig()
+	restConfig.APIPath = "/api"
 	restConfig.ContentConfig = rest.ContentConfig{
 		GroupVersion:         &gv,
 		NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
