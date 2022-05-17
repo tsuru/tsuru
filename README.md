@@ -45,10 +45,7 @@ $ curl -sSL https://github.com/tsuru/tsuru-client/releases/download/1.1.1/tsuru-
 
 ### Install Guides
 
-* [Minikube](https://docs.
-
-
-/main/installing/installing-minikube.html)
+* [Minikube](https://docs.tsuru.io/main/installing/installing-minikube.html)
 * [GKE - Google Kubernetes Engine](https://docs.tsuru.io/main/installing/installing-gke.html)
 
 
