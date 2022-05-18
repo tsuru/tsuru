@@ -249,6 +249,54 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 			},
 		},
+		{
+			steps: []stepDef{
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2", "p3"}},
+					check:      func() {},
+				},
+				{
+					deployStep: &deployStep{procs: []string{"p1", "p2", "p3"}, newVersion: true},
+					check:      func() {},
+				},
+				{
+					unitStep: &unitStep{version: 1, units: 1, proc: "p1"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1", 1, 2)
+					},
+				},
+				{
+					unitStep: &unitStep{version: 1, units: 1, proc: "p2"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p2", 1, 2)
+					},
+				}, {
+					unitStep: &unitStep{version: 1, units: 1, proc: "p3"},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p3", 1, 2)
+					},
+				},
+				{
+					stopStep: &stopStep{},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp4-p2", 1, 0)
+						s.hasDepWithVersion(c, "myapp4-p3", 1, 0)
+						s.noDep(c, "myapp4-p1-v2")
+						s.noDep(c, "myapp4-p2-v2")
+						s.noDep(c, "myapp4-p3-v2")
+					},
+				},
+				{
+					startStep: &startStep{},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p3-v2", 2, 1)
+					},
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -313,6 +361,9 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					if step.stopStep.version == 0 {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.stopStep.proc, true)
 						c.Assert(err, check.IsNil)
+						for _, v := range versions {
+							s.updatePastUnitsAllProcesses(c, a.Name, v)
+						}
 					} else {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
@@ -334,6 +385,11 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					if step.startStep.version == 0 {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.startStep.proc, true)
 						c.Assert(err, check.IsNil)
+					}
+					if len(versions) == 0 {
+						version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
+						c.Assert(err, check.IsNil)
+						versions = append(versions, version)
 					} else {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
@@ -412,6 +468,23 @@ func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p
 			if dep.Spec.Replicas != nil && strconv.Itoa(v.Version()) == version {
 				err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
 				c.Assert(err, check.IsNil)
+			}
+		}
+	}
+}
+
+func (s *S) updatePastUnitsAllProcesses(c *check.C, appName string, v appTypes.AppVersion) {
+	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
+	})
+	c.Assert(err, check.IsNil)
+	for _, dep := range deps.Items {
+		if version, ok := dep.Spec.Template.Labels["tsuru.io/app-version"]; ok {
+			if strconv.Itoa(v.Version()) == version && dep.Spec.Replicas != nil {
+				if process, ok := dep.Spec.Template.Labels["tsuru.io/app-process"]; ok {
+					err = v.UpdatePastUnits(process, int(*dep.Spec.Replicas))
+					c.Assert(err, check.IsNil)
+				}
 			}
 		}
 	}
