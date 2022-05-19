@@ -534,6 +534,8 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 		_, err = client.CoreV1().ServiceAccounts(namespace).Create(ctx, &svcAccount, metav1.CreateOptions{})
 	} else {
 		svcAccount.ResourceVersion = existingSA.ResourceVersion
+		svcAccount.Finalizers = existingSA.Finalizers
+		svcAccount.Secrets = existingSA.Secrets
 		_, err = client.CoreV1().ServiceAccounts(namespace).Update(ctx, &svcAccount, metav1.UpdateOptions{})
 	}
 	if err != nil {
