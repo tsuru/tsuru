@@ -1416,8 +1416,9 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 			}
 			if _, ok := pastUnitsMap[vp]; !ok {
 				pastUnitsMap[vp] = 1
+			} else {
+				pastUnitsMap[vp]++
 			}
-			pastUnitsMap[vp] += 1
 		}
 	} else {
 		for _, unit := range units {
@@ -1431,7 +1432,7 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 			if _, ok := pastUnitsMap[vp]; !ok {
 				pastUnitsMap[vp] = 1
 			} else {
-				pastUnitsMap[vp] += 1
+				pastUnitsMap[vp]++
 			}
 		}
 	}
