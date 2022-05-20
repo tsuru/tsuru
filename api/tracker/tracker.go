@@ -8,6 +8,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -18,6 +19,9 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
 	trackerTypes "github.com/tsuru/tsuru/types/tracker"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -25,9 +29,18 @@ const (
 	defaultStaleTimeout   = 50 * time.Second
 )
 
-var _ trackerTypes.InstanceService = &instanceTracker{}
+var (
+	_ trackerTypes.InstanceService = &instanceTracker{}
+	_ trackerTypes.InstanceService = &k8sInstanceTracker{}
+)
 
 func InstanceService() (trackerTypes.InstanceService, error) {
+	useK8s, _ := config.GetBool("tracker:use-kubernetes")
+
+	if useK8s {
+		return newK8sInstanceTracker()
+	}
+
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -90,7 +103,7 @@ func (t *instanceTracker) getInstance(update bool) (trackerTypes.TrackedInstance
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if update || t.lastInstance == nil {
-		instance, err := t.createInstance()
+		instance, err := createInstance()
 		if err != nil {
 			return instance, err
 		}
@@ -99,7 +112,7 @@ func (t *instanceTracker) getInstance(update bool) (trackerTypes.TrackedInstance
 	return *t.lastInstance, nil
 }
 
-func (t *instanceTracker) createInstance() (trackerTypes.TrackedInstance, error) {
+func createInstance() (trackerTypes.TrackedInstance, error) {
 	var instance trackerTypes.TrackedInstance
 	iface, err := getInterface()
 	if err != nil {
@@ -205,4 +218,92 @@ func getInterface() (net.Interface, error) {
 		return net.Interface{}, errors.Errorf("interface named %q not found", interfaceName)
 	}
 	return ifaces[0], nil
+}
+
+// instanceTracker based on kubernetes service discovery
+type k8sInstanceTracker struct {
+	ns              string
+	service         string
+	cli             kubernetes.Interface
+	currentInstance trackerTypes.TrackedInstance
+}
+
+func (t *k8sInstanceTracker) CurrentInstance(ctx context.Context) (trackerTypes.TrackedInstance, error) {
+	return t.currentInstance, nil
+}
+
+func (t *k8sInstanceTracker) LiveInstances(ctx context.Context) ([]trackerTypes.TrackedInstance, error) {
+	endpoints, err := t.cli.CoreV1().Endpoints(t.ns).Get(ctx, t.service, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	instances := []trackerTypes.TrackedInstance{}
+	lastUpdate := time.Now()
+
+	for _, subset := range endpoints.Subsets {
+		httpPort := "80"
+		httpsPort := "443"
+
+		for _, port := range subset.Ports {
+			if port.Name == "http" {
+				httpPort = strconv.Itoa(int(port.Port))
+			}
+
+			if port.Name == "https" {
+				httpsPort = strconv.Itoa(int(port.Port))
+			}
+		}
+
+		for _, address := range subset.Addresses {
+			if address.TargetRef == nil {
+				continue
+			}
+			instances = append(instances, trackerTypes.TrackedInstance{
+				Name: address.TargetRef.Name,
+				Addresses: []string{
+					address.IP,
+				},
+				Port:       httpPort,
+				TLSPort:    httpsPort,
+				LastUpdate: lastUpdate,
+			})
+		}
+	}
+
+	return instances, nil
+}
+
+func newK8sInstanceTracker() (*k8sInstanceTracker, error) {
+	inClusterCfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cli, err := kubernetes.NewForConfig(inClusterCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	ns, err := config.GetString("tracker:kubernetes-namespace")
+	if err != nil {
+		return nil, err
+	}
+
+	service, err := config.GetString("tracker:kubernetes-service")
+	if err != nil {
+		return nil, err
+	}
+
+	currentInstance, err := createInstance()
+	if err != nil {
+		return nil, err
+	}
+
+	return &k8sInstanceTracker{
+		cli:             cli,
+		ns:              ns,
+		service:         service,
+		currentInstance: currentInstance,
+	}, nil
 }
