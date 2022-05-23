@@ -2609,7 +2609,8 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 			},
 		}
 		version1 := newCommittedVersion(c, a, customData)
-		img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+		var img1 string
+		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
 		wait()
@@ -2619,7 +2620,8 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 			},
 		}
 		version2 := newCommittedVersion(c, a, customData)
-		img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+		var img2 string
+		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
 		wait()
@@ -2759,7 +2761,8 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 			},
 		}
 		version1 := newCommittedVersion(c, a, customData)
-		img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+		var img1 string
+		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
 		wait()
@@ -2769,7 +2772,8 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 			},
 		}
 		version2 := newCommittedVersion(c, a, customData)
-		img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+		var img2 string
+		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
 		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
 		wait()
