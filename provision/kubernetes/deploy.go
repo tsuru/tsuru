@@ -306,6 +306,13 @@ func createPod(ctx context.Context, params createPodParams) error {
 		if err != nil {
 			return err
 		}
+		metadata := params.app.GetMetadata()
+		for _, l := range metadata.Labels {
+			pod.Labels[l.Name] = l.Value
+		}
+		for _, annotation := range metadata.Annotations {
+			pod.Annotations[annotation.Name] = annotation.Value
+		}
 		params.pod = &pod
 	}
 	ns, err := params.client.AppNamespace(ctx, params.app)

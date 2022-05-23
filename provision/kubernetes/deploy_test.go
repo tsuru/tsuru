@@ -3567,6 +3567,10 @@ func (s *S) TestCreatePodContainersWithPoolBuildPlanAndSidecarBuildPlanAndDnsCon
 
 func (s *S) TestCreateDeployPodContainers(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
+	a.Metadata = appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "tsuru.io/custom-annotation", Value: "my-custom-annotation"}},
+		Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/custom-label", Value: "my-custom-label"}},
+	}
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -3613,9 +3617,11 @@ func (s *S) TestCreateDeployPodContainers(c *check.C) {
 				"tsuru.io/is-service":          "true",
 				"tsuru.io/app-pool":            "test-default",
 				"tsuru.io/provisioner":         "kubernetes",
+				"tsuru.io/custom-label":        "my-custom-label",
 			},
 			Annotations: map[string]string{
-				"tsuru.io/build-image": testBaseImage,
+				"tsuru.io/build-image":       testBaseImage,
+				"tsuru.io/custom-annotation": "my-custom-annotation",
 			},
 		},
 		Spec: apiv1.PodSpec{
