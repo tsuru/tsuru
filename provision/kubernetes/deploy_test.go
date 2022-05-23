@@ -2820,7 +2820,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 		},
 	})
 
-	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version)
+	legacyDep, legacySvc, legacySA := s.createLegacyDeployment(c, a, version)
+	expectedSA := legacySA.DeepCopy()
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -2872,6 +2873,11 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	svc, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svc, expectedSvc), "\n")))
+
+	sa, err := s.client.Clientset.CoreV1().ServiceAccounts(ns).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(sa.Secrets, check.DeepEquals, expectedSA.Secrets)
+
 }
 
 func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *check.C) {
@@ -2892,7 +2898,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 		},
 	})
 
-	legacyDep, legacySvc := s.createLegacyDeployment(c, a, version1)
+	legacyDep, legacySvc, legacySA := s.createLegacyDeployment(c, a, version1)
+	expectedSA := legacySA.DeepCopy()
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -3002,6 +3009,12 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	svcv2, err := s.client.Clientset.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(svcv2, check.DeepEquals, expectedSvcV2, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(svcv2, expectedSvcV2), "\n")))
+
+	c.Check(depv2.Spec.Template.Spec.ServiceAccountName, check.Equals, "app-myapp")
+	sav2, err := s.client.Clientset.CoreV1().ServiceAccounts(ns).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Check(sav2.Secrets, check.DeepEquals, expectedSA.Secrets)
+
 }
 
 func (s *S) TestServiceManagerDeployServiceWithRemovedOldVersion(c *check.C) {
@@ -5040,7 +5053,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*ERROR DURING ROLLBACK.*`)
 }
 
-func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes.AppVersion) (*appsv1.Deployment, *apiv1.Service) {
+func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes.AppVersion) (*appsv1.Deployment, *apiv1.Service, *apiv1.ServiceAccount) {
 	one := int32(1)
 	ten := int32(10)
 	maxSurge := intstr.FromString("100%")
@@ -5162,6 +5175,20 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 		},
 	}
 
+	legacySA := &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "app-myapp",
+			Namespace:   ns,
+			Labels:      depLabels,
+			Annotations: map[string]string{},
+		},
+		Secrets: []apiv1.ObjectReference{
+			{
+				Name: "app-myapp-token",
+			},
+		},
+	}
+
 	legacySvc := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
@@ -5206,13 +5233,16 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 		},
 	}
 
+	_, err = s.client.Clientset.CoreV1().ServiceAccounts(ns).Create(context.TODO(), legacySA, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Create(context.TODO(), legacyDep, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	_, err = s.client.Clientset.CoreV1().Services(ns).Create(context.TODO(), legacySvc, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
-	return legacyDep, legacySvc
+	return legacyDep, legacySvc, legacySA
 }
 
 func (s *S) TestServiceManagerDeployServiceWithCustomLabelsAndAnnotations(c *check.C) {
