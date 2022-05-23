@@ -394,7 +394,6 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					if len(versions) == 0 {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
-						fmt.Printf("%s\n", version.String())
 						c.Assert(err, check.IsNil)
 						versions = append(versions, version)
 					}
