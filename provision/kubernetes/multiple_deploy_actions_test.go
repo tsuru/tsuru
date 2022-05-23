@@ -358,18 +358,18 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				}
 				if step.stopStep != nil {
 					versions := []appTypes.AppVersion{}
-					if step.stopStep.version == 0 {
-						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.stopStep.proc, true)
-						c.Assert(err, check.IsNil)
-						for _, v := range versions {
-							s.updatePastUnitsAllProcesses(c, a.Name, v)
-						}
-					} else {
+					if step.stopStep.version != 0 {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 						c.Assert(err, check.IsNil)
 						s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
 						versions = append(versions, version)
+					} else {
+						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.stopStep.proc, true)
+						c.Assert(err, check.IsNil)
+						for _, v := range versions {
+							s.updatePastUnitsAllProcesses(c, a.Name, v)
+						}
 					}
 					for _, v := range versions {
 						err = servicecommon.ChangeAppState(context.TODO(), &serviceManager{
@@ -385,14 +385,15 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					if step.startStep.version == 0 {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.startStep.proc, true)
 						c.Assert(err, check.IsNil)
-					}
-					if len(versions) == 0 {
-						version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
-						c.Assert(err, check.IsNil)
-						versions = append(versions, version)
 					} else {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.startStep.version))
+						c.Assert(err, check.IsNil)
+						versions = append(versions, version)
+					}
+					if len(versions) == 0 {
+						version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
+						fmt.Printf("%s\n", version.String())
 						c.Assert(err, check.IsNil)
 						versions = append(versions, version)
 					}
