@@ -232,28 +232,6 @@ Currently, the only value supported is "mongodb".
 
 .. _config_logdb:
 
-database:logdb-url
-++++++++++++++++++
-
-This setting is optional. If ``database:logdb-url`` is specified, tsuru will use
-it as the connection string to the MongoDB server responsible for storing
-application logs. If this value is not set, tsuru will use ``database:url``
-instead.
-
-This setting is useful because tsuru may have to process a very large number of
-log messages depending on the number of units deployed and applications
-behavior. Every log message will trigger a insertion in MongoDB and this may
-negatively impact the database performance. Other measures will be implemented
-in the future to improve this, but for now, having the ability to use an
-exclusive database server for logs will help mitigate the negative impact of log
-writing.
-
-database:logdb-name
-+++++++++++++++++++
-
-This setting is optional. If ``database:logdb-name`` is specified, tsuru will
-use it as the database name for storing application logs. If this value is not
-set, tsuru will use ``database:name`` instead.
 
 Email configuration
 -------------------
@@ -567,13 +545,6 @@ log:use-stderr
 
 ``log:use-stderr`` indicates whether tsuru-server should write logs to standard
 error stream. The default value is ``false``.
-
-log:queue-size
-++++++++++++++
-
-``log:queue-size`` is the size of the per app buffer maintained in memory.
-Messages are written from the buffer every second or every 1000 messages.
-Messages are dropped once the queue reaches the queue-size value. Defaults to 10000.
 
 .. _config_routers:
 
