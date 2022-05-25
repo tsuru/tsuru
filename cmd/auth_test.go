@@ -94,6 +94,11 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 }
 
 func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
+	oldToken := os.Getenv("TSURU_TOKEN")
+	os.Unsetenv("TSURU_TOKEN")
+	defer func() {
+		os.Setenv("TSURU_TOKEN", oldToken)
+	}()
 	nativeScheme()
 	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "target"))
@@ -114,12 +119,31 @@ func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 }
 
 func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *check.C) {
+	oldToken := os.Getenv("TSURU_TOKEN")
+	os.Unsetenv("TSURU_TOKEN")
+	defer func() {
+		os.Setenv("TSURU_TOKEN", oldToken)
+	}()
 	nativeScheme()
 	context := Context{[]string{"foo@foo.com"}, globalManager.stdout, globalManager.stderr, strings.NewReader("\n")}
 	command := login{}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^You must provide the password!$")
+}
+
+func (s *S) TestNativeLoginWithTsuruToken(c *check.C) {
+	oldToken := os.Getenv("TSURU_TOKEN")
+	os.Setenv("TSURU_TOKEN", "settoken")
+	defer func() {
+		os.Setenv("TSURU_TOKEN", oldToken)
+	}()
+	nativeScheme()
+	context := Context{[]string{"foo@foo.com"}, globalManager.stdout, globalManager.stderr, strings.NewReader("\n")}
+	command := login{}
+	err := command.Run(&context, nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "This command can't run with $TSURU_TOKEN environmnet variable set. Did you forget to unset?\n")
 }
 
 func (s *S) TestLogout(c *check.C) {

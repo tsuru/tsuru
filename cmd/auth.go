@@ -85,6 +85,10 @@ func (c *login) getScheme() *loginScheme {
 }
 
 func (c *login) Run(context *Context, client *Client) error {
+	if os.Getenv("TSURU_TOKEN") != "" {
+		return errors.New("This command can't run with $TSURU_TOKEN environmnet variable set. Did you forget to unset?\n")
+	}
+
 	if c.getScheme().Name == "oauth" {
 		return c.oauthLogin(context, client)
 	}
