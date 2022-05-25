@@ -143,7 +143,7 @@ func (s *S) TestNativeLoginWithTsuruToken(c *check.C) {
 	command := login{}
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "This command can't run with $TSURU_TOKEN environmnet variable set. Did you forget to unset?\n")
+	c.Assert(err.Error(), check.Equals, "This command can't run with $TSURU_TOKEN environment variable set. Did you forget to unset?\n")
 }
 
 func (s *S) TestLogout(c *check.C) {
