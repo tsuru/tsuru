@@ -330,6 +330,75 @@ func (s *S) TestClusterOvercommitFactor(c *check.C) {
 	c.Assert(ovf, check.Equals, float64(1.5))
 }
 
+func (s *S) TestClusterCPUOvercommitFactor(c *check.C) {
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+		"cpu-overcommit-factor":         "3",
+		"my-pool:cpu-overcommit-factor": "4",
+		"invalid:cpu-overcommit-factor": "a",
+		"float:cpu-overcommit-factor":   "1.5",
+	}}
+	client, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	ovf, err := client.CPUOvercommitFactor("my-pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(4))
+	ovf, err = client.CPUOvercommitFactor("global")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(3))
+	ovf, err = client.CPUOvercommitFactor("invalid")
+	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+	c.Assert(ovf, check.Equals, float64(0))
+	ovf, err = client.CPUOvercommitFactor("float")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(1.5))
+}
+
+func (s *S) TestClusterMemoryOvercommitFactor(c *check.C) {
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+		"memory-overcommit-factor":         "3",
+		"my-pool:memory-overcommit-factor": "4",
+		"invalid:memory-overcommit-factor": "a",
+		"float:memory-overcommit-factor":   "1.5",
+	}}
+	client, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	ovf, err := client.MemoryOvercommitFactor("my-pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(4))
+	ovf, err = client.MemoryOvercommitFactor("global")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(3))
+	ovf, err = client.MemoryOvercommitFactor("invalid")
+	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+	c.Assert(ovf, check.Equals, float64(0))
+	ovf, err = client.MemoryOvercommitFactor("float")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(1.5))
+}
+
+func (s *S) TestClusterCPUBurstFactor(c *check.C) {
+	c1 := provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{
+		"cpu-burst-factor":         "3",
+		"my-pool:cpu-burst-factor": "4",
+		"invalid:cpu-burst-factor": "a",
+		"float:cpu-burst-factor":   "1.5",
+	}}
+	client, err := NewClusterClient(&c1)
+	c.Assert(err, check.IsNil)
+	ovf, err := client.CPUBurstFactor("my-pool")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(4))
+	ovf, err = client.CPUBurstFactor("global")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(3))
+	ovf, err = client.CPUBurstFactor("invalid")
+	c.Assert(err, check.ErrorMatches, ".*invalid syntax.*")
+	c.Assert(ovf, check.Equals, float64(0))
+	ovf, err = client.CPUBurstFactor("float")
+	c.Assert(err, check.IsNil)
+	c.Assert(ovf, check.Equals, float64(1.5))
+}
+
 func (s *S) TestClusterSinglePool(c *check.C) {
 	tests := []struct {
 		customData map[string]string

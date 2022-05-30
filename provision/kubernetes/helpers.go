@@ -1366,18 +1366,40 @@ func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, 
 	return k8sBuildPlans, nil
 }
 
-func getAppResourceRequirements(app provision.App, client *ClusterClient, overcommit float64) (apiv1.ResourceRequirements, error) {
+type requirementsFactors struct {
+	overCommit       float64
+	cpuOverCommit    float64
+	memoryOverCommit float64
+	cpuBurst         float64
+}
+
+func getAppResourceRequirements(app provision.App, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
 	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
 	memory := app.GetMemory()
 	if memory != 0 {
+		memoryOvercommit := factors.overCommit
+		if factors.memoryOverCommit != 0 {
+			memoryOvercommit = factors.memoryOverCommit
+		}
+
 		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
-		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(overcommitedValue(memory, overcommit), resource.BinarySI)
+		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(overcommitedValue(memory, memoryOvercommit), resource.BinarySI)
 	}
 	cpuMilli := int64(app.GetMilliCPU())
 	if cpuMilli != 0 {
-		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(cpuMilli, resource.DecimalSI)
-		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(overcommitedValue(cpuMilli, overcommit), resource.DecimalSI)
+		cpuOvercommit := factors.overCommit
+		if factors.cpuOverCommit != 0 {
+			cpuOvercommit = factors.cpuOverCommit
+		}
+
+		cpuBurst := 1.0
+		if factors.cpuBurst != 0 {
+			cpuBurst = factors.cpuBurst
+		}
+
+		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(burstValue(cpuMilli, cpuBurst), resource.DecimalSI)
+		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(overcommitedValue(cpuMilli, cpuOvercommit), resource.DecimalSI)
 	}
 	ephemeral, err := client.ephemeralStorage(app.GetPool())
 	if err != nil {
@@ -1396,6 +1418,13 @@ func overcommitedValue(v int64, overcommit float64) int64 {
 		return v
 	}
 	return int64(float64(v) / overcommit)
+}
+
+func burstValue(v int64, burst float64) int64 {
+	if burst == 1 {
+		return v
+	}
+	return int64(float64(v) * burst)
 }
 
 func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool, error) {
