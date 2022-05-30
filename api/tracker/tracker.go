@@ -122,21 +122,11 @@ func createInstance() (trackerTypes.TrackedInstance, error) {
 	if err != nil {
 		ipv4Only = true
 	}
-	var port, tlsPort string
-	tlsListen, _ := config.GetString("tls:listen")
-	if tlsListen != "" {
-		_, tlsPort, err = net.SplitHostPort(tlsListen)
-		if err != nil {
-			return instance, err
-		}
+	port, tlsPort, err := listenPorts()
+	if err != nil {
+		return instance, err
 	}
-	listen, _ := config.GetString("listen")
-	if listen != "" {
-		_, port, err = net.SplitHostPort(listen)
-		if err != nil {
-			return instance, err
-		}
-	}
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		return instance, err
@@ -165,6 +155,25 @@ func createInstance() (trackerTypes.TrackedInstance, error) {
 		Addresses:  ips,
 		LastUpdate: time.Now().UTC().Truncate(time.Millisecond),
 	}, nil
+}
+
+func listenPorts() (port string, tlsPort string, err error) {
+	tlsListen, _ := config.GetString("tls:listen")
+	if tlsListen != "" {
+		_, tlsPort, err = net.SplitHostPort(tlsListen)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	listen, _ := config.GetString("listen")
+	if listen != "" {
+		_, port, err = net.SplitHostPort(listen)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	return port, tlsPort, nil
 }
 
 func (t *instanceTracker) Shutdown(ctx context.Context) error {
@@ -241,9 +250,20 @@ func (t *k8sInstanceTracker) LiveInstances(ctx context.Context) ([]trackerTypes.
 	instances := []trackerTypes.TrackedInstance{}
 	lastUpdate := time.Now()
 
+	defaultHTTPPort, defaultHTTPSPort, err := listenPorts()
+	if err != nil {
+		return nil, err
+	}
+	if defaultHTTPPort == "" {
+		defaultHTTPPort = "80"
+	}
+	if defaultHTTPSPort == "" {
+		defaultHTTPSPort = "443"
+	}
+
 	for _, subset := range endpoints.Subsets {
-		httpPort := "80"
-		httpsPort := "443"
+		httpPort := defaultHTTPPort
+		httpsPort := defaultHTTPSPort
 
 		for _, port := range subset.Ports {
 			if port.Name == "http" {
