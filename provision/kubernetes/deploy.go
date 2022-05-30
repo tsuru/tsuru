@@ -686,11 +686,28 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	_, uid := dockercommon.UserForContainer()
-	overcommit, err := client.OvercommitFactor(a.GetPool())
+	overCommit, err := client.OvercommitFactor(a.GetPool())
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster overcommit factor")
 	}
-	resourceRequirements, err := getAppResourceRequirements(a, client, overcommit)
+	cpuOverCommit, err := client.CPUOvercommitFactor(a.GetPool())
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
+	}
+	cpuBurst, err := client.CPUBurstFactor(a.GetPool())
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
+	}
+	memoryOverCommit, err := client.MemoryOvercommitFactor(a.GetPool())
+	if err != nil {
+		return nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
+	}
+	resourceRequirements, err := getAppResourceRequirements(a, client, requirementsFactors{
+		overCommit:       overCommit,
+		cpuOverCommit:    cpuOverCommit,
+		cpuBurst:         cpuBurst,
+		memoryOverCommit: memoryOverCommit,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

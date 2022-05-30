@@ -49,6 +49,9 @@ const (
 	userClusterKey                = "username"
 	passwordClusterKey            = "password"
 	overcommitClusterKey          = "overcommit-factor"
+	cpuOvercommitClusterKey       = "cpu-overcommit-factor"
+	memoryOvercommitClusterKey    = "memory-overcommit-factor"
+	cpuBurstKey                   = "cpu-burst-factor"
 	namespaceLabelsKey            = "namespace-labels"
 	externalPolicyLocalKey        = "external-policy-local"
 	disableHeadlessKey            = "disable-headless"
@@ -85,7 +88,10 @@ var (
 		tokenClusterKey:               "Token used to connect to the cluster,",
 		userClusterKey:                "User used to connect to the cluster.",
 		passwordClusterKey:            "Password used to connect to the cluster.",
-		overcommitClusterKey:          "Overcommit factor for memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		overcommitClusterKey:          "Overcommit factor for CPU and memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		cpuOvercommitClusterKey:       "Overcommit factor for CPU resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		memoryOvercommitClusterKey:    "Overcommit factor for Memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
+		cpuBurstKey:                   "CPU burst factor, that increases the limit of resource. The requested value will be multiplied by this factor. This config may be prefixed with `<pool-name>:`.",
 		namespaceLabelsKey:            "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
 		externalPolicyLocalKey:        "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
 		disableHeadlessKey:            "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
@@ -394,7 +400,56 @@ func (c *ClusterClient) OvercommitFactor(pool string) (float64, error) {
 		return 1, nil
 	}
 	overcommit, err := strconv.ParseFloat(overcommitConf, 64)
+	if err != nil {
+		return 0, err
+	}
+	if overcommit < 1 {
+		return 1, nil // Overcommit cannot be less than 1
+	}
+	return overcommit, nil
+}
+
+func (c *ClusterClient) CPUOvercommitFactor(pool string) (float64, error) {
+	if c.CustomData == nil {
+		return 0, nil // 0 means no factor defined, defaulting to OvercommitFactor
+	}
+	overcommitConf := c.configForContext(pool, cpuOvercommitClusterKey)
+	if overcommitConf == "" {
+		return 0, nil // 0 means no factor defined
+	}
+	overcommit, err := strconv.ParseFloat(overcommitConf, 64)
 	return overcommit, err
+}
+
+func (c *ClusterClient) MemoryOvercommitFactor(pool string) (float64, error) {
+	if c.CustomData == nil {
+		return 0, nil // 0 means no factor defined
+	}
+	overcommitConf := c.configForContext(pool, memoryOvercommitClusterKey)
+	if overcommitConf == "" {
+		return 0, nil // 0 means no factor defined
+	}
+	overcommit, err := strconv.ParseFloat(overcommitConf, 64)
+	return overcommit, err
+}
+
+func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
+	if c.CustomData == nil {
+		return 0, nil // 0 means no factor defined
+	}
+	burstConf := c.configForContext(pool, cpuBurstKey)
+	if burstConf == "" {
+		return 0, nil // 0 means no factor defined
+	}
+
+	burst, err := strconv.ParseFloat(burstConf, 64)
+	if err != nil {
+		return 0, err
+	}
+	if burst < 1 {
+		return 0, nil // 0 means no factor defined
+	}
+	return burst, nil
 }
 
 func (c *ClusterClient) LogsFromAPIServerEnabled() bool {
