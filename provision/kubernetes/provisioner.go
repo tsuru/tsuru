@@ -1578,7 +1578,7 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 
-	requirements, err := getAppResourceRequirements(opts.app, client, requirementsFactors{
+	requirements, err := appResourceRequirements(opts.app, client, requirementsFactors{
 		overCommit: 1,
 	})
 	if err != nil {

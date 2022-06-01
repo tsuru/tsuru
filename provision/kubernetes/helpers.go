@@ -29,7 +29,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1323,108 +1322,6 @@ func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (map[strin
 		}
 	}
 	return plans, nil
-}
-
-func getResourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (map[string]apiv1.ResourceRequirements, error) {
-	k8sBuildPlans := make(map[string]apiv1.ResourceRequirements)
-	// first, try to get the build plan from apps pool
-	plans, err := getPoolBuildPlan(ctx, app.GetPool())
-	if err != nil {
-		return nil, err
-	}
-	// if pools build plan is nil, try to get it from the cluster
-	if plans == nil {
-		plans, err = getClusterBuildPlan(ctx, cluster)
-		if err != nil {
-			return nil, err
-		}
-		// if neither pool build plan or cluster build plan are set, return no error and nil
-		if plans == nil {
-			return nil, nil
-		}
-	}
-	for planKey, planName := range plans {
-		cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(planName.CPUMilli)))
-		if err != nil {
-			return nil, err
-		}
-		memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(planName.Memory, 10))
-		if err != nil {
-			return nil, err
-		}
-		k8sBuildPlans[planKey] = apiv1.ResourceRequirements{
-			Limits: apiv1.ResourceList{
-				"cpu":    cpu,
-				"memory": memoryBytes,
-			},
-			Requests: apiv1.ResourceList{
-				"cpu":    cpu,
-				"memory": memoryBytes,
-			},
-		}
-	}
-	return k8sBuildPlans, nil
-}
-
-type requirementsFactors struct {
-	overCommit       float64
-	cpuOverCommit    float64
-	memoryOverCommit float64
-	cpuBurst         float64
-}
-
-func getAppResourceRequirements(app provision.App, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
-	resourceLimits := apiv1.ResourceList{}
-	resourceRequests := apiv1.ResourceList{}
-	memory := app.GetMemory()
-	if memory != 0 {
-		memoryOvercommit := factors.overCommit
-		if factors.memoryOverCommit != 0 {
-			memoryOvercommit = factors.memoryOverCommit
-		}
-
-		resourceLimits[apiv1.ResourceMemory] = *resource.NewQuantity(memory, resource.BinarySI)
-		resourceRequests[apiv1.ResourceMemory] = *resource.NewQuantity(overcommitedValue(memory, memoryOvercommit), resource.BinarySI)
-	}
-	cpuMilli := int64(app.GetMilliCPU())
-	if cpuMilli != 0 {
-		cpuOvercommit := factors.overCommit
-		if factors.cpuOverCommit != 0 {
-			cpuOvercommit = factors.cpuOverCommit
-		}
-
-		cpuBurst := 1.0
-		if factors.cpuBurst != 0 {
-			cpuBurst = factors.cpuBurst
-		}
-
-		resourceLimits[apiv1.ResourceCPU] = *resource.NewMilliQuantity(burstValue(cpuMilli, cpuBurst), resource.DecimalSI)
-		resourceRequests[apiv1.ResourceCPU] = *resource.NewMilliQuantity(overcommitedValue(cpuMilli, cpuOvercommit), resource.DecimalSI)
-	}
-	ephemeral, err := client.ephemeralStorage(app.GetPool())
-	if err != nil {
-		return apiv1.ResourceRequirements{}, err
-	}
-	if ephemeral.Value() > 0 {
-		resourceRequests[apiv1.ResourceEphemeralStorage] = *resource.NewQuantity(0, resource.DecimalSI)
-		resourceLimits[apiv1.ResourceEphemeralStorage] = ephemeral
-	}
-
-	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
-}
-
-func overcommitedValue(v int64, overcommit float64) int64 {
-	if overcommit == 1 {
-		return v
-	}
-	return int64(float64(v) / overcommit)
-}
-
-func burstValue(v int64, burst float64) int64 {
-	if burst == 1 {
-		return v
-	}
-	return int64(float64(v) * burst)
 }
 
 func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool, error) {

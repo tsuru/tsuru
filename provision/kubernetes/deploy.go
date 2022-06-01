@@ -702,7 +702,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
 	}
-	resourceRequirements, err := getAppResourceRequirements(a, client, requirementsFactors{
+	resourceRequirements, err := appResourceRequirements(a, client, requirementsFactors{
 		overCommit:       overCommit,
 		cpuOverCommit:    cpuOverCommit,
 		cpuBurst:         cpuBurst,
@@ -1973,7 +1973,7 @@ func newDeployAgentPod(ctx context.Context, params createPodParams, conf deployA
 	}
 	serviceLinks := false
 
-	quota, err := getResourceRequirementsForBuildPod(ctx, params.app, params.client)
+	quota, err := resourceRequirementsForBuildPod(ctx, params.app, params.client)
 	if err != nil {
 		return apiv1.Pod{}, err
 	}
