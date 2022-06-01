@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -2573,6 +2574,222 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	sList, err = s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(sList.Items), check.Equals, 2)
+}
+
+func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "test-pool-2",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-pool-2",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
+	defer rebuild.Shutdown(context.Background())
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	{
+		customData := map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version1 := newCommittedVersion(c, a, customData)
+		var img1 string
+		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+		wait()
+		customData = map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version2 := newCommittedVersion(c, a, customData)
+		var img2 string
+		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+		wait()
+	}
+	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	sList, err = s.client.CoreV1().Services("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 4)
+	contains := func(name string, svcList []apiv1.Service) bool {
+		for _, svc := range svcList {
+			if svc.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	c.Assert(contains("myapp-web", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-units", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v1", sList.Items), check.Equals, true)
+	c.Assert(contains("myapp-web-v2", sList.Items), check.Equals, true)
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	buf := new(bytes.Buffer)
+	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
+	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
+}
+
+func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "test-pool-2",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	config.Set("kubernetes:use-pool-namespaces", true)
+	defer config.Unset("kubernetes:use-pool-namespaces")
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+		return &app.App{
+			Name:    appName,
+			Pool:    "test-pool-2",
+			Routers: a.GetRouters(),
+		}, nil
+	})
+	c.Assert(err, check.IsNil)
+	defer rebuild.Shutdown(context.Background())
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version1 := newCommittedVersion(c, a, customData)
+	img1, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+	wait()
+	customData = map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "run mycmd arg1",
+		},
+	}
+	version2 := newCommittedVersion(c, a, customData)
+	img2, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+	c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+	wait()
+
+	sList, err := s.client.CoreV1().Services("tsuru-test-pool-2").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(sList.Items), check.Equals, 0)
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), "test-pool-2", 0)
+	buf := new(bytes.Buffer)
+	err = s.p.Stop(context.TODO(), a, "", version1, buf)
+	c.Assert(err, check.IsNil)
+	contains := func(name string, depList []appsv1.Deployment) bool {
+		for _, dep := range depList {
+			if dep.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	replicaCount := func(name string, depList []appsv1.Deployment, expectedReplicas int) bool {
+		for _, dep := range depList {
+			if dep.Name == name {
+				return *dep.Spec.Replicas == int32(expectedReplicas)
+			}
+		}
+		return false
+	}
+	depList, err := s.client.AppsV1().Deployments("tsuru-test-default").List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(depList.Items), check.Equals, 2)
+	c.Assert(contains("myapp-web-v2", depList.Items), check.DeepEquals, true)
+	c.Assert(contains("myapp-web", depList.Items), check.DeepEquals, true)
+	c.Assert(replicaCount("myapp-web", depList.Items, 0), check.Equals, true)
+	c.Assert(replicaCount("myapp-web-v2", depList.Items, 1), check.Equals, true)
+	err = s.p.UpdateApp(context.TODO(), a, newApp, buf)
+	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
+}
+
+func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
+	client1, client2, _ := s.prepareMultiCluster(c)
+	s.client = client1
+	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
+	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.mock = testing.NewKubeMock(s.client, s.p, s.factory)
+	a, wait, rollback := s.mock.NoNodeReactions(c)
+	defer rollback()
+
+	pool2 := client2.GetCluster().Pools[0]
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        pool2,
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	{
+		customData := map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version1 := newCommittedVersion(c, a, customData)
+		var img1 string
+		img1, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version1, Event: evt})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img1, check.Equals, "tsuru/app-myapp:v1")
+		wait()
+		customData = map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "run mycmd arg1",
+			},
+		}
+		version2 := newCommittedVersion(c, a, customData)
+		var img2 string
+		img2, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: evt, PreserveVersions: true})
+		c.Assert(err, check.IsNil, check.Commentf("%+v", err))
+		c.Assert(img2, check.Equals, "tsuru/app-myapp:v2")
+		wait()
+	}
+
+	newApp := provisiontest.NewFakeAppWithPool(a.GetName(), a.GetPlatform(), pool2, 0)
+	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+			"tsuru.io/pool": newApp.GetPool(),
+		})
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, newApp.GetPool())
+		return true, nil, nil
+	})
+	err = s.p.UpdateApp(context.TODO(), a, newApp, new(bytes.Buffer))
+	c.Assert(err, check.DeepEquals, &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"})
 }
 
 func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C) {

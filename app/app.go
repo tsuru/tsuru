@@ -535,7 +535,9 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	actions := []*action.Action{
 		&saveApp,
 	}
+	updatePipelineAdded := false
 	if newProv.GetName() == oldProv.GetName() {
+		updatePipelineAdded = true
 		actions = append(actions, &updateAppProvisioner)
 	}
 	if newProv.GetName() != oldProv.GetName() {
@@ -552,7 +554,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			&destroyAppOldProvisioner)
 	} else if !reflect.DeepEqual(app.Plan, oldApp.Plan) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
-	} else if app.Pool != oldApp.Pool {
+	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)

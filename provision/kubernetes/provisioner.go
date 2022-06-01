@@ -1672,6 +1672,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 	if err != nil {
 		return err
 	}
+
 	params := updatePipelineParams{
 		old:      old,
 		new:      new,
@@ -1680,17 +1681,24 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		versions: versions,
 	}
 	if !sameCluster {
+		if len(versions) > 1 {
+			return &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
+		}
 		actions := []*action.Action{
 			&provisionNewApp,
 			&restartApp,
 			&rebuildAppRoutes,
 			&destroyOldApp,
 		}
+
 		return action.NewPipeline(actions...).Execute(ctx, params)
 	}
 	// same cluster and it is not configured with per-pool-namespace, nothing to do.
 	if sameNamespace {
 		return nil
+	}
+	if len(versions) > 1 {
+		return &tsuruErrors.ValidationError{Message: "can't provision new app with multiple versions, please unify them and try again"}
 	}
 	actions := []*action.Action{
 		&updateAppCR,
@@ -1698,6 +1706,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 		&rebuildAppRoutes,
 		&removeOldAppResources,
 	}
+
 	return action.NewPipeline(actions...).Execute(ctx, params)
 }
 

@@ -1400,6 +1400,9 @@ func (p *FakeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool st
 func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new provision.App, w io.Writer) error {
 	provApp := p.apps[old.GetName()]
 	provApp.app = new
+	if new.GetPool() != old.GetPool() {
+		provApp.restarts[""]++
+	}
 	p.apps[old.GetName()] = provApp
 	return nil
 }
