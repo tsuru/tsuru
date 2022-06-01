@@ -48,7 +48,7 @@ func (c *KubeClient) BuildPod(ctx context.Context, a provision.App, evt *event.E
 	}
 	defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, buildPodName, ns)
 	inputFile := "/home/application/archive.tar.gz"
-	buildPlans, err := getResourceRequirementsForBuildPod(ctx, a, client)
+	buildPlans, err := resourceRequirementsForBuildPod(ctx, a, client)
 	if err != nil {
 		return err
 	}
