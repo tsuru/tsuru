@@ -213,6 +213,7 @@ func createImageBuildPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
+	applyAppMetadata(&pod, params.app)
 	params.pod = &pod
 	return createPod(ctx, params)
 }
@@ -306,13 +307,7 @@ func createPod(ctx context.Context, params createPodParams) error {
 		if err != nil {
 			return err
 		}
-		metadata := params.app.GetMetadata()
-		for _, l := range metadata.Labels {
-			pod.Labels[l.Name] = l.Value
-		}
-		for _, annotation := range metadata.Annotations {
-			pod.Annotations[annotation.Name] = annotation.Value
-		}
+		applyAppMetadata(&pod, params.app)
 		params.pod = &pod
 	}
 	ns, err := params.client.AppNamespace(ctx, params.app)
@@ -348,6 +343,19 @@ func createPod(ctx context.Context, params createPodParams) error {
 	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
 	return waitForPod(tctx, params.client, params.pod, ns, false)
+}
+
+func applyAppMetadata(pod *apiv1.Pod, app provision.App) {
+	if app == nil {
+		return
+	}
+	metadata := app.GetMetadata()
+	for _, l := range metadata.Labels {
+		pod.Labels[l.Name] = l.Value
+	}
+	for _, annotation := range metadata.Annotations {
+		pod.Annotations[annotation.Name] = annotation.Value
+	}
 }
 
 type registryAuthConfig struct {
