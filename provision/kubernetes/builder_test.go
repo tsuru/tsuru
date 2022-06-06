@@ -283,6 +283,58 @@ cat >/dev/null && /bin/deploy-agent`)
 	c.Assert(procData.TsuruYaml.Healthcheck.Scheme, check.Equals, "https")
 }
 
+func (s *S) TestImageTagPushAndInspectLabelsAndAnnotations(c *check.C) {
+	s.mock.LogHook = func(w io.Writer, r *http.Request) {
+		output := `{
+"image": {"Id":"1234"},
+"procfile": "web: make run",
+"tsuruYaml": {"healthcheck": {"path": "/health",  "scheme": "https"}}
+}`
+		w.Write([]byte(output))
+	}
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newEmptyVersion(c, a)
+	a.Metadata = appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{{Name: "tsuru.io/custom-annotation", Value: "my-custom-annotation"}},
+		Labels:      []appTypes.MetadataItem{{Name: "tsuru.io/custom-label", Value: "my-custom-label"}},
+	}
+	depLabels := map[string]string{
+		"tsuru.io/is-tsuru":            "true",
+		"tsuru.io/is-service":          "true",
+		"tsuru.io/is-build":            "true",
+		"tsuru.io/is-stopped":          "false",
+		"tsuru.io/is-deploy":           "false",
+		"tsuru.io/is-isolated-run":     "false",
+		"tsuru.io/app-name":            "myapp",
+		"tsuru.io/app-platform":        "python",
+		"tsuru.io/app-pool":            "test-default",
+		"tsuru.io/app-team":            "",
+		"tsuru.io/app-process":         "",
+		"tsuru.io/provisioner":         "kubernetes",
+		"tsuru.io/builder":             "",
+		"app.kubernetes.io/component":  "tsuru-app",
+		"app.kubernetes.io/managed-by": "tsuru",
+		"app.kubernetes.io/name":       "myapp",
+		"tsuru.io/custom-label":        "my-custom-label",
+	}
+	depAnnotations := map[string]string{
+		"tsuru.io/custom-annotation": "my-custom-annotation",
+		"tsuru.io/build-image":       "tsuru/app-myapp:v1",
+	}
+	s.client.Fake.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		c.Assert(pod.Labels, check.DeepEquals, depLabels)
+		c.Assert(pod.Annotations, check.DeepEquals, depAnnotations)
+		return false, nil, nil
+	})
+
+	client := KubeClient{}
+	evt := s.newTestEvent(c, a)
+	_, err := client.ImageTagPushAndInspect(context.TODO(), a, evt, "tsuru/app-myapp:tag1", version)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestImageTagPushAndInspectWithKubernetesConfig(c *check.C) {
 	s.mock.LogHook = func(w io.Writer, r *http.Request) {
 		output := `{
