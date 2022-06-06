@@ -213,7 +213,6 @@ func createImageBuildPod(ctx context.Context, params createPodParams) error {
 	if err != nil {
 		return err
 	}
-	applyAppMetadata(&pod, params.app)
 	params.pod = &pod
 	return createPod(ctx, params)
 }
@@ -1864,6 +1863,7 @@ func runInspectSidecar(ctx context.Context, params inspectParams) error {
 		destinationImages: params.destinationImages,
 		sourceImage:       params.sourceImage,
 	})
+	applyAppMetadata(&pod, params.app)
 	if err != nil {
 		return err
 	}
