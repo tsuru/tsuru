@@ -118,17 +118,6 @@ func (p *Pool) GetTeams() ([]string, error) {
 	return nil, ErrPoolHasNoTeam
 }
 
-func (p *Pool) GetServices() ([]string, error) {
-	allowedValues, err := p.allowedValues()
-	if err != nil {
-		return nil, err
-	}
-	if c := allowedValues[ConstraintTypeService]; len(c) > 0 {
-		return c, nil
-	}
-	return nil, ErrPoolHasNoService
-}
-
 func (p *Pool) GetRouters() ([]string, error) {
 	allowedValues, err := p.allowedValues()
 	if err != nil {
@@ -723,4 +712,61 @@ func (s *poolService) FindByName(ctx context.Context, name string) (*provisionTy
 
 func (s *poolService) List(ctx context.Context) ([]provisionTypes.Pool, error) {
 	return s.storage.FindAll(ctx)
+}
+
+func (s *poolService) Services(ctx context.Context, pool string) ([]string, error) {
+	allowedValues, err := s.allowedValues(ctx, pool)
+	if err != nil {
+		return nil, err
+	}
+	if c := allowedValues[ConstraintTypeService]; len(c) > 0 {
+		return c, nil
+	}
+	return nil, ErrPoolHasNoService
+}
+
+func (p *poolService) allowedValues(ctx context.Context, pool string) (map[poolConstraintType][]string, error) {
+	teams, err := teamsNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	routers, err := routersNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	services, err := servicesNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	plans, err := plansNames(ctx)
+	if err != nil {
+		return nil, err
+	}
+	volumePlans, err := volumePlanNames(ctx, pool)
+	if err != nil {
+		return nil, err
+	}
+
+	resolved := map[poolConstraintType][]string{
+		ConstraintTypeRouter:     routers,
+		ConstraintTypeService:    services,
+		ConstraintTypeTeam:       teams,
+		ConstraintTypePlan:       plans,
+		ConstraintTypeVolumePlan: volumePlans,
+	}
+	constraints, err := getConstraintsForPool(pool, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range constraints {
+		names := resolved[k]
+		var validNames []string
+		for _, n := range names {
+			if v.check(n) {
+				validNames = append(validNames, n)
+			}
+		}
+		resolved[k] = validNames
+	}
+	return resolved, nil
 }

@@ -28,4 +28,5 @@ type PoolStorage interface {
 type PoolService interface {
 	List(ctx context.Context) ([]Pool, error)
 	FindByName(ctx context.Context, name string) (*Pool, error)
+	Services(ctx context.Context, pool string) ([]string, error)
 }

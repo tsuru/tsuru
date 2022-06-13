@@ -157,6 +157,7 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	}
 	err = service.Create(*s.service)
 	c.Assert(err, check.IsNil)
+
 }
 
 func (s *ServiceInstanceSuite) TearDownTest(c *check.C) {
@@ -336,6 +337,44 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
+}
+
+func (s *ServiceInstanceSuite) TestCreateInstanceWithInvalidPoolConstraint(c *check.C) {
+	multiCluterservice := &service.Service{
+		Name:           "mysql-multicluster",
+		Teams:          []string{s.team.Name},
+		OwnerTeams:     []string{s.team.Name},
+		Endpoint:       map[string]string{"production": s.ts.URL},
+		Password:       "abcde",
+		IsMultiCluster: true,
+	}
+	err := service.Create(*multiCluterservice)
+	c.Assert(err, check.IsNil)
+
+	defer func() {
+		deleteErr := service.Delete(*multiCluterservice)
+		c.Assert(deleteErr, check.IsNil)
+	}()
+
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"mysql"}, nil
+	}
+
+	defer func() {
+		s.mockService.Pool.OnServices = nil
+	}()
+
+	params := map[string]interface{}{
+		"name":         "brainsql",
+		"service_name": "mysql-multicluster",
+		"owner":        s.team.Name,
+		"pool":         "my-pool",
+		"token":        "bearer " + s.token.GetValue(),
+	}
+	recorder, request := makeRequestToCreateServiceInstance(params, c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "Service \"mysql-multicluster\" is not available in pool \"my-pool\"\n")
 }
 
 func (s *ServiceInstanceSuite) TestCreateServiceInstanceReturnsErrorWhenUserCannotUseService(c *check.C) {

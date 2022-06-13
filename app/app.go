@@ -1289,7 +1289,8 @@ func (app *App) ValidateService(services ...string) error {
 	if err != nil {
 		return err
 	}
-	poolServices, err := pool.GetServices()
+
+	poolServices, err := servicemanager.Pool.Services(app.ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -1302,7 +1303,11 @@ func (app *App) ValidateService(services ...string) error {
 			}
 		}
 		if !valid {
-			msg := fmt.Sprintf("service %q is not available for pool %q. Available services are: %q", svc, pool.Name, strings.Join(poolServices, ", "))
+			msg := fmt.Sprintf("service %q is not available for pool %q.", svc, pool.Name)
+
+			if len(poolServices) > 0 {
+				msg += fmt.Sprintf(" Available services are: %q", strings.Join(poolServices, ", "))
+			}
 			return &tsuruErrors.ValidationError{Message: msg}
 		}
 	}

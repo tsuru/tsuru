@@ -72,6 +72,9 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	s.mockService.Team.OnFindByNames = func(names []string) ([]authTypes.Team, error) {
 		return []authTypes.Team{s.team}, nil
 	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"mysql"}, nil
+	}
 
 	plan := appTypes.Plan{
 		Name:     "default",

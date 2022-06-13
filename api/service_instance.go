@@ -86,6 +86,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			return permission.ErrUnauthorized
 		}
 	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
@@ -100,6 +101,12 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer func() { evt.Done(err) }()
 	requestID := requestIDHeader(r)
 	err = service.CreateServiceInstance(ctx, instance, &srv, evt, requestID)
+	if err == service.ErrMultiClusterViolatingConstraint {
+		return &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Service %q is not available in pool %q", srv.Name, instance.Pool),
+		}
+	}
 	if err == service.ErrInstanceNameAlreadyExists {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusConflict,

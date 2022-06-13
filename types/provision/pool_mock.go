@@ -4,7 +4,9 @@
 
 package provision
 
-import "context"
+import (
+	"context"
+)
 
 var _ PoolStorage = &MockPoolStorage{}
 var _ PoolService = &MockPoolService{}
@@ -31,6 +33,7 @@ func (m *MockPoolStorage) FindByName(ctx context.Context, name string) (*Pool, e
 type MockPoolService struct {
 	OnList       func() ([]Pool, error)
 	OnFindByName func(string) (*Pool, error)
+	OnServices   func(pool string) ([]string, error)
 }
 
 func (m *MockPoolService) List(ctx context.Context) ([]Pool, error) {
@@ -43,6 +46,13 @@ func (m *MockPoolService) List(ctx context.Context) ([]Pool, error) {
 func (m *MockPoolService) FindByName(ctx context.Context, name string) (*Pool, error) {
 	if m.OnFindByName != nil {
 		return m.OnFindByName(name)
+	}
+	return nil, nil
+}
+
+func (m *MockPoolService) Services(ctx context.Context, pool string) ([]string, error) {
+	if m.OnServices != nil {
+		return m.OnServices(pool)
 	}
 	return nil, nil
 }

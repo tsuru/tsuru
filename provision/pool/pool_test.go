@@ -17,7 +17,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
-	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
@@ -717,22 +716,6 @@ func (s *S) TestGetPlans(c *check.C) {
 	plans, err = pool.GetPlans()
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []string{"plan1", "plan2"})
-}
-
-func (s *S) TestGetServices(c *check.C) {
-	s.mockTeamService.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
-		return []authTypes.Team{{Name: "ateam"}}, nil
-	}
-	serv := service.Service{Name: "demacia", Password: "pentakill", Endpoint: map[string]string{"production": "http://localhost:1234"}, OwnerTeams: []string{"ateam"}}
-	err := service.Create(serv)
-	c.Assert(err, check.IsNil)
-	err = AddPool(context.TODO(), AddPoolOptions{Name: "pool1"})
-	c.Assert(err, check.IsNil)
-	pool, err := GetPoolByName(context.TODO(), "pool1")
-	c.Assert(err, check.IsNil)
-	services, err := pool.GetServices()
-	c.Assert(err, check.IsNil)
-	c.Assert(services, check.DeepEquals, []string{"demacia"})
 }
 
 func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
