@@ -37,6 +37,7 @@ var (
 	ErrUnitNotBound                             = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound                     = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
 	ErrMultiClusterServiceRequiresPool          = errors.New("multi-cluster service instance requires a pool")
+	ErrMultiClusterViolatingConstraint          = errors.New("multi-cluster service instance is not allowed in this pool")
 	ErrMultiClusterPoolDoesNotMatch             = errors.New("pools between app and multi-cluster service instance does not match")
 	ErrRegularServiceInstanceCannotBelongToPool = errors.New("regular (non-multi-cluster) service instance cannot belong to a pool")
 	ErrRevokeInstanceTeamOwnerAccess            = errors.New("cannot revoke the instance's team owner access")
@@ -639,5 +640,24 @@ func validateMultiCluster(ctx context.Context, s *Service, si ServiceInstance) e
 	if err != nil {
 		return err
 	}
+
+	poolAllowedServices, err := servicemanager.Pool.Services(ctx, si.Pool)
+	if err != nil {
+		return err
+	}
+
+	if !hasString(poolAllowedServices, s.Name) {
+		return ErrMultiClusterViolatingConstraint
+	}
+
 	return nil
+}
+
+func hasString(slice []string, element string) bool {
+	for _, e := range slice {
+		if e == element {
+			return true
+		}
+	}
+	return false
 }

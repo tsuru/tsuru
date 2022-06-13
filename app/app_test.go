@@ -4543,7 +4543,7 @@ func (s *S) TestValidateAppService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService("invalidService")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "service \"invalidService\" is not available for pool \"pool1\". Available services are: \"healthcheck\"")
+	c.Assert(err.Error(), check.Equals, "service \"invalidService\" is not available for pool \"pool1\". Available services are: \"my, mysql, healthcheck\"")
 }
 
 func (s *S) TestValidateBlacklistedAppService(c *check.C) {
@@ -4560,12 +4560,22 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
 	c.Assert(err, check.IsNil)
+
+	oldOnServices := s.mockService.Pool.OnServices
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		if pool == "pool1" {
+			return []string{}, nil
+		}
+		return []string{"healthcheck"}, nil
+	}
+	defer func() { s.mockService.Pool.OnServices = oldOnServices }()
+
 	poolConstraint := pool.PoolConstraint{PoolExpr: s.Pool, Field: pool.ConstraintTypeService, Values: []string{serv.Name}, Blacklist: true}
 	err = pool.SetPoolConstraint(&poolConstraint)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(serv.Name)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, pool.ErrPoolHasNoService)
+	c.Assert(err.Error(), check.Equals, "service \"healthcheck\" is not available for pool \"pool1\".")
 	opts := pool.AddPoolOptions{Name: "poolz"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -5914,14 +5924,19 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 	optsPool2 := pool.AddPoolOptions{Name: "pool2", Provisioner: p1.Name, Public: true}
 	err = pool.AddPool(context.TODO(), optsPool2)
 	c.Assert(err, check.IsNil)
-	pool.SetPoolConstraint(&pool.PoolConstraint{
-		PoolExpr: optsPool2.Name,
-		Field:    pool.ConstraintTypeService,
-		Values: []string{
-			svc.Name,
-		},
-		Blacklist: true,
-	})
+
+	oldOnServices := s.mockService.Pool.OnServices
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		if pool == "pool2" {
+			return []string{}, nil
+		}
+
+		return nil, pkgErrors.New("No services found for pool " + pool)
+	}
+	defer func() {
+		s.mockService.Pool.OnServices = oldOnServices
+	}()
+
 	err = app.Update(UpdateAppArgs{UpdateData: App{Pool: optsPool2.Name}, Writer: nil})
 	c.Assert(err, check.NotNil)
 }

@@ -217,6 +217,13 @@ func setupMocks(s *S) {
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{
+			"my",
+			"mysql",
+			"healthcheck",
+		}, nil
+	}
 	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: app,

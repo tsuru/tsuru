@@ -198,6 +198,9 @@ func (s *S) setupMocks() {
 	s.mockService.AppQuota.OnGet = func(item quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"varus", "mysql", "mysql2"}, nil
+	}
 }
 
 func (s *S) TearDownTest(c *check.C) {

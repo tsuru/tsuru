@@ -705,6 +705,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiClusterWhenNoClusterFound(
 			Provisioner: "docker",
 		}, nil
 	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"multicluster-service"}, nil
+	}
 	s.mockService.Cluster.OnFindByPool = func(provisioner, name string) (*provTypes.Cluster, error) {
 		return nil, provTypes.ErrNoCluster
 	}
@@ -753,6 +756,9 @@ func (s *InstanceSuite) TestCreateServiceInstanceMultiCluster(c *check.C) {
 			Provisioner: "kubernetes",
 			Pools:       []string{"my-pool"},
 		}, nil
+	}
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{"multicluster-service"}, nil
 	}
 	srv := Service{
 		Name:           "multicluster-service",
