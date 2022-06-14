@@ -1447,6 +1447,24 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
+func syncMap(m map[string]string, metadata []appTypes.MetadataItem) {
+	if m == nil {
+		m = make(map[string]string)
+	}
+	for _, metadataItem := range metadata {
+		if strings.HasPrefix(metadataItem.Name, "tsuru.io.k8s-service/") {
+			key := strings.TrimPrefix(metadataItem.Name, "tsuru.io.k8s-service/")
+			m[key] = metadataItem.Value
+		}
+	}
+}
+
+func syncServiceMetadata(app provision.App, svcData *svcCreateData) {
+	metadata := app.GetMetadata()
+	syncMap(svcData.labels, metadata.Labels)
+	syncMap(svcData.annotations, metadata.Annotations)
+}
+
 func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
@@ -1597,6 +1615,9 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				svcData.annotations[k] = v
 			}
 		}
+
+		syncServiceMetadata(a, &svcData)
+
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        svcData.name,
