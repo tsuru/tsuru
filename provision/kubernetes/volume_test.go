@@ -154,7 +154,7 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 	c.Assert(mounts, check.DeepEquals, expectedMount)
 }
 
-func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
+func (s *S) TestCreateVolumesForAppPluginNonPersistentEmptyDir(c *check.C) {
 	config.Set("volume-plans:p1:kubernetes:plugin", "emptyDir")
 	defer config.Unset("volume-plans")
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -199,6 +199,104 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistent(c *check.C) {
 		VolumeSource: apiv1.VolumeSource{
 			EmptyDir: &apiv1.EmptyDirVolumeSource{
 				Medium: apiv1.StorageMediumMemory,
+			},
+		},
+	}}
+	expectedMount := []apiv1.VolumeMount{
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt",
+			ReadOnly:  false,
+		},
+		{
+			Name:      volumeName(v.Name),
+			MountPath: "/mnt2",
+			ReadOnly:  false,
+		},
+	}
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
+	_, err = s.client.CoreV1().PersistentVolumes().Get(context.TODO(), volumeName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.CoreV1().PersistentVolumeClaims(ns).Get(context.TODO(), volumeClaimName(v.Name), metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+	volumes, mounts, err = createVolumesForApp(context.TODO(), s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	c.Assert(volumes, check.DeepEquals, expectedVolume)
+	c.Assert(mounts, check.DeepEquals, expectedMount)
+}
+
+func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(c *check.C) {
+	config.Set("volume-plans:p1:kubernetes:plugin", "ephemeral")
+	config.Set("volume-plans:p1:kubernetes:storage-class", "my-storage-class")
+	config.Set("volume-plans:p1:kubernetes:access-modes", "ReadWriteOnce")
+	defer config.Unset("volume-plans")
+	a := provisiontest.NewFakeApp("myapp", "python", 0)
+	err := s.p.Provision(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	v := volumeTypes.Volume{
+		Name: "v1",
+		Opts: map[string]string{
+			"capacity": "10Gi",
+		},
+		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Pool:      "test-default",
+		TeamOwner: "admin",
+	}
+	err = servicemanager.Volume.Create(context.TODO(), &v)
+	c.Assert(err, check.IsNil)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    a.GetName(),
+		MountPoint: "/mnt2",
+		ReadOnly:   false,
+	})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.Volume.BindApp(context.TODO(), &volumeTypes.BindOpts{
+		Volume:     &v,
+		AppName:    "otherapp",
+		MountPoint: "/mnt",
+		ReadOnly:   false,
+	})
+	c.Assert(err, check.IsNil)
+	volumes, mounts, err := createVolumesForApp(context.TODO(), s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+	expectedStorageClass := "my-storage-class"
+	expectedCap, _ := resource.ParseQuantity("10Gi")
+	expectedVolume := []apiv1.Volume{{
+		Name: volumeName(v.Name),
+		VolumeSource: apiv1.VolumeSource{
+			Ephemeral: &apiv1.EphemeralVolumeSource{
+				VolumeClaimTemplate: &apiv1.PersistentVolumeClaimTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"tsuru.io/volume-name": "v1",
+							"tsuru.io/volume-pool": "test-default",
+							"tsuru.io/volume-plan": "p1",
+							"tsuru.io/volume-team": "admin",
+							"tsuru.io/is-tsuru":    "true",
+							"tsuru.io/provisioner": "kubernetes",
+						},
+					},
+					Spec: apiv1.PersistentVolumeClaimSpec{
+						StorageClassName: &expectedStorageClass,
+						AccessModes:      []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteOnce},
+						Resources: apiv1.ResourceRequirements{
+							Requests: apiv1.ResourceList{
+								apiv1.ResourceStorage: expectedCap,
+							},
+						},
+					},
+				},
 			},
 		},
 	}}

@@ -29,7 +29,7 @@ type volumeOptions struct {
 	AccessModes  string `json:"access-modes"`
 }
 
-var allowedNonPersistentVolumes = set.FromValues("emptyDir")
+var allowedNonPersistentVolumes = set.FromValues("emptyDir", "ephemeral")
 
 func (opts *volumeOptions) isPersistent() bool {
 	return !allowedNonPersistentVolumes.Includes(opts.Plugin)
@@ -101,17 +101,51 @@ func bindsForVolume(ctx context.Context, v *volumeTypes.Volume, opts *volumeOpti
 
 func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.VolumeSource, error) {
 	var volumeSrc apiv1.VolumeSource
-	data, err := json.Marshal(map[string]interface{}{
-		opts.Plugin: v.Opts,
-	})
-	if err != nil {
-		return volumeSrc, errors.WithStack(err)
-	}
-	h := &codec.JsonHandle{}
-	dec := codec.NewDecoderBytes(data, h)
-	err = dec.Decode(&volumeSrc)
-	if err != nil {
-		return volumeSrc, errors.WithStack(err)
+	if opts.Plugin == "ephemeral" {
+		labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
+			Name:        v.Name,
+			Provisioner: provisionerName,
+			Prefix:      tsuruLabelPrefix,
+			Pool:        v.Pool,
+			Plan:        v.Plan.Name,
+			Team:        v.TeamOwner,
+		})
+		var accessModes []apiv1.PersistentVolumeAccessMode
+		for _, am := range strings.Split(opts.AccessModes, ",") {
+			accessModes = append(accessModes, apiv1.PersistentVolumeAccessMode(am))
+		}
+		volumeSrc = apiv1.VolumeSource{
+			Ephemeral: &apiv1.EphemeralVolumeSource{
+				VolumeClaimTemplate: &apiv1.PersistentVolumeClaimTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: labelSet.ToLabels(),
+					},
+
+					Spec: apiv1.PersistentVolumeClaimSpec{
+						StorageClassName: &opts.StorageClass,
+						AccessModes:      accessModes,
+						Resources: apiv1.ResourceRequirements{
+							Requests: apiv1.ResourceList{
+								apiv1.ResourceStorage: opts.Capacity,
+							},
+						},
+					},
+				},
+			},
+		}
+	} else {
+		data, err := json.Marshal(map[string]interface{}{
+			opts.Plugin: v.Opts,
+		})
+		if err != nil {
+			return volumeSrc, errors.WithStack(err)
+		}
+		h := &codec.JsonHandle{}
+		dec := codec.NewDecoderBytes(data, h)
+		err = dec.Decode(&volumeSrc)
+		if err != nil {
+			return volumeSrc, errors.WithStack(err)
+		}
 	}
 	return volumeSrc, nil
 }
@@ -122,13 +156,13 @@ func validateVolume(v *volumeTypes.Volume) (*volumeOptions, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	if opts.Plugin != "" && opts.StorageClass != "" {
+	if opts.Plugin != "" && opts.StorageClass != "" && opts.isPersistent() {
 		return nil, errors.New("both volume plan plugin and storage-class cannot be set")
 	}
 	if opts.Plugin == "" && opts.StorageClass == "" {
 		return nil, errors.New("both volume plan plugin and storage-class are empty")
 	}
-	if !opts.isPersistent() {
+	if !opts.isPersistent() && opts.Plugin == "emptyDir" {
 		return &opts, nil
 	}
 	if capRaw, ok := v.Opts["capacity"]; ok {
