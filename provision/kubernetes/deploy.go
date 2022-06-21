@@ -1464,10 +1464,16 @@ func syncServiceMetadata(app provision.App, svcData *svcCreateData) {
 	annotationsRaw, okAnnotations := metadata.Annotation(ResourceMetadataPrefix + "service")
 	if okLabels {
 		json.Unmarshal([]byte(labelsRaw), &labelsToAdd)
+		if svcData.labels == nil {
+			svcData.labels = map[string]string{}
+		}
 		syncMetadataMap(labelsToAdd, svcData.labels)
 	}
 	if okAnnotations {
 		json.Unmarshal([]byte(annotationsRaw), &annotationsToAdd)
+		if svcData.annotations == nil {
+			svcData.annotations = map[string]string{}
+		}
 		syncMetadataMap(annotationsToAdd, svcData.annotations)
 	}
 }

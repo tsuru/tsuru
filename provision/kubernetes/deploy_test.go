@@ -469,6 +469,101 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotationsWi
 	})
 }
 
+func (s *S) TestServiceManagerDeployServiceWithCustomMetadata(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  ResourceMetadataPrefix + "service",
+				Value: `{"a1": "v1", "a2": "v2"}`,
+			},
+		},
+		Labels: []appTypes.MetadataItem{
+			{
+				Name:  ResourceMetadataPrefix + "service",
+				Value: `{"l1": "v1", "l2": "v2"}`,
+			},
+		},
+	}}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	svc1, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(svc1.Annotations, check.DeepEquals, map[string]string{"a1": "v1", "a2": "v2"})
+	c.Assert(svc1.Labels, check.DeepEquals, map[string]string{
+		"app":                          "myapp-p1",
+		"tsuru.io/is-build":            "false",
+		"tsuru.io/is-service":          "true",
+		"tsuru.io/app-platform":        "",
+		"tsuru.io/builder":             "",
+		"app.kubernetes.io/component":  "tsuru-app",
+		"tsuru.io/app-pool":            "test-default",
+		"tsuru.io/app-name":            "myapp",
+		"app.tsuru.io/k8s-service":     `{"l1": "v1", "l2": "v2"}`,
+		"tsuru.io/is-stopped":          "false",
+		"app.kubernetes.io/instance":   "myapp-p1",
+		"tsuru.io/is-tsuru":            "true",
+		"tsuru.io/is-deploy":           "false",
+		"tsuru.io/provisioner":         "kubernetes",
+		"app.kubernetes.io/name":       "myapp",
+		"tsuru.io/app-team":            "admin",
+		"tsuru.io/app-process":         "p1",
+		"tsuru.io/is-routable":         "true",
+		"app.kubernetes.io/managed-by": "tsuru",
+
+		"l1": "v1",
+		"l2": "v2",
+	})
+
+	svc2, err := s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(svc2.Annotations, check.DeepEquals, map[string]string{"a1": "v1", "a2": "v2"})
+	c.Assert(svc2.Labels, check.DeepEquals, map[string]string{
+		"app":                          "myapp-p2",
+		"tsuru.io/is-build":            "false",
+		"tsuru.io/is-service":          "true",
+		"tsuru.io/app-platform":        "",
+		"tsuru.io/builder":             "",
+		"app.kubernetes.io/component":  "tsuru-app",
+		"tsuru.io/app-pool":            "test-default",
+		"tsuru.io/app-name":            "myapp",
+		"app.tsuru.io/k8s-service":     `{"l1": "v1", "l2": "v2"}`,
+		"tsuru.io/is-stopped":          "false",
+		"app.kubernetes.io/instance":   "myapp-p2",
+		"tsuru.io/is-tsuru":            "true",
+		"tsuru.io/is-deploy":           "false",
+		"tsuru.io/provisioner":         "kubernetes",
+		"app.kubernetes.io/name":       "myapp",
+		"tsuru.io/app-team":            "admin",
+		"tsuru.io/app-process":         "p2",
+		"tsuru.io/is-routable":         "true",
+		"app.kubernetes.io/managed-by": "tsuru",
+
+		"l1": "v1",
+		"l2": "v2",
+	})
+}
+
 func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
