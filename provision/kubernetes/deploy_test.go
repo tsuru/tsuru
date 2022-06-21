@@ -418,6 +418,57 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotations(c
 	})
 }
 
+func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotationsWithMetadataPrefix(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  ResourceMetadataPrefix + "service-account",
+				Value: `{"a1": "v1", "a2": "v2"}`,
+			},
+		},
+	}}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+			"p2": "cmd2",
+		},
+	})
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+
+	nsName, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	account, err := s.client.CoreV1().ServiceAccounts(nsName).Get(context.TODO(), "app-myapp", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "app-myapp",
+			Namespace: nsName,
+			Labels: map[string]string{
+				"tsuru.io/is-tsuru":    "true",
+				"tsuru.io/app-name":    "myapp",
+				"tsuru.io/provisioner": "kubernetes",
+			},
+			Annotations: map[string]string{
+				"a1": "v1",
+				"a2": "v2",
+			},
+		},
+	})
+}
+
 func (s *S) TestServiceManagerDeployServiceWithNodeAffinity(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()

@@ -525,6 +525,9 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 	var annotations map[string]string
 	if appMeta != nil {
 		saAnnotationsRaw, ok := appMeta.Annotation(AnnotationServiceAccountAnnotations)
+		if !ok {
+			saAnnotationsRaw, ok = appMeta.Annotation(ResourceMetadataPrefix + "service-account")
+		}
 		if ok {
 			json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
 		}
@@ -1447,22 +1450,26 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func syncMap(m map[string]string, metadata []appTypes.MetadataItem) {
-	if m == nil {
-		m = make(map[string]string)
-	}
-	for _, metadataItem := range metadata {
-		if strings.HasPrefix(metadataItem.Name, "tsuru.io.k8s-service/") {
-			key := strings.TrimPrefix(metadataItem.Name, "tsuru.io.k8s-service/")
-			m[key] = metadataItem.Value
-		}
+func syncMetadataMap(toAdd map[string]string, metadata map[string]string) {
+	for key, value := range toAdd {
+		metadata[key] = value
 	}
 }
 
 func syncServiceMetadata(app provision.App, svcData *svcCreateData) {
 	metadata := app.GetMetadata()
-	syncMap(svcData.labels, metadata.Labels)
-	syncMap(svcData.annotations, metadata.Annotations)
+	labelsToAdd := make(map[string]string)
+	annotationsToAdd := make(map[string]string)
+	labelsRaw, okLabels := metadata.Label(ResourceMetadataPrefix + "service")
+	annotationsRaw, okAnnotations := metadata.Annotation(ResourceMetadataPrefix + "service")
+	if okLabels {
+		json.Unmarshal([]byte(labelsRaw), &labelsToAdd)
+		syncMetadataMap(labelsToAdd, svcData.labels)
+	}
+	if okAnnotations {
+		json.Unmarshal([]byte(annotationsRaw), &annotationsToAdd)
+		syncMetadataMap(annotationsToAdd, svcData.annotations)
+	}
 }
 
 func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
