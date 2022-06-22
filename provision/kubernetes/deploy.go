@@ -1450,31 +1450,22 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
-func syncMetadataMap(toAdd map[string]string, metadata map[string]string) {
+func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
 	for key, value := range toAdd {
 		metadata[key] = value
 	}
 }
 
-func syncServiceMetadata(app provision.App, svcData *svcCreateData) {
+func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
 	metadata := app.GetMetadata()
-	labelsToAdd := make(map[string]string)
 	annotationsToAdd := make(map[string]string)
-	labelsRaw, okLabels := metadata.Label(ResourceMetadataPrefix + "service")
-	annotationsRaw, okAnnotations := metadata.Annotation(ResourceMetadataPrefix + "service")
-	if okLabels {
-		json.Unmarshal([]byte(labelsRaw), &labelsToAdd)
-		if svcData.labels == nil {
-			svcData.labels = map[string]string{}
-		}
-		syncMetadataMap(labelsToAdd, svcData.labels)
-	}
-	if okAnnotations {
+	annotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service")
+	if ok {
 		json.Unmarshal([]byte(annotationsRaw), &annotationsToAdd)
 		if svcData.annotations == nil {
 			svcData.annotations = map[string]string{}
 		}
-		syncMetadataMap(annotationsToAdd, svcData.annotations)
+		syncAnnotationMap(annotationsToAdd, svcData.annotations)
 	}
 }
 
@@ -1629,7 +1620,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			}
 		}
 
-		syncServiceMetadata(a, &svcData)
+		syncServiceAnnotations(a, &svcData)
 
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
