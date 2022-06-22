@@ -527,6 +527,11 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 		saAnnotationsRaw, ok := appMeta.Annotation(AnnotationServiceAccountAnnotations)
 		if ok {
 			json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+		} else {
+			saAnnotationsRaw, ok = appMeta.Annotation(ResourceMetadataPrefix + "service-account")
+			if ok {
+				json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+			}
 		}
 	}
 
@@ -1447,6 +1452,25 @@ type svcCreateData struct {
 	ports       []apiv1.ServicePort
 }
 
+func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
+	for key, value := range toAdd {
+		metadata[key] = value
+	}
+}
+
+func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
+	metadata := app.GetMetadata()
+	annotationsToAdd := make(map[string]string)
+	annotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service")
+	if ok {
+		json.Unmarshal([]byte(annotationsRaw), &annotationsToAdd)
+		if svcData.annotations == nil {
+			svcData.annotations = map[string]string{}
+		}
+		syncAnnotationMap(annotationsToAdd, svcData.annotations)
+	}
+}
+
 func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, process string, labels *provision.LabelSet, currentVersion appTypes.AppVersion, backendCRD, preserveOldVersions bool) error {
 	ns, err := m.client.AppNamespace(ctx, a)
 	if err != nil {
@@ -1597,6 +1621,9 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				svcData.annotations[k] = v
 			}
 		}
+
+		syncServiceAnnotations(a, &svcData)
+
 		svc := &apiv1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        svcData.name,

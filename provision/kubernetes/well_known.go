@@ -6,6 +6,11 @@ const (
 	// json object that can be parsed as a map[string]string.
 	AnnotationServiceAccountAnnotations = "app.tsuru.io/service-account-annotations"
 
+	// ResourceMetadaPrefix is used to define an annotation or label for a subresource of the deployment
+	// i.e: "app.tsuru.io/k8s-<resource-type>"
+	// Example, setting a service annotation: 'app.tsuru.io/k8s-service={"label1": "value"}'
+	ResourceMetadataPrefix = "app.tsuru.io/k8s-"
+
 	// AnnotationEnableVPA is used to enable the creation of a recommendation
 	// only VPA for the application. Its value must be a boolean.
 	AnnotationEnableVPA = "app.tsuru.io/enable-vpa"
