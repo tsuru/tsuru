@@ -525,11 +525,13 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 	var annotations map[string]string
 	if appMeta != nil {
 		saAnnotationsRaw, ok := appMeta.Annotation(AnnotationServiceAccountAnnotations)
-		if !ok {
-			saAnnotationsRaw, ok = appMeta.Annotation(ResourceMetadataPrefix + "service-account")
-		}
 		if ok {
 			json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+		} else {
+			saAnnotationsRaw, ok = appMeta.Annotation(ResourceMetadataPrefix + "service-account")
+			if ok {
+				json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+			}
 		}
 	}
 
