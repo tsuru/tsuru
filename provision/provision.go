@@ -25,6 +25,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
 const (
@@ -561,6 +562,7 @@ type AppFilterProvisioner interface {
 }
 
 type VolumeProvisioner interface {
+	ValidateVolume(context.Context, *volumeTypes.Volume) error
 	IsVolumeProvisioned(ctx context.Context, volumeName, pool string) (bool, error)
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }

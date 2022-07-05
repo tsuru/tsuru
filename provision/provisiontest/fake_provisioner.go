@@ -29,6 +29,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
 var (
@@ -1393,6 +1394,9 @@ func (p *FakeProvisioner) DeleteVolume(ctx context.Context, volName, pool string
 	return nil
 }
 
+func (p *FakeProvisioner) ValidateVolume(ctx context.Context, vol *volumeTypes.Volume) error {
+	return nil
+}
 func (p *FakeProvisioner) IsVolumeProvisioned(ctx context.Context, name, pool string) (bool, error) {
 	return false, nil
 }

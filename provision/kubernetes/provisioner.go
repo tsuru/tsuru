@@ -1646,6 +1646,11 @@ func (p *kubernetesProvisioner) IsVolumeProvisioned(ctx context.Context, volumeN
 	return volumeExists(ctx, client, volumeName)
 }
 
+func (p *kubernetesProvisioner) ValidateVolume(ctx context.Context, vol *volumeTypes.Volume) error {
+	_, err := validateVolume(vol)
+	return err
+}
+
 func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provision.App, w io.Writer) error {
 	if old.GetPool() == new.GetPool() {
 		return nil

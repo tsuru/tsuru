@@ -277,6 +277,14 @@ func (s *volumeService) validate(ctx context.Context, v *volumeTypes.Volume) err
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	if volumeProv, ok := prov.(provision.VolumeProvisioner); ok {
+		err = volumeProv.ValidateVolume(ctx, v)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	planOpts, ok := internalConfig.ConvertEntries(data).(map[string]interface{})
 	if !ok {
 		return errors.Errorf("invalid type for plan opts %T", planOpts)
