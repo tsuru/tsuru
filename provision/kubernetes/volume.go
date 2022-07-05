@@ -166,7 +166,6 @@ func validateVolume(v *volumeTypes.Volume) (*volumeOptions, error) {
 		return &opts, nil
 	}
 	if capRaw, ok := v.Opts["capacity"]; ok {
-		delete(v.Opts, "capacity")
 		opts.Capacity, err = resource.ParseQuantity(capRaw)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to parse `capacity` opt")
@@ -176,7 +175,6 @@ func validateVolume(v *volumeTypes.Volume) (*volumeOptions, error) {
 		return nil, errors.New("capacity is mandatory either in plan or as volume opts")
 	}
 	if accessModesRaw, ok := v.Opts["access-modes"]; ok {
-		delete(v.Opts, "access-modes")
 		opts.AccessModes = accessModesRaw
 	}
 	if opts.AccessModes == "" {

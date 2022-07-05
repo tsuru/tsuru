@@ -4198,7 +4198,9 @@ func (s *S) TestServiceManagerDeployServiceWithVolumes(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+			"plugin": "nfs",
+		}},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}

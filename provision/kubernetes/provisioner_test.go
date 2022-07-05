@@ -2842,7 +2842,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+			"plugin": "emptyDir",
+		}},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
@@ -2912,7 +2914,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+			"storage-class": "my-storageclass",
+		}},
 		Pool:      "test-default",
 		TeamOwner: "admin",
 	}
@@ -2962,7 +2966,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+			"storage-class": "mystorage-class",
+		}},
 		Pool:      a.Pool,
 		TeamOwner: "admin",
 	}
@@ -3045,7 +3051,9 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 			"capacity":     "20Gi",
 			"access-modes": string(apiv1.ReadWriteMany),
 		},
-		Plan:      volumeTypes.VolumePlan{Name: "p1"},
+		Plan: volumeTypes.VolumePlan{Name: "p1", Opts: map[string]interface{}{
+			"storage-class": "myclass",
+		}},
 		Pool:      a.Pool,
 		TeamOwner: "admin",
 	}
