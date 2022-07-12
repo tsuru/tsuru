@@ -58,7 +58,7 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]Rebu
 	}
 
 	for _, appRouter := range opts.App.GetRouters() {
-		resultInRouter, err := rebuildRoutesInRouter(ctx, appRouter, opts)
+		resultInRouter, err := RebuildRoutesInRouter(ctx, appRouter, opts)
 		if err == nil {
 			result[appRouter.Name] = *resultInRouter
 		} else {
@@ -85,7 +85,7 @@ func diffRoutes(old []*url.URL, new []*url.URL) (toAdd []*url.URL, toRemove []*u
 	return toAdd, toRemove
 }
 
-func rebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o RebuildRoutesOpts) (*RebuildRoutesResult, error) {
+func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o RebuildRoutesOpts) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", o.App.GetName())
 	if o.Writer == nil {
 		o.Writer = ioutil.Discard
