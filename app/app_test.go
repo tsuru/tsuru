@@ -236,6 +236,8 @@ func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
 }
 
 func (s *S) TestDeleteSwappedAppDifferentRouters(c *check.C) {
+	config.Set("routers:fake-v2:type", "fake-v2")
+	defer config.Unset("routers:fake-v2:type")
 	a := App{
 		Name:      "ritual",
 		Platform:  "ruby",
@@ -256,6 +258,8 @@ func (s *S) TestDeleteSwappedAppDifferentRouters(c *check.C) {
 }
 
 func (s *S) TestDeleteSwappedAppRouterV2WithoutCnameDeprecation(c *check.C) {
+	config.Set("routers:fake-v2:type", "fake-v2")
+	defer config.Unset("routers:fake-v2:type")
 	a := App{
 		Name:      "ritual",
 		Platform:  "ruby",
@@ -5690,6 +5694,21 @@ func (s *S) TestUpdateRouterV2(c *check.C) {
 	c.Assert(routertest.OptsRouter.Opts["myapp"], check.DeepEquals, map[string]string{
 		"c": "d",
 	})
+}
+
+func (s *S) TestAddRouterV2Feedback(c *check.C) {
+	config.Set("routers:fake-v2:type", "fake-v2")
+	defer config.Unset("routers:fake-v2:type")
+	app := App{Name: "myapp-with-error", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-v2",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err.Error(), check.Equals, "Ensure backend error")
 }
 
 func (s *S) TestUpdateRouterNotSupported(c *check.C) {

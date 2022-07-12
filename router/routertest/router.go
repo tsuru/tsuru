@@ -424,6 +424,10 @@ var (
 
 func (r *fakeRouterV2) EnsureBackend(ctx context.Context, app router.App, opts router.EnsureBackendOpts) error {
 	name := app.GetName()
+	if name == "myapp-with-error" {
+		return errors.New("Ensure backend error")
+	}
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.backends[name] = nil

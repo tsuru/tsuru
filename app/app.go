@@ -2375,16 +2375,25 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 			return ErrRouterAlreadyLinked
 		}
 	}
-	defer rebuild.RoutesRebuildOrEnqueue(app.Name)
 	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
 		return err
 	}
 	if _, ok := r.(router.RouterV2); ok {
 		err = router.Store(app.GetName(), app.GetName(), r.GetType())
+		if err != nil {
+			return err
+		}
+
+		_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+			App:  app,
+			Wait: true,
+		})
 	} else if optsRouter, ok := r.(router.OptsRouter); ok {
+		defer rebuild.RoutesRebuildOrEnqueue(app.Name)
 		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
 	} else {
+		defer rebuild.RoutesRebuildOrEnqueue(app.Name)
 		err = r.AddBackend(app.ctx, app)
 	}
 	if err != nil {
@@ -2430,7 +2439,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	if isRouterV2 {
-		_, err = rebuild.RebuildRoutes(app.ctx, rebuild.RebuildRoutesOpts{
+		_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
 			App:  app,
 			Wait: true,
 		})
