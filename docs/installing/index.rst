@@ -14,5 +14,4 @@ Installing
 
     installing-minikube
     installing-gke
-    using-tsuru-installer
     installing-tsuru-components
