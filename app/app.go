@@ -2385,10 +2385,13 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 			return err
 		}
 
-		_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
-			App:  app,
-			Wait: true,
-		})
+		// skip rebuild routes task if app has no units available
+		if app.available() {
+			_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+				App:  app,
+				Wait: true,
+			})
+		}
 	} else if optsRouter, ok := r.(router.OptsRouter); ok {
 		defer rebuild.RoutesRebuildOrEnqueue(app.Name)
 		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
