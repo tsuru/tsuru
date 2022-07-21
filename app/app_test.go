@@ -5702,13 +5702,31 @@ func (s *S) TestAddRouterV2Feedback(c *check.C) {
 	app := App{Name: "myapp-with-error", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
+	err = s.provisioner.AddUnits(context.TODO(), &app, 1, "web", nil, nil)
+	c.Assert(err, check.IsNil)
 	err = app.AddRouter(appTypes.AppRouter{
 		Name: "fake-v2",
 		Opts: map[string]string{
 			"a": "b",
 		},
 	})
+	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Ensure backend error")
+}
+
+func (s *S) TestAddRouterV2FeedbackSkipRebuildIfNoUnitsDeployed(c *check.C) {
+	config.Set("routers:fake-v2:type", "fake-v2")
+	defer config.Unset("routers:fake-v2:type")
+	app := App{Name: "myapp-with-error", Platform: "go", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &app, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddRouter(appTypes.AppRouter{
+		Name: "fake-v2",
+		Opts: map[string]string{
+			"a": "b",
+		},
+	})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestUpdateRouterNotSupported(c *check.C) {
