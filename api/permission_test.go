@@ -364,7 +364,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
 	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
-	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam&contextType=team", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
@@ -436,13 +436,37 @@ func (s *S) TestAssignRoleWithEmptyContextValue(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
+func (s *S) TestAssignRoleWithWrongContextType(c *check.C) {
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
+	contextValue := "test"
+	contextType := "team"
+	roleBody := bytes.NewBufferString(fmt.Sprintf("context=%s&contextType=%s&email=%s", contextValue, contextType, emptyToken.GetUserName()))
+	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	err = role.AddPermissions("app.create")
 	c.Assert(err, check.IsNil)
 	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
-	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam&contextType=team", emptyToken.GetUserName()))
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
@@ -844,7 +868,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 		Team: s.team.Name,
 	}, s.token)
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader(`context=myapp&token_id=` + teamToken.TokenID)
+	body := strings.NewReader(`context=myapp&contextType=app&token_id=` + teamToken.TokenID)
 	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
@@ -1074,7 +1098,7 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
 	_, err := permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader(`context=myapp&group_name=g1`)
+	body := strings.NewReader(`context=myapp&group_name=g1&contextType=app`)
 	req, err := http.NewRequest(http.MethodPost, "/1.9/roles/newrole/group", body)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{

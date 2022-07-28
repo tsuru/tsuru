@@ -263,30 +263,31 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	return role.RemovePermissions(permName)
 }
 
-func checkContextTypeForRole(role permission.Role, contextValue string) error {
-	if (role.ContextType != "" || role.ContextType != "global") && contextValue == "" {
+func validateContexType(role permission.Role, contextType string) error {
+	if string(role.ContextType) != contextType {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("can't assign role with empty context-value (role %s has context type: %s)", role.Name, role.ContextType),
+			Message: fmt.Sprintf("wrong context-type, role %s has context-type: %s", role.Name, role.ContextType),
 		}
 	}
 	return nil
 }
 
-func canUseRole(t auth.Token, roleName, contextValue string) error {
+func getRoleReturnNotFound(roleName string) (permission.Role, error) {
 	role, err := permission.FindRole(roleName)
 	if err != nil {
 		if err == permTypes.ErrRoleNotFound {
-			return &errors.HTTP{
+			return permission.Role{}, &errors.HTTP{
 				Code:    http.StatusNotFound,
 				Message: err.Error(),
 			}
 		}
-		return err
+		return permission.Role{}, err
 	}
-	if err = checkEmptyValueForRole(role, contextValue); err != nil {
-		return err
-	}
+	return role, nil
+}
+
+func canUseRole(t auth.Token, role permission.Role, contextValue string) error {
 	userPerms, err := t.Permissions()
 	if err != nil {
 		return err
@@ -330,11 +331,24 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	defer func() { evt.Done(err) }()
 	email := InputValue(r, "email")
 	contextValue := InputValue(r, "context")
+	contextType := InputValue(r, "contextType")
+	if contextType == "" {
+		contextType = "global"
+	}
 	user, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return err
 	}
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+	if err = validateContexType(role, contextType); err != nil {
+		return err
+	}
+
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -372,7 +386,12 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -608,6 +627,10 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if !permission.Check(t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
+	contextType := InputValue(r, "contextType")
+	if contextType == "" {
+		contextType = "global"
+	}
 	tokenID := InputValue(r, "token_id")
 	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
@@ -622,7 +645,16 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+	if err = validateContexType(role, contextType); err != nil {
+		return err
+	}
+
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -661,7 +693,12 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -688,6 +725,10 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	groupName := InputValue(r, "group_name")
 	contextValue := InputValue(r, "context")
+	contextType := InputValue(r, "contextType")
+	if contextType == "" {
+		contextType = "global"
+	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(&event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
@@ -700,7 +741,16 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+	if err = validateContexType(role, contextType); err != nil {
+		return err
+	}
+
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -733,7 +783,13 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = canUseRole(t, roleName, contextValue)
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+
+	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
 	}
