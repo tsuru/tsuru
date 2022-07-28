@@ -414,6 +414,28 @@ func (s *S) TestAssignRoleNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
+func (s *S) TestAssignRoleWithEmptyContextValue(c *check.C) {
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s", emptyToken.GetUserName()))
+	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
 	role, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
@@ -887,6 +909,31 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 		},
 		ErrorMatches: "role not found",
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestAssignTokenRoleToEmptyTeam(c *check.C) {
+	_, err := permission.NewRole("newrole", "team", "")
+	c.Assert(err, check.IsNil)
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
+		Team: s.team.Name,
+	}, s.token)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`token_id=` + teamToken.TokenID)
+	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
