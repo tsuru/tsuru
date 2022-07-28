@@ -263,8 +263,8 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	return role.RemovePermissions(permName)
 }
 
-func checkEmptyValueForRole(role permission.Role, contextValue string) error {
-	if role.ContextType != "" && contextValue == "" {
+func checkContextTypeForRole(role permission.Role, contextValue string) error {
+	if (role.ContextType != "" || role.ContextType != "global") && contextValue == "" {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("can't assign role with empty context-value (role %s has context type: %s)", role.Name, role.ContextType),
