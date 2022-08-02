@@ -105,15 +105,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	form.DefaultEncoder = form.DefaultEncoder.UseJSONTags(false)
 	app.TestLogWriterWaitOnClose = true
 	rand.Seed(time.Now().UnixNano())
-	err := config.ReadConfigFile("testdata/config.yaml")
-	c.Assert(err, check.IsNil)
-	config.Set("log:disable-syslog", true)
-	config.Set("database:driver", "mongodb")
-	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "tsuru_api_base_test")
-	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.testServer = RunServer(true)
-
 	testCertData, err := ioutil.ReadFile("./testdata/cert.pem")
 	c.Assert(err, check.IsNil)
 	testKeyData, err := ioutil.ReadFile("./testdata/key.pem")
@@ -123,6 +115,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	resetConfig(c)
 	config.Set("routers:fake:default", true)
 	config.Set("routers:fake-tls:type", "fake-tls")
 	routertest.FakeRouter.Reset()
@@ -231,4 +224,14 @@ func userWithPermission(c *check.C, perm ...permission.Permission) auth.Token {
 
 func resetHandlers() {
 	tsuruHandlerList = []TsuruHandler{}
+}
+
+func resetConfig(c *check.C) {
+	err := config.ReadConfigFile("testdata/config.yaml")
+	c.Assert(err, check.IsNil)
+	config.Set("log:disable-syslog", true)
+	config.Set("database:driver", "mongodb")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
+	config.Set("database:name", "tsuru_api_base_test")
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 }

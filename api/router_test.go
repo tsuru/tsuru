@@ -7,6 +7,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -195,6 +196,57 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
 	})
+}
+
+func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
+	err := config.Unset("routers")
+	c.Assert(err, check.IsNil)
+	err = pool.RemovePool(s.Pool)
+	c.Assert(err, check.IsNil)
+	router1 := routerTypes.DynamicRouter{Name: "router-1", Type: "api", Config: map[string]interface{}{"key1": "value1", "key2": "value2"}}
+	router2 := routerTypes.DynamicRouter{Name: "router-2", Type: "api"}
+	router.Register("api", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	defer router.Unregister("api")
+	s.mockService.DynamicRouter.OnList = func() ([]routerTypes.DynamicRouter, error) {
+		return []routerTypes.DynamicRouter{router1, router2}, nil
+	}
+	s.mockService.DynamicRouter.OnGet = func(name string) (*routerTypes.DynamicRouter, error) {
+		switch name {
+		case "router-1":
+			return &router1, nil
+		case "router-2":
+			return &router2, nil
+		default:
+			return nil, stderrors.New("some error")
+		}
+	}
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool-1"})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeRouter, Values: []string{"router-1"}})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
+	c.Assert(err, check.IsNil)
+	// pool-2 constraint for routers doesn't match any valid router
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool-2"})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeRouter, Values: []string{"not-found-router"}})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "my-team"),
+	})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	var routers []routerTypes.PlanRouter
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, []routerTypes.PlanRouter{{Name: "router-1", Type: "api", Dynamic: true}})
 }
 
 func (s *S) TestListRoutersWithInfo(c *check.C) {

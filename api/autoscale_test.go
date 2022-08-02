@@ -129,6 +129,8 @@ func (s *S) TestAutoScaleConfigHandler(c *check.C) {
 }
 
 func (s *S) TestAutoScaleListRulesEmpty(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale:enabled")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/node/autoscale/rules", nil)
 	c.Assert(err, check.IsNil)
@@ -310,6 +312,8 @@ func (s *S) TestAutoScaleDeleteRule(c *check.C) {
 }
 
 func (s *S) TestAutoScaleDeleteRuleNonDefault(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale-enabled")
 	rule := autoscale.Rule{MetadataFilter: "mypool", Enabled: true, ScaleDownRatio: 1.1, MaxContainerCount: 5}
 	err := rule.Update()
 	c.Assert(err, check.IsNil)
