@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	stderrors "errors"
 	"net/http"
 
 	"github.com/tsuru/tsuru/auth"
@@ -181,6 +182,9 @@ contexts:
 		}
 		for _, p := range pools {
 			rs, err := p.GetRouters()
+			if stderrors.Is(err, pool.ErrPoolHasNoRouter) {
+				continue
+			}
 			if err != nil {
 				return err
 			}
