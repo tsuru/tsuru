@@ -332,6 +332,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	email := InputValue(r, "email")
 	contextValue := InputValue(r, "context")
 	contextType := InputValue(r, "contextType")
+	fmt.Printf("\n\ncontext type = %s\n\n", contextType)
 	if contextType == "" {
 		contextType = "global"
 	}
