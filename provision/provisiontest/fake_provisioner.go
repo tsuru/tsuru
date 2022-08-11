@@ -200,7 +200,6 @@ func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
 	return nil
 }
 
-
 func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
