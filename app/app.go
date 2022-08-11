@@ -1814,14 +1814,24 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	return nil
 }
 
-type SetConfigArgs struct {
+type ConfigArgs struct {
 	Config appTypes.Config
 	Writer io.Writer
 }
 
-func (app *App) SetConfig(configArgs SetConfigArgs) error {
+func (app *App) SetConfig(configArgs ConfigArgs) error {
 	app.Config[configArgs.Config.DestinationPath] = configArgs.Config.Content
 
+	return app.updateAppConfig(configArgs)
+}
+
+func (app *App) UnsetConfig(configArgs ConfigArgs) error {
+	delete(app.Config, configArgs.Config.DestinationPath)
+
+	return app.updateAppConfig(configArgs)
+}
+
+func (app *App) updateAppConfig(configArgs ConfigArgs) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -1833,7 +1843,11 @@ func (app *App) SetConfig(configArgs SetConfigArgs) error {
 		return err
 	}
 
-	return nil
+	if configArgs.Config.NoRestart {
+		return nil
+	}
+
+	return app.restartIfUnits(configArgs.Writer)
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the

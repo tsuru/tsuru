@@ -2224,7 +2224,7 @@ func appConfigSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 
-	err = a.SetConfig(app.SetConfigArgs{
+	err = a.SetConfig(app.ConfigArgs{
 		Config: config,
 		Writer: evt,
 	})
@@ -2232,4 +2232,88 @@ func appConfigSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
 	}
 	return err
+}
+
+// title: unset app config
+// path: /apps/{app}/config
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//   200: Configs removed
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App not found
+func appConfigUnset(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	var config appTypes.Config
+	err = ParseInput(r, &config)
+	if err != nil {
+		return err
+	}
+	//TODO: validate config.DestinationPath is a posix path
+
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateConfigUnset,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     appTarget(appName),
+		Kind:       permission.PermAppUpdateConfigUnset,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+
+	err = a.UnsetConfig(app.ConfigArgs{
+		Config: config,
+		Writer: evt,
+	})
+	if v, ok := err.(*errors.ValidationError); ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
+	}
+	return err
+
+}
+
+// title: get app configs
+// path: /apps/{app}/config
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: App not found
+func appConfigGet(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	appName := r.URL.Query().Get(":app")
+	a, err := getAppFromContext(appName, r)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppReadConfig,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	return json.NewEncoder(w).Encode(a.Config)
 }
