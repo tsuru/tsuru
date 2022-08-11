@@ -103,6 +103,7 @@ const (
 // teams that have access to it, used platform, etc.
 type App struct {
 	Env             map[string]bind.EnvVar
+	Config          map[string]string
 	ServiceEnvs     []bind.ServiceEnvVar
 	Platform        string `bson:"framework"`
 	PlatformVersion string
@@ -1808,6 +1809,28 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 
 	if setEnvs.ShouldRestart {
 		return app.restartIfUnits(setEnvs.Writer)
+	}
+
+	return nil
+}
+
+type SetConfigArgs struct {
+	Config appTypes.Config
+	Writer io.Writer
+}
+
+func (app *App) SetConfig(configArgs SetConfigArgs) error {
+	app.Config[configArgs.Config.DestinationPath] = configArgs.Config.Content
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"config": app.Config}})
+	if err != nil {
+		return err
 	}
 
 	return nil
