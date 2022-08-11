@@ -611,7 +611,6 @@ func ensureConfigMapForApp(ctx context.Context, client *ClusterClient, a provisi
 	} else {
 		configMap.ResourceVersion = existingCM.ResourceVersion
 		configMap.Finalizers = existingCM.Finalizers
-		configMap.Data = existingCM.Data
 		_, err = client.CoreV1().ConfigMaps(namespace).Update(ctx, &configMap, metav1.UpdateOptions{})
 	}
 	if err != nil {
