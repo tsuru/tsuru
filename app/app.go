@@ -1825,6 +1825,10 @@ type ConfigArgs struct {
 }
 
 func (app *App) SetConfig(configArgs ConfigArgs) error {
+	if app.Config == nil {
+		app.Config = map[string]string{}
+	}
+
 	app.Config[configArgs.Config.DestinationPath] = configArgs.Config.Content
 
 	return app.updateAppConfig(configArgs)

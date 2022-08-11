@@ -579,6 +579,11 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 }
 
 func ensureConfigMapForApp(ctx context.Context, client *ClusterClient, a provision.App) error {
+	configs := a.GetConfig()
+	if len(configs) == 0 {
+		return nil
+	}
+
 	namespace, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
@@ -589,7 +594,7 @@ func ensureConfigMapForApp(ctx context.Context, client *ClusterClient, a provisi
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Data: a.GetConfig(),
+		Data: configs,
 	}
 
 	existingCM, err := client.CoreV1().ConfigMaps(namespace).Get(ctx, configMap.Name, metav1.GetOptions{})
