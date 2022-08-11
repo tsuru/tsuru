@@ -1762,6 +1762,11 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return mergedEnvs
 }
 
+// GetConfig returns a map representing the app config
+func (app *App) GetConfig() map[string]string {
+	return app.Config
+}
+
 // SetEnvs saves a list of environment variables in the app.
 func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {

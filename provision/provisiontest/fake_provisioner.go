@@ -200,6 +200,7 @@ func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
 	return nil
 }
 
+
 func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
@@ -328,6 +329,10 @@ func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
 
 func (a *FakeApp) Envs() map[string]bind.EnvVar {
 	return a.env
+}
+
+func (a *FakeApp) GetConfig() map[string]string {
+	return nil
 }
 
 func (a *FakeApp) Run(cmd string, w io.Writer, args provision.RunArgs) error {
