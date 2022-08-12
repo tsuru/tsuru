@@ -80,6 +80,7 @@ type FakeApp struct {
 	commMut           sync.Mutex
 	Deploys           uint
 	env               map[string]bind.EnvVar
+	config            map[string]string
 	bindCalls         []*provision.Unit
 	bindLock          sync.Mutex
 	serviceEnvs       []bind.ServiceEnvVar
@@ -331,7 +332,11 @@ func (a *FakeApp) Envs() map[string]bind.EnvVar {
 }
 
 func (a *FakeApp) GetConfig() map[string]string {
-	return nil
+	return a.config
+}
+
+func (a *FakeApp) SetConfig(config map[string]string) {
+	a.config = config
 }
 
 func (a *FakeApp) Run(cmd string, w io.Writer, args provision.RunArgs) error {
