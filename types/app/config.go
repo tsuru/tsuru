@@ -1,7 +1,7 @@
 package app
 
 type Config struct {
-	DestinationPath string
-	Content         string
-	NoRestart       bool
+	Filename  string
+	Content   string
+	NoRestart bool
 }
