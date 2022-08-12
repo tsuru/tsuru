@@ -6815,3 +6815,139 @@ func (s *S) TestFollowLogs(c *check.C) {
 	c.Assert(msgSlice, check.HasLen, 1)
 	c.Assert(msgSlice[0].Message, check.Equals, "xyz")
 }
+
+func (s *S) TestSetConfigInvalid(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	config := appTypes.Config{
+		Filename: "somefile asdfasdf/blah",
+		Content:  "Invalid file",
+	}
+
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(config)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("PUT", "/apps/myapp/config", &buf)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+
+	c.Assert(recorder.Body.String(), check.Equals, "Invalid filename, only letters, numbers, hyphens and dots are allowed.\n")
+}
+
+func (s *S) TestSetConfig(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	config := appTypes.Config{
+		Filename: "love.config",
+		Content:  "Friends",
+	}
+
+	configData, err := json.Marshal(config)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("PUT", "/apps/myapp/config", bytes.NewReader(configData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget(a.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "app.update.config.set",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "filename", "value": "love.config"},
+			{"name": "content", "value": "Friends"},
+		},
+	}, eventtest.HasEvent)
+
+	foundApp, err := app.GetByName(context.TODO(), "myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(foundApp.Config, check.DeepEquals, map[string]string{"love.config": "Friends"})
+}
+
+func (s *S) TestUnsetConfigInvalid(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	config := appTypes.Config{
+		Filename: "invalid",
+	}
+
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(config)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("DELETE", "/apps/myapp/config", &buf)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+
+	c.Assert(recorder.Body.String(), check.Equals, "Filename not exists in config\n")
+}
+
+func (s *S) TestUnsetConfig(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, Config: map[string]string{
+		"love.config": "Friends",
+	}}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	config := appTypes.Config{
+		Filename: "love.config",
+		Content:  "Friends",
+	}
+
+	foundApp, err := app.GetByName(context.TODO(), "myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(foundApp.Config, check.DeepEquals, map[string]string{"love.config": "Friends"})
+
+	configData, err := json.Marshal(config)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("DELETE", "/apps/myapp/config", bytes.NewReader(configData))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusOK)
+	c.Check(recorder.Body.String(), check.Equals, "")
+
+	foundApp, err = app.GetByName(context.TODO(), "myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(foundApp.Config, check.DeepEquals, map[string]string{})
+}
+
+func (s *S) TestGetConfig(c *check.C) {
+	a := app.App{Name: "myapp", TeamOwner: s.team.Name, Config: map[string]string{
+		"found.conf": "File found",
+	}}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest("GET", "/apps/myapp/config", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"found.conf\":\"File found\"}\n")
+}

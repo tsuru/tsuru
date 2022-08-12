@@ -1,7 +1,7 @@
 package app
 
 type Config struct {
-	Filename  string
-	Content   string
-	NoRestart bool
+	Filename  string `json:"filename"`
+	Content   string `json:"content"`
+	NoRestart bool   `json:"noRestart"`
 }

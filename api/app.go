@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -51,6 +52,8 @@ var (
 		Name: "tsuru_logs_app_tail_entries_total",
 		Help: "The number of log entries read in tail requests for an app.",
 	}, []string{"app"})
+
+	validConfigFilename = regexp.MustCompile(`^[-._a-zA-Z0-9]+$`)
 )
 
 func init() {
@@ -2192,7 +2195,11 @@ func appConfigSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	//TODO: validate config.DestinationPath is a posix path
+
+	if !validConfigFilename.MatchString(config.Filename) {
+		msg := "Invalid filename, only letters, numbers, hyphens and dots are allowed."
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
 
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -2249,7 +2256,6 @@ func appConfigUnset(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	//TODO: validate config.DestinationPath is a posix path
 
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -2261,6 +2267,11 @@ func appConfigUnset(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
+	}
+
+	if a.Config == nil || a.Config[config.Filename] == "" {
+		msg := "Filename not exists in config"
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 
 	evt, err := event.New(&event.Opts{
