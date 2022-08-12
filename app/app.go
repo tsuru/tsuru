@@ -1853,6 +1853,13 @@ func (app *App) updateAppConfig(configArgs ConfigArgs) error {
 	}
 
 	if configArgs.Config.NoRestart {
+		provisioner, err := app.getProvisioner()
+		if err != nil {
+			return err
+		}
+		if p, ok := provisioner.(provision.ConfigReloadableProvisioner); ok {
+			return p.ReloadConfig(app.ctx, app)
+		}
 		return nil
 	}
 

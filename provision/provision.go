@@ -445,6 +445,10 @@ type AppInternalAddress struct {
 	Process  string
 }
 
+type ConfigReloadableProvisioner interface {
+	ReloadConfig(ctx context.Context, a App) error
+}
+
 // MessageProvisioner is a provisioner that provides a welcome message for
 // logging.
 type MessageProvisioner interface {

@@ -104,6 +104,8 @@ var (
 	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
 	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
 
+	_ provision.ConfigReloadableProvisioner = &kubernetesProvisioner{}
+
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
 
