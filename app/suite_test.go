@@ -174,8 +174,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.Volume, err = volume.VolumeService()
 	c.Assert(err, check.IsNil)
-
-	servicemanager.TeamQuota = s.mockService.TeamQuota
 }
 
 func (s *S) TearDownTest(c *check.C) {
