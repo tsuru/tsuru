@@ -702,7 +702,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	if err := validateContextValue(ctx, role, contextValue); err != nil {
+	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
 
@@ -797,7 +797,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	if err := validateContextValue(ctx, role, contextValue); err != nil {
+	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
 
