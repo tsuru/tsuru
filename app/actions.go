@@ -44,18 +44,9 @@ var reserveTeamApp = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *App.")
 		}
-
-		/*
-			t, err := servicemanager.Team.FindByName(ctx.Context, app.TeamOwner)
-			if err != nil {
-				return nil, err
-			}
-		*/
-
 		if err := servicemanager.TeamQuota.Inc(ctx.Context, &authTypes.Team{Name: app.TeamOwner}, 1); err != nil {
 			return nil, err
 		}
-
 		return map[string]string{"app": app.Name, "team": app.TeamOwner}, nil
 	},
 	Backward:  func(ctx action.BWContext) {},
@@ -82,7 +73,7 @@ var reserveUserApp = action.Action{
 		case *auth.User:
 			user = *ctx.Params[1].(*auth.User)
 		default:
-			return nil, errors.New("second parameter must be auth.User or *auth.User.")
+			return nil, errors.New("Second parameter must be auth.User or *auth.User.")
 		}
 		usr, err := auth.GetUserByEmail(user.Email)
 		if err != nil {

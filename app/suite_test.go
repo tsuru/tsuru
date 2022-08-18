@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
@@ -88,7 +87,10 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = authTypes.Team{Name: "tsuruteam"}
+	s.team = authTypes.Team{
+		Name:  "tsuruteam",
+		Quota: quota.UnlimitedQuota,
+	}
 }
 
 var nativeScheme = auth.Scheme(native.NativeScheme{})
@@ -172,6 +174,8 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.Volume, err = volume.VolumeService()
 	c.Assert(err, check.IsNil)
+
+	servicemanager.TeamQuota = s.mockService.TeamQuota
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -220,9 +224,6 @@ func setupMocks(s *S) {
 	}
 	s.mockService.TeamQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
-	}
-	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, q int) error {
-		return errors.New("team quota mock not implemented")
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
 		return []string{

@@ -380,7 +380,7 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *check.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, "something"}})
 	c.Assert(previous, check.IsNil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Third parameter must be auth.User or *auth.User.")
+	c.Assert(err.Error(), check.Equals, "Second parameter must be auth.User or *auth.User.")
 }
 
 func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
