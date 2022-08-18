@@ -335,6 +335,10 @@ func (s *S) TestCreateApp(c *check.C) {
 		TeamOwner: s.team.Name,
 		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
+	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, a.TeamOwner)
+		return nil
+	}
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
 		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil

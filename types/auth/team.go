@@ -9,13 +9,21 @@ import (
 	"errors"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/types/quota"
 )
+
+var _ quota.QuotaItem = &Team{}
 
 // Team represents a real world team, a team has one creating user and a name.
 type Team struct {
-	Name         string `json:"name"`
-	CreatingUser string
-	Tags         []string `json:"tags"`
+	Name         string      `json:"name"`
+	CreatingUser string      `json:"creatingUser"`
+	Tags         []string    `json:"tags"`
+	Quota        quota.Quota `json:"quota"`
+}
+
+func (t Team) GetName() string {
+	return t.Name
 }
 
 type TeamService interface {

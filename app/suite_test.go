@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
@@ -216,6 +217,12 @@ func setupMocks(s *S) {
 	}
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
+	}
+	s.mockService.TeamQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+		return &quota.UnlimitedQuota, nil
+	}
+	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		return errors.New("team quota mock not implemented")
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
 		return []string{

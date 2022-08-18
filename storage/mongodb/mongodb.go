@@ -18,6 +18,7 @@ func init() {
 		TeamTokenStorage:                 &teamTokenStorage{},
 		UserQuotaStorage:                 authQuotaStorage(),
 		AppQuotaStorage:                  appQuotaStorage(),
+		TeamQuotaStorage:                 teamQuotaStorage(),
 		WebhookStorage:                   &webhookStorage{},
 		ClusterStorage:                   &clusterStorage{},
 		ServiceBrokerStorage:             &serviceBrokerStorage{},

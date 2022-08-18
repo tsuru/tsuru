@@ -132,11 +132,15 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
-	servicemanager.UserQuota, err = auth.QuotaService()
+	servicemanager.UserQuota, err = auth.UserQuotaService()
 	if err != nil {
 		return err
 	}
 	servicemanager.AppQuota, err = app.QuotaService()
+	if err != nil {
+		return err
+	}
+	servicemanager.TeamQuota, err = auth.TeamQuotaService()
 	if err != nil {
 		return err
 	}

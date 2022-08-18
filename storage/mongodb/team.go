@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 const teamsCollectionName = "teams"
@@ -24,6 +25,7 @@ type team struct {
 	Name         string `bson:"_id"`
 	CreatingUser string
 	Tags         []string
+	Quota        quota.Quota
 }
 
 func teamsCollection(conn *db.Storage) *dbStorage.Collection {

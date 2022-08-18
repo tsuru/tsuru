@@ -27,6 +27,7 @@ type MockService struct {
 	Team                      *auth.MockTeamService
 	UserQuota                 *quota.MockQuotaService
 	AppQuota                  *quota.MockQuotaService
+	TeamQuota                 *quota.MockQuotaService
 	Cluster                   *provision.MockClusterService
 	ServiceBroker             *service.MockServiceBrokerService
 	ServiceBrokerCatalogCache *service.MockServiceBrokerCatalogCacheService
@@ -46,6 +47,7 @@ func SetMockService(m *MockService) {
 	m.Team = &auth.MockTeamService{}
 	m.UserQuota = &quota.MockQuotaService{}
 	m.AppQuota = &quota.MockQuotaService{}
+	m.TeamQuota = &quota.MockQuotaService{}
 	m.Cluster = &provision.MockClusterService{}
 	m.ServiceBroker = &service.MockServiceBrokerService{}
 	m.ServiceBrokerCatalogCache = &service.MockServiceBrokerCatalogCacheService{}

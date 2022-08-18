@@ -30,6 +30,7 @@ type DbDriver struct {
 	TeamTokenStorage                 auth.TeamTokenStorage
 	UserQuotaStorage                 quota.QuotaStorage
 	AppQuotaStorage                  quota.QuotaStorage
+	TeamQuotaStorage                 quota.QuotaStorage
 	WebhookStorage                   event.WebhookStorage
 	ClusterStorage                   provision.ClusterStorage
 	ServiceBrokerStorage             service.ServiceBrokerStorage

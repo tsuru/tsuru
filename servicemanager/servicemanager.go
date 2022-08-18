@@ -29,6 +29,7 @@ var (
 	Webhook                   event.WebhookService
 	AppQuota                  quota.QuotaService
 	UserQuota                 quota.QuotaService
+	TeamQuota                 quota.QuotaService
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
