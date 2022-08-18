@@ -30,7 +30,6 @@ import (
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//
 //	201: Role created
 //	400: Invalid data
 //	401: Unauthorized
@@ -80,7 +79,6 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // path: /roles/{name}
 // method: DELETE
 // responses:
-//
 //	200: Role removed
 //	401: Unauthorized
 //	404: Role not found
@@ -120,7 +118,6 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // method: GET
 // produce: application/json
 // responses:
-//
 //	200: OK
 //	401: Unauthorized
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -149,7 +146,6 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//
 //	200: OK
 //	401: Unauthorized
 //	404: Role not found
@@ -186,7 +182,6 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -240,7 +235,6 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /roles/{name}/permissions/{permission}
 // method: DELETE
 // responses:
-//
 //	200: Permission removed
 //	401: Unauthorized
 //	404: Not found
@@ -311,7 +305,6 @@ func canUseRole(t auth.Token, role permission.Role, contextValue string) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -360,7 +353,6 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // path: /roles/{name}/user/{email}
 // method: DELETE
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -410,7 +402,6 @@ type permissionSchemeData struct {
 // method: GET
 // produce: application/json
 // responses:
-//
 //	200: Ok
 //	401: Unauthorized
 func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -440,7 +431,6 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // method: POST
 // consme: application/x-www-form-urlencoded
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -497,7 +487,6 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /role/default
 // method: DELETE
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -550,7 +539,6 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: GET
 // produce: application/json
 // responses:
-//
 //	200: Ok
 //	401: Unauthorized
 func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -570,7 +558,6 @@ func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // path: /roles
 // method: PUT
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -673,7 +660,6 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -722,7 +708,6 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // path: /roles/{name}/token/{token_id}
 // method: DELETE
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -768,7 +753,6 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -812,7 +796,6 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // path: /roles/{name}/group/{group_name}
 // method: DELETE
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
