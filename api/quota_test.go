@@ -63,6 +63,12 @@ func (s *QuotaSuite) SetUpTest(c *check.C) {
 	}, permission.Permission{
 		Scheme:  permission.PermUserReadQuota,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermTeamReadQuota,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermTeamUpdateQuota,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
 	var err error
 	s.user, err = auth.ConvertNewUser(s.token.User())
@@ -268,6 +274,194 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrUserNotFound.Error()+"\n")
+}
+
+func (s *QuotaSuite) TestGetTeamQuota(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	team := &authTypes.Team{
+		Name:         "avengers",
+		CreatingUser: "radio@gaga.com",
+		Quota:        quota.Quota{Limit: 4, InUse: 2},
+	}
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return team, nil
+	}
+
+	request, err := http.NewRequest("GET", "/teams/avengers/quota", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var qt quota.Quota
+	err = json.NewDecoder(recorder.Body).Decode(&qt)
+	c.Assert(err, check.IsNil)
+	c.Assert(qt, check.DeepEquals, team.Quota)
+}
+
+func (s *QuotaSuite) TestGetTeamQuotaRequiresPermission(c *check.C) {
+	token := userWithPermission(c)
+	request, _ := http.NewRequest("GET", "/teams/avengers/quota", nil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *QuotaSuite) TestGetTeamQuotaTeamNotFound(c *check.C) {
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+	request, _ := http.NewRequest("GET", "/teams/avengers/quota", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrTeamNotFound.Error()+"\n")
+}
+
+func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	team := &authTypes.Team{
+		Name:         "avengers",
+		CreatingUser: "radio@gaga.com",
+		Quota:        quota.Quota{Limit: 4, InUse: 2},
+	}
+
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return team, nil
+	}
+	s.mockService.TeamQuota.OnSetLimit = func(qi quota.QuotaItem, i int) error {
+		c.Assert(qi.GetName(), check.Equals, team.Name)
+		c.Assert(i, check.Equals, 40)
+		return nil
+	}
+
+	body := bytes.NewBufferString("limit=40")
+	request, _ := http.NewRequest("PUT", "/teams/avengers/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(err, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+		Owner:  s.token.GetUserName(),
+		Kind:   "team.update.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": team.Name},
+			{"name": "limit", "value": "40"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *QuotaSuite) TestChangeTeamQuotaRequiresPermission(c *check.C) {
+	token := userWithPermission(c)
+	request, _ := http.NewRequest("PUT", "/teams/avengers/quota", nil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *QuotaSuite) TestChangeTeamQuotaInvalidLimitValue(c *check.C) {
+	team := &authTypes.Team{
+		Name:         "avengers",
+		CreatingUser: "radio@gaga.com",
+		Quota:        quota.Quota{Limit: 10, InUse: 5},
+	}
+
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return team, nil
+	}
+
+	values := []string{"four", ""}
+	for _, value := range values {
+		body := bytes.NewBufferString("limit=" + value)
+		request, _ := http.NewRequest("PUT", "/teams/avengers/quota", body)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder := httptest.NewRecorder()
+		handler := RunServer(true)
+		handler.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
+		c.Assert(eventtest.EventDesc{
+			Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+			Owner:  s.token.GetUserName(),
+			Kind:   "team.update.quota",
+			StartCustomData: []map[string]interface{}{
+				{"name": ":name", "value": team.Name},
+				{"name": "limit", "value": value},
+			},
+			ErrorMatches: `Invalid limit`,
+		}, eventtest.HasEvent)
+	}
+}
+
+func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	team := &authTypes.Team{
+		Name:         "avengers",
+		CreatingUser: "radio@gaga.com",
+		Quota:        quota.Quota{Limit: 10, InUse: 5},
+	}
+
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return team, nil
+	}
+	s.mockService.TeamQuota.OnSetLimit = func(qi quota.QuotaItem, i int) error {
+		c.Assert(qi.GetName(), check.Equals, team.Name)
+		c.Assert(i, check.Equals, 4)
+		return quota.ErrLimitLowerThanAllocated
+	}
+
+	body := bytes.NewBufferString("limit=4")
+	request, _ := http.NewRequest("PUT", "/teams/avengers/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(err, check.IsNil)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+		Owner:  s.token.GetUserName(),
+		Kind:   "team.update.quota",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": team.Name},
+			{"name": "limit", "value": "4"},
+		},
+		ErrorMatches: `New limit is less than the current allocated value`,
+	}, eventtest.HasEvent)
+}
+
+func (s *QuotaSuite) TestChangeTeamQuotaTeamNotFound(c *check.C) {
+	s.mockService.Team.OnFindByName = func(s string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+	body := bytes.NewBufferString("limit=2")
+	request, _ := http.NewRequest("PUT", "/teams/avengers/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, authTypes.ErrTeamNotFound.Error()+"\n")
 }
 
 func (s *QuotaSuite) TestGetAppQuota(c *check.C) {
