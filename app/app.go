@@ -2381,6 +2381,7 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.Apps().Find(bson.M{"cname": bson.M{"$in": cnames}, "name": bson.M{"$ne": app.Name}, "routers": appRouter}).One(&appCName)
 	if err != nil && err != mgo.ErrNotFound {
 		return err
