@@ -658,7 +658,6 @@ paths:
         "200":
           description: List service brokers
           schema:
-            type: object
             $ref: "#/definitions/ServiceBrokerList"
         "204":
           description: No content
@@ -2221,6 +2220,36 @@ paths:
         - team
       security:
         - Bearer: []
+  /1.12/teams/{team}/quota:
+    get:
+      operationId: TeamQuotaGet
+      description: Get quota of a team.
+      parameters:
+        - name: team
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: Team name.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/UserQuotaViewResponse"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - team
+      security:
+        - Bearer: []
   /1.0/users:
     get:
       operationId: UsersList
@@ -3082,7 +3111,6 @@ paths:
        200:
          description: "Cluster"
          schema:
-           type: "object"
            $ref: "#/definitions/Cluster"
        401:
          description: "Unauthorized"
@@ -3819,7 +3847,6 @@ paths:
         "200":
           description: Webhook.
           schema:
-            type: object
             $ref: "#/definitions/Webhook"
         "404":
           description: Not founds.
