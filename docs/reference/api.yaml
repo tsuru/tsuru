@@ -2221,16 +2221,16 @@ paths:
       security:
         - Bearer: []
   /1.12/teams/{team}/quota:
+    parameters:
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
     get:
       operationId: TeamQuotaGet
       description: Get quota of a team.
-      parameters:
-        - name: team
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Team name.
       produces:
         - application/json
       responses:
@@ -2250,6 +2250,38 @@ paths:
         - team
       security:
         - Bearer: []
+    put:
+      operationId: TeamQuotaChange
+      description: Changes the team's apps limit.
+      tags:
+        - team
+      security:
+        - Bearer: []
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - name: limit
+          in: formData
+          type: number
+          required: true
+          description: New limit of apps. Negative number indicates unlimited.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Quota updated
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Limit lower than allocated
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
   /1.0/users:
     get:
       operationId: UsersList
