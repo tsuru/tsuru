@@ -820,12 +820,31 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
-	allowed := permission.Check(t, permission.PermAppUpdateUnitRemove,
+	allowed := permission.Check(t, permission.PermAppUpdateUnitKill,
 		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
+
+	evt, err := event.New(&event.Opts{
+		Target: appTarget(a.Name),
+		Kind:   permission.PermAppUpdateUnitKill,
+		Owner:  t,
+		CustomData: []map[string]interface{}{
+			{
+				"unit":  unitName,
+				"force": force,
+			},
+		},
+		Allowed: event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+	})
+	if err != nil {
+		return err
+	}
+
+	defer func() { evt.Done(err) }()
+
 	err = a.KillUnit(unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
