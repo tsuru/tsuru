@@ -103,6 +103,7 @@ var (
 	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
 	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
 	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
+	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
