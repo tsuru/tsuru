@@ -5824,6 +5824,27 @@ func (s *S) TestAppAddRouterWithAlreadyLinkedRouter(c *check.C) {
 	c.Assert(err, check.DeepEquals, ErrRouterAlreadyLinked)
 }
 
+func (s *S) TestAppAddRouterWithAppCNameUsingSameRouterOnAnotherApp(c *check.C) {
+	app1 := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
+	app2 := App{Name: "myapp2", Platform: "go", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
+	err := CreateApp(context.TODO(), &app1, s.user)
+	c.Assert(err, check.IsNil)
+	err = app1.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	err = CreateApp(context.TODO(), &app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = app2.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	err = app1.AddRouter(appTypes.AppRouter{Name: "fake-tls"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app myapp2 using router fake-tls")
+	err = app1.AddRouter(appTypes.AppRouter{Name: "fake-hc"})
+	c.Assert(err, check.IsNil)
+	err = app2.AddRouter(appTypes.AppRouter{Name: "fake-hc"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app myapp using router fake-hc")
+}
+
 func (s *S) TestAppRemoveRouter(c *check.C) {
 	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
