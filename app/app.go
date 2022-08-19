@@ -67,6 +67,7 @@ var (
 	ErrRouterAlreadyLinked = errors.New("router already linked to this app")
 
 	ErrNoVersionProvisioner = errors.New("The current app provisioner does not support multiple versions handling")
+	ErrKillUnitProvisioner  = errors.New("The current app provisioner does not support killing a unit")
 	ErrSwapMultipleVersions = errors.New("swapping apps with multiple versions is not allowed")
 	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
 	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
@@ -973,6 +974,18 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 		}
 	}
 	return &provision.UnitNotFoundError{ID: unitName}
+}
+
+func (app *App) KillUnit(unitName string, force bool) error {
+	prov, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	unitProv, ok := prov.(provision.KillUnitProvisioner)
+	if !ok {
+		return ErrKillUnitProvisioner
+	}
+	return unitProv.KillUnit(app.ctx, app, unitName, force)
 }
 
 type UpdateUnitsResult struct {
