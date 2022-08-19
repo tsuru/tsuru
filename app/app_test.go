@@ -1732,21 +1732,49 @@ func (s *S) TestAddCName(c *check.C) {
 	c.Assert(app.CName, check.DeepEquals, []string{"ktulu.mycompany.com", "ktulu2.mycompany.com"})
 }
 
-func (s *S) TestAddCNameCantBeDuplicated(c *check.C) {
-	app := &App{Name: "ktulu", TeamOwner: s.team.Name}
+func (s *S) TestAddCNameCantBeDuplicatedWithSameRouter(c *check.C) {
+	app := &App{Name: "ktulu", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}, {Name: "fake-hc"}, {Name: "fake-tls"}}}
 	err := CreateApp(context.TODO(), app, s.user)
 	c.Assert(err, check.IsNil)
 	err = app.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
 	err = app.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cname already exists!")
-	app2 := &App{Name: "ktulu2", TeamOwner: s.team.Name}
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for this app")
+	app2 := &App{Name: "ktulu2", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err = CreateApp(context.TODO(), app2, s.user)
 	c.Assert(err, check.IsNil)
 	err = app2.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cname already exists!")
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app ktulu using router fake-tls")
+}
+
+func (s *S) TestAddCNameErrorForDifferentTeamOwners(c *check.C) {
+	app := &App{Name: "ktulu", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
+	app2 := &App{Name: "ktulu2", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
+	err := CreateApp(context.TODO(), app, s.user)
+	c.Assert(err, check.IsNil)
+	err = CreateApp(context.TODO(), app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	app2.TeamOwner = "some-other-team"
+	err = app2.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for another app ktulu and belongs to a different team owner")
+}
+
+func (s *S) TestAddCNameDifferentAppsNoRouter(c *check.C) {
+	app := &App{Name: "ktulu", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{}}
+	app2 := &App{Name: "ktulu2", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
+	err := CreateApp(context.TODO(), app, s.user)
+	c.Assert(err, check.IsNil)
+	err = CreateApp(context.TODO(), app2, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
+	err = app2.AddCName("ktulu.mycompany.com")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAddCNameWithWildCard(c *check.C) {
