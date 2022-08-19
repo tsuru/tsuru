@@ -470,6 +470,10 @@ type UnitStatusProvisioner interface {
 	SetUnitStatus(Unit, Status) error
 }
 
+type KillUnitProvisioner interface {
+	KillUnit(ctx context.Context, app App, unit string, force bool) error
+}
+
 // HCProvisioner is a provisioner that may handle loadbalancing healthchecks.
 type HCProvisioner interface {
 	// HandlesHC returns true if the provisioner will handle healthchecking

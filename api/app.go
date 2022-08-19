@@ -796,6 +796,43 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+// title: kill a running unit
+// path: /apps/{app}/units/{unit}
+// method: DELETE
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: App or unit not found
+func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	unitName := r.URL.Query().Get(":unit")
+	if unitName == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "missing unit",
+		}
+	}
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(ctx, appName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	force, _ := strconv.ParseBool(InputValue(r, "force"))
+	allowed := permission.Check(t, permission.PermAppUpdateUnitRemove,
+		contextsForApp(a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	err = a.KillUnit(unitName, force)
+	if _, ok := err.(*provision.UnitNotFoundError); ok {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
+}
+
 // title: set node status
 // path: /node/status
 // method: POST
