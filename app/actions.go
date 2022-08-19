@@ -596,26 +596,22 @@ var validateNewCNames = action.Action{
 				return nil, errors.New(fmt.Sprintf("cname %s already exists for this app", cname))
 			}
 
-			apps := []App{}
-			err = conn.Apps().Find(bson.M{"cname": cname}).All(&apps)
-			if err != nil {
+			appCName := App{}
+			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "routers": bson.M{"$in": appRouters}}).One(&appCName)
+			if err != nil && err != mgo.ErrNotFound {
 				return nil, err
 			}
-			for _, a := range apps {
-				if a.GetTeamOwner() != app.GetTeamOwner() {
-					return nil, errors.New(fmt.Sprintf("cname %s already exists for another app %s and belongs to a different team owner", cname, a.Name))
-				}
-				if len(a.GetRouters()) == 0 || len(appRouters) == 0 {
+			if appCName.Name != "" {
+				return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using same router", cname, appCName.Name))
+			}
+			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "teamowner": bson.M{"$ne": app.GetTeamOwner()}}).One(&appCName)
+			if err != nil {
+				if err == mgo.ErrNotFound {
 					continue
 				}
-				for _, router := range a.GetRouters() {
-					for _, appRouter := range appRouters {
-						if router.Name == appRouter.Name {
-							return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", cname, a.Name, router.Name))
-						}
-					}
-				}
+				return nil, err
 			}
+			return nil, errors.New(fmt.Sprintf("cname %s already exists for another app %s and belongs to a different team owner", cname, appCName.Name))
 		}
 		return cnames, nil
 	},

@@ -1746,7 +1746,7 @@ func (s *S) TestAddCNameCantBeDuplicatedWithSameRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app2.AddCName("ktulu.mycompany.com")
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app ktulu using router fake-tls")
+	c.Assert(err.Error(), check.Equals, "cname ktulu.mycompany.com already exists for app ktulu using same router")
 }
 
 func (s *S) TestAddCNameErrorForDifferentTeamOwners(c *check.C) {

@@ -2376,23 +2376,17 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		}
 	}
 	cnames := app.GetCname()
-	apps := []App{}
+	appCName := App{}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	for _, cname := range cnames {
-		err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}}).All(&apps)
-		if err != nil {
-			return err
-		}
-		for _, cnameApp := range apps {
-			for _, router := range cnameApp.Routers {
-				if appRouter.Name == router.Name {
-					return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", cname, cnameApp.Name, router.Name))
-				}
-			}
-		}
+	err = conn.Apps().Find(bson.M{"cname": bson.M{"$in": cnames}, "name": bson.M{"$ne": app.Name}, "routers": appRouter}).One(&appCName)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if appCName.Name != "" {
+		return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", appCName.CName[0], appCName.Name, appRouter.Name))
 	}
 	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
