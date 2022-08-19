@@ -80,7 +80,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // responses:
 //   200: Service broker updated
 //   401: Unauthorized
-//	 404: Not Found
+//   404: Not Found
 func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerUpdate) {
 		return permission.ErrUnauthorized
@@ -116,7 +116,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 // responses:
 //   200: Service broker deleted
 //   401: Unauthorized
-//	 404: Not Found
+//   404: Not Found
 func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerDelete) {
 		return permission.ErrUnauthorized
