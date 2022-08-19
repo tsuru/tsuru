@@ -49,7 +49,12 @@ var reserveTeamApp = action.Action{
 		}
 		return map[string]string{"app": app.Name, "team": app.TeamOwner}, nil
 	},
-	Backward:  func(ctx action.BWContext) {},
+	Backward: func(ctx action.BWContext) {
+		m := ctx.FWResult.(map[string]string)
+		if teamStr, ok := m["team"]; ok {
+			servicemanager.TeamQuota.Inc(ctx.Context, &authTypes.Team{Name: teamStr}, -1)
+		}
+	},
 	MinParams: 2,
 }
 
