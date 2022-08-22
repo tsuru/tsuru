@@ -2387,7 +2387,11 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	if appCName.Name != "" {
-		return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", appCName.CName[0], appCName.Name, appRouter.Name))
+		for _, cname := range appCName.GetCname() {
+			if cnameInSet(cname, cnames) {
+				return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", cname, appCName.Name, appRouter.Name))
+			}
+		}
 	}
 	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
@@ -2426,6 +2430,15 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	return nil
+}
+
+func cnameInSet(cname string, cnames []string) bool {
+	for _, v := range cnames {
+		if v == cname {
+			return true
+		}
+	}
+	return false
 }
 
 func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
