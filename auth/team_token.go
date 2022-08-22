@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,8 +17,15 @@ import (
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 )
+
+const TsuruTokenEmailDomain = "token.tsuru.internal"
+
+func IsEmailFromTeamToken(email string) bool {
+	return strings.HasSuffix(email, fmt.Sprintf("@%s", TsuruTokenEmailDomain))
+}
 
 type teamToken authTypes.TeamToken
 
@@ -31,7 +39,12 @@ func (t *teamToken) GetValue() string {
 }
 
 func (t *teamToken) User() (*authTypes.User, error) {
-	return nil, errors.New("team token is not a user token")
+	return &authTypes.User{
+		Email:  fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
+		APIKey: t.Token,
+		Quota:  quota.UnlimitedQuota,
+		Roles:  t.Roles,
+	}, nil
 }
 
 func (t *teamToken) IsAppToken() bool {

@@ -84,6 +84,9 @@ func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
 		return nil, &tsuruErrors.ValidationError{Message: "invalid email"}
 	}
+	if IsEmailFromTeamToken(email) {
+		return nil, authTypes.ErrEmailFromTeamToken
+	}
 	var u User
 	conn, err := db.Conn()
 	if err != nil {

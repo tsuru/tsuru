@@ -6,6 +6,7 @@ package app
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -26,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -56,17 +58,27 @@ var reserveUserApp = action.Action{
 			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
 		}
 		usr, err := auth.GetUserByEmail(user.Email)
+		if stderrors.Is(err, authTypes.ErrEmailFromTeamToken) {
+			return map[string]string{"app": app.Name}, nil
+		}
 		if err != nil {
 			return nil, err
 		}
-		if err := servicemanager.UserQuota.Inc(ctx.Context, usr, 1); err != nil {
+		if err = servicemanager.UserQuota.Inc(ctx.Context, usr, 1); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		m := ctx.FWResult.(map[string]string)
-		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
+		m, found := ctx.FWResult.(map[string]string)
+		if !found {
+			return
+		}
+		email, found := m["user"]
+		if !found {
+			return
+		}
+		if user, err := auth.GetUserByEmail(email); err == nil {
 			servicemanager.UserQuota.Inc(ctx.Context, user, -1)
 		}
 	},

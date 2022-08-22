@@ -32,9 +32,10 @@ type ErrTeamStillUsed struct {
 }
 
 var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrInvalidKey   = errors.New("invalid key")
-	ErrKeyDisabled  = errors.New("key management is disabled")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrInvalidKey         = errors.New("invalid key")
+	ErrKeyDisabled        = errors.New("key management is disabled")
+	ErrEmailFromTeamToken = errors.New("email from team token")
 )
 
 func (e *ErrTeamStillUsed) Error() string {
