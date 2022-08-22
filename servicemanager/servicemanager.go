@@ -21,6 +21,7 @@ import (
 var (
 	App                       app.AppService
 	AppCache                  cache.AppCacheService
+	AppEnvVar                 app.AppEnvVarService
 	Plan                      app.PlanService
 	Platform                  app.PlatformService
 	PlatformImage             image.PlatformImageService
