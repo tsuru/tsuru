@@ -119,7 +119,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
 	u, err := t.User()
 	c.Assert(err, check.IsNil)
-	c.Assert(u, check.DeepEquals, &auth.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota})
+	c.Assert(u, check.DeepEquals, &auth.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)

@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	stderrors "errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -27,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -57,14 +55,12 @@ var reserveUserApp = action.Action{
 		default:
 			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
 		}
-		usr, err := auth.GetUserByEmail(user.Email)
-		if stderrors.Is(err, authTypes.ErrEmailFromTeamToken) {
+		if user.FromToken {
+			// there's no quota to update as the user was generated from team token.
 			return map[string]string{"app": app.Name}, nil
 		}
-		if err != nil {
-			return nil, err
-		}
-		if err = servicemanager.UserQuota.Inc(ctx.Context, usr, 1); err != nil {
+		u := auth.User(user)
+		if err := servicemanager.UserQuota.Inc(ctx.Context, &u, 1); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil

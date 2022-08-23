@@ -41,9 +41,10 @@ func (t *teamToken) GetValue() string {
 
 func (t *teamToken) User() (*authTypes.User, error) {
 	return &authTypes.User{
-		Email: fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
-		Quota: quota.UnlimitedQuota,
-		Roles: t.Roles,
+		Email:     fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
+		Quota:     quota.UnlimitedQuota,
+		Roles:     t.Roles,
+		FromToken: true,
 	}, nil
 }
 

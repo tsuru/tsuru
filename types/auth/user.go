@@ -13,12 +13,13 @@ import (
 )
 
 type User struct {
-	Quota    quota.Quota
-	Email    string
-	Password string
-	APIKey   string
-	Roles    []RoleInstance
-	Groups   []string
+	Quota     quota.Quota
+	Email     string
+	Password  string
+	APIKey    string
+	Roles     []RoleInstance
+	Groups    []string
+	FromToken bool
 }
 
 type RoleInstance struct {

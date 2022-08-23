@@ -26,12 +26,13 @@ import (
 )
 
 type User struct {
-	Quota    quota.Quota
-	Email    string
-	Password string
-	APIKey   string
-	Roles    []authTypes.RoleInstance `bson:",omitempty"`
-	Groups   []string                 `bson:",omitempty"`
+	Quota     quota.Quota
+	Email     string
+	Password  string
+	APIKey    string
+	Roles     []authTypes.RoleInstance `bson:",omitempty"`
+	Groups    []string                 `bson:",omitempty"`
+	FromToken bool                     `bson:",omitempty"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {
@@ -83,9 +84,6 @@ usersLoop:
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
 		return nil, &tsuruErrors.ValidationError{Message: "invalid email"}
-	}
-	if IsEmailFromTeamToken(email) {
-		return nil, authTypes.ErrEmailFromTeamToken
 	}
 	var u User
 	conn, err := db.Conn()
