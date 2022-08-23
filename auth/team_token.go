@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -108,6 +109,22 @@ func (s *teamTokenService) Authenticate(ctx context.Context, header string) (aut
 }
 
 func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
+	token, err := s.storage.FindByTokenID(ctx, tokenID)
+	if err != nil {
+		return err
+	}
+	tt := teamToken(*token)
+	u, err := tt.User()
+	if err != nil {
+		return err
+	}
+	apps, err := servicemanager.App.List(ctx, &appTypes.Filter{UserOwner: u.Email})
+	if err != nil {
+		return err
+	}
+	if len(apps) > 0 {
+		return fmt.Errorf("cannot remove team token there are apps that belong to it")
+	}
 	return s.storage.Delete(ctx, tokenID)
 }
 
