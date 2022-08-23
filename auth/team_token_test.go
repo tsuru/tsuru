@@ -13,8 +13,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/types/auth"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
@@ -115,8 +117,9 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	namedToken, ok := t.(authTypes.NamedToken)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
-	_, err = t.User()
-	c.Assert(err, check.ErrorMatches, `team token is not a user token`)
+	u, err := t.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(u, check.DeepEquals, &auth.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota})
 	perms, err := t.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)

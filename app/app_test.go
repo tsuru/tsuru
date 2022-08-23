@@ -677,6 +677,20 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestCreateAppUserFromTsuruToken(c *check.C) {
+	user := auth.User{
+		Email: "my-token@token.tsuru.internal",
+		Quota: quota.UnlimitedQuota,
+	}
+	a := App{
+		Name:      "my-app",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), &a, &user)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
