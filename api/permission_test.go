@@ -14,14 +14,20 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	routerTypes "github.com/tsuru/tsuru/types/router"
+	"github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
 )
 
@@ -412,6 +418,385 @@ func (s *S) TestAssignRoleNotFound(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestRoleAssignEmptyContextValueAndGlobalContextType(c *check.C) {
+	_, err := permission.NewRole("test", "global", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s", token.GetUserName()))
+	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignEmptyContextValueWithoutGlobalContextType(c *check.C) {
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s", token.GetUserName()))
+	req, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxAppNotFound(c *check.C) {
+	appName := "myapp"
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), appName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxAppFound(c *check.C) {
+	appName := "myapp"
+	_, err := permission.NewRole("test", "app", "")
+	c.Assert(err, check.IsNil)
+	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	err = app.CreateApp(context.TODO(), &app1, user)
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), appName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxTeamNotFound(c *check.C) {
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return nil, errors.New("not found")
+	}
+	team := "myteam"
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), team))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxTeamFound(c *check.C) {
+	team := "myteam"
+	_, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), team))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxUserNotFound(c *check.C) {
+	user := "someuser@validemail.com"
+	_, err := permission.NewRole("test", "user", "")
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), user))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxUserFound(c *check.C) {
+	user, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "user", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), user.Email))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxPoolNotFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "pool", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), "somepool"))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxPoolFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "pool", "")
+	c.Assert(err, check.IsNil)
+	poolName := "somepool"
+	opts := pool.AddPoolOptions{Name: poolName, Public: true}
+	err = pool.AddPool(context.TODO(), opts)
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), poolName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxServiceNotFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "service", "")
+	c.Assert(err, check.IsNil)
+	serviceName := "someservice"
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), serviceName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxServiceFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "service", "")
+	c.Assert(err, check.IsNil)
+	serviceName := "someservice"
+	srv := service.Service{
+		Name:       serviceName,
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": "http://localhost:1234"},
+		Password:   "abcde",
+	}
+	err = service.Create(srv)
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), serviceName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxServiceInstanceNotFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "service-instance", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), "my-instance"))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxServiceInstanceFound(c *check.C) {
+	siName := "my-instance"
+	si := service.ServiceInstance{
+		Name:        siName,
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+		Description: "desc",
+		TeamOwner:   s.team.Name,
+	}
+	err := s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err = permission.NewRole("test", "service-instance", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), siName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxVolumeNotFound(c *check.C) {
+	s.mockService.VolumeService.OnGet = func(ctx context.Context, _ string) (*volume.Volume, error) {
+		return nil, errors.New("not found")
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "volume", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), "my-volume"))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxVolumeFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "volume", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), "my-volume"))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestRoleAssignValidateCtxRouterNotFound(c *check.C) {
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "router", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), "my-router"))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestRoleAssignValidateCtxRouterFound(c *check.C) {
+	routerName := "dr1"
+	dr := routerTypes.DynamicRouter{
+		Name:   routerName,
+		Type:   "fake",
+		Config: map[string]interface{}{"a": "b"},
+	}
+	s.mockService.DynamicRouter.OnGet = func(name string) (*routerTypes.DynamicRouter, error) {
+		return &dr, nil
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermAll,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	_, err := permission.NewRole("test", "router", "")
+	c.Assert(err, check.IsNil)
+	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), routerName))
+	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)
+	c.Assert(err, check.IsNil)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req1)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestAssignRoleNotAuthorized(c *check.C) {
@@ -816,7 +1201,10 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 }
 
 func (s *S) TestAssignRoleToTeamToken(c *check.C) {
-	_, err := permission.NewRole("newrole", "app", "")
+	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	err := app.CreateApp(context.TODO(), &app1, s.user)
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("newrole", "app", "")
 	c.Assert(err, check.IsNil)
 	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
 		Team: s.team.Name,
@@ -887,6 +1275,31 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 		},
 		ErrorMatches: "role not found",
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestAssignTokenRoleToEmptyTeam(c *check.C) {
+	_, err := permission.NewRole("newrole", "team", "")
+	c.Assert(err, check.IsNil)
+	teamToken, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{
+		Team: s.team.Name,
+	}, s.token)
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`token_id=` + teamToken.TokenID)
+	req, err := http.NewRequest(http.MethodPost, "/1.6/roles/newrole/token", body)
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestAssignRoleToTeamTokenNotAuthorized(c *check.C) {
@@ -1025,9 +1438,12 @@ func (s *S) TestDissociateRoleFromTeamTokenNotAuthorized(c *check.C) {
 }
 
 func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
-	_, err := permission.NewRole("newrole", "app", "")
+	app1 := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"a"}}
+	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	body := strings.NewReader(`context=myapp&group_name=g1`)
+	_, err = permission.NewRole("newrole", "app", "")
+	c.Assert(err, check.IsNil)
+	body := strings.NewReader(`context=myapp&group_name=g1&contextType=app`)
 	req, err := http.NewRequest(http.MethodPost, "/1.9/roles/newrole/group", body)
 	c.Assert(err, check.IsNil)
 	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1", permission.Permission{
