@@ -59,7 +59,8 @@ type TeamTokenService interface {
 }
 
 var (
-	ErrTeamTokenAlreadyExists = errors.New("team token already exists")
-	ErrTeamTokenNotFound      = errors.New("team token not found")
-	ErrTeamTokenExpired       = errors.New("team token expired")
+	ErrTeamTokenAlreadyExists           = errors.New("team token already exists")
+	ErrTeamTokenNotFound                = errors.New("team token not found")
+	ErrTeamTokenExpired                 = errors.New("team token expired")
+	ErrCannotRemoveTeamTokenWhoOwnsApps = errors.New("cannot remove team token who owns apps")
 )

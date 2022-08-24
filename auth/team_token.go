@@ -124,7 +124,7 @@ func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
 		return err
 	}
 	if len(apps) > 0 {
-		return fmt.Errorf("cannot remove team token there are apps that belong to it")
+		return authTypes.ErrCannotRemoveTeamTokenWhoOwnsApps
 	}
 	return s.storage.Delete(ctx, tokenID)
 }

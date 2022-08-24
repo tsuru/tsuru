@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
-	"github.com/tsuru/tsuru/types/auth"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -119,7 +119,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
 	u, err := t.User()
 	c.Assert(err, check.IsNil)
-	c.Assert(u, check.DeepEquals, &auth.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
+	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
@@ -411,4 +411,20 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdate, Context: permission.Context(permTypes.CtxApp, "myapp")},
 	})
+}
+
+func (s *S) Test_TeamToken_RemoveTokenWithApps(c *check.C) {
+	var appListCalled bool
+	servicemanager.App = &appTypes.MockAppService{
+		OnList: func(filter *appTypes.Filter) ([]appTypes.App, error) {
+			appListCalled = true
+			c.Assert(filter, check.DeepEquals, &appTypes.Filter{UserOwner: "my-awesome-token@token.tsuru.internal"})
+			return []appTypes.App{&appTypes.MockApp{Name: "my-app1"}}, nil
+		},
+	}
+	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{TokenID: "my-awesome-token", Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.Delete(context.TODO(), token.TokenID)
+	c.Assert(appListCalled, check.Equals, true)
+	c.Assert(err, check.DeepEquals, authTypes.ErrCannotRemoveTeamTokenWhoOwnsApps)
 }
