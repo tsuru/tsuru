@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -608,7 +607,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func validateContextValue(ctx context.Context, role permission.Role, contextValue string) error {
 	if contextValue == "" && role.ContextType != permTypes.CtxGlobal {
-		return &tsuruErrors.ValidationError{
+		return &errors.ValidationError{
 			Message: fmt.Sprintf("Global context value is not valid for role with context type %s", role.ContextType),
 		}
 	}
@@ -616,39 +615,39 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 	switch role.ContextType {
 	case permTypes.CtxApp:
 		if _, err := app.GetByName(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxTeam:
 		if _, err := servicemanager.Team.FindByName(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxUser:
 		if _, err := auth.GetUserByEmail(contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxPool:
 		if _, err := pool.GetPoolByName(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxService:
 		if _, err := service.Get(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxServiceInstance:
 		sInstances, err := service.GetServicesInstancesByTeamsAndNames(nil, []string{contextValue}, "", "")
 		if err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 		if len(sInstances) == 0 {
-			return &tsuruErrors.ValidationError{Message: fmt.Sprintf("service instance %s, not found", contextValue)}
+			return &errors.ValidationError{Message: fmt.Sprintf("service instance %s, not found", contextValue)}
 		}
 	case permTypes.CtxVolume:
 		if _, err := servicemanager.Volume.Get(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxRouter:
 		if _, err := router.Get(ctx, contextValue); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+			return &errors.ValidationError{Message: err.Error()}
 		}
 	}
 
@@ -683,7 +682,6 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -691,7 +689,6 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
-
 	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
@@ -731,7 +728,6 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -776,7 +772,6 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -784,7 +779,6 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
-
 	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
@@ -818,12 +812,10 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(err) }()
-
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
 	}
-
 	err = canUseRole(t, role, contextValue)
 	if err != nil {
 		return err
