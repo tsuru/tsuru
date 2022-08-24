@@ -418,7 +418,7 @@ func (s *S) Test_TeamToken_RemoveTokenWithApps(c *check.C) {
 	servicemanager.App = &appTypes.MockAppService{
 		OnList: func(filter *appTypes.Filter) ([]appTypes.App, error) {
 			appListCalled = true
-			c.Assert(filter, check.DeepEquals, &appTypes.Filter{UserOwner: "my-awesome-token@token.tsuru.internal"})
+			c.Assert(filter, check.DeepEquals, &appTypes.Filter{UserOwner: "my-awesome-token@token.tsuru.invalid"})
 			return []appTypes.App{&appTypes.MockApp{Name: "my-app1"}}, nil
 		},
 	}
@@ -440,9 +440,8 @@ func (s *S) Test_IsEmailFromTeamToken(c *check.C) {
 		{email: "my-awesome-token@my.company.invalid"},
 		{email: "tsuru@token.tsuru.invalid", expected: true},
 	}
-
-	for i, tt := range tests {
+	for _, tt := range tests {
 		got := IsEmailFromTeamToken(tt.email)
-		c.Assert(got, check.DeepEquals, tt.expected, fmt.Sprintf("test case %d", i))
+		c.Assert(got, check.DeepEquals, tt.expected)
 	}
 }
