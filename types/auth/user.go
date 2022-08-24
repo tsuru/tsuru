@@ -13,12 +13,14 @@ import (
 )
 
 type User struct {
-	Quota     quota.Quota
-	Email     string
-	Password  string
-	APIKey    string
-	Roles     []RoleInstance
-	Groups    []string
+	Quota    quota.Quota
+	Email    string
+	Password string
+	APIKey   string
+	Roles    []RoleInstance
+	Groups   []string
+	// FromToken denotes whether the user was generated from team token.
+	// In other words, it does not exist in the storage.
 	FromToken bool
 }
 
