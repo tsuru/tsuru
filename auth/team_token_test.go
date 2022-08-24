@@ -119,7 +119,7 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
 	u, err := t.User()
 	c.Assert(err, check.IsNil)
-	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@token.tsuru.internal", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
+	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@token.tsuru.invalid", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
@@ -427,4 +427,22 @@ func (s *S) Test_TeamToken_RemoveTokenWithApps(c *check.C) {
 	err = servicemanager.TeamToken.Delete(context.TODO(), token.TokenID)
 	c.Assert(appListCalled, check.Equals, true)
 	c.Assert(err, check.DeepEquals, authTypes.ErrCannotRemoveTeamTokenWhoOwnsApps)
+}
+
+func (s *S) Test_IsEmailFromTeamToken(c *check.C) {
+	tests := []struct {
+		email    string
+		expected bool
+	}{
+		{email: "tsuru@tsuru.io"},
+		{email: "my-token@tsuru.io"},
+		{email: "my-awesome-token@token.tsuru.invalid", expected: true},
+		{email: "my-awesome-token@my.company.invalid"},
+		{email: "tsuru@token.tsuru.invalid", expected: true},
+	}
+
+	for i, tt := range tests {
+		got := IsEmailFromTeamToken(tt.email)
+		c.Assert(got, check.DeepEquals, tt.expected, fmt.Sprintf("test case %d", i))
+	}
 }

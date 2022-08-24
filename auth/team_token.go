@@ -22,7 +22,13 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-const TsuruTokenEmailDomain = "token.tsuru.internal"
+// TsuruTokenEmailDomain is the e-mail domain used to fake users from a team
+// token.
+//
+// NOTE: Following the RFC2606, the top-level domain ".invalid" is reserved,
+// so regular Tsuru users should not be able to register using it. See more:
+// https://www.rfc-editor.org/rfc/rfc2606
+const TsuruTokenEmailDomain = "token.tsuru.invalid"
 
 func IsEmailFromTeamToken(email string) bool {
 	return strings.HasSuffix(email, fmt.Sprintf("@%s", TsuruTokenEmailDomain))
