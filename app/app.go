@@ -1761,33 +1761,6 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return mergedEnvs
 }
 
-// UnsetEnvs removes environment variables from an app, serializing the
-// remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
-	if len(unsetEnvs.VariableNames) == 0 {
-		return nil
-	}
-	if unsetEnvs.Writer != nil {
-		fmt.Fprintf(unsetEnvs.Writer, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
-	}
-	for _, name := range unsetEnvs.VariableNames {
-		delete(app.Env, name)
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-	if err != nil {
-		return err
-	}
-	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(unsetEnvs.Writer)
-	}
-	return nil
-}
-
 func (app *App) restartIfUnits(w io.Writer) error {
 	units, err := app.GetUnits()
 	if err != nil {

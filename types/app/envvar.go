@@ -32,14 +32,21 @@ type SetEnvArgs struct {
 	ShouldRestart bool
 }
 
+type UnsetEnvArgs struct {
+	Writer        io.Writer
+	ShouldRestart bool
+}
+
 type AppEnvVarService interface {
 	List(ctx context.Context, appName string) ([]EnvVar, error)
 	Set(ctx context.Context, a App, envs []EnvVar, args SetEnvArgs) error
+	Unset(ctx context.Context, a App, envs []string, args UnsetEnvArgs) error
 }
 
 type AppEnvVarStorage interface {
 	ListAppEnvs(ctx context.Context, appName string) ([]EnvVar, error)
 	UpdateAppEnvs(ctx context.Context, a App, envs []EnvVar) error
+	RemoveAppEnvs(ctx context.Context, a App, envs []string) error
 
 	ListServiceEnvs(ctx context.Context, appName string) ([]ServiceEnvVar, error)
 }

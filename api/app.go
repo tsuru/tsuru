@@ -1177,10 +1177,9 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(bind.UnsetEnvArgs{
-		VariableNames: variables,
-		ShouldRestart: !noRestart,
+	return servicemanager.AppEnvVar.Unset(r.Context(), &a, variables, appTypes.UnsetEnvArgs{
 		Writer:        evt,
+		ShouldRestart: !noRestart,
 	})
 }
 

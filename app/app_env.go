@@ -100,6 +100,39 @@ func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []appty
 	return prov.Restart(ctx, a.(*App), "", version, args.Writer)
 }
 
+func (s *appEnvVarService) Unset(ctx context.Context, a apptypes.App, envs []string, args apptypes.UnsetEnvArgs) error {
+	if args.Writer == nil {
+		args.Writer = io.Discard
+	}
+
+	if len(envs) == 0 {
+		return nil
+	}
+
+	fmt.Fprintf(args.Writer, "---- Unsetting %d environment variables ----\n", len(envs))
+
+	if err := s.storage.RemoveAppEnvs(ctx, a, envs); err != nil {
+		return err
+	}
+
+	if !args.ShouldRestart {
+		return nil
+	}
+
+	prov, err := pool.GetProvisionerForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	// FIX: we cannot do this kind of type assertion on app :/
+	return prov.Restart(ctx, a.(*App), "", version, args.Writer)
+}
+
 func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
 	for _, env := range envs {
 		if !envVarNameRegexp.MatchString(env.Name) {

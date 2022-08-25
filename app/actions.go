@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -201,13 +200,12 @@ var exportEnvironmentsAction = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		app, err := GetByName(ctx.Context, app.Name)
-		if err == nil {
-			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(bind.UnsetEnvArgs{
-				VariableNames: vars,
-				ShouldRestart: true,
-			})
+		if err != nil {
+			return
 		}
+		servicemanager.AppEnvVar.Unset(ctx.Context, app, []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}, appTypes.UnsetEnvArgs{
+			ShouldRestart: true,
+		})
 	},
 	MinParams: 1,
 }

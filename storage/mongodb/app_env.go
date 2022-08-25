@@ -6,6 +6,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
@@ -51,6 +52,25 @@ func (s *appEnvVarStorage) UpdateAppEnvs(ctx context.Context, a apptypes.App, en
 	}
 	defer conn.Close()
 	return conn.Apps().Update(bson.M{"name": a.GetName()}, bson.M{"$set": bson.M{"env": mergeEnvVars(existingEnvMap, updatedEnvMap)}})
+}
+
+func (s *appEnvVarStorage) RemoveAppEnvs(ctx context.Context, a apptypes.App, envs []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if len(envs) == 0 {
+		return nil
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	fieldsToRemove := bson.M{}
+	for _, env := range envs {
+		fieldsToRemove[fmt.Sprintf("env.%s", env)] = ""
+	}
+	return conn.Apps().Update(bson.M{"name": a.GetName()}, bson.M{"$unset": fieldsToRemove})
 }
 
 func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, appName string) ([]apptypes.ServiceEnvVar, error) {
