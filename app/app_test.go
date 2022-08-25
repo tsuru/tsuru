@@ -678,9 +678,13 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 }
 
 func (s *S) TestCreateAppUserFromTsuruToken(c *check.C) {
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, delta int) error {
+		return stderrors.New("cannot be called")
+	}
 	user := auth.User{
-		Email: "my-token@token.tsuru.internal",
-		Quota: quota.UnlimitedQuota,
+		Email:     "my-token@token.tsuru.invalid",
+		Quota:     quota.UnlimitedQuota,
+		FromToken: true,
 	}
 	a := App{
 		Name:      "my-app",
