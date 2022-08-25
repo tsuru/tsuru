@@ -38,15 +38,15 @@ type UnsetEnvArgs struct {
 }
 
 type AppEnvVarService interface {
-	List(ctx context.Context, appName string) ([]EnvVar, error)
+	List(ctx context.Context, a App) ([]EnvVar, error)
 	Set(ctx context.Context, a App, envs []EnvVar, args SetEnvArgs) error
 	Unset(ctx context.Context, a App, envs []string, args UnsetEnvArgs) error
 }
 
 type AppEnvVarStorage interface {
-	ListAppEnvs(ctx context.Context, appName string) ([]EnvVar, error)
+	ListAppEnvs(ctx context.Context, a App) ([]EnvVar, error)
 	UpdateAppEnvs(ctx context.Context, a App, envs []EnvVar) error
 	RemoveAppEnvs(ctx context.Context, a App, envs []string) error
 
-	ListServiceEnvs(ctx context.Context, appName string) ([]ServiceEnvVar, error)
+	ListServiceEnvs(ctx context.Context, a App) ([]ServiceEnvVar, error)
 }

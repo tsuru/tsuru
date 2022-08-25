@@ -18,14 +18,14 @@ var _ apptypes.AppEnvVarStorage = &appEnvVarStorage{}
 
 type appEnvVarStorage struct{}
 
-func (s *appEnvVarStorage) ListAppEnvs(ctx context.Context, appName string) ([]apptypes.EnvVar, error) {
+func (s *appEnvVarStorage) ListAppEnvs(ctx context.Context, a apptypes.App) ([]apptypes.EnvVar, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var app struct{ Env map[string]apptypes.EnvVar }
-	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
+	err = conn.Apps().Find(bson.M{"name": a.GetName()}).One(&app)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (s *appEnvVarStorage) UpdateAppEnvs(ctx context.Context, a apptypes.App, en
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	existingEnvs, err := s.ListAppEnvs(ctx, a.GetName())
+	existingEnvs, err := s.ListAppEnvs(ctx, a)
 	if err != nil {
 		return err
 	}
@@ -73,14 +73,14 @@ func (s *appEnvVarStorage) RemoveAppEnvs(ctx context.Context, a apptypes.App, en
 	return conn.Apps().Update(bson.M{"name": a.GetName()}, bson.M{"$unset": fieldsToRemove})
 }
 
-func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, appName string) ([]apptypes.ServiceEnvVar, error) {
+func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, a apptypes.App) ([]apptypes.ServiceEnvVar, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var app struct{ ServiceEnvs []apptypes.ServiceEnvVar }
-	err = conn.Apps().Find(bson.M{"name": appName}).One(&app)
+	err = conn.Apps().Find(bson.M{"name": a.GetName()}).One(&app)
 	if err != nil {
 		return nil, err
 	}

@@ -35,13 +35,13 @@ type appEnvVarService struct {
 	storage apptypes.AppEnvVarStorage
 }
 
-func (s *appEnvVarService) List(ctx context.Context, appName string) ([]apptypes.EnvVar, error) {
-	envs, err := s.storage.ListAppEnvs(ctx, appName)
+func (s *appEnvVarService) List(ctx context.Context, a apptypes.App) ([]apptypes.EnvVar, error) {
+	envs, err := s.storage.ListAppEnvs(ctx, a)
 	if err != nil {
 		return nil, err
 	}
 
-	svcEnvs, err := s.storage.ListServiceEnvs(ctx, appName)
+	svcEnvs, err := s.storage.ListServiceEnvs(ctx, a)
 	if err != nil {
 		return nil, err
 	}

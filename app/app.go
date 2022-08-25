@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1724,41 +1723,21 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
-	delete(toInterpolate, envName)
-	if toInterpolate[varName] != "" {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
-		return
-	}
-	if _, isSet := mergedEnvs[varName]; !isSet {
-		return
-	}
-	env := mergedEnvs[envName]
-	env.Value = mergedEnvs[varName].Value
-	mergedEnvs[envName] = env
-}
-
 // Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bind.EnvVar {
-	mergedEnvs := make(map[string]bind.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
-	toInterpolate := make(map[string]string)
-	var toInterpolateKeys []string
-	for _, e := range app.Env {
-		mergedEnvs[e.Name] = e
-		if e.Alias != "" {
-			toInterpolate[e.Name] = e.Alias
-			toInterpolateKeys = append(toInterpolateKeys, e.Name)
+	// TODO(nettoclaudio): we should not ignore this error :P
+	envs, _ := servicemanager.AppEnvVar.List(app.Context(), app)
+	envMap := make(map[string]bind.EnvVar)
+	for _, env := range envs {
+		envMap[env.Name] = bind.EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			Alias:     env.Alias,
+			Public:    env.Public,
+			ManagedBy: env.ManagedBy,
 		}
 	}
-	for _, e := range app.ServiceEnvs {
-		mergedEnvs[e.Name] = e.EnvVar
-	}
-	sort.Strings(toInterpolateKeys)
-	for _, envName := range toInterpolateKeys {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
-	}
-	mergedEnvs[TsuruServicesEnvVar] = serviceEnvsFromEnvVars(app.ServiceEnvs)
-	return mergedEnvs
+	return envMap
 }
 
 func (app *App) restartIfUnits(w io.Writer) error {
