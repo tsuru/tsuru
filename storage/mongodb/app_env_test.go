@@ -11,5 +11,5 @@ import (
 
 var _ = check.Suite(&storagetest.AppEnvVarSuite{
 	AppEnvVarStorage: &appEnvVarStorage{},
-	SuiteHooks:       &mongodbBaseTest{},
+	SuiteHooks:       &mongodbBaseTest{name: "app_envvar"},
 })

@@ -27,6 +27,6 @@ type AppEnvVarService interface {
 }
 
 type AppEnvVarStorage interface {
-	List(ctx context.Context, appName string) ([]EnvVar, error)
+	ListAppEnvs(ctx context.Context, appName string) ([]EnvVar, error)
 	ListServiceEnvs(ctx context.Context, appName string) ([]ServiceEnvVar, error)
 }

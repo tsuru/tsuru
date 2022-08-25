@@ -31,7 +31,7 @@ type appEnvVarService struct {
 }
 
 func (s *appEnvVarService) List(ctx context.Context, appName string) ([]apptypes.EnvVar, error) {
-	envs, err := s.storage.List(ctx, appName)
+	envs, err := s.storage.ListAppEnvs(ctx, appName)
 	if err != nil {
 		return nil, err
 	}
