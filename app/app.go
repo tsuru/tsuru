@@ -1761,58 +1761,6 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return mergedEnvs
 }
 
-// SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
-	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
-		return nil
-	}
-
-	for _, env := range setEnvs.Envs {
-		err := validateEnv(env.Name)
-		if err != nil {
-			return err
-		}
-	}
-
-	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
-		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
-	}
-
-	if setEnvs.PruneUnused {
-		for name, value := range app.Env {
-			ok := envInSet(name, setEnvs.Envs)
-			// only prune variables managed by requested
-			if !ok && value.ManagedBy == setEnvs.ManagedBy {
-				if setEnvs.Writer != nil {
-					fmt.Fprintf(setEnvs.Writer, "---- Pruning %s from environment variables ----\n", name)
-				}
-				delete(app.Env, name)
-			}
-		}
-	}
-
-	for _, env := range setEnvs.Envs {
-		app.setEnv(env)
-	}
-
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-	if err != nil {
-		return err
-	}
-
-	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(setEnvs.Writer)
-	}
-
-	return nil
-}
-
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
 func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {

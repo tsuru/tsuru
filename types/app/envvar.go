@@ -4,7 +4,10 @@
 
 package app
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 const TsuruServicesEnvVarName = "TSURU_SERVICES"
 
@@ -22,11 +25,21 @@ type ServiceEnvVar struct {
 	InstanceName string `json:"-"`
 }
 
+type SetEnvArgs struct {
+	Writer        io.Writer
+	ManagedBy     string
+	PruneUnused   bool
+	ShouldRestart bool
+}
+
 type AppEnvVarService interface {
 	List(ctx context.Context, appName string) ([]EnvVar, error)
+	Set(ctx context.Context, a App, envs []EnvVar, args SetEnvArgs) error
 }
 
 type AppEnvVarStorage interface {
 	ListAppEnvs(ctx context.Context, appName string) ([]EnvVar, error)
+	UpdateAppEnvs(ctx context.Context, a App, envs []EnvVar) error
+
 	ListServiceEnvs(ctx context.Context, appName string) ([]ServiceEnvVar, error)
 }

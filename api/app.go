@@ -1080,7 +1080,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.Done(err) }()
 	envs := map[string]string{}
-	variables := []bind.EnvVar{}
+	variables := []appTypes.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
 		private := false
@@ -1091,7 +1091,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		if e.Private {
 			private = true
 		}
-		variables = append(variables, bind.EnvVar{
+		variables = append(variables, appTypes.EnvVar{
 			Name:      v.Name,
 			Value:     v.Value,
 			Public:    !private,
@@ -1104,8 +1104,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(bind.SetEnvArgs{
-		Envs:          variables,
+	servicemanager.AppEnvVar.Set(r.Context(), &a, variables, appTypes.SetEnvArgs{
 		ManagedBy:     e.ManagedBy,
 		PruneUnused:   e.PruneUnused,
 		ShouldRestart: !e.NoRestart,
@@ -1116,6 +1115,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	return err
 }
+
 func isInternalEnv(envKey string) bool {
 	for _, internalEnv := range internalEnvs() {
 		if internalEnv == envKey {
@@ -1124,6 +1124,7 @@ func isInternalEnv(envKey string) bool {
 	}
 	return false
 }
+
 func internalEnvs() []string {
 	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }

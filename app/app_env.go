@@ -7,7 +7,12 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 
+	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	apptypes "github.com/tsuru/tsuru/types/app"
 )
@@ -48,6 +53,67 @@ func (s *appEnvVarService) List(ctx context.Context, appName string) ([]apptypes
 	finalEnvs = append(finalEnvs, svcEnvVars...)
 
 	return finalEnvs, nil
+}
+
+func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
+	if err := validateEnvs(envs, args); err != nil {
+		return err
+	}
+
+	if args.Writer == nil {
+		args.Writer = io.Discard
+	}
+
+	fmt.Fprintf(args.Writer, "---- Setting %d new environment variables ----\n", len(envs))
+
+	// TODO(nettoclaudio): we should review the prune flag.
+
+	final := make([]apptypes.EnvVar, 0, len(envs))
+	for _, env := range envs {
+		final = append(final, apptypes.EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			Public:    env.Public,
+			ManagedBy: args.ManagedBy,
+		})
+
+		servicemanager.AppLog.Add(a.GetName(), fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
+	}
+
+	s.storage.UpdateAppEnvs(ctx, a, final)
+
+	if !args.ShouldRestart {
+		return nil
+	}
+
+	prov, err := pool.GetProvisionerForPool(ctx, a.GetPool())
+	if err != nil {
+		return err
+	}
+
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	// FIX: we cannot do this kind of type assertion on app :/
+	return prov.Restart(ctx, a.(*App), "", version, args.Writer)
+}
+
+func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
+	for _, env := range envs {
+		if !envVarNameRegexp.MatchString(env.Name) {
+			return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", env.Name)}
+		}
+
+		// TODO(nettoclaudio): we shoud also limit the max size of the env var
+		// value, something around 1MiB.
+
+		// TODO(nettoclaudio): only Tsuru API should be able to set reserved
+		// variables such as: TSURU_APPNAME, TSURU_APP_TOKEN, etc.
+	}
+
+	return nil
 }
 
 func fromServiceEnvsToAppEnvVars(vars []apptypes.ServiceEnvVar) []apptypes.EnvVar {

@@ -36,6 +36,23 @@ func (s *appEnvVarStorage) ListAppEnvs(ctx context.Context, appName string) ([]a
 	return envs, nil
 }
 
+func (s *appEnvVarStorage) UpdateAppEnvs(ctx context.Context, a apptypes.App, envs []apptypes.EnvVar) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	existingEnvs, err := s.ListAppEnvs(ctx, a.GetName())
+	if err != nil {
+		return err
+	}
+	existingEnvMap, updatedEnvMap := envVarsToMap(existingEnvs), envVarsToMap(envs)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": a.GetName()}, bson.M{"$set": bson.M{"env": mergeEnvVars(existingEnvMap, updatedEnvMap)}})
+}
+
 func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, appName string) ([]apptypes.ServiceEnvVar, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -49,4 +66,23 @@ func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, appName string) 
 	}
 	sort.Slice(app.ServiceEnvs, func(i, j int) bool { return app.ServiceEnvs[i].Name < app.ServiceEnvs[j].Name })
 	return app.ServiceEnvs, nil
+}
+
+func envVarsToMap(envs []apptypes.EnvVar) map[string]apptypes.EnvVar {
+	envMap := make(map[string]apptypes.EnvVar)
+	for _, env := range envs {
+		envMap[env.Name] = env
+	}
+	return envMap
+}
+
+func mergeEnvVars(base, override map[string]apptypes.EnvVar) map[string]apptypes.EnvVar {
+	merged := make(map[string]apptypes.EnvVar)
+	for k, v := range base {
+		merged[k] = v
+	}
+	for k, v := range override {
+		merged[k] = v
+	}
+	return merged
 }

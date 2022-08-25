@@ -188,15 +188,11 @@ var exportEnvironmentsAction = action.Action{
 			return nil, err
 		}
 		t := ctx.Previous.(*auth.Token)
-		envVars := []bind.EnvVar{
+		err = servicemanager.AppEnvVar.Set(ctx.Context, app, []appTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
-		}
-		err = app.SetEnvs(bind.SetEnvArgs{
-			Envs:          envVars,
-			ShouldRestart: false,
-		})
+		}, appTypes.SetEnvArgs{ShouldRestart: false})
 		if err != nil {
 			return nil, err
 		}
