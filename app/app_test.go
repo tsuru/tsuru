@@ -682,7 +682,7 @@ func (s *S) TestCreateAppUserFromTsuruToken(c *check.C) {
 		return stderrors.New("cannot be called")
 	}
 	user := auth.User{
-		Email:     "my-token@token.tsuru.invalid",
+		Email:     "my-token@tsuru-team-token",
 		Quota:     quota.UnlimitedQuota,
 		FromToken: true,
 	}
