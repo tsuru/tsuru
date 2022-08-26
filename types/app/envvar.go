@@ -39,6 +39,7 @@ type UnsetEnvArgs struct {
 
 type AppEnvVarService interface {
 	List(ctx context.Context, a App) ([]EnvVar, error)
+	Get(ctx context.Context, a App, envName string) (EnvVar, error)
 	Set(ctx context.Context, a App, envs []EnvVar, args SetEnvArgs) error
 	Unset(ctx context.Context, a App, envs []string, args UnsetEnvArgs) error
 }

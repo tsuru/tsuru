@@ -748,10 +748,13 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = AuthScheme.AppLogout(ctx, token)
+	tokenEnv, err := servicemanager.AppEnvVar.Get(ctx, app, "TSURU_APP_TOKEN")
 	if err != nil {
-		logErr("Unable to remove app token in destroy", err)
+		logErr("Unable to remove TSURU_APP_TOKEN", err)
+	} else {
+		if err = AuthScheme.AppLogout(ctx, tokenEnv.Value); err != nil {
+			logErr("Unable to remove app token in destroy", err)
+		}
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
@@ -1178,26 +1181,6 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		return "", err
 	}
 	return pool.Name, nil
-}
-
-// setEnv sets the given environment variable in the app.
-func (app *App) setEnv(env bind.EnvVar) {
-	if app.Env == nil {
-		app.Env = make(map[string]bind.EnvVar)
-	}
-	app.Env[env.Name] = env
-	if env.Public {
-		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
-	}
-}
-
-// getEnv returns the environment variable if it's declared in the app. It will
-// return an error if the variable is not defined in this app.
-func (app *App) getEnv(name string) (bind.EnvVar, error) {
-	if env, ok := app.Env[name]; ok {
-		return env, nil
-	}
-	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
 }
 
 // validateNew checks app name format, pool and plan

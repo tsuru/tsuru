@@ -55,6 +55,22 @@ func (s *appEnvVarService) List(ctx context.Context, a apptypes.App) ([]apptypes
 	return finalEnvs, nil
 }
 
+func (s *appEnvVarService) Get(ctx context.Context, a apptypes.App, envName string) (apptypes.EnvVar, error) {
+	if err := ctx.Err(); err != nil {
+		return apptypes.EnvVar{}, err
+	}
+	envs, err := s.List(ctx, a)
+	if err != nil {
+		return apptypes.EnvVar{}, err
+	}
+	for _, env := range envs {
+		if env.Name == envName {
+			return env, nil
+		}
+	}
+	return apptypes.EnvVar{}, fmt.Errorf("env var not found")
+}
+
 func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
 	if err := validateEnvs(envs, args); err != nil {
 		return err
