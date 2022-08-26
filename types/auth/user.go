@@ -19,6 +19,9 @@ type User struct {
 	APIKey   string
 	Roles    []RoleInstance
 	Groups   []string
+	// FromToken denotes whether the user was generated from team token.
+	// In other words, it does not exist in the storage.
+	FromToken bool
 }
 
 type RoleInstance struct {
@@ -32,9 +35,10 @@ type ErrTeamStillUsed struct {
 }
 
 var (
-	ErrUserNotFound = errors.New("user not found")
-	ErrInvalidKey   = errors.New("invalid key")
-	ErrKeyDisabled  = errors.New("key management is disabled")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrInvalidKey         = errors.New("invalid key")
+	ErrKeyDisabled        = errors.New("key management is disabled")
+	ErrEmailFromTeamToken = errors.New("email from team token")
 )
 
 func (e *ErrTeamStillUsed) Error() string {

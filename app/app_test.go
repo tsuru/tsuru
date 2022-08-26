@@ -717,6 +717,24 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestCreateAppUserFromTsuruToken(c *check.C) {
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, delta int) error {
+		return stderrors.New("cannot be called")
+	}
+	user := auth.User{
+		Email:     "my-token@tsuru-team-token",
+		Quota:     quota.UnlimitedQuota,
+		FromToken: true,
+	}
+	a := App{
+		Name:      "my-app",
+		Platform:  "python",
+		TeamOwner: s.team.Name,
+	}
+	err := CreateApp(context.TODO(), &a, &user)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

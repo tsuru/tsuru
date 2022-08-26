@@ -13,8 +13,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
 
@@ -115,8 +117,9 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	namedToken, ok := t.(authTypes.NamedToken)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(namedToken.GetTokenName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
-	_, err = t.User()
-	c.Assert(err, check.ErrorMatches, `team token is not a user token`)
+	u, err := t.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(u, check.DeepEquals, &authTypes.User{Email: fmt.Sprintf("%s@tsuru-team-token", namedToken.GetTokenName()), Quota: quota.UnlimitedQuota, FromToken: true})
 	perms, err := t.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.HasLen, 0)
@@ -408,4 +411,37 @@ func (s *S) Test_TeamToken_Permissions(c *check.C) {
 		{Scheme: permission.PermAppRead, Context: permission.Context(permTypes.CtxApp, "myapp")},
 		{Scheme: permission.PermAppUpdate, Context: permission.Context(permTypes.CtxApp, "myapp")},
 	})
+}
+
+func (s *S) Test_TeamToken_RemoveTokenWithApps(c *check.C) {
+	var appListCalled bool
+	servicemanager.App = &appTypes.MockAppService{
+		OnList: func(filter *appTypes.Filter) ([]appTypes.App, error) {
+			appListCalled = true
+			c.Assert(filter, check.DeepEquals, &appTypes.Filter{UserOwner: "my-awesome-token@tsuru-team-token"})
+			return []appTypes.App{&appTypes.MockApp{Name: "my-app1"}}, nil
+		},
+	}
+	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{TokenID: "my-awesome-token", Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.Delete(context.TODO(), token.TokenID)
+	c.Assert(appListCalled, check.Equals, true)
+	c.Assert(err, check.DeepEquals, authTypes.ErrCannotRemoveTeamTokenWhoOwnsApps)
+}
+
+func (s *S) Test_IsEmailFromTeamToken(c *check.C) {
+	tests := []struct {
+		email    string
+		expected bool
+	}{
+		{email: "tsuru@tsuru.io"},
+		{email: "my-token@tsuru.io"},
+		{email: "my-awesome-token@tsuru-team-token", expected: true},
+		{email: "my-awesome-token@my.company.invalid"},
+		{email: "tsuru@tsuru-team-token", expected: true},
+	}
+	for _, tt := range tests {
+		got := IsEmailFromTeamToken(tt.email)
+		c.Assert(got, check.DeepEquals, tt.expected)
+	}
 }

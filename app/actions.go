@@ -80,18 +80,26 @@ var reserveUserApp = action.Action{
 		default:
 			return nil, errors.New("Second parameter must be auth.User or *auth.User.")
 		}
-		usr, err := auth.GetUserByEmail(user.Email)
-		if err != nil {
-			return nil, err
+		if user.FromToken {
+			// there's no quota to update as the user was generated from team token.
+			return map[string]string{"app": app.Name}, nil
 		}
-		if err := servicemanager.UserQuota.Inc(ctx.Context, usr, 1); err != nil {
+		u := auth.User(user)
+		if err := servicemanager.UserQuota.Inc(ctx.Context, &u, 1); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		m := ctx.FWResult.(map[string]string)
-		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
+		m, found := ctx.FWResult.(map[string]string)
+		if !found {
+			return
+		}
+		email, found := m["user"]
+		if !found {
+			return
+		}
+		if user, err := auth.GetUserByEmail(email); err == nil {
 			servicemanager.UserQuota.Inc(ctx.Context, user, -1)
 		}
 	},

@@ -39,6 +39,21 @@ type RoutableAddresses struct {
 	ExtraData map[string]string
 }
 
+type Filter struct {
+	Name        string
+	NameMatches string
+	Platform    string
+	TeamOwner   string
+	UserOwner   string
+	Pool        string
+	Pools       []string
+	Statuses    []string
+	Locked      bool
+	Tags        []string
+	Extra       map[string][]string
+}
+
 type AppService interface {
 	GetByName(ctx context.Context, name string) (App, error)
+	List(ctx context.Context, filter *Filter) ([]App, error)
 }

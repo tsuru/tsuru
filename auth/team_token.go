@@ -8,16 +8,28 @@ import (
 	"context"
 	"crypto"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/validation"
 )
+
+// TsuruTokenEmailDomain is the e-mail domain used to fake users from a team
+// token. This TLD is unlikely to be used world-wide, so regular Tsuru users
+// should not be able to register using it.
+const TsuruTokenEmailDomain = "tsuru-team-token"
+
+func IsEmailFromTeamToken(email string) bool {
+	return strings.HasSuffix(email, fmt.Sprintf("@%s", TsuruTokenEmailDomain))
+}
 
 type teamToken authTypes.TeamToken
 
@@ -31,7 +43,12 @@ func (t *teamToken) GetValue() string {
 }
 
 func (t *teamToken) User() (*authTypes.User, error) {
-	return nil, errors.New("team token is not a user token")
+	return &authTypes.User{
+		Email:     fmt.Sprintf("%s@%s", t.TokenID, TsuruTokenEmailDomain),
+		Quota:     quota.UnlimitedQuota,
+		Roles:     t.Roles,
+		FromToken: true,
+	}, nil
 }
 
 func (t *teamToken) IsAppToken() bool {
@@ -96,6 +113,22 @@ func (s *teamTokenService) Authenticate(ctx context.Context, header string) (aut
 }
 
 func (s *teamTokenService) Delete(ctx context.Context, tokenID string) error {
+	token, err := s.storage.FindByTokenID(ctx, tokenID)
+	if err != nil {
+		return err
+	}
+	tt := teamToken(*token)
+	u, err := tt.User()
+	if err != nil {
+		return err
+	}
+	apps, err := servicemanager.App.List(ctx, &appTypes.Filter{UserOwner: u.Email})
+	if err != nil {
+		return err
+	}
+	if len(apps) > 0 {
+		return authTypes.ErrCannotRemoveTeamTokenWhoOwnsApps
+	}
 	return s.storage.Delete(ctx, tokenID)
 }
 

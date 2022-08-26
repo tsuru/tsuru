@@ -26,12 +26,13 @@ import (
 )
 
 type User struct {
-	Quota    quota.Quota
-	Email    string
-	Password string
-	APIKey   string
-	Roles    []authTypes.RoleInstance `bson:",omitempty"`
-	Groups   []string                 `bson:",omitempty"`
+	Quota     quota.Quota
+	Email     string
+	Password  string
+	APIKey    string
+	Roles     []authTypes.RoleInstance `bson:",omitempty"`
+	Groups    []string                 `bson:",omitempty"`
+	FromToken bool                     `bson:",omitempty"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {
