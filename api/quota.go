@@ -173,3 +173,85 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	return err
 }
+
+// title: team quota
+// path: /teams/{name}/quota
+// method: GET
+// produce: application/json
+// responses:
+//   200: OK
+//   401: Unauthorized
+//   404: Team not found
+func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	teamName := r.URL.Query().Get(":name")
+	allowed := permission.Check(t, permission.PermTeamReadQuota, permission.Context(permTypes.CtxTeam, teamName))
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	team, err := servicemanager.Team.FindByName(r.Context(), teamName)
+	if err == authTypes.ErrTeamNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(team.Quota)
+}
+
+// title: update team quota
+// path: /teams/{name}/quota
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// responses:
+//   200: Quota updated
+//   400: Invalid data
+//   401: Unauthorized
+//   403: Limit lower than allocated value
+//   404: Team not found
+func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	teamName := r.URL.Query().Get(":name")
+	allowed := permission.Check(t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	team, err := servicemanager.Team.FindByName(r.Context(), teamName)
+	if err == authTypes.ErrTeamNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	if err != nil {
+		return err
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeTeam, Value: teamName},
+		Kind:       permission.PermTeamUpdateQuota,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamName)),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	limit, err := strconv.Atoi(InputValue(r, "limit"))
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid limit",
+		}
+	}
+	err = servicemanager.TeamQuota.SetLimit(r.Context(), team, limit)
+	if err == quota.ErrLimitLowerThanAllocated {
+		return &errors.HTTP{
+			Code:    http.StatusForbidden,
+			Message: err.Error(),
+		}
+	}
+	return err
+}

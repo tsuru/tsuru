@@ -26,12 +26,37 @@ import (
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
 var (
 	ErrAppAlreadyExists = errors.New("there is already an app with this name")
 )
+
+var reserveTeamApp = action.Action{
+	Name: "reserve-team-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app *App
+		switch ctx.Params[0].(type) {
+		case *App:
+			app = ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("first parameter must be *App.")
+		}
+		if err := servicemanager.TeamQuota.Inc(ctx.Context, &authTypes.Team{Name: app.TeamOwner}, 1); err != nil {
+			return nil, err
+		}
+		return map[string]string{"app": app.Name, "team": app.TeamOwner}, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		m := ctx.FWResult.(map[string]string)
+		if teamStr, ok := m["team"]; ok {
+			servicemanager.TeamQuota.Inc(ctx.Context, &authTypes.Team{Name: teamStr}, -1)
+		}
+	},
+	MinParams: 2,
+}
 
 // reserveUserApp reserves the app for the user, only if the user has a quota
 // of apps. If the user does not have a quota, meaning that it's unlimited,
@@ -53,7 +78,7 @@ var reserveUserApp = action.Action{
 		case *auth.User:
 			user = *ctx.Params[1].(*auth.User)
 		default:
-			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
+			return nil, errors.New("Second parameter must be auth.User or *auth.User.")
 		}
 		usr, err := auth.GetUserByEmail(user.Email)
 		if err != nil {

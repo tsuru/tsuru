@@ -87,7 +87,10 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 	err := s.user.Create()
 	c.Assert(err, check.IsNil)
-	s.team = authTypes.Team{Name: "tsuruteam"}
+	s.team = authTypes.Team{
+		Name:  "tsuruteam",
+		Quota: quota.UnlimitedQuota,
+	}
 }
 
 var nativeScheme = auth.Scheme(native.NativeScheme{})
@@ -215,6 +218,9 @@ func setupMocks(s *S) {
 		return nil, appTypes.ErrPlanNotFound
 	}
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
+		return &quota.UnlimitedQuota, nil
+	}
+	s.mockService.TeamQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
 	}
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {

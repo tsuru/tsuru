@@ -335,7 +335,15 @@ func (s *S) TestCreateApp(c *check.C) {
 		TeamOwner: s.team.Name,
 		Tags:      []string{"", " test a  ", "  ", "test b ", " test a "},
 	}
+	var teamQuotaIncCalled bool
+	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		teamQuotaIncCalled = true
+		c.Assert(item.GetName(), check.Equals, s.team.Name)
+		return nil
+	}
+	var userQuotaIncCalled bool
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		userQuotaIncCalled = true
 		c.Assert(item.GetName(), check.Equals, s.user.Email)
 		return nil
 	}
@@ -346,6 +354,8 @@ func (s *S) TestCreateApp(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
+	c.Assert(teamQuotaIncCalled, check.Equals, true)
+	c.Assert(userQuotaIncCalled, check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -598,6 +608,36 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
 	err := CreateApp(context.TODO(), &app, s.user)
+	e, ok := err.(*appTypes.AppCreationError)
+	c.Assert(ok, check.Equals, true)
+	qe, ok := e.Err.(*quota.QuotaExceededError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(qe.Available, check.Equals, uint(0))
+	c.Assert(qe.Requested, check.Equals, uint(1))
+}
+
+func (s *S) TestCreteAppTeamQuotaExceeded(c *check.C) {
+	a := App{Name: "my-app", Platform: "python", TeamOwner: "my-team"}
+	t := authTypes.Team{Name: a.TeamOwner, Quota: quota.Quota{InUse: 10, Limit: 10}}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{s.team, t}, nil
+	}
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		if name != a.TeamOwner {
+			return nil, stderrors.New("team not found")
+		}
+		return &t, nil
+	}
+	var teamQuotaIncCalled bool
+	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, delta int) error {
+		teamQuotaIncCalled = true
+		c.Assert(item.GetName(), check.Equals, a.TeamOwner)
+		c.Assert(delta, check.Equals, 1)
+		return &quota.QuotaExceededError{Available: 0, Requested: 1}
+	}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.NotNil)
+	c.Assert(teamQuotaIncCalled, check.Equals, true)
 	e, ok := err.(*appTypes.AppCreationError)
 	c.Assert(ok, check.Equals, true)
 	qe, ok := e.Err.(*quota.QuotaExceededError)

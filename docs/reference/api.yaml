@@ -658,7 +658,6 @@ paths:
         "200":
           description: List service brokers
           schema:
-            type: object
             $ref: "#/definitions/ServiceBrokerList"
         "204":
           description: No content
@@ -2221,6 +2220,68 @@ paths:
         - team
       security:
         - Bearer: []
+  /1.12/teams/{team}/quota:
+    parameters:
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
+    get:
+      operationId: TeamQuotaGet
+      description: Get quota of a team.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/UserQuotaViewResponse"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - team
+      security:
+        - Bearer: []
+    put:
+      operationId: TeamQuotaChange
+      description: Changes the team's apps limit.
+      tags:
+        - team
+      security:
+        - Bearer: []
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - name: limit
+          in: formData
+          type: number
+          required: true
+          description: New limit of apps. Negative number indicates unlimited.
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Quota updated
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Limit lower than allocated
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
   /1.0/users:
     get:
       operationId: UsersList
@@ -3082,7 +3143,6 @@ paths:
        200:
          description: "Cluster"
          schema:
-           type: "object"
            $ref: "#/definitions/Cluster"
        401:
          description: "Unauthorized"
@@ -3819,7 +3879,6 @@ paths:
         "200":
           description: Webhook.
           schema:
-            type: object
             $ref: "#/definitions/Webhook"
         "404":
           description: Not founds.

@@ -11,11 +11,13 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/storage"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
 )
 
 var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
@@ -41,23 +43,27 @@ func (t *teamService) Create(ctx context.Context, name string, tags []string, us
 	if user == nil {
 		return errors.New("user cannot be null")
 	}
-	name = strings.TrimSpace(name)
-	team := authTypes.Team{
-		Name:         name,
-		CreatingUser: user.Email,
-		Tags:         processTags(tags),
-	}
-	if err := t.validate(team); err != nil {
+	q, err := startingAppQuota()
+	if err != nil {
 		return err
 	}
-	err := t.storage.Insert(ctx, team)
+	team := authTypes.Team{
+		Name:         strings.TrimSpace(name),
+		CreatingUser: user.Email,
+		Tags:         processTags(tags),
+		Quota:        q,
+	}
+	if err = t.validate(team); err != nil {
+		return err
+	}
+	err = t.storage.Insert(ctx, team)
 	if err != nil {
 		return err
 	}
 	u := User(*user)
-	err = u.AddRolesForEvent(permTypes.RoleEventTeamCreate, name)
+	err = u.AddRolesForEvent(permTypes.RoleEventTeamCreate, team.Name)
 	if err != nil {
-		log.Errorf("unable to add default roles during team %q creation for %q: %s", name, user.Email, err)
+		log.Errorf("unable to add default roles during team %q creation for %q: %s", team.Name, user.Email, err)
 	}
 	return nil
 }
@@ -130,4 +136,15 @@ func processTags(tags []string) []string {
 		}
 	}
 	return processedTags
+}
+
+func startingAppQuota() (quota.Quota, error) {
+	limit, err := config.GetInt("quota:apps-per-team")
+	if errors.Is(err, config.ErrKeyNotFound{Key: "quota:apps-per-team"}) {
+		return quota.UnlimitedQuota, nil // no quota defined in tsurud.yaml, returning unlimited quota
+	}
+	if err != nil {
+		return quota.Quota{}, err
+	}
+	return quota.Quota{Limit: limit}, nil
 }

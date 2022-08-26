@@ -404,6 +404,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		return err
 	}
 	actions := []*action.Action{
+		&reserveTeamApp,
 		&reserveUserApp,
 		&insertApp,
 		&createAppToken,

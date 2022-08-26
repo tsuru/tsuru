@@ -114,6 +114,8 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"team.token.create",
 	"team.token.delete",
 	"team.token.update",
+	"team.read.quota",
+	"team.update.quota",
 ).addWithCtx(
 	"user", []permTypes.ContextType{permTypes.CtxUser},
 ).addWithCtx(

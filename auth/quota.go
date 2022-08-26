@@ -10,7 +10,7 @@ import (
 	quotaTypes "github.com/tsuru/tsuru/types/quota"
 )
 
-func QuotaService() (quotaTypes.QuotaService, error) {
+func UserQuotaService() (quotaTypes.QuotaService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
 	if err != nil {
 		dbDriver, err = storage.GetDefaultDbDriver()
@@ -19,4 +19,15 @@ func QuotaService() (quotaTypes.QuotaService, error) {
 		}
 	}
 	return &quota.QuotaService{Storage: dbDriver.UserQuotaStorage}, nil
+}
+
+func TeamQuotaService() (quotaTypes.QuotaService, error) {
+	dbDriver, err := storage.GetCurrentDbDriver()
+	if err != nil {
+		dbDriver, err = storage.GetDefaultDbDriver()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &quota.QuotaService{Storage: dbDriver.TeamQuotaStorage}, nil
 }
