@@ -2375,6 +2375,24 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 			return ErrRouterAlreadyLinked
 		}
 	}
+	cnames := app.GetCname()
+	appCName := App{}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Find(bson.M{"cname": bson.M{"$in": cnames}, "name": bson.M{"$ne": app.Name}, "routers": appRouter}).One(&appCName)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	if appCName.Name != "" {
+		for _, cname := range appCName.GetCname() {
+			if cnameInSet(cname, cnames) {
+				return errors.New(fmt.Sprintf("cname %s already exists for app %s using router %s", cname, appCName.Name, appRouter.Name))
+			}
+		}
+	}
 	r, err := router.Get(app.ctx, appRouter.Name)
 	if err != nil {
 		return err
@@ -2412,6 +2430,15 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 	return nil
+}
+
+func cnameInSet(cname string, cnames []string) bool {
+	for _, v := range cnames {
+		if v == cname {
+			return true
+		}
+	}
+	return false
 }
 
 func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {

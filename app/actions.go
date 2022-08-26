@@ -568,6 +568,7 @@ var updateAppProvisioner = action.Action{
 var validateNewCNames = action.Action{
 	Name: "validate-new-cnames",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(*App)
 		cnameRegexp := regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 		cnames := ctx.Params[1].([]string)
 		conn, err := db.Conn()
@@ -575,6 +576,7 @@ var validateNewCNames = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
+		appRouters := app.GetRouters()
 		for _, cname := range cnames {
 			if !cnameRegexp.MatchString(cname) {
 				return nil, errors.New("Invalid cname")
@@ -583,9 +585,33 @@ var validateNewCNames = action.Action{
 			if err != nil {
 				return nil, err
 			}
-			if cs > 0 {
-				return nil, errors.New("cname already exists!")
+			if cs == 0 {
+				continue
 			}
+			cs, err = conn.Apps().Find(bson.M{"name": app.Name, "cname": cname}).Count()
+			if err != nil {
+				return nil, err
+			}
+			if cs > 0 {
+				return nil, errors.New(fmt.Sprintf("cname %s already exists for this app", cname))
+			}
+
+			appCName := App{}
+			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "routers": bson.M{"$in": appRouters}}).One(&appCName)
+			if err != nil && err != mgo.ErrNotFound {
+				return nil, err
+			}
+			if appCName.Name != "" {
+				return nil, errors.New(fmt.Sprintf("cname %s already exists for app %s using same router", cname, appCName.Name))
+			}
+			err = conn.Apps().Find(bson.M{"cname": cname, "name": bson.M{"$ne": app.Name}, "teamowner": bson.M{"$ne": app.GetTeamOwner()}}).One(&appCName)
+			if err != nil {
+				if err == mgo.ErrNotFound {
+					continue
+				}
+				return nil, err
+			}
+			return nil, errors.New(fmt.Sprintf("cname %s already exists for another app %s and belongs to a different team owner", cname, appCName.Name))
 		}
 		return cnames, nil
 	},
