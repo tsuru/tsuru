@@ -19,6 +19,9 @@ var _ apptypes.AppEnvVarStorage = &appEnvVarStorage{}
 type appEnvVarStorage struct{}
 
 func (s *appEnvVarStorage) ListAppEnvs(ctx context.Context, a apptypes.App) ([]apptypes.EnvVar, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -74,6 +77,9 @@ func (s *appEnvVarStorage) RemoveAppEnvs(ctx context.Context, a apptypes.App, en
 }
 
 func (s *appEnvVarStorage) ListServiceEnvs(ctx context.Context, a apptypes.App) ([]apptypes.ServiceEnvVar, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
