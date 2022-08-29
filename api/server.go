@@ -112,6 +112,10 @@ func setupServices() error {
 	if err != nil {
 		return err
 	}
+	servicemanager.AppServiceEnvVar, err = app.AppServiceEnvVarService()
+	if err != nil {
+		return err
+	}
 	servicemanager.TeamToken, err = auth.TeamTokenService()
 	if err != nil {
 		return err

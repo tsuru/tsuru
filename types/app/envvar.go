@@ -25,6 +25,20 @@ type ServiceEnvVar struct {
 	InstanceName string `json:"-"`
 }
 
+var _ ServiceEnvVarIdentifier = (*ServiceEnvVar)(nil)
+
+func (sev ServiceEnvVar) GetServiceName() string {
+	return sev.ServiceName
+}
+
+func (sev ServiceEnvVar) GetInstanceName() string {
+	return sev.InstanceName
+}
+
+func (sev ServiceEnvVar) GetEnvVarName() string {
+	return sev.EnvVar.Name
+}
+
 type SetEnvArgs struct {
 	Writer        io.Writer
 	ManagedBy     string
@@ -44,10 +58,27 @@ type AppEnvVarService interface {
 	Unset(ctx context.Context, a App, envs []string, args UnsetEnvArgs) error
 }
 
+type AppServiceEnvVarService interface {
+	List(ctx context.Context, a App) ([]ServiceEnvVar, error)
+	Get(ctx context.Context, a App, envName string) (ServiceEnvVar, error)
+	Set(ctx context.Context, a App, envs []ServiceEnvVar, args SetEnvArgs) error
+	Unset(ctx context.Context, a App, envNames []string, args UnsetEnvArgs) error
+}
+
 type AppEnvVarStorage interface {
 	ListAppEnvs(ctx context.Context, a App) ([]EnvVar, error)
 	UpdateAppEnvs(ctx context.Context, a App, envs []EnvVar) error
 	RemoveAppEnvs(ctx context.Context, a App, envs []string) error
+}
 
-	ListServiceEnvs(ctx context.Context, a App) ([]ServiceEnvVar, error)
+type AppServiceEnvVarStorage interface {
+	FindAll(ctx context.Context, a App) ([]ServiceEnvVar, error)
+	Remove(ctx context.Context, a App, envNames []ServiceEnvVarIdentifier) error
+	Upsert(ctx context.Context, a App, envs []ServiceEnvVar) error
+}
+
+type ServiceEnvVarIdentifier interface {
+	GetServiceName() string
+	GetInstanceName() string
+	GetEnvVarName() string
 }

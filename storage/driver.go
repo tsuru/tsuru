@@ -28,6 +28,7 @@ type DbDriver struct {
 	PlanStorage                      app.PlanStorage
 	AppCacheStorage                  cache.CacheStorage
 	AppEnvVarStorage                 app.AppEnvVarStorage
+	AppServiceEnvVarStorage          app.AppServiceEnvVarStorage
 	TeamTokenStorage                 auth.TeamTokenStorage
 	UserQuotaStorage                 quota.QuotaStorage
 	AppQuotaStorage                  quota.QuotaStorage

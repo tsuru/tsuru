@@ -22,6 +22,7 @@ var (
 	App                       app.AppService
 	AppCache                  cache.AppCacheService
 	AppEnvVar                 app.AppEnvVarService
+	AppServiceEnvVar          app.AppServiceEnvVarService
 	Plan                      app.PlanService
 	Platform                  app.PlatformService
 	PlatformImage             image.PlatformImageService
