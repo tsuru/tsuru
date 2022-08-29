@@ -66,9 +66,9 @@ type AppServiceEnvVarService interface {
 }
 
 type AppEnvVarStorage interface {
-	ListAppEnvs(ctx context.Context, a App) ([]EnvVar, error)
-	UpdateAppEnvs(ctx context.Context, a App, envs []EnvVar) error
-	RemoveAppEnvs(ctx context.Context, a App, envs []string) error
+	FindAll(ctx context.Context, a App) ([]EnvVar, error)
+	Remove(ctx context.Context, a App, envs []string) error
+	Upsert(ctx context.Context, a App, envs []EnvVar) error
 }
 
 type AppServiceEnvVarStorage interface {

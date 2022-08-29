@@ -18,7 +18,7 @@ type AppEnvVarSuite struct {
 	AppEnvVarStorage apptypes.AppEnvVarStorage
 }
 
-func (s *AppEnvVarSuite) TestListAppEnvs(c *check.C) {
+func (s *AppEnvVarSuite) TestFindAll(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -28,7 +28,7 @@ func (s *AppEnvVarSuite) TestListAppEnvs(c *check.C) {
 		"MY_ENV_3": map[string]interface{}{"name": "MY_ENV_3", "value": "content from env 3", "managedby": "terraform"},
 	}})
 	c.Assert(err, check.IsNil)
-	envs, err := s.AppEnvVarStorage.ListAppEnvs(context.TODO(), &apptypes.MockApp{Name: "app-1"})
+	envs, err := s.AppEnvVarStorage.FindAll(context.TODO(), &apptypes.MockApp{Name: "app-1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(envs, check.DeepEquals, []apptypes.EnvVar{
 		{Name: "MY_ENV_1", Value: "content from env 1"},
@@ -37,14 +37,14 @@ func (s *AppEnvVarSuite) TestListAppEnvs(c *check.C) {
 	})
 }
 
-func (s *AppEnvVarSuite) TestListAppEnvs_ContextCanceled(c *check.C) {
+func (s *AppEnvVarSuite) TestFindAll_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	cancel()
-	_, err := s.AppEnvVarStorage.ListAppEnvs(ctx, nil)
+	_, err := s.AppEnvVarStorage.FindAll(ctx, nil)
 	c.Assert(err, check.NotNil)
 }
 
-func (s *AppEnvVarSuite) TestUpdateAppEnvs(c *check.C) {
+func (s *AppEnvVarSuite) TestUpsert(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -54,7 +54,7 @@ func (s *AppEnvVarSuite) TestUpdateAppEnvs(c *check.C) {
 		"MY_ENV_3": map[string]interface{}{"name": "MY_ENV_3", "value": "content from env 3", "managedby": "terraform"},
 	}})
 	c.Assert(err, check.IsNil)
-	err = s.AppEnvVarStorage.UpdateAppEnvs(context.TODO(), &apptypes.MockApp{Name: "app-1"}, []apptypes.EnvVar{
+	err = s.AppEnvVarStorage.Upsert(context.TODO(), &apptypes.MockApp{Name: "app-1"}, []apptypes.EnvVar{
 		{Name: "MY_ENV_4", Value: "content from env 4"},
 		{Name: "MY_ENV_1", Value: "my new content from env 1", Public: true},
 		{Name: "MY_ENV_2", Value: "content from env 2", ManagedBy: "terraform"},
@@ -71,14 +71,14 @@ func (s *AppEnvVarSuite) TestUpdateAppEnvs(c *check.C) {
 	})
 }
 
-func (s *AppEnvVarSuite) TestUpdateAppEnvs_ContextCanceled(c *check.C) {
+func (s *AppEnvVarSuite) TestUpsert_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	cancel()
-	err := s.AppEnvVarStorage.UpdateAppEnvs(ctx, nil, nil)
+	err := s.AppEnvVarStorage.Upsert(ctx, nil, nil)
 	c.Assert(err, check.NotNil)
 }
 
-func (s *AppEnvVarSuite) TestRemoveAppEnvs(c *check.C) {
+func (s *AppEnvVarSuite) TestRemove(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -88,7 +88,7 @@ func (s *AppEnvVarSuite) TestRemoveAppEnvs(c *check.C) {
 		"MY_ENV_3": map[string]interface{}{"name": "MY_ENV_3", "value": "content from env 3", "managedby": "terraform"},
 	}})
 	c.Assert(err, check.IsNil)
-	err = s.AppEnvVarStorage.RemoveAppEnvs(context.TODO(), &apptypes.MockApp{Name: "app-1"}, []string{"MY_ENV_1", "MY_ENV_3"})
+	err = s.AppEnvVarStorage.Remove(context.TODO(), &apptypes.MockApp{Name: "app-1"}, []string{"MY_ENV_1", "MY_ENV_3"})
 	c.Assert(err, check.IsNil)
 	var app struct{ Env map[string]apptypes.EnvVar }
 	err = conn.Apps().Find(bson.M{"name": "app-1"}).One(&app)
@@ -98,9 +98,9 @@ func (s *AppEnvVarSuite) TestRemoveAppEnvs(c *check.C) {
 	})
 }
 
-func (s *AppEnvVarSuite) TestRemoveAppEnvs_ContextCanceled(c *check.C) {
+func (s *AppEnvVarSuite) TestRemove_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	cancel()
-	err := s.AppEnvVarStorage.RemoveAppEnvs(ctx, nil, nil)
+	err := s.AppEnvVarStorage.Remove(ctx, nil, nil)
 	c.Assert(err, check.NotNil)
 }
