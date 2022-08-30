@@ -22,12 +22,6 @@ func (s *S) TestAppEnvVarService_List_ContextCanceled(c *check.C) {
 }
 
 func (s *S) TestAppEnvVarService_List(c *check.C) {
-	s.mockService.AppServiceEnvVar.OnList = func(a apptypes.App) ([]apptypes.ServiceEnvVar, error) {
-		return []apptypes.ServiceEnvVar{
-			{ServiceName: "mysql", InstanceName: "instance01", EnvVar: apptypes.EnvVar{Name: "DATABASE_HOST", Value: "host1.example.com", Public: true}},
-			{ServiceName: "mysql", InstanceName: "instance01", EnvVar: apptypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "passw0rd"}},
-		}, nil
-	}
 	envVarService := &appEnvVarService{
 		storage: &apptypes.MockAppEnvVarStorage{
 			OnFindAll: func(a apptypes.App) ([]apptypes.EnvVar, error) {
@@ -46,9 +40,6 @@ func (s *S) TestAppEnvVarService_List(c *check.C) {
 		{Name: "MY_ENV_01", Value: "env 01"},
 		{Name: "MY_ENV_02", Value: "env 02", Public: true},
 		{Name: "MY_ENV_03", Value: "env 03", ManagedBy: "terraform"},
-		{Name: "DATABASE_HOST", Value: "host1.example.com", Public: true},
-		{Name: "DATABASE_PASSWORD", Value: "passw0rd"},
-		{Name: "TSURU_SERVICES", Value: `{"mysql":[{"instance_name":"instance01","envs":{"DATABASE_HOST":"host1.example.com","DATABASE_PASSWORD":"passw0rd"}}]}`},
 	})
 }
 

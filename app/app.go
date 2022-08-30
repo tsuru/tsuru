@@ -1720,6 +1720,28 @@ func (app *App) Envs() map[string]bind.EnvVar {
 			ManagedBy: env.ManagedBy,
 		}
 	}
+
+	// NOTE(nettoclaudio): we should get the service env var as last step to
+	// give it precedence over app env vars.
+
+	svcEnvs, _ := servicemanager.AppServiceEnvVar.List(app.Context(), app)
+	for _, env := range svcEnvs {
+		envMap[env.Name] = bind.EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			Public:    env.Public,
+			ManagedBy: env.ManagedBy,
+		}
+	}
+
+	env := buildTsuruServiceEnvVar(svcEnvs)
+	envMap[appTypes.TsuruServicesEnvVarName] = bind.EnvVar{
+		Name:      env.Name,
+		Value:     env.Value,
+		Public:    env.Public,
+		ManagedBy: env.ManagedBy,
+	}
+
 	return envMap
 }
 
@@ -1775,57 +1797,33 @@ func (app *App) RemoveCName(cnames ...string) error {
 }
 
 func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
-	if len(addArgs.Envs) == 0 {
-		return nil
+	envs := make([]appTypes.ServiceEnvVar, 0, len(addArgs.Envs))
+	for _, e := range addArgs.Envs {
+		envs = append(envs, appTypes.ServiceEnvVar{
+			ServiceName:  e.ServiceName,
+			InstanceName: e.InstanceName,
+			EnvVar: appTypes.EnvVar{
+				Name:      e.Name,
+				Value:     e.Value,
+				Public:    e.Public,
+				ManagedBy: e.ManagedBy,
+			},
+		})
 	}
-	if addArgs.Writer != nil {
-		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
-	}
-	app.ServiceEnvs = append(app.ServiceEnvs, addArgs.Envs...)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-	if addArgs.ShouldRestart {
-		return app.restartIfUnits(addArgs.Writer)
-	}
-	return nil
+
+	return servicemanager.AppServiceEnvVar.Set(app.Context(), app, envs, appTypes.SetEnvArgs{
+		ShouldRestart: addArgs.ShouldRestart,
+		Writer:        addArgs.Writer,
+	})
 }
 
 func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
-	lenBefore := len(app.ServiceEnvs)
-	for i := 0; i < len(app.ServiceEnvs); i++ {
-		se := app.ServiceEnvs[i]
-		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
-			app.ServiceEnvs = append(app.ServiceEnvs[:i], app.ServiceEnvs[i+1:]...)
-			i--
-		}
-	}
-	toUnset := lenBefore - len(app.ServiceEnvs)
-	if toUnset <= 0 {
-		return nil
-	}
-	if removeArgs.Writer != nil {
-		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(removeArgs.Writer)
-	}
-	return nil
+	return servicemanager.AppServiceEnvVar.UnsetAll(app.Context(), app, appTypes.UnsetAllArgs{
+		Service:       removeArgs.ServiceName,
+		Instance:      removeArgs.InstanceName,
+		ShouldRestart: removeArgs.ShouldRestart,
+		Writer:        removeArgs.Writer,
+	})
 }
 
 // LastLogs returns a list of the last `lines` log of the app, matching the

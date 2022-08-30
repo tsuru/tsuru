@@ -39,23 +39,7 @@ func (s *appEnvVarService) List(ctx context.Context, a apptypes.App) ([]apptypes
 		return nil, err
 	}
 
-	envs, err := s.storage.FindAll(ctx, a)
-	if err != nil {
-		return nil, err
-	}
-
-	svcEnvs, err := servicemanager.AppServiceEnvVar.List(ctx, a)
-	if err != nil {
-		return nil, err
-	}
-
-	svcEnvVars := fromServiceEnvsToAppEnvVars(svcEnvs)
-
-	finalEnvs := make([]apptypes.EnvVar, 0, len(envs)+len(svcEnvVars))
-	finalEnvs = append(finalEnvs, envs...)
-	finalEnvs = append(finalEnvs, svcEnvVars...)
-
-	return finalEnvs, nil
+	return s.storage.FindAll(ctx, a)
 }
 
 func (s *appEnvVarService) Get(ctx context.Context, a apptypes.App, envName string) (apptypes.EnvVar, error) {

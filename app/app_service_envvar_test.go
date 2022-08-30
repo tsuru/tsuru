@@ -68,5 +68,5 @@ func (s *S) TestAppServiceEnvVar_Set(c *check.C) {
 		{ServiceName: "service-01", InstanceName: "instance-01", EnvVar: apptypes.EnvVar{Name: "SVC_ENV_03", Value: "svc env 03"}},
 	}, apptypes.SetEnvArgs{Writer: &w, ShouldRestart: false})
 	c.Assert(err, check.IsNil)
-	c.Assert(w.String(), check.Matches, `---- Setting 1 new environment variables ----`)
+	c.Assert(w.String(), check.Matches, "---- Setting 3 new environment variables ----\n")
 }

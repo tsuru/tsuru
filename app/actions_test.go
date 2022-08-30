@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -208,32 +207,19 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 }
 
 func (s *S) TestExportEnvironmentsBackward(c *check.C) {
-	envNames := []string{
-		"TSURU_APP_TOKEN",
-	}
 	app := App{
 		Name:      "moon",
 		Platform:  "opeth",
-		Env:       make(map[string]bind.EnvVar),
 		TeamOwner: s.team.Name,
 	}
-	for _, name := range envNames {
-		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
-		app.Env[name] = envVar
-	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
-	err = CreateApp(context.TODO(), &app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
-	copy, err := GetByName(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-	for _, name := range envNames {
-		if _, ok := copy.Env[name]; ok {
-			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
-		}
+	allEnvs := app.Envs()
+	for _, envName := range []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"} {
+		_, found := allEnvs[envName]
+		c.Assert(found, check.Equals, false)
 	}
 }
 

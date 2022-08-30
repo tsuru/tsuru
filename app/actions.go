@@ -164,10 +164,9 @@ var createAppToken = action.Action{
 		var tokenValue string
 		if token, ok := ctx.FWResult.(*auth.Token); ok {
 			tokenValue = (*token).GetValue()
-		} else if app, ok := ctx.Params[0].(*App); ok {
-			if tokenVar, ok := app.Env["TSURU_APP_TOKEN"]; ok {
-				tokenValue = tokenVar.Value
-			}
+		}
+		if app, ok := ctx.Params[0].(*App); ok && tokenValue == "" {
+			tokenValue = app.Envs()["TSURU_APP_TOKEN"].Value
 		}
 		if tokenValue != "" {
 			AuthScheme.Logout(ctx.Context, tokenValue)
@@ -199,12 +198,8 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		app, err := GetByName(ctx.Context, app.Name)
-		if err != nil {
-			return
-		}
 		servicemanager.AppEnvVar.Unset(ctx.Context, app, []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}, appTypes.UnsetEnvArgs{
-			ShouldRestart: true,
+			ShouldRestart: false,
 		})
 	},
 	MinParams: 1,
