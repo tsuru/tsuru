@@ -51,6 +51,13 @@ type UnsetEnvArgs struct {
 	ShouldRestart bool
 }
 
+type UnsetAllArgs struct {
+	Writer        io.Writer
+	Service       string
+	Instance      string
+	ShouldRestart bool
+}
+
 type AppEnvVarService interface {
 	List(ctx context.Context, a App) ([]EnvVar, error)
 	Get(ctx context.Context, a App, envName string) (EnvVar, error)
@@ -60,9 +67,9 @@ type AppEnvVarService interface {
 
 type AppServiceEnvVarService interface {
 	List(ctx context.Context, a App) ([]ServiceEnvVar, error)
-	Get(ctx context.Context, a App, envName string) (ServiceEnvVar, error)
 	Set(ctx context.Context, a App, envs []ServiceEnvVar, args SetEnvArgs) error
-	Unset(ctx context.Context, a App, envNames []string, args UnsetEnvArgs) error
+	Unset(ctx context.Context, a App, envs []ServiceEnvVarIdentifier, args UnsetEnvArgs) error
+	UnsetAll(ctx context.Context, a App, args UnsetAllArgs) error
 }
 
 type AppEnvVarStorage interface {
@@ -78,7 +85,7 @@ type AppServiceEnvVarStorage interface {
 }
 
 type ServiceEnvVarIdentifier interface {
-	GetServiceName() string
-	GetInstanceName() string
 	GetEnvVarName() string
+	GetInstanceName() string
+	GetServiceName() string
 }
