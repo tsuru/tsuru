@@ -21,6 +21,7 @@ import (
 // MockService is a struct to use in tests
 type MockService struct {
 	AppEnvVar                 *app.MockAppEnvVarService
+	AppServiceEnvVar          *app.MockAppServiceEnvVarService
 	Cache                     *cache.MockAppCacheService
 	Plan                      *app.MockPlanService
 	Platform                  *app.MockPlatformService
@@ -41,6 +42,7 @@ type MockService struct {
 // SetMockService return a new MockService and set as a servicemanager
 func SetMockService(m *MockService) {
 	m.AppEnvVar = &app.MockAppEnvVarService{}
+	m.AppServiceEnvVar = &app.MockAppServiceEnvVarService{}
 	m.Cache = &cache.MockAppCacheService{}
 	m.Plan = &app.MockPlanService{}
 	m.Platform = &app.MockPlatformService{}
@@ -60,6 +62,7 @@ func SetMockService(m *MockService) {
 	}
 
 	servicemanager.AppEnvVar = m.AppEnvVar
+	servicemanager.AppServiceEnvVar = m.AppServiceEnvVar
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform

@@ -11,7 +11,6 @@ import (
 	"io"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
 	apptypes "github.com/tsuru/tsuru/types/app"
@@ -36,12 +35,16 @@ type appEnvVarService struct {
 }
 
 func (s *appEnvVarService) List(ctx context.Context, a apptypes.App) ([]apptypes.EnvVar, error) {
-	envs, err := s.storage.ListAppEnvs(ctx, a)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	envs, err := s.storage.FindAll(ctx, a)
 	if err != nil {
 		return nil, err
 	}
 
-	svcEnvs, err := s.storage.ListServiceEnvs(ctx, a)
+	svcEnvs, err := servicemanager.AppServiceEnvVar.List(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -59,19 +62,26 @@ func (s *appEnvVarService) Get(ctx context.Context, a apptypes.App, envName stri
 	if err := ctx.Err(); err != nil {
 		return apptypes.EnvVar{}, err
 	}
-	envs, err := s.List(ctx, a)
+
+	envs, err := s.storage.FindAll(ctx, a)
 	if err != nil {
 		return apptypes.EnvVar{}, err
 	}
+
 	for _, env := range envs {
 		if env.Name == envName {
 			return env, nil
 		}
 	}
+
 	return apptypes.EnvVar{}, fmt.Errorf("env var not found")
 }
 
 func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if err := validateEnvs(envs, args); err != nil {
 		return err
 	}
@@ -96,27 +106,26 @@ func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []appty
 		servicemanager.AppLog.Add(a.GetName(), fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
 	}
 
-	s.storage.UpdateAppEnvs(ctx, a, final)
+	if err := s.storage.Upsert(ctx, a, final); err != nil {
+		return err
+	}
 
 	if !args.ShouldRestart {
 		return nil
 	}
 
-	prov, err := pool.GetProvisionerForPool(ctx, a.GetPool())
-	if err != nil {
-		return err
+	if aa, ok := a.(*App); ok {
+		return aa.restartIfUnits(args.Writer)
 	}
 
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
-	if err != nil {
-		return err
-	}
-
-	// FIX: we cannot do this kind of type assertion on app :/
-	return prov.Restart(ctx, a.(*App), "", version, args.Writer)
+	return nil
 }
 
 func (s *appEnvVarService) Unset(ctx context.Context, a apptypes.App, envs []string, args apptypes.UnsetEnvArgs) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if args.Writer == nil {
 		args.Writer = io.Discard
 	}
@@ -127,7 +136,7 @@ func (s *appEnvVarService) Unset(ctx context.Context, a apptypes.App, envs []str
 
 	fmt.Fprintf(args.Writer, "---- Unsetting %d environment variables ----\n", len(envs))
 
-	if err := s.storage.RemoveAppEnvs(ctx, a, envs); err != nil {
+	if err := s.storage.Remove(ctx, a, envs); err != nil {
 		return err
 	}
 
@@ -135,18 +144,11 @@ func (s *appEnvVarService) Unset(ctx context.Context, a apptypes.App, envs []str
 		return nil
 	}
 
-	prov, err := pool.GetProvisionerForPool(ctx, a.GetPool())
-	if err != nil {
-		return err
+	if aa, ok := a.(*App); ok {
+		return aa.restartIfUnits(args.Writer)
 	}
 
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
-	if err != nil {
-		return err
-	}
-
-	// FIX: we cannot do this kind of type assertion on app :/
-	return prov.Restart(ctx, a.(*App), "", version, args.Writer)
+	return nil
 }
 
 func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
@@ -156,7 +158,7 @@ func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
 		}
 
 		// TODO(nettoclaudio): we shoud also limit the max size of the env var
-		// value, something around 1MiB.
+		// value, something around 32KiB.
 
 		// TODO(nettoclaudio): only Tsuru API should be able to set reserved
 		// variables such as: TSURU_APPNAME, TSURU_APP_TOKEN, etc.

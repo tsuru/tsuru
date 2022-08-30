@@ -1774,36 +1774,6 @@ func (app *App) RemoveCName(cnames ...string) error {
 	return err
 }
 
-func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
-	type serviceInstanceEnvs struct {
-		InstanceName string            `json:"instance_name"`
-		Envs         map[string]string `json:"envs"`
-	}
-	result := map[string][]serviceInstanceEnvs{}
-	for _, v := range vars {
-		found := false
-		for i, instanceList := range result[v.ServiceName] {
-			if instanceList.InstanceName == v.InstanceName {
-				result[v.ServiceName][i].Envs[v.Name] = v.Value
-				found = true
-				break
-			}
-		}
-		if !found {
-			result[v.ServiceName] = append(result[v.ServiceName], serviceInstanceEnvs{
-				InstanceName: v.InstanceName,
-				Envs:         map[string]string{v.Name: v.Value},
-			})
-		}
-	}
-	jsonVal, _ := json.Marshal(result)
-	return bind.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  string(jsonVal),
-		Public: false,
-	}
-}
-
 func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
@@ -2684,13 +2654,6 @@ func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
 	return yamlData.ToRouterHC(), nil
 }
 
-func validateEnv(envName string) error {
-	if !envVarNameRegexp.MatchString(envName) {
-		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", envName)}
-	}
-	return nil
-}
-
 func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, isRoutable bool) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -2840,15 +2803,6 @@ func (app *App) RemoveAutoScale(process string) error {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
 	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
-}
-
-func envInSet(envName string, envs []bind.EnvVar) bool {
-	for _, e := range envs {
-		if e.Name == envName {
-			return true
-		}
-	}
-	return false
 }
 
 func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
