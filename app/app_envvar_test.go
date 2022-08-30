@@ -13,6 +13,45 @@ import (
 	check "gopkg.in/check.v1"
 )
 
+func (s *S) TestAppEnvVarService_List_ContextCanceled(c *check.C) {
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+	envVarService := &appEnvVarService{}
+	_, err := envVarService.List(ctx, nil)
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestAppEnvVarService_List(c *check.C) {
+	s.mockService.AppServiceEnvVar.OnList = func(a apptypes.App) ([]apptypes.ServiceEnvVar, error) {
+		return []apptypes.ServiceEnvVar{
+			{ServiceName: "mysql", InstanceName: "instance01", EnvVar: apptypes.EnvVar{Name: "DATABASE_HOST", Value: "host1.example.com", Public: true}},
+			{ServiceName: "mysql", InstanceName: "instance01", EnvVar: apptypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "passw0rd"}},
+		}, nil
+	}
+	envVarService := &appEnvVarService{
+		storage: &apptypes.MockAppEnvVarStorage{
+			OnFindAll: func(a apptypes.App) ([]apptypes.EnvVar, error) {
+				c.Assert(a.GetName(), check.Equals, "my-app")
+				return []apptypes.EnvVar{
+					{Name: "MY_ENV_01", Value: "env 01"},
+					{Name: "MY_ENV_02", Value: "env 02", Public: true},
+					{Name: "MY_ENV_03", Value: "env 03", ManagedBy: "terraform"},
+				}, nil
+			},
+		},
+	}
+	envs, err := envVarService.List(context.TODO(), &App{Name: "my-app"})
+	c.Assert(err, check.IsNil)
+	c.Assert(envs, check.DeepEquals, []apptypes.EnvVar{
+		{Name: "MY_ENV_01", Value: "env 01"},
+		{Name: "MY_ENV_02", Value: "env 02", Public: true},
+		{Name: "MY_ENV_03", Value: "env 03", ManagedBy: "terraform"},
+		{Name: "DATABASE_HOST", Value: "host1.example.com", Public: true},
+		{Name: "DATABASE_PASSWORD", Value: "passw0rd"},
+		{Name: "TSURU_SERVICES", Value: `{"mysql":[{"instance_name":"instance01","envs":{"DATABASE_HOST":"host1.example.com","DATABASE_PASSWORD":"passw0rd"}}]}`},
+	})
+}
+
 func (s *S) TestAppEnvVarService_Set_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	cancel()
