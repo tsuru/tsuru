@@ -16,7 +16,7 @@ import (
 	apptypes "github.com/tsuru/tsuru/types/app"
 )
 
-var _ apptypes.AppEnvVarService = &appEnvVarService{}
+var _ apptypes.AppEnvVarService = (*appEnvVarService)(nil)
 
 func AppEnvVarService() (apptypes.AppEnvVarService, error) {
 	dbDriver, err := storage.GetCurrentDbDriver()
