@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -1003,19 +1002,29 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
-	var result []bind.EnvVar
 	w.Header().Set("Content-Type", "application/json")
-	if len(variables) > 0 {
-		for _, variable := range variables {
-			if v, ok := a.Env[variable]; ok {
-				result = append(result, v)
+
+	var result []appTypes.EnvVar
+	for _, env := range a.Envs() {
+		keep := true
+		for _, name := range variables {
+			keep = false
+			if env.Name == name {
+				keep = true
+				break
 			}
 		}
-	} else {
-		for _, v := range a.Envs() {
-			result = append(result, v)
+
+		if keep {
+			result = append(result, appTypes.EnvVar{
+				Name:      env.Name,
+				Value:     env.Value,
+				ManagedBy: env.ManagedBy,
+				Public:    env.Public,
+			})
 		}
 	}
+
 	return json.NewEncoder(w).Encode(result)
 }
 
