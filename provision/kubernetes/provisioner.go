@@ -995,7 +995,13 @@ func (p *kubernetesProvisioner) RoutableAddresses(ctx context.Context, a provisi
 }
 
 func (p *kubernetesProvisioner) routableAddrForProcess(ctx context.Context, client *ClusterClient, a provision.App, processName, prefix string, version int, svc apiv1.Service) (appTypes.RoutableAddresses, error) {
-	var routableAddrs appTypes.RoutableAddresses
+	routableAddrs := appTypes.RoutableAddresses{
+		Prefix: prefix,
+		ExtraData: map[string]string{
+			"service":   svc.Name,
+			"namespace": svc.Namespace,
+		},
+	}
 	var pubPort int32
 	if len(svc.Spec.Ports) > 0 {
 		pubPort = svc.Spec.Ports[0].NodePort
@@ -1007,14 +1013,8 @@ func (p *kubernetesProvisioner) routableAddrForProcess(ctx context.Context, clie
 	if err != nil || addrs == nil {
 		return routableAddrs, err
 	}
-	return appTypes.RoutableAddresses{
-		Prefix:    prefix,
-		Addresses: addrs,
-		ExtraData: map[string]string{
-			"service":   svc.Name,
-			"namespace": svc.Namespace,
-		},
-	}, nil
+	routableAddrs.Addresses = addrs
+	return routableAddrs, nil
 }
 
 func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *ClusterClient, a provision.App, processName string, pubPort int32, version int) ([]*url.URL, error) {
