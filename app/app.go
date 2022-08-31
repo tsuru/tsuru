@@ -1299,10 +1299,16 @@ func (app *App) ValidateService(services ...string) error {
 // InstanceEnvs returns a map of environment variables that belongs to the
 // given service and service instance.
 func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bind.EnvVar {
+	svcEnvs, _ := servicemanager.AppServiceEnvVar.List(app.Context(), app)
 	envs := make(map[string]bind.EnvVar)
-	for _, env := range app.ServiceEnvs {
+	for _, env := range svcEnvs {
 		if env.ServiceName == serviceName && env.InstanceName == instanceName {
-			envs[env.Name] = env.EnvVar
+			envs[env.Name] = bind.EnvVar{
+				Name:      env.Name,
+				Value:     env.Value,
+				Public:    env.Public,
+				ManagedBy: env.ManagedBy,
+			}
 		}
 	}
 	return envs

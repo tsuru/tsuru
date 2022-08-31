@@ -1307,17 +1307,18 @@ func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *check.C)
 }
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *check.C) {
-	envs := []bind.ServiceEnvVar{
-		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, ServiceName: "srv1", InstanceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "srv1", InstanceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "postgresaddr"}, ServiceName: "srv2", InstanceName: "postgres"},
-		{EnvVar: bind.EnvVar{Name: "HOST", Value: "10.0.2.1"}, ServiceName: "srv3", InstanceName: "redis"},
-	}
+	a := App{Name: "hi-there"}
+	err := s.mockService.AppServiceEnvVar.Set(context.TODO(), &a, []appTypes.ServiceEnvVar{
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "postgresaddr"}, ServiceName: "srv2", InstanceName: "postgres"},
+		{EnvVar: appTypes.EnvVar{Name: "HOST", Value: "10.0.2.1"}, ServiceName: "srv3", InstanceName: "redis"},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost"},
 		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root"},
 	}
-	a := App{Name: "hi-there", ServiceEnvs: envs}
 	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, expected)
 }
 

@@ -12,14 +12,17 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
+	check "gopkg.in/check.v1"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
+	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	check "gopkg.in/check.v1"
 )
 
 type S struct {
@@ -84,13 +87,13 @@ func (s *S) TestMigrateAppPlanRouterToRouterWithoutDefaultRouter(c *check.C) {
 func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 	tests := []struct {
 		app                 app.App
-		expected            []bind.ServiceEnvVar
+		expected            []appTypes.ServiceEnvVar
 		expectedAllEnvs     map[string]bind.EnvVar
 		expectedServicesEnv string
 	}{
 		{
 			app:             app.App{},
-			expected:        []bind.ServiceEnvVar{},
+			expected:        []appTypes.ServiceEnvVar{},
 			expectedAllEnvs: map[string]bind.EnvVar{},
 		},
 		{
@@ -99,28 +102,28 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 					"TSURU_SERVICES": {
 						Name: "TSURU_SERVICES",
 						Value: `{
-							"srv1": [
-								{"instance_name": "myinst","envs": {"ENV1": "val1"}},
-								{"instance_name": "myinst2","envs": {"ENV1": "val2"}},
-								{"instance_name": "myinst3","envs": {"ENV1": "val3"}}
-							]
-						}`,
+									"srv1": [
+										{"instance_name": "myinst","envs": {"ENV1": "val1"}},
+										{"instance_name": "myinst2","envs": {"ENV1": "val2"}},
+										{"instance_name": "myinst3","envs": {"ENV1": "val3"}}
+									]
+								}`,
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val2"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val2"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst2",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val3"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val3"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst3",
 				},
@@ -145,15 +148,15 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
-					ServiceName:  "srv1",
+					EnvVar:       appTypes.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
+					ServiceName:  "srv2",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
-					ServiceName:  "srv2",
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
+					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 			},
@@ -177,26 +180,26 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 					"TSURU_SERVICES": {
 						Name: "TSURU_SERVICES",
 						Value: `{
-							"srv1": [{"instance_name": "myinst","envs": {"ENV1": "val1"}}],
-							"srv2": [{"instance_name": "myinst","envs": {"ENV2": "val2"}}],
-							"srv3": [{"instance_name": "myinst2","envs": {"ENV3": "val3"}}]
-						}`,
+									"srv1": [{"instance_name": "myinst","envs": {"ENV1": "val1"}}],
+									"srv2": [{"instance_name": "myinst","envs": {"ENV2": "val2"}}],
+									"srv3": [{"instance_name": "myinst2","envs": {"ENV3": "val3"}}]
+								}`,
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV2", Value: "val2"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV2", Value: "val2"},
 					ServiceName:  "srv2",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV3", Value: "val3"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV3", Value: "val3"},
 					ServiceName:  "srv3",
 					InstanceName: "myinst2",
 				},
@@ -209,12 +212,20 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 			},
 		},
 	}
+
+	var err error
+	servicemanager.AppEnvVar, err = app.AppEnvVarService()
+	c.Assert(err, check.IsNil)
+	servicemanager.AppServiceEnvVar, err = app.AppServiceEnvVarService()
+	c.Assert(err, check.IsNil)
+
 	for i := range tests {
 		tests[i].app.Name = fmt.Sprintf("app-%d", i)
 		err := s.conn.Apps().Insert(tests[i].app)
 		c.Assert(err, check.IsNil)
+
 	}
-	err := MigrateAppTsuruServicesVarToServiceEnvs()
+	err = MigrateAppTsuruServicesVarToServiceEnvs()
 	c.Assert(err, check.IsNil)
 	var resultApps []app.App
 	var dbApp *app.App
@@ -222,7 +233,11 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		dbApp, err = app.GetByName(context.TODO(), tt.app.Name)
 		c.Assert(err, check.IsNil)
 		resultApps = append(resultApps, *dbApp)
-		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
+
+		svcEnvs, err := servicemanager.AppServiceEnvVar.List(context.TODO(), dbApp)
+		c.Assert(err, check.IsNil)
+		c.Assert(svcEnvs, check.DeepEquals, tt.expected)
+
 		allEnvs := dbApp.Envs()
 		if tt.expectedServicesEnv == "" {
 			tt.expectedServicesEnv = tt.app.Env[app.TsuruServicesEnvVar].Value
