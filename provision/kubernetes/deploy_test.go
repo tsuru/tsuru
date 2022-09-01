@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -129,6 +128,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
+	appToken := a.Envs()["TSURU_APP_TOKEN"]
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
@@ -182,17 +182,16 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								fmt.Sprintf("[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer %s\" http://apps/myapp/units/register || true && exec cm1", appToken.Value),
 							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
+							Env: envsForApp(a, []apiv1.EnvVar{
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "1"},
 								{Name: "TSURU_HOST", Value: ""},
 								{Name: "port", Value: "8888"},
 								{Name: "PORT", Value: "8888"},
 								{Name: "PORT_p1", Value: "8888"},
-							},
+							}),
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
@@ -2736,6 +2735,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	expectedUID := int64(1000)
 	testBaseImage, err := version2.BaseImageName()
 	c.Assert(err, check.IsNil)
+	appToken := a.Envs()["TSURU_APP_TOKEN"]
 	expected := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1-v2",
@@ -2790,17 +2790,16 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								fmt.Sprintf("[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer %s\" http://apps/myapp/units/register || true && exec cm1", appToken.Value),
 							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
+							Env: envsForApp(a, []apiv1.EnvVar{
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "2"},
 								{Name: "TSURU_HOST", Value: ""},
 								{Name: "port", Value: "8888"},
 								{Name: "PORT", Value: "8888"},
 								{Name: "PORT_p1", Value: "8888"},
-							},
+							}),
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
@@ -2939,15 +2938,14 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedDep.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/version"] = "v1"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
-	expectedDep.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
-		{Name: "TSURU_SERVICES", Value: "{}"},
+	expectedDep.Spec.Template.Spec.Containers[0].Env = envsForApp(a, []apiv1.EnvVar{
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
-	}
+	})
 	expectedDep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvc := legacySvc.DeepCopy()
@@ -3013,14 +3011,14 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/app-version"] = "1"
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["app.kubernetes.io/version"] = "v1"
 	expectedDepBase.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
-	expectedDepBase.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
-		{Name: "TSURU_SERVICES", Value: "{}"},
+	expectedDepBase.Spec.Template.Spec.Containers[0].Env = envsForApp(a, []apiv1.EnvVar{
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
+		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
-	}
+	})
 
 	expectedDepV2 := legacyDep.DeepCopy()
 	expectedDepV2.Name = "myapp-p1-v2"
@@ -3042,15 +3040,14 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	delete(expectedDepV2.Spec.Template.ObjectMeta.Labels, "tsuru.io/is-isolated-run")
 	expectedDepV2.Spec.Template.Spec.Containers[0].Name = "myapp-p1-v2"
 	expectedDepV2.Spec.Template.Spec.Containers[0].Image = "tsuru/app-myapp:v2"
-	expectedDepV2.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
-		{Name: "TSURU_SERVICES", Value: "{}"},
+	expectedDepV2.Spec.Template.Spec.Containers[0].Env = envsForApp(a, []apiv1.EnvVar{
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "2"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
-	}
+	})
 	expectedDepV2.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvcBase := legacySvc.DeepCopy()
@@ -3285,12 +3282,6 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	a.Env = map[string]bind.EnvVar{
-		"env1": {
-			Name:  "env1",
-			Value: "a$()b$$c",
-		},
-	}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	version := newCommittedVersion(c, a, map[string]interface{}{
@@ -3298,6 +3289,9 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 			"p1": "cm1",
 		},
 	})
+
+	err = servicemanager.AppEnvVar.Set(context.TODO(), a, []appTypes.EnvVar{{Name: "env1", Value: "a$()b$$c"}}, appTypes.SetEnvArgs{})
+	c.Check(err, check.IsNil)
 
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:              a,
@@ -3314,16 +3308,14 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
-		{Name: "TSURU_SERVICES", Value: "{}"},
-		{Name: "env1", Value: "a$$()b$$$$c"},
+	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, envsForApp(a, []apiv1.EnvVar{
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
 		{Name: "TSURU_HOST", Value: ""},
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
-	})
+	}))
 }
 
 func (s *S) TestCreatePodContainers(c *check.C) {
@@ -5188,6 +5180,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 	c.Assert(err, check.IsNil)
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
+	appToken := a.Envs()["TSURU_APP_TOKEN"]
 	legacyDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "myapp-p1",
@@ -5240,16 +5233,9 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								fmt.Sprintf("[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer %s\" http://apps/myapp/units/register || true && exec cm1", appToken.Value),
 							},
-							Env: []apiv1.EnvVar{
-								{Name: "TSURU_SERVICES", Value: "{}"},
-								{Name: "TSURU_PROCESSNAME", Value: "p1"},
-								{Name: "TSURU_HOST", Value: ""},
-								{Name: "port", Value: "8888"},
-								{Name: "PORT", Value: "8888"},
-								{Name: "PORT_p1", Value: "8888"},
-							},
+							Env: appEnvs(a, "p1", version, false),
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
@@ -5631,4 +5617,20 @@ func (s *S) TestGetImagePullSecrets(c *check.C) {
 			config.Unset(k)
 		}
 	}
+}
+
+func envsForApp(a *app.App, envvars []apiv1.EnvVar) []apiv1.EnvVar {
+	var base []apiv1.EnvVar
+	for _, env := range a.Envs() {
+		base = append(base, apiv1.EnvVar{
+			Name:  env.Name,
+			Value: strings.ReplaceAll(env.Value, "$", "$$"),
+		})
+	}
+
+	envs := append(base, envvars...)
+
+	sort.Slice(envs, func(i, j int) bool { return envs[i].Name < envs[j].Name })
+
+	return envs
 }
