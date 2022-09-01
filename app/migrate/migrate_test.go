@@ -221,7 +221,7 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 
 	for i := range tests {
 		tests[i].app.Name = fmt.Sprintf("app-%d", i)
-		err := s.conn.Apps().Insert(tests[i].app)
+		err = s.conn.Apps().Insert(tests[i].app)
 		c.Assert(err, check.IsNil)
 
 	}
@@ -234,7 +234,8 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		c.Assert(err, check.IsNil)
 		resultApps = append(resultApps, *dbApp)
 
-		svcEnvs, err := servicemanager.AppServiceEnvVar.List(context.TODO(), dbApp)
+		var svcEnvs []appTypes.ServiceEnvVar
+		svcEnvs, err = servicemanager.AppServiceEnvVar.List(context.TODO(), dbApp)
 		c.Assert(err, check.IsNil)
 		c.Assert(svcEnvs, check.DeepEquals, tt.expected)
 

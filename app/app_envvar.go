@@ -151,15 +151,6 @@ func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
 	return nil
 }
 
-func fromServiceEnvsToAppEnvVars(vars []apptypes.ServiceEnvVar) []apptypes.EnvVar {
-	envs := make([]apptypes.EnvVar, 0, len(vars)+1)
-	for _, ev := range vars {
-		envs = append(envs, ev.EnvVar)
-	}
-	envs = append(envs, buildTsuruServiceEnvVar(vars))
-	return envs
-}
-
 func buildTsuruServiceEnvVar(vars []apptypes.ServiceEnvVar) apptypes.EnvVar {
 	type serviceInstanceEnvs struct {
 		InstanceName string            `json:"instance_name"`
