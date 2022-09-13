@@ -764,6 +764,10 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		logErr("Unable to release app quota", err)
 	}
 
+	err = servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: app.TeamOwner}, -1)
+	if err != nil {
+		logErr("Unable to release team quota", err)
+	}
 	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
 		err = plog.CleanUp(app.Name)
 		if err != nil {
