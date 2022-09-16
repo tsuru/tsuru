@@ -1,7 +1,7 @@
 name: Issue cleanup
 on:
   schedule:
-    - cron: '54 13 * * *' # At 14:00, 14th day of each month
+    - cron: '0 14 * * *' # At 14:00, 14th day of each month
 jobs:
   triage_issues:
     name: Issue triage
