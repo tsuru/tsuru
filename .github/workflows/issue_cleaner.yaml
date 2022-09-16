@@ -1,7 +1,7 @@
 name: Issue cleanup
 on:
-  schedule:
-    - cron: '* * * * *' # At 14:00, 14th day of each month
+  workflow_dispatch:
+    
 jobs:
   triage_issues:
     name: Issue triage
