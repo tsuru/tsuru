@@ -745,6 +745,9 @@ func filesystem() fs.Fs {
 // validateVersion checks whether current version is greater or equal to
 // supported version.
 func validateVersion(supported, current string) bool {
+	if current == "dev" {
+		return true
+	}
 	if supported == "" {
 		return true
 	}
