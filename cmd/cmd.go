@@ -49,6 +49,21 @@ func (e osExiter) Exit(code int) {
 	os.Exit(code)
 }
 
+type PanicExitError struct {
+	Code int
+}
+
+func (e *PanicExitError) Error() string {
+	return fmt.Sprintf("Exiting with code: %d", e.Code)
+}
+
+type PanicExiter struct{}
+
+func (e PanicExiter) Exit(code int) {
+	err := &PanicExitError{Code: code}
+	panic(err)
+}
+
 type Lookup func(context *Context) error
 
 type Manager struct {
@@ -68,6 +83,7 @@ type Manager struct {
 	contexts      []*Context
 }
 
+// This is discouraged: use NewManagerPanicExiter instead. Handle panic(*PanicExitError) accordingly
 func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
 	manager := &Manager{
 		name:          name,
@@ -85,8 +101,41 @@ func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.
 	return manager
 }
 
+// When using this, you should handle panic(*PanicExitError) accordingly
+func NewManagerPanicExiter(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
+	manager := &Manager{
+		name:          name,
+		version:       ver,
+		versionHeader: verHeader,
+		stdout:        stdout,
+		stderr:        stderr,
+		stdin:         stdin,
+		lookup:        lookup,
+		topics:        map[string]string{},
+		topicCommands: map[string][]Command{},
+	}
+	manager.e = PanicExiter{}
+	manager.Register(&help{manager})
+	manager.Register(&version{manager})
+	return manager
+}
+
+// This is discouraged: use BuildBaseManagerPanicExiter instead. Handle panic(*PanicExitError) accordingly
 func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manager {
 	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin, lookup)
+	m.Register(&login{})
+	m.Register(&logout{})
+	m.Register(&targetList{})
+	m.Register(&targetAdd{})
+	m.Register(&targetRemove{})
+	m.Register(&targetSet{})
+	m.RegisterTopic("target", targetTopic)
+	return m
+}
+
+// When using this, you should handle panic(*PanicExitError) accordingly
+func BuildBaseManagerPanicExiter(name, version, versionHeader string, lookup Lookup) *Manager {
+	m := NewManagerPanicExiter(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin, lookup)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&targetList{})
@@ -760,4 +809,8 @@ func validateVersion(supported, current string) bool {
 		return false
 	}
 	return vCurrent.Compare(vSupported) >= 0
+}
+
+func (m *Manager) SetExiter(e exiter) {
+	m.e = e
 }

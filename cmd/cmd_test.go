@@ -1286,3 +1286,23 @@ func (s *S) TestVersionAPIInvalidURL(c *check.C) {
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
 		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (notvalid.test), it's probably down.")
 }
+
+func (s *S) TestNewManagerPanicExiter(c *check.C) {
+	lookup := func(ctx *Context) error {
+		return fmt.Errorf("fuuu")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			e, ok := r.(*PanicExitError)
+			c.Assert(ok, check.Equals, true)
+			c.Assert(e, check.ErrorMatches, "Exiting with code: 1")
+			c.Assert(e.Code, check.Equals, 1)
+		}
+	}()
+
+	var stdout, stderr bytes.Buffer
+	mngr := NewManagerPanicExiter("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr.Run([]string{"custom"})
+	c.Assert("This code is never called", check.Equals, "Because Panic occurred")
+}
