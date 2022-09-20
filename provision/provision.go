@@ -99,29 +99,32 @@ func ParseStatus(status string) (Status, error) {
 	return Status(""), ErrInvalidStatus
 }
 
-//     Flow:
-//                                    +----------------------------------------------+
-//                                    |                                              |
-//                                    |            Start                             |
-//     +----------+                   |                      +---------+             |
-//     | Building |                   +---------------------+| Stopped |             |
-//     +----------+                   |                      +---------+             |
-//           ^                        |                           ^                  |
-//           |                        |                           |                  |
-//      deploy unit                   |                         Stop                 |
-//           |                        |                           |                  |
-//           +                        v       RegisterUnit        +                  +
-//      +---------+  app unit   +----------+  SetUnitStatus  +---------+  Sleep  +--------+
-//      | Created | +---------> | Starting | +-------------> | Started |+------->| Asleep |
-//      +---------+             +----------+                 +---------+         +--------+
-//                                    +                         ^ +
-//                                    |                         | |
-//                              SetUnitStatus                   | |
-//                                    |                         | |
-//                                    v                         | |
-//                                +-------+     SetUnitStatus   | |
-//                                | Error | +-------------------+ |
-//                                +-------+ <---------------------+
+// Flow:
+//
+//	+----------------------------------------------+
+//	|                                              |
+//	|            Start                             |
+//
+// +----------+                   |                      +---------+             |
+// | Building |                   +---------------------+| Stopped |             |
+// +----------+                   |                      +---------+             |
+//
+//	     ^                        |                           ^                  |
+//	     |                        |                           |                  |
+//	deploy unit                   |                         Stop                 |
+//	     |                        |                           |                  |
+//	     +                        v       RegisterUnit        +                  +
+//	+---------+  app unit   +----------+  SetUnitStatus  +---------+  Sleep  +--------+
+//	| Created | +---------> | Starting | +-------------> | Started |+------->| Asleep |
+//	+---------+             +----------+                 +---------+         +--------+
+//	                              +                         ^ +
+//	                              |                         | |
+//	                        SetUnitStatus                   | |
+//	                              |                         | |
+//	                              v                         | |
+//	                          +-------+     SetUnitStatus   | |
+//	                          | Error | +-------------------+ |
+//	                          +-------+ <---------------------+
 const (
 	// StatusCreated is the initial status of a unit in the database,
 	// it should transition shortly to a more specific status
@@ -167,6 +170,15 @@ type Unit struct {
 	Restarts     *int32
 	CreatedAt    *time.Time
 	Ready        *bool
+}
+
+type JobUnit struct {
+	ID        string
+	Name      string
+	JobName   string
+	CreatedAt *time.Time
+	Completed *bool
+	Restarts  *int32
 }
 
 // GetName returns the name of the unit.
@@ -263,6 +275,26 @@ type App interface {
 	GetMetadata() appTypes.Metadata
 
 	GetRegistry() (imgTypes.ImageRegistry, error)
+}
+
+type Job interface {
+	Named
+	// GetExecutions returns the executions that a job has.
+	GetExecutions() []uint
+
+	Envs() map[string]bind.EnvVar
+
+	GetMemory() int64
+	GetMilliCPU() int
+	GetSwap() int64
+	GetCpuShare() int
+
+	GetPool() string
+
+	GetTeamOwner() string
+	GetTeamsName() []string
+
+	GetMetadata() appTypes.Metadata
 }
 
 type BuilderDockerClient interface {
@@ -380,6 +412,12 @@ type Provisioner interface {
 
 	// Units returns information about units by App.
 	Units(context.Context, ...App) ([]Unit, error)
+
+	// Creates a job or cronjob
+	ScheduleJob(context.Context, Job) error
+
+	// JobUnits returns information about units related to a specific Job or CronJob
+	JobUnits(context.Context, Job) ([]JobUnit, error)
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
