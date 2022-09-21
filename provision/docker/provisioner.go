@@ -54,6 +54,7 @@ var (
 
 	ErrUnitRecreationCanceled = errors.New("unit creation canceled by user action")
 	ErrMultipleVersions       = errors.New("docker provisioner does not support multiple versions")
+	ErrCronjobNotImplemented  = errors.New("docker provisioner does not support jobs nor cron jobs")
 )
 
 const (
@@ -1156,4 +1157,13 @@ func (p *dockerProvisioner) RebalanceNodes(ctx context.Context, opts provision.R
 		return true, err
 	}
 	return false, nil
+}
+
+func (p *dockerProvisioner) ScheduleJob(ctx context.Context, j provision.Job) error {
+	return ErrCronjobNotImplemented
+}
+
+// JobUnits returns information about units related to a specific Job or CronJob
+func (p *dockerProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
+	return nil, ErrCronjobNotImplemented
 }

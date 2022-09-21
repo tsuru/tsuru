@@ -50,7 +50,7 @@ func insertJobDB(job *Job) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Apps().Insert(job)
+	err = conn.Jobs().Insert(job)
 	if mgo.IsDup(err) {
 		return ErrJobAlreadyExists
 	}

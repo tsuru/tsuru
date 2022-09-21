@@ -6,9 +6,7 @@ package job
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -16,14 +14,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-)
-
-var (
-	ErrJobNotFound        = errors.New("Job not found")
-	maxAttempts           = 5
-	ErrMaxAttemptsReached = errors.New(fmt.Sprintf("Unable to generate unique job name: max attempts reached (%d)", maxAttempts))
 )
 
 type Job struct {
@@ -133,7 +126,7 @@ func GetJobByName(ctx context.Context, name string) (*Job, error) {
 	defer conn.Close()
 	err = conn.Apps().Find(bson.M{"name": name}).One(&job)
 	if err == mgo.ErrNotFound {
-		return nil, ErrJobNotFound
+		return nil, jobTypes.ErrJobNotFound
 	}
 	job.ctx = ctx
 	return &job, err

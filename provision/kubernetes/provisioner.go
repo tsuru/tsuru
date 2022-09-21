@@ -2149,3 +2149,12 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	}
 	return client.registry(), nil
 }
+
+func (p *kubernetesProvisioner) ScheduleJob(ctx context.Context, j provision.Job) error {
+	return nil
+}
+
+// JobUnits returns information about units related to a specific Job or CronJob
+func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
+	return nil, nil
+}

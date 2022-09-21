@@ -12,11 +12,12 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 func checkCollision(ctx context.Context, jobName string) bool {
 	_, err := GetJobByName(ctx, jobName)
-	if err == ErrJobNotFound {
+	if err == jobTypes.ErrJobNotFound {
 		return false
 	}
 	return true
@@ -34,13 +35,13 @@ func (job *Job) genUniqueName() error {
 func oneTimeJobName(ctx context.Context, job *Job) error {
 	job.genUniqueName()
 	collision := true
-	for i := 0; i < maxAttempts; i++ {
+	for i := 0; i < jobTypes.MaxAttempts; i++ {
 		if collision = checkCollision(ctx, job.Name); collision == false {
 			break
 		}
 	}
 	if collision == true {
-		return ErrMaxAttemptsReached
+		return jobTypes.ErrMaxAttemptsReached
 	}
 	return nil
 }
@@ -48,7 +49,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 func buildName(ctx context.Context, job *Job) error {
 	// If it's a one-time-job we must generate a unique job name to save in the database
 	if job.IsCron {
-		if _, err := GetJobByName(ctx, job.Name); err != nil && err != ErrJobNotFound {
+		if _, err := GetJobByName(ctx, job.Name); err != nil && err != jobTypes.ErrJobNotFound {
 			return errors.WithMessage(err, "unable to check if job already exists")
 		}
 	} else {

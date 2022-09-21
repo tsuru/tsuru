@@ -4,6 +4,32 @@
 
 package api
 
+import (
+	"encoding/json"
+	"net/http"
+
+	pkgErrors "github.com/pkg/errors"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/job"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
+	appTypes "github.com/tsuru/tsuru/types/app"
+	jobTypes "github.com/tsuru/tsuru/types/job"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/quota"
+)
+
+type inputJob struct {
+	TeamOwner   string            `json:"team-owner"`
+	Plan        string            `json:"plan"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Pool        string            `json:"pool"`
+	Metadata    appTypes.Metadata `json:"metadata"`
+}
+
 // title: job create
 // path: /jobs
 // method: POST
@@ -16,110 +42,90 @@ package api
 //	401: Unauthorized
 //	403: Quota exceeded
 //	409: Job already exists
-// func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-// 	ctx := r.Context()
-// 	var ia inputApp
-// 	err = ParseInput(r, &ia)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	a := app.App{
-// 		TeamOwner:   ia.TeamOwner,
-// 		Platform:    ia.Platform,
-// 		Plan:        appTypes.Plan{Name: ia.Plan},
-// 		Name:        ia.Name,
-// 		Description: ia.Description,
-// 		Pool:        ia.Pool,
-// 		RouterOpts:  ia.RouterOpts,
-// 		Router:      ia.Router,
-// 		Tags:        ia.Tags,
-// 		Metadata:    ia.Metadata,
-// 		Quota:       quota.UnlimitedQuota,
-// 	}
-// 	tags, _ := InputValues(r, "tag")
-// 	a.Tags = append(a.Tags, tags...) // for compatibility
-// 	if a.TeamOwner == "" {
-// 		a.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	canCreate := permission.Check(t, permission.PermAppCreate,
-// 		permission.Context(permTypes.CtxTeam, a.TeamOwner),
-// 	)
-// 	if !canCreate {
-// 		return permission.ErrUnauthorized
-// 	}
-// 	u, err := auth.ConvertNewUser(t.User())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if a.Platform != "" {
-// 		repo, _ := image.SplitImageName(a.Platform)
-// 		platform, errPlat := servicemanager.Platform.FindByName(ctx, repo)
-// 		if errPlat != nil {
-// 			return errPlat
-// 		}
-// 		if platform.Disabled {
-// 			canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-// 				permission.Check(t, permission.PermPlatformCreate)
-// 			if !canUsePlat {
-// 				return &errors.HTTP{Code: http.StatusBadRequest, Message: appTypes.ErrInvalidPlatform.Error()}
-// 			}
-// 		}
-// 	}
-// 	evt, err := event.New(&event.Opts{
-// 		Target:     appTarget(a.Name),
-// 		Kind:       permission.PermAppCreate,
-// 		Owner:      t,
-// 		CustomData: event.FormToCustomData(InputFields(r)),
-// 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-// 	})
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer func() { evt.Done(err) }()
-// 	err = app.CreateApp(ctx, &a, u)
-// 	if err != nil {
-// 		log.Errorf("Got error while creating app: %s", err)
-// 		if _, ok := err.(appTypes.NoTeamsError); ok {
-// 			return &errors.HTTP{
-// 				Code:    http.StatusBadRequest,
-// 				Message: "In order to create an app, you should be member of at least one team",
-// 			}
-// 		}
-// 		if e, ok := err.(*appTypes.AppCreationError); ok {
-// 			if e.Err == app.ErrAppAlreadyExists {
-// 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
-// 			}
-// 			if _, ok := pkgErrors.Cause(e.Err).(*quota.QuotaExceededError); ok {
-// 				return &errors.HTTP{
-// 					Code:    http.StatusForbidden,
-// 					Message: "Quota exceeded",
-// 				}
-// 			}
-// 		}
-// 		if err == appTypes.ErrInvalidPlatform {
-// 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-// 		}
-// 		return err
-// 	}
-// 	msg := map[string]interface{}{
-// 		"status": "success",
-// 	}
-// 	addrs, err := a.GetAddresses()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if len(addrs) > 0 {
-// 		msg["ip"] = addrs[0]
-// 	}
-// 	jsonMsg, err := json.Marshal(msg)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusCreated)
-// 	w.Write(jsonMsg)
-// 	return nil
-// }
+func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	var ij inputJob
+	err = ParseInput(r, &ij)
+	if err != nil {
+		return err
+	}
+	j := job.Job{
+		TeamOwner:   ij.TeamOwner,
+		Plan:        appTypes.Plan{Name: ij.Plan},
+		Name:        ij.Name,
+		Description: ij.Description,
+		Pool:        ij.Pool,
+		Metadata:    ij.Metadata,
+	}
+	if j.TeamOwner == "" {
+		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
+		if err != nil {
+			return err
+		}
+	}
+	canCreate := permission.Check(t, permission.PermAppCreate,
+		permission.Context(permTypes.CtxTeam, j.TeamOwner),
+	)
+	if !canCreate {
+		return permission.ErrUnauthorized
+	}
+	u, err := auth.ConvertNewUser(t.User())
+	if err != nil {
+		return err
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermAppCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = job.CreateJob(ctx, &j, u)
+	if err != nil {
+		log.Errorf("Got error while creating job: %s", err)
+		if _, ok := err.(appTypes.NoTeamsError); ok {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: "In order to create a job, you should be member of at least one team",
+			}
+		}
+		if e, ok := err.(*jobTypes.JobCreationError); ok {
+			if e.Err == job.ErrJobAlreadyExists {
+				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
+			}
+			if _, ok := pkgErrors.Cause(e.Err).(*quota.QuotaExceededError); ok {
+				return &errors.HTTP{
+					Code:    http.StatusForbidden,
+					Message: "Quota exceeded",
+				}
+			}
+		}
+		return err
+	}
+	msg := map[string]interface{}{
+		"status": "success",
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(jsonMsg)
+	return nil
+}
+
+func jobTarget(jobName string) event.Target {
+	return event.Target{Type: event.TargetTypeJob, Value: jobName}
+}
+
+func contextsForJob(job *job.Job) []permTypes.PermissionContext {
+	return append(permission.Contexts(permTypes.CtxTeam, job.Teams),
+		permission.Context(permTypes.CtxApp, job.Name),
+		permission.Context(permTypes.CtxPool, job.Pool),
+	)
+}
