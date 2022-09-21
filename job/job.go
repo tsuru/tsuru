@@ -163,9 +163,9 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 		// &provisionApp,
 	}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(ctx, app, user)
+	err := pipeline.Execute(ctx, job, user)
 	if err != nil {
-		return &appTypes.AppCreationError{App: app.Name, Err: err}
+		return err
 	}
 	return nil
 }

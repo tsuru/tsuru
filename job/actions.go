@@ -54,21 +54,10 @@ func insertJobDB(job *Job) error {
 	if mgo.IsDup(err) {
 		return ErrJobAlreadyExists
 	}
-
-	// if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
-	// 	plog.Provision(app.Name)
-	// }
 	return nil
 }
 
 func removeJobDB(job *Job) error {
-	// if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
-	// 	err := plog.CleanUp(app.Name)
-	// 	if err != nil {
-	// 		log.Errorf("Unable to cleanup logs: %v", err)
-	// 	}
-	// }
-
 	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Could not connect to the database: %s", err)
