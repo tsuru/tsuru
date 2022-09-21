@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -155,5 +156,16 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 		return err
 	}
 	buildOwnerInfo(ctx, job, user)
+	actions := []*action.Action{
+		// &reserveTeamApp,
+		// &reserveUserApp,
+		&insertJob,
+		// &provisionApp,
+	}
+	pipeline := action.NewPipeline(actions...)
+	err = pipeline.Execute(ctx, app, user)
+	if err != nil {
+		return &appTypes.AppCreationError{App: app.Name, Err: err}
+	}
 	return nil
 }
