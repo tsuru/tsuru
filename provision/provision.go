@@ -413,11 +413,16 @@ type Provisioner interface {
 	// Units returns information about units by App.
 	Units(context.Context, ...App) ([]Unit, error)
 
-	// Creates a job or cronjob
-	ScheduleJob(context.Context, Job) error
-
 	// JobUnits returns information about units related to a specific Job or CronJob
 	JobUnits(context.Context, Job) ([]JobUnit, error)
+
+	// JobSchedule creates a cronjob object in the cluster
+	ScheduleJob(context.Context, Job) error
+
+	// RunJob immediately runs a job in the cluster
+	RunJob(context.Context, Job) error
+
+	DestroyJob(context.Context, Job) error
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)

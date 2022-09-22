@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
@@ -89,6 +90,8 @@ func (s *Storage) Jobs() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
 	c := s.Collection("jobs")
 	c.EnsureIndex(nameIndex)
+	jobTTL := mgo.Index{Key: []string{"createdAt"}, ExpireAfter: time.Hour * 24}
+	c.EnsureIndex(jobTTL)
 	return c
 }
 

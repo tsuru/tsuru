@@ -6,6 +6,7 @@ package job
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -17,10 +18,7 @@ import (
 
 func checkCollision(ctx context.Context, jobName string) bool {
 	_, err := GetJobByName(ctx, jobName)
-	if err == jobTypes.ErrJobNotFound {
-		return false
-	}
-	return true
+	return err != jobTypes.ErrJobNotFound
 }
 
 func (job *Job) genUniqueName() error {
@@ -36,24 +34,24 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 	job.genUniqueName()
 	collision := true
 	for i := 0; i < jobTypes.MaxAttempts; i++ {
-		if collision = checkCollision(ctx, job.Name); collision == false {
+		if collision = checkCollision(ctx, job.Name); !collision {
 			break
 		}
 	}
-	if collision == true {
+	if collision {
 		return jobTypes.ErrMaxAttemptsReached
 	}
 	return nil
 }
 
 func buildName(ctx context.Context, job *Job) error {
-	// If it's a one-time-job we must generate a unique job name to save in the database
 	if job.IsCron {
 		if _, err := GetJobByName(ctx, job.Name); err != nil && err != jobTypes.ErrJobNotFound {
 			return errors.WithMessage(err, "unable to check if job already exists")
 		}
 	} else {
-		oneTimeJobName(ctx, job)
+		// If it's a one-time-job we must generate a unique job name to save in the database
+		return oneTimeJobName(ctx, job)
 	}
 	return nil
 }
@@ -77,7 +75,11 @@ func buildPlan(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func buildOwnerInfo(ctx context.Context, job *Job, user *auth.User) {
+func buildTsuruInfo(ctx context.Context, job *Job, user *auth.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
+	if !job.IsCron {
+		job.CreatedAt = &time.Time{}
+		*job.CreatedAt = time.Now()
+	}
 }

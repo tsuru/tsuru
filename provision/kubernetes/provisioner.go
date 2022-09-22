@@ -2158,3 +2158,11 @@ func (p *kubernetesProvisioner) ScheduleJob(ctx context.Context, j provision.Job
 func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
 	return nil, nil
 }
+
+func (p *kubernetesProvisioner) RunJob(ctx context.Context, j provision.Job) error {
+	return nil
+}
+
+func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job) error {
+	return nil
+}

@@ -6,7 +6,10 @@ package job
 
 import (
 	"context"
+	"time"
 
+	"github.com/globalsign/mgo"
+	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -15,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -33,6 +35,8 @@ type Job struct {
 	Completions   uint
 	IsCron        bool
 	Schedule      map[string]string
+
+	CreatedAt *time.Time `bson:"createdAt"`
 
 	ctx         context.Context
 	provisioner provision.Provisioner
@@ -52,21 +56,14 @@ func (job *Job) Units() ([]provision.JobUnit, error) {
 	if err != nil {
 		return []provision.JobUnit{}, err
 	}
-	units, err := prov.JobUnits(context.TODO(), job)
-	if units == nil {
-		// This is unusual but was done because previously this method didn't
-		// return an error. This ensures we always return an empty list instead
-		// of nil to preserve compatibility with old clients.
-		units = []provision.JobUnit{}
-	}
-	return units, err
+	return prov.JobUnits(context.TODO(), job)
 }
 
 func (job *Job) GetName() string {
 	return job.Name
 }
 
-// GetExecutions returns the a pair of attempted runs followed by it's successfull runs.
+// GetExecutions returns a pair of attempted runs followed by it's successfull runs: {No of attempts, No of successfull runs}
 func (job *Job) GetExecutions() []uint {
 	return []uint{job.AttemptedRuns, job.Completions}
 }
@@ -115,7 +112,7 @@ func (job *Job) GetMetadata() appTypes.Metadata {
 	return job.Metadata
 }
 
-// GetJObByName queries the database to find a job identified by the given
+// GetJobByName queries the database to find a job identified by the given
 // name.
 func GetJobByName(ctx context.Context, name string) (*Job, error) {
 	var job Job
@@ -124,7 +121,7 @@ func GetJobByName(ctx context.Context, name string) (*Job, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"name": name}).One(&job)
+	err = conn.Jobs().Find(bson.M{"name": name}).One(&job)
 	if err == mgo.ErrNotFound {
 		return nil, jobTypes.ErrJobNotFound
 	}
@@ -148,17 +145,64 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 	if err := buildPlan(ctx, job); err != nil {
 		return err
 	}
-	buildOwnerInfo(ctx, job, user)
-	actions := []*action.Action{
-		// &reserveTeamApp,
-		// &reserveUserApp,
-		&insertJob,
-		// &provisionApp,
+	buildTsuruInfo(ctx, job, user)
+
+	var actions []*action.Action
+	if job.IsCron {
+		actions = []*action.Action{
+			&reserveTeamCronjob,
+			&reserveUserCronjob,
+			&insertJob,
+			&provisionJob,
+		}
+	} else {
+		actions = []*action.Action{
+			&insertJob,
+			&provisionJob,
+		}
 	}
+
 	pipeline := action.NewPipeline(actions...)
 	err := pipeline.Execute(ctx, job, user)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+var provisionJob = action.Action{
+	Name: "provision-job",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var job *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			job = ctx.Params[0].(*Job)
+		default:
+			return nil, errors.New("First parameter must be *Job.")
+		}
+		prov, err := job.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+
+		switch job.IsCron {
+		case true:
+			if err = prov.ScheduleJob(ctx.Context, job); err != nil {
+				return nil, err
+			}
+		case false:
+			if err = prov.RunJob(ctx.Context, job); err != nil {
+				return nil, err
+			}
+		}
+		return job, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		job := ctx.FWResult.(*Job)
+		prov, err := job.getProvisioner()
+		if err == nil {
+			prov.DestroyJob(ctx.Context, job)
+		}
+	},
+	MinParams: 1,
 }
