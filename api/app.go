@@ -282,6 +282,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		filter.Tags = tags
 	}
 	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
+	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermAppReadInfo)...)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil

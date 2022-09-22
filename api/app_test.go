@@ -720,6 +720,41 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermission(c *ch
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
 }
 
+func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserHasPermissionAppInfo(c *check.C) {
+	team := authTypes.Team{Name: "angra"}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(_ string) (*authTypes.Team, error) {
+		return &team, nil
+	}
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppReadInfo,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	u, _ := auth.ConvertNewUser(token.User())
+	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
+	err := app.CreateApp(context.TODO(), &app1, u)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
+	err = app.CreateApp(context.TODO(), &app2, u)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var apps []app.App
+	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
+	c.Assert(err, check.IsNil)
+	c.Assert(apps, check.HasLen, 2)
+	c.Assert(apps[0].Name, check.Equals, app1.Name)
+	c.Assert(apps[1].Name, check.Equals, app2.Name)
+}
+
 func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 	request, err := http.NewRequest("GET", "/apps", nil)
 	c.Assert(err, check.IsNil)
