@@ -137,6 +137,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypePool, Value: addOpts.Name},
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, addOpts.Name)),
 	})
@@ -191,6 +192,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
@@ -224,6 +226,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
@@ -259,6 +262,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamRemove,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
@@ -299,6 +303,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, poolName)),
 	})
@@ -374,6 +379,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypePool, Value: poolConstraint.PoolExpr},
 		Kind:       permission.PermPoolUpdateConstraintsSet,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents),
 	})

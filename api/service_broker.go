@@ -57,6 +57,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})
@@ -97,6 +98,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})
@@ -129,6 +131,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: brokerName},
 		Kind:       permission.PermServiceBrokerDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceBrokerReadEvents),
 	})

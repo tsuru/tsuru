@@ -113,6 +113,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdate,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(r.URL.Query()),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -157,6 +158,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -446,6 +448,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -599,6 +602,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdate,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -680,6 +684,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateUnitAdd,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -732,6 +737,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateUnitRemove,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -828,9 +834,10 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 
 	evt, err := event.New(&event.Opts{
-		Target: appTarget(a.Name),
-		Kind:   permission.PermAppUpdateUnitKill,
-		Owner:  t,
+		Target:     appTarget(a.Name),
+		Kind:       permission.PermAppUpdateUnitKill,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: []map[string]interface{}{
 			{
 				"unit":  unitName,
@@ -909,6 +916,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateGrant,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -953,6 +961,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRevoke,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1011,6 +1020,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppRun,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1128,6 +1138,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, toExclude...)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1219,6 +1230,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvUnset,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1269,6 +1281,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1314,6 +1327,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameRemove,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1520,6 +1534,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		},
 		Kind:       permission.PermAppUpdateBind,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
@@ -1605,6 +1620,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		},
 		Kind:       permission.PermAppUpdateUnbind,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
@@ -1658,6 +1674,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateRestart,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -1716,6 +1733,7 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateSleep,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -1813,6 +1831,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		},
 		Kind:       permission.PermAppUpdateSwap,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
 	})
@@ -1876,6 +1895,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateStart,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -1923,6 +1943,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateStop,
 		Owner:         t,
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(&a)...),
@@ -2077,6 +2098,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppAdminRoutes,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -2142,6 +2164,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateSet,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, "key")),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -2184,6 +2207,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateUnset,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})

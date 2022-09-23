@@ -55,6 +55,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
@@ -129,6 +130,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})
@@ -255,6 +257,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
 		Kind:       permission.PermClusterDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermClusterReadEvents),
 	})

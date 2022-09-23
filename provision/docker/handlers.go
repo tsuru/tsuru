@@ -80,6 +80,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     event.Target{Type: event.TargetTypeContainer, Value: contId},
 		Kind:       permission.PermNodeUpdateMoveContainer,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permContexts...),
 	})
@@ -133,6 +134,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     event.Target{Type: event.TargetTypeNode, Value: from},
 		Kind:       permission.PermNodeUpdateMoveContainers,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(r.Form),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, permContexts...),
 	})
@@ -243,6 +245,7 @@ func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:      event.Target{Type: event.TargetTypePool, Value: pool},
 		Kind:        permission.PermPoolUpdateLogs,
 		Owner:       t,
+		RemoteAddr:  r.RemoteAddr,
 		CustomData:  event.FormToCustomData(r.Form),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),

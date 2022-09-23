@@ -76,6 +76,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppBuild,
 		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},
+		RemoteAddr:    r.RemoteAddr,
 		CustomData:    opts,
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
 		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),

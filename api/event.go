@@ -208,6 +208,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     event.Target{Type: event.TargetTypeEventBlock},
 		Kind:       permission.PermEventBlockAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermEventBlockReadEvents),
 	})
@@ -240,9 +241,10 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	}
 	objID := bson.ObjectIdHex(uuid)
 	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: event.TargetTypeEventBlock, Value: objID.Hex()},
-		Kind:   permission.PermEventBlockRemove,
-		Owner:  t,
+		Target:     event.Target{Type: event.TargetTypeEventBlock, Value: objID.Hex()},
+		Kind:       permission.PermEventBlockRemove,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: []map[string]interface{}{
 			{"name": "ID", "value": objID.Hex()},
 		},

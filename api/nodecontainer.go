@@ -86,6 +86,7 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
 		Kind:       permission.PermNodecontainerCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -175,6 +176,7 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: config.Name},
 		Kind:       permission.PermNodecontainerUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -225,6 +227,7 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
 		Kind:       permission.PermNodecontainerDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -293,6 +296,7 @@ func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     event.Target{Type: event.TargetTypeNodeContainer, Value: name},
 		Kind:       permission.PermNodecontainerUpdateUpgrade,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})

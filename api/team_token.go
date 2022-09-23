@@ -106,6 +106,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(args.Team),
 		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, args.Team)),
 	})
@@ -166,6 +167,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(teamToken.Team),
 		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamToken.Team)),
 	})
@@ -218,6 +220,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Target:     teamTarget(teamName),
 		Kind:       permission.PermTeamTokenDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamName)),
 	})

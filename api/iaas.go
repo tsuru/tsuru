@@ -82,6 +82,7 @@ func machineDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: m.Iaas},
 		Kind:       permission.PermMachineDelete,
 		Owner:      token,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
@@ -151,6 +152,7 @@ func templateCreate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: paramTemplate.IaaSName},
 		Kind:       permission.PermMachineTemplateCreate,
 		Owner:      token,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
@@ -198,6 +200,7 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) (
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: t.IaaSName},
 		Kind:       permission.PermMachineTemplateDelete,
 		Owner:      token,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})
@@ -244,6 +247,7 @@ func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) (e
 		Target:     event.Target{Type: event.TargetTypeIaas, Value: dbTpl.IaaSName},
 		Kind:       permission.PermMachineTemplateUpdate,
 		Owner:      token,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermMachineReadEvents, iaasCtx),
 	})

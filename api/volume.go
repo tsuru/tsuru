@@ -140,6 +140,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(&inputVolume)...),
 	})
@@ -192,6 +193,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
@@ -253,6 +255,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
 		Kind:       permission.PermVolumeDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
@@ -307,6 +310,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateBind,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})
@@ -376,6 +380,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateUnbind,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermVolumeReadEvents, contextsForVolume(dbVolume)...),
 	})

@@ -91,6 +91,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(&instance, srv.Name)...),
@@ -198,6 +199,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(si, serviceName)...),
@@ -243,6 +245,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),
@@ -668,9 +671,10 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(&event.Opts{
-			Target: serviceInstanceTarget(serviceName, instanceName),
-			Kind:   permission.PermServiceInstanceUpdateProxy,
-			Owner:  t,
+			Target:     serviceInstanceTarget(serviceName, instanceName),
+			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
 			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
@@ -712,6 +716,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateGrant,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),
@@ -749,6 +754,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateRevoke,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
 			contextsForServiceInstance(serviceInstance, serviceName)...),

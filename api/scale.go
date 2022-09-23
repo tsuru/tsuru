@@ -87,6 +87,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAutoscaleAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -122,6 +123,7 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAutoscaleRemove,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})

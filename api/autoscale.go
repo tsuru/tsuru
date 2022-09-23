@@ -86,6 +86,7 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		Target:     event.Target{Type: event.TargetTypePool, Value: rule.MetadataFilter},
 		Kind:       permission.PermNodeAutoscaleUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -117,6 +118,7 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     event.Target{Type: event.TargetTypePool, Value: rulePool},
 		Kind:       permission.PermNodeAutoscaleDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermPoolReadEvents, ctxs...),
 	})
@@ -172,6 +174,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:      event.Target{Type: event.TargetTypePool},
 		Kind:        permission.PermNodeAutoscaleUpdateRun,
 		Owner:       t,
+		RemoteAddr:  r.RemoteAddr,
 		CustomData:  event.FormToCustomData(InputFields(r)),
 		DisableLock: true,
 		Allowed:     event.Allowed(permission.PermPoolReadEvents),

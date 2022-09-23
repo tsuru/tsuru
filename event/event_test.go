@@ -1234,9 +1234,10 @@ func (s *S) TestEventRawInsert(c *check.C) {
 
 func (s *S) TestNewWithPermission(c *check.C) {
 	evt, err := New(&Opts{
-		Target: Target{Type: "app", Value: "myapp"},
-		Kind:   permission.PermAppUpdateEnvSet,
-		Owner:  s.token,
+		Target:     Target{Type: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		RemoteAddr: "1.1.1.1:30031",
 		Allowed: Allowed(permission.PermAppReadEvents,
 			permission.Context(permTypes.CtxApp, "myapp"), permission.Context(permTypes.CtxTeam, "myteam")),
 	})
@@ -1248,6 +1249,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
+		SourceIP:       "1.1.1.1",
 		StartTime:      evt.StartTime,
 		LockUpdateTime: evt.LockUpdateTime,
 		Allowed: AllowedPermission{

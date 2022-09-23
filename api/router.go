@@ -50,6 +50,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name}),
 	})
@@ -91,6 +92,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: dynamicRouter.Name}),
 	})
@@ -128,6 +130,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerName},
 		Kind:       permission.PermRouterDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRouterReadEvents, permTypes.PermissionContext{CtxType: permTypes.CtxRouter, Value: routerName}),
 	})
@@ -262,6 +265,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -324,6 +328,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -358,6 +363,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterRemove,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -438,6 +444,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRoutable,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})

@@ -77,6 +77,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
@@ -150,6 +151,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
 	})
@@ -232,6 +234,7 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Target:     event.Target{Type: event.TargetTypeTeam, Value: teamName},
 		Kind:       permission.PermTeamUpdateQuota,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, teamName)),
 	})

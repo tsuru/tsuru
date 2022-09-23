@@ -149,6 +149,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
@@ -201,6 +202,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
@@ -241,6 +243,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
@@ -282,9 +285,10 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(&event.Opts{
-			Target: serviceTarget(s.Name),
-			Kind:   permission.PermServiceUpdateProxy,
-			Owner:  t,
+			Target:     serviceTarget(s.Name),
+			Kind:       permission.PermServiceUpdateProxy,
+			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
 			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
 				"name":  "method",
 				"value": r.Method,
@@ -334,6 +338,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateGrantAccess,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
@@ -386,6 +391,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateRevokeAccess,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})
@@ -426,6 +432,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateDoc,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
 	})

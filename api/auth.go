@@ -89,6 +89,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		Target:     userTarget(email),
 		Kind:       permission.PermUserCreate,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, "password")),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
@@ -161,10 +162,11 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
 	}
 	evt, err := event.New(&event.Opts{
-		Target:  userTarget(t.GetUserName()),
-		Kind:    permission.PermUserUpdatePassword,
-		Owner:   t,
-		Allowed: event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
+		Target:     userTarget(t.GetUserName()),
+		Kind:       permission.PermUserUpdatePassword,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, t.GetUserName())),
 	})
 	if err != nil {
 		return err
@@ -213,6 +215,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 		Target:     userTarget(email),
 		Kind:       permission.PermUserUpdateReset,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
@@ -280,6 +283,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, name)),
 	})
@@ -350,6 +354,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     teamTarget(team.Name),
 		Kind:       permission.PermTeamCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, team.Name)),
 	})
@@ -395,6 +400,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermTeamReadEvents, permission.Context(permTypes.CtxTeam, name)),
 	})
@@ -565,6 +571,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     userTarget(email),
 		Kind:       permission.PermUserDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})
@@ -623,6 +630,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		Target:     userTarget(email),
 		Kind:       permission.PermUserUpdateToken,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
 	})

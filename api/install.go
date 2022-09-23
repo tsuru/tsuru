@@ -38,6 +38,7 @@ func installHostAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeInstallHost, Value: host.Name},
 		Kind:       permission.PermInstallManage,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermInstallManage),
 	})

@@ -48,6 +48,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleCreate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -91,6 +92,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -194,6 +196,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionAdd,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -246,6 +249,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionRemove,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -318,6 +322,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -365,6 +370,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -449,6 +455,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultCreate,
 			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
 			CustomData: event.FormToCustomData(InputFields(r)),
 			Allowed:    event.Allowed(permission.PermRoleReadEvents),
 		})
@@ -506,6 +513,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultDelete,
 			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
 			CustomData: event.FormToCustomData(InputFields(r)),
 			Allowed:    event.Allowed(permission.PermRoleReadEvents),
 		})
@@ -588,6 +596,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleUpdate),
 	})
@@ -675,6 +684,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -721,6 +731,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -765,6 +776,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
@@ -805,6 +817,7 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermRoleReadEvents),
 	})
