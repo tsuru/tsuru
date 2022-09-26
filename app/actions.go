@@ -693,7 +693,10 @@ var setNewCNamesToProvisioner = action.Action{
 				setUnsetCnames(stdCtx, app, cnames, false)
 			}
 		}()
-		for _, appRouter := range app.GetRouters() {
+
+		routers := app.GetRouters()
+
+		for _, appRouter := range routers {
 			var r router.Router
 			r, err = router.Get(stdCtx, appRouter.Name)
 			if err != nil {
@@ -705,7 +708,9 @@ var setNewCNamesToProvisioner = action.Action{
 			}
 			for _, cname := range cnames {
 				err = cnameRouter.SetCName(ctx.Context, cname, app)
-				if err != nil {
+				if err == router.ErrCNameNotAllowed && len(routers) > 1 {
+					// ignore CName not allowed when have more than one router
+				} else if err != nil {
 					return nil, err
 				}
 			}
