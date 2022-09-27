@@ -45,7 +45,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 }
 
 func buildName(ctx context.Context, job *Job) error {
-	if job.IsCron {
+	if job.Cron {
 		if _, err := GetJobByName(ctx, job.Name); err != nil && err != jobTypes.ErrJobNotFound {
 			return errors.WithMessage(err, "unable to check if job already exists")
 		}
@@ -78,7 +78,7 @@ func buildPlan(ctx context.Context, job *Job) error {
 func buildTsuruInfo(ctx context.Context, job *Job, user *auth.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
-	if !job.IsCron {
+	if !job.Cron {
 		job.CreatedAt = &time.Time{}
 		*job.CreatedAt = time.Now()
 	}

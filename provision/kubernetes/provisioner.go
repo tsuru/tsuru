@@ -44,7 +44,10 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	policy "k8s.io/api/policy/v1beta1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -2150,19 +2153,89 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	return client.registry(), nil
 }
 
-func (p *kubernetesProvisioner) ScheduleJob(ctx context.Context, j provision.Job) error {
+func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) error {
+	client, err := clusterForPool(ctx, j.GetPool())
+	if err != nil {
+		return err
+	}
+
+	jobSpec := batchv1.JobSpec{
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				RestartPolicy: "OnFailure",
+				Containers: []v1.Container{
+					{
+						Name:    "test",
+						Image:   "busybox:1.28",
+						Command: []string{"/bin/sh", "-c", "date; echo Hello from the Kubernetes cluster"},
+					},
+				},
+			},
+		},
+	}
+
+	switch j.IsCron() {
+	case true:
+		_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: j.GetName(),
+			},
+			Spec: apiv1beta1.CronJobSpec{
+				Schedule: "* * * * *",
+				JobTemplate: apiv1beta1.JobTemplateSpec{
+					Spec: jobSpec,
+				},
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	case false:
+		_, err = client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: j.GetName(),
+			},
+			Spec: jobSpec,
+		}, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
 func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
+	// client, err := clusterForPool(ctx, j.GetPool())
+	// if err != nil {
+	// 	return err
+	// }
+
+	// switch j.IsCron() {
+	// case true:
+	// 	podList, err := client.CoreV1().Pods(client.Namespace()).List(ctx, metav1.ListOptions{
+
+	// 	})
+	// }
 	return nil, nil
 }
 
-func (p *kubernetesProvisioner) RunJob(ctx context.Context, j provision.Job) error {
-	return nil
-}
-
 func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job) error {
+	client, err := clusterForPool(ctx, j.GetPool())
+	if err != nil {
+		return err
+	}
+
+	switch j.IsCron() {
+	case false:
+		if err = client.BatchV1().Jobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	case true:
+		if err = client.BatchV1beta1().CronJobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	}
 	return nil
 }

@@ -33,7 +33,7 @@ type Job struct {
 
 	AttemptedRuns uint
 	Completions   uint
-	IsCron        bool
+	Cron          bool
 	Schedule      map[string]string
 
 	CreatedAt *time.Time `bson:"createdAt"`
@@ -112,6 +112,10 @@ func (job *Job) GetMetadata() appTypes.Metadata {
 	return job.Metadata
 }
 
+func (job *Job) IsCron() bool {
+	return job.Cron
+}
+
 // GetJobByName queries the database to find a job identified by the given
 // name.
 func GetJobByName(ctx context.Context, name string) (*Job, error) {
@@ -148,7 +152,7 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 	buildTsuruInfo(ctx, job, user)
 
 	var actions []*action.Action
-	if job.IsCron {
+	if job.Cron {
 		actions = []*action.Action{
 			&reserveTeamCronjob,
 			&reserveUserCronjob,
@@ -184,16 +188,8 @@ var provisionJob = action.Action{
 		if err != nil {
 			return nil, err
 		}
-
-		switch job.IsCron {
-		case true:
-			if err = prov.ScheduleJob(ctx.Context, job); err != nil {
-				return nil, err
-			}
-		case false:
-			if err = prov.RunJob(ctx.Context, job); err != nil {
-				return nil, err
-			}
+		if err = prov.CreateJob(ctx.Context, job); err != nil {
+			return nil, err
 		}
 		return job, nil
 	},

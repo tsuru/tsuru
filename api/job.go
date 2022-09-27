@@ -28,7 +28,7 @@ type inputJob struct {
 	Description string            `json:"description"`
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
-	IsCron      bool              `json:"cronjob"`
+	Cron        bool              `json:"cronjob"`
 }
 
 // title: job create
@@ -57,7 +57,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description: ij.Description,
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
-		IsCron:      ij.IsCron,
+		Cron:        ij.Cron,
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
