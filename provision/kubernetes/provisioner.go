@@ -837,6 +837,11 @@ func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) (provi
 		if containerStatus.Ready {
 			continue
 		}
+
+		if containerStatus.State.Waiting != nil {
+			return provision.StatusError, containerStatus.State.Waiting.Reason
+		}
+
 		if containerStatus.LastTerminationState.Terminated != nil {
 			return provision.StatusError, containerStatus.LastTerminationState.Terminated.Reason
 		}
