@@ -6,12 +6,10 @@ package job
 
 import (
 	"context"
-	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
@@ -22,6 +20,40 @@ import (
 )
 
 type Job struct {
+	TsuruJob
+	// Specifies the maximum desired number of pods the job should
+	// run at any given time. The actual number of pods running in steady state will
+	// be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism),
+	// i.e. when the work left to do is less than max parallelism.
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
+	// +optional
+	Parallelism *int32 `json:"parallelism,omitempty" protobuf:"varint,1,opt,name=parallelism"`
+
+	// Specifies the desired number of successfully finished pods the
+	// job should be run with.  Setting to nil means that the success of any
+	// pod signals the success of all pods, and allows parallelism to have any positive
+	// value.  Setting to 1 means that parallelism is limited to 1 and the success of that
+	// pod signals the success of the job.
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
+	// +optional
+	Completions *int32 `json:"completions,omitempty" protobuf:"varint,2,opt,name=completions"`
+
+	// Specifies the duration in seconds relative to the startTime that the job may be active
+	// before the system tries to terminate it; value must be positive integer
+	// +optional
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty" protobuf:"varint,3,opt,name=activeDeadlineSeconds"`
+
+	// Specifies the number of retries before marking this job failed.
+	// Defaults to 6
+	// +optional
+	BackoffLimit *int32 `json:"backoffLimit,omitempty" protobuf:"varint,7,opt,name=backoffLimit"`
+
+	Schedule string
+
+	Containers []jobTypes.ContainerInfo
+}
+
+type TsuruJob struct {
 	Name        string
 	Teams       []string
 	TeamOwner   string
@@ -30,13 +62,6 @@ type Job struct {
 	Metadata    appTypes.Metadata
 	Pool        string
 	Description string
-
-	AttemptedRuns uint
-	Completions   uint
-	Cron          bool
-	Schedule      map[string]string
-
-	CreatedAt *time.Time `bson:"createdAt"`
 
 	ctx         context.Context
 	provisioner provision.Provisioner
@@ -61,15 +86,6 @@ func (job *Job) Units() ([]provision.JobUnit, error) {
 
 func (job *Job) GetName() string {
 	return job.Name
-}
-
-// GetExecutions returns a pair of attempted runs followed by it's successfull runs: {No of attempts, No of successfull runs}
-func (job *Job) GetExecutions() []uint {
-	return []uint{job.AttemptedRuns, job.Completions}
-}
-
-func (job *Job) Envs() map[string]bind.EnvVar {
-	return nil
 }
 
 // GetMemory returns the memory limit (in bytes) for the job.
@@ -113,7 +129,15 @@ func (job *Job) GetMetadata() appTypes.Metadata {
 }
 
 func (job *Job) IsCron() bool {
-	return job.Cron
+	return job.Schedule != ""
+}
+
+func (job *Job) GetContainersInfo() []jobTypes.ContainerInfo {
+	return job.Containers
+}
+
+func (job *Job) GetSchedule() string {
+	return job.Schedule
 }
 
 // GetJobByName queries the database to find a job identified by the given
@@ -152,7 +176,7 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 	buildTsuruInfo(ctx, job, user)
 
 	var actions []*action.Action
-	if job.Cron {
+	if job.IsCron() {
 		actions = []*action.Action{
 			&reserveTeamCronjob,
 			&reserveUserCronjob,

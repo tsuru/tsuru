@@ -28,7 +28,9 @@ type inputJob struct {
 	Description string            `json:"description"`
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
-	Cron        bool              `json:"cronjob"`
+
+	Schedule   string                   `json:"schedule"`
+	Containers []jobTypes.ContainerInfo `json:"containers"`
 }
 
 // title: job create
@@ -51,13 +53,16 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	j := job.Job{
-		TeamOwner:   ij.TeamOwner,
-		Plan:        appTypes.Plan{Name: ij.Plan},
-		Name:        ij.Name,
-		Description: ij.Description,
-		Pool:        ij.Pool,
-		Metadata:    ij.Metadata,
-		Cron:        ij.Cron,
+		TsuruJob: job.TsuruJob{
+			TeamOwner:   ij.TeamOwner,
+			Plan:        appTypes.Plan{Name: ij.Plan},
+			Name:        ij.Name,
+			Description: ij.Description,
+			Pool:        ij.Pool,
+			Metadata:    ij.Metadata,
+		},
+		Schedule:   ij.Schedule,
+		Containers: ij.Containers,
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)

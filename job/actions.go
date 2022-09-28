@@ -78,7 +78,7 @@ var reserveTeamCronjob = action.Action{
 		switch ctx.Params[0].(type) {
 		case *Job:
 			job = ctx.Params[0].(*Job)
-			if !job.Cron {
+			if !job.IsCron() {
 				return nil, errors.New("job type must be cron to increment team quota")
 			}
 		default:
@@ -108,7 +108,7 @@ var reserveUserCronjob = action.Action{
 		switch ctx.Params[0].(type) {
 		case *Job:
 			job = ctx.Params[0].(*Job)
-			if !job.Cron {
+			if !job.IsCron() {
 				return nil, errors.New("job type must be cron to increment team quota")
 			}
 		default:

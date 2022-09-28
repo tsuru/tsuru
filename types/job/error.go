@@ -16,6 +16,12 @@ var (
 	ErrJobAlreadyExists   = errors.New("there is already a job with this name")
 )
 
+type ContainerInfo struct {
+	Name    string
+	Image   string
+	Command []string
+}
+
 type JobCreationError struct {
 	Job string
 	Err error

@@ -41,6 +41,7 @@ import (
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	appsv1 "k8s.io/api/apps/v1"
@@ -2153,56 +2154,61 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	return client.registry(), nil
 }
 
+func createJobSpec(containersInfo []jobTypes.ContainerInfo) batchv1.JobSpec {
+	jobContainers := []v1.Container{}
+	for _, ci := range containersInfo {
+		jobContainers = append(jobContainers, v1.Container{
+			Name:    ci.Name,
+			Image:   ci.Image,
+			Command: ci.Command,
+		})
+	}
+
+	return batchv1.JobSpec{
+		Template: v1.PodTemplateSpec{
+			Spec: v1.PodSpec{
+				RestartPolicy: "OnFailure",
+				Containers:    jobContainers,
+			},
+		},
+	}
+}
+
+func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec) error {
+	_, err := client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: job.GetName(),
+		},
+		Spec: apiv1beta1.CronJobSpec{
+			Schedule: job.GetSchedule(),
+			JobTemplate: apiv1beta1.JobTemplateSpec{
+				Spec: jobSpec,
+			},
+		},
+	}, metav1.CreateOptions{})
+	return err
+}
+
+func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec) error {
+	_, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: job.GetName(),
+		},
+		Spec: jobSpec,
+	}, metav1.CreateOptions{})
+	return err
+}
+
 func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) error {
 	client, err := clusterForPool(ctx, j.GetPool())
 	if err != nil {
 		return err
 	}
-
-	jobSpec := batchv1.JobSpec{
-		Template: v1.PodTemplateSpec{
-			Spec: v1.PodSpec{
-				RestartPolicy: "OnFailure",
-				Containers: []v1.Container{
-					{
-						Name:    "test",
-						Image:   "busybox:1.28",
-						Command: []string{"/bin/sh", "-c", "date; echo Hello from the Kubernetes cluster"},
-					},
-				},
-			},
-		},
+	jobSpec := createJobSpec(j.GetContainersInfo())
+	if j.IsCron() {
+		return createCronjob(ctx, client, j, jobSpec)
 	}
-
-	switch j.IsCron() {
-	case true:
-		_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: j.GetName(),
-			},
-			Spec: apiv1beta1.CronJobSpec{
-				Schedule: "* * * * *",
-				JobTemplate: apiv1beta1.JobTemplateSpec{
-					Spec: jobSpec,
-				},
-			},
-		}, metav1.CreateOptions{})
-		if err != nil {
-			return err
-		}
-	case false:
-		_, err = client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: j.GetName(),
-			},
-			Spec: jobSpec,
-		}, metav1.CreateOptions{})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return createJob(ctx, client, j, jobSpec)
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
@@ -2226,16 +2232,8 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job)
 	if err != nil {
 		return err
 	}
-
-	switch j.IsCron() {
-	case false:
-		if err = client.BatchV1().Jobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{}); err != nil {
-			return err
-		}
-	case true:
-		if err = client.BatchV1beta1().CronJobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{}); err != nil {
-			return err
-		}
+	if j.IsCron() {
+		return client.BatchV1beta1().CronJobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
 	}
-	return nil
+	return client.BatchV1().Jobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
 }

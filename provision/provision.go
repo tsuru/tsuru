@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -279,23 +280,17 @@ type App interface {
 
 type Job interface {
 	Named
-	// GetExecutions returns the executions that a job has.
-	GetExecutions() []uint
-
-	Envs() map[string]bind.EnvVar
-
 	GetMemory() int64
 	GetMilliCPU() int
 	GetSwap() int64
 	GetCpuShare() int
-
 	GetPool() string
-
 	GetTeamOwner() string
 	GetTeamsName() []string
-
 	GetMetadata() appTypes.Metadata
 	IsCron() bool
+	GetContainersInfo() []jobTypes.ContainerInfo
+	GetSchedule() string
 }
 
 type BuilderDockerClient interface {
