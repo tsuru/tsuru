@@ -996,7 +996,7 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 						Ready: false,
 						LastTerminationState: apiv1.ContainerState{
 							Terminated: &apiv1.ContainerStateTerminated{
-								Reason: "Error",
+								Reason: "OOMKilled",
 							},
 						},
 					},
@@ -1010,6 +1010,8 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
 	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+	c.Assert(units[0].StatusReason, check.DeepEquals, "OOMKilled")
+
 }
 
 func (s *S) TestUnitsEmpty(c *check.C) {

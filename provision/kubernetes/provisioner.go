@@ -783,28 +783,31 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 		}
 
 		var status provision.Status
+		var reason string
 		if pod.Status.Phase == apiv1.PodRunning {
-			status = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
+			status, reason = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
 		} else {
 			status = stateMap[pod.Status.Phase]
+			reason = pod.Status.Reason
 		}
 
 		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
 		units = append(units, provision.Unit{
-			ID:          pod.Name,
-			Name:        pod.Name,
-			AppName:     l.AppName(),
-			ProcessName: appProcess,
-			Type:        l.AppPlatform(),
-			IP:          pod.Status.HostIP,
-			Status:      status,
-			Address:     u,
-			Addresses:   urls,
-			Version:     appVersion,
-			Routable:    isRoutable,
-			Restarts:    containersRestarts(pod.Status.ContainerStatuses),
-			CreatedAt:   &createdAt,
-			Ready:       containersReady(pod.Status.ContainerStatuses),
+			ID:           pod.Name,
+			Name:         pod.Name,
+			AppName:      l.AppName(),
+			ProcessName:  appProcess,
+			Type:         l.AppPlatform(),
+			IP:           pod.Status.HostIP,
+			Status:       status,
+			StatusReason: reason,
+			Address:      u,
+			Addresses:    urls,
+			Version:      appVersion,
+			Routable:     isRoutable,
+			Restarts:     containersRestarts(pod.Status.ContainerStatuses),
+			CreatedAt:    &createdAt,
+			Ready:        containersReady(pod.Status.ContainerStatuses),
 		})
 	}
 	return units, nil
@@ -829,18 +832,18 @@ func containersReady(containersStatus []apiv1.ContainerStatus) *bool {
 	return &ready
 }
 
-func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) provision.Status {
+func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) (provision.Status, string) {
 	for _, containerStatus := range statuses {
 		if containerStatus.Ready {
 			continue
 		}
 		if containerStatus.LastTerminationState.Terminated != nil {
-			return provision.StatusError
+			return provision.StatusError, containerStatus.LastTerminationState.Terminated.Reason
 		}
 
-		return provision.StatusStarting
+		return provision.StatusStarting, ""
 	}
-	return provision.StatusStarted
+	return provision.StatusStarted, ""
 }
 
 // merged from https://github.com/kubernetes/kubernetes/blob/1f69c34478800e150acd022f6313a15e1cb7a97c/pkg/quota/evaluator/core/pods.go#L333

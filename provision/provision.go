@@ -152,20 +152,21 @@ const (
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
-	ID          string
-	Name        string
-	AppName     string
-	ProcessName string
-	Type        string
-	IP          string
-	Status      Status
-	Address     *url.URL
-	Addresses   []url.URL
-	Version     int
-	Routable    bool
-	Restarts    *int32
-	CreatedAt   *time.Time
-	Ready       *bool
+	ID           string
+	Name         string
+	AppName      string
+	ProcessName  string
+	Type         string
+	IP           string
+	Status       Status
+	StatusReason string
+	Address      *url.URL
+	Addresses    []url.URL
+	Version      int
+	Routable     bool
+	Restarts     *int32
+	CreatedAt    *time.Time
+	Ready        *bool
 }
 
 // GetName returns the name of the unit.
