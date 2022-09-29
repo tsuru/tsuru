@@ -37,6 +37,10 @@ const (
 	LabelAppVersion   = "app-version"
 	LabelAppTeamOwner = "app-team"
 
+	LabelJobName      = "job-name"
+	LabelJobPool      = "job-pool"
+	LabelJobTeamOwner = "job-team"
+
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
 
@@ -60,6 +64,8 @@ const (
 	labelClusterMetadata = "tsuru.io/cluster"
 
 	labelCustomTagsPrefix = "custom-tag-"
+
+	tsuruLabelPrefix = "tsuru.io/"
 )
 
 type LabelSet struct {
@@ -127,6 +133,10 @@ func (s *LabelSet) ToRoutableSelector() map[string]string {
 
 func (s *LabelSet) ToAppSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, LabelAppName), s.Prefix)
+}
+
+func (s *LabelSet) ToJobSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, LabelJobName), s.Prefix)
 }
 
 func (s *LabelSet) ToNodeContainerSelector() map[string]string {
@@ -452,6 +462,23 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 	}
 	ExtendServiceLabels(set, opts.ServiceLabelExtendedOpts)
 	return set, nil
+}
+
+func JobLabels(ctx context.Context, job Job) *LabelSet {
+	return &LabelSet{
+		Labels: map[string]string{
+			labelIsTsuru:      strconv.FormatBool(true),
+			LabelJobName:      job.GetName(),
+			LabelJobTeamOwner: job.GetTeamOwner(),
+			LabelJobPool:      job.GetPool(),
+		},
+		RawLabels: map[string]string{
+			"job.kubernetes.io/name":       job.GetName(),
+			"job.kubernetes.io/component":  "tsuru-job",
+			"job.kubernetes.io/managed-by": "tsuru",
+		},
+		Prefix: tsuruLabelPrefix,
+	}
 }
 
 type ProcessLabelsOpts struct {

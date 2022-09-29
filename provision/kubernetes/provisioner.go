@@ -2154,7 +2154,15 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	return client.registry(), nil
 }
 
-func createJobSpec(containersInfo []jobTypes.ContainerInfo) batchv1.JobSpec {
+func labelsForJob(ctx context.Context, job provision.Job) map[string]string {
+	ls := provision.JobLabels(ctx, job)
+	for _, l := range job.GetMetadata().Labels {
+		ls.RawLabels[l.Name] = l.Value
+	}
+	return ls.ToLabels()
+}
+
+func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
 	jobContainers := []v1.Container{}
 	for _, ci := range containersInfo {
 		jobContainers = append(jobContainers, v1.Container{
@@ -2166,6 +2174,10 @@ func createJobSpec(containersInfo []jobTypes.ContainerInfo) batchv1.JobSpec {
 
 	return batchv1.JobSpec{
 		Template: v1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      labels,
+				Annotations: annotations,
+			},
 			Spec: v1.PodSpec{
 				RestartPolicy: "OnFailure",
 				Containers:    jobContainers,
@@ -2174,10 +2186,12 @@ func createJobSpec(containersInfo []jobTypes.ContainerInfo) batchv1.JobSpec {
 	}
 }
 
-func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec) error {
+func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) error {
 	_, err := client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: job.GetName(),
+			Name:        job.GetName(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: apiv1beta1.CronJobSpec{
 			Schedule: job.GetSchedule(),
@@ -2189,10 +2203,12 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 	return err
 }
 
-func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec) error {
+func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) error {
 	_, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: job.GetName(),
+			Name:        job.GetName(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: jobSpec,
 	}, metav1.CreateOptions{})
@@ -2204,11 +2220,16 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	if err != nil {
 		return err
 	}
-	jobSpec := createJobSpec(j.GetContainersInfo())
-	if j.IsCron() {
-		return createCronjob(ctx, client, j, jobSpec)
+	jobLabels := provision.JobLabels(ctx, j).ToLabels()
+	jobAnnotations := map[string]string{}
+	for _, a := range j.GetMetadata().Annotations {
+		jobAnnotations[a.Name] = a.Value
 	}
-	return createJob(ctx, client, j, jobSpec)
+	jobSpec := createJobSpec(j.GetContainersInfo(), jobLabels, jobAnnotations)
+	if j.IsCron() {
+		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
+	}
+	return createJob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
@@ -2236,4 +2257,43 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job)
 		return client.BatchV1beta1().CronJobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
 	}
 	return client.BatchV1().Jobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
+}
+
+func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []provision.Job) ([]apiv1.Pod, error) {
+	inSelectorMap := map[string][]string{}
+	for _, j := range jobs {
+		l := provision.JobLabels(ctx, j)
+		jobSel := l.ToJobSelector()
+		for k, v := range jobSel {
+			inSelectorMap[k] = append(inSelectorMap[k], v)
+		}
+	}
+	sel := labels.NewSelector()
+	for k, v := range inSelectorMap {
+		if len(v) == 0 {
+			continue
+		}
+		req, err := labels.NewRequirement(k, selection.In, v)
+		if err != nil {
+			return nil, err
+		}
+		sel = sel.Add(*req)
+	}
+	controller, err := getClusterController(p, client)
+	if err != nil {
+		return nil, err
+	}
+	informer, err := controller.getPodInformer()
+	if err != nil {
+		return nil, err
+	}
+	pods, err := informer.Lister().List(sel)
+	if err != nil {
+		return nil, err
+	}
+	podCopies := make([]apiv1.Pod, len(pods))
+	for i, p := range pods {
+		podCopies[i] = *p.DeepCopy()
+	}
+	return podCopies, nil
 }
