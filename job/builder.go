@@ -15,8 +15,8 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-func checkCollision(ctx context.Context, jobName string) bool {
-	_, err := GetJobByName(ctx, jobName)
+func checkCollision(ctx context.Context, jobName, teamOwner string) bool {
+	_, err := GetByNameAndTeam(ctx, jobName, teamOwner)
 	return err != jobTypes.ErrJobNotFound
 }
 
@@ -33,7 +33,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 	job.genUniqueName()
 	collision := true
 	for i := 0; i < jobTypes.MaxAttempts; i++ {
-		if collision = checkCollision(ctx, job.Name); !collision {
+		if collision = checkCollision(ctx, job.Name, job.TeamOwner); !collision {
 			break
 		}
 	}
@@ -45,7 +45,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 
 func buildName(ctx context.Context, job *Job) error {
 	if job.IsCron() {
-		if _, err := GetJobByName(ctx, job.Name); err != nil && err != jobTypes.ErrJobNotFound {
+		if _, err := GetByNameAndTeam(ctx, job.Name, job.TeamOwner); err != nil && err != jobTypes.ErrJobNotFound {
 			return errors.WithMessage(err, "unable to check if job already exists")
 		}
 	} else {

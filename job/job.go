@@ -140,21 +140,46 @@ func (job *Job) GetSchedule() string {
 	return job.Schedule
 }
 
-// GetJobByName queries the database to find a job identified by the given
+// GetByName queries the database to find a job identified by the given
 // name.
-func GetJobByName(ctx context.Context, name string) (*Job, error) {
+func GetByNameAndTeam(ctx context.Context, name, teamOwner string) (*Job, error) {
 	var job Job
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Find(bson.M{"name": name}).One(&job)
+	err = conn.Jobs().Find(bson.M{"tsurujob.name": name, "tsurujob.teamowner": teamOwner}).One(&job)
 	if err == mgo.ErrNotFound {
 		return nil, jobTypes.ErrJobNotFound
 	}
 	job.ctx = ctx
 	return &job, err
+}
+
+func RemoveJobFromDb(jobName, jobTeamOwner string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Jobs().Remove(bson.M{"tsurujob.name": jobName, "tsurujob.teamowner": jobTeamOwner})
+	if err == mgo.ErrNotFound {
+		return jobTypes.ErrJobNotFound
+	}
+	return err
+}
+
+func DeleteFromProvisioner(ctx context.Context, job *Job) error {
+	prov, err := job.getProvisioner()
+	if err != nil {
+		return err
+	}
+	// jobProvisioner, ok := prov.(provision.JobProvisioner)
+	// if !ok {
+	// 	return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
+	// }
+	return prov.DestroyJob(job.ctx, job)
 }
 
 // CreateJob creates a new job or cronjob.

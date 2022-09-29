@@ -240,6 +240,10 @@ func (s *LabelSet) ReplaceIsIsolatedNewRunWithBase() {
 	delete(s.Labels, labelIsIsolatedRunNew)
 }
 
+func (s *LabelSet) JobName() string {
+	return s.getLabel(LabelJobName)
+}
+
 func filterByPrefix(labels, raw map[string]string, prefix string, withPrefix bool) map[string]string {
 	result := make(map[string]string, len(labels))
 	for k, v := range labels {

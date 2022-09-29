@@ -521,7 +521,7 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.12", http.MethodPost, "/jobs", AuthorizationRequiredHandler(createJob))
 	// m.Add("1.12", http.MethodGet, "/jobs/{job}", AuthorizationRequiredHandler(appInfo))
-	// m.Add("1.12", http.MethodDelete, "/jobs/{job}", AuthorizationRequiredHandler(appDelete))
+	m.Add("1.12", http.MethodDelete, "/jobs", AuthorizationRequiredHandler(deleteJob))
 	// m.Add("1.12", http.MethodPut, "/jobs/{job}", AuthorizationRequiredHandler(updateApp))
 
 	n := negroni.New()

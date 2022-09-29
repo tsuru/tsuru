@@ -2154,14 +2154,6 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	return client.registry(), nil
 }
 
-func labelsForJob(ctx context.Context, job provision.Job) map[string]string {
-	ls := provision.JobLabels(ctx, job)
-	for _, l := range job.GetMetadata().Labels {
-		ls.RawLabels[l.Name] = l.Value
-	}
-	return ls.ToLabels()
-}
-
 func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
 	jobContainers := []v1.Container{}
 	for _, ci := range containersInfo {
@@ -2234,18 +2226,15 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 
 // JobUnits returns information about units related to a specific Job or CronJob
 func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
-	// client, err := clusterForPool(ctx, j.GetPool())
-	// if err != nil {
-	// 	return err
-	// }
-
-	// switch j.IsCron() {
-	// case true:
-	// 	podList, err := client.CoreV1().Pods(client.Namespace()).List(ctx, metav1.ListOptions{
-
-	// 	})
-	// }
-	return nil, nil
+	client, err := clusterForPool(ctx, j.GetPool())
+	if err != nil {
+		return nil, err
+	}
+	pods, err := p.podsForJobs(ctx, client, []provision.Job{j})
+	if err != nil {
+		return nil, err
+	}
+	return p.podsToJobUnits(ctx, client, pods, j)
 }
 
 func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job) error {
@@ -2296,4 +2285,33 @@ func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *Cluster
 		podCopies[i] = *p.DeepCopy()
 	}
 	return podCopies, nil
+}
+
+func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job provision.Job) ([]provision.JobUnit, error) {
+	if len(pods) == 0 {
+		return nil, nil
+	}
+	var units []provision.JobUnit
+	for _, pod := range pods {
+		l := labelSetFromMeta(&pod.ObjectMeta)
+
+		var status provision.Status
+		if pod.Status.Phase == apiv1.PodRunning {
+			status = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
+		} else {
+			status = stateMap[pod.Status.Phase]
+		}
+
+		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
+		units = append(units, provision.JobUnit{
+			ID:        pod.Name,
+			Name:      pod.Name,
+			JobName:   l.JobName(),
+			IP:        pod.Status.HostIP,
+			Status:    status,
+			Restarts:  containersRestarts(pod.Status.ContainerStatuses),
+			CreatedAt: &createdAt,
+		})
+	}
+	return units, nil
 }

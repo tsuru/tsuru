@@ -5,13 +5,17 @@
 package api
 
 import (
+	stdContext "context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
@@ -31,6 +35,17 @@ type inputJob struct {
 
 	Schedule   string                   `json:"schedule"`
 	Containers []jobTypes.ContainerInfo `json:"containers"`
+}
+
+func getJob(ctx stdContext.Context, name, teamOwner string) (*job.Job, error) {
+	j, err := job.GetByNameAndTeam(ctx, name, teamOwner)
+	if err != nil {
+		if err == jobTypes.ErrJobNotFound {
+			return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("Job %s not found.", name)}
+		}
+		return nil, err
+	}
+	return j, nil
 }
 
 // title: job create
@@ -124,6 +139,54 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.WriteHeader(http.StatusCreated)
 	w.Write(jsonMsg)
 	return nil
+}
+
+// title: remove job
+// path: /jobs/{name}
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//
+//	200: Job removed
+//	401: Unauthorized
+//	404: Not found
+func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	var ij inputJob
+	err = ParseInput(r, &ij)
+	if err != nil {
+		return err
+	}
+	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
+	if err != nil {
+		return err
+	}
+	canDelete := permission.Check(t, permission.PermAppDelete,
+		contextsForJob(j)...,
+	)
+	if !canDelete {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermAppDelete,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	if err = job.RemoveJobFromDb(j.Name, j.TeamOwner); err != nil {
+		return err
+	}
+	return job.DeleteFromProvisioner(ctx, j)
 }
 
 func jobTarget(jobName string) event.Target {

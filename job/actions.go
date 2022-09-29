@@ -9,11 +9,9 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 var (
@@ -42,7 +40,7 @@ var insertJob = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		job := ctx.FWResult.(*Job)
-		removeJobDB(job)
+		RemoveJobFromDb(job.Name, job.TeamOwner)
 	},
 	MinParams: 1,
 }
@@ -53,22 +51,13 @@ func insertJobDB(job *Job) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Insert(job)
-	if mgo.IsDup(err) {
+	_, err = GetByNameAndTeam(job.ctx, job.Name, job.TeamOwner)
+	if err == jobTypes.ErrJobNotFound {
+		return conn.Jobs().Insert(job)
+	} else if err == nil {
 		return ErrJobAlreadyExists
 	}
-	return nil
-}
-
-func removeJobDB(job *Job) error {
-	conn, err := db.Conn()
-	if err != nil {
-		log.Errorf("Could not connect to the database: %s", err)
-		return err
-	}
-	defer conn.Close()
-	conn.Jobs().Remove(bson.M{"name": job.Name})
-	return nil
+	return err
 }
 
 var reserveTeamCronjob = action.Action{
