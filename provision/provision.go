@@ -411,6 +411,14 @@ type Provisioner interface {
 	// Units returns information about units by App.
 	Units(context.Context, ...App) ([]Unit, error)
 
+	// RoutableAddresses returns the addresses used to access an application.
+	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
+
+	// Register a unit after the container has been created or restarted.
+	RegisterUnit(context.Context, App, string, map[string]interface{}) error
+}
+
+type JobProvisioner interface {
 	// JobUnits returns information about units related to a specific Job or CronJob
 	JobUnits(context.Context, Job) ([]JobUnit, error)
 
@@ -418,12 +426,6 @@ type Provisioner interface {
 	CreateJob(context.Context, Job) error
 
 	DestroyJob(context.Context, Job) error
-
-	// RoutableAddresses returns the addresses used to access an application.
-	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
-
-	// Register a unit after the container has been created or restarted.
-	RegisterUnit(context.Context, App, string, map[string]interface{}) error
 }
 
 type ExecOptions struct {

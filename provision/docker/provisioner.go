@@ -1158,16 +1158,3 @@ func (p *dockerProvisioner) RebalanceNodes(ctx context.Context, opts provision.R
 	}
 	return false, nil
 }
-
-func (p *dockerProvisioner) CreateJob(ctx context.Context, j provision.Job) error {
-	return nil
-}
-
-// JobUnits returns information about units related to a specific Job or CronJob
-func (p *dockerProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
-	return nil, nil
-}
-
-func (p *dockerProvisioner) DestroyJob(ctx context.Context, j provision.Job) error {
-	return nil
-}

@@ -64,15 +64,24 @@ type TsuruJob struct {
 	Description string
 
 	ctx         context.Context
-	provisioner provision.Provisioner
+	provisioner provision.JobProvisioner
 }
 
-func (job *Job) getProvisioner() (provision.Provisioner, error) {
+func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
 	var err error
-	if job.provisioner == nil {
-		job.provisioner, err = pool.GetProvisionerForPool(job.ctx, job.Pool)
+	if job.provisioner != nil {
+		return job.provisioner, nil
 	}
-	return job.provisioner, err
+	prov, err := pool.GetProvisionerForPool(job.ctx, job.Pool)
+	if err != nil {
+		return nil, err
+	}
+	jobProv, ok := prov.(provision.JobProvisioner)
+	if !ok {
+		return nil, errors.Errorf("provisioner %q does not support native jobs and cronjobs scheduling", prov.GetName())
+	}
+	job.provisioner = jobProv
+	return job.provisioner, nil
 }
 
 // Units returns the list of units.
@@ -175,10 +184,6 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 	if err != nil {
 		return err
 	}
-	// jobProvisioner, ok := prov.(provision.JobProvisioner)
-	// if !ok {
-	// 	return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
-	// }
 	return prov.DestroyJob(job.ctx, job)
 }
 
