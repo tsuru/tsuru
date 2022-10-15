@@ -6,8 +6,10 @@ package fstest
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -202,6 +204,42 @@ func (s *S) TestRecordingFsMkdirAll(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(fs.HasAction("mkdirall /my/dir/with/subdir with mode 0777"), check.Equals, true)
 	_, ok := fs.files["/my/dir/with/subdir"]
+	c.Assert(ok, check.Equals, true)
+}
+
+func (s *S) TestRecordingFsMkdirTemp(c *check.C) {
+	fs := RecordingFs{}
+	tmpDir, err := fs.MkdirTemp("", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(tmpDir, check.Equals, filepath.Join(os.TempDir(), "00001"))
+	c.Assert(fs.HasAction("mkdirtemp into '' with pattern ''"), check.Equals, true)
+	c.Assert(fs.HasAction(fmt.Sprintf("mkdir %s with mode 0700", tmpDir)), check.Equals, true)
+	_, ok := fs.files[tmpDir]
+	c.Assert(ok, check.Equals, true)
+
+	tmpDir, err = fs.MkdirTemp("", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(tmpDir, check.Equals, filepath.Join(os.TempDir(), "00002"))
+	c.Assert(fs.HasAction("mkdirtemp into '' with pattern ''"), check.Equals, true)
+	c.Assert(fs.HasAction(fmt.Sprintf("mkdir %s with mode 0700", tmpDir)), check.Equals, true)
+	_, ok = fs.files[tmpDir]
+	c.Assert(ok, check.Equals, true)
+
+	baseTmpDir := filepath.Join(os.TempDir(), "another", "tmpdir")
+	tmpDir, err = fs.MkdirTemp(baseTmpDir, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(tmpDir, check.Equals, filepath.Join(baseTmpDir, "00003"))
+	c.Assert(fs.HasAction(fmt.Sprintf("mkdirtemp into '%s' with pattern ''", baseTmpDir)), check.Equals, true)
+	c.Assert(fs.HasAction(fmt.Sprintf("mkdir %s with mode 0700", tmpDir)), check.Equals, true)
+	_, ok = fs.files[tmpDir]
+	c.Assert(ok, check.Equals, true)
+
+	tmpDir, err = fs.MkdirTemp("", "mid_*_pattern")
+	c.Assert(err, check.IsNil)
+	c.Assert(tmpDir, check.Equals, filepath.Join(os.TempDir(), "mid_00004_pattern"))
+	c.Assert(fs.HasAction("mkdirtemp into '' with pattern 'mid_*_pattern'"), check.Equals, true)
+	c.Assert(fs.HasAction(fmt.Sprintf("mkdir %s with mode 0700", tmpDir)), check.Equals, true)
+	_, ok = fs.files[tmpDir]
 	c.Assert(ok, check.Equals, true)
 }
 

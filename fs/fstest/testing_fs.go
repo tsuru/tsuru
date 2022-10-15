@@ -131,6 +131,8 @@ type RecordingFs struct {
 	files      map[string]*FakeFile
 	filesMutex sync.Mutex
 
+	tmpDirCounter uint32
+
 	// FileContent is used to provide content for files opened using
 	// RecordingFs.
 	FileContent string
@@ -210,6 +212,71 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 	}
 	r.files[path] = &FakeFile{name: path, dir: true}
 	return nil
+}
+
+// LastIndexByte from the strings package.
+// source: os/tempfile.go
+func lastIndex(s string, sep byte) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == sep {
+			return i
+		}
+	}
+	return -1
+}
+
+// prefixAndSuffix splits pattern by the last wildcard "*", if applicable,
+// returning prefix as the part before "*" and suffix as the part after "*".
+// source: os/tempfile.go
+func prefixAndSuffix(pattern string) (prefix, suffix string, err error) {
+	for i := 0; i < len(pattern); i++ {
+		if os.IsPathSeparator(pattern[i]) {
+			return "", "", fmt.Errorf("pattern contains path separator")
+		}
+	}
+	if pos := lastIndex(pattern, '*'); pos != -1 {
+		prefix, suffix = pattern[:pos], pattern[pos+1:]
+	} else {
+		prefix = pattern
+	}
+	return prefix, suffix, nil
+}
+
+// source: os/tempfile.go
+func joinPath(dir, name string) string {
+	if len(dir) > 0 && os.IsPathSeparator(dir[len(dir)-1]) {
+		return dir + name
+	}
+	return dir + string(os.PathSeparator) + name
+}
+
+// MkdirTemp records the action "mkdirtemp into '<dir>' with pattern '<pattern>'"
+// (and also the Mkdir()'s "mkdir <name> with mode <perm>")
+// and returns the pathname of the new directory.
+// If dir="", os.TempDir() is used.
+// The pattern follows a 5-digit sequential number (starts at 00001)
+// source: os/tempfile.go
+func (r *RecordingFs) MkdirTemp(dir string, pattern string) (string, error) {
+	r.actionsMutex.Lock()
+	r.actions = append(r.actions, fmt.Sprintf("mkdirtemp into '%s' with pattern '%s'", dir, pattern))
+	r.actionsMutex.Unlock()
+
+	if dir == "" {
+		dir = os.TempDir()
+	}
+
+	prefix, suffix, err := prefixAndSuffix(pattern)
+	if err != nil {
+		return "", &os.PathError{Op: "mkdirtemp", Path: pattern, Err: err}
+	}
+	prefix = joinPath(dir, prefix)
+
+	r.filesMutex.Lock()
+	r.tmpDirCounter++
+	name := prefix + fmt.Sprintf("%05d", r.tmpDirCounter) + suffix
+	r.filesMutex.Unlock()
+	err = r.Mkdir(name, 0700)
+	return name, err
 }
 
 // Open records the action "open <name>" and returns an instance of FakeFile
