@@ -152,6 +152,7 @@ func (m *Manager) Register(command Command) {
 	}
 	name := command.Info().Name
 	m.RegisterCommandByName(name, command)
+	m.RegisterTopicByName(name, command)
 	alias := command.Info().Alias
 	if alias != "" {
 		m.RegisterCommandByName(alias, command)
@@ -164,7 +165,9 @@ func (m *Manager) RegisterCommandByName(name string, command Command) {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.Commands[name] = command
+}
 
+func (m *Manager) RegisterTopicByName(name string, command Command) {
 	parts := strings.Split(name, "-")
 
 	for i := 1; i < len(parts); i++ {
