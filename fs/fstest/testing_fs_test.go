@@ -418,6 +418,23 @@ func (s *S) TestRecordingFsRename(c *check.C) {
 	c.Assert(fs.HasAction("rename /my/file /your/file"), check.Equals, true)
 }
 
+func (s *S) TestRecordingFsRenameDir(c *check.C) {
+	fs := RecordingFs{}
+	fs.Mkdir("/mydir/1", 0755)
+	fs.Create("/mydir/1/file1")
+	fs.Create("/mydir/1/file2")
+	fs.Create("/mydir/keep")
+	for _, fname := range []string{"/mydir/1", "/mydir/1/file1", "/mydir/1/file2", "/mydir/keep"} {
+		_, err := fs.Stat(fname)
+		c.Assert(err, check.IsNil)
+	}
+	fs.Rename("/mydir/1", "/different/dir")
+	for _, fname := range []string{"/different/dir", "/different/dir/file1", "/different/dir/file2", "/mydir/keep"} {
+		_, err := fs.Stat(fname)
+		c.Assert(err, check.IsNil)
+	}
+}
+
 func (s *S) TestRecordingFsCold(c *check.C) {
 	fs := RecordingFs{}
 	err := fs.Rename("/my/file", "/your/file")
