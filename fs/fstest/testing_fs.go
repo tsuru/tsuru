@@ -356,12 +356,12 @@ func (r *RecordingFs) Rename(oldname, newname string) error {
 	if r.files == nil {
 		r.files = make(map[string]*FakeFile)
 	}
-	if strings.HasPrefix(newname, oldname) { // moving into itself
-		return os.ErrInvalid
-	}
 
 	// rename all dir's childs (very non-performant)
 	if r.files[oldname] != nil && r.files[oldname].dir {
+		if strings.HasPrefix(newname, oldname) { // moving into itself
+			return os.ErrInvalid
+		}
 		oldDirName := oldname + string(os.PathSeparator)
 		for fname := range r.files {
 			if suffix := strings.TrimPrefix(fname, oldDirName); suffix != "" && suffix != fname {

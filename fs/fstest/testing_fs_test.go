@@ -418,6 +418,23 @@ func (s *S) TestRecordingFsRename(c *check.C) {
 	c.Assert(fs.HasAction("rename /my/file /your/file"), check.Equals, true)
 }
 
+func (s *S) TestRecordingFsRenameAddExtension(c *check.C) {
+	fs := RecordingFs{}
+	f, _ := fs.Create("/my/file")
+	f.Write([]byte("hello, hello!"))
+	f.Close()
+	err := fs.Rename("/my/file", "/my/file.bak")
+	c.Assert(err, check.IsNil)
+	_, err = fs.Open("/my/file")
+	c.Assert(err, check.NotNil)
+	f, err = fs.Open("/my/file.bak")
+	c.Assert(err, check.IsNil)
+	defer f.Close()
+	b, _ := ioutil.ReadAll(f)
+	c.Assert(string(b), check.Equals, "hello, hello!")
+	c.Assert(fs.HasAction("rename /my/file /my/file.bak"), check.Equals, true)
+}
+
 func (s *S) TestRecordingFsRenameDir(c *check.C) {
 	fs := RecordingFs{}
 	fs.Mkdir("/mydir/1", 0755)
@@ -428,11 +445,20 @@ func (s *S) TestRecordingFsRenameDir(c *check.C) {
 		_, err := fs.Stat(fname)
 		c.Assert(err, check.IsNil)
 	}
-	fs.Rename("/mydir/1", "/different/dir")
+	err := fs.Rename("/mydir/1", "/different/dir")
+	c.Assert(err, check.IsNil)
 	for _, fname := range []string{"/different/dir", "/different/dir/file1", "/different/dir/file2", "/mydir/keep"} {
 		_, err := fs.Stat(fname)
 		c.Assert(err, check.IsNil)
 	}
+}
+
+func (s *S) TestRecordingFsRenameDirInseption(c *check.C) {
+	fs := RecordingFs{}
+	fs.Mkdir("/mydir/1", 0755)
+	err := fs.Rename("/mydir/1", "/mydir/1/2")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "invalid argument")
 }
 
 func (s *S) TestRecordingFsCold(c *check.C) {
