@@ -151,6 +151,14 @@ func (m *Manager) Register(command Command) {
 		m.Commands = make(map[string]Command)
 	}
 	name := command.Info().Name
+	m.RegisterCommandByName(name, command)
+	alias := command.Info().Alias
+	if alias != "" {
+		m.RegisterCommandByName(alias, command)
+	}
+}
+
+func (m *Manager) RegisterCommandByName(name string, command Command) {
 	_, found := m.Commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
@@ -621,6 +629,7 @@ func (c *Context) RawOutput() {
 
 type Info struct {
 	Name    string
+	Alias   string
 	MinArgs int
 	MaxArgs int
 	Usage   string
