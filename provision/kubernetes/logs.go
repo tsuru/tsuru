@@ -65,7 +65,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 	return listLogsFromPods(ctx, clusterClient, ns, pods, args)
 }
 
-func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, tsuruObject appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
 	clusterClient, err := clusterForPool(ctx, app.GetPool())
 	if err != nil {
 		return nil, err
