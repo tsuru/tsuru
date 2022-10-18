@@ -59,7 +59,7 @@ func (s *S) TestRegister(c *check.C) {
 func (s *S) TestRegisterCommandByName(c *check.C) {
 	globalManager.RegisterCommandByName("foobar", &TestCommand{})
 	badCall := func() { globalManager.RegisterCommandByName("foobar", &TestCommand{}) }
-	c.Assert(badCall, check.PanicMatches, "command already registered: foo")
+	c.Assert(badCall, check.PanicMatches, "command already registered: foobar")
 }
 
 func (s *S) TestRegisterDeprecated(c *check.C) {
@@ -204,22 +204,22 @@ func (s *S) TestNormalizedCommandsExec(c *check.C) {
 		{args: []string{"foo", "bar", "zzz", "a", "b"}, expected: "foo-bar-zzz-a-b"},
 		{args: []string{"foo", "bar", "zzz", "a", "b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
 		{args: []string{"foalias"}, expected: ""},
-		{args: []string{"fooalias"}, expected: "fooalias"},
-		{args: []string{"fooalias", "ba"}, expected: "fooalias", expectedArgs: []string{"ba"}},
-		{args: []string{"fooalias-bar"}, expected: "fooalias-bar"},
-		{args: []string{"fooalias-bar", "zz"}, expected: "fooalias-bar", expectedArgs: []string{"zz"}},
-		{args: []string{"fooalias", "bar"}, expected: "fooalias-bar"},
-		{args: []string{"fooalias", "bar", "zz"}, expected: "fooalias-bar", expectedArgs: []string{"zz"}},
-		{args: []string{"fooalias-bar-zzz"}, expected: "fooalias-bar-zzz"},
-		{args: []string{"fooalias-bar-zzz", "x"}, expected: "fooalias-bar-zzz", expectedArgs: []string{"x"}},
-		{args: []string{"fooalias-bar", "zzz"}, expected: "fooalias-bar-zzz"},
-		{args: []string{"fooalias", "bar-zzz"}, expected: "fooalias-bar-zzz"},
-		{args: []string{"fooalias", "bar", "zzz"}, expected: "fooalias-bar-zzz"},
-		{args: []string{"fooalias", "bar", "zzz", "x"}, expected: "fooalias-bar-zzz", expectedArgs: []string{"x"}},
-		{args: []string{"fooalias-bar-zzz-a-b"}, expected: "fooalias-bar-zzz-a-b"},
-		{args: []string{"fooalias-bar-zzz-a-b", "x"}, expected: "fooalias-bar-zzz-a-b", expectedArgs: []string{"x"}},
-		{args: []string{"fooalias", "bar", "zzz", "a", "b"}, expected: "fooalias-bar-zzz-a-b"},
-		{args: []string{"fooalias", "bar", "zzz", "a", "b", "x"}, expected: "fooalias-bar-zzz-a-b", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias"}, expected: "foo"},
+		{args: []string{"fooalias", "ba"}, expected: "foo", expectedArgs: []string{"ba"}},
+		{args: []string{"fooalias-bar"}, expected: "foo-bar"},
+		{args: []string{"fooalias-bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"fooalias", "bar"}, expected: "foo-bar"},
+		{args: []string{"fooalias", "bar", "zz"}, expected: "foo-bar", expectedArgs: []string{"zz"}},
+		{args: []string{"fooalias-bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias-bar-zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias-bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar-zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar", "zzz"}, expected: "foo-bar-zzz"},
+		{args: []string{"fooalias", "bar", "zzz", "x"}, expected: "foo-bar-zzz", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias-bar-zzz-a-b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"fooalias-bar-zzz-a-b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
+		{args: []string{"fooalias", "bar", "zzz", "a", "b"}, expected: "foo-bar-zzz-a-b"},
+		{args: []string{"fooalias", "bar", "zzz", "a", "b", "x"}, expected: "foo-bar-zzz-a-b", expectedArgs: []string{"x"}},
 	}
 	for i, tt := range tests {
 		globalManager.Run(tt.args)
