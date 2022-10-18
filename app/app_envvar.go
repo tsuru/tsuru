@@ -7,6 +7,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -74,9 +75,26 @@ func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []appty
 		args.Writer = io.Discard
 	}
 
-	fmt.Fprintf(args.Writer, "---- Setting %d new environment variables ----\n", len(envs))
+	if args.PruneUnused {
+		existingEnvs, err := s.storage.FindAll(ctx, a)
+		if err != nil {
+			return err
+		}
 
-	// TODO(nettoclaudio): we should review the prune flag.
+		var toPrune []string
+
+		for _, env := range existingEnvs {
+			_, found := findAppEnvVar(envs, env.Name)
+			if !found && env.ManagedBy == args.ManagedBy {
+				fmt.Fprintf(args.Writer, "---- Pruning %s from environment variables ----\n", env.Name)
+				toPrune = append(toPrune, env.Name)
+			}
+		}
+
+		if err = s.storage.Remove(ctx, a, toPrune); err != nil {
+			return err
+		}
+	}
 
 	final := make([]apptypes.EnvVar, 0, len(envs))
 	for _, env := range envs {
@@ -89,6 +107,8 @@ func (s *appEnvVarService) Set(ctx context.Context, a apptypes.App, envs []appty
 
 		servicemanager.AppLog.Add(a.GetName(), fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
 	}
+
+	fmt.Fprintf(args.Writer, "---- Setting %d new environment variables ----\n", len(envs))
 
 	if err := s.storage.Upsert(ctx, a, final); err != nil {
 		return err
@@ -136,6 +156,14 @@ func (s *appEnvVarService) Unset(ctx context.Context, a apptypes.App, envs []str
 }
 
 func validateEnvs(envs []apptypes.EnvVar, args apptypes.SetEnvArgs) error {
+	if args.ManagedBy == "" && len(envs) == 0 {
+		return errors.New("no env vars provided")
+	}
+
+	if args.PruneUnused && args.ManagedBy == "" {
+		return errors.New("cannot prune unused env vars without managed by reference")
+	}
+
 	for _, env := range envs {
 		if !envVarNameRegexp.MatchString(env.Name) {
 			return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", env.Name)}
@@ -185,4 +213,14 @@ func buildTsuruServiceEnvVar(vars []apptypes.ServiceEnvVar) apptypes.EnvVar {
 		Value:  string(jsonVal),
 		Public: false,
 	}
+}
+
+func findAppEnvVar(envs []apptypes.EnvVar, name string) (int, bool) {
+	for i, env := range envs {
+		if env.Name == name {
+			return i, true
+		}
+	}
+
+	return -1, false
 }
