@@ -117,13 +117,20 @@ local-mac:
 	minikube start --driver=virtualbox
 	minikube addons enable registry
 	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
+	@make local-api
+
+local-mac-m1:
+	minikube start --driver=docker --alsologtostderr
+	minikube addons enable registry
+	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
+	@make local-api
+
+local:
+	minikube start --driver=none
+	@make local-api
+
+local-api:
 	docker-compose up -d
 	go build -o $(TSR_BIN) $(TSR_SRC)
 	$(TSR_BIN) api -c ./etc/tsuru-local.conf
 
-local:
-	minikube start --driver=none
-	docker-compose up -d
-	go build -o $(TSR_BIN) $(TSR_SRC)
-	$(TSR_BIN) api -c ./etc/tsuru-local.conf
-	
