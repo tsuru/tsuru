@@ -17,10 +17,23 @@ check :doc:`tsuru usage </reference/tsuru-client>`.
 This document describes how you can install tsuru CLI, using pre-compiled
 binaries, packages or building them from source.
 
+- `Easy install (Mac OS X and Linux)`_
 - `Downloading binaries (Mac OS X, Linux and Windows)`_
 - `Using homebrew (Mac OS X only)`_
 - `Using the packagecloud.io (Linux)`_
 - `Build from source (Linux, Mac OS X and Windows)`_
+
+Easy install (Mac OS X and Linux)
+==================================================
+
+Use a script to download and install the latest version of tsuru client for you.
+
+.. highlight:: bash
+
+::
+
+    $ curl -fsSL "https://tsuru.io/get" | bash
+
 
 Downloading binaries (Mac OS X, Linux and Windows)
 ==================================================
