@@ -47,7 +47,7 @@ Create<Something>
 -----------------
 
 is a function that saves an instance of `Something`. Unlike ``NewSomething``,
-the create function would create a persistent version of `Someting`. Storing it
+the create function would create a persistent version of `Something`. Storing it
 in the database, a remote API, the filesystem or wherever `Something` would be
 stored "forever".
 

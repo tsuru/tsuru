@@ -402,7 +402,7 @@ service`_:
       production: production-endpoint.com
         test: test-endpoint.com:8080
 
-_`submit your service`: `Submiting your service API`_
+_`submit your service`: `Submitting your service API`_
 
 Submiting your service API
 ==========================
