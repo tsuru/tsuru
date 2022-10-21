@@ -31,7 +31,7 @@ On Kubernetes, volume plans may use a volume plugin or a storage class.
 Volumes
 =======
 
-Volumes are created by tsuru users using one of the plans previously configurated. These can be created and managed by using
+Volumes are created by tsuru users using one of the plans previously configured. These can be created and managed by using
 the tsuru client. The behavior is provisioner specific:
 
 On Kubernetes provisioner
