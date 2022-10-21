@@ -197,3 +197,27 @@ jobs:
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
         platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+
+  publish-release:
+    needs:
+    - docker-image
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: goreleaser/goreleaser-action@v2
+      with:
+        args: release --rm-dist
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/setup-ruby@v1
+      with:
+        ruby-version: '2.x'
+    - run: |
+        curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | bash
+      env:
+        PACKAGE_NAME: tsuru
+        PACKAGECLOUD_TOKEN: ${{secrets.PACKAGECLOUD_TOKEN}}
+        SKIP_GORELEASER: "true"
