@@ -10,9 +10,9 @@ tsuru.yaml
 tsuru.yaml is a special file located in the root of the application. The name of
 the file may be ``tsuru.yaml`` or ``tsuru.yml``.
 
-This file is used to describe certain aspects of your app. Currently it describes
+This file is used to describe certain aspects of your app. Currently, it describes
 information about deployment hooks and deployment time health checks. How to use
-this features is described below.
+these features is described below.
 
 
 .. _yaml_deployment_hooks:
@@ -24,7 +24,7 @@ tsuru provides some deployment hooks, like ``restart:before``, ``restart:after``
 and ``build``. Deployment hooks allow developers to run commands before and after
 some commands.
 
-Here is an example about how to declare this hooks in your tsuru.yaml file:
+Here is an example about how to declare these hooks in your tsuru.yaml file:
 
 .. highlight:: yaml
 
@@ -49,7 +49,7 @@ tsuru supports the following hooks:
   per unit.
 * ``restart:after``: this hook is like before-each, but runs after restarting a
   unit.
-* ``build``: this hook lists commands that will be run during deploy, when the
+* ``build``: this hook lists commands that will be run during deployment when the
   image is being generated.
 
 
@@ -71,7 +71,7 @@ Health checks may also be used by the application router and by kubernetes, so
 you must ensure that the check is consistent to prevent units from being
 temporarily removed from the router.
 
-Example on how you can configure a HTTP base health check in your yaml file:
+Example on how you can configure a HTTP based health check in your yaml file:
 
 .. highlight:: yaml
 
@@ -88,7 +88,7 @@ Example on how you can configure a HTTP base health check in your yaml file:
       timeout_seconds: 60
       deploy_timeout_seconds: 180
 
-      // Ignored in kubernetes provisioner pools:
+      // Ignored in Kubernetes provisioner pools:
       method: GET
       status: 200
       use_in_router: false
@@ -96,7 +96,7 @@ Example on how you can configure a HTTP base health check in your yaml file:
       router_body: content
 
 
-Example of a command based healthcheck (kubernetes only):
+Example of a command based healthcheck (Kubernetes only):
 
 .. highlight:: yaml
 
