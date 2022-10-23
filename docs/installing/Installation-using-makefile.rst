@@ -28,7 +28,7 @@ Install Tsuru and its dependencies:
     $ sudo make local
 
 
-Note: In some cases, you may get a 'permission denied', in such cases make sure you have remove all traces of the "minikube" cluster:
+Note: In some cases, you may get a 'permission denied' error, in such cases make sure you have remove all traces of the "minikube" cluster:
 
 .. highlight:: bash
 
