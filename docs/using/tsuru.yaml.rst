@@ -11,8 +11,8 @@ tsuru.yaml is a special file located in the root of the application. The name of
 the file may be ``tsuru.yaml`` or ``tsuru.yml``.
 
 This file is used to describe certain aspects of your app. Currently, it describes
-information about deployment hooks and deployment time health checks. How to use
-these features is described below.
+information about deployment hooks and deployment time health checks. The use of 
+these features is described bellow.
 
 
 .. _yaml_deployment_hooks:
@@ -24,7 +24,7 @@ tsuru provides some deployment hooks, like ``restart:before``, ``restart:after``
 and ``build``. Deployment hooks allow developers to run commands before and after
 some commands.
 
-Here is an example about how to declare these hooks in your tsuru.yaml file:
+An example on how to declare these hooks in tsuru.yaml file is described bellow:
 
 .. highlight:: yaml
 
