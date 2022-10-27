@@ -162,7 +162,7 @@ func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *Clus
 
 		var status provision.Status
 		if pod.Status.Phase == apiv1.PodRunning {
-			status = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
+			status, _ = extractStatusAndReasonFromContainerStatuses(pod.Status.ContainerStatuses)
 		} else {
 			status = stateMap[pod.Status.Phase]
 		}

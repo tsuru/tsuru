@@ -786,7 +786,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 		var status provision.Status
 		var reason string
 		if pod.Status.Phase == apiv1.PodRunning {
-			status, reason = extractStatusFromContainerStatuses(pod.Status.ContainerStatuses)
+			status, reason = extractStatusAndReasonFromContainerStatuses(pod.Status.ContainerStatuses)
 		} else {
 			status = stateMap[pod.Status.Phase]
 			reason = pod.Status.Reason
@@ -833,7 +833,7 @@ func containersReady(containersStatus []apiv1.ContainerStatus) *bool {
 	return &ready
 }
 
-func extractStatusFromContainerStatuses(statuses []apiv1.ContainerStatus) (provision.Status, string) {
+func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatus) (provision.Status, string) {
 	for _, containerStatus := range statuses {
 		if containerStatus.Ready {
 			continue

@@ -116,7 +116,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			}
 		}
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
-			if e.Err == job.ErrJobAlreadyExists {
+			if e.Err == jobTypes.ErrJobAlreadyExists {
 				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
 			}
 			if _, ok := pkgErrors.Cause(e.Err).(*quota.QuotaExceededError); ok {

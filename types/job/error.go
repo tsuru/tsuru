@@ -13,7 +13,7 @@ var (
 	ErrJobNotFound        = errors.New("Job not found")
 	MaxAttempts           = 5
 	ErrMaxAttemptsReached = fmt.Errorf("Unable to generate unique job name: max attempts reached (%d)", MaxAttempts)
-	ErrJobAlreadyExists   = errors.New("there is already a job with this name")
+	ErrJobAlreadyExists   = errors.New("a job with the same name and team owner already exists")
 )
 
 type ContainerInfo struct {

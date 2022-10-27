@@ -14,10 +14,6 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-var (
-	ErrJobAlreadyExists = errors.New("there is already a job with this name")
-)
-
 // insertJob is an action that inserts a job in the database in Forward and
 // removes it in the Backward.
 //
@@ -55,7 +51,7 @@ func insertJobDB(job *Job) error {
 	if err == jobTypes.ErrJobNotFound {
 		return conn.Jobs().Insert(job)
 	} else if err == nil {
-		return ErrJobAlreadyExists
+		return jobTypes.ErrJobAlreadyExists
 	}
 	return err
 }
