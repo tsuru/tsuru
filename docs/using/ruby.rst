@@ -22,7 +22,7 @@ To create an app, you use the command `app create`:
 
 ::
 
-    $ tsuru app create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform> <team>
 
 For Ruby, the app platform is ``ruby``! Let's be over creative and develop a
 never-developed tutorial-app: a blog, and its name will also be very creative,
@@ -32,7 +32,7 @@ let's call it "blog":
 
 ::
 
-    $ tsuru app create blog ruby
+    $ tsuru app create blog ruby --team
 
 To list all available platforms, use the command `platform list`.
 

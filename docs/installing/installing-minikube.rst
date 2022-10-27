@@ -113,7 +113,7 @@ Create and Deploy tsuru-dashboard app:
 
 ::
 
-   $ tsuru app create dashboard
+   $ tsuru app create dashboard --team
    $ tsuru app deploy -a dashboard --image tsuru/dashboard
 
 Create an app to test:
@@ -126,7 +126,7 @@ Create an app to test:
    $ cd example-go
    $ git clone https://github.com/tsuru/platforms.git
    $ cd platforms/examples/go
-   $ tsuru app create example-go go
+   $ tsuru app create example-go go --team
    $ tsuru app deploy -a example-go .
 
 Check the app info and get the url:

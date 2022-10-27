@@ -32,7 +32,7 @@ To create an app, you use the command `app create`:
 
 ::
 
-    $ tsuru app create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform> <team>
 
 For Java, the app platform is, guess what, ``java``! Let's call our application "helloweb":
 
@@ -40,7 +40,7 @@ For Java, the app platform is, guess what, ``java``! Let's call our application 
 
 ::
 
-    $ tsuru app create helloweb java
+    $ tsuru app create helloweb java --team
 
 To list all available platforms, use the command `platform list`.
 

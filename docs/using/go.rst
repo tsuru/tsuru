@@ -21,7 +21,7 @@ To create an app, you use the command `app create`:
 
 ::
 
-    $ tsuru app create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform> <team>
 
 For Go, the platform name is ``go``! Let's be over creative and develop a hello
 world tutorial-app, let's call it "helloworld":
@@ -30,7 +30,7 @@ world tutorial-app, let's call it "helloworld":
 
 ::
 
-    $ tsuru app create helloworld go
+    $ tsuru app create helloworld go --team
 
 To list all available platforms, use the command `platform list`.
 

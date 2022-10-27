@@ -23,7 +23,7 @@ To create an app, you use the command `app create`:
 
 ::
 
-    $ tsuru app create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform> <team>
 
 For PHP, the app platform is, guess what, ``php``! Let's be over creative
 and develop a never-developed tutorial-app: a blog, and its name will also be
@@ -33,7 +33,7 @@ very creative, let's call it "blog":
 
 ::
 
-    $ tsuru app create blog php
+    $ tsuru app create blog php --team
 
 To list all available platforms, use the command `platform list`.
 

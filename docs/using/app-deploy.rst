@@ -20,7 +20,7 @@ To create an app, you need to use the command `app create`:
 
 ::
 
-    $ tsuru app create <app-name> <app-platform>
+    $ tsuru app create <app-name> <app-platform> <team>
 
 Deploying an app
 ++++++++++++++++

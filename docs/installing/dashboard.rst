@@ -46,7 +46,7 @@ Now, lets create the dashboard application:
 
 ::
 
-    tsuru app create tsuru-dashboard python -t admin
+    tsuru app create tsuru-dashboard python --team admin
 
 This will create an application called tsuru-dashboard which uses the Python platform
 and belongs to the admin team. Please refer to the
