@@ -19,6 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
+const jobPrefix = "tsuru-"
+
 func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
 	jobContainers := []v1.Container{}
 	for _, ci := range containersInfo {
@@ -43,8 +45,8 @@ func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations 
 	}
 }
 
-func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) error {
-	_, err := client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
+func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
+	k8sCronjob, err := client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.GetName(),
 			Labels:      labels,
@@ -57,25 +59,25 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 			},
 		},
 	}, metav1.CreateOptions{})
-	return err
+	return k8sCronjob.Name, err
 }
 
-func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) error {
-	_, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
+func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
+	k8sJob, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.GetName(),
-			Labels:      labels,
-			Annotations: annotations,
+			Labels:       labels,
+			Annotations:  annotations,
+			GenerateName: jobPrefix,
 		},
 		Spec: jobSpec,
 	}, metav1.CreateOptions{})
-	return err
+	return k8sJob.Name, err
 }
 
-func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) error {
+func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) (string, error) {
 	client, err := clusterForPool(ctx, j.GetPool())
 	if err != nil {
-		return err
+		return "", err
 	}
 	jobLabels := provision.JobLabels(ctx, j).ToLabels()
 	jobAnnotations := map[string]string{}

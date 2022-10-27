@@ -423,7 +423,7 @@ type JobProvisioner interface {
 	JobUnits(context.Context, Job) ([]JobUnit, error)
 
 	// JobSchedule creates a cronjob object in the cluster
-	CreateJob(context.Context, Job) error
+	CreateJob(context.Context, Job) (string, error)
 
 	DestroyJob(context.Context, Job) error
 }

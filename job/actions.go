@@ -14,25 +14,58 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-// insertJob is an action that inserts a job in the database in Forward and
-// removes it in the Backward.
-//
-// The first argument in the context must be a Job or a pointer to a Job.
-var insertJob = action.Action{
-	Name: "insert-job",
+var provisionJob = action.Action{
+	Name: "provision-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var job *Job
 		switch ctx.Params[0].(type) {
 		case *Job:
 			job = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *App.")
+			return nil, errors.New("First parameter must be *Job.")
 		}
-		err := insertJobDB(job)
+		prov, err := job.getProvisioner()
 		if err != nil {
 			return nil, err
 		}
-		return job, nil
+		return prov.CreateJob(ctx.Context, job)
+	},
+	Backward: func(ctx action.BWContext) {
+		job := ctx.FWResult.(*Job)
+		prov, err := job.getProvisioner()
+		if err == nil {
+			prov.DestroyJob(ctx.Context, job)
+		}
+	},
+	MinParams: 1,
+}
+
+// insertJob is an action that inserts a job in the database in Forward and
+// removes it in the Backward.
+// insert job must always be run after provision-job because it depends on
+// the value of ctx.Previous
+//
+// The first argument in the context must be a Job or a pointer to a Job.
+var insertJob = action.Action{
+	Name: "insert-job",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var j *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			j = ctx.Params[0].(*Job)
+		default:
+			return nil, errors.New("First parameter must be *Job.")
+		}
+		var err error
+		j.Name = ctx.Previous.(string)
+		if err != nil {
+			return nil, err
+		}
+		err = insertJobDB(j)
+		if err != nil {
+			return nil, err
+		}
+		return j, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		job := ctx.FWResult.(*Job)

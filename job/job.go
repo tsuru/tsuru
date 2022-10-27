@@ -210,13 +210,13 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 		actions = []*action.Action{
 			&reserveTeamCronjob,
 			&reserveUserCronjob,
-			&insertJob,
 			&provisionJob,
+			&insertJob,
 		}
 	} else {
 		actions = []*action.Action{
-			&insertJob,
 			&provisionJob,
+			&insertJob,
 		}
 	}
 
@@ -226,33 +226,4 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 		return err
 	}
 	return nil
-}
-
-var provisionJob = action.Action{
-	Name: "provision-job",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
-		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
-		default:
-			return nil, errors.New("First parameter must be *Job.")
-		}
-		prov, err := job.getProvisioner()
-		if err != nil {
-			return nil, err
-		}
-		if err = prov.CreateJob(ctx.Context, job); err != nil {
-			return nil, err
-		}
-		return job, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		job := ctx.FWResult.(*Job)
-		prov, err := job.getProvisioner()
-		if err == nil {
-			prov.DestroyJob(ctx.Context, job)
-		}
-	},
-	MinParams: 1,
 }
