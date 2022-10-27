@@ -31,7 +31,13 @@ var provisionJob = action.Action{
 		return prov.CreateJob(ctx.Context, job)
 	},
 	Backward: func(ctx action.BWContext) {
-		job := ctx.FWResult.(*Job)
+		var job *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			job = ctx.Params[0].(*Job)
+		default:
+			return
+		}
 		prov, err := job.getProvisioner()
 		if err == nil {
 			prov.DestroyJob(ctx.Context, job)
