@@ -157,6 +157,9 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("%+v\n", ij)
+
 	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
 	if err != nil {
 		return err

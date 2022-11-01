@@ -1573,3 +1573,23 @@ func (p *AutoScaleProvisioner) RemoveAutoScale(ctx context.Context, app provisio
 	}
 	return nil
 }
+
+type JobProvisioner struct {
+	*FakeProvisioner
+}
+
+var _ provision.JobProvisioner = &JobProvisioner{}
+
+// JobUnits returns information about units related to a specific Job or CronJob
+func (p *JobProvisioner) JobUnits(context.Context, provision.Job) ([]provision.JobUnit, error) {
+	return nil, nil
+}
+
+// JobSchedule creates a cronjob object in the cluster
+func (p *JobProvisioner) CreateJob(ctx context.Context, job provision.Job) (string, error) {
+	return job.GetName(), nil
+}
+
+func (p *JobProvisioner) DestroyJob(context.Context, provision.Job) error {
+	return nil
+}

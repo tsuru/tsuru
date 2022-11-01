@@ -221,9 +221,5 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 	}
 
 	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(ctx, job, user)
-	if err != nil {
-		return err
-	}
-	return nil
+	return pipeline.Execute(ctx, job, user)
 }
