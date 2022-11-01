@@ -175,6 +175,43 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
+func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "this-is-a-cronjob",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j, s.user)
+	c.Assert(err, check.IsNil)
+	myJob, err := job.GetByNameAndTeam(context.TODO(), j.Name, j.TeamOwner)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Name:      "this-is-a-cronjob",
+		TeamOwner: myJob.TeamOwner,
+		Pool:      "test1",
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
 // func (s *S) TestJobInfo(c *check.C) {
 // 	config.Set("host", "http://myhost.com")
 // 	expectedApp := app.App{Name: "new-app", Platform: "zend", TeamOwner: s.team.Name}
