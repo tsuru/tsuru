@@ -379,8 +379,29 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	if opts.Kind == "" {
 		opts.GetKind()
 	}
+
 	if opts.App.GetPlatform() == "" && opts.Kind != DeployImage && opts.Kind != DeployRollback {
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
+	}
+
+	if depv2, ok := prov.(provision.BuilderDeployV2); ok {
+		image, err := depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
+			ID:          opts.Event.UniqueID.Hex(),
+			Kind:        string(opts.GetKind()),
+			Archive:     opts.File,
+			ArchiveSize: opts.FileSize,
+			Event:       opts.Event,
+			Output:      opts.OutputStream,
+		})
+		if err != nil && !errors.Is(err, provision.ErrDeployV2NotSupported) {
+			return "", err
+		}
+
+		if err == nil { // app deployed successfully using deploy v2
+			return image, err
+		}
+
+		fmt.Fprintln(evt, "Deploy v2 not enabled for this deploy yet")
 	}
 
 	deployer, ok := prov.(provision.BuilderDeploy)

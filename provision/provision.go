@@ -39,9 +39,10 @@ const (
 )
 
 var (
-	ErrInvalidStatus = errors.New("invalid status")
-	ErrEmptyApp      = errors.New("no units for this app")
-	ErrNodeNotFound  = errors.New("node not found")
+	ErrInvalidStatus        = errors.New("invalid status")
+	ErrEmptyApp             = errors.New("no units for this app")
+	ErrNodeNotFound         = errors.New("node not found")
+	ErrDeployV2NotSupported = errors.New("deploy v2 not supported")
 
 	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
 	DefaultProvisioner = defaultDockerProvisioner
@@ -306,6 +307,23 @@ type BuilderKubeClient interface {
 	BuildPlatformImages(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error)
 	ImageTagPushAndInspect(context.Context, App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
 	DownloadFromContainer(context.Context, App, *event.Event, string) (io.ReadCloser, error)
+}
+
+type DeployV2Args struct {
+	ID          string
+	Kind        string
+	Description string
+
+	Event *event.Event
+
+	Archive     io.ReadCloser
+	ArchiveSize int64
+
+	Output io.Writer
+}
+
+type BuilderDeployV2 interface {
+	DeployV2(context.Context, App, DeployV2Args) (string, error)
 }
 
 type DeployArgs struct {

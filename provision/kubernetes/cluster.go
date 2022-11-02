@@ -41,6 +41,11 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	backendConfigClientSet "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 )
 
 const (
@@ -77,6 +82,8 @@ const (
 	versionedServices             = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
+	buildServiceAddressKey        = "build-service-address"
+	buildServiceInsecureKey       = "build-service-insecure"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -112,6 +119,7 @@ var (
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
 		dnsConfigNdotsKey:             "Number of dots in the domain name to be used in the search list for DNS lookups. Default to uses kubernetes default value (5).",
+		buildServiceAddressKey:        "Address of build service (deploy-agent v2)",
 	}
 )
 
@@ -288,6 +296,7 @@ func NewClusterClient(clust *provTypes.Cluster) (*ClusterClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &ClusterClient{
 		Cluster:    clust,
 		Interface:  client,
@@ -661,6 +670,24 @@ func (c *ClusterClient) disablePDB(pool string) bool {
 
 func (c *ClusterClient) dockerConfigJSON() string {
 	return c.CustomData[dockerConfigJSONKey]
+}
+
+func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.ClientConn, error) {
+	addr := c.configForContext(pool, buildServiceAddressKey)
+	if addr == "" {
+		return nil, nil, fmt.Errorf("build service address not provided: %w", provision.ErrDeployV2NotSupported)
+	}
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	conn, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pb.NewBuildClient(conn), conn, nil
 }
 
 type clusterApp struct {
