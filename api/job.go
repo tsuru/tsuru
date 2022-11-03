@@ -95,17 +95,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     jobTarget(j.Name),
-		Kind:       permission.PermAppCreate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&j)...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
 	err = job.CreateJob(ctx, &j, u)
 	if err != nil {
 		log.Errorf("Got error while creating job: %s", err)
@@ -128,8 +117,22 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 		return err
 	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermAppCreate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&j)...),
+	})
+	defer func() {
+		evt.Done(err)
+	}()
+	if err != nil {
+		return err
+	}
 	msg := map[string]interface{}{
-		"status": "success",
+		"status":  "success",
+		"jobName": j.Name,
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
