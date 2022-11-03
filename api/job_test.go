@@ -16,45 +16,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
-
-func (s *S) TestDeleteShouldReturnNotFoundIfTheJobDoesNotExist(c *check.C) {
-	job := inputJob{
-		Name:      "unknown",
-		TeamOwner: "unknown",
-	}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(job)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
-}
-
-func (s *S) TestDeleteShouldReturnNotFoundIfTheCronjobDoesNotExist(c *check.C) {
-	job := inputJob{
-		Name:      "unknown",
-		TeamOwner: "unknown",
-		Schedule:  "* * * * *",
-	}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(job)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
-}
 
 func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
@@ -220,4 +184,70 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.delete",
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestDeleteShouldReturnNotFoundIfTheJobDoesNotExist(c *check.C) {
+	job := inputJob{
+		Name:      "unknown",
+		TeamOwner: "unknown",
+	}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(job)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
+}
+
+func (s *S) TestDeleteShouldReturnNotFoundIfTheCronjobDoesNotExist(c *check.C) {
+	job := inputJob{
+		Name:      "unknown",
+		TeamOwner: "unknown",
+		Schedule:  "* * * * *",
+	}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(job)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
+}
+
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheJob(c *check.C) {
+	j := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "job1",
+			TeamOwner: "admin",
+		},
+	}
+	ij := inputJob{
+		Name:      j.Name,
+		TeamOwner: j.TeamOwner,
+	}
+	err := s.conn.Jobs().Insert(j)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppDelete,
+		Context: permission.Context(permTypes.CtxApp, "-other-job-"),
+	})
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
