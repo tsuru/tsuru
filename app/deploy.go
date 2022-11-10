@@ -386,12 +386,15 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 	if depv2, ok := prov.(provision.BuilderDeployV2); ok {
 		image, err := depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
-			ID:          opts.Event.UniqueID.Hex(),
-			Kind:        string(opts.GetKind()),
-			Archive:     opts.File,
-			ArchiveSize: opts.FileSize,
-			Event:       opts.Event,
-			Output:      opts.OutputStream,
+			ID:               opts.Event.UniqueID.Hex(),
+			Kind:             string(opts.GetKind()),
+			Archive:          opts.File,
+			ArchiveSize:      opts.FileSize,
+			Image:            opts.Image,
+			Event:            opts.Event,
+			Output:           opts.Event,
+			PreserveVersions: opts.NewVersion,
+			OverrideVersions: opts.OverrideVersions,
 		})
 		if err != nil && !errors.Is(err, provision.ErrDeployV2NotSupported) {
 			return "", err

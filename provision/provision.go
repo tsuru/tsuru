@@ -319,7 +319,12 @@ type DeployV2Args struct {
 	Archive     io.ReadCloser
 	ArchiveSize int64
 
+	Image string
+
 	Output io.Writer
+
+	PreserveVersions bool
+	OverrideVersions bool
 }
 
 type BuilderDeployV2 interface {

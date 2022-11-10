@@ -18,6 +18,11 @@ import (
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/servicemanager"
 	apptypes "github.com/tsuru/tsuru/types/app"
+	provisiontypes "github.com/tsuru/tsuru/types/provision"
+	"gopkg.in/yaml.v2"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ provision.BuilderDeployV2 = (*kubernetesProvisioner)(nil)
@@ -27,16 +32,15 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
-	if !isDeployV2Supported(args.Kind) {
-		return "", provision.ErrDeployV2NotSupported
-	}
+	nctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	w := args.Output
 	if w == nil {
 		w = io.Discard
 	}
 
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, apptypes.NewVersionArgs{
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(nctx, apptypes.NewVersionArgs{
 		App:         app,
 		EventID:     args.ID,
 		Description: args.Description,
@@ -45,26 +49,32 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
-	c, err := clusterForPool(ctx, app.GetPool())
+	c, err := clusterForPool(nctx, app.GetPool())
 	if err != nil {
 		return "", err
 	}
 
 	data := make([]byte, args.ArchiveSize)
-	_, err = args.Archive.Read(data)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return "", err
+	if args.ArchiveSize > 0 {
+		_, err = args.Archive.Read(data)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", err
+		}
+		defer args.Archive.Close()
 	}
-	defer args.Archive.Close()
 
 	envs := make(map[string]string)
 	for k, v := range app.Envs() {
 		envs[k] = v.Value
 	}
 
-	baseImage, err := image.GetBuildImage(ctx, app)
+	baseImage, err := image.GetBuildImage(nctx, app)
 	if err != nil {
 		return "", err
+	}
+
+	if len(args.Image) > 0 {
+		baseImage = args.Image
 	}
 
 	dstImage, err := newVersion.BaseImageName()
@@ -85,7 +95,7 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 	}
 	defer conn.Close()
 
-	stream, err := bs.Build(ctx, &pb.BuildRequest{
+	stream, err := bs.Build(nctx, &pb.BuildRequest{
 		App: &pb.TsuruApp{
 			Name:    app.GetName(),
 			EnvVars: envs,
@@ -108,15 +118,54 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 			break
 		}
 
+		if serr, ok := status.FromError(err); ok && serr.Code() == codes.Unimplemented {
+			return "", provision.ErrDeployV2NotSupported
+		}
+
 		if err != nil {
-			return "", fmt.Errorf("failed to receive stream from build service: %w", err)
+			return "", err
 		}
 
 		switch r.Data.(type) {
 		case *pb.BuildResponse_TsuruConfig:
-			err := newVersion.AddData(apptypes.AddVersionDataArgs{
-				Processes:  version.GetProcessesFromProcfile(r.GetTsuruConfig().Procfile),
-				CustomData: nil,
+			tc := r.GetTsuruConfig()
+
+			procfile := version.GetProcessesFromProcfile(tc.Procfile)
+			if len(procfile) == 0 {
+				fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
+				cmds := append(tc.ImageConfig.Entrypoint, tc.ImageConfig.Cmd...)
+				if len(cmds) == 0 {
+					return "", errors.New("neither Procfile nor entrypoint and cmd set")
+				}
+
+				procfile[provision.WebProcessName] = cmds
+			}
+
+			for k, v := range procfile {
+				fmt.Fprintf(w, " ---> Process %q found with commands: %q\n", k, v)
+			}
+
+			var customData map[string]any
+			if len(tc.TsuruYaml) > 0 {
+				fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
+				// TODO: maybe pretty print Tsuru YAML on w
+
+				var err error
+				customData, err = tsuruYamlToCustomData(tc.TsuruYaml)
+				if err != nil {
+					return "", err
+				}
+			}
+
+			var exposedPorts []string
+			if tc.ImageConfig != nil {
+				exposedPorts = tc.ImageConfig.ExposedPorts
+			}
+
+			err = newVersion.AddData(apptypes.AddVersionDataArgs{
+				Processes:    procfile,
+				CustomData:   customData,
+				ExposedPorts: exposedPorts,
 			})
 			if err != nil {
 				return "", err
@@ -132,7 +181,7 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
-	err = servicecommon.RunServicePipeline(ctx, &serviceManager{client: c, writer: w}, 0, provision.DeployArgs{
+	err = servicecommon.RunServicePipeline(nctx, &serviceManager{client: c, writer: w}, 0, provision.DeployArgs{
 		App:              app,
 		Version:          newVersion,
 		Event:            args.Event,
@@ -142,21 +191,11 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
-	if err = ensureAppCustomResourceSynced(ctx, c, app); err != nil {
+	if err = ensureAppCustomResourceSynced(nctx, c, app); err != nil {
 		return "", err
 	}
 
 	return newVersion.VersionInfo().DeployImage, nil
-}
-
-func isDeployV2Supported(kind string) bool {
-	switch kind {
-	case "upload":
-		return true
-
-	default:
-		return false
-	}
 }
 
 func kindToDeployOrigin(kind string) pb.DeployOrigin {
@@ -164,7 +203,27 @@ func kindToDeployOrigin(kind string) pb.DeployOrigin {
 	case "upload":
 		return pb.DeployOrigin_DEPLOY_ORIGIN_SOURCE_FILES
 
+	case "image":
+		return pb.DeployOrigin_DEPLOY_ORIGIN_CONTAINER_IMAGE
+
 	default:
 		return pb.DeployOrigin_DEPLOY_ORIGIN_UNSPECIFIED
 	}
+}
+
+func tsuruYamlToCustomData(str string) (map[string]any, error) {
+	if len(str) == 0 {
+		return nil, nil
+	}
+
+	var tsuruYaml provisiontypes.TsuruYamlData
+	if err := yaml.Unmarshal([]byte(str), &tsuruYaml); err != nil {
+		return nil, fmt.Errorf("failed to decode Tsuru YAML: %w", err)
+	}
+
+	return map[string]any{
+		"healthcheck": tsuruYaml.Healthcheck,
+		"hooks":       tsuruYaml.Hooks,
+		"kubernetes":  tsuruYaml.Kubernetes,
+	}, nil
 }
