@@ -48,6 +48,135 @@ func getJob(ctx stdContext.Context, name, teamOwner string) (*job.Job, error) {
 	return j, nil
 }
 
+// title: job info
+// path: /jobs
+// method: GET
+// produce: application/x-json-stream
+// responses:
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Not found
+func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	var ij inputJob
+	err = ParseInput(r, &ij)
+	if err != nil {
+		return err
+	}
+	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
+	if err != nil {
+		return err
+	}
+	canGet := permission.Check(t, permission.PermAppRead,
+		contextsForJob(j)...,
+	)
+	if !canGet {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermAppRead,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	jsonMsg, err := json.Marshal(j)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonMsg)
+	return nil
+}
+
+// title: job update
+// path: /jobs
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//
+//	201: Job updated
+//	400: Invalid data
+//	401: Unauthorized
+func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	var ij inputJob
+	err = ParseInput(r, &ij)
+	if err != nil {
+		return err
+	}
+
+	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
+	if err != nil {
+		return err
+	}
+	canUpdate := permission.Check(t, permission.PermAppUpdate,
+		permission.Context(permTypes.CtxTeam, j.TeamOwner),
+	)
+	if !canUpdate {
+		return permission.ErrUnauthorized
+	}
+	u, err := auth.ConvertNewUser(t.User())
+	if err != nil {
+		return err
+	}
+	newJob := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner:   ij.TeamOwner,
+			Plan:        appTypes.Plan{Name: ij.Plan},
+			Name:        ij.Name,
+			Description: ij.Description,
+			Pool:        ij.Pool,
+			Metadata:    ij.Metadata,
+		},
+		Schedule:   ij.Schedule,
+		Containers: ij.Containers,
+	}
+	if j.TeamOwner == "" {
+		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
+		if err != nil {
+			return err
+		}
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(newJob.Name),
+		Kind:       permission.PermAppUpdate,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&newJob)...),
+	})
+	defer func() {
+		evt.Done(err)
+	}()
+	err = job.UpdateJob(ctx, &newJob, u)
+	if err != nil {
+		return err
+	}
+	msg := map[string]interface{}{
+		"status": "success",
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	w.Write(jsonMsg)
+	return nil
+}
+
 // title: job create
 // path: /jobs
 // method: POST
@@ -145,7 +274,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 }
 
 // title: remove job
-// path: /jobs/{name}
+// path: /jobs
 // method: DELETE
 // produce: application/x-json-stream
 // responses:

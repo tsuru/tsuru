@@ -426,6 +426,8 @@ type JobProvisioner interface {
 	CreateJob(context.Context, Job) (string, error)
 
 	DestroyJob(context.Context, Job) error
+
+	UpdateJob(context.Context, Job) error
 }
 
 type ExecOptions struct {

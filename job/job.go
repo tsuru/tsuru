@@ -223,3 +223,17 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(ctx, job, user)
 }
+
+// UpdateJob updates an existing cronjob.
+//
+// Updating a new job is a process composed of the following steps:
+//
+//  1. Patch the job using the provisioner
+//  2. Update the job in the database
+func UpdateJob(ctx context.Context, job *Job, user *auth.User) error {
+	pipeline := action.NewPipeline([]*action.Action{
+		&updateJobProv,
+		&jobUpdateDB,
+	}...)
+	return pipeline.Execute(ctx, job, user)
+}

@@ -91,6 +91,33 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	return createJob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
 }
 
+func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) error {
+	client, err := clusterForPool(ctx, j.GetPool())
+	if err != nil {
+		return err
+	}
+	jobLabels := provision.JobLabels(ctx, j).ToLabels()
+	jobAnnotations := map[string]string{}
+	for _, a := range j.GetMetadata().Annotations {
+		jobAnnotations[a.Name] = a.Value
+	}
+	jobSpec := createJobSpec(j.GetContainersInfo(), jobLabels, jobAnnotations)
+	_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Update(ctx, &apiv1beta1.CronJob{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        j.GetName(),
+			Labels:      jobLabels,
+			Annotations: jobAnnotations,
+		},
+		Spec: apiv1beta1.CronJobSpec{
+			Schedule: j.GetSchedule(),
+			JobTemplate: apiv1beta1.JobTemplateSpec{
+				Spec: jobSpec,
+			},
+		},
+	}, metav1.UpdateOptions{})
+	return err
+}
+
 // JobUnits returns information about units related to a specific Job or CronJob
 func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
 	client, err := clusterForPool(ctx, j.GetPool())

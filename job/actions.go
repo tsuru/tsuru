@@ -5,6 +5,9 @@
 package job
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
@@ -12,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var provisionJob = action.Action{
@@ -42,6 +46,44 @@ var provisionJob = action.Action{
 		if err == nil {
 			prov.DestroyJob(ctx.Context, job)
 		}
+	},
+	MinParams: 1,
+}
+
+var updateJobProv = action.Action{
+	Name: "update-job",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var job *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			job = ctx.Params[0].(*Job)
+		default:
+			return nil, errors.New("First parameter must be *Job.")
+		}
+		prov, err := job.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		return nil, prov.UpdateJob(ctx.Context, job)
+	},
+	MinParams: 1,
+}
+
+// updateJob is an action that updates a job in the database in Forward and
+// does nothing in the Backward.
+//
+// The first argument in the context must be a Job or a pointer to a Job.
+var jobUpdateDB = action.Action{
+	Name: "update-job-db",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var j *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			j = ctx.Params[0].(*Job)
+		default:
+			return nil, errors.New("First parameter must be *Job.")
+		}
+		return nil, updateJobDB(j)
 	},
 	MinParams: 1,
 }
@@ -93,6 +135,22 @@ func insertJobDB(job *Job) error {
 		return jobTypes.ErrJobAlreadyExists
 	}
 	return err
+}
+
+func updateJobDB(job *Job) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	oldJob, err := GetByNameAndTeam(job.ctx, job.Name, job.TeamOwner)
+	if err != nil {
+		return err
+	}
+	if reflect.DeepEqual(*oldJob, *job) {
+		return errors.New(fmt.Sprintf("no new values to be patched into job %s", job.Name))
+	}
+	return conn.Jobs().Update(bson.M{"tsurujob.name": job.Name, "tsurujob.teamowner": job.TeamOwner}, job)
 }
 
 var reserveTeamCronjob = action.Action{

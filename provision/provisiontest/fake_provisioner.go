@@ -1593,3 +1593,7 @@ func (p *JobProvisioner) CreateJob(ctx context.Context, job provision.Job) (stri
 func (p *JobProvisioner) DestroyJob(context.Context, provision.Job) error {
 	return nil
 }
+
+func (p *JobProvisioner) UpdateJob(context.Context, provision.Job) error {
+	return nil
+}
