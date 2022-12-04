@@ -13,6 +13,7 @@ import (
 	"net"
 	"sort"
 	"testing"
+	"time"
 
 	buildpb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 	"google.golang.org/grpc"
@@ -62,6 +63,35 @@ func (s *S) TestDeployV2_BuildServiceReturnsError(c *check.C) {
 	_, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error has been occurred").Error())
+}
+
+func (s *S) TestDeployV2_BuildServiceShouldRespectContextCancelation(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	ch := make(chan struct{})
+	defer close(ch)
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			ch <- struct{}{}
+			time.Sleep(time.Second)
+			return fmt.Errorf("should not pass here")
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		<-ch
+		cancel()
+	}()
+
+	_, err := s.p.DeployV2(ctx, a, provision.DeployV2Args{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Canceled, "context canceled").Error())
 }
 
 func (s *S) TestDeployV2_DeployFromSourceCode(c *check.C) {
