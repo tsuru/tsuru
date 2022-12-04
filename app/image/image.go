@@ -16,6 +16,8 @@ import (
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 )
 
+const LatestTag = "latest"
+
 func ImageHistorySize() int {
 	imgHistorySize, _ := config.GetInt("docker:image-history-size")
 	if imgHistorySize == 0 {

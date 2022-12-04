@@ -12,6 +12,10 @@ import (
 
 	"github.com/tsuru/config"
 	pb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"gopkg.in/yaml.v2"
+
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/provision"
@@ -19,10 +23,6 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apptypes "github.com/tsuru/tsuru/types/app"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
-	"gopkg.in/yaml.v2"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var _ provision.BuilderDeployV2 = (*kubernetesProvisioner)(nil)
@@ -32,33 +32,48 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
+	if args.Output == nil {
+		args.Output = io.Discard
+	}
+
 	nctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	w := args.Output
-	if w == nil {
-		w = io.Discard
+	/* Build and push container image */
+	newVersion, err := p.buildContainerImage(nctx, app, args)
+	if err != nil {
+		return "", err
 	}
 
-	newVersion, err := servicemanager.AppVersion.NewAppVersion(nctx, apptypes.NewVersionArgs{
+	/* Rollout new container image to the cluster */
+	if err = p.deployVersion(nctx, app, args, newVersion); err != nil {
+		return "", err
+	}
+
+	return newVersion.VersionInfo().DeployImage, nil
+}
+
+func (p *kubernetesProvisioner) buildContainerImage(ctx context.Context, app provision.App, args provision.DeployV2Args) (apptypes.AppVersion, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	w := args.Output
+
+	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, apptypes.NewVersionArgs{
 		App:         app,
 		EventID:     args.ID,
 		Description: args.Description,
 	})
 	if err != nil {
-		return "", err
-	}
-
-	c, err := clusterForPool(nctx, app.GetPool())
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	data := make([]byte, args.ArchiveSize)
 	if args.ArchiveSize > 0 {
 		_, err = args.Archive.Read(data)
 		if err != nil && !errors.Is(err, io.EOF) {
-			return "", err
+			return nil, err
 		}
 		defer args.Archive.Close()
 	}
@@ -68,34 +83,40 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		envs[k] = v.Value
 	}
 
-	baseImage, err := image.GetBuildImage(nctx, app)
+	baseImage, err := image.GetBuildImage(ctx, app)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	// FIXME: we should only use this arg iff deploy kind is from image
 	if len(args.Image) > 0 {
 		baseImage = args.Image
 	}
 
 	dstImage, err := newVersion.BaseImageName()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	dstImages := []string{dstImage}
-	if repository, tag := image.SplitImageName(dstImage); tag != "latest" {
-		dstImages = append(dstImages, fmt.Sprintf("%s:latest", repository))
+	if repository, tag := image.SplitImageName(dstImage); tag != image.LatestTag {
+		dstImages = append(dstImages, fmt.Sprintf("%s:%s", repository, image.LatestTag))
 	}
 
 	insecureRegistry, _ := config.GetBool("docker:registry-auth:insecure")
 
+	c, err := clusterForPool(ctx, app.GetPool())
+	if err != nil {
+		return nil, err
+	}
+
 	bs, conn, err := c.BuildServiceClient(app.GetPool())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer conn.Close()
 
-	stream, err := bs.Build(nctx, &pb.BuildRequest{
+	stream, err := bs.Build(ctx, &pb.BuildRequest{
 		App: &pb.TsuruApp{
 			Name:    app.GetName(),
 			EnvVars: envs,
@@ -109,7 +130,7 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		},
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	for {
@@ -119,11 +140,11 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		}
 
 		if serr, ok := status.FromError(err); ok && serr.Code() == codes.Unimplemented {
-			return "", provision.ErrDeployV2NotSupported
+			return nil, provision.ErrDeployV2NotSupported
 		}
 
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		switch r.Data.(type) {
@@ -135,7 +156,7 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 				fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
 				cmds := append(tc.ImageConfig.Entrypoint, tc.ImageConfig.Cmd...)
 				if len(cmds) == 0 {
-					return "", errors.New("neither Procfile nor entrypoint and cmd set")
+					return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 				}
 
 				procfile[provision.WebProcessName] = cmds
@@ -153,7 +174,7 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 				var err error
 				customData, err = tsuruYamlToCustomData(tc.TsuruYaml)
 				if err != nil {
-					return "", err
+					return nil, err
 				}
 			}
 
@@ -168,34 +189,55 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 				ExposedPorts: exposedPorts,
 			})
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 
 		case *pb.BuildResponse_Output:
-			fmt.Fprintf(w, r.GetOutput())
+			w.Write([]byte(r.GetOutput()))
 		}
 	}
 
-	err = newVersion.CommitBaseImage()
-	if err != nil {
-		return "", err
+	if err = newVersion.CommitBaseImage(); err != nil {
+		return nil, err
 	}
 
-	err = servicecommon.RunServicePipeline(nctx, &serviceManager{client: c, writer: w}, 0, provision.DeployArgs{
+	return newVersion, nil
+}
+
+func (p *kubernetesProvisioner) deployVersion(ctx context.Context, app provision.App, args provision.DeployV2Args, version apptypes.AppVersion) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	c, err := clusterForPool(ctx, app.GetPool())
+	if err != nil {
+		return err
+	}
+
+	var oldVersionNumber int
+	if !args.PreserveVersions {
+		oldVersionNumber, err = baseVersionForApp(ctx, c, app)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = servicecommon.RunServicePipeline(ctx, &serviceManager{client: c, writer: args.Output}, oldVersionNumber, provision.DeployArgs{
 		App:              app,
-		Version:          newVersion,
+		Version:          version,
 		Event:            args.Event,
-		OverrideVersions: true,
+		PreserveVersions: args.PreserveVersions,
+		OverrideVersions: args.OverrideVersions,
 	}, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	if err = ensureAppCustomResourceSynced(nctx, c, app); err != nil {
-		return "", err
+	if err = ensureAppCustomResourceSynced(ctx, c, app); err != nil {
+		return err
 	}
 
-	return newVersion.VersionInfo().DeployImage, nil
+	return nil
 }
 
 func kindToDeployOrigin(kind string) pb.DeployOrigin {

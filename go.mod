@@ -43,7 +43,7 @@ require (
 	github.com/ugorji/go/codec v1.1.7
 	golang.org/x/crypto v0.1.0
 	golang.org/x/net v0.1.0
-	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
+	golang.org/x/oauth2 v0.1.0
 	golang.org/x/sys v0.1.0
 	golang.org/x/term v0.1.0
 	golang.org/x/text v0.4.0
@@ -95,7 +95,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v0.0.0-20150414214848-547ef5ac9797 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
@@ -129,6 +129,7 @@ require (
 	github.com/samalba/dockerclient v0.0.0-20160531175551-a30362618471 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9 // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/vmware/govcloudair v0.0.2 // indirect
