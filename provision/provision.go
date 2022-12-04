@@ -310,9 +310,8 @@ type BuilderKubeClient interface {
 }
 
 type DeployV2Args struct {
-	ID          string
-	Kind        string
 	Description string
+	Kind        string
 
 	Event *event.Event
 

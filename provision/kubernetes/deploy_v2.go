@@ -32,21 +32,26 @@ func (p *kubernetesProvisioner) DeployV2(ctx context.Context, app provision.App,
 		return "", err
 	}
 
+	if app == nil {
+		return "", errors.New("app not provided")
+	}
+
+	if args.Event == nil {
+		return "", errors.New("event not provided")
+	}
+
 	if args.Output == nil {
 		args.Output = io.Discard
 	}
 
-	nctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	/* Build and push container image */
-	newVersion, err := p.buildContainerImage(nctx, app, args)
+	newVersion, err := p.buildContainerImage(ctx, app, args)
 	if err != nil {
 		return "", err
 	}
 
 	/* Rollout new container image to the cluster */
-	if err = p.deployVersion(nctx, app, args, newVersion); err != nil {
+	if err = p.deployVersion(ctx, app, args, newVersion); err != nil {
 		return "", err
 	}
 
@@ -62,7 +67,7 @@ func (p *kubernetesProvisioner) buildContainerImage(ctx context.Context, app pro
 
 	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, apptypes.NewVersionArgs{
 		App:         app,
-		EventID:     args.ID,
+		EventID:     args.Event.UniqueID.Hex(),
 		Description: args.Description,
 	})
 	if err != nil {

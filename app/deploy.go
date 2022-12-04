@@ -386,7 +386,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 	if depv2, ok := prov.(provision.BuilderDeployV2); ok {
 		image, err := depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
-			ID:               opts.Event.UniqueID.Hex(),
+			Description:      opts.Message,
 			Kind:             string(opts.GetKind()),
 			Archive:          opts.File,
 			ArchiveSize:      opts.FileSize,

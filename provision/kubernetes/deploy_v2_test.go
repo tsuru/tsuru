@@ -33,6 +33,30 @@ import (
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
+func (s *S) TestDeployV2_ContextCanceled(c *check.C) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := s.p.DeployV2(ctx, nil, provision.DeployV2Args{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "context canceled")
+}
+
+func (s *S) TestDeployV2_MissingApp(c *check.C) {
+	_, err := s.p.DeployV2(context.TODO(), nil, provision.DeployV2Args{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "app not provided")
+}
+
+func (s *S) TestDeployV2_MissingEvent(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	_, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "event not provided")
+}
+
 func (s *S) TestDeployV2_Unsupported(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -44,7 +68,15 @@ func (s *S) TestDeployV2_Unsupported(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	_, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{Event: evt})
 	c.Assert(err, check.NotNil)
 	c.Assert(errors.Is(err, provision.ErrDeployV2NotSupported), check.Equals, true)
 }
@@ -60,7 +92,15 @@ func (s *S) TestDeployV2_BuildServiceReturnsError(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	_, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{Event: evt})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error has been occurred").Error())
 }
@@ -81,6 +121,14 @@ func (s *S) TestDeployV2_BuildServiceShouldRespectContextCancelation(c *check.C)
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -89,7 +137,7 @@ func (s *S) TestDeployV2_BuildServiceShouldRespectContextCancelation(c *check.C)
 		cancel()
 	}()
 
-	_, err := s.p.DeployV2(ctx, a, provision.DeployV2Args{})
+	_, err = s.p.DeployV2(ctx, a, provision.DeployV2Args{Event: evt})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Canceled, "context canceled").Error())
 }
@@ -169,7 +217,6 @@ hooks:
 	var output bytes.Buffer
 
 	image, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{
-		ID:          "abc123",
 		Description: "Add my awesome feature :P",
 		Kind:        string(app.DeployUpload),
 		Event:       evt,
@@ -186,7 +233,7 @@ hooks:
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.DeepEquals, 1)
-	c.Assert(version.VersionInfo().EventID, check.DeepEquals, "abc123")
+	c.Assert(version.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
 	c.Assert(version.VersionInfo().Description, check.DeepEquals, "Add my awesome feature :P")
 	c.Assert(version.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
 
@@ -289,7 +336,6 @@ func (s *S) TestDeployV2_DeployFromContainerImage(c *check.C) {
 	var output bytes.Buffer
 
 	image, err := s.p.DeployV2(context.TODO(), a, provision.DeployV2Args{
-		ID:          "abc456",
 		Description: "New container image xD",
 		Kind:        string(app.DeployImage),
 		Image:       "registry.example/my-repository/my-app:v42",
@@ -302,7 +348,7 @@ func (s *S) TestDeployV2_DeployFromContainerImage(c *check.C) {
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.Version(), check.DeepEquals, 1)
-	c.Assert(version.VersionInfo().EventID, check.DeepEquals, "abc456")
+	c.Assert(version.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
 	c.Assert(version.VersionInfo().Description, check.DeepEquals, "New container image xD")
 	c.Assert(version.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
 	c.Assert(version.VersionInfo().ExposedPorts, check.DeepEquals, []string{"8080/tcp", "8443/tcp"})
