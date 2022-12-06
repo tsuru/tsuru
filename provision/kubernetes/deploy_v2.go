@@ -63,6 +63,24 @@ func (p *kubernetesProvisioner) buildContainerImage(ctx context.Context, app pro
 		return nil, err
 	}
 
+	if args.Kind == "rollback" {
+		version, err = servicemanager.AppVersion.VersionByImageOrVersion(ctx, opts.App, opts.Image)
+		if err != nil {
+			return nil, err
+		}
+
+		vi := version.VersionInfo()
+		if vi.MarkedToRemoval {
+			return nil, apptypes.ErrVersionMarkedToRemoval
+		}
+
+		if vi.Disabled {
+			return nil, fmt.Errorf("the selected version is disabled for rollback: %s", vi.DisabledReason)
+		}
+
+		return version, nil
+	}
+
 	w := args.Output
 
 	newVersion, err := servicemanager.AppVersion.NewAppVersion(ctx, apptypes.NewVersionArgs{
