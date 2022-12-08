@@ -62,11 +62,14 @@ type S struct {
 	mock          *kubeTesting.KubeMock
 	mockService   servicemock.MockService
 	factory       informers.SharedInformerFactory
+	t             *testing.T
 }
 
-var _ = check.Suite(&S{})
+var suiteInstance = &S{}
+var _ = check.Suite(suiteInstance)
 
 func Test(t *testing.T) {
+	suiteInstance.t = t
 	check.TestingT(t)
 }
 
@@ -102,6 +105,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: "kubernetes",
+		CustomData:  map[string]string{},
 	}
 	s.clusterClient, err = kubeProv.NewClusterClient(clus)
 	c.Assert(err, check.IsNil)

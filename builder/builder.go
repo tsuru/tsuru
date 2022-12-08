@@ -17,20 +17,28 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
-var DefaultBuilder = "docker"
+var (
+	DefaultBuilder = "docker"
+
+	ErrBuildV2NotSupported = errors.New("build v2 not supported")
+)
 
 type BuildOpts struct {
+	IsTsuruBuilderImage bool
 	BuildFromFile       bool
 	Rebuild             bool
 	Redeploy            bool
-	IsTsuruBuilderImage bool
 	ArchiveURL          string
 	ArchiveFile         io.Reader
-	ArchiveTarFile      io.ReadCloser
 	ArchiveSize         int64
 	ImageID             string
 	Tag                 string
 	Message             string
+	Output              io.Writer
+}
+
+type BuilderV2 interface {
+	BuildV2(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
 }
 
 // Builder is the basic interface of this package.
@@ -50,6 +58,15 @@ type PlatformBuilder interface {
 // Register registers a new builder in the Builder registry.
 func Register(name string, builder Builder) {
 	builders[name] = builder
+}
+
+func List() map[string]Builder {
+	bs := make(map[string]Builder)
+	for name, b := range builders {
+		bs[name] = b
+	}
+
+	return bs
 }
 
 // GetForProvisioner gets the builder required by the provisioner.

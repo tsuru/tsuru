@@ -450,15 +450,30 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 		ImageID:       opts.Image,
 		Tag:           opts.BuildTag,
 		Message:       opts.Message,
+		Output:        evt,
 	}
-	builder, err := opts.App.getBuilder()
+
+	b, err := opts.App.getBuilder()
 	if err != nil {
 		return nil, err
 	}
-	version, err := builder.Build(ctx, prov, opts.App, evt, &buildOpts)
+
+	if bv2, ok := b.(builder.BuilderV2); ok {
+		version, err := bv2.BuildV2(ctx, opts.App, evt, buildOpts)
+		if err != nil && (!errors.Is(err, builder.ErrBuildV2NotSupported) || !errors.Is(err, provision.ErrDeployV2NotSupported)) {
+			return nil, err
+		}
+
+		if err == nil { // app build successfully using build v2
+			return version, nil
+		}
+	}
+
+	version, err := b.Build(ctx, prov, opts.App, evt, &buildOpts)
 	if buildOpts.IsTsuruBuilderImage {
 		opts.Kind = DeployBuildedImage
 	}
+
 	return version, err
 }
 
