@@ -129,7 +129,8 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	}
 
 	for {
-		r, err := stream.Recv()
+		var r *buildpb.BuildResponse
+		r, err = stream.Recv()
 		if errors.Is(err, io.EOF) {
 			break
 		}
@@ -166,7 +167,6 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 				fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
 				// TODO: maybe pretty print Tsuru YAML on w
 
-				var err error
 				customData, err = tsuruYamlStringToCustomData(tc.TsuruYaml)
 				if err != nil {
 					return nil, err

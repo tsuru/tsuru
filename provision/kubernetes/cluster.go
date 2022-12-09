@@ -83,7 +83,6 @@ const (
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
 	buildServiceAddressKey        = "build-service-address"
-	buildServiceInsecureKey       = "build-service-insecure"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second

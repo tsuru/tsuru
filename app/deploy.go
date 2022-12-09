@@ -385,7 +385,8 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	}
 
 	if depv2, ok := prov.(provision.BuilderDeployV2); ok {
-		image, err := depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
+		var image string
+		image, err = depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
 			Description:      opts.Message,
 			Kind:             string(opts.GetKind()),
 			Archive:          opts.File,
@@ -459,7 +460,8 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 	}
 
 	if bv2, ok := b.(builder.BuilderV2); ok {
-		version, err := bv2.BuildV2(ctx, opts.App, evt, buildOpts)
+		var version appTypes.AppVersion
+		version, err = bv2.BuildV2(ctx, opts.App, evt, buildOpts)
 		if err != nil && (!errors.Is(err, builder.ErrBuildV2NotSupported) || !errors.Is(err, provision.ErrDeployV2NotSupported)) {
 			return nil, err
 		}
