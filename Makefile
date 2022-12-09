@@ -38,7 +38,7 @@ race:
 	go test -race ./...
 
 _install_api_doc:
-	@go get github.com/tsuru/tsuru-api-docs
+	@go install github.com/tsuru/tsuru-api-docs@latest
 
 api-doc: _install_api_doc
 	@tsuru-api-docs | grep -v missing > docs/handlers.yml
