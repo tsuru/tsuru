@@ -152,7 +152,7 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - run: go get golang.org/x/tools/cmd/goimports
+    - run: go install golang.org/x/tools/cmd/goimports@latest
     - run: ./hack/verify-codegen.sh
 
   docker-image:
