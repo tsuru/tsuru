@@ -225,8 +225,8 @@ hooks:
 	processes, err := appVersion.Processes()
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string][]string{
-		"web":    []string{"./path/app.py --port ${PORT}"},
-		"worker": []string{"./path/worker.sh --verbose"},
+		"web":    {"./path/app.py --port ${PORT}"},
+		"worker": {"./path/worker.sh --verbose"},
 	})
 
 	tsuruYaml, err := appVersion.TsuruYamlData()
@@ -295,7 +295,7 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 	processes, err := appVersion.Processes()
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string][]string{
-		"web": []string{"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
+		"web": {"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
 	})
 
 	tsuruYaml, err := appVersion.TsuruYamlData()
