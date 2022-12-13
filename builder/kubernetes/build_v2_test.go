@@ -160,7 +160,7 @@ func (s *S) TestBuildV2_BuildWithSourceCode(c *check.C) {
 					"MY_ENV2": "value 2",
 				},
 			})
-			c.Check(req.GetDeployOrigin(), check.DeepEquals, buildpb.DeployOrigin_DEPLOY_ORIGIN_SOURCE_FILES)
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD)
 			c.Check(req.GetSourceImage(), check.DeepEquals, "docker.io/tsuru/python:latest")
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
 			c.Check(req.GetData(), check.DeepEquals, []byte(`my awesome source code :P`))
@@ -250,7 +250,7 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
 			// provoke an deadlock on RPC client and server.
 			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
-			c.Check(req.GetDeployOrigin(), check.DeepEquals, buildpb.DeployOrigin_DEPLOY_ORIGIN_CONTAINER_IMAGE)
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
 			c.Check(req.GetData(), check.IsNil)
 

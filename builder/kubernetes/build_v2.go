@@ -115,11 +115,11 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	}
 
 	stream, err := bs.Build(ctx, &buildpb.BuildRequest{
+		Kind: kindToBuildKind(opts),
 		App: &buildpb.TsuruApp{
 			Name:    app.GetName(),
 			EnvVars: envs,
 		},
-		DeployOrigin:      kindToDeployOrigin(opts),
 		SourceImage:       baseImage,
 		DestinationImages: dstImages,
 		Data:              data,
@@ -199,16 +199,16 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	return appVersion, nil
 }
 
-func kindToDeployOrigin(opts builder.BuildOpts) buildpb.DeployOrigin {
+func kindToBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
 	if opts.ImageID != "" {
-		return buildpb.DeployOrigin_DEPLOY_ORIGIN_CONTAINER_IMAGE
+		return buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE
 	}
 
 	if opts.ArchiveSize > 0 {
-		return buildpb.DeployOrigin_DEPLOY_ORIGIN_SOURCE_FILES
+		return buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD
 	}
 
-	return buildpb.DeployOrigin_DEPLOY_ORIGIN_UNSPECIFIED
+	return buildpb.BuildKind_BUILD_KIND_UNSPECIFIED
 }
 
 func tsuruYamlStringToCustomData(str string) (map[string]any, error) {
