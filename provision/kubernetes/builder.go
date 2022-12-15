@@ -168,7 +168,7 @@ func (c *KubeClient) BuildPlatformImages(ctx context.Context, opts appTypes.Plat
 		if cli.DisablePlatformBuild() {
 			return nil
 		}
-		regsMap[cli.registry()] = cli
+		regsMap[cli.Registry()] = cli
 		return nil
 	})
 	if err != nil {

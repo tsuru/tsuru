@@ -112,6 +112,7 @@ var (
 		buildPlanSideCarKey:           "Name of sidecar plan to be used during pod build. Defaults same as build-plan if omitted",
 		enableLogsFromAPIServerKey:    "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
+		registryInsecureKey:           "Pull and push container images to insecure registry (over plain HTTP)",
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarImageKey:               "Override for deploy sidecar image.",
@@ -590,19 +591,12 @@ func (c *ClusterClient) EnableVersionedServices() (bool, error) {
 }
 
 func (c *ClusterClient) Registry() imgTypes.ImageRegistry {
-	return c.registry()
+	return imgTypes.ImageRegistry(c.CustomData[registryKey])
 }
 
 func (c *ClusterClient) InsecureRegistry() bool {
 	insecure, _ := strconv.ParseBool(c.CustomData[registryInsecureKey])
 	return insecure
-}
-
-func (c *ClusterClient) registry() imgTypes.ImageRegistry {
-	if c.CustomData == nil {
-		return ""
-	}
-	return imgTypes.ImageRegistry(c.CustomData[registryKey])
 }
 
 func (c *ClusterClient) buildServiceAccount(a provision.App) string {
