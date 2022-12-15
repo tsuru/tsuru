@@ -74,6 +74,7 @@ const (
 	allServicesAnnotations        = "all-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
+	registryInsecureKey           = "registry-insecure"
 	sidecarImageKey               = "sidecar-image"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
@@ -586,6 +587,15 @@ func (c *ClusterClient) EnableVersionedServices() (bool, error) {
 		return false, nil
 	}
 	return strconv.ParseBool(enable)
+}
+
+func (c *ClusterClient) Registry() imgTypes.ImageRegistry {
+	return c.registry()
+}
+
+func (c *ClusterClient) InsecureRegistry() bool {
+	insecure, _ := strconv.ParseBool(c.CustomData[registryInsecureKey])
+	return insecure
 }
 
 func (c *ClusterClient) registry() imgTypes.ImageRegistry {

@@ -188,7 +188,6 @@ func (c *KubeClient) BuildPlatformImages(ctx context.Context, opts appTypes.Plat
 			}
 			inputStream = builder.CompressDockerFile([]byte(fmt.Sprintf("FROM %s", rollbackImg)))
 		}
-
 		imageName, err := servicemanager.PlatformImage.NewImage(ctx, reg, opts.Name, opts.Version)
 		if err != nil {
 			return nil, err

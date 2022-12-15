@@ -23,10 +23,14 @@ import (
 	provisionk8s "github.com/tsuru/tsuru/provision/kubernetes"
 	"github.com/tsuru/tsuru/servicemanager"
 	apptypes "github.com/tsuru/tsuru/types/app"
+	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
-var _ builder.BuilderV2 = (*kubernetesBuilder)(nil)
+var (
+	_ builder.BuilderV2         = (*kubernetesBuilder)(nil)
+	_ builder.PlatformBuilderV2 = (*kubernetesBuilder)(nil)
+)
 
 func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
@@ -42,6 +46,139 @@ func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt 
 	}
 
 	return b.buildContainerImage(ctx, app, evt, opts)
+}
+
+func (b *kubernetesBuilder) PlatformBuildV2(ctx context.Context, opts apptypes.PlatformOptions) ([]string, error) {
+	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return nil, err
+	}
+
+	w := opts.Output
+	if w == nil {
+		w = io.Discard
+	}
+
+	clusters, err := servicemanager.Cluster.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var images []string
+
+	registries := make(map[imagetypes.ImageRegistry]struct{})
+
+	for _, c := range clusters {
+		cc, err := provisionk8s.NewClusterClient(&c)
+		if err != nil {
+			return nil, err
+		}
+
+		bc, conn, err := cc.BuildServiceClient("") // requires the configuration to be set for all pools
+		if errors.Is(err, provision.ErrDeployV2NotSupported) {
+			return nil, builder.ErrBuildV2NotSupported
+		}
+
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+
+		if cc.DisablePlatformBuild() {
+			fmt.Fprintf(w, "Skipping platform build on %s cluster: disabled to platform builds\n", c.Name)
+			continue
+		}
+
+		registry := cc.Registry()
+		if registry == imagetypes.EmptyImageRegistry {
+			fmt.Fprintf(w, "Skipping platform build on %s cluster: no registry found in cluster configs\n", c.Name)
+			continue
+		}
+
+		if _, found := registries[registry]; found {
+			continue // already done
+		}
+
+		registries[registry] = struct{}{}
+
+		fmt.Fprintf(w, "---- Building platform %s on cluster %s ----\n", opts.Name, c.Name)
+
+		imgs, err := b.buildPlatformImage(ctx, bc, registry, cc.InsecureRegistry(), opts)
+		if err != nil {
+			return nil, err
+		}
+
+		images = append(images, imgs...)
+	}
+
+	if len(images) == 0 {
+		return nil, errors.New("no kubernetes nodes available")
+	}
+
+	return images, nil
+}
+
+func (b *kubernetesBuilder) buildPlatformImage(ctx context.Context, bc buildpb.BuildClient, registry imagetypes.ImageRegistry, insecureRegistry bool, opts apptypes.PlatformOptions) ([]string, error) {
+	w := opts.Output
+	if w == nil {
+		w = io.Discard
+	}
+
+	var containerfile string
+	if opts.RollbackVersion > 0 {
+		return nil, errors.New("rollback not implemented")
+	}
+
+	if len(opts.Data) > 0 {
+		containerfile = string(opts.Data)
+	}
+
+	img, err := servicemanager.PlatformImage.NewImage(ctx, registry, opts.Name, opts.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	images := make([]string, 0, 1+len(opts.ExtraTags))
+	images = append(images, img)
+
+	repo, _ := image.SplitImageName(img)
+	for _, tag := range opts.ExtraTags {
+		images = append(images, fmt.Sprintf("%s:%s", repo, tag))
+	}
+
+	for _, img := range images {
+		fmt.Fprintf(w, " ---> Destination image: %s\n", img)
+	}
+
+	fmt.Fprintln(w, "---- Starting build ----")
+
+	stream, err := bc.Build(ctx, &buildpb.BuildRequest{
+		Kind:              buildpb.BuildKind_BUILD_KIND_PLATFORM_WITH_CONTAINER_FILE,
+		Platform:          &buildpb.TsuruPlatform{Name: opts.Name},
+		Containerfile:     containerfile,
+		DestinationImages: images,
+		PushOptions:       &buildpb.PushOptions{InsecureRegistry: insecureRegistry},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		r, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		switch r.Data.(type) {
+		case *buildpb.BuildResponse_Output:
+			w.Write([]byte(r.GetOutput()))
+		}
+	}
+
+	return images, nil
 }
 
 func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {

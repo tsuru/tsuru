@@ -22,6 +22,8 @@ type RegistryVersion struct {
 
 type ImageRegistry string
 
+const EmptyImageRegistry ImageRegistry = ""
+
 type PlatformImageService interface {
 	NewVersion(context.Context, string) (int, error)
 	NewImage(context.Context, ImageRegistry, string, int) (string, error)

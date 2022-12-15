@@ -147,6 +147,9 @@ func (s *S) SetUpTest(c *check.C) {
 			return &plan, nil
 		},
 	}
+	s.mockService.Cluster.OnList = func() ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*clus}, nil
+	}
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return []provTypes.Cluster{*clus}, nil
 	}

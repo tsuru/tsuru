@@ -24,11 +24,17 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	apptypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
-const buildServiceAddressKey = "build-service-address"
+const (
+	buildServiceAddressKey  = "build-service-address"
+	registryKey             = "registry"
+	registryInsecureKey     = "registry-insecure"
+	disablePlatformBuildKey = "disable-platform-build"
+)
 
 func (s *S) TestBuildV2_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -301,6 +307,159 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 	tsuruYaml, err := appVersion.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
+}
+
+func (s *S) TestPlatformBuildV2_ContextCanceled(c *check.C) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := s.b.PlatformBuildV2(ctx, apptypes.PlatformOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "context canceled")
+}
+
+func (s *S) TestPlatformBuildV2_MissingBuildServiceAddress(c *check.C) {
+	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "build v2 not supported")
+	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
+}
+
+func (s *S) TestPlatformBuildV2_ClusterWithPlatformBuildDisabled(c *check.C) {
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	s.clusterClient.CustomData[disablePlatformBuildKey] = "true"
+
+	var output bytes.Buffer
+	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+		Output: &output,
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "no kubernetes nodes available")
+	c.Assert(output.String(), check.Matches, "(?s).*Skipping platform build on c1 cluster: disabled to platform builds.*")
+}
+
+func (s *S) TestPlatformBuildV2_ClusterWithoutRegistry(c *check.C) {
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	var output bytes.Buffer
+	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+		Output: &output,
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "no kubernetes nodes available")
+	c.Assert(output.String(), check.Matches, "(?s).*Skipping platform build on c1 cluster: no registry found in cluster configs.*")
+}
+
+func (s *S) TestPlatformBuildV2_RollbackVersion(c *check.C) {
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
+
+	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{RollbackVersion: 42})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "rollback not implemented")
+}
+
+func (s *S) TestPlatformBuildV2_BuildServiceReturnsError(c *check.C) {
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			return errors.New("something went wrong")
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
+
+	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "something went wrong").Error())
+}
+
+func (s *S) TestPlatformBuildV2_SuccesfulPlatformBuild(c *check.C) {
+	s.mockService.PlatformImage.OnNewImage = func(reg imagetypes.ImageRegistry, platform string, version int) (string, error) {
+		c.Check(reg, check.DeepEquals, imagetypes.ImageRegistry("registry.example.com/tsuru"))
+		c.Check(platform, check.DeepEquals, "my-platform")
+		c.Check(version, check.Equals, 42)
+
+		return "registry.example.com/tsuru/my-platform:v42", nil
+	}
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_PLATFORM_WITH_CONTAINER_FILE)
+			c.Check(req.GetPlatform(), check.DeepEquals, &buildpb.TsuruPlatform{Name: "my-platform"})
+			c.Check(req.GetContainerfile(), check.DeepEquals, "FROM tsuru/scratch:latest")
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v42", "registry.example.com/tsuru/my-platform:latest"})
+			c.Check(req.GetPushOptions(), check.DeepEquals, &buildpb.PushOptions{InsecureRegistry: false})
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "--> Starting container image build\n"}})
+			c.Check(err, check.IsNil)
+
+			err = stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "SOME OUTPUT FROM BUILD SERVICE\n"}})
+			c.Check(err, check.IsNil)
+
+			err = stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_Output{Output: "--> Container image build finished\n"}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
+
+	var output bytes.Buffer
+	images, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+		Name:      "my-platform",
+		Version:   42,
+		ExtraTags: []string{"latest"},
+		Data:      []byte(`FROM tsuru/scratch:latest`),
+		Output:    &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(images, check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v42", "registry.example.com/tsuru/my-platform:latest"})
+	c.Assert(output.String(), check.Matches, "(?s).*---- Building platform my-platform on cluster c1 ----.*")
+	c.Assert(output.String(), check.Matches, "(?s).* ---> Destination image: registry.example.com/tsuru/my-platform:v42.*")
+	c.Assert(output.String(), check.Matches, "(?s).* ---> Destination image: registry.example.com/tsuru/my-platform:latest.*")
+	c.Assert(output.String(), check.Matches, "(?s).*---- Starting build ----.*")
+	c.Assert(output.String(), check.Matches, "(?s).*--> Starting container image build.*")
+	c.Assert(output.String(), check.Matches, "(?s).*SOME OUTPUT FROM BUILD SERVICE.*")
+	c.Assert(output.String(), check.Matches, "(?s).*--> Container image build finished.*")
+}
+
+func (s *S) TestPlatformBuildV2_InsecureRegistry_SuccessfulPlatformBuild(c *check.C) {
+	s.mockService.PlatformImage.OnNewImage = func(reg imagetypes.ImageRegistry, platform string, version int) (string, error) {
+		c.Check(reg, check.DeepEquals, imagetypes.ImageRegistry("registry.example.com/tsuru"))
+		c.Check(platform, check.DeepEquals, "my-platform")
+		c.Check(version, check.Equals, 42)
+
+		return "registry.example.com/tsuru/my-platform:v42", nil
+	}
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_PLATFORM_WITH_CONTAINER_FILE)
+			c.Check(req.GetPlatform(), check.DeepEquals, &buildpb.TsuruPlatform{Name: "my-platform"})
+			c.Check(req.GetContainerfile(), check.DeepEquals, "FROM tsuru/scratch:latest")
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v42", "registry.example.com/tsuru/my-platform:latest"})
+			c.Check(req.GetPushOptions(), check.DeepEquals, &buildpb.PushOptions{InsecureRegistry: true})
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
+	s.clusterClient.CustomData[registryInsecureKey] = "true"
+
+	var output bytes.Buffer
+	images, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+		Name:      "my-platform",
+		Version:   42,
+		ExtraTags: []string{"latest"},
+		Data:      []byte(`FROM tsuru/scratch:latest`),
+		Output:    &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(images, check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v42", "registry.example.com/tsuru/my-platform:latest"})
 }
 
 func setupBuildServer(t *testing.T, bs buildpb.BuildServer) string {

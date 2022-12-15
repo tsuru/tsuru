@@ -47,15 +47,22 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 	if err := s.validate(p); err != nil {
 		return err
 	}
+
 	err := s.storage.Insert(ctx, p)
 	if err != nil {
 		return err
 	}
+
 	opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
+
 	imgs, err := builder.PlatformBuild(ctx, opts)
+	if err != nil {
+		return err
+	}
+
 	multiErr := tsuruErrors.NewMultiError()
 	if len(imgs) > 0 {
 		appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
@@ -63,6 +70,8 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 			multiErr.Add(appendErr)
 		}
 	}
+
+	// TODO: rewrite the below code using actions pipeline.
 	if err != nil {
 		multiErr.Add(err)
 		if imgErr := servicemanager.PlatformImage.DeleteImages(ctx, opts.Name); imgErr != nil {
@@ -78,6 +87,7 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 			)
 		}
 	}
+
 	return multiErr.ToError()
 }
 

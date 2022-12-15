@@ -33,6 +33,7 @@ func (b *kubernetesBuilder) buildPlatform(ctx context.Context, opts appTypes.Pla
 	if err != nil {
 		return nil, err
 	}
+
 	return client.BuildPlatformImages(ctx, opts)
 }
 
@@ -41,20 +42,27 @@ func getKubeClient() (provision.BuilderKubeClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var client provision.BuilderKubeClient
 	multiErr := tsuruErrors.NewMultiError()
+
 	for _, p := range provisioners {
-		if provisioner, ok := p.(provision.BuilderDeployKubeClient); ok {
-			client, err = provisioner.GetClient(nil)
-			if err != nil {
-				multiErr.Add(err)
-			} else if client != nil {
-				return client, nil
-			}
+		provisioner, ok := p.(provision.BuilderDeployKubeClient)
+		if !ok {
+			continue
 		}
+
+		client, err = provisioner.GetClient(nil)
+		if err == nil {
+			return client, nil
+		}
+
+		multiErr.Add(err)
 	}
+
 	if multiErr.Len() > 0 {
 		return nil, multiErr
 	}
+
 	return nil, errors.New("No Kubernetes nodes available")
 }
