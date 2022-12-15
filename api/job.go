@@ -90,7 +90,15 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	jsonMsg, err := json.Marshal(j)
+
+	result := make(map[string]interface{})
+	result["job"] = j
+	units, err := j.Units()
+	if err != nil {
+		return err
+	}
+	result["units"] = units
+	jsonMsg, err := json.Marshal(&result)
 	if err != nil {
 		return err
 	}

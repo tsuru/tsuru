@@ -1581,7 +1581,7 @@ type JobProvisioner struct {
 var _ provision.JobProvisioner = &JobProvisioner{}
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *JobProvisioner) JobUnits(context.Context, provision.Job) ([]provision.JobUnit, error) {
+func (p *JobProvisioner) JobUnits(context.Context, provision.Job) ([]provision.Unit, error) {
 	return nil, nil
 }
 

@@ -173,17 +173,6 @@ type Unit struct {
 	Ready        *bool
 }
 
-type JobUnit struct {
-	ID        string
-	Name      string
-	JobName   string
-	CreatedAt *time.Time
-	Completed *bool
-	Restarts  *int32
-	IP        string
-	Status    Status
-}
-
 // GetName returns the name of the unit.
 func (u *Unit) GetID() string {
 	return u.ID
@@ -196,7 +185,10 @@ func (u *Unit) GetIp() string {
 
 func (u *Unit) MarshalJSON() ([]byte, error) {
 	type UnitForMarshal Unit
-	host, port, _ := net.SplitHostPort(u.Address.Host)
+	var host, port string
+	if u.Address != nil {
+		host, port, _ = net.SplitHostPort(u.Address.Host)
+	}
 	// New fields added for compatibility with old routes returning containers.
 	return json.Marshal(&struct {
 		*UnitForMarshal
@@ -420,7 +412,7 @@ type Provisioner interface {
 
 type JobProvisioner interface {
 	// JobUnits returns information about units related to a specific Job or CronJob
-	JobUnits(context.Context, Job) ([]JobUnit, error)
+	JobUnits(context.Context, Job) ([]Unit, error)
 
 	// JobSchedule creates a cronjob object in the cluster
 	CreateJob(context.Context, Job) (string, error)

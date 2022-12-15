@@ -85,10 +85,10 @@ func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
 }
 
 // Units returns the list of units.
-func (job *Job) Units() ([]provision.JobUnit, error) {
+func (job *Job) Units() ([]provision.Unit, error) {
 	prov, err := job.getProvisioner()
 	if err != nil {
-		return []provision.JobUnit{}, err
+		return []provision.Unit{}, err
 	}
 	return prov.JobUnits(context.TODO(), job)
 }

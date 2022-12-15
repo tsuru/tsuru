@@ -16,7 +16,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 const jobPrefix = "tsuru-"
@@ -119,7 +118,7 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) 
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.JobUnit, error) {
+func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.Unit, error) {
 	client, err := clusterForPool(ctx, j.GetPool())
 	if err != nil {
 		return nil, err
@@ -143,52 +142,27 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job)
 }
 
 func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []provision.Job) ([]apiv1.Pod, error) {
-	inSelectorMap := map[string][]string{}
+	podList := []apiv1.Pod{}
 	for _, j := range jobs {
-		l := provision.JobLabels(ctx, j)
-		jobSel := l.ToJobSelector()
-		for k, v := range jobSel {
-			inSelectorMap[k] = append(inSelectorMap[k], v)
+		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/job-name": j.GetName(), "tsuru.io/job-team": j.GetTeamOwner()}}
+		listOptions := metav1.ListOptions{
+			LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 		}
-	}
-	sel := labels.NewSelector()
-	for k, v := range inSelectorMap {
-		if len(v) == 0 {
-			continue
-		}
-		req, err := labels.NewRequirement(k, selection.In, v)
+		pods, err := client.CoreV1().Pods(client.Namespace()).List(ctx, listOptions)
 		if err != nil {
-			return nil, err
+			return podList, err
 		}
-		sel = sel.Add(*req)
+		podList = append(podList, pods.Items...)
 	}
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	informer, err := controller.getPodInformer()
-	if err != nil {
-		return nil, err
-	}
-	pods, err := informer.Lister().List(sel)
-	if err != nil {
-		return nil, err
-	}
-	podCopies := make([]apiv1.Pod, len(pods))
-	for i, p := range pods {
-		podCopies[i] = *p.DeepCopy()
-	}
-	return podCopies, nil
+	return podList, nil
 }
 
-func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job provision.Job) ([]provision.JobUnit, error) {
+func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job provision.Job) ([]provision.Unit, error) {
 	if len(pods) == 0 {
 		return nil, nil
 	}
-	var units []provision.JobUnit
+	var units []provision.Unit
 	for _, pod := range pods {
-		l := labelSetFromMeta(&pod.ObjectMeta)
-
 		var status provision.Status
 		if pod.Status.Phase == apiv1.PodRunning {
 			status, _ = extractStatusAndReasonFromContainerStatuses(pod.Status.ContainerStatuses)
@@ -197,10 +171,9 @@ func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *Clus
 		}
 
 		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
-		units = append(units, provision.JobUnit{
+		units = append(units, provision.Unit{
 			ID:        pod.Name,
 			Name:      pod.Name,
-			JobName:   l.JobName(),
 			IP:        pod.Status.HostIP,
 			Status:    status,
 			Restarts:  containersRestarts(pod.Status.ContainerStatuses),
