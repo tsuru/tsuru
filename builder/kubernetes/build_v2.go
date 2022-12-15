@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	buildpb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 	"google.golang.org/grpc/codes"
@@ -151,31 +152,17 @@ func (b *kubernetesBuilder) buildPlatformImage(ctx context.Context, bc buildpb.B
 
 	fmt.Fprintln(w, "---- Starting build ----")
 
-	stream, err := bc.Build(ctx, &buildpb.BuildRequest{
+	req := &buildpb.BuildRequest{
 		Kind:              buildpb.BuildKind_BUILD_KIND_PLATFORM_WITH_CONTAINER_FILE,
 		Platform:          &buildpb.TsuruPlatform{Name: opts.Name},
 		Containerfile:     containerfile,
 		DestinationImages: images,
 		PushOptions:       &buildpb.PushOptions{InsecureRegistry: insecureRegistry},
-	})
-	if err != nil {
-		return nil, err
 	}
 
-	for {
-		r, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		switch r.Data.(type) {
-		case *buildpb.BuildResponse_Output:
-			w.Write([]byte(r.GetOutput()))
-		}
+	_, err = callBuildService(ctx, bc, req, w)
+	if err != nil {
+		return nil, err
 	}
 
 	return images, nil
@@ -251,7 +238,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		dstImages = append(dstImages, fmt.Sprintf("%s:%s", repository, opts.Tag))
 	}
 
-	stream, err := bs.Build(ctx, &buildpb.BuildRequest{
+	req := &buildpb.BuildRequest{
 		Kind: kindToBuildKind(opts),
 		App: &buildpb.TsuruApp{
 			Name:    app.GetName(),
@@ -260,10 +247,70 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		SourceImage:       baseImage,
 		DestinationImages: dstImages,
 		Data:              data,
-	})
+	}
+
+	tc, err := callBuildService(ctx, bs, req, w)
 	if err != nil {
 		return nil, err
 	}
+
+	if tc != nil {
+		procfile := version.GetProcessesFromProcfile(tc.Procfile)
+		if len(procfile) == 0 {
+			fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
+			cmds := append(tc.ImageConfig.Entrypoint, tc.ImageConfig.Cmd...)
+			if len(cmds) == 0 {
+				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
+			}
+
+			procfile[provision.WebProcessName] = cmds
+		}
+
+		for k, v := range procfile {
+			fmt.Fprintf(w, " ---> Process %q found with commands: %q\n", k, v)
+		}
+
+		var customData map[string]any
+		if len(tc.TsuruYaml) > 0 {
+			fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
+			// TODO: maybe pretty print Tsuru YAML on w
+
+			customData, err = tsuruYamlStringToCustomData(tc.TsuruYaml)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		var exposedPorts []string
+		if tc.ImageConfig != nil {
+			exposedPorts = tc.ImageConfig.ExposedPorts
+		}
+
+		err = appVersion.AddData(apptypes.AddVersionDataArgs{
+			Processes:    procfile,
+			CustomData:   customData,
+			ExposedPorts: exposedPorts,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err = appVersion.CommitBaseImage(); err != nil {
+		return nil, err
+	}
+
+	return appVersion, nil
+}
+
+func callBuildService(ctx context.Context, bc buildpb.BuildClient, req *buildpb.BuildRequest, w io.Writer) (*buildpb.TsuruConfig, error) {
+	stream, err := bc.Build(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var once sync.Once
+	var tc *buildpb.TsuruConfig
 
 	for {
 		var r *buildpb.BuildResponse
@@ -282,58 +329,14 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 
 		switch r.Data.(type) {
 		case *buildpb.BuildResponse_TsuruConfig:
-			tc := r.GetTsuruConfig()
-
-			procfile := version.GetProcessesFromProcfile(tc.Procfile)
-			if len(procfile) == 0 {
-				fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
-				cmds := append(tc.ImageConfig.Entrypoint, tc.ImageConfig.Cmd...)
-				if len(cmds) == 0 {
-					return nil, errors.New("neither Procfile nor entrypoint and cmd set")
-				}
-
-				procfile[provision.WebProcessName] = cmds
-			}
-
-			for k, v := range procfile {
-				fmt.Fprintf(w, " ---> Process %q found with commands: %q\n", k, v)
-			}
-
-			var customData map[string]any
-			if len(tc.TsuruYaml) > 0 {
-				fmt.Fprintln(w, " ---> Tsuru config file (tsuru.yaml) found")
-				// TODO: maybe pretty print Tsuru YAML on w
-
-				customData, err = tsuruYamlStringToCustomData(tc.TsuruYaml)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			var exposedPorts []string
-			if tc.ImageConfig != nil {
-				exposedPorts = tc.ImageConfig.ExposedPorts
-			}
-
-			err = appVersion.AddData(apptypes.AddVersionDataArgs{
-				Processes:    procfile,
-				CustomData:   customData,
-				ExposedPorts: exposedPorts,
-			})
-			if err != nil {
-				return nil, err
-			}
+			once.Do(func() { tc = r.GetTsuruConfig() })
 
 		case *buildpb.BuildResponse_Output:
 			w.Write([]byte(r.GetOutput()))
 		}
 	}
 
-	if err = appVersion.CommitBaseImage(); err != nil {
-		return nil, err
-	}
-
-	return appVersion, nil
+	return tc, nil
 }
 
 func kindToBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
