@@ -2,9 +2,10 @@ swagger: "2.0"
 info:
   title: Tsuru
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
-  version: "1.6"
+  version: "1.12"
 schemes:
-  - http
+- http
+- https
 securityDefinitions:
   Bearer:
     type: apiKey
@@ -1077,6 +1078,78 @@ paths:
         - app
       security:
         - Bearer: []
+
+  /1.5/apps/{app}/build:
+    parameters:
+    - in: path
+      name: app
+      type: string
+      description: Application name
+      required: true
+    post:
+      operationId: AppBuild
+      description: Build a Tsuru app image (a regular container image) following the deploy's workflow but don't roll it out to the provisioner. That ends up with a container image that can be pulled by the user or used to deploy the app later.
+      consumes:
+      - multipart/form-data
+      produces:
+      - text/plain
+      parameters:
+      - in: formData
+        name: tag
+        type: string
+        required: true
+        description: |-
+          Container image's tag reference. It must be a valid tag reference according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
+
+          Examples: `staging`, `feature-abc`, `42.1.0`
+      - in: formData
+        name: file
+        type: file
+        description: |-
+          App's source files (tarball compressed with gzip).
+
+          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+        x-mimetype: application/gzip
+      - in: formData
+        name: archive-url
+        type: string
+        description: |-
+          HTTP URL to app's source files.
+
+          NOTE 1: Tsuru API must be able to download the file over HTTP and the downloaded file must be a tarball compressed with gzip.
+
+          NOTE 2: Cannot be presented mutually with `file` or `image`.
+
+          Example: `https://my-org.example.com/my-app/v42.tar.gz`.
+      - in: formData
+        name: image
+        type: string
+        description: |-
+          Container image name. It must be a valid container image name according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
+
+          NOTE: Cannote be presented mutually with `archive-url` or `file`.
+
+          Example: `registry.example.com/my-org/my-app:v42`
+      responses:
+        "200":
+          description: Build finished successfully
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Forbidden
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - app
+      security:
+      - Bearer: []
+
   /1.0/apps/{app}/deploy:
     parameters:
       - name: app
