@@ -7,11 +7,15 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/lestrrat-go/jwx/jwk"
+	cache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
@@ -20,6 +24,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/set"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
@@ -43,13 +48,25 @@ var (
 	_ auth.Scheme = &oAuthScheme{}
 )
 
+type errKIDNotFound struct {
+	kid string
+}
+
+func (err *errKIDNotFound) Error() string {
+	return fmt.Sprintf("unable to find key %q", err.kid)
+}
+
 type oAuthScheme struct {
 	infoURL      string
 	callbackPort int
+
+	jwkCache *cache.Cache
 }
 
 func init() {
-	auth.RegisterScheme("oauth", &oAuthScheme{})
+	auth.RegisterScheme("oauth", &oAuthScheme{
+		jwkCache: cache.New(time.Hour, time.Hour),
+	})
 	prometheus.MustRegister(requestLatencies)
 	prometheus.MustRegister(requestErrors)
 }
@@ -200,6 +217,15 @@ func (s *oAuthScheme) Logout(ctx context.Context, token string) error {
 }
 
 func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, error) {
+	jwtToken, err := s.authJWTToken(ctx, header)
+	if jwtToken != nil {
+		return jwtToken, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	token, err := getToken(header)
 	if err != nil {
 		nativeScheme := native.NativeScheme{}
@@ -213,6 +239,60 @@ func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, erro
 		return token, auth.ErrInvalidToken
 	}
 	return token, nil
+}
+
+func (s *oAuthScheme) authJWTToken(ctx context.Context, header string) (auth.Token, error) {
+	jwksURL, _ := config.GetString("auth:oauth:jwks-url")
+	if jwksURL == "" {
+		return nil, nil
+	}
+
+	identity := jwt.StandardClaims{}
+
+	token, err := jwt.ParseWithClaims(header, &identity, s.jwtGetKey(ctx, jwksURL))
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("Token invalid")
+	}
+
+	return &jwtToken{
+		Identity: identity,
+		Raw:      header,
+	}, nil
+}
+
+func (s *oAuthScheme) jwtGetKey(ctx context.Context, jwksURL string) jwt.Keyfunc {
+	return func(token *jwt.Token) (interface{}, error) {
+		var keySet jwk.Set
+		var err error
+
+		value, found := s.jwkCache.Get(jwksURL)
+		if found {
+			keySet, _ = value.(jwk.Set)
+		} else {
+			keySet, err = jwk.Fetch(ctx, jwksURL)
+
+			if err != nil {
+				return nil, err
+			}
+
+			s.jwkCache.Set(jwksURL, keySet, cache.DefaultExpiration)
+		}
+
+		keyID, ok := token.Header["kid"].(string)
+		if !ok {
+			keyID = "default"
+		}
+
+		if key, found := keySet.LookupKeyID(keyID); found {
+			return key, nil
+		}
+
+		return nil, &errKIDNotFound{keyID}
+	}
 }
 
 func (s *oAuthScheme) Name() string {
@@ -264,4 +344,35 @@ func (s *oAuthScheme) Remove(ctx context.Context, u *auth.User) error {
 		return err
 	}
 	return u.Delete()
+}
+
+var _ authTypes.Token = &jwtToken{}
+
+type jwtToken struct {
+	Raw      string
+	Identity jwt.StandardClaims
+}
+
+func (t *jwtToken) GetValue() string {
+	return t.Raw
+}
+
+func (t *jwtToken) User() (*authTypes.User, error) {
+	return auth.ConvertOldUser(auth.GetUserByEmail(t.Identity.Subject))
+}
+
+func (t *jwtToken) IsAppToken() bool {
+	return false
+}
+
+func (t *jwtToken) GetUserName() string {
+	return t.Identity.Subject
+}
+
+func (t *jwtToken) GetAppName() string {
+	return ""
+}
+
+func (t *jwtToken) Permissions() ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(t)
 }
