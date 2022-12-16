@@ -9,7 +9,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -58,11 +57,14 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	} else {
 		userName = t.GetUserName()
 	}
+
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+
 	opts.App = instance
+	opts.Build = true
 	opts.BuildTag = tag
 	opts.User = userName
 	opts.GetKind()
@@ -127,21 +129,9 @@ func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
 			Message: "you must specify either the archive-url, a image url or upload a file.",
 		}
 	}
-	var build bool
-	buildString := InputValue(r, "build")
-	if buildString != "" {
-		build, err = strconv.ParseBool(buildString)
-		if err != nil {
-			return opts, &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
-		}
-	}
 	opts.FileSize = fileSize
 	opts.File = file
 	opts.ArchiveURL = archiveURL
 	opts.Image = image
-	opts.Build = build
 	return
 }
