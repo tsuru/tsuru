@@ -9,8 +9,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -99,7 +97,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 		}
 		defer client.RemoveContainer(docker.RemoveContainerOptions{ID: rcont.ID, Force: true})
 	} else if opts.ArchiveURL != "" {
-		tarFile, err = downloadFromURL(ctx, opts.ArchiveURL)
+		tarFile, _, err = builder.DownloadArchiveFromURL(ctx, opts.ArchiveURL)
 		if err != nil {
 			return nil, err
 		}
@@ -340,32 +338,6 @@ func downloadFromContainer(ctx context.Context, client provision.BuilderDockerCl
 		return nil, nil, errors.Errorf("App %s raw image not found", app.GetName())
 	}
 	return archiveFile, cont, nil
-}
-
-func downloadFromURL(ctx context.Context, url string) (io.ReadCloser, error) {
-	var out bytes.Buffer
-	client := net.Dial15Full300Client
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	s, err := io.Copy(&out, resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if s == 0 {
-		return nil, errors.New("archive file is empty")
-	}
-	return ioutil.NopCloser(&out), nil
 }
 
 func generateCatCommand(names, dirs []string) string {

@@ -8,12 +8,15 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"sort"
 
-	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 )
@@ -91,7 +94,7 @@ func GetForProvisioner(p provision.Provisioner) (Builder, error) {
 func get(name string) (Builder, error) {
 	b, ok := builders[name]
 	if !ok {
-		return nil, errors.Errorf("unknown builder: %q", name)
+		return nil, errors.New(fmt.Sprintf("unknown builder: %q", name))
 	}
 	return b, nil
 }
@@ -175,4 +178,33 @@ func CompressDockerFile(data []byte) io.Reader {
 	writer.Write(data)
 	writer.Close()
 	return &buf
+}
+
+func DownloadArchiveFromURL(ctx context.Context, url string) (io.ReadCloser, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	resp, err := net.Dial15Full300Client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 299 {
+		return nil, 0, errors.New("could not download the archive: unexpected status code")
+	}
+
+	var out bytes.Buffer
+	s, err := io.Copy(&out, resp.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if s == 0 {
+		return nil, 0, errors.New("archive file is empty")
+	}
+
+	return io.NopCloser(&out), out.Len(), nil
 }

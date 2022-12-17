@@ -46,6 +46,17 @@ func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt 
 		return nil, errors.New("event not provided")
 	}
 
+	if opts.ArchiveURL != "" { // build w/ external archive (ideal for Terraform)
+		f, size, err := builder.DownloadArchiveFromURL(ctx, opts.ArchiveURL)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+
+		opts.ArchiveFile = f
+		opts.ArchiveSize = int64(size)
+	}
+
 	return b.buildContainerImage(ctx, app, evt, opts)
 }
 

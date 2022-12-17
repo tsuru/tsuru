@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -192,7 +194,7 @@ hooks:
   - /path/to/script.sh
 `,
 			}}})
-			c.Assert(err, check.IsNil)
+			c.Check(err, check.IsNil)
 
 			return nil
 		},
@@ -302,6 +304,130 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(processes, check.DeepEquals, map[string][]string{
 		"web": {"/bin/sh", "-c", "/var/www/app/app.sh", "--port", "${PORT}"},
+	})
+
+	tsuruYaml, err := appVersion.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
+}
+
+func (s *S) TestBuildV2_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Check(r.Method, check.Equals, "GET")
+		c.Check(r.URL.Path, check.Equals, "/my-app/code.tar.gz")
+
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintln(w, "missing authentication")
+	}))
+	defer srv.Close()
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	var output bytes.Buffer
+
+	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
+		Output:     &output,
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "could not download the archive: unexpected status code")
+}
+
+func (s *S) TestBuildV2_BuildWithArchiveURL_MissingArchive(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Check(r.Method, check.Equals, "GET")
+		c.Check(r.URL.Path, check.Equals, "/my-app/code.tar.gz")
+
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	var output bytes.Buffer
+
+	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
+		Output:     &output,
+	})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "archive file is empty")
+}
+
+func (s *S) TestBuildV2_BuildWithArchiveURL(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Check(r.Method, check.Equals, "GET")
+		c.Check(r.URL.Path, check.Equals, "/my-app/code.tar.gz")
+
+		fmt.Fprintf(w, "awesome tarball with source code")
+	}))
+	defer srv.Close()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke an deadlock on RPC client and server.
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_SOURCE_UPLOAD)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
+			c.Check(req.GetData(), check.DeepEquals, []byte(`awesome tarball with source code`))
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
+				Procfile: "web: /path/to/my/server.sh --port ${PORT}",
+			}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	var output bytes.Buffer
+
+	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+		Message:    "My deploy with archive URL",
+		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
+		Output:     &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(appVersion.Version(), check.Equals, 1)
+	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
+	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "My deploy with archive URL")
+	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
+
+	processes, err := appVersion.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, map[string][]string{
+		"web": {"/path/to/my/server.sh --port ${PORT}"},
 	})
 
 	tsuruYaml, err := appVersion.TsuruYamlData()
