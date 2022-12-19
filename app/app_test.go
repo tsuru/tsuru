@@ -6104,7 +6104,7 @@ func (s *S) TestGetUUID(c *check.C) {
 
 func (s *S) TestFillInternalAddresses(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
-	err := app.FillInternalAddresses()
+	err := app.fillInternalAddresses()
 	c.Assert(err, check.IsNil)
 	c.Assert(app.InternalAddresses, check.HasLen, 4)
 	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{

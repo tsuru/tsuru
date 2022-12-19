@@ -342,10 +342,6 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
-	err = a.FillInternalAddresses()
-	if err != nil {
-		return err
-	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&a)
 }
