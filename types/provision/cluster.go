@@ -7,6 +7,7 @@ package provision
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -70,3 +71,11 @@ var (
 	ErrClusterNotFound = errors.New("cluster not found")
 	ErrNoCluster       = errors.New("no cluster")
 )
+
+type ErrNoClusteForPool struct {
+	Pool string
+}
+
+func (e *ErrNoClusteForPool) Error() string {
+	return fmt.Sprintf("unable to find cluster for pool %q", e.Pool)
+}
