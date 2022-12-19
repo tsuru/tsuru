@@ -1149,32 +1149,83 @@ paths:
       - app
       security:
       - Bearer: []
-
   /1.0/apps/{app}/deploy:
     parameters:
-      - name: app
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: App name.
+    - in: path
+      name: app
+      type: string
+      description: Application name
+      required: true
     post:
       operationId: AppDeploy
-      description: deploy a app
+      description: Build a new Tsuru app image and roll it out to the provisioner.
       parameters:
-        - name: deployOptions
-          required: true
-          in: body
-          schema:
-            $ref: "#/definitions/AppDeployOptions"
+      - in: formData
+        name: new-version
+        type: boolean
+        default: false
+        description: |-
+          Whether should create a new version while preserving the old ones in the provisioner.
+      - in: formData
+        name: override-versions
+        type: boolean
+        default: false
+        description: |-
+          Whether should replace all versions in the provisioner by this new one.
+      - in: formData
+        name: message
+        type: string
+        description: |-
+          Message to describe the deploy.
 
+          Example: `Updating the driver connector of MongoDB (vX.Y.Z)`
+      - in: formData
+        name: origin
+        type: string
+        enum:
+        - app-deploy
+        - drag-and-drop
+        - image
+        - git
+        - rebuild
+        - rollback
+        description: |-
+          The type of client who originates the deploy.
+      - in: formData
+        name: file
+        type: file
+        description: |-
+          App's source files (tarball compressed with gzip).
+
+          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+        x-mimetype: application/gzip
+      - in: formData
+        name: archive-url
+        type: string
+        description: |-
+          HTTP URL to app's source files.
+
+          NOTE 1: Tsuru API must be able to download the file over HTTP and the downloaded file must be a tarball compressed with gzip.
+
+          NOTE 2: Cannot be presented mutually with `file` or `image`.
+
+          Example: `https://my-org.example.com/my-app/v42.tar.gz`.
+      - in: formData
+        name: image
+        type: string
+        description: |-
+          Container image name. It must be a valid container image name according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
+
+          NOTE: Cannote be presented mutually with `archive-url` or `file`.
+
+          Example: `registry.example.com/my-org/my-app:v42`
       consumes:
-        - application/json
+      - multipart/form-data
       produces:
-        - text
+      - text/plain
       responses:
         "200":
-          description: Deploy started
+          description: Deploy finished successfully
         "400":
           description: Invalid data
         "401":
@@ -1186,10 +1237,9 @@ paths:
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
-        - app
+      - app
       security:
-        - Bearer: []
-
+      - Bearer: []
   /1.0/apps/{app}/cname:
     parameters:
       - name: app
@@ -5119,19 +5169,6 @@ definitions:
         type: string
         format: byte
         x-go-custom-type: "[]byte"
-  AppDeployOptions:
-    type: object
-    required:
-      - image
-    properties:
-      image:
-        type: string
-      message:
-        type: string
-      new-version:
-        type: boolean
-      override-versions:
-        type: boolean
   UpdateApp:
     type: object
     properties:
