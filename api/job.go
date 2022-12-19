@@ -48,6 +48,68 @@ func getJob(ctx stdContext.Context, name, teamOwner string) (*job.Job, error) {
 	return j, nil
 }
 
+func jobFilterByContext(contexts []permTypes.PermissionContext, filter *job.Filter) *job.Filter {
+	if filter == nil {
+		filter = &job.Filter{}
+	}
+contextsLoop:
+	for _, c := range contexts {
+		switch c.CtxType {
+		case permTypes.CtxGlobal:
+			filter.Extra = nil
+			break contextsLoop
+		case permTypes.CtxTeam:
+			filter.ExtraIn("teams", c.Value)
+		case permTypes.CtxApp:
+			filter.ExtraIn("name", c.Value)
+		case permTypes.CtxPool:
+			filter.ExtraIn("pool", c.Value)
+		}
+	}
+	return filter
+}
+
+// title: job list
+// path: /jobs/list
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: List jobs
+//	204: No content
+//	401: Unauthorized
+func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	filter := &job.Filter{}
+	if name := r.URL.Query().Get("name"); name != "" {
+		filter.Name = name
+	}
+	if teamOwner := r.URL.Query().Get("teamOwner"); teamOwner != "" {
+		filter.TeamOwner = teamOwner
+	}
+	if owner := r.URL.Query().Get("owner"); owner != "" {
+		filter.UserOwner = owner
+	}
+	if pool := r.URL.Query().Get("pool"); pool != "" {
+		filter.Pool = pool
+	}
+	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
+	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermAppReadInfo)...)
+	if len(contexts) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	jobs, err := job.List(ctx, jobFilterByContext(contexts, filter)) // have to change the name later, now its used by jobs and apps
+	if err != nil {
+		return err
+	}
+	if len(jobs) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	return json.NewEncoder(w).Encode(jobs)
+}
+
 // title: job info
 // path: /jobs
 // method: GET

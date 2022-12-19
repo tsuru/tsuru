@@ -53,6 +53,13 @@ type Job struct {
 	Containers []jobTypes.ContainerInfo
 }
 
+type miniJob struct {
+	Name      string
+	Pool      string
+	TeamOwner string
+	Units     []provision.Unit
+}
+
 type TsuruJob struct {
 	Name        string
 	Teams       []string
@@ -236,4 +243,67 @@ func UpdateJob(ctx context.Context, job *Job, user *auth.User) error {
 		&jobUpdateDB,
 	}...)
 	return pipeline.Execute(ctx, job, user)
+}
+
+type Filter struct {
+	Name      string
+	TeamOwner string
+	UserOwner string
+	Pool      string
+	Pools     []string
+	Extra     map[string][]string
+}
+
+func (f *Filter) ExtraIn(name string, value string) {
+	if f.Extra == nil {
+		f.Extra = make(map[string][]string)
+	}
+	f.Extra[name] = append(f.Extra[name], value)
+}
+
+func (f *Filter) Query() bson.M {
+	if f == nil {
+		return bson.M{}
+	}
+	query := bson.M{}
+	if f.Extra != nil {
+		var orBlock []bson.M
+		for field, values := range f.Extra {
+			orBlock = append(orBlock, bson.M{
+				field: bson.M{"$in": values},
+			})
+		}
+		query["$or"] = orBlock
+	}
+	if f.Name != "" {
+		query["tsurujob.name"] = bson.M{"$regex": f.Name}
+	}
+	if f.TeamOwner != "" {
+		query["tsurujob.teamowner"] = f.TeamOwner
+	}
+	if f.UserOwner != "" {
+		query["tsurujob.owner"] = f.UserOwner
+	}
+	if f.Pool != "" {
+		query["tsurujob.pool"] = f.Pool
+	}
+	if len(f.Pools) > 0 {
+		query["tsurujob.pool"] = bson.M{"$in": f.Pools}
+	}
+	return query
+}
+
+func List(ctx context.Context, filter *Filter) ([]Job, error) {
+	jobs := []Job{}
+	query := filter.Query()
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Jobs().Find(query).All(&jobs)
+	conn.Close()
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
 }
