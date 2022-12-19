@@ -94,7 +94,7 @@ func GetForProvisioner(p provision.Provisioner) (Builder, error) {
 func get(name string) (Builder, error) {
 	b, ok := builders[name]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("unknown builder: %q", name))
+		return nil, fmt.Errorf("unknown builder: %q", name)
 	}
 	return b, nil
 }
