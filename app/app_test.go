@@ -3073,6 +3073,14 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	app := App{
 		Name:    "name",
 		Routers: []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
+		InternalAddresses: []provision.AppInternalAddress{
+			{
+				Domain:   "name-web.cluster.local",
+				Protocol: "TCP",
+				Port:     4000,
+				Process:  "web",
+			},
+		},
 	}
 	err := routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
@@ -3122,6 +3130,14 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"inuse": float64(0),
 			"limit": float64(-1),
 		},
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "name-web.cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(4000),
+				"Process":  "web",
+				"Version":  "",
+			}},
 		"serviceInstanceBinds": []interface{}{},
 	}
 	data, err := app.MarshalJSON()
@@ -3153,6 +3169,14 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
 		Metadata:        appTypes.Metadata{Labels: []appTypes.MetadataItem{{Name: "label", Value: "value"}}},
+		InternalAddresses: []provision.AppInternalAddress{
+			{
+				Domain:   "name-web.cluster.local",
+				Protocol: "TCP",
+				Port:     4000,
+				Process:  "web",
+			},
+		},
 	}
 	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
@@ -3203,6 +3227,14 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"limit": float64(-1),
 		},
 		"serviceInstanceBinds": []interface{}{},
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "name-web.cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(4000),
+				"Process":  "web",
+				"Version":  "",
+			}},
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
@@ -3228,6 +3260,14 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 		Plan:            appTypes.Plan{Name: "small", CPUMilli: 1000, Memory: 128},
 		TeamOwner:       "team-one",
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
+		InternalAddresses: []provision.AppInternalAddress{
+			{
+				Domain:   "name-web.cluster.local",
+				Protocol: "TCP",
+				Port:     4000,
+				Process:  "web",
+			},
+		},
 	}
 	err = routertest.FakeRouter.AddBackend(context.TODO(), &app)
 	c.Assert(err, check.IsNil)
@@ -3286,6 +3326,14 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"limit": float64(777),
 		},
 		"serviceInstanceBinds": []interface{}{},
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "name-web.cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(4000),
+				"Process":  "web",
+				"Version":  "",
+			}},
 	})
 
 }
@@ -3411,6 +3459,36 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			map[string]interface{}{"service": "service-1", "instance": "service-1-1", "plan": ""},
 			map[string]interface{}{"service": "service-1", "instance": "service-1-2", "plan": "some-example"},
 			map[string]interface{}{"service": "service-2", "instance": "service-2-1", "plan": "another-plan"},
+		},
+		"internalAddresses": []interface{}{
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-web.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-logs.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-logs-v2.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-web-v2.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "2",
+			},
 		},
 	})
 }

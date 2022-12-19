@@ -285,9 +285,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if q != nil {
 		result["quota"] = *q
 	}
-	err = app.fillInternalAddresses()
-	if err != nil {
-		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
+	if len(app.InternalAddresses) == 0 {
+		err = app.fillInternalAddresses()
+		if err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
+		}
 	}
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
