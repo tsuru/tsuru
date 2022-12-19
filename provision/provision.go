@@ -39,10 +39,9 @@ const (
 )
 
 var (
-	ErrInvalidStatus        = errors.New("invalid status")
-	ErrEmptyApp             = errors.New("no units for this app")
-	ErrNodeNotFound         = errors.New("node not found")
-	ErrDeployV2NotSupported = errors.New("deploy v2 not supported")
+	ErrInvalidStatus = errors.New("invalid status")
+	ErrEmptyApp      = errors.New("no units for this app")
+	ErrNodeNotFound  = errors.New("node not found")
 
 	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
 	DefaultProvisioner = defaultDockerProvisioner

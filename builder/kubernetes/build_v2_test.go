@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	apptypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
@@ -77,7 +76,7 @@ func (s *S) TestBuildV2_MissingBuildServiceAddress(c *check.C) {
 	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "build service address not provided: deploy v2 not supported")
-	c.Assert(errors.Is(err, provision.ErrDeployV2NotSupported), check.Equals, true)
+	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
 }
 
 func (s *S) TestBuildV2_BuildServiceReturnsError(c *check.C) {
@@ -447,7 +446,7 @@ func (s *S) TestPlatformBuildV2_ContextCanceled(c *check.C) {
 func (s *S) TestPlatformBuildV2_MissingBuildServiceAddress(c *check.C) {
 	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "build v2 not supported")
+	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
 	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
 }
 

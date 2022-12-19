@@ -18,6 +18,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -678,7 +679,7 @@ func (c *ClusterClient) dockerConfigJSON() string {
 func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.ClientConn, error) {
 	addr := c.configForContext(pool, buildServiceAddressKey)
 	if addr == "" {
-		return nil, nil, fmt.Errorf("build service address not provided: %w", provision.ErrDeployV2NotSupported)
+		return nil, nil, fmt.Errorf("build service address not provided: %w", builder.ErrBuildV2NotSupported)
 	}
 
 	opts := []grpc.DialOption{

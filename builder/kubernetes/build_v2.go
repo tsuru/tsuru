@@ -86,10 +86,6 @@ func (b *kubernetesBuilder) PlatformBuildV2(ctx context.Context, opts apptypes.P
 		}
 
 		bc, conn, err := cc.BuildServiceClient("") // requires the configuration to be set for all pools
-		if errors.Is(err, provision.ErrDeployV2NotSupported) {
-			return nil, builder.ErrBuildV2NotSupported
-		}
-
 		if err != nil {
 			return nil, err
 		}

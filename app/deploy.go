@@ -449,7 +449,7 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 	if bv2, ok := b.(builder.BuilderV2); ok {
 		var version appTypes.AppVersion
 		version, err = bv2.BuildV2(ctx, opts.App, evt, buildOpts)
-		if err != nil && (!errors.Is(err, builder.ErrBuildV2NotSupported) || !errors.Is(err, provision.ErrDeployV2NotSupported)) {
+		if err != nil && !errors.Is(err, builder.ErrBuildV2NotSupported) {
 			return nil, err
 		}
 
