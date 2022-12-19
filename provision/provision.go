@@ -309,27 +309,6 @@ type BuilderKubeClient interface {
 	DownloadFromContainer(context.Context, App, *event.Event, string) (io.ReadCloser, error)
 }
 
-type DeployV2Args struct {
-	Description string
-	Kind        string
-
-	Event *event.Event
-
-	Archive     io.ReadCloser
-	ArchiveSize int64
-
-	Image string
-
-	Output io.Writer
-
-	PreserveVersions bool
-	OverrideVersions bool
-}
-
-type BuilderDeployV2 interface {
-	DeployV2(context.Context, App, DeployV2Args) (string, error)
-}
-
 type DeployArgs struct {
 	App              App
 	Version          appTypes.AppVersion
