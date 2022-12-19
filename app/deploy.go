@@ -209,25 +209,36 @@ func (o *DeployOptions) GetOrigin() string {
 }
 
 func (o *DeployOptions) GetKind() (kind DeployKind) {
-	defer func() {
-		o.Kind = kind
-	}()
+	if o.Kind != "" {
+		return o.Kind
+	}
+
+	defer func() { o.Kind = kind }()
+
 	if o.Rollback {
 		return DeployRollback
 	}
+
 	if o.Image != "" {
 		return DeployImage
 	}
+
 	if o.File != nil {
 		if o.Build {
 			return DeployUploadBuild
 		}
 		return DeployUpload
 	}
+
 	if o.Commit != "" {
 		return DeployGit
 	}
-	return DeployArchiveURL
+
+	if o.ArchiveURL != "" {
+		return DeployArchiveURL
+	}
+
+	return DeployKind("")
 }
 
 func Build(ctx context.Context, opts DeployOptions) (string, error) {
@@ -384,30 +395,6 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
 
-	if depv2, ok := prov.(provision.BuilderDeployV2); ok {
-		var image string
-		image, err = depv2.DeployV2(ctx, opts.App, provision.DeployV2Args{
-			Description:      opts.Message,
-			Kind:             string(opts.GetKind()),
-			Archive:          opts.File,
-			ArchiveSize:      opts.FileSize,
-			Image:            opts.Image,
-			Event:            opts.Event,
-			Output:           opts.Event,
-			PreserveVersions: opts.NewVersion,
-			OverrideVersions: opts.OverrideVersions,
-		})
-		if err != nil && !errors.Is(err, provision.ErrDeployV2NotSupported) {
-			return "", err
-		}
-
-		if err == nil { // app deployed successfully using deploy v2
-			return image, err
-		}
-
-		fmt.Fprintln(evt, "Deploy v2 not enabled for this deploy yet")
-	}
-
 	deployer, ok := prov.(provision.BuilderDeploy)
 	if !ok {
 		return "", provision.ProvisionerNotSupported{Prov: prov, Action: fmt.Sprintf("%s deploy", opts.Kind)}
@@ -431,6 +418,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 			return "", err
 		}
 	}
+
 	return deployer.Deploy(ctx, provision.DeployArgs{
 		App:              opts.App,
 		Version:          version,
@@ -441,13 +429,12 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 }
 
 func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
-	isRebuild := opts.Kind == DeployRebuild
 	buildOpts := builder.BuildOpts{
+		Rebuild:       opts.GetKind() == DeployRebuild,
 		BuildFromFile: opts.Build,
 		ArchiveURL:    opts.ArchiveURL,
 		ArchiveFile:   opts.File,
 		ArchiveSize:   opts.FileSize,
-		Rebuild:       isRebuild,
 		ImageID:       opts.Image,
 		Tag:           opts.BuildTag,
 		Message:       opts.Message,

@@ -1043,6 +1043,10 @@ func (s *S) TestDeployKind(c *check.C) {
 		expected DeployKind
 	}{
 		{
+			DeployOptions{},
+			DeployKind(""), // unknown kind
+		},
+		{
 			DeployOptions{Rollback: true},
 			DeployRollback,
 		},
@@ -1063,7 +1067,7 @@ func (s *S) TestDeployKind(c *check.C) {
 			DeployGit,
 		},
 		{
-			DeployOptions{},
+			DeployOptions{ArchiveURL: "https://example.com/my-app/v123.tgz"},
 			DeployArchiveURL,
 		},
 	}
