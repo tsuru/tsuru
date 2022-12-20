@@ -61,6 +61,23 @@ func (s *S) TestBuildV2_MissingEvent(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "event not provided")
 }
 
+func (s *S) TestBuildV2_BuildFromRebuild(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{Rebuild: true})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "app rebuild is deprecated")
+}
+
 func (s *S) TestBuildV2_MissingBuildServiceAddress(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -75,7 +92,7 @@ func (s *S) TestBuildV2_MissingBuildServiceAddress(c *check.C) {
 
 	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "build service address not provided: deploy v2 not supported")
+	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
 	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
 }
 

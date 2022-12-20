@@ -46,6 +46,10 @@ func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt 
 		return nil, errors.New("event not provided")
 	}
 
+	if opts.Rebuild {
+		return nil, errors.New("app rebuild is deprecated")
+	}
+
 	if opts.ArchiveURL != "" { // build w/ external archive (ideal for Terraform)
 		f, size, err := builder.DownloadArchiveFromURL(ctx, opts.ArchiveURL)
 		if err != nil {
