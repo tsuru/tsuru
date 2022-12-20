@@ -1664,16 +1664,19 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 	if old.GetPool() == new.GetPool() {
 		return nil
 	}
-	client, err := clusterForPool(ctx, old.GetPool())
-	if err != nil {
+
+	oldClient, err := clusterForPool(ctx, old.GetPool())
+	if errors.Cause(err) == provTypes.ErrNoCluster {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	newClient, err := clusterForPool(ctx, new.GetPool())
 	if err != nil {
 		return err
 	}
-	sameCluster := client.GetCluster().Name == newClient.GetCluster().Name
-	sameNamespace := client.PoolNamespace(old.GetPool()) == client.PoolNamespace(new.GetPool())
+	sameCluster := oldClient.GetCluster().Name == newClient.GetCluster().Name
+	sameNamespace := oldClient.PoolNamespace(old.GetPool()) == oldClient.PoolNamespace(new.GetPool())
 	if sameCluster && !sameNamespace {
 		var volumes []volumeTypes.Volume
 		volumes, err = servicemanager.Volume.ListByApp(ctx, old.GetName())
@@ -1684,7 +1687,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
-	versions, err := versionsForAppProcess(ctx, client, old, "", false)
+	versions, err := versionsForAppProcess(ctx, oldClient, old, "", false)
 	if err != nil {
 		return err
 	}
