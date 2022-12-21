@@ -192,7 +192,7 @@ func DownloadArchiveFromURL(ctx context.Context, url string) (io.ReadCloser, int
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 299 {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return nil, 0, errors.New("could not download the archive: unexpected status code")
 	}
 
