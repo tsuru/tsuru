@@ -177,57 +177,59 @@ func (s *PlatformSuite) TestPlatformAddMissingFileContent(c *check.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
-	name := "wat"
-	dockerfileURL := "http://localhost/Dockerfile"
+	platformName := "wat"
 	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, dockerfileURL)
-		c.Assert(opts.Name, check.Equals, name)
+		c.Assert(opts.Data, check.DeepEquals, []byte(`FROM tsuru/scratch:latest`))
+		c.Assert(opts.Name, check.Equals, platformName)
 		return nil
 	}
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("dockerfile", dockerfileURL)
+	ww, err := writer.CreateFormFile("dockerfile_content", "Dockerfile")
+	c.Assert(err, check.IsNil)
+	_, err = ww.Write([]byte(`FROM tsuru/scratch:latest`))
+	c.Assert(err, check.IsNil)
 	writer.Close()
-	request, _ := http.NewRequest("PUT", "/platforms/"+name, &buf)
-	request.Header.Add("Content-Type", writer.FormDataContentType())
+	request, err := http.NewRequest("PUT", "/platforms/wat", &buf)
+	c.Assert(err, check.IsNil)
 	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
+	err = json.Unmarshal(recorder.Body.Bytes(), &msg)
+	c.Assert(err, check.IsNil)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":name", "value": name},
-			{"name": "dockerfile", "value": dockerfileURL},
+			{"name": ":name", "value": platformName},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
-	name := "wat"
+	platformName := "wat"
 	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, "")
+		c.Assert(opts.Data, check.HasLen, 0)
 		c.Assert(opts.Args["disabled"], check.Equals, "true")
-		c.Assert(opts.Name, check.Equals, name)
+		c.Assert(opts.Name, check.Equals, platformName)
 		return nil
 	}
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("dockerfile", "")
 	writer.WriteField("disabled", "true")
 	writer.Close()
-	request, err := http.NewRequest("PUT", "/platforms/"+name, &buf)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s", platformName), &buf)
 	c.Assert(err, check.IsNil)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -236,34 +238,36 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":name", "value": name},
+			{"name": ":name", "value": platformName},
 			{"name": "disabled", "value": "true"},
 		},
 	}, eventtest.HasEvent)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
-	name := "wat"
-	dockerfileURL := "http://localhost/Dockerfile"
+	platformName := "wat"
 	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, dockerfileURL)
+		c.Assert(opts.Data, check.DeepEquals, []byte(`FROM scratch`))
 		c.Assert(opts.Args["disabled"], check.Equals, "true")
-		c.Assert(opts.Name, check.Equals, name)
+		c.Assert(opts.Name, check.Equals, platformName)
 		return nil
 	}
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("dockerfile", dockerfileURL)
+	ww, err := writer.CreateFormFile("dockerfile_content", "Dockerfile")
+	c.Assert(err, check.IsNil)
+	_, err = ww.Write([]byte(`FROM scratch`))
+	c.Assert(err, check.IsNil)
 	writer.WriteField("disabled", "true")
 	writer.Close()
-	request, _ := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s?:name=%s", name, name), &buf)
+	request, _ := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s", platformName), &buf)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -271,80 +275,29 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
-			{"name": ":name", "value": name},
+			{"name": ":name", "value": platformName},
 			{"name": "disabled", "value": "true"},
-			{"name": "dockerfile", "value": dockerfileURL},
 		},
 	}, eventtest.HasEvent)
 }
 
-func (s *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
-	name := "wat"
-	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, "")
-		c.Assert(opts.Args["disabled"], check.Equals, "false")
-		c.Assert(opts.Name, check.Equals, name)
-		return nil
-	}
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
-	writer.WriteField("dockerfile", "")
-	writer.WriteField("disabled", "false")
-	writer.Close()
-	request, _ := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s?:name=%s", name, name), &buf)
-	request.Header.Add("Content-Type", writer.FormDataContentType())
-	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(msg.Error, check.Equals, "")
-}
-
-func (s *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
-	name := "wat"
-	dockerfileURL := "http://localhost/Dockerfile"
-	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, dockerfileURL)
-		c.Assert(opts.Args["disabled"], check.Equals, "false")
-		c.Assert(opts.Name, check.Equals, name)
-		return nil
-	}
-	body := fmt.Sprintf("dockerfile=%s", dockerfileURL)
-	request, _ := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s?:name=%s&disabled=false", name, name), strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var msg io.SimpleJsonMessage
-	json.Unmarshal(recorder.Body.Bytes(), &msg)
-	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
-}
-
-func (s *PlatformSuite) TestPlatformUpdateNotFound(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdate_WhenReturnsAnError(c *check.C) {
 	name := "not-found"
-	dockerfileURL := "http://localhost/Dockerfile"
 	s.mockService.Platform.OnUpdate = func(opts appTypes.PlatformOptions) error {
-		c.Assert(opts.Args["dockerfile"], check.Equals, dockerfileURL)
-		c.Assert(opts.Name, check.Equals, name)
 		return appTypes.ErrPlatformNotFound
 	}
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("dockerfile", dockerfileURL)
+	writer.WriteField("disabled", "true")
 	writer.Close()
-	request, _ := http.NewRequest("PUT", "/platforms/"+name, &buf)
+	request, _ := http.NewRequest("PUT", fmt.Sprintf("/platforms/%s", name), &buf)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 	token := createToken(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.GetValue()))
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)

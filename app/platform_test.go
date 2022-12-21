@@ -5,7 +5,6 @@
 package app
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/pkg/errors"
@@ -210,7 +209,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 		c.Assert(o.Data, check.NotNil)
 		return nil, nil
 	}
-	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 
 	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: "other", Args: args})
@@ -246,7 +245,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueWithDockerfile(c *check.C) 
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
@@ -282,7 +281,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueFileIn(c *check.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
@@ -355,7 +354,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)
@@ -398,40 +397,18 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check
 	c.Assert(a.UpdatePlatform, check.Equals, false)
 }
 
-func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfileContent(c *check.C) {
-	name := "test-platform-update"
+func (s *PlatformSuite) TestPlatformUpdate_WithoutDisabledNorDockerfile(c *check.C) {
 	ps := &platformService{
 		storage: &appTypes.MockPlatformStorage{
 			OnFindByName: func(n string) (*appTypes.Platform, error) {
-				if n == name {
-					return &appTypes.Platform{Name: name}, nil
-				}
-				return nil, appTypes.ErrPlatformNotFound
-			},
-			OnUpdate: func(p appTypes.Platform) error {
-				if p.Name == name {
-					c.Assert(p.Disabled, check.Equals, false)
-					return nil
-				}
-				return appTypes.ErrPlatformNotFound
+				c.Check(n, check.Equals, "my-plat")
+				return &appTypes.Platform{Name: "my-plat"}, nil
 			},
 		},
 	}
-	args := make(map[string]string)
-	args["disabled"] = "false"
-	appName := "test-app4"
-	app := App{
-		Name:     appName,
-		Platform: name,
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
 
-	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("")})
-	c.Assert(err, check.Equals, appTypes.ErrMissingFileContent)
-	a, err := GetByName(context.TODO(), appName)
-	c.Assert(err, check.IsNil)
-	c.Assert(a.UpdatePlatform, check.Equals, false)
+	err := ps.Update(context.TODO(), appTypes.PlatformOptions{Name: "my-plat"})
+	c.Assert(err, check.ErrorMatches, "either disabled or dockerfile must be provided")
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *check.C) {
@@ -469,7 +446,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *c
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
 
-	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Input: bytes.NewBufferString("FROM tsuru/test")})
+	err = ps.Update(context.TODO(), appTypes.PlatformOptions{Name: name, Args: args, Data: []byte("FROM tsuru/test")})
 	c.Assert(err, check.IsNil)
 	a, err := GetByName(context.TODO(), appName)
 	c.Assert(err, check.IsNil)

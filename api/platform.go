@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -17,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	tErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/io"
+	tsuruio "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -56,9 +57,9 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformCreate,
@@ -100,9 +101,14 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	file, _, _ := r.FormFile("dockerfile_content")
-	if file != nil {
+	var data []byte
+	file, _, err := r.FormFile("dockerfile_content")
+	if err == nil {
 		defer file.Close()
+		data, err = io.ReadAll(file)
+		if err != nil {
+			return err
+		}
 	}
 	args := make(map[string]string)
 	for key, values := range r.Form {
@@ -113,9 +119,9 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
@@ -136,7 +142,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	err = servicemanager.Platform.Update(ctx, appTypes.PlatformOptions{
 		Name:   name,
 		Args:   args,
-		Input:  file,
+		Data:   data,
 		Output: evt,
 	})
 	if err == appTypes.ErrPlatformNotFound {
@@ -276,9 +282,9 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(&event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,

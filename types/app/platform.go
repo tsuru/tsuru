@@ -19,7 +19,6 @@ type PlatformOptions struct {
 	Version         int
 	ExtraTags       []string
 	Args            map[string]string
-	Input           io.Reader
 	Output          io.Writer
 	Data            []byte
 	RollbackVersion int
