@@ -586,7 +586,7 @@ func (s *S) TestClustersForApps(c *check.C) {
 	}
 	s.mockService.Cluster.OnFindByPools = func(prov string, pools []string) (map[string]provTypes.Cluster, error) {
 		sort.Strings(pools)
-		c.Assert(pools, check.DeepEquals, []string{"abc", "p1", "p2", "xyz"})
+		c.Assert(pools, check.DeepEquals, []string{"abc", "deleted-pool", "p1", "p2", "xyz"})
 		return map[string]provTypes.Cluster{
 			"p1":  c2,
 			"p2":  c2,
@@ -602,7 +602,9 @@ func (s *S) TestClustersForApps(c *check.C) {
 	a3.Pool = "p2"
 	a4 := provisiontest.NewFakeApp("myapp4", "python", 0)
 	a4.Pool = "abc"
-	cApps, err := clustersForApps(context.TODO(), []provision.App{a1, a2, a3, a4})
+	a5 := provisiontest.NewFakeApp("myapp5", "python", 0)
+	a5.Pool = "deleted-pool"
+	cApps, err := clustersForApps(context.TODO(), []provision.App{a1, a2, a3, a4, a5})
 	c.Assert(err, check.IsNil)
 	c.Assert(cApps, check.HasLen, 2)
 	sort.Slice(cApps, func(i, j int) bool {

@@ -711,7 +711,10 @@ func clustersForApps(ctx context.Context, apps []provision.App) ([]clusterApp, e
 	}
 	for _, a := range apps {
 		poolName := a.GetPool()
-		cluster := clusterPoolMap[poolName]
+		cluster, clusterFound := clusterPoolMap[poolName]
+		if !clusterFound {
+			continue
+		}
 		mapItem, inMap := clusterClientMap[cluster.Name]
 		if !inMap {
 			cli, err := NewClusterClient(&cluster)

@@ -167,7 +167,7 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	return app.builder, err
 }
 
-func (app *App) FillInternalAddresses() error {
+func (app *App) fillInternalAddresses() error {
 	provisioner, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -284,6 +284,12 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	}
 	if q != nil {
 		result["quota"] = *q
+	}
+	if len(app.InternalAddresses) == 0 {
+		err = app.fillInternalAddresses()
+		if err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
+		}
 	}
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
