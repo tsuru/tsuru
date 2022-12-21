@@ -268,8 +268,13 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 	if tc != nil {
 		procfile := version.GetProcessesFromProcfile(tc.Procfile)
 		if len(procfile) == 0 {
+			ic := tc.ImageConfig
+			if ic == nil {
+				ic = new(buildpb.ContainerImageConfig) // covering to avoid panic
+			}
+
 			fmt.Fprintln(w, " ---> Procfile not found, using entrypoint and cmd")
-			cmds := append(tc.ImageConfig.Entrypoint, tc.ImageConfig.Cmd...)
+			cmds := append(ic.Entrypoint, ic.Cmd...)
 			if len(cmds) == 0 {
 				return nil, errors.New("neither Procfile nor entrypoint and cmd set")
 			}

@@ -327,6 +327,32 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
 }
 
+func (s *S) TestBuildV2_DeployWithContainerImage_NoImageConfigReturned(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{}}}) // tsuru config w/ image config not set
+			c.Check(err, check.IsNil)
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "neither Procfile nor entrypoint and cmd set")
+}
+
 func (s *S) TestBuildV2_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
