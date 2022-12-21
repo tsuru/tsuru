@@ -1216,7 +1216,7 @@ paths:
         description: |-
           Container image name. It must be a valid container image name according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
 
-          NOTE: Cannote be presented mutually with `archive-url` or `file`.
+          NOTE: Cannot be presented mutually with `archive-url` or `file`.
 
           Example: `registry.example.com/my-org/my-app:v42`
       consumes:
