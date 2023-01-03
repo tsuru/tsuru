@@ -128,7 +128,7 @@ func insertJobDB(job *Job) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = GetByNameAndTeam(job.ctx, job.Name, job.TeamOwner)
+	_, err = GetByName(job.ctx, job.Name)
 	if err == jobTypes.ErrJobNotFound {
 		return conn.Jobs().Insert(job)
 	} else if err == nil {
@@ -143,7 +143,7 @@ func updateJobDB(job *Job) error {
 		return err
 	}
 	defer conn.Close()
-	oldJob, err := GetByNameAndTeam(job.ctx, job.Name, job.TeamOwner)
+	oldJob, err := GetByName(job.ctx, job.Name)
 	if err != nil {
 		return err
 	}

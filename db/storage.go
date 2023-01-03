@@ -87,7 +87,7 @@ func (s *Storage) Apps() *storage.Collection {
 
 // Jobs returns the jobs collection from MongoDB.
 func (s *Storage) Jobs() *storage.Collection {
-	nameTeamIndex := mgo.Index{Key: []string{"tsurujob.name", "tsurujob.teamowner"}, Unique: true}
+	nameTeamIndex := mgo.Index{Key: []string{"tsurujob.name"}, Unique: true}
 	c := s.Collection("jobs")
 	c.EnsureIndex(nameTeamIndex)
 	jobTTL := mgo.Index{Key: []string{"createdAt"}, ExpireAfter: time.Hour * 24}

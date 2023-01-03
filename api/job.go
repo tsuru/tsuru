@@ -37,8 +37,8 @@ type inputJob struct {
 	Containers []jobTypes.ContainerInfo `json:"containers"`
 }
 
-func getJob(ctx stdContext.Context, name, teamOwner string) (*job.Job, error) {
-	j, err := job.GetByNameAndTeam(ctx, name, teamOwner)
+func getJob(ctx stdContext.Context, name string) (*job.Job, error) {
+	j, err := job.GetByName(ctx, name)
 	if err != nil {
 		if err == jobTypes.ErrJobNotFound {
 			return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("Job %s not found.", name)}
@@ -60,7 +60,7 @@ contextsLoop:
 			break contextsLoop
 		case permTypes.CtxTeam:
 			filter.ExtraIn("teams", c.Value)
-		case permTypes.CtxApp:
+		case permTypes.CtxJob:
 			filter.ExtraIn("name", c.Value)
 		case permTypes.CtxPool:
 			filter.ExtraIn("pool", c.Value)
@@ -93,13 +93,7 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if pool := r.URL.Query().Get("pool"); pool != "" {
 		filter.Pool = pool
 	}
-	contexts := permission.ContextsForPermission(t, permission.PermAppRead)
-	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermAppReadInfo)...)
-	if len(contexts) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
-	jobs, err := job.List(ctx, jobFilterByContext(contexts, filter)) // have to change the name later, now its used by jobs and apps
+	jobs, err := job.List(ctx, jobFilterByContext(permission.ContextsForPermission(t, permission.PermJobRead), filter))
 	if err != nil {
 		return err
 	}
@@ -121,16 +115,12 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	404: Not found
 func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	var ij inputJob
-	err = ParseInput(r, &ij)
+	name := r.URL.Query().Get(":name")
+	j, err := getJob(ctx, name)
 	if err != nil {
 		return err
 	}
-	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
-	if err != nil {
-		return err
-	}
-	canGet := permission.Check(t, permission.PermAppRead,
+	canGet := permission.Check(t, permission.PermJobRead,
 		contextsForJob(j)...,
 	)
 	if !canGet {
@@ -138,10 +128,10 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(j.Name),
-		Kind:       permission.PermAppRead,
+		Kind:       permission.PermJobRead,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
@@ -188,7 +178,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 
-	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
+	j, err := getJob(ctx, ij.Name)
 	if err != nil {
 		return err
 	}
@@ -222,10 +212,10 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
-		Kind:       permission.PermAppUpdate,
+		Kind:       permission.PermJobUpdate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&newJob)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(&newJob)...),
 	})
 	defer func() {
 		evt.Done(err)
@@ -284,7 +274,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return err
 		}
 	}
-	canCreate := permission.Check(t, permission.PermAppCreate,
+	canCreate := permission.Check(t, permission.PermJobCreate,
 		permission.Context(permTypes.CtxTeam, j.TeamOwner),
 	)
 	if !canCreate {
@@ -318,10 +308,10 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(j.Name),
-		Kind:       permission.PermAppCreate,
+		Kind:       permission.PermJobCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(&j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(&j)...),
 	})
 	defer func() {
 		evt.Done(err)
@@ -360,11 +350,11 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 
-	j, err := getJob(ctx, ij.Name, ij.TeamOwner)
+	j, err := getJob(ctx, ij.Name)
 	if err != nil {
 		return err
 	}
-	canDelete := permission.Check(t, permission.PermAppDelete,
+	canDelete := permission.Check(t, permission.PermJobDelete,
 		contextsForJob(j)...,
 	)
 	if !canDelete {
@@ -372,10 +362,10 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(j.Name),
-		Kind:       permission.PermAppDelete,
+		Kind:       permission.PermJobDelete,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
@@ -398,7 +388,7 @@ func jobTarget(jobName string) event.Target {
 
 func contextsForJob(job *job.Job) []permTypes.PermissionContext {
 	return append(permission.Contexts(permTypes.CtxTeam, job.Teams),
-		permission.Context(permTypes.CtxApp, job.Name),
+		permission.Context(permTypes.CtxJob, job.Name),
 		permission.Context(permTypes.CtxPool, job.Pool),
 	)
 }

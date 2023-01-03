@@ -53,13 +53,6 @@ type Job struct {
 	Containers []jobTypes.ContainerInfo
 }
 
-type miniJob struct {
-	Name      string
-	Pool      string
-	TeamOwner string
-	Units     []provision.Unit
-}
-
 type TsuruJob struct {
 	Name        string
 	Teams       []string
@@ -158,14 +151,14 @@ func (job *Job) GetSchedule() string {
 
 // GetByName queries the database to find a job identified by the given
 // name.
-func GetByNameAndTeam(ctx context.Context, name, teamOwner string) (*Job, error) {
+func GetByName(ctx context.Context, name string) (*Job, error) {
 	var job Job
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Find(bson.M{"tsurujob.name": name, "tsurujob.teamowner": teamOwner}).One(&job)
+	err = conn.Jobs().Find(bson.M{"tsurujob.name": name}).One(&job)
 	if err == mgo.ErrNotFound {
 		return nil, jobTypes.ErrJobNotFound
 	}

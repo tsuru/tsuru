@@ -7,6 +7,7 @@ package permission
 var (
 	CtxGlobal          = ContextType("global")
 	CtxApp             = ContextType("app")
+	CtxJob             = ContextType("job")
 	CtxTeam            = ContextType("team")
 	CtxUser            = ContextType("user")
 	CtxPool            = ContextType("pool")
@@ -17,7 +18,7 @@ var (
 	CtxRouter          = ContextType("router")
 
 	ContextTypes = []ContextType{
-		CtxGlobal, CtxApp, CtxTeam, CtxUser, CtxPool, CtxIaaS, CtxService, CtxServiceInstance, CtxVolume, CtxRouter,
+		CtxGlobal, CtxApp, CtxTeam, CtxUser, CtxPool, CtxIaaS, CtxService, CtxServiceInstance, CtxVolume, CtxRouter, CtxJob,
 	}
 )
 

@@ -40,7 +40,7 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), &j, s.user)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByNameAndTeam(context.TODO(), j.Name, j.TeamOwner)
+	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -77,7 +77,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), &j, s.user)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByNameAndTeam(context.TODO(), j.Name, j.TeamOwner)
+	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      "this-is-a-cronjob",
@@ -111,7 +111,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), j, s.user)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByNameAndTeam(context.TODO(), j.Name, j.TeamOwner)
+	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -159,7 +159,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), j, s.user)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByNameAndTeam(context.TODO(), j.Name, j.TeamOwner)
+	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,

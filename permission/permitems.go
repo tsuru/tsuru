@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2022 tsuru authors. All rights reserved.
+// Copyright 2023 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -78,9 +78,9 @@ var (
 	PermAppUpdateUnitAutoscale           = PermissionRegistry.get("app.update.unit.autoscale")           // [global app team pool]
 	PermAppUpdateUnitAutoscaleAdd        = PermissionRegistry.get("app.update.unit.autoscale.add")       // [global app team pool]
 	PermAppUpdateUnitAutoscaleRemove     = PermissionRegistry.get("app.update.unit.autoscale.remove")    // [global app team pool]
+	PermAppUpdateUnitKill                = PermissionRegistry.get("app.update.unit.kill")                // [global app team pool]
 	PermAppUpdateUnitRegister            = PermissionRegistry.get("app.update.unit.register")            // [global app team pool]
 	PermAppUpdateUnitRemove              = PermissionRegistry.get("app.update.unit.remove")              // [global app team pool]
-	PermAppUpdateUnitKill                = PermissionRegistry.get("app.update.unit.kill")                // [global app team pool]
 	PermAppUpdateUnitStatus              = PermissionRegistry.get("app.update.unit.status")              // [global app team pool]
 	PermCluster                          = PermissionRegistry.get("cluster")                             // [global]
 	PermClusterAdmin                     = PermissionRegistry.get("cluster.admin")                       // [global]
@@ -101,6 +101,13 @@ var (
 	PermHealingUpdate                    = PermissionRegistry.get("healing.update")                      // [global pool]
 	PermInstall                          = PermissionRegistry.get("install")                             // [global]
 	PermInstallManage                    = PermissionRegistry.get("install.manage")                      // [global]
+	PermJob                              = PermissionRegistry.get("job")                                 // [global team pool job]
+	PermJobCreate                        = PermissionRegistry.get("job.create")                          // [global team]
+	PermJobDelete                        = PermissionRegistry.get("job.delete")                          // [global team]
+	PermJobRead                          = PermissionRegistry.get("job.read")                            // [global team]
+	PermJobReadEvents                    = PermissionRegistry.get("job.read.events")                     // [global team]
+	PermJobRun                           = PermissionRegistry.get("job.run")                             // [global team]
+	PermJobUpdate                        = PermissionRegistry.get("job.update")                          // [global team]
 	PermMachine                          = PermissionRegistry.get("machine")                             // [global iaas]
 	PermMachineDelete                    = PermissionRegistry.get("machine.delete")                      // [global iaas]
 	PermMachineRead                      = PermissionRegistry.get("machine.read")                        // [global iaas]
