@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -20,6 +21,28 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 )
+
+var (
+	appBuildsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "tsuru",
+		Subsystem: "app",
+		Name:      "builds_total",
+		Help:      "Total number of app builds",
+	}, []string{"app", "status", "kind", "platform"})
+
+	appBuildDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "tsuru",
+		Subsystem: "app",
+		Name:      "build_duration_seconds",
+		Buckets:   []float64{0, 30, 60, 120, 180, 240, 300, 600, 900, 1200}, // 0s, 30s, 1min, 2min, 3min, 4min, 5min, 10min, 15min, 30min
+		Help:      "Duration in seconds of app build",
+	}, []string{"app", "status", "kind", "platform"})
+)
+
+func init() {
+	prometheus.MustRegister(appBuildsTotal)
+	prometheus.MustRegister(appBuildDuration)
+}
 
 // title: app build
 // path: /apps/{appname}/build
@@ -31,6 +54,7 @@ import (
 //   403: Forbidden
 //   404: Not found
 func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	startingBuildTime := time.Now()
 	ctx := r.Context()
 	tag := InputValue(r, "tag")
 	if tag == "" {
@@ -88,7 +112,12 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	var imageID string
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	defer func() {
+		evt.DoneCustomData(err, map[string]string{"image": imageID})
+		labels := prometheus.Labels{"app": appName, "status": deployStatus(evt), "kind": string(opts.GetKind()), "platform": opts.App.Platform}
+		appBuildDuration.With(labels).Observe(time.Since(startingBuildTime).Seconds())
+		appBuildsTotal.With(labels).Inc()
+	}()
 	ctx, cancel := evt.CancelableContext(opts.App.Context())
 	defer cancel()
 	opts.App.ReplaceContext(ctx)

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -20,6 +21,28 @@ import (
 )
 
 const eventIDHeader = "X-Tsuru-Eventid"
+
+var (
+	appDeploysTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "tsuru",
+		Subsystem: "app",
+		Name:      "deploys_total",
+		Help:      "Total number of app deploys",
+	}, []string{"app", "status", "kind", "platform"})
+
+	appDeployDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "tsuru",
+		Subsystem: "app",
+		Name:      "deploy_duration_seconds",
+		Buckets:   []float64{0, 30, 60, 120, 180, 240, 300, 600, 900, 1200}, // 0s, 30s, 1min, 2min, 3min, 4min, 5min, 10min, 15min, 30min
+		Help:      "Duration in seconds of app deploy",
+	}, []string{"app", "status", "kind", "platform"})
+)
+
+func init() {
+	prometheus.MustRegister(appDeploysTotal)
+	prometheus.MustRegister(appDeployDuration)
+}
 
 // title: app deploy
 // path: /apps/{appname}/deploy
@@ -31,6 +54,7 @@ const eventIDHeader = "X-Tsuru-Eventid"
 //   403: Forbidden
 //   404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	startingDeployTime := time.Now()
 	ctx := r.Context()
 	opts, err := prepareToBuild(r)
 	if err != nil {
@@ -100,7 +124,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	defer func() {
+		evt.DoneCustomData(err, map[string]string{"image": imageID})
+		labels := prometheus.Labels{"app": appName, "status": deployStatus(evt), "kind": string(opts.GetKind()), "platform": opts.App.Platform}
+		appDeployDuration.With(labels).Observe(time.Since(startingDeployTime).Seconds())
+		appDeploysTotal.With(labels).Inc()
+	}()
 	ctx, cancel := evt.CancelableContext(opts.App.Context())
 	defer cancel()
 	opts.App.ReplaceContext(ctx)
@@ -114,6 +143,19 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
+
+func deployStatus(evt *event.Event) string {
+	if evt == nil {
+		return "unknown"
+	}
+	if evt.CancelInfo.Canceled {
+		return "canceled"
+	}
+	if evt.Error != "" {
+		return "error"
+	}
+	return "success"
 }
 
 func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
