@@ -515,6 +515,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	if ignoreBaseDepIfStopped {
 		ignoreBaseDep(grouped.versioned)
 	}
+
 	versionSet := map[int]struct{}{}
 	for v, deps := range grouped.versioned {
 		for _, depData := range deps {
@@ -554,11 +555,13 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	} else {
 		versions = append(versions, version)
 	}
+
 	if len(versions) == 0 {
 		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 		if err != nil {
 			return err
 		}
+
 		versions = append(versions, version)
 	}
 
@@ -643,12 +646,13 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if dep.Spec.Replicas == nil {
 		dep.Spec.Replicas = &zero
 	}
-	newReplicas := int(*dep.Spec.Replicas) + units
-	if newReplicas < 0 {
-		newReplicas = 0
-	}
 	if w == nil {
 		w = ioutil.Discard
+	}
+	newReplicas := int(*dep.Spec.Replicas) + units
+	if newReplicas <= 0 {
+		fmt.Fprintf(w, "---- Calling app stop internally as the number of units is zero ----\n")
+		return GetProvisioner().Stop(ctx, a, processName, version, w)
 	}
 	patchType, patch, err := replicasPatch(newReplicas, processName)
 	if err != nil {
