@@ -635,3 +635,27 @@ func (s *S) TestClusterDisablePDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(c4.disablePDB("mypool"), check.Equals, false)
 }
+
+func (s *S) TestCluster_Registry(c *check.C) {
+	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(string(c1.Registry()), check.Equals, "")
+
+	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry": "169.196.0.100:5000/tsuru"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(string(c1.Registry()), check.Equals, "169.196.0.100:5000/tsuru")
+}
+
+func (s *S) TestCluster_InsecureRegistry(c *check.C) {
+	c1, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.InsecureRegistry(), check.Equals, false)
+
+	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "true"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.InsecureRegistry(), check.Equals, true)
+
+	c1, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"registry-insecure": "false"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(c1.InsecureRegistry(), check.Equals, false)
+}

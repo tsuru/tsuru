@@ -13,7 +13,7 @@ function check_go {
 }
 
 function missing_handlers {
-    go get -u github.com/tsuru/tsuru-api-docs
+    go install github.com/tsuru/tsuru-api-docs@latest
 
     allhandlers=$(tsuru-api-docs -search . | sort)
 

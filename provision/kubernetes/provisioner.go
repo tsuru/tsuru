@@ -2154,5 +2154,5 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	if err != nil {
 		return "", err
 	}
-	return client.registry(), nil
+	return client.Registry(), nil
 }

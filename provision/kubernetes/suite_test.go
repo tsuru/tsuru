@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	tsuruv1clientset "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned"
@@ -66,6 +67,8 @@ type S struct {
 	mockService   servicemock.MockService
 	factory       informers.SharedInformerFactory
 	vpaFactory    vpaInformers.SharedInformerFactory
+
+	builders map[string]builder.Builder
 }
 
 var suiteInstance = &S{}
@@ -90,6 +93,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	s.builders = builder.List()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -97,6 +101,10 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
+	for n, b := range s.builders {
+		builder.Register(n, b)
+	}
+
 	stopClusterController(context.TODO(), s.p, s.clusterClient)
 }
 

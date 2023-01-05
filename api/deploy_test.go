@@ -820,7 +820,7 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 		},
 		{
 			app.DeployOptions{},
-			permission.PermAppDeployArchiveUrl,
+			permission.PermAppDeploy,
 		},
 	}
 	for _, t := range tests {
