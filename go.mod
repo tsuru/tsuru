@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 	github.com/andrestc/docker-machine-driver-cloudstack v0.9.2
-	github.com/aws/aws-sdk-go v1.28.2
+	github.com/aws/aws-sdk-go v1.33.0
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
@@ -103,7 +103,7 @@ require (
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
-	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
+	github.com/jmespath/go-jmespath v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kardianos/osext v0.0.0-20151124170342-10da29423eb9 // indirect
 	github.com/kr/text v0.2.0 // indirect
