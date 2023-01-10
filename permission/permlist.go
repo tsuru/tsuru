@@ -259,14 +259,14 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"job", []permTypes.ContextType{permTypes.CtxTeam, permTypes.CtxPool, permTypes.CtxJob},
 ).addWithCtx(
 	"job.create", []permTypes.ContextType{permTypes.CtxTeam},
-).addWithCtx(
-	"job.update", []permTypes.ContextType{permTypes.CtxTeam},
-).addWithCtx(
-	"job.run", []permTypes.ContextType{permTypes.CtxTeam},
-).addWithCtx(
-	"job.read", []permTypes.ContextType{permTypes.CtxTeam},
-).addWithCtx(
-	"job.delete", []permTypes.ContextType{permTypes.CtxTeam},
+).add(
+	"job.update",
+).add(
+	"job.run",
+).add(
+	"job.read",
+).add(
+	"job.delete",
 ).add(
 	"job.read.events",
 )
