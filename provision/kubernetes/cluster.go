@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"net"
@@ -44,6 +45,7 @@ import (
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
@@ -85,6 +87,8 @@ const (
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
 	buildServiceAddressKey        = "build-service-address"
+	buildServiceTLSKey            = "build-service-tls"
+	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -122,6 +126,8 @@ var (
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
 		dnsConfigNdotsKey:             "Number of dots in the domain name to be used in the search list for DNS lookups. Default to uses kubernetes default value (5).",
 		buildServiceAddressKey:        "Address of build service (deploy-agent v2)",
+		buildServiceTLSKey:            "Whether should access Build service through TLS",
+		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
 	}
 )
 
@@ -682,8 +688,18 @@ func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.C
 		return nil, nil, fmt.Errorf("build service address not provided: %w", builder.ErrBuildV2NotSupported)
 	}
 
+	creds := insecure.NewCredentials()
+
+	if enableTLS, _ := strconv.ParseBool(c.configForContext(pool, buildServiceTLSKey)); enableTLS {
+		var err error
+		creds, err = c.buildServiceTLSCrendentials(pool, addr)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 	}
 
 	conn, err := grpc.Dial(addr, opts...)
@@ -692,6 +708,22 @@ func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.C
 	}
 
 	return pb.NewBuildClient(conn), conn, nil
+}
+
+func (c *ClusterClient) buildServiceTLSCrendentials(pool, addr string) (credentials.TransportCredentials, error) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse build service address %q as URL: %w", addr, err)
+	}
+
+	serverName, _, _ := strings.Cut(u.Host, ":") // removes the :port suffix, if any
+
+	insecureVerify, _ := strconv.ParseBool(c.configForContext(pool, buildServiceTLSSkipVerify))
+
+	return credentials.NewTLS(&tls.Config{
+		ServerName:         serverName,
+		InsecureSkipVerify: insecureVerify,
+	}), nil
 }
 
 type clusterApp struct {
