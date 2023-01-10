@@ -2,7 +2,7 @@ name: Issue cleanup
 on: 
   workflow_dispatch:
   schedule:
-    - cron: '37 01 * * *'
+    - cron: '37 01 5 */2 *'
 
 jobs:
   triage_issues:
