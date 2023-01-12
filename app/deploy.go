@@ -430,15 +430,14 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	buildOpts := builder.BuildOpts{
-		Rebuild:       opts.GetKind() == DeployRebuild,
-		BuildFromFile: opts.Build,
-		ArchiveURL:    opts.ArchiveURL,
-		ArchiveFile:   opts.File,
-		ArchiveSize:   opts.FileSize,
-		ImageID:       opts.Image,
-		Tag:           opts.BuildTag,
-		Message:       opts.Message,
-		Output:        evt,
+		Rebuild:     opts.GetKind() == DeployRebuild,
+		ArchiveURL:  opts.ArchiveURL,
+		ArchiveFile: opts.File,
+		ArchiveSize: opts.FileSize,
+		ImageID:     opts.Image,
+		Tag:         opts.BuildTag,
+		Message:     opts.Message,
+		Output:      evt,
 	}
 
 	b, err := opts.App.getBuilder()
