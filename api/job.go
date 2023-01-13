@@ -33,9 +33,9 @@ type inputJob struct {
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
 
-	Schedule   string                   `json:"schedule"`
+	Schedule  string                 `json:"schedule"`
 	Container jobTypes.ContainerInfo `json:"container"`
-	Trigger bool `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
+	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
 }
 
 func getJob(ctx stdContext.Context, name string) (*job.Job, error) {
@@ -105,7 +105,6 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(jobs)
 }
 
-
 // title: job trigger
 // path: /job/trigger/{name}
 // method: PUT
@@ -155,7 +154,6 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	w.Write(jsonMsg)
 	return nil
 }
-
 
 // title: job info
 // path: /jobs
@@ -254,7 +252,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Pool:        ij.Pool,
 			Metadata:    ij.Metadata,
 		},
-		Schedule:   ij.Schedule,
+		Schedule:  ij.Schedule,
 		Container: ij.Container,
 	}
 	if j.TeamOwner == "" {
@@ -318,7 +316,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Pool:        ij.Pool,
 			Metadata:    ij.Metadata,
 		},
-		Schedule:   ij.Schedule,
+		Schedule:  ij.Schedule,
 		Container: ij.Container,
 	}
 	if j.TeamOwner == "" {

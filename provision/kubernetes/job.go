@@ -31,10 +31,10 @@ func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map
 			},
 			Spec: v1.PodSpec{
 				RestartPolicy: "OnFailure",
-				Containers:    []v1.Container{
+				Containers: []v1.Container{
 					{
-						Name: containerInfo.Name,
-						Image: containerInfo.Image,
+						Name:    containerInfo.Name,
+						Image:   containerInfo.Image,
 						Command: containerInfo.Command,
 					},
 				},
@@ -63,9 +63,9 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
 	k8sJob, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: job.GetName(),
-			Labels:       labels,
-			Annotations:  annotations,
+			Name:        job.GetName(),
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: jobSpec,
 	}, metav1.CreateOptions{})
@@ -100,23 +100,23 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, j provision.Job
 	}
 	cronChild := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: cron.Namespace,
-			Labels: cron.Labels,
+			Namespace:   cron.Namespace,
+			Labels:      cron.Labels,
 			Annotations: cron.Annotations,
 		},
 		Spec: cron.Spec.JobTemplate.Spec,
 	}
 	cronChild.OwnerReferences = []metav1.OwnerReference{
 		{
-			Name: cron.Name,
-			Kind: "CronJob",
-			UID: cron.UID,
+			Name:       cron.Name,
+			Kind:       "CronJob",
+			UID:        cron.UID,
 			APIVersion: "batch/v1",
 		},
 	}
 	cronChild.Name = fmt.Sprintf("%s-manual-trigger", cron.Name)
 	if cronChild.Annotations == nil {
-		cronChild.Annotations = map[string]string{"cronjob.kubernetes.io/instantiate":"manual"}
+		cronChild.Annotations = map[string]string{"cronjob.kubernetes.io/instantiate": "manual"}
 	} else {
 		cronChild.Annotations["cronjob.kubernetes.io/instantiate"] = "manual"
 	}

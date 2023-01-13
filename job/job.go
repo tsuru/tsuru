@@ -224,7 +224,7 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 		actions = []*action.Action{
 			&insertJob,
 		}
-		if trigger{
+		if trigger {
 			actions = append(actions, &provisionJob)
 		}
 	}
