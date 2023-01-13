@@ -38,7 +38,7 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 			Pool:      "test1",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j, s.user)
+	err := job.CreateJob(context.TODO(), &j, s.user, false)
 	c.Assert(err, check.IsNil)
 	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)

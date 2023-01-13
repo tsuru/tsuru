@@ -50,6 +50,25 @@ var provisionJob = action.Action{
 	MinParams: 1,
 }
 
+var triggerCron = action.Action{
+	Name: "trigger-cronjob",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var job *Job
+		switch ctx.Params[0].(type) {
+		case *Job:
+			job = ctx.Params[0].(*Job)
+		default:
+			return nil, errors.New("First parameter must be *Job.")
+		}
+		prov, err := job.getProvisioner()
+		if err != nil {
+			return nil, err
+		}
+		return nil, prov.TriggerCron(ctx.Context, job)
+	},
+	MinParams: 1,
+}
+
 var updateJobProv = action.Action{
 	Name: "update-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -104,12 +123,7 @@ var insertJob = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *Job.")
 		}
-		var err error
-		j.Name = ctx.Previous.(string)
-		if err != nil {
-			return nil, err
-		}
-		err = insertJobDB(j)
+		err := insertJobDB(j)
 		if err != nil {
 			return nil, err
 		}

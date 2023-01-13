@@ -283,7 +283,7 @@ type Job interface {
 	GetTeamsName() []string
 	GetMetadata() appTypes.Metadata
 	IsCron() bool
-	GetContainersInfo() []jobTypes.ContainerInfo
+	GetContainerInfo() jobTypes.ContainerInfo
 	GetSchedule() string
 }
 
@@ -420,6 +420,8 @@ type JobProvisioner interface {
 	DestroyJob(context.Context, Job) error
 
 	UpdateJob(context.Context, Job) error
+
+	TriggerCron(context.Context, Job) error
 }
 
 type ExecOptions struct {

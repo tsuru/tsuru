@@ -34,7 +34,8 @@ type inputJob struct {
 	Metadata    appTypes.Metadata `json:"metadata"`
 
 	Schedule   string                   `json:"schedule"`
-	Containers []jobTypes.ContainerInfo `json:"containers"`
+	Container jobTypes.ContainerInfo `json:"container"`
+	Trigger bool `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
 }
 
 func getJob(ctx stdContext.Context, name string) (*job.Job, error) {
@@ -103,6 +104,58 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return json.NewEncoder(w).Encode(jobs)
 }
+
+
+// title: job trigger
+// path: /job/trigger/{name}
+// method: PUT
+// produce: application/x-json-stream
+// responses:
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Not found
+func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	name := r.URL.Query().Get(":name")
+	j, err := getJob(ctx, name)
+	if err != nil {
+		return err
+	}
+	canRun := permission.Check(t, permission.PermJobRun,
+		contextsForJob(j)...,
+	)
+	if !canRun {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermJobRun,
+		Owner:      t,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	err = job.Trigger(ctx, j)
+	if err != nil {
+		return err
+	}
+	msg := map[string]interface{}{
+		"status": "success",
+	}
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonMsg)
+	return nil
+}
+
 
 // title: job info
 // path: /jobs
@@ -202,7 +255,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Metadata:    ij.Metadata,
 		},
 		Schedule:   ij.Schedule,
-		Containers: ij.Containers,
+		Container: ij.Container,
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -266,7 +319,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Metadata:    ij.Metadata,
 		},
 		Schedule:   ij.Schedule,
-		Containers: ij.Containers,
+		Container: ij.Container,
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -284,7 +337,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	err = job.CreateJob(ctx, &j, u)
+	err = job.CreateJob(ctx, &j, u, ij.Trigger)
 	if err != nil {
 		log.Errorf("Got error while creating job: %s", err)
 		if _, ok := err.(appTypes.NoTeamsError); ok {

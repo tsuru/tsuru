@@ -6,6 +6,7 @@ package job
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
@@ -50,7 +51,7 @@ type Job struct {
 
 	Schedule string
 
-	Containers []jobTypes.ContainerInfo
+	Container jobTypes.ContainerInfo
 }
 
 type TsuruJob struct {
@@ -141,8 +142,8 @@ func (job *Job) IsCron() bool {
 	return job.Schedule != ""
 }
 
-func (job *Job) GetContainersInfo() []jobTypes.ContainerInfo {
-	return job.Containers
+func (job *Job) GetContainerInfo() jobTypes.ContainerInfo {
+	return job.Container
 }
 
 func (job *Job) GetSchedule() string {
@@ -193,7 +194,7 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 //
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
-func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
+func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) error {
 	if job.ctx == nil {
 		job.ctx = ctx
 	}
@@ -207,16 +208,24 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 
 	var actions []*action.Action
 	if job.IsCron() {
+		if trigger {
+			return &jobTypes.JobCreationError{
+				Job: job.Name,
+				Err: fmt.Errorf("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run"),
+			}
+		}
 		actions = []*action.Action{
 			&reserveTeamCronjob,
 			&reserveUserCronjob,
-			&provisionJob,
 			&insertJob,
+			&provisionJob,
 		}
 	} else {
 		actions = []*action.Action{
-			&provisionJob,
 			&insertJob,
+		}
+		if trigger{
+			actions = append(actions, &provisionJob)
 		}
 	}
 
@@ -231,11 +240,24 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User) error {
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
 func UpdateJob(ctx context.Context, job *Job, user *auth.User) error {
-	pipeline := action.NewPipeline([]*action.Action{
-		&updateJobProv,
+	actions := []*action.Action{
 		&jobUpdateDB,
-	}...)
-	return pipeline.Execute(ctx, job, user)
+	}
+	if job.IsCron() {
+		actions = append(actions, &updateJobProv)
+	}
+	return action.NewPipeline(actions...).Execute(ctx, job, user)
+}
+
+// Trigger triggers an execution of either job or cronjob object
+func Trigger(ctx context.Context, job *Job) error {
+	var actions []*action.Action
+	if job.IsCron() {
+		actions = []*action.Action{&triggerCron}
+	} else {
+		actions = []*action.Action{&provisionJob}
+	}
+	return action.NewPipeline(actions...).Execute(ctx, job)
 }
 
 type Filter struct {

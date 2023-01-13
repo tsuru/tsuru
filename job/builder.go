@@ -26,7 +26,7 @@ func (job *Job) genUniqueName() error {
 	if err != nil {
 		return err
 	}
-	job.Name = id.String()
+	job.Name = fmt.Sprintf("tsuru-%s", id.String())
 	return nil
 }
 

@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
@@ -14,22 +15,14 @@ import (
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 const jobPrefix = "tsuru-"
 
-func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
-	jobContainers := []v1.Container{}
-	for _, ci := range containersInfo {
-		jobContainers = append(jobContainers, v1.Container{
-			Name:    ci.Name,
-			Image:   ci.Image,
-			Command: ci.Command,
-		})
-	}
-
+func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
 	return batchv1.JobSpec{
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +31,13 @@ func createJobSpec(containersInfo []jobTypes.ContainerInfo, labels, annotations 
 			},
 			Spec: v1.PodSpec{
 				RestartPolicy: "OnFailure",
-				Containers:    jobContainers,
+				Containers:    []v1.Container{
+					{
+						Name: containerInfo.Name,
+						Image: containerInfo.Image,
+						Command: containerInfo.Command,
+					},
+				},
 			},
 		},
 	}
@@ -64,9 +63,9 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
 	k8sJob, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
+			Name: job.GetName(),
 			Labels:       labels,
 			Annotations:  annotations,
-			GenerateName: jobPrefix,
 		},
 		Spec: jobSpec,
 	}, metav1.CreateOptions{})
@@ -83,11 +82,54 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
-	jobSpec := createJobSpec(j.GetContainersInfo(), jobLabels, jobAnnotations)
+	jobSpec := createJobSpec(j.GetContainerInfo(), jobLabels, jobAnnotations)
 	if j.IsCron() {
 		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
 	}
 	return createJob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
+}
+
+func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, j provision.Job) error {
+	client, err := clusterForPool(ctx, j.GetPool())
+	if err != nil {
+		return err
+	}
+	cron, err := client.BatchV1beta1().CronJobs(client.Namespace()).Get(ctx, j.GetName(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	cronChild := batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: cron.Namespace,
+			Labels: cron.Labels,
+			Annotations: cron.Annotations,
+		},
+		Spec: cron.Spec.JobTemplate.Spec,
+	}
+	cronChild.OwnerReferences = []metav1.OwnerReference{
+		{
+			Name: cron.Name,
+			Kind: "CronJob",
+			UID: cron.UID,
+			APIVersion: "batch/v1",
+		},
+	}
+	cronChild.Name = fmt.Sprintf("%s-manual-trigger", cron.Name)
+	if cronChild.Annotations == nil {
+		cronChild.Annotations = map[string]string{"cronjob.kubernetes.io/instantiate":"manual"}
+	} else {
+		cronChild.Annotations["cronjob.kubernetes.io/instantiate"] = "manual"
+	}
+	_, err = client.BatchV1().Jobs(cron.Namespace).Get(ctx, cronChild.Name, metav1.GetOptions{})
+	if err == nil {
+		if err = client.BatchV1().Jobs(cron.Namespace).Delete(ctx, cronChild.Name, metav1.DeleteOptions{}); err != nil {
+			return err
+		}
+	} else if !k8sErrors.IsNotFound(err) {
+		return err
+	}
+	_, err = client.BatchV1().Jobs(cron.Namespace).Create(ctx, &cronChild, metav1.CreateOptions{})
+	return err
 }
 
 func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) error {
@@ -100,7 +142,7 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) 
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
-	jobSpec := createJobSpec(j.GetContainersInfo(), jobLabels, jobAnnotations)
+	jobSpec := createJobSpec(j.GetContainerInfo(), jobLabels, jobAnnotations)
 	_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        j.GetName(),
