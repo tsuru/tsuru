@@ -53,7 +53,7 @@ func buildName(ctx context.Context, job *Job) error {
 		}
 	} else {
 		if job.IsCron(){
-			return errors.New("cronjob name can't be empty (\"\")")
+			return errors.New("cronjob name can't be empty")
 		}
 		// If it's a one-time-job a unique job name is provided
 		return oneTimeJobName(ctx, job)

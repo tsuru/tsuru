@@ -585,3 +585,28 @@ func (s *S) TestCreateJobNoPool(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Pool does not exist.\n")
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }
+
+func (s *S) TestCreateCronjobNoName(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	j := inputJob{TeamOwner: s.team.Name, Schedule: "* * * * *"}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "cronjob name can't be empty\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+}
