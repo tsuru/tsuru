@@ -124,10 +124,10 @@ func (s *S) TestDeleteJob(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme: permission.PermJobDelete,
+		Scheme:  permission.PermJobDelete,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	request.Header.Set("Authorization", "b "+ token.GetValue())
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
@@ -169,7 +169,7 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
-	request.Header.Set("Authorization", "b "+ token.GetValue())
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
@@ -207,7 +207,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
-		Scheme: permission.PermJobDelete,
+		Scheme:  permission.PermJobDelete,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
@@ -411,7 +411,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	j := inputJob{
-		Name: 		 "full-cron",
+		Name:        "full-cron",
 		TeamOwner:   s.team.Name,
 		Pool:        "test1",
 		Plan:        "default-plan",
@@ -536,7 +536,7 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	})
 	oldJob := job.Job{
 		TsuruJob: job.TsuruJob{
-			Name: 	"some-job",
+			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 		},
