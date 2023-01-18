@@ -208,6 +208,18 @@ hooks:
   build:
   - mkdir /path/to/my/dir
   - /path/to/script.sh
+
+kubernetes:
+  groups:
+    my-app:
+      web:
+        ports:
+        - name: http
+          port: 80
+          target_port: 8080
+        - name: http-grpc
+          port: 3000
+          protocol: TCP
 `,
 			}}})
 			c.Check(err, check.IsNil)
@@ -261,6 +273,18 @@ hooks:
 		},
 		Hooks: &provisiontypes.TsuruYamlHooks{
 			Build: []string{"mkdir /path/to/my/dir", "/path/to/script.sh"},
+		},
+		Kubernetes: &provisiontypes.TsuruYamlKubernetesConfig{
+			Groups: map[string]provisiontypes.TsuruYamlKubernetesGroup{
+				"my-app": map[string]provisiontypes.TsuruYamlKubernetesProcessConfig{
+					"web": {
+						Ports: []provisiontypes.TsuruYamlKubernetesProcessPortConfig{
+							{Name: "http", Port: 80, TargetPort: 8080},
+							{Name: "http-grpc", Port: 3000, Protocol: "TCP"},
+						},
+					},
+				},
+			},
 		},
 	})
 }

@@ -11,10 +11,10 @@ import (
 	"io"
 	"sync"
 
+	"github.com/ghodss/yaml"
 	buildpb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"gopkg.in/yaml.v2"
 
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/version"
@@ -373,6 +373,9 @@ func tsuruYamlStringToCustomData(str string) (map[string]any, error) {
 	}
 
 	var tsuruYaml provisiontypes.TsuruYamlData
+	// NOTE(nettoclaudio): we must use the github.com/ghodss/yaml package to
+	// decode the YAML from app since we need some functions of JSON decoder
+	// as well - namely parse field names based on JSON struct tags.
 	if err := yaml.Unmarshal([]byte(str), &tsuruYaml); err != nil {
 		return nil, fmt.Errorf("failed to decode Tsuru YAML: %w", err)
 	}
