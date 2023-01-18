@@ -31,9 +31,11 @@ func (job *Job) genUniqueName() error {
 }
 
 func oneTimeJobName(ctx context.Context, job *Job) error {
-	job.genUniqueName()
 	collision := true
 	for i := 0; i < jobTypes.MaxAttempts; i++ {
+		if err := job.genUniqueName(); err != nil {
+			return err
+		}
 		if collision = checkCollision(ctx, job.Name); !collision {
 			break
 		}
@@ -45,12 +47,15 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 }
 
 func buildName(ctx context.Context, job *Job) error {
-	if job.IsCron() {
-		if _, err := GetByName(ctx, job.Name); err != nil && err != jobTypes.ErrJobNotFound {
-			return errors.WithMessage(err, fmt.Sprintf("unable to check if job already exists: %s", err.Error()))
+	if job.Name != ""{
+		if _, err := GetByName(ctx, job.Name); err == nil {
+			return jobTypes.ErrJobAlreadyExists
 		}
 	} else {
-		// If it's a one-time-job we must generate a unique job name to save in the database
+		if job.IsCron(){
+			return errors.New("cronjob name can't be empty (\"\")")
+		}
+		// If it's a one-time-job a unique job name is provided
 		return oneTimeJobName(ctx, job)
 	}
 	return nil

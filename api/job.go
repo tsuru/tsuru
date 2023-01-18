@@ -11,18 +11,15 @@ import (
 	"net/http"
 	"time"
 
-	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/job"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"github.com/tsuru/tsuru/types/quota"
 )
 
 type inputJob struct {
@@ -337,24 +334,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	err = job.CreateJob(ctx, &j, u, ij.Trigger)
 	if err != nil {
-		log.Errorf("Got error while creating job: %s", err)
-		if _, ok := err.(appTypes.NoTeamsError); ok {
-			return &errors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: "In order to create a job, you should be member of at least one team",
-			}
-		}
-		if e, ok := err.(*jobTypes.JobCreationError); ok {
-			if e.Err == jobTypes.ErrJobAlreadyExists {
-				return &errors.HTTP{Code: http.StatusConflict, Message: e.Error()}
-			}
-			if _, ok := pkgErrors.Cause(e.Err).(*quota.QuotaExceededError); ok {
-				return &errors.HTTP{
-					Code:    http.StatusForbidden,
-					Message: "Quota exceeded",
-				}
-			}
-		}
 		return err
 	}
 	evt, err := event.New(&event.Opts{
@@ -384,7 +363,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	return nil
 }
 
-// title: remove job
+// title: delete job
 // path: /jobs
 // method: DELETE
 // produce: application/x-json-stream

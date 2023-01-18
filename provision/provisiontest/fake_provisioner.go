@@ -1597,3 +1597,7 @@ func (p *JobProvisioner) DestroyJob(context.Context, provision.Job) error {
 func (p *JobProvisioner) UpdateJob(context.Context, provision.Job) error {
 	return nil
 }
+
+func (p *JobProvisioner) TriggerCron(context.Context, provision.Job) error {
+	return nil
+}

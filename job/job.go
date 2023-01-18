@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/adhocore/gronx"
 	"github.com/globalsign/mgo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -188,6 +189,22 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 	return prov.DestroyJob(job.ctx, job)
 }
 
+func validateSchedule(jobName, schedule string) error {
+	gronx := gronx.New()
+	if !gronx.IsValid(schedule) {
+		return &jobTypes.JobCreationError{
+			Job: jobName,
+			Err: errors.New(fmt.Sprintf("invalid cron schedule %s", schedule)),
+		}
+	}
+	return nil
+}
+
+func validatePool(ctx context.Context, jobName, poolName string) error {
+	_, err := pool.GetPoolByName(ctx, poolName)
+	return err
+}
+
 // CreateJob creates a new job or cronjob.
 //
 // Creating a new job is a process composed of the following steps:
@@ -199,6 +216,9 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 		job.ctx = ctx
 	}
 	if err := buildName(ctx, job); err != nil {
+		return err
+	}
+	if err := validatePool(ctx, job.Name, job.Pool); err != nil {
 		return err
 	}
 	if err := buildPlan(ctx, job); err != nil {
@@ -213,6 +233,9 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 				Job: job.Name,
 				Err: fmt.Errorf("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run"),
 			}
+		}
+		if err := validateSchedule(job.Name, job.Schedule); err != nil {
+			return err
 		}
 		actions = []*action.Action{
 			&reserveTeamCronjob,

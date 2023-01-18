@@ -70,6 +70,7 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
+	github.com/adhocore/gronx v1.1.2
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect

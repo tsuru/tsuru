@@ -38,7 +38,7 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 			Pool:      "test1",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	err := job.CreateJob(context.TODO(), &j, s.user, true)
 	c.Assert(err, check.IsNil)
 	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -75,7 +75,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 		},
 		Schedule: "* * * * *",
 	}
-	err := job.CreateJob(context.TODO(), &j, s.user)
+	err := job.CreateJob(context.TODO(), &j, s.user, false)
 	c.Assert(err, check.IsNil)
 	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -109,7 +109,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 			Pool:      "test1",
 		},
 	}
-	err := job.CreateJob(context.TODO(), j, s.user)
+	err := job.CreateJob(context.TODO(), j, s.user, true)
 	c.Assert(err, check.IsNil)
 	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -123,23 +123,58 @@ func (s *S) TestDeleteJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	token := userWithPermission(c, permission.Permission{
+		Scheme: permission.PermJobDelete,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+ token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
-	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("app.delete")
-	c.Assert(err, check.IsNil)
-	err = s.user.AddRole("deleter", myJob.Name)
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget(myJob.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.delete",
+		Owner:  token.GetUserName(),
+		Kind:   "job.delete",
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestDeleteJobForbidden(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	j := &job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	err := job.CreateJob(context.TODO(), j, s.user, true)
+	c.Assert(err, check.IsNil)
+	myJob, err := job.GetByName(context.TODO(), j.Name)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Name:      myJob.Name,
+		TeamOwner: myJob.TeamOwner,
+		Pool:      myJob.Pool,
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c)
+	request.Header.Set("Authorization", "b "+ token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	c.Assert(err, check.IsNil)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestDeleteCronjob(c *check.C) {
@@ -157,7 +192,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		},
 		Schedule: "* * * * *",
 	}
-	err := job.CreateJob(context.TODO(), j, s.user)
+	err := job.CreateJob(context.TODO(), j, s.user, false)
 	c.Assert(err, check.IsNil)
 	myJob, err := job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -171,26 +206,24 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	token := userWithPermission(c, permission.Permission{
+		Scheme: permission.PermJobDelete,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	role, err := permission.NewRole("deleter", "app", "")
-	c.Assert(err, check.IsNil)
-	err = role.AddPermissions("app.delete")
-	c.Assert(err, check.IsNil)
-	err = s.user.AddRole("deleter", myJob.Name)
-	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget("my-cron"),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.delete",
+		Owner:  token.GetUserName(),
+		Kind:   "job.delete",
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestDeleteShouldReturnNotFoundIfTheJobDoesNotExist(c *check.C) {
+func (s *S) TestDeleteJobNotFound(c *check.C) {
 	job := inputJob{
 		Name:      "unknown",
 		TeamOwner: "unknown",
@@ -208,7 +241,7 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheJobDoesNotExist(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
 }
 
-func (s *S) TestDeleteShouldReturnNotFoundIfTheCronjobDoesNotExist(c *check.C) {
+func (s *S) TestDeleteCronjobNotFound(c *check.C) {
 	job := inputJob{
 		Name:      "unknown",
 		TeamOwner: "unknown",
@@ -227,35 +260,6 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheCronjobDoesNotExist(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
 }
 
-func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheJob(c *check.C) {
-	j := job.Job{
-		TsuruJob: job.TsuruJob{
-			Name:      "job1",
-			TeamOwner: "admin",
-		},
-	}
-	ij := inputJob{
-		Name:      j.Name,
-		TeamOwner: j.TeamOwner,
-	}
-	err := s.conn.Jobs().Insert(j)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppDelete,
-		Context: permission.Context(permTypes.CtxApp, "-other-job-"),
-	})
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(ij)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
 func (s *S) TestCreateSimpleJob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -272,7 +276,7 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppCreate,
+		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
@@ -296,11 +300,11 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget(jobName),
 		Owner:  token.GetUserName(),
-		Kind:   "app.create",
+		Kind:   "job.create",
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestCreateFullJob(c *check.C) {
+func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "jobProv"
@@ -326,12 +330,10 @@ func (s *S) TestCreateFullJob(c *check.C) {
 				},
 			},
 		},
-		Containers: []jobTypes.ContainerInfo{
-			{
-				Name:    "c1",
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
-			},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 	}
 	var buffer bytes.Buffer
@@ -342,7 +344,7 @@ func (s *S) TestCreateFullJob(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppCreate,
+		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
@@ -392,18 +394,16 @@ func (s *S) TestCreateFullJob(c *check.C) {
 			Pool:        "test1",
 			Description: "some description",
 		},
-		Containers: []jobTypes.ContainerInfo{
-			{
-				Name:    "c1",
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
-			},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 }
 
-func (s *S) TestCreateFullCronjob(c *check.C) {
+func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "jobProv"
@@ -411,6 +411,7 @@ func (s *S) TestCreateFullCronjob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	j := inputJob{
+		Name: 		 "full-cron",
 		TeamOwner:   s.team.Name,
 		Pool:        "test1",
 		Plan:        "default-plan",
@@ -429,12 +430,10 @@ func (s *S) TestCreateFullCronjob(c *check.C) {
 				},
 			},
 		},
-		Containers: []jobTypes.ContainerInfo{
-			{
-				Name:    "c1",
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
-			},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "* * * * *",
 	}
@@ -446,7 +445,7 @@ func (s *S) TestCreateFullCronjob(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppCreate,
+		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
@@ -496,15 +495,93 @@ func (s *S) TestCreateFullCronjob(c *check.C) {
 			Pool:        "test1",
 			Description: "some description",
 		},
-		Containers: []jobTypes.ContainerInfo{
-			{
-				Name:    "c1",
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
-			},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "* * * * *",
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 	c.Assert(gotJob.IsCron(), check.Equals, true)
+}
+
+func (s *S) TestCreateJobForbidden(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	j := inputJob{TeamOwner: s.team.Name, Pool: "test1"}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestCreateJobAlreadyExists(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	oldJob := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name: 	"some-job",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	err := job.CreateJob(context.TODO(), &oldJob, s.user, true)
+	c.Assert(err, check.IsNil)
+	j := inputJob{Name: "some-job", TeamOwner: s.team.Name, Pool: "test1"}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "a job with the same name already exists\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+}
+
+func (s *S) TestCreateJobNoPool(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	j := inputJob{Name: "some-job", TeamOwner: s.team.Name}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "Pool does not exist.\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
 }
