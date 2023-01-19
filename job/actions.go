@@ -164,7 +164,7 @@ func updateJobDB(job *Job) error {
 	if reflect.DeepEqual(*oldJob, *job) {
 		return errors.New(fmt.Sprintf("no new values to be patched into job %s", job.Name))
 	}
-	return conn.Jobs().Update(bson.M{"tsurujob.name": job.Name, "tsurujob.teamowner": job.TeamOwner}, job)
+	return conn.Jobs().Update(bson.M{"tsurujob.name": job.Name}, job)
 }
 
 var reserveTeamCronjob = action.Action{
