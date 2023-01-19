@@ -3904,6 +3904,37 @@ paths:
         - auth
       security:
         - Bearer: []
+
+  /1.1/events/{eventid}:
+    get:
+      operationId: EventInfo
+      produces:
+      - application/json
+      parameters:
+        - name: eventid
+          required: true
+          in: path
+          type: string
+
+      responses:
+        "200":
+          description: Event info.
+          schema:
+            $ref: "#/definitions/Event"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team token not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+
+      tags:
+        - event
+      security:
+        - Bearer: []
+
   /1.1/events/{eventid}/cancel:
     post:
       operationId: EventCancel
@@ -5915,3 +5946,50 @@ definitions:
             type: array
             items:
               type: string
+
+  Event:
+    description: Tsuru event
+    type: object
+    properties:
+      UniqueID:
+        type: string
+      StartTime:
+        type: string
+        format: date-time
+      EndTime:
+        type: string
+        format: date-time
+      Target:
+        type: object
+        properties:
+          Type:
+            type: string
+          Value:
+            type: string
+      StartCustomData:
+        type: object
+        properties:
+          Kind:
+            type: number
+          Data:
+            type: string
+      EndCustomData:
+        type: object
+        properties:
+          Kind:
+            type: number
+          Data:
+            type: string
+      OtherCustomData:
+        type: object
+        properties:
+          Kind:
+            type: number
+          Data:
+            type: string
+      Error:
+        type: string
+      Log:
+        type: string
+      Running:
+        type: boolean
