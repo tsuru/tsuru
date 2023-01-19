@@ -49,7 +49,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 func buildName(ctx context.Context, job *Job) error {
 	if job.Name != ""{
 		if _, err := GetByName(ctx, job.Name); err == nil {
-			return jobTypes.ErrJobAlreadyExists
+			return err
 		}
 	} else {
 		if job.IsCron(){

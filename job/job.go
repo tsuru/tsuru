@@ -212,30 +212,33 @@ func validatePool(ctx context.Context, jobName, poolName string) error {
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
 func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) error {
+	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if job.ctx == nil {
 		job.ctx = ctx
 	}
 	if err := buildName(ctx, job); err != nil {
-		return err
+		jobCreationErr.Err = err
+		return &jobCreationErr
 	}
 	if err := validatePool(ctx, job.Name, job.Pool); err != nil {
-		return err
+		jobCreationErr.Err = err
+		return &jobCreationErr
 	}
 	if err := buildPlan(ctx, job); err != nil {
-		return err
+		jobCreationErr.Err = err
+		return &jobCreationErr
 	}
 	buildTsuruInfo(ctx, job, user)
 
 	var actions []*action.Action
 	if job.IsCron() {
 		if trigger {
-			return &jobTypes.JobCreationError{
-				Job: job.Name,
-				Err: fmt.Errorf("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run"),
-			}
+			jobCreationErr.Err = errors.New("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run")
+			return &jobCreationErr
 		}
 		if err := validateSchedule(job.Name, job.Schedule); err != nil {
-			return err
+			jobCreationErr.Err = err
+			return &jobCreationErr
 		}
 		actions = []*action.Action{
 			&reserveTeamCronjob,

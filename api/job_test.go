@@ -558,7 +558,7 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Body.String(), check.Equals, "a job with the same name already exists\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 }
 
 func (s *S) TestCreateJobNoPool(c *check.C) {
@@ -582,8 +582,8 @@ func (s *S) TestCreateJobNoPool(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "Pool does not exist.\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"some-job\": Pool does not exist.\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestCreateCronjobNoName(c *check.C) {
@@ -607,8 +607,8 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "cronjob name can't be empty\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"\": cronjob name can't be empty\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestUpdateJob(c *check.C) {

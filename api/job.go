@@ -334,6 +334,12 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	err = job.CreateJob(ctx, &j, u, ij.Trigger)
 	if err != nil {
+		if e, ok := err.(*jobTypes.JobCreationError); ok {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
+		}
+		if err == jobTypes.ErrJobAlreadyExists {
+			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+		}
 		return err
 	}
 	evt, err := event.New(&event.Opts{
