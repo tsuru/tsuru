@@ -14,10 +14,14 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
+	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -189,22 +193,6 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 	return prov.DestroyJob(job.ctx, job)
 }
 
-func validateSchedule(jobName, schedule string) error {
-	gronx := gronx.New()
-	if !gronx.IsValid(schedule) {
-		return &jobTypes.JobCreationError{
-			Job: jobName,
-			Err: errors.New(fmt.Sprintf("invalid cron schedule %s", schedule)),
-		}
-	}
-	return nil
-}
-
-func validatePool(ctx context.Context, jobName, poolName string) error {
-	_, err := pool.GetPoolByName(ctx, poolName)
-	return err
-}
-
 // CreateJob creates a new job or cronjob.
 //
 // Creating a new job is a process composed of the following steps:
@@ -212,15 +200,11 @@ func validatePool(ctx context.Context, jobName, poolName string) error {
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
 func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) error {
-	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if job.ctx == nil {
 		job.ctx = ctx
 	}
+	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if err := buildName(ctx, job); err != nil {
-		jobCreationErr.Err = err
-		return &jobCreationErr
-	}
-	if err := validatePool(ctx, job.Name, job.Pool); err != nil {
 		jobCreationErr.Err = err
 		return &jobCreationErr
 	}
@@ -230,14 +214,14 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 	}
 	buildTsuruInfo(ctx, job, user)
 
+	if err := validateJob(ctx, *job); err != nil {
+		return err
+	}
+
 	var actions []*action.Action
 	if job.IsCron() {
 		if trigger {
 			jobCreationErr.Err = errors.New("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run")
-			return &jobCreationErr
-		}
-		if err := validateSchedule(job.Name, job.Schedule); err != nil {
-			jobCreationErr.Err = err
 			return &jobCreationErr
 		}
 		actions = []*action.Action{
@@ -266,6 +250,9 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
 func UpdateJob(ctx context.Context, job *Job, user *auth.User) error {
+	if err := validateJob(ctx, *job); err != nil {
+		return err
+	}
 	actions := []*action.Action{
 		&jobUpdateDB,
 	}
@@ -347,4 +334,74 @@ func List(ctx context.Context, filter *Filter) ([]Job, error) {
 		return nil, err
 	}
 	return jobs, nil
+}
+
+func validateSchedule(jobName, schedule string) error {
+	gronx := gronx.New()
+	if !gronx.IsValid(schedule) {
+		return jobTypes.ErrInvalidSchedule
+	}
+	return nil
+}
+
+func validatePool(ctx context.Context, job Job) error {
+	p, err := pool.GetPoolByName(ctx, job.Pool)
+	if err != nil {
+		return err
+	}
+	return validateTeamOwner(ctx, job, p)
+}
+
+func validatePlan(ctx context.Context, poolName, planName string) error {
+	pool, err := pool.GetPoolByName(ctx, poolName)
+	if err != nil {
+		return err
+	}
+	plans, err := pool.GetPlans()
+	if err != nil {
+		return err
+	}
+	planSet := set.FromSlice(plans)
+	if !planSet.Includes(planName) {
+		msg := fmt.Sprintf("Job plan %q is not allowed on pool %q", planName, pool.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+	return nil
+}
+
+func validateTeamOwner(ctx context.Context, job Job, p *pool.Pool) error {
+	_, err := servicemanager.Team.FindByName(ctx, job.TeamOwner)
+	if err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
+	}
+	poolTeams, err := p.GetTeams()
+	if err != nil && err != pool.ErrPoolHasNoTeam {
+		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+	for _, team := range poolTeams {
+		if team == job.TeamOwner {
+			return nil
+		}
+	}
+	msg := fmt.Sprintf("Job team owner %q has no access to pool %q", job.TeamOwner, p.Name)
+	return &tsuruErrors.ValidationError{Message: msg}
+}
+
+func validateJob(ctx context.Context, j Job) error {
+	if !validation.ValidateName(j.Name){
+		return &tsuruErrors.ValidationError{Message: "invalid job name"}
+	}
+	if err := validatePool(ctx, j); err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
+	}
+	if err := validatePlan(ctx, j.Pool, j.Plan.Name); err != nil {
+		return err
+	}
+	if j.IsCron() {
+		if err := validateSchedule(j.Name, j.Schedule); err != nil {
+			return &tsuruErrors.ValidationError{Message: fmt.Sprintf("invalid schedule: %s",err.Error())}
+		}
+	}
+	return nil
 }

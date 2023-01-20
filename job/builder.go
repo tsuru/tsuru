@@ -48,8 +48,9 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 
 func buildName(ctx context.Context, job *Job) error {
 	if job.Name != ""{
+		// check if the given name is already in the database
 		if _, err := GetByName(ctx, job.Name); err == nil {
-			return err
+			return jobTypes.ErrJobAlreadyExists
 		}
 	} else {
 		if job.IsCron(){

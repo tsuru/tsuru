@@ -258,6 +258,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return err
 		}
 	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
 		Kind:       permission.PermJobUpdate,

@@ -729,3 +729,77 @@ func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.DeepEquals, "Job i-dont-exist not found.\n")
 }
+
+func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+			Name: "cron",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	_, err = job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Name: "cron",
+		Schedule: "invalid",
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid schedule\n")
+}
+
+func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+			Name: "cron",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	_, err = job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Name: "cron",
+		TeamOwner: "invalid",
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid schedule.\n")
+}
