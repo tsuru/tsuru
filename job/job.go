@@ -250,7 +250,7 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
 func UpdateJob(ctx context.Context, newJob, oldJob *Job, user *auth.User) error {
-	if err := mergo.Merge(newJob, oldJob, mergo.WithOverrideEmptySlice); err != nil {
+	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
 	}
 	if err := validateJob(ctx, *newJob); err != nil {

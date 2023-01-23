@@ -676,13 +676,31 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(gotJob.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	c.Assert(gotJob.Schedule, check.DeepEquals, "* * * * *")
 	ij := inputJob{
-		Name: j1.Name,
-		Container: jobTypes.ContainerInfo{
-			Name: "c1",
-			Image: "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
+		Name:        j1.Name,
+		TeamOwner:   s.team.Name,
+		Pool:        "test1",
+		Plan:        "default-plan",
+		Description: "some description",
+		Metadata: app.Metadata{
+			Labels: []app.MetadataItem{
+				{
+					Name:  "label1",
+					Value: "value1",
+				},
+			},
+			Annotations: []app.MetadataItem{
+				{
+					Name:  "annotation1",
+					Value: "value2",
+				},
+			},
 		},
-		Schedule: "* * * */15 *",
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+		},
+		Schedule: "*/15 * * * *",
 	}
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
@@ -696,8 +714,54 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
 	gotJob, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Container, check.DeepEquals, ij.Container)
-	c.Assert(gotJob.Schedule, check.DeepEquals, ij.Schedule)
+	expectedJob := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      j1.Name,
+			Teams:     []string{s.team.Name},
+			TeamOwner: s.team.Name,
+			Owner:     "super-root-toremove@groundcontrol.com",
+			Plan: app.Plan{
+				Name:     "default-plan",
+				Memory:   1024,
+				Swap:     1024,
+				CpuShare: 100,
+				Default:  true,
+			},
+			Metadata: app.Metadata{
+				Labels: []app.MetadataItem{
+					{
+						Name:  "label1",
+						Value: "value1",
+					},
+				},
+				Annotations: []app.MetadataItem{
+					{
+						Name:  "annotation1",
+						Value: "value2",
+					},
+				},
+			},
+			Pool:        "test1",
+			Description: "some description",
+		},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+		},
+		Schedule: "*/15 * * * *",
+	}
+	// we have to check the values 1 by 1 because the value of job.ctx is != nil
+	c.Assert(gotJob.Name, check.DeepEquals, expectedJob.Name)
+	c.Assert(gotJob.Teams, check.DeepEquals, expectedJob.Teams)
+	c.Assert(gotJob.TeamOwner, check.DeepEquals, expectedJob.TeamOwner)
+	c.Assert(gotJob.Owner, check.DeepEquals, expectedJob.Owner)
+	c.Assert(gotJob.Plan, check.DeepEquals, expectedJob.Plan)
+	c.Assert(gotJob.Metadata, check.DeepEquals, expectedJob.Metadata)
+	c.Assert(gotJob.Pool, check.DeepEquals, expectedJob.Pool)
+	c.Assert(gotJob.Description, check.DeepEquals, expectedJob.Description)
+	c.Assert(gotJob.Container, check.DeepEquals, expectedJob.Container)
+	c.Assert(gotJob.Schedule, check.DeepEquals, expectedJob.Schedule)
 }
 
 func (s *S) TestUpdateCronjobNotFound(c *check.C) {
