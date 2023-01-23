@@ -10,6 +10,7 @@ import (
 
 	"github.com/adhocore/gronx"
 	"github.com/globalsign/mgo"
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
@@ -21,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -249,17 +249,20 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 //
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
-func UpdateJob(ctx context.Context, job *Job, user *auth.User) error {
-	if err := validateJob(ctx, *job); err != nil {
+func UpdateJob(ctx context.Context, newJob, oldJob *Job, user *auth.User) error {
+	if err := mergo.Merge(newJob, oldJob, mergo.WithOverrideEmptySlice); err != nil {
+		return err
+	}
+	if err := validateJob(ctx, *newJob); err != nil {
 		return err
 	}
 	actions := []*action.Action{
 		&jobUpdateDB,
 	}
-	if job.IsCron() {
+	if newJob.IsCron() {
 		actions = append(actions, &updateJobProv)
 	}
-	return action.NewPipeline(actions...).Execute(ctx, job, user)
+	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
 
 // Trigger triggers an execution of either job or cronjob object
@@ -389,9 +392,6 @@ func validateTeamOwner(ctx context.Context, job Job, p *pool.Pool) error {
 }
 
 func validateJob(ctx context.Context, j Job) error {
-	if !validation.ValidateName(j.Name){
-		return &tsuruErrors.ValidationError{Message: "invalid job name"}
-	}
 	if err := validatePool(ctx, j); err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -400,7 +400,7 @@ func validateJob(ctx context.Context, j Job) error {
 	}
 	if j.IsCron() {
 		if err := validateSchedule(j.Name, j.Schedule); err != nil {
-			return &tsuruErrors.ValidationError{Message: fmt.Sprintf("invalid schedule: %s",err.Error())}
+			return &tsuruErrors.ValidationError{Message: err.Error()}
 		}
 	}
 	return nil

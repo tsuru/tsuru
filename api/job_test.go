@@ -557,8 +557,8 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	})
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "a job with the same name already exists\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"some-job\": a job with the same name already exists\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
 func (s *S) TestCreateJobNoPool(c *check.C) {
@@ -801,5 +801,5 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid schedule.\n")
+	c.Assert(recorder.Body.String(), check.DeepEquals, "Job team owner \"invalid\" has no access to pool \"test1\"\n")
 }

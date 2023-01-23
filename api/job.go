@@ -225,13 +225,12 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-
-	j, err := getJob(ctx, ij.Name)
+	oldJob, err := getJob(ctx, ij.Name)
 	if err != nil {
 		return err
 	}
 	canUpdate := permission.Check(t, permission.PermAppUpdate,
-		permission.Context(permTypes.CtxTeam, j.TeamOwner),
+		permission.Context(permTypes.CtxTeam, oldJob.TeamOwner),
 	)
 	if !canUpdate {
 		return permission.ErrUnauthorized
@@ -252,13 +251,12 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Schedule:  ij.Schedule,
 		Container: ij.Container,
 	}
-	if j.TeamOwner == "" {
-		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
+	if newJob.TeamOwner == "" {
+		oldJob.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
 		if err != nil {
 			return err
 		}
 	}
-
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
 		Kind:       permission.PermJobUpdate,
@@ -269,7 +267,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer func() {
 		evt.Done(err)
 	}()
-	err = job.UpdateJob(ctx, &newJob, u)
+	err = job.UpdateJob(ctx, &newJob, oldJob, u)
 	if err != nil {
 		return err
 	}
