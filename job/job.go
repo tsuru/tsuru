@@ -54,20 +54,20 @@ type Job struct {
 	// +optional
 	BackoffLimit *int32 `json:"backoffLimit,omitempty" protobuf:"varint,7,opt,name=backoffLimit"`
 
-	Schedule string
+	Schedule string `jsob:"schedule,omitempty"`
 
-	Container jobTypes.ContainerInfo
+	Container jobTypes.ContainerInfo `json:"container,omitempty"`
 }
 
 type TsuruJob struct {
-	Name        string
-	Teams       []string
-	TeamOwner   string
-	Owner       string
-	Plan        appTypes.Plan
-	Metadata    appTypes.Metadata
-	Pool        string
-	Description string
+	Name        string      `json:"name,omitempty"`
+	Teams       []string `json:"teams,omitempty"`
+	TeamOwner   string `json:"teamowner,omitempty"`
+	Owner       string `json:"owner,omitempty"`
+	Plan        appTypes.Plan `json:"plan,omitempty"`
+	Metadata    appTypes.Metadata `json:"metadata,omitempty"`
+	Pool        string `json:"pool,omitempty"`
+	Description string `json:"description,omitempty"`
 
 	ctx         context.Context
 	provisioner provision.JobProvisioner
@@ -89,6 +89,12 @@ func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
 	job.provisioner = jobProv
 	return job.provisioner, nil
 }
+
+// func (job *Job) MarshalJSON() ([]byte, error) {
+// 	result := make(map[string]interface{})
+// 	result["name"] = job.Name
+// 	return json.Marshal(&result)
+// }
 
 // Units returns the list of units.
 func (job *Job) Units() ([]provision.Unit, error) {
@@ -405,3 +411,4 @@ func validateJob(ctx context.Context, j Job) error {
 	}
 	return nil
 }
+

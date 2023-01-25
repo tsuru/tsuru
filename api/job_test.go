@@ -8,16 +8,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -633,8 +637,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 	ij := inputJob{
 		Name: j1.Name,
 		Container: jobTypes.ContainerInfo{
-			Name: "c1",
-			Image: "ubuntu:latest",
+			Name:    "c1",
+			Image:   "ubuntu:latest",
 			Command: []string{"echo", "hello world"},
 		},
 	}
@@ -665,7 +669,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-			Name: "cron",
+			Name:      "cron",
 		},
 		Schedule: "* * * * *",
 	}
@@ -775,8 +779,8 @@ func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	ij := inputJob{
 		Name: "i-dont-exist",
 		Container: jobTypes.ContainerInfo{
-			Name: "c1",
-			Image: "ubuntu:latest",
+			Name:    "c1",
+			Image:   "ubuntu:latest",
 			Command: []string{"echo", "hello world"},
 		},
 		Schedule: "* * * */15 *",
@@ -806,7 +810,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-			Name: "cron",
+			Name:      "cron",
 		},
 		Schedule: "* * * * *",
 	}
@@ -815,7 +819,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 	_, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
-		Name: "cron",
+		Name:     "cron",
 		Schedule: "invalid",
 	}
 	var buffer bytes.Buffer
@@ -843,7 +847,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-			Name: "cron",
+			Name:      "cron",
 		},
 		Schedule: "* * * * *",
 	}
@@ -852,7 +856,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	_, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
-		Name: "cron",
+		Name:      "cron",
 		TeamOwner: "invalid",
 	}
 	var buffer bytes.Buffer
@@ -866,4 +870,371 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.DeepEquals, "Job team owner \"invalid\" has no access to pool \"test1\"\n")
+}
+
+func (s *S) TestTriggerManualJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+			Name:      "manual-job",
+		},
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "ubuntu:latest",
+			Command: []string{"echo", "hello world"},
+		},
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/trigger/%s", j1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestTriggerCronjob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+			Name:      "manual-job",
+		},
+		Schedule: "* */15 * * *",
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "ubuntu:latest",
+			Command: []string{"echo", "hello world"},
+		},
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/trigger/%s", j1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestTriggerJobNotFound(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	request, err := http.NewRequest("PUT", "/jobs/trigger/some-name", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestJobList(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j2 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "manual",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j3 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "cron",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/jobs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []job.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 3)
+}
+
+func (s *S) TestJobListFilterByName(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j2 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "manual",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j3 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "cron",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/jobs?name=manual", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []job.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 1)
+	c.Assert(jobs[0].Name, check.Equals, "manual")
+}
+
+func (s *S) TestJobListFilterByTeamowner(c *check.C) {
+	team := authTypes.Team{Name: "angra"}
+	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
+		return []authTypes.Team{team, {Name: s.team.Name}}, nil
+	}
+	s.mockService.Team.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return &authTypes.Team{Name: name}, nil
+	}
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j2 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "manual",
+			TeamOwner: team.Name,
+			Pool:      "test1",
+		},
+	}
+	j3 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "cron",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/jobs?teamOwner=angra", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []job.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 1)
+	c.Assert(jobs[0].Name, check.Equals, "manual")
+}
+
+func (s *S) TestJobListFilterByOwner(c *check.C) {
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppRead,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	})
+	u, _ := auth.ConvertNewUser(token.User())
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j2 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "manual",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j3 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "cron",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j3, u, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs?owner=%s", u.Email), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []job.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 1)
+	c.Assert(jobs[0].Name, check.Equals, "cron")
+}
+
+func (s *S) TestJobListFilterPool(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "pool1",
+		},
+	}
+	j2 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "manual",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+	}
+	j3 := job.Job{
+		TsuruJob: job.TsuruJob{
+			Name:      "cron",
+			TeamOwner: s.team.Name,
+			Pool:      "test1",
+		},
+		Schedule: "* * * * *",
+	}
+	err = job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	c.Assert(err, check.IsNil)
+	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/jobs?pool=pool1", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	jobs := []job.Job{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(jobs), check.Equals, 1)
+	c.Assert(jobs[0].Name, check.Equals, j1.Name)
+}
+
+func (s *S) TestJobInfo(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := job.Job{
+		TsuruJob: job.TsuruJob{
+			TeamOwner: s.team.Name,
+			Pool:      "pool1",
+		},
+	}
+	err = job.CreateJob(context.TODO(), &j1, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s", j1.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result struct {
+		Job   job.Job          `json:"job,omitempty"`
+		Units []provision.Unit `json:"units,omitempty"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.team.Name, check.DeepEquals, result.Job.TeamOwner)
+	c.Assert(j1.Pool, check.DeepEquals, result.Job.Pool)
+	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
+	c.Assert([]string{s.team.Name}, check.DeepEquals, result.Job.Teams)
+	c.Assert(s.user.Email, check.DeepEquals, result.Job.Owner)
 }
