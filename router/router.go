@@ -21,7 +21,6 @@ import (
 	internalConfig "github.com/tsuru/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/router"
@@ -69,11 +68,7 @@ func configType(name string) (string, string, error) {
 	routerType, err := config.GetString(prefix + ":type")
 	if err != nil {
 		msg := fmt.Sprintf("config key '%s:type' not found", prefix)
-		if name != "hipache" {
-			return "", "", errors.New(msg)
-		}
-		log.Errorf("WARNING: %s, fallback to top level '%s:*' router config", msg, name)
-		return name, name, nil
+		return "", "", errors.New(msg)
 	}
 	return routerType, prefix, nil
 }
@@ -294,11 +289,6 @@ func retrieveRouterData(appName string) (routerAppEntry, error) {
 	}
 	defer coll.Close()
 	err = coll.Find(bson.M{"app": appName}).One(&data)
-	// Avoid need for data migrations, before kind existed we only supported
-	// hipache as a router so we set is as default here.
-	if data.Kind == "" {
-		data.Kind = "hipache"
-	}
 	return data, err
 }
 
@@ -504,17 +494,9 @@ func listConfigRouters() ([]router.PlanRouter, error) {
 	for key := range routers {
 		keys = append(keys, key.(string))
 	}
-	topLevelHipacheConfig, _ := config.Get("hipache")
-	if topLevelHipacheConfig != nil {
-		keys = append(keys, "hipache")
-	}
-	dockerRouter, _ := config.GetString("docker:router")
 	sort.Strings(keys)
 	for _, value := range keys {
 		planRouter := legacyConfigToPlanRouter(value)
-		if planRouter.Name == dockerRouter {
-			planRouter.Default = true
-		}
 		routersList = append(routersList, planRouter)
 	}
 	return routersList, nil

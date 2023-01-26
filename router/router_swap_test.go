@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
-	_ "github.com/tsuru/tsuru/router/hipache"
 	"github.com/tsuru/tsuru/router/routertest"
 	check "gopkg.in/check.v1"
 )
@@ -25,7 +24,6 @@ var _ = check.Suite(&ExternalSuite{})
 
 func (s *ExternalSuite) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
-	config.Set("hipache:domain", "swaptest.org")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_swap_tests")
 	config.Set("routers:fake:type", "fake")
@@ -124,33 +122,4 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 	name2, err := router.Retrieve(backend2.GetName())
 	c.Assert(err, check.IsNil)
 	c.Assert(name2, check.Equals, backend1.GetName())
-}
-
-func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
-	config.Set("hipache:redis-server", "127.0.0.1:6379")
-	config.Set("hipache:redis-db", 5)
-	backend1 := routertest.FakeApp{Name: "bb1"}
-	backend2 := routertest.FakeApp{Name: "bb2"}
-	r1, err := router.Get(context.TODO(), "fake")
-	c.Assert(err, check.IsNil)
-	r2, err := router.Get(context.TODO(), "hipache")
-	c.Assert(err, check.IsNil)
-	err = r1.AddBackend(context.TODO(), backend1)
-	c.Assert(err, check.IsNil)
-	defer r1.RemoveBackend(context.TODO(), backend1)
-	addr1, _ := url.Parse("http://127.0.0.1")
-	err = r1.AddRoutes(context.TODO(), backend1, []*url.URL{addr1})
-	c.Assert(err, check.IsNil)
-	defer r1.RemoveRoutes(context.TODO(), backend1, []*url.URL{addr1})
-	err = r2.AddBackend(context.TODO(), backend2)
-	c.Assert(err, check.IsNil)
-	defer r2.RemoveBackend(context.TODO(), backend2)
-	addr2, _ := url.Parse("http://10.10.10.10")
-	err = r2.AddRoutes(context.TODO(), backend2, []*url.URL{addr2})
-	c.Assert(err, check.IsNil)
-	defer r2.RemoveRoutes(context.TODO(), backend2, []*url.URL{addr2})
-	err = router.Swap(context.TODO(), r1, backend1, backend2, false)
-	c.Assert(err, check.ErrorMatches, `swap is only allowed between routers of the same kind. "bb1" uses "fake", "bb2" uses "hipache"`)
-	err = router.Swap(context.TODO(), r2, backend1, backend2, false)
-	c.Assert(err, check.ErrorMatches, `swap is only allowed between routers of the same kind. "bb1" uses "fake", "bb2" uses "hipache"`)
 }
