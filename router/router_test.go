@@ -87,19 +87,6 @@ func (s *S) TestRegisterAndType(c *check.C) {
 	c.Assert(err, check.DeepEquals, &ErrRouterNotFound{Name: "unknown-router"})
 }
 
-func (s *S) TestRegisterAndTypeSpecialCase(c *check.C) {
-	rType, prefix, err := configType("hipache")
-	c.Assert(err, check.IsNil)
-	c.Assert(rType, check.Equals, "hipache")
-	c.Assert(prefix, check.Equals, "hipache")
-	config.Set("routers:hipache:type", "htype")
-	defer config.Unset("routers:hipache:type")
-	rType, prefix, err = configType("hipache")
-	c.Assert(err, check.IsNil)
-	c.Assert(rType, check.Equals, "htype")
-	c.Assert(prefix, check.Equals, "routers:hipache")
-}
-
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	var names []string
 	var getters []ConfigGetter
@@ -210,17 +197,6 @@ func (s *S) TestDefaultSingleRouter(c *check.C) {
 	c.Assert(d, check.Equals, "fake")
 }
 
-func (s *S) TestDefaultFromFallbackConfig(c *check.C) {
-	defer config.Unset("routers")
-	defer config.Unset("docker:router")
-	config.Set("routers:fake:type", "fake")
-	config.Set("routers:fake2:type", "fake")
-	config.Set("docker:router", "fake2")
-	d, err := Default(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(d, check.Equals, "fake2")
-}
-
 func (s *S) TestStore(c *check.C) {
 	err := Store("appname", "routername", "fake")
 	c.Assert(err, check.IsNil)
@@ -255,19 +231,6 @@ func (s *S) TestStoreUpdatesEntry(c *check.C) {
 	c.Assert(err, check.Equals, ErrBackendNotFound)
 }
 
-func (s *S) TestRetrieveWithoutKind(c *check.C) {
-	err := Store("appname", "routername", "")
-	c.Assert(err, check.IsNil)
-	data, err := retrieveRouterData("appname")
-	c.Assert(err, check.IsNil)
-	data.ID = ""
-	c.Assert(data, check.DeepEquals, routerAppEntry{
-		App:    "appname",
-		Router: "routername",
-		Kind:   "hipache",
-	})
-}
-
 func (s *S) TestRetireveNotFound(c *check.C) {
 	name, err := Retrieve("notfound")
 	c.Assert(err, check.Not(check.IsNil))
@@ -297,50 +260,6 @@ func (s *S) TestList(c *check.C) {
 	config.Set("routers:router2:default", true)
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
-	expected := []router.PlanRouter{
-		{Name: "router1", Type: "foo", Default: false},
-		{Name: "router2", Type: "bar", Default: true},
-	}
-	routers, err := List(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(routers, check.DeepEquals, expected)
-}
-
-func (s *S) TestListIncludesLegacyHipacheRouter(c *check.C) {
-	config.Set("hipache:something", "somewhere")
-	config.Set("routers:router1:type", "foo")
-	config.Set("routers:router2:type", "bar")
-	defer config.Unset("hipache")
-	defer config.Unset("routers:router1")
-	defer config.Unset("routers:router2")
-	expected := []router.PlanRouter{
-		{Name: "hipache", Type: "hipache"},
-		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar"},
-	}
-	routers, err := List(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(routers, check.DeepEquals, expected)
-}
-
-func (s *S) TestListIncludesOnlyLegacyHipacheRouter(c *check.C) {
-	config.Set("hipache:something", "somewhere")
-	defer config.Unset("hipache")
-	expected := []router.PlanRouter{
-		{Name: "hipache", Type: "hipache"},
-	}
-	routers, err := List(context.TODO())
-	c.Assert(err, check.IsNil)
-	c.Assert(routers, check.DeepEquals, expected)
-}
-
-func (s *S) TestListDefaultDockerRouter(c *check.C) {
-	config.Set("routers:router1:type", "foo")
-	config.Set("routers:router2:type", "bar")
-	config.Set("docker:router", "router2")
-	defer config.Unset("routers:router1")
-	defer config.Unset("routers:router2")
-	defer config.Unset("docker:router")
 	expected := []router.PlanRouter{
 		{Name: "router1", Type: "foo", Default: false},
 		{Name: "router2", Type: "bar", Default: true},

@@ -22,11 +22,6 @@ take some time:
     $ cd tsuru
     $ ./build-compose.sh
 
-At the first time you run is possible that api and planb fails, just run ``docker-compose up -d`` to fix it.
-::
-
-    $ docker-compose up -d
-
 Now you have tsuru dependencies, tsuru api and one docker node running in your machine. You can check
 running ``docker-compose ps``:
 

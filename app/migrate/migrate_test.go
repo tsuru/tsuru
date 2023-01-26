@@ -60,8 +60,6 @@ func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 	a = &app.App{Name: "without-plan-router"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	a = &app.App{Name: "with-router", Router: "hipache"}
-	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	err = MigrateAppPlanRouterToRouter()
 	c.Assert(err, check.IsNil)
@@ -71,9 +69,6 @@ func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 	a, err = app.GetByName(context.TODO(), "without-plan-router")
 	c.Assert(err, check.IsNil)
 	c.Assert(a.Router, check.Equals, "galeb")
-	a, err = app.GetByName(context.TODO(), "with-router")
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Router, check.Equals, "hipache")
 }
 
 func (s *S) TestMigrateAppPlanRouterToRouterWithoutDefaultRouter(c *check.C) {

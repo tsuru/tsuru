@@ -641,8 +641,6 @@ func startServer(handler http.Handler) error {
 		}
 		fmt.Println()
 	}
-	defaultRouter, _ := router.Default(ctx)
-	fmt.Printf("Default router is %q.\n", defaultRouter)
 	err = rebuild.Initialize(appFinder)
 	if err != nil {
 		return err

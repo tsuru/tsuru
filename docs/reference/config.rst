@@ -554,13 +554,7 @@ Routers
 As of 0.10.0, all your router configuration should live under entries with the
 format ``routers:<router name>``.
 
-routers:<router name>:type (type: hipache, galeb, vulcand, api)
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Indicates the type of this router configuration. The standard router supported
-by tsuru is `hipache <https://github.com/hipache/hipache>`_. There is also
-experimental support for `galeb <http://galeb.io/>`_, `vulcand
-<https://docs.vulcand.io/>`_) and a generic api router.
 
 routers:<router name>:default
 +++++++++++++++++++++++++++++
@@ -570,19 +564,11 @@ with no specific router. Defaults to false.
 
 Depending on the type, there are some specific configuration options available.
 
-routers:<router name>:domain (type: hipache, galeb, vulcand)
+routers:<router name>:domain (type: galeb, vulcand)
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The domain of the server running your router. Applications created with
 tsuru will have a address of ``http://<app-name>.<domain>``
-
-routers:<router name>:redis-* (type: hipache)
-+++++++++++++++++++++++++++++++++++++++++++++
-
-Redis server used by Hipache router. This same server (or a redis slave of it),
-must be configured in your hipache.conf file. For details on all available
-options for connecting to redis check :ref:`common redis configuration
-<config_common_redis>`
 
 routers:<router name>:api-url (type: galeb, vulcand, api)
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -657,28 +643,6 @@ Headers to be added to the request to the api responsible for mananing the route
 
       headers:
         - X-CUSTOM-HEADER: my-value
-
-Hipache
--------
-
-hipache:redis-server
-++++++++++++++++++++
-
-Redis server used by Hipache router. This same server (or a redis slave of it),
-must be configured in your hipache.conf file.
-
-This setting is deprecated in favor of ``routers:<router name>:type = hipache``
-and ``routers:<router name>:redis-server``.
-
-hipache:domain
-++++++++++++++
-
-The domain of the server running your hipache server. Applications created with
-tsuru will have a address of ``http://<app-name>.<hipache:domain>``.
-
-This setting is deprecated in favor of ``routers:<router name>:type = hipache``
-and ``routers:<router name>:domain``
-
 
 Defining the provisioner
 ------------------------
@@ -803,20 +767,6 @@ Same as ``docker:max-workers`` but applies only to when starting new node contai
 Defaults to 0 which means unlimited.
 
 .. _config_docker_router:
-
-docker:router
-+++++++++++++
-
-Default router to be used to distribute requests to units. This should be the
-name of a router configured under the ``routers:<name>`` key, see :ref:`routers
-<config_routers>`.
-
-For backward compatibility reasons, the value ``hipache`` is also supported, and
-it will use either configuration available under ``router:hipache:*`` or
-``hipache:*``, in this order.
-
-The router defined in ``docker:router`` will only be used if there is no router
-with `router:<my-router>:default` set to true.
 
 docker:deploy-cmd
 +++++++++++++++++
@@ -1457,7 +1407,6 @@ Here is a complete example:
         mongo-database: queuedb
     provisioner: docker
     docker:
-        router: hipache
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
@@ -1468,8 +1417,3 @@ Here is a complete example:
         run-cmd:
             bin: /var/lib/tsuru/start
             port: "8888"
-    routers:
-        hipache:
-            type: hipache
-            domain: <your-hipache-server-ip>.xip.io
-            redis-server: <your-redis-server-with-port>

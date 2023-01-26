@@ -27,17 +27,12 @@ auth:
   scheme: native
 
 provisioner: docker
-routers:
-  hipache:
-    type: hipache
-    domain: tsuru-sample.com
 queue:
   mongo-url: localhost
   mongo-database: queuedb
 docker:
   collection: docker_containers
   repository-namespace: tsuru
-  router: hipache
   cluster:
     mongo-url: mongodb://localhost:27017
     mongo-database: docker-cluster
@@ -142,54 +137,6 @@ func (s *CheckerSuite) TestCheckClusterWithDeprecatedStorage(c *check.C) {
 	err = checkCluster()
 	c.Assert(err, check.NotNil)
 	config.Unset("docker:cluster:storage")
-}
-
-func (s *CheckerSuite) TestCheckRouter(c *check.C) {
-	err := checkRouter()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipacheConf(c *check.C) {
-	config.Unset("routers:hipache")
-	err := checkRouter()
-	c.Assert(err, check.ErrorMatches, ".*default router \"hipache\" in \"routers:hipache\".*")
-}
-
-func (s *CheckerSuite) TestCheckRouterHipacheCanHaveHipacheInRoutersConf(c *check.C) {
-	config.Unset("routers:hipache")
-	config.Set("hipache:domain", "something")
-	err := checkRouter()
-	c.Assert(err, check.FitsTypeOf, config.NewWarning(""))
-	c.Assert(err, check.ErrorMatches, ".*Setting \"hipache:\\*\" config entries is deprecated.*")
-}
-
-func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterNotExisting(c *check.C) {
-	config.Unset("routers:hipache")
-	config.Set("docker:router", "myrouter")
-	err := checkRouter()
-	c.Assert(err, check.ErrorMatches, ".*default router \"myrouter\" in \"routers:myrouter\".*")
-}
-
-func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouter(c *check.C) {
-	config.Unset("routers:hipache")
-	config.Set("docker:router", "myrouter")
-	config.Set("routers:myrouter:planet", "giediprime")
-	config.Set("routers:myrouter:type", "something")
-	err := checkRouter()
-	c.Assert(err, check.IsNil)
-}
-
-func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterPresence(c *check.C) {
-	config.Unset("routers:hipache")
-	config.Unset("docker:router")
-	err := checkRouter()
-	c.Assert(err, check.ErrorMatches, ".*You must configure a default router in \"docker:router\".*")
-}
-
-func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterType(c *check.C) {
-	config.Unset("routers:hipache:type")
-	err := checkRouter()
-	c.Assert(err, check.ErrorMatches, ".*You must configure your default router type in \"routers:hipache:type\".*")
 }
 
 func (s *CheckerSuite) TestCheckBeanstalkdRedisQueue(c *check.C) {
