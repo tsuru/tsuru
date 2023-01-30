@@ -107,6 +107,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := &job.Job{
 		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
@@ -152,6 +153,7 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := &job.Job{
 		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
@@ -188,6 +190,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := &job.Job{
 		TsuruJob: job.TsuruJob{
 			Name:      "my-cron",
@@ -271,6 +274,7 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{TeamOwner: s.team.Name, Pool: "test1"}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -315,6 +319,7 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{
 		TeamOwner:   s.team.Name,
 		Pool:        "test1",
@@ -414,6 +419,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{
 		Name:        "full-cron",
 		TeamOwner:   s.team.Name,
@@ -517,6 +523,7 @@ func (s *S) TestCreateJobForbidden(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{TeamOwner: s.team.Name, Pool: "test1"}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -538,6 +545,7 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	oldJob := job.Job{
 		TsuruJob: job.TsuruJob{
 			Name:      "some-job",
@@ -572,6 +580,7 @@ func (s *S) TestCreateJobNoPool(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{Name: "some-job", TeamOwner: s.team.Name}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -597,6 +606,7 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+	defer provision.Unregister("jobProv")
 	j := inputJob{TeamOwner: s.team.Name, Schedule: "* * * * *"}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
