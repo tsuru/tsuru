@@ -382,11 +382,11 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	plan, err := appPool.GetDefaultPlan()
-	if err != nil {
-		return err
-	}
-	if app.Plan.Name != "" {
+
+	var plan *appTypes.Plan
+	if app.Plan.Name == "" {
+		plan, err = appPool.GetDefaultPlan()
+	} else {
 		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
 	if err != nil {
