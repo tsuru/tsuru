@@ -258,6 +258,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		SourceImage:       baseImage,
 		DestinationImages: dstImages,
 		Data:              data,
+		Containerfile:     opts.Dockerfile,
 	}
 
 	tc, err := callBuildService(ctx, bs, req, w)
@@ -358,6 +359,10 @@ func callBuildService(ctx context.Context, bc buildpb.BuildClient, req *buildpb.
 func kindToBuildKind(opts builder.BuildOpts) buildpb.BuildKind {
 	if opts.ImageID != "" {
 		return buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE
+	}
+
+	if opts.Dockerfile != "" {
+		return buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_FILE
 	}
 
 	if opts.ArchiveSize > 0 {

@@ -62,6 +62,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.deploy.image",
 	"app.deploy.rollback",
 	"app.deploy.upload",
+	"app.deploy.dockerfile",
 	"app.read",
 	"app.read.deploy",
 	"app.read.router",

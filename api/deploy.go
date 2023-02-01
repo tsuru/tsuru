@@ -172,6 +172,8 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 		return permission.PermAppDeployArchiveUrl
 	case app.DeployRollback:
 		return permission.PermAppDeployRollback
+	case app.DeployDockerfile:
+		return permission.PermAppDeployDockerfile
 	default:
 		return permission.PermAppDeploy
 	}
