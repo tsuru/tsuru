@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -499,6 +500,88 @@ func (s *S) TestBuildV2_BuildWithArchiveURL(c *check.C) {
 	tsuruYaml, err := appVersion.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
+}
+
+func (s *S) TestBuildV2_BuildWithDockerfile(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke an deadlock on RPC client and server.
+			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_FILE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
+			c.Check(req.GetContainerfile(), check.Equals, `FROM alpine:latest
+RUN set -x \
+    apk add curl tar make
+COPY ./tsuru.yaml ./app.sh /var/app/
+WORKDIR /var/app
+EXPOSE 8888/tcp
+ENTRYPOINT ["/var/app/app.sh"]
+CMD ["--port", "8888"]
+`)
+			c.Check(req.GetData(), check.DeepEquals, []byte("some context files"))
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{
+				TsuruYaml: "healthcheck:\n  path: /healthz",
+				ImageConfig: &buildpb.ContainerImageConfig{
+					Entrypoint:   []string{"/var/app/app.sh"},
+					Cmd:          []string{"--port", "8888"},
+					ExposedPorts: []string{"8888/tcp"},
+					WorkingDir:   "/var/app",
+				},
+			}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+
+	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+		Message:     "My deploy w/ Dockerfile",
+		ArchiveFile: strings.NewReader("some context files"),
+		ArchiveSize: 18,
+		Dockerfile: `FROM alpine:latest
+RUN set -x \
+    apk add curl tar make
+COPY ./tsuru.yaml ./app.sh /var/app/
+WORKDIR /var/app
+EXPOSE 8888/tcp
+ENTRYPOINT ["/var/app/app.sh"]
+CMD ["--port", "8888"]
+`,
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(appVersion.Version(), check.DeepEquals, 1)
+	c.Assert(appVersion.VersionInfo().EventID, check.DeepEquals, evt.UniqueID.Hex())
+	c.Assert(appVersion.VersionInfo().Description, check.DeepEquals, "My deploy w/ Dockerfile")
+	c.Assert(appVersion.VersionInfo().DeployImage, check.DeepEquals, "tsuru/app-myapp:v1")
+
+	processes, err := appVersion.Processes()
+	c.Assert(err, check.IsNil)
+	c.Assert(processes, check.DeepEquals, map[string][]string{
+		"web": {"/var/app/app.sh", "--port", "8888"},
+	})
+
+	tsuruYaml, err := appVersion.TsuruYamlData()
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{
+		Healthcheck: &provisiontypes.TsuruYamlHealthcheck{
+			Path: "/healthz",
+		},
+	})
 }
 
 func (s *S) TestPlatformBuildV2_ContextCanceled(c *check.C) {
