@@ -393,3 +393,19 @@ func (s *S) TestRebuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(testBuildImage2, check.Equals, "tsuru/app-myapp:v2-builder")
 }
+
+func (s *S) TestBuildWithDockerfile(c *check.C) {
+	a, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.b.Build(context.TODO(), s.p, a, evt, &builder.BuildOpts{
+		Dockerfile: "FROM busybox:latest",
+	})
+	c.Assert(err, check.ErrorMatches, "build image from Dockerfile is not yet supported")
+}

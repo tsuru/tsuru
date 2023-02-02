@@ -29,7 +29,6 @@ var (
 
 type BuildOpts struct {
 	IsTsuruBuilderImage bool
-	BuildFromFile       bool
 	Rebuild             bool
 	Redeploy            bool
 	ArchiveURL          string
