@@ -1110,7 +1110,9 @@ paths:
         description: |-
           App's source files (tarball compressed with gzip).
 
-          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+          NOTE 1: When `dockerfile` field is set, this field contains the container build context files.
+
+          NOTE 2: Cannot be presented mutually with `archive-url` or `image`.
         x-mimetype: application/gzip
       - in: formData
         name: archive-url
@@ -1120,7 +1122,7 @@ paths:
 
           NOTE 1: Tsuru API must be able to download the file over HTTP and the downloaded file must be a tarball compressed with gzip.
 
-          NOTE 2: Cannot be presented mutually with `file` or `image`.
+          NOTE 2: Cannot be presented mutually with `dockerfile`, `file` or `image`.
 
           Example: `https://my-org.example.com/my-app/v42.tar.gz`.
       - in: formData
@@ -1129,9 +1131,29 @@ paths:
         description: |-
           Container image name. It must be a valid container image name according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
 
-          NOTE: Cannote be presented mutually with `archive-url` or `file`.
+          NOTE: Cannot be presented mutually with `archive-url`, `dockerfile` or `file`.
 
           Example: `registry.example.com/my-org/my-app:v42`
+
+      - in: formData
+        name: dockerfile
+        type: string
+        description: |-
+          Content of container file (Dockerfile). It must be a valid file according to [Dockerfile reference](https://docs.docker.com/engine/reference/builder/).
+
+          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+
+          Example:
+          ```
+          FROM alpine:3.16
+          RUN set -x \
+              apk add --update --no-cache curl ca-certificates
+          COPY ./app.sh ./tsuru.yaml /var/my-app/
+          WORKDIR /var/my-app
+          EXPOSE 8888/tcp
+          ENTRYPOINT ["/var/my-app/app.sh"]
+          CMD ["--port", "8888"]
+          ```
       responses:
         "200":
           description: Build finished successfully
@@ -1199,7 +1221,9 @@ paths:
         description: |-
           App's source files (tarball compressed with gzip).
 
-          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+          NOTE 1: When `dockerfile` field is set, this field contains the container build context files.
+
+          NOTE 2: Cannot be presented mutually with `archive-url` or `image`.
         x-mimetype: application/gzip
       - in: formData
         name: archive-url
@@ -1209,7 +1233,7 @@ paths:
 
           NOTE 1: Tsuru API must be able to download the file over HTTP and the downloaded file must be a tarball compressed with gzip.
 
-          NOTE 2: Cannot be presented mutually with `file` or `image`.
+          NOTE 2: Cannot be presented mutually with `dockerfile`, `file` or `image`.
 
           Example: `https://my-org.example.com/my-app/v42.tar.gz`.
       - in: formData
@@ -1218,9 +1242,29 @@ paths:
         description: |-
           Container image name. It must be a valid container image name according to [container image's name specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests).
 
-          NOTE: Cannot be presented mutually with `archive-url` or `file`.
+          NOTE: Cannot be presented mutually with `archive-url`, `dockerfile` or `file`.
 
           Example: `registry.example.com/my-org/my-app:v42`
+
+      - in: formData
+        name: dockerfile
+        type: string
+        description: |-
+          Content of container file (Dockerfile). It must be a valid file according to [Dockerfile reference](https://docs.docker.com/engine/reference/builder/).
+
+          NOTE: Cannot be presented mutually with `archive-url` or `image`.
+
+          Example:
+          ```
+          FROM alpine:3.16
+          RUN set -x \
+              apk add --update --no-cache curl ca-certificates
+          COPY ./app.sh ./tsuru.yaml /var/my-app/
+          WORKDIR /var/my-app
+          EXPOSE 8888/tcp
+          ENTRYPOINT ["/var/my-app/app.sh"]
+          CMD ["--port", "8888"]
+          ```
       consumes:
       - multipart/form-data
       produces:
