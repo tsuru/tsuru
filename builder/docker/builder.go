@@ -79,7 +79,7 @@ func (b *dockerBuilder) Build(ctx context.Context, prov provision.BuilderDeploy,
 		return nil, errors.New("provisioner not supported: doesn't implement docker builder")
 	}
 	archiveFullPath := fmt.Sprintf("%s/%s", defaultArchivePath, defaultArchiveName)
-	if opts.BuildFromFile {
+	if opts.Dockerfile != "" {
 		return nil, errors.New("build image from Dockerfile is not yet supported")
 	}
 	client, err := p.GetClient(app)

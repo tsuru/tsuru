@@ -5,14 +5,13 @@
 package api
 
 import (
+	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -81,12 +80,10 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	} else {
 		userName = t.GetUserName()
 	}
-
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-
 	opts.App = instance
 	opts.Build = true
 	opts.BuildTag = tag
@@ -134,33 +131,41 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 }
 
 func prepareToBuild(r *http.Request) (opts app.DeployOptions, err error) {
-	var file multipart.File
-	var fileSize int64
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		file, _, err = r.FormFile("file")
-		if err != nil {
-			return opts, &tsuruErrors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.Error(),
-			}
+		var fh *multipart.FileHeader
+
+		opts.File, fh, err = r.FormFile("file")
+		if err != nil && !errors.Is(err, http.ErrMissingFile) {
+			return opts, &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
-		fileSize, err = file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return opts, errors.Wrap(err, "unable to find uploaded file size")
-		}
-		file.Seek(0, io.SeekStart)
+
+		opts.FileSize = fh.Size
 	}
-	archiveURL := InputValue(r, "archive-url")
-	image := InputValue(r, "image")
-	if image == "" && archiveURL == "" && file == nil {
+
+	opts.ArchiveURL = InputValue(r, "archive-url")
+	opts.Image = InputValue(r, "image")
+	opts.Dockerfile = InputValue(r, "dockerfile")
+
+	if opts.ArchiveURL != "" && (opts.FileSize > 0 || opts.Image != "" || opts.Dockerfile != "") {
 		return opts, &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "you must specify either the archive-url, a image url or upload a file.",
+			Message: `Cannot set "archive-url" mutually with "dockerfile", "file" or "image" fields`,
 		}
 	}
-	opts.FileSize = fileSize
-	opts.File = file
-	opts.ArchiveURL = archiveURL
-	opts.Image = image
+
+	if opts.Image != "" && (opts.FileSize > 0 || opts.ArchiveURL != "" || opts.Dockerfile != "") {
+		return opts, &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: `Cannot set "image" mutually with "archive-url", "dockerfile" or "file" fields`,
+		}
+	}
+
+	if opts.Image == "" && opts.ArchiveURL == "" && opts.Dockerfile == "" && opts.FileSize == 0 {
+		return opts, &tsuruErrors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: `You must provide at least one of: "archive-url", "dockerfile", "image" or "file"`,
+		}
+	}
+
 	return
 }

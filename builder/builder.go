@@ -29,7 +29,6 @@ var (
 
 type BuildOpts struct {
 	IsTsuruBuilderImage bool
-	BuildFromFile       bool
 	Rebuild             bool
 	Redeploy            bool
 	ArchiveURL          string
@@ -39,6 +38,7 @@ type BuildOpts struct {
 	Tag                 string
 	Message             string
 	Output              io.Writer
+	Dockerfile          string
 }
 
 type BuilderV2 interface {

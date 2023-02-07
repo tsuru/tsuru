@@ -41,6 +41,7 @@ const (
 	DeployUpload       DeployKind = "upload"
 	DeployUploadBuild  DeployKind = "uploadbuild"
 	DeployRebuild      DeployKind = "rebuild"
+	DeployDockerfile   DeployKind = "dockerfile"
 )
 
 var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
@@ -183,6 +184,7 @@ type DeployOptions struct {
 	Commit           string
 	BuildTag         string
 	ArchiveURL       string
+	Dockerfile       string
 	FileSize         int64
 	File             io.ReadCloser `bson:"-"`
 	OutputStream     io.Writer     `bson:"-"`
@@ -214,6 +216,10 @@ func (o *DeployOptions) GetKind() (kind DeployKind) {
 	}
 
 	defer func() { o.Kind = kind }()
+
+	if o.Dockerfile != "" {
+		return DeployDockerfile
+	}
 
 	if o.Rollback {
 		return DeployRollback
@@ -438,6 +444,7 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 		Tag:         opts.BuildTag,
 		Message:     opts.Message,
 		Output:      evt,
+		Dockerfile:  opts.Dockerfile,
 	}
 
 	b, err := opts.App.getBuilder()

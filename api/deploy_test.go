@@ -781,7 +781,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Matches, ".*Builder deploy called\nOK\n")
 }
 
-func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
+func (s *DeploySuite) TestDeployNoMandatoryFields(c *check.C) {
 	a := app.App{Name: "abc", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
@@ -794,7 +794,47 @@ func (s *DeploySuite) TestDeployWithoutArchiveURL(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	message := recorder.Body.String()
-	c.Assert(message, check.Equals, "you must specify either the archive-url, a image url or upload a file.\n")
+	c.Assert(message, check.Equals, "You must provide at least one of: \"archive-url\", \"dockerfile\", \"image\" or \"file\"\n")
+}
+
+func (s *DeploySuite) TestDeploySetBothFieldsArchiveURLAndImage(c *check.C) {
+	a := app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	values := url.Values{
+		"archive-url": []string{"https://example.com/team/my-app/v1.tar.gz"},
+		"image":       []string{"example.com/team/my-app:v1"},
+	}
+	request, err := http.NewRequest("POST", "/apps/my-app/deploy", strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	message := recorder.Body.String()
+	c.Assert(message, check.Equals, "Cannot set \"archive-url\" mutually with \"dockerfile\", \"file\" or \"image\" fields\n")
+}
+
+func (s *DeploySuite) TestDeploySetBothFieldsImageAndDockerfile(c *check.C) {
+	a := app.App{Name: "my-app", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	values := url.Values{
+		"image":      []string{"example.com/team/my-app:v1"},
+		"dockerfile": []string{"FROM busybox"},
+	}
+	request, err := http.NewRequest("POST", "/apps/my-app/deploy", strings.NewReader(values.Encode()))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	message := recorder.Body.String()
+	c.Assert(message, check.Equals, "Cannot set \"image\" mutually with \"archive-url\", \"dockerfile\" or \"file\" fields\n")
 }
 
 func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
@@ -817,6 +857,14 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 		{
 			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil)), Build: true},
 			permission.PermAppDeployBuild,
+		},
+		{
+			app.DeployOptions{Dockerfile: "FROM busybox"},
+			permission.PermAppDeployDockerfile,
+		},
+		{
+			app.DeployOptions{Dockerfile: "FROM busybox", File: ioutil.NopCloser(bytes.NewReader(nil))},
+			permission.PermAppDeployDockerfile,
 		},
 		{
 			app.DeployOptions{},
