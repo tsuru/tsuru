@@ -859,7 +859,7 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 			permission.PermAppDeployBuild,
 		},
 		{
-			app.DeployOptions{Dockerfile: "FROM busybox", File: ioutil.NopCloser(bytes.NewReader(nil))},
+			app.DeployOptions{Dockerfile: "FROM busybox"},
 			permission.PermAppDeployDockerfile,
 		},
 		{
