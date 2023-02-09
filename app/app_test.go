@@ -434,7 +434,7 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -458,7 +458,7 @@ func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -482,7 +482,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -503,7 +503,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, Swap: 2, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -530,7 +530,6 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	myPlan := appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
-		Swap:     2,
 		CpuShare: 3,
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
@@ -562,7 +561,6 @@ func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
 	myPlan := appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
-		Swap:     2,
 		CpuShare: 3,
 	}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
@@ -2786,7 +2784,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	s.plan = appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100}
+	s.plan = appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100}
 	team := authTypes.Team{Name: "myteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
@@ -2906,7 +2904,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"swap":     float64(128),
 			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
@@ -2976,7 +2973,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		Deploys:     7,
 		Pool:        "test",
 		Description: "description",
-		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100},
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
@@ -3018,7 +3015,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"swap":     float64(128),
 			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
@@ -3100,7 +3096,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "",
 			"memory":   float64(0),
-			"swap":     float64(0),
 			"cpushare": float64(0),
 			"cpumilli": float64(0),
 			"router":   "fake",
@@ -3164,7 +3159,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		Deploys:         7,
 		Pool:            "test",
 		Description:     "description",
-		Plan:            appTypes.Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		Plan:            appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100},
 		TeamOwner:       "myteam",
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
@@ -3196,7 +3191,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"swap":     float64(128),
 			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
@@ -3296,7 +3290,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"swap":     float64(0),
 			"cpushare": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3426,7 +3419,6 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"swap":     float64(0),
 			"cpushare": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3972,7 +3964,6 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Plan: appTypes.Plan{
 				Name:     "default-plan",
 				Memory:   1024,
-				Swap:     1024,
 				CpuShare: 100,
 				Default:  true,
 			},
@@ -4002,7 +3993,6 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Plan: appTypes.Plan{
 				Name:     "default-plan",
 				Memory:   1024,
-				Swap:     1024,
 				CpuShare: 100,
 				Default:  true,
 			},
@@ -4414,11 +4404,6 @@ func (s *S) TestGetDeploys(c *check.C) {
 func (s *S) TestGetMemory(c *check.C) {
 	a := App{Plan: appTypes.Plan{Memory: 10}}
 	c.Assert(a.GetMemory(), check.Equals, a.Plan.Memory)
-}
-
-func (s *S) TestGetSwap(c *check.C) {
-	a := App{Plan: appTypes.Plan{Swap: 20}}
-	c.Assert(a.GetSwap(), check.Equals, a.Plan.Swap)
 }
 
 func (s *S) TestAppUnits(c *check.C) {

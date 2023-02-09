@@ -120,7 +120,6 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	defaultPlan := appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
-		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
 	}

@@ -252,7 +252,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	plan := map[string]interface{}{
 		"name":     app.Plan.Name,
 		"memory":   app.Plan.Memory,
-		"swap":     app.Plan.Swap,
 		"cpushare": app.Plan.CpuShare,
 		"cpumilli": app.Plan.CPUMilli,
 		"override": app.Plan.Override,
@@ -1654,11 +1653,6 @@ func (app *App) GetMilliCPU() int {
 		return *app.Plan.Override.CPUMilli
 	}
 	return app.Plan.CPUMilli
-}
-
-// GetSwap returns the swap limit (in bytes) for the app.
-func (app *App) GetSwap() int64 {
-	return app.Plan.Swap
 }
 
 // GetCpuShare returns the cpu share for the app.
