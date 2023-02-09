@@ -74,7 +74,6 @@ type FakeApp struct {
 	logMut            sync.Mutex
 	Commands          []string
 	Memory            int64
-	Swap              int64
 	CpuShare          int
 	MilliCPU          int
 	commMut           sync.Mutex
@@ -129,10 +128,6 @@ func (a *FakeApp) GetMilliCPU() int {
 
 func (a *FakeApp) GetMemory() int64 {
 	return a.Memory
-}
-
-func (a *FakeApp) GetSwap() int64 {
-	return a.Swap
 }
 
 func (a *FakeApp) GetCpuShare() int {
