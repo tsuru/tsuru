@@ -1,6 +1,6 @@
-// App is the main type in tsuru. An app represents a real world application.
-// This struct holds information about the app: its name, address, list of
-// teams that have access to it, used platform, etc.
+// Copyright 2023 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package job
 
@@ -25,6 +25,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Job is another main type in tsuru as of version *insert current version*.
+// A job currently represent a Kubernetes Job object or a Cronjob object
+// this struct is composited of a TsuruJob and all the metadata tsuru natively uses
+// as well as job specific definitions such as schedule and container image and commands
 type Job struct {
 	TsuruJob
 	// Specifies the maximum desired number of pods the job should
@@ -60,14 +64,14 @@ type Job struct {
 }
 
 type TsuruJob struct {
-	Name        string      `json:"name,omitempty"`
-	Teams       []string `json:"teams,omitempty"`
-	TeamOwner   string `json:"teamowner,omitempty"`
-	Owner       string `json:"owner,omitempty"`
-	Plan        appTypes.Plan `json:"plan,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	Teams       []string          `json:"teams,omitempty"`
+	TeamOwner   string            `json:"teamowner,omitempty"`
+	Owner       string            `json:"owner,omitempty"`
+	Plan        appTypes.Plan     `json:"plan,omitempty"`
 	Metadata    appTypes.Metadata `json:"metadata,omitempty"`
-	Pool        string `json:"pool,omitempty"`
-	Description string `json:"description,omitempty"`
+	Pool        string            `json:"pool,omitempty"`
+	Description string            `json:"description,omitempty"`
 
 	ctx         context.Context
 	provisioner provision.JobProvisioner
@@ -411,4 +415,3 @@ func validateJob(ctx context.Context, j Job) error {
 	}
 	return nil
 }
-

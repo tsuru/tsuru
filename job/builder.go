@@ -1,6 +1,6 @@
-// App is the main type in tsuru. An app represents a real world application.
-// This struct holds information about the app: its name, address, list of
-// teams that have access to it, used platform, etc.
+// Copyright 2023 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package job
 
@@ -47,13 +47,13 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 }
 
 func buildName(ctx context.Context, job *Job) error {
-	if job.Name != ""{
+	if job.Name != "" {
 		// check if the given name is already in the database
 		if _, err := GetByName(ctx, job.Name); err == nil {
 			return jobTypes.ErrJobAlreadyExists
 		}
 	} else {
-		if job.IsCron(){
+		if job.IsCron() {
 			return errors.New("cronjob name can't be empty")
 		}
 		// If it's a one-time-job a unique job name is provided
