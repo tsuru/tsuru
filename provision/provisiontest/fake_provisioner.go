@@ -394,6 +394,7 @@ type FakeProvisioner struct {
 	outputs        chan []byte
 	failures       chan failure
 	apps           map[string]provisionedApp
+	jobs           map[string]provisionedJob
 	mut            sync.RWMutex
 	execs          map[string][]provision.ExecOptions
 	execsMut       sync.Mutex
@@ -406,6 +407,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
+	p.jobs = make(map[string]provisionedJob)
 	p.execs = make(map[string][]provision.ExecOptions)
 	p.nodes = make(map[string]FakeNode)
 	p.nodeContainers = make(map[string]int)
@@ -805,6 +807,14 @@ func (p *FakeProvisioner) Provisioned(app provision.App) bool {
 	return ok
 }
 
+// ProvisionedJob checks whether the given job has been provisioned.
+func (p *FakeProvisioner) ProvisionedJob(job provision.Job) bool {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	_, ok := p.jobs[job.GetName()]
+	return ok
+}
+
 func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
 	p.mut.RLock()
 	pApp := p.apps[app.GetName()]
@@ -852,6 +862,10 @@ func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 func (p *FakeProvisioner) Reset() {
 	p.mut.Lock()
 	p.apps = make(map[string]provisionedApp)
+	p.mut.Unlock()
+
+	p.mut.Lock()
+	p.jobs = make(map[string]provisionedJob)
 	p.mut.Unlock()
 
 	p.execsMut.Lock()
@@ -948,6 +962,21 @@ func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) erro
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
 		sleeps:   make(map[string]int),
+	}
+	return nil
+}
+
+func (p *FakeProvisioner) ProvisionJob(ctx context.Context, job provision.Job) error {
+	if err := p.getError("Provision"); err != nil {
+		return err
+	}
+	if p.ProvisionedJob(job) {
+		return &provision.Error{Reason: "Job already provisioned."}
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	p.jobs[job.GetName()] = provisionedJob{
+		job: job,
 	}
 	return nil
 }
@@ -1528,6 +1557,12 @@ type provisionedApp struct {
 	mockAddrs []appTypes.RoutableAddresses
 }
 
+type provisionedJob struct {
+	units      []provision.Unit
+	job        provision.Job
+	executions int
+}
+
 type AutoScaleProvisioner struct {
 	*FakeProvisioner
 	autoscales map[string][]provision.AutoScaleSpec
@@ -1581,23 +1616,75 @@ type JobProvisioner struct {
 var _ provision.JobProvisioner = &JobProvisioner{}
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *JobProvisioner) JobUnits(context.Context, provision.Job) ([]provision.Unit, error) {
-	return nil, nil
+func (p *JobProvisioner) JobUnits(ctx context.Context, job provision.Job) ([]provision.Unit, error) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	return p.jobs[job.GetName()].units, nil
 }
 
 // JobSchedule creates a cronjob object in the cluster
 func (p *JobProvisioner) CreateJob(ctx context.Context, job provision.Job) (string, error) {
-	return job.GetName(), nil
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	name := job.GetName()
+	p.jobs[name] = provisionedJob{
+		units: []provision.Unit{},
+		job:   job,
+	}
+	return name, nil
 }
 
-func (p *JobProvisioner) DestroyJob(context.Context, provision.Job) error {
+func (p *JobProvisioner) DestroyJob(ctx context.Context, job provision.Job) error {
+	if !p.ProvisionedJob(job) {
+		return errNotProvisioned
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	delete(p.jobs, job.GetName())
 	return nil
 }
 
-func (p *JobProvisioner) UpdateJob(context.Context, provision.Job) error {
+func (p *JobProvisioner) UpdateJob(ctx context.Context, job provision.Job) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	j, ok := p.jobs[job.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	j.job = job
+	p.jobs[job.GetName()] = j
 	return nil
 }
 
-func (p *JobProvisioner) TriggerCron(context.Context, provision.Job) error {
+func (p *JobProvisioner) TriggerCron(ctx context.Context, job provision.Job) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	j, ok := p.jobs[job.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	j.executions++
 	return nil
+}
+
+func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job provision.Job) (string, error) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	name := job.GetName()
+	p.jobs[name] = provisionedJob{
+		units: []provision.Unit{
+			{
+				Name:        "unit1",
+				ProcessName: "p1",
+				Status:      "running",
+			},
+			{
+				Name:        "unit2",
+				ProcessName: "p2",
+				Status:      "running",
+			},
+		},
+		job: job,
+	}
+	return name, nil
 }

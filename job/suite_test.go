@@ -32,7 +32,7 @@ type S struct {
 	user        *auth.User
 	plan        appTypes.Plan
 	defaultPlan appTypes.Plan
-	provisioner *provisiontest.FakeProvisioner
+	provisioner *provisiontest.JobProvisioner
 	Pool        string
 	zeroLock    map[string]interface{}
 	mockService servicemock.MockService
@@ -52,6 +52,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	provision.Unregister("jobProv")
 	defer s.conn.Close()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
@@ -119,8 +120,13 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	s.provisioner = provisiontest.ProvisionerInstance
-	provision.DefaultProvisioner = "fake"
+	s.provisioner = &provisiontest.JobProvisioner{
+		FakeProvisioner: provisiontest.ProvisionerInstance,
+	}
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return s.provisioner, nil
+	})
+	provision.DefaultProvisioner = "jobProv"
 	data, err := json.Marshal(appTypes.AppLock{})
 	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(data, &s.zeroLock)

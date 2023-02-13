@@ -94,12 +94,6 @@ func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
 	return job.provisioner, nil
 }
 
-// func (job *Job) MarshalJSON() ([]byte, error) {
-// 	result := make(map[string]interface{})
-// 	result["name"] = job.Name
-// 	return json.Marshal(&result)
-// }
-
 // Units returns the list of units.
 func (job *Job) Units() ([]provision.Unit, error) {
 	prov, err := job.getProvisioner()
@@ -182,13 +176,13 @@ func GetByName(ctx context.Context, name string) (*Job, error) {
 	return &job, err
 }
 
-func RemoveJobFromDb(jobName, jobTeamOwner string) error {
+func RemoveJobFromDb(jobName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Remove(bson.M{"tsurujob.name": jobName, "tsurujob.teamowner": jobTeamOwner})
+	err = conn.Jobs().Remove(bson.M{"tsurujob.name": jobName})
 	if err == mgo.ErrNotFound {
 		return jobTypes.ErrJobNotFound
 	}

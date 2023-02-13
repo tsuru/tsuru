@@ -415,7 +415,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	if err = job.RemoveJobFromDb(j.Name, j.TeamOwner); err != nil {
+	if err = job.RemoveJobFromDb(j.Name); err != nil {
 		return err
 	}
 	return job.DeleteFromProvisioner(ctx, j)
