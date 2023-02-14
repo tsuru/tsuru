@@ -20,7 +20,7 @@ Links:
 - Talk to us on Gitter: https://gitter.im/tsuru/tsuru
 
 
-Popular plataforms supported:
+Popular platforms supported:
 
 - [Python](https://github.com/tsuru/platforms/tree/master/python)
 - [Nodejs](https://github.com/tsuru/platforms/tree/master/nodejs)
