@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -91,6 +92,45 @@ type FakeApp struct {
 	Tags              []string
 	Metadata          appTypes.Metadata
 	InternalAddresses []provision.AppInternalAddress
+}
+
+type FakeJob struct {
+	Name      string
+	Container jobTypes.ContainerInfo
+	Units     []provision.Unit
+	Commands  []string
+	Metadata  appTypes.Metadata
+	Pool      string
+	TeamOwner string
+	Teams     []string
+	Memory    int64
+	Swap      int64
+	CpuShare  int
+	MilliCPU  int
+}
+
+func NewFakeJob(name, pool, teamOwner string, units int) *FakeJob {
+	job := FakeJob{
+		Name:      name,
+		Units:     make([]provision.Unit, units),
+		Pool:      pool,
+		TeamOwner: teamOwner,
+		Teams:     []string{teamOwner},
+	}
+	namefmt := "%s-%d"
+	for i := 0; i < units; i++ {
+		val := atomic.AddInt32(&uniqueIpCounter, 1)
+		job.Units[i] = provision.Unit{
+			ID:     fmt.Sprintf(namefmt, name, i),
+			Status: provision.StatusStarted,
+			IP:     fmt.Sprintf("10.10.10.%d", val),
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
+			},
+		}
+	}
+	return &job
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -962,21 +1002,6 @@ func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) erro
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
 		sleeps:   make(map[string]int),
-	}
-	return nil
-}
-
-func (p *FakeProvisioner) ProvisionJob(ctx context.Context, job provision.Job) error {
-	if err := p.getError("Provision"); err != nil {
-		return err
-	}
-	if p.ProvisionedJob(job) {
-		return &provision.Error{Reason: "Job already provisioned."}
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	p.jobs[job.GetName()] = provisionedJob{
-		job: job,
 	}
 	return nil
 }

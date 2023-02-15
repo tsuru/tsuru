@@ -77,13 +77,14 @@ type KubeMock struct {
 	LogHook       func(w io.Writer, r *http.Request)
 	DefaultHook   func(w http.ResponseWriter, r *http.Request)
 	p             provision.Provisioner
+	jp            provision.JobProvisioner
 	factory       informers.SharedInformerFactory
 	HandleSize    bool
 	IgnorePool    bool
 	IgnoreAppName bool
 }
 
-func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, factory informers.SharedInformerFactory) *KubeMock {
+func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, jp provision.JobProvisioner, factory informers.SharedInformerFactory) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
 		client:      cluster,
@@ -166,6 +167,35 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
 	return a, func() {
+			rollbackDeployment()
+			deployPodReady.Wait()
+			wg.Wait()
+		}, func() {
+			rebuild.Shutdown(context.Background())
+			rollbackDeployment()
+			deployPodReady.Wait()
+			wg.Wait()
+			if srv == nil {
+				return
+			}
+			srv.Close()
+			srv = nil
+		}
+}
+
+func (s *KubeMock) JobReactions(c *check.C) (*provisiontest.FakeJob, func(), func()) {
+	j := provisiontest.NewFakeJob("job1", s.client.Namespace(), "root", 2)
+	_, err := s.jp.CreateJob(context.TODO(), j)
+	c.Assert(err, check.IsNil)
+	podReaction, deployPodReady := s.jobPodReaction(j, c)
+	// servReaction := s.ServiceWithPortReaction(c, nil)
+	rollbackDeployment := s.DeploymentReactions(c)
+	s.client.PrependReactor("create", "pods", podReaction)
+	// s.client.PrependReactor("create", "services", servReaction)
+	// s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
+	srv, wg := s.CreateDeployReadyServer(c)
+	s.MockfakeNodes(c, srv.URL)
+	return j, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
 			wg.Wait()
@@ -556,6 +586,63 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 				c.Assert(err, check.IsNil)
 			}()
 		}
+		return false, nil, nil
+	}, &wg
+}
+
+func (s *KubeMock) jobPodReaction(j provision.Job, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
+		defer func() {
+			err := s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
+			c.Assert(err, check.IsNil)
+		}()
+		if !s.IgnorePool {
+			c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
+				"tsuru.io/pool": j.GetPool(),
+			})
+		}
+		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/job-name"], check.Equals, j.GetName())
+		if !s.IgnorePool {
+			c.Assert(pod.ObjectMeta.Labels["tsuru.io/job-pool"], check.Equals, j.GetPool())
+		}
+		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
+		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
+		pod.Status.Phase = apiv1.PodSucceeded
+		pod.Status.HostIP = "192.168.99.1"
+		pod.Spec.NodeName = "n1"
+		// toRegister := false
+		// for _, cont := range pod.Spec.Containers {
+		// 	if strings.Contains(strings.Join(cont.Command, " "), "unit_agent") {
+		// 		toRegister = true
+		// 	}
+		// }
+		// if toRegister {
+		// 	UpdatePodContainerStatus(pod, true)
+		// 	pod.Status.Phase = apiv1.PodRunning
+		// 	wg.Add(1)
+		// 	go func() {
+		// 		defer wg.Done()
+		// 		err := s.p.RegisterUnit(context.TODO(), a, pod.Name, map[string]interface{}{
+		// 			"processes": map[string]interface{}{
+		// 				"web":    "python myapp.py",
+		// 				"worker": "python myworker.py",
+		// 			},
+		// 		})
+		// 		c.Assert(err, check.IsNil)
+		// 		pod.Status.Phase = apiv1.PodSucceeded
+		// 		ns, err := s.client.AppNamespace(context.TODO(), a)
+		// 		c.Assert(err, check.IsNil)
+		// 		UpdatePodContainerStatus(pod, false)
+		// 		_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
+		// 		c.Assert(err, check.IsNil)
+		// 		err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)
+		// 		c.Assert(err, check.IsNil)
+		// 	}()
+		// }
 		return false, nil, nil
 	}, &wg
 }
