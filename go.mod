@@ -42,11 +42,11 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/ugorji/go/codec v1.1.7
 	golang.org/x/crypto v0.1.0
-	golang.org/x/net v0.1.0
+	golang.org/x/net v0.7.0
 	golang.org/x/oauth2 v0.1.0
-	golang.org/x/sys v0.1.0
-	golang.org/x/term v0.1.0
-	golang.org/x/text v0.4.0
+	golang.org/x/sys v0.5.0
+	golang.org/x/term v0.5.0
+	golang.org/x/text v0.7.0
 	google.golang.org/grpc v1.45.0
 	gopkg.in/amz.v3 v3.0.0-20161215130849-8c3190dff075
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
