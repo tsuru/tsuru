@@ -107,6 +107,55 @@ type FakeJob struct {
 	Swap      int64
 	CpuShare  int
 	MilliCPU  int
+	Schedule  string
+}
+
+func (fj *FakeJob) GetName() string {
+	return fj.Name
+}
+
+func (fj *FakeJob) GetMemory() int64 {
+	return fj.Memory
+}
+
+func (fj *FakeJob) GetMilliCPU() int {
+	return fj.MilliCPU
+}
+
+func (fj *FakeJob) GetSwap() int64 {
+	return fj.Swap
+}
+
+func (fj *FakeJob) GetCpuShare() int {
+	return fj.CpuShare
+}
+
+func (fj *FakeJob) GetPool() string {
+	return fj.Pool
+}
+
+func (fj *FakeJob) GetTeamOwner() string {
+	return fj.TeamOwner
+}
+
+func (fj *FakeJob) GetTeamsName() []string {
+	return fj.Teams
+}
+
+func (fj *FakeJob) GetMetadata() appTypes.Metadata {
+	return fj.Metadata
+}
+
+func (fj *FakeJob) IsCron() bool {
+	return fj.Schedule != ""
+}
+
+func (fj *FakeJob) GetContainerInfo() jobTypes.ContainerInfo {
+	return fj.Container
+}
+
+func (fj *FakeJob) GetSchedule() string {
+	return fj.Schedule
 }
 
 func NewFakeJob(name, pool, teamOwner string, units int) *FakeJob {
