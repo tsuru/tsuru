@@ -36,6 +36,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
+	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -741,6 +742,87 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		}()
 		return false, nil, nil
 	}, &wg
+}
+
+func (s *KubeMock) cronWithPodReactions(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	var counter int32
+	wg := sync.WaitGroup{}
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		if action.GetSubresource() != "" {
+			return false, nil, nil
+		}
+		job := action.(ktesting.CreateAction).GetObject().(*apiv1beta1.CronJob)
+		if job.Annotations == nil {
+			job.Annotations = make(map[string]string)
+		}
+		specJobs := int32(1)
+		if job.Spec.JobTemplate.Spec.Parallelism != nil {
+			specJobs = *job.Spec.JobTemplate.Spec.Parallelism
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.jobWithPodReaction(c, job, specJobs, &counter)
+		}()
+		return false, nil, nil
+	}, &wg
+}
+
+func (s *KubeMock) jobWithPodReaction(c *check.C, cron *appsv1.Deployment, specJobs int32, counter *int32) {
+	jobs := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        dep.Name + "-1",
+			Namespace:   dep.Namespace,
+			Labels:      dep.Labels,
+			Annotations: map[string]string{},
+		},
+		Spec: appsv1.ReplicaSetSpec{
+			Replicas: dep.Spec.Replicas,
+			Selector: dep.Spec.Selector.DeepCopy(),
+			Template: *dep.Spec.Template.DeepCopy(),
+		},
+	}
+
+	for k, v := range job.Annotations {
+		rs.Annotations[k] = v
+	}
+	rs.ObjectMeta.Annotations["deployment.kubernetes.io/revision"] = fmt.Sprintf("%d", revision)
+	rs.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(dep, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+	}
+	rs.ObjectMeta.Name = dep.Name + "-" + shortMD5ForObject(rs.Spec.Template.Spec)
+	_, _ = s.client.AppsV1().ReplicaSets(dep.Namespace).Create(context.TODO(), rs, metav1.CreateOptions{})
+	_, err := s.client.AppsV1().ReplicaSets(dep.Namespace).Update(context.TODO(), rs, metav1.UpdateOptions{})
+	c.Assert(err, check.IsNil)
+	_ = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Add(rs)
+	err = s.factory.Apps().V1().ReplicaSets().Informer().GetStore().Update(rs)
+	c.Assert(err, check.IsNil)
+
+	pod := &apiv1.Pod{
+		ObjectMeta: dep.Spec.Template.ObjectMeta,
+		Spec:       dep.Spec.Template.Spec,
+	}
+	pod.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
+	pod.Status.Phase = apiv1.PodRunning
+	pod.Status.StartTime = &metav1.Time{Time: time.Now()}
+	pod.ObjectMeta.Namespace = dep.Namespace
+	pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(rs, appsv1.SchemeGroupVersion.WithKind("ReplicaSet")),
+	}
+	pod.Spec.NodeName = "n1"
+	pod.Status.HostIP = "192.168.99.1"
+	err = cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(dep.Spec.Selector.MatchLabels)).String(),
+	}, dep.Namespace, s.factory)
+	c.Assert(err, check.IsNil)
+	for i := int32(1); i <= specReplicas; i++ {
+		id := atomic.AddInt32(counter, 1)
+		pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", dep.Name, id, i)
+		_, err = s.client.CoreV1().Pods(dep.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		c.Assert(err, check.IsNil)
+		err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *KubeMock) deployWithPodReaction(c *check.C, dep *appsv1.Deployment, specReplicas int32, counter *int32) {
