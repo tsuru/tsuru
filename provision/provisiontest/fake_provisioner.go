@@ -165,6 +165,12 @@ func NewFakeJob(name, pool, teamOwner string, units int) *FakeJob {
 		Pool:      pool,
 		TeamOwner: teamOwner,
 		Teams:     []string{teamOwner},
+		Schedule:  "* * * * *",
+		Container: jobTypes.ContainerInfo{
+			Name:    "c1",
+			Image:   "ubuntu:latest",
+			Command: []string{"echo", "hello world"},
+		},
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {

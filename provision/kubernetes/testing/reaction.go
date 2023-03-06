@@ -185,25 +185,23 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}
 }
 
-func (s *KubeMock) JobReactions(c *check.C) (*provisiontest.FakeJob, func(), func()) {
-	j := provisiontest.NewFakeJob("job1", s.client.Namespace(), "root", 2)
-	_, err := s.jp.CreateJob(context.TODO(), j)
+func (s *KubeMock) DefaultCronJobReactions(c *check.C) (*provisiontest.FakeJob, func(), func()) {
+	cj := provisiontest.NewFakeJob("job1", s.client.Namespace(), "root", 2)
+	_, err := s.jp.CreateJob(context.TODO(), cj)
 	c.Assert(err, check.IsNil)
-	podReaction, deployPodReady := s.jobPodReaction(j, c)
-	// servReaction := s.ServiceWithPortReaction(c, nil)
-	rollbackDeployment := s.DeploymentReactions(c)
+	podReaction, deployPodReady := s.jobPodReaction(cj, c)
+	rollbackCron := s.CronJobReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
-	// s.client.PrependReactor("create", "services", servReaction)
 	// s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
 	srv, wg := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(c, srv.URL)
-	return j, func() {
-			rollbackDeployment()
+	return cj, func() {
+			rollbackCron()
 			deployPodReady.Wait()
 			wg.Wait()
 		}, func() {
 			rebuild.Shutdown(context.Background())
-			rollbackDeployment()
+			rollbackCron()
 			deployPodReady.Wait()
 			wg.Wait()
 			if srv == nil {
@@ -616,35 +614,6 @@ func (s *KubeMock) jobPodReaction(j provision.Job, c *check.C) (ktesting.Reactio
 		pod.Status.Phase = apiv1.PodSucceeded
 		pod.Status.HostIP = "192.168.99.1"
 		pod.Spec.NodeName = "n1"
-		// toRegister := false
-		// for _, cont := range pod.Spec.Containers {
-		// 	if strings.Contains(strings.Join(cont.Command, " "), "unit_agent") {
-		// 		toRegister = true
-		// 	}
-		// }
-		// if toRegister {
-		// 	UpdatePodContainerStatus(pod, true)
-		// 	pod.Status.Phase = apiv1.PodRunning
-		// 	wg.Add(1)
-		// 	go func() {
-		// 		defer wg.Done()
-		// 		err := s.p.RegisterUnit(context.TODO(), a, pod.Name, map[string]interface{}{
-		// 			"processes": map[string]interface{}{
-		// 				"web":    "python myapp.py",
-		// 				"worker": "python myworker.py",
-		// 			},
-		// 		})
-		// 		c.Assert(err, check.IsNil)
-		// 		pod.Status.Phase = apiv1.PodSucceeded
-		// 		ns, err := s.client.AppNamespace(context.TODO(), a)
-		// 		c.Assert(err, check.IsNil)
-		// 		UpdatePodContainerStatus(pod, false)
-		// 		_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
-		// 		c.Assert(err, check.IsNil)
-		// 		err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)
-		// 		c.Assert(err, check.IsNil)
-		// 	}()
-		// }
 		return false, nil, nil
 	}, &wg
 }
@@ -829,14 +798,14 @@ func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJ
 	}
 	pod.Spec.NodeName = "n1"
 	pod.Status.HostIP = "192.168.99.1"
-	err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(cron.Spec.JobTemplate.Spec.Selector.MatchLabels)).String(),
-	}, cron.Namespace, s.factory)
-	c.Assert(err, check.IsNil)
+	// err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+	// 	LabelSelector: labels.SelectorFromSet(labels.Set(cron.Spec.JobTemplate.Spec.Selector.MatchLabels)).String(),
+	// }, cron.Namespace, s.factory)
+	// c.Assert(err, check.IsNil)
 	for i := int32(1); i <= specJobs; i++ {
 		id := atomic.AddInt32(counter, 1)
 		pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", cron.Name, id, i)
-		_, err = s.client.CoreV1().Pods(cron.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		_, err := s.client.CoreV1().Pods(cron.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
 		c.Assert(err, check.IsNil)
 		err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
 		c.Assert(err, check.IsNil)
