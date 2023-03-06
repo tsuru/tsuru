@@ -23,7 +23,6 @@ type PlanStorage struct{}
 type plan struct {
 	Name     string `bson:"_id"`
 	Memory   int64
-	Swap     int64
 	CpuShare int
 	CPUMilli int
 	Default  bool

@@ -35,11 +35,9 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 
 	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
 	memory := getSize(InputValue(r, "memory"))
-	swap := getSize(InputValue(r, "swap"))
 	plan := appTypes.Plan{
 		Name:     InputValue(r, "name"),
 		Memory:   memory,
-		Swap:     swap,
 		CpuShare: cpuShare,
 		CPUMilli: cpuMilli,
 		Default:  isDefault,

@@ -16,7 +16,6 @@ func (s *S) TestPlanAdd(c *check.C) {
 	p := appTypes.Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
-		Swap:     1024,
 		CpuShare: 100,
 	}
 	ps := &planService{
@@ -35,19 +34,16 @@ func (s *S) TestPlanAddInvalid(c *check.C) {
 	invalidPlans := []appTypes.Plan{
 		{
 			Memory:   9223372036854775807,
-			Swap:     1024,
 			CpuShare: 100,
 		},
 		{
 			Name:     "plan1",
 			Memory:   9223372036854775807,
-			Swap:     1024,
 			CpuShare: 1,
 		},
 		{
 			Name:     "plan1",
 			Memory:   4,
-			Swap:     1024,
 			CpuShare: 100,
 		},
 	}
@@ -71,8 +67,8 @@ func (s *S) TestPlansList(c *check.C) {
 		storage: &appTypes.MockPlanStorage{
 			OnFindAll: func() ([]appTypes.Plan, error) {
 				return []appTypes.Plan{
-					{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
-					{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
+					{Name: "plan1", Memory: 1, CpuShare: 3},
+					{Name: "plan2", Memory: 3, CpuShare: 5},
 				}, nil
 			},
 		},
@@ -102,7 +98,6 @@ func (s *S) TestDefaultPlan(c *check.C) {
 				return &appTypes.Plan{
 					Name:     "default-plan",
 					Memory:   1024,
-					Swap:     1024,
 					CpuShare: 100,
 					Default:  true,
 				}, nil
@@ -155,7 +150,6 @@ func (s *S) TestFindPlanByName(c *check.C) {
 				return &appTypes.Plan{
 					Name:     "plan1",
 					Memory:   9223372036854775807,
-					Swap:     1024,
 					CpuShare: 100,
 				}, nil
 			},

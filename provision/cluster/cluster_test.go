@@ -399,8 +399,10 @@ func (s *S) TestFindByPoolsNotFound(c *check.C) {
 			},
 		},
 	}
-	_, err := cs.FindByPools(context.TODO(), prov, []string{"poolA", "poolB", "poolC", "poolD"})
-	c.Assert(err, check.ErrorMatches, `unable to find cluster for pool "poolD"`)
+	clustersMap, err := cs.FindByPools(context.TODO(), prov, []string{"poolA", "poolB", "poolC", "poolD"})
+	c.Assert(err, check.IsNil)
+	_, found := clustersMap["poolD"]
+	c.Assert(found, check.Equals, false)
 }
 
 var _ ClusteredProvisioner = &provisionClusterProv{}

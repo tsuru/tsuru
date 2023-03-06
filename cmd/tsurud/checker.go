@@ -65,10 +65,6 @@ func checkDocker() error {
 	if err != nil {
 		return err
 	}
-	err = checkRouter()
-	if err != nil {
-		return err
-	}
 	return checkCluster()
 }
 
@@ -106,32 +102,6 @@ func checkScheduler() error {
 		} else {
 			return errors.Errorf(`You must remove "docker:segregate" from your config.`)
 		}
-	}
-	return nil
-}
-
-// Check Router
-// It verifies your router configuration and validates related confs.
-func checkRouter() error {
-	defaultRouter, _ := config.GetString("docker:router")
-	if defaultRouter == "" {
-		return errors.Errorf(`You must configure a default router in "docker:router".`)
-	}
-	isHipacheOld := false
-	if defaultRouter == "hipache" {
-		hipacheOld, _ := config.Get("hipache")
-		isHipacheOld = hipacheOld != nil
-	}
-	routerConf, _ := config.Get("routers:" + defaultRouter)
-	if isHipacheOld {
-		return config.NewWarning(`Setting "hipache:*" config entries is deprecated. You should configure your router with "routers:*". See http://docs.tsuru.io/en/latest/reference/config.html#routers for more details.`)
-	}
-	if routerConf == nil {
-		return errors.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
-	}
-	routerType, _ := config.Get("routers:" + defaultRouter + ":type")
-	if routerType == nil {
-		return errors.Errorf(`You must configure your default router type in "routers:%s:type".`, defaultRouter)
 	}
 	return nil
 }

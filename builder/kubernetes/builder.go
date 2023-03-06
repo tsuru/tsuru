@@ -33,7 +33,7 @@ func (b *kubernetesBuilder) Build(ctx context.Context, prov provision.BuilderDep
 	if !ok {
 		return nil, errors.New("provisioner not supported")
 	}
-	if opts.BuildFromFile {
+	if opts.Dockerfile != "" {
 		return nil, errors.New("build image from Dockerfile is not yet supported")
 	}
 	if opts.ArchiveURL != "" {

@@ -41,10 +41,8 @@ the maximum number of units that an application may have.
 How does routing work?
 ======================
 
-tsuru has a router interface, which makes it extremely easy to change the way
-routing works with any provisioner. There are two ready-to-go routers: one
-using `planb <https://github.com/tsuru/planb>`_ and another with `galeb
-<http://galeb.io/>`_.
+tsuru has a router API interface, which makes it extremely easy to change the way
+routing works with any provisioner. There are one default router implementation: `kubernetes-router <https://github.com/tsuru/kubernetes-router>`_.
 
 .. note::
 

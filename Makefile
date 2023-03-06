@@ -7,6 +7,12 @@ BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
 
+ifeq (, $(shell go env GOBIN))
+GOBIN := $(shell go env GOPATH)/bin
+else
+GOBIN := $(shell go env GOBIN)
+endif
+
 .PHONY: all test race docs install tsurud $(TSR_BIN)
 
 all: test
@@ -38,7 +44,7 @@ race:
 	go test -race ./...
 
 _install_api_doc:
-	@go get github.com/tsuru/tsuru-api-docs
+	@go install github.com/tsuru/tsuru-api-docs@latest
 
 api-doc: _install_api_doc
 	@tsuru-api-docs | grep -v missing > docs/handlers.yml
@@ -73,6 +79,7 @@ release:
 	@$(SED) -i "s/release = '.*'/release = '$(version)'/g" docs/conf.py
 	@$(SED) -i "s/version = '.*'/version = '$(MINOR)'/g" docs/conf.py
 	@$(SED) -i 's/const Version = ".*"/const Version = "$(version)"/' api/server.go
+	@$(SED) -i 's/version: ".*"/version: "$(MINOR)"/' docs/reference/api.yaml
 
 install:
 	go install ./...
@@ -94,9 +101,9 @@ run-tsurud-api: $(TSR_BIN)
 run-tsurud-token: $(TSR_BIN)
 	$(TSR_BIN) token
 
-validate-api-spec:
-	cd / && GO111MODULE=on go get github.com/go-swagger/go-swagger/cmd/swagger@v0.22.0
-	swagger validate ./docs/reference/api.yaml
+.PHONY: validate-api-spec
+validate-api-spec: install-swagger
+	$(SWAGGER) validate ./docs/reference/api.yaml
 
 test-int:
 	go get -d github.com/tsuru/platforms/...
@@ -134,3 +141,11 @@ local-api:
 	go build -o $(TSR_BIN) $(TSR_SRC)
 	$(TSR_BIN) api -c ./etc/tsuru-local.conf
 
+.PHONY: install-swagger
+install-swagger:
+ifeq (, $(shell command -v swagger))
+	@{ go install github.com/go-swagger/go-swagger/cmd/swagger@v0.30.3; }
+SWAGGER=$(GOBIN)/swagger
+else
+SWAGGER=$(shell command -v swagger)
+endif

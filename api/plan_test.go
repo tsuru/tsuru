@@ -22,7 +22,6 @@ func (s *S) TestPlanAdd(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   9223372036854775807,
-			Swap:     1024,
 			CPUMilli: 2000,
 		})
 		return nil
@@ -42,7 +41,6 @@ func (s *S) TestPlanAdd(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
-			{"name": "swap", "value": "1024"},
 			{"name": "cpumilli", "value": "2000"},
 		},
 	}, eventtest.HasEvent)
@@ -56,7 +54,6 @@ func (s *S) TestPlanAddWithDeprecatedCPUShare(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   9223372036854775807,
-			Swap:     1024,
 			CpuShare: 100,
 		})
 		return nil
@@ -76,7 +73,6 @@ func (s *S) TestPlanAddWithDeprecatedCPUShare(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
-			{"name": "swap", "value": "1024"},
 			{"name": "cpushare", "value": "100"},
 		},
 	}, eventtest.HasEvent)
@@ -90,7 +86,6 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   536870912,
-			Swap:     1024,
 			CpuShare: 100,
 		})
 		return nil
@@ -110,7 +105,6 @@ func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   536870912,
-			Swap:     1024,
 			CpuShare: 100,
 		})
 		return nil
@@ -130,7 +124,6 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   9223372036854775807,
-			Swap:     536870912,
 			CpuShare: 100,
 		})
 		return nil
@@ -165,7 +158,6 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
 			Name:     "xyz",
 			Memory:   9223372036854775807,
-			Swap:     1024,
 			CpuShare: 100,
 		})
 		return nil
@@ -193,7 +185,6 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
-			{"name": "swap", "value": "2"},
 			{"name": "cpushare", "value": "3"},
 		},
 		ErrorMatches: `plan already exists`,
@@ -214,8 +205,8 @@ func (s *S) TestPlanListEmpty(c *check.C) {
 
 func (s *S) TestPlanList(c *check.C) {
 	expected := []appTypes.Plan{
-		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
-		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
+		{Name: "plan1", Memory: 1, CpuShare: 3},
+		{Name: "plan2", Memory: 3, CpuShare: 5},
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return expected, nil

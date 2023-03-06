@@ -516,6 +516,7 @@ func versionsForAppProcess(ctx context.Context, client *ClusterClient, a provisi
 	if ignoreBaseDepIfStopped {
 		ignoreBaseDep(grouped.versioned)
 	}
+
 	versionSet := map[int]struct{}{}
 	for v, deps := range grouped.versioned {
 		for _, depData := range deps {
@@ -555,11 +556,13 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	} else {
 		versions = append(versions, version)
 	}
+
 	if len(versions) == 0 {
 		version, err = servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 		if err != nil {
 			return err
 		}
+
 		versions = append(versions, version)
 	}
 
@@ -644,12 +647,13 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	if dep.Spec.Replicas == nil {
 		dep.Spec.Replicas = &zero
 	}
-	newReplicas := int(*dep.Spec.Replicas) + units
-	if newReplicas < 0 {
-		newReplicas = 0
-	}
 	if w == nil {
 		w = ioutil.Discard
+	}
+	newReplicas := int(*dep.Spec.Replicas) + units
+	if newReplicas <= 0 {
+		fmt.Fprintf(w, "---- Calling app stop internally as the number of units is zero ----\n")
+		return GetProvisioner().Stop(ctx, a, processName, version, w)
 	}
 	patchType, patch, err := replicasPatch(newReplicas, processName)
 	if err != nil {
@@ -1665,16 +1669,19 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 	if old.GetPool() == new.GetPool() {
 		return nil
 	}
-	client, err := clusterForPool(ctx, old.GetPool())
-	if err != nil {
+
+	oldClient, err := clusterForPool(ctx, old.GetPool())
+	if errors.Cause(err) == provTypes.ErrNoCluster {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	newClient, err := clusterForPool(ctx, new.GetPool())
 	if err != nil {
 		return err
 	}
-	sameCluster := client.GetCluster().Name == newClient.GetCluster().Name
-	sameNamespace := client.PoolNamespace(old.GetPool()) == client.PoolNamespace(new.GetPool())
+	sameCluster := oldClient.GetCluster().Name == newClient.GetCluster().Name
+	sameNamespace := oldClient.PoolNamespace(old.GetPool()) == oldClient.PoolNamespace(new.GetPool())
 	if sameCluster && !sameNamespace {
 		var volumes []volumeTypes.Volume
 		volumes, err = servicemanager.Volume.ListByApp(ctx, old.GetName())
@@ -1685,7 +1692,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 			return fmt.Errorf("can't change the pool of an app with binded volumes")
 		}
 	}
-	versions, err := versionsForAppProcess(ctx, client, old, "", false)
+	versions, err := versionsForAppProcess(ctx, oldClient, old, "", false)
 	if err != nil {
 		return err
 	}
@@ -2148,5 +2155,5 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 	if err != nil {
 		return "", err
 	}
-	return client.registry(), nil
+	return client.Registry(), nil
 }

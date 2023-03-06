@@ -253,7 +253,6 @@ type App interface {
 
 	GetMemory() int64
 	GetMilliCPU() int
-	GetSwap() int64
 	GetCpuShare() int
 
 	GetUpdatePlatform() bool

@@ -107,9 +107,6 @@ poolLoop:
 				}
 			}
 		}
-		if _, ok := result[pool]; !ok {
-			return nil, errors.Errorf("unable to find cluster for pool %q", pool)
-		}
 	}
 	return result, nil
 }

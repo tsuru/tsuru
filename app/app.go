@@ -167,7 +167,7 @@ func (app *App) getBuilder() (builder.Builder, error) {
 	return app.builder, err
 }
 
-func (app *App) FillInternalAddresses() error {
+func (app *App) fillInternalAddresses() error {
 	provisioner, err := app.getProvisioner()
 	if err != nil {
 		return err
@@ -252,7 +252,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	plan := map[string]interface{}{
 		"name":     app.Plan.Name,
 		"memory":   app.Plan.Memory,
-		"swap":     app.Plan.Swap,
 		"cpushare": app.Plan.CpuShare,
 		"cpumilli": app.Plan.CPUMilli,
 		"override": app.Plan.Override,
@@ -284,6 +283,12 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	}
 	if q != nil {
 		result["quota"] = *q
+	}
+	if len(app.InternalAddresses) == 0 {
+		err = app.fillInternalAddresses()
+		if err != nil {
+			errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
+		}
 	}
 	if len(app.InternalAddresses) > 0 {
 		result["internalAddresses"] = app.InternalAddresses
@@ -376,11 +381,11 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	plan, err := appPool.GetDefaultPlan()
-	if err != nil {
-		return err
-	}
-	if app.Plan.Name != "" {
+
+	var plan *appTypes.Plan
+	if app.Plan.Name == "" {
+		plan, err = appPool.GetDefaultPlan()
+	} else {
 		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
 	if err != nil {
@@ -1648,11 +1653,6 @@ func (app *App) GetMilliCPU() int {
 		return *app.Plan.Override.CPUMilli
 	}
 	return app.Plan.CPUMilli
-}
-
-// GetSwap returns the swap limit (in bytes) for the app.
-func (app *App) GetSwap() int64 {
-	return app.Plan.Swap
 }
 
 // GetCpuShare returns the cpu share for the app.

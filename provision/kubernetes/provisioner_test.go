@@ -1169,6 +1169,39 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
+func (s *S) TestRemoveUnits_SetUnitsToZero(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 5, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err := s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 5)
+	var buffer bytes.Buffer
+	err = s.p.RemoveUnits(context.TODO(), a, 5, "web", version, &buffer)
+	c.Assert(err, check.IsNil)
+	wait()
+	units, err = s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 0)
+	c.Assert(buffer.String(), check.Matches, "(?s).*---- Calling app stop internally as the number of units is zero ----.*")
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(dep, check.NotNil)
+	c.Assert(dep.Labels["tsuru.io/is-stopped"], check.Equals, "true")
+	svcs, err := s.client.CoreV1().Services(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: "tsuru.io/app-name=myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(svcs.Items), check.Equals, 2)
+}
+
 func (s *S) TestRestart(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1206,6 +1239,83 @@ func (s *S) TestRestartNotProvisionedRecreateAppCRD(c *check.C) {
 	a.Deploys = 1
 	err = s.p.Restart(context.TODO(), a, "", version, nil)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScaledToZero(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	v1 := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+
+	evt1, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.GetName()},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{
+		App:     a,
+		Version: v1,
+		Event:   evt1,
+	})
+	c.Assert(err, check.IsNil)
+	err = evt1.Done(nil)
+	c.Assert(err, check.IsNil)
+
+	wait()
+
+	v2 := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "./my/app.sh",
+		},
+	})
+
+	evt2, err := event.New(&event.Opts{
+		Target:   event.Target{Type: "app", Value: a.GetName()},
+		Kind:     permission.PermAppDeploy,
+		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		Allowed:  event.Allowed(permission.PermApp),
+	})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{
+		App:              a,
+		Version:          v2,
+		Event:            evt2,
+		PreserveVersions: true,
+	})
+	c.Assert(err, check.IsNil)
+
+	err = evt2.Done(nil)
+	c.Assert(err, check.IsNil)
+
+	wait()
+
+	units, err := s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+
+	err = s.p.RemoveUnits(context.TODO(), a, 1, "", v1, nil)
+	c.Assert(err, check.IsNil)
+
+	units, err = s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units[0].Version, check.Equals, 2)
+
+	err = s.p.Restart(context.TODO(), a, "", nil, nil)
+	c.Assert(err, check.IsNil)
+
+	units, err = s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
+	c.Assert(units[0].Version, check.Equals, 2)
 }
 
 func (s *S) TestStopStart(c *check.C) {

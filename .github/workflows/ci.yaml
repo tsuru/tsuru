@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - uses: golangci/golangci-lint-action@v2
       with:
@@ -68,7 +68,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -90,7 +90,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -105,7 +105,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -120,7 +120,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -135,7 +135,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - run: make validate-api-spec
 
@@ -144,7 +144,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v2
       with:
-        go-version: '1.17'
+        go-version: '1.19'
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -152,7 +152,7 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - run: go get golang.org/x/tools/cmd/goimports
+    - run: go install golang.org/x/tools/cmd/goimports@latest
     - run: ./hack/verify-codegen.sh
 
   docker-image:
@@ -221,3 +221,22 @@ jobs:
         PACKAGE_NAME: tsuru
         PACKAGECLOUD_TOKEN: ${{secrets.PACKAGECLOUD_TOKEN}}
         SKIP_GORELEASER: "true"
+
+  publish-openapi-specs:
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs:
+    - validate-api-spec
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-node@v3
+    - name: Install SwaggerHub CLI
+      run: |-
+        npm install -g swaggerhub-cli@0.6.4
+        swaggerhub version
+    - name: yq - portable yaml processor
+      uses: mikefarah/yq@v4.30.6
+    - uses: actions/checkout@v3
+    - name: Update OpenAPI specs on SwaggerHub
+      run: ./misc/swaggerhub-update-api-specs.sh
+      env:
+        SWAGGERHUB_API_KEY: ${{ secrets.SWAGGERHUB_API_KEY }}

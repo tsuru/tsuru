@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"net"
@@ -18,6 +19,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/builder"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -41,6 +43,12 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	backendConfigClientSet "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/tsuru/deploy-agent/pkg/build/grpc_build_v1"
 )
 
 const (
@@ -69,6 +77,7 @@ const (
 	allServicesAnnotations        = "all-services-annotations"
 	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
+	registryInsecureKey           = "registry-insecure"
 	sidecarImageKey               = "sidecar-image"
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
@@ -77,6 +86,9 @@ const (
 	versionedServices             = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
+	buildServiceAddressKey        = "build-service-address"
+	buildServiceTLSKey            = "build-service-tls"
+	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -105,6 +117,7 @@ var (
 		buildPlanSideCarKey:           "Name of sidecar plan to be used during pod build. Defaults same as build-plan if omitted",
 		enableLogsFromAPIServerKey:    "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
+		registryInsecureKey:           "Pull and push container images to insecure registry (over plain HTTP)",
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarImageKey:               "Override for deploy sidecar image.",
@@ -112,6 +125,9 @@ var (
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
 		dnsConfigNdotsKey:             "Number of dots in the domain name to be used in the search list for DNS lookups. Default to uses kubernetes default value (5).",
+		buildServiceAddressKey:        "Address of build service (deploy-agent v2)",
+		buildServiceTLSKey:            "Whether should access Build service through TLS",
+		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
 	}
 )
 
@@ -288,6 +304,7 @@ func NewClusterClient(clust *provTypes.Cluster) (*ClusterClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &ClusterClient{
 		Cluster:    clust,
 		Interface:  client,
@@ -580,11 +597,13 @@ func (c *ClusterClient) EnableVersionedServices() (bool, error) {
 	return strconv.ParseBool(enable)
 }
 
-func (c *ClusterClient) registry() imgTypes.ImageRegistry {
-	if c.CustomData == nil {
-		return ""
-	}
+func (c *ClusterClient) Registry() imgTypes.ImageRegistry {
 	return imgTypes.ImageRegistry(c.CustomData[registryKey])
+}
+
+func (c *ClusterClient) InsecureRegistry() bool {
+	insecure, _ := strconv.ParseBool(c.CustomData[registryInsecureKey])
+	return insecure
 }
 
 func (c *ClusterClient) buildServiceAccount(a provision.App) string {
@@ -663,6 +682,50 @@ func (c *ClusterClient) dockerConfigJSON() string {
 	return c.CustomData[dockerConfigJSONKey]
 }
 
+func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.ClientConn, error) {
+	addr := c.configForContext(pool, buildServiceAddressKey)
+	if addr == "" {
+		return nil, nil, fmt.Errorf("build service address not provided: %w", builder.ErrBuildV2NotSupported)
+	}
+
+	creds := insecure.NewCredentials()
+
+	if enableTLS, _ := strconv.ParseBool(c.configForContext(pool, buildServiceTLSKey)); enableTLS {
+		var err error
+		creds, err = c.buildServiceTLSCrendentials(pool, addr)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(creds),
+	}
+
+	conn, err := grpc.Dial(addr, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return pb.NewBuildClient(conn), conn, nil
+}
+
+func (c *ClusterClient) buildServiceTLSCrendentials(pool, addr string) (credentials.TransportCredentials, error) {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse build service address %q as URL: %w", addr, err)
+	}
+
+	serverName, _, _ := strings.Cut(u.Host, ":") // removes the :port suffix, if any
+
+	insecureVerify, _ := strconv.ParseBool(c.configForContext(pool, buildServiceTLSSkipVerify))
+
+	return credentials.NewTLS(&tls.Config{
+		ServerName:         serverName,
+		InsecureSkipVerify: insecureVerify,
+	}), nil
+}
+
 type clusterApp struct {
 	client *ClusterClient
 	apps   []provision.App
@@ -680,7 +743,10 @@ func clustersForApps(ctx context.Context, apps []provision.App) ([]clusterApp, e
 	}
 	for _, a := range apps {
 		poolName := a.GetPool()
-		cluster := clusterPoolMap[poolName]
+		cluster, clusterFound := clusterPoolMap[poolName]
+		if !clusterFound {
+			continue
+		}
 		mapItem, inMap := clusterClientMap[cluster.Name]
 		if !inMap {
 			cli, err := NewClusterClient(&cluster)

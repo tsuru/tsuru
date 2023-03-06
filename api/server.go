@@ -61,7 +61,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.12.2"
+const Version = "1.12.4"
 
 type TsuruHandler struct {
 	version string
@@ -106,87 +106,87 @@ func setupServices() error {
 	var err error
 	servicemanager.App, err = app.AppService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app service")
 	}
 	servicemanager.TeamToken, err = auth.TeamTokenService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize team token service")
 	}
 	servicemanager.AppCache, err = app.CacheService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app cache service")
 	}
 	servicemanager.Team, err = auth.TeamService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize team service")
 	}
 	servicemanager.Plan, err = app.PlanService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize plan service")
 	}
 	servicemanager.Platform, err = app.PlatformService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize platform service")
 	}
 	servicemanager.PlatformImage, err = image.PlatformImageService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize platform image service")
 	}
 	servicemanager.UserQuota, err = auth.UserQuotaService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize user quota service")
 	}
 	servicemanager.AppQuota, err = app.QuotaService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize quota service")
 	}
 	servicemanager.TeamQuota, err = auth.TeamQuotaService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize team quota service")
 	}
 	servicemanager.Webhook, err = webhook.WebhookService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize webhook service")
 	}
 	servicemanager.Cluster, err = cluster.ClusterService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize cluster service")
 	}
 	servicemanager.ServiceBroker, err = service.BrokerService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize broker service")
 	}
 	servicemanager.ServiceBrokerCatalogCache, err = service.CatalogCacheService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize catalog cache service")
 	}
 	servicemanager.AppLog, err = applog.AppLogService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app log service")
 	}
 	servicemanager.InstanceTracker, err = tracker.InstanceService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app tracker service")
 	}
 	servicemanager.DynamicRouter, err = router.DynamicRouterService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app dynamic router service")
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize app version service")
 	}
 	servicemanager.AuthGroup, err = auth.GroupService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize auth group service")
 	}
 	servicemanager.Pool, err = pool.PoolService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize pool service")
 	}
 	servicemanager.Volume, err = volume.VolumeService()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize volume service")
 	}
 	return nil
 }
@@ -648,8 +648,6 @@ func startServer(handler http.Handler) error {
 		}
 		fmt.Println()
 	}
-	defaultRouter, _ := router.Default(ctx)
-	fmt.Printf("Default router is %q.\n", defaultRouter)
 	err = rebuild.Initialize(appFinder)
 	if err != nil {
 		return err

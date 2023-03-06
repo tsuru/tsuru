@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	"io/ioutil"
 	"strconv"
 
 	"github.com/globalsign/mgo/bson"
@@ -47,15 +46,22 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 	if err := s.validate(p); err != nil {
 		return err
 	}
+
 	err := s.storage.Insert(ctx, p)
 	if err != nil {
 		return err
 	}
+
 	opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
+
 	imgs, err := builder.PlatformBuild(ctx, opts)
+	if err != nil {
+		return err
+	}
+
 	multiErr := tsuruErrors.NewMultiError()
 	if len(imgs) > 0 {
 		appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
@@ -63,12 +69,14 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 			multiErr.Add(appendErr)
 		}
 	}
-	if err != nil {
-		multiErr.Add(err)
+
+	// TODO: rewrite the below code using actions pipeline.
+	if multiErr.Len() > 0 {
 		if imgErr := servicemanager.PlatformImage.DeleteImages(ctx, opts.Name); imgErr != nil {
 			multiErr.Add(imgErr)
 			log.Errorf("unable to remove platform images: %s", imgErr)
 		}
+
 		dbErr := s.storage.Delete(ctx, p)
 		if dbErr != nil {
 			multiErr.Add(dbErr)
@@ -78,6 +86,7 @@ func (s *platformService) Create(ctx context.Context, opts appTypes.PlatformOpti
 			)
 		}
 	}
+
 	return multiErr.ToError()
 }
 
@@ -103,58 +112,61 @@ func (s *platformService) Update(ctx context.Context, opts appTypes.PlatformOpti
 	if opts.Name == "" {
 		return appTypes.ErrPlatformNameMissing
 	}
+
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
 	_, err = s.FindByName(ctx, opts.Name)
 	if err != nil {
 		return err
 	}
-	if opts.Input != nil {
-		data, err := ioutil.ReadAll(opts.Input)
-		if err != nil {
-			return err
-		}
-		if len(data) == 0 {
-			return appTypes.ErrMissingFileContent
-		}
-		opts.Data = data
+
+	if disabled := opts.Args["disabled"]; disabled == "" && len(opts.Data) == 0 {
+		return errors.New("either disabled or dockerfile must be provided")
+	}
+
+	if len(opts.Data) > 0 {
 		opts.Version, err = servicemanager.PlatformImage.NewVersion(ctx, opts.Name)
 		if err != nil {
 			return err
 		}
+
 		imgs, err := builder.PlatformBuild(ctx, opts)
+		if err != nil {
+			return err
+		}
+
 		multiErr := tsuruErrors.NewMultiError()
 		if len(imgs) > 0 {
-			appendErr := servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
-			if appendErr != nil {
-				multiErr.Add(appendErr)
+			err = servicemanager.PlatformImage.AppendImages(ctx, opts.Name, opts.Version, imgs)
+			if err != nil {
+				multiErr.Add(err)
 			}
 		}
-		if err != nil {
-			multiErr.Add(err)
-		}
+
 		if multiErr.Len() > 0 {
 			return multiErr.ToError()
 		}
+
 		var apps []App
 		err = conn.Apps().Find(bson.M{"framework": opts.Name}).All(&apps)
 		if err != nil {
 			return err
 		}
+
 		for _, app := range apps {
 			app.SetUpdatePlatform(true)
 		}
 	}
-	if opts.Args["disabled"] != "" {
-		disableBool, err := strconv.ParseBool(opts.Args["disabled"])
-		if err != nil {
-			return err
-		}
-		return s.storage.Update(ctx, appTypes.Platform{Name: opts.Name, Disabled: disableBool})
+
+	if disabledStr := opts.Args["disabled"]; disabledStr != "" {
+		disabled, _ := strconv.ParseBool(disabledStr)
+		return s.storage.Update(ctx, appTypes.Platform{Name: opts.Name, Disabled: disabled})
 	}
+
 	return nil
 }
 

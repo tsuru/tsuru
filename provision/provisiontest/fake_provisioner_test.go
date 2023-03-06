@@ -64,11 +64,6 @@ func (s *S) TestFakeAppGetMemory(c *check.C) {
 	c.Assert(app.GetMemory(), check.Equals, int64(100))
 }
 
-func (s *S) TestFakeAppGetSwap(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	c.Assert(app.GetSwap(), check.Equals, int64(0))
-}
-
 func (s *S) TestEnvs(c *check.C) {
 	app := FakeApp{name: "time"}
 	env := bind.EnvVar{

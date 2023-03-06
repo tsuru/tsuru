@@ -76,12 +76,46 @@ func (s S) TestPlatformBuildError(c *check.C) {
 	Register("builder1", &b1)
 	Register("builder2", &b2)
 	_, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
-	c.Assert(err, check.ErrorMatches, "(?s).*something is wrong.*something is wrong.*")
+	c.Assert(err, check.ErrorMatches, "something is wrong")
 }
 
 func (s S) TestPlatformBuildNoBuilder(c *check.C) {
 	_, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.ErrorMatches, "No builder available")
+}
+
+func (s S) TestPlatformBuild_WhenPlatformBuildV2IsNotSupported(c *check.C) {
+	Register("builder1", &MockPlatformBuilderV2{
+		MockBuilder: &MockBuilder{
+			OnPlatformBuild: func(appTypes.PlatformOptions) ([]string, error) {
+				return []string{"registry.example.com/tsuru/my-platform:v1", "registry.example.com/tsuru/my-platform:latest"}, nil
+			},
+		},
+		OnPlatformBuildV2: func(context.Context, appTypes.PlatformOptions) ([]string, error) {
+			return nil, ErrBuildV2NotSupported
+		},
+	})
+
+	images, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(images, check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v1", "registry.example.com/tsuru/my-platform:latest"})
+}
+
+func (s S) TestPlatformBuild_BuildV2Success(c *check.C) {
+	Register("builder1", &MockPlatformBuilderV2{
+		MockBuilder: &MockBuilder{
+			OnPlatformBuild: func(appTypes.PlatformOptions) ([]string, error) {
+				return nil, errors.New("must not be called")
+			},
+		},
+		OnPlatformBuildV2: func(context.Context, appTypes.PlatformOptions) ([]string, error) {
+			return []string{"registry.example.com/tsuru/my-platform:v1"}, nil
+		},
+	})
+
+	images, err := PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(images, check.DeepEquals, []string{"registry.example.com/tsuru/my-platform:v1"})
 }
 
 func (s S) TestPlatformRemove(c *check.C) {

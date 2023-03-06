@@ -120,7 +120,6 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	defaultPlan := appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
-		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
 	}
@@ -187,12 +186,12 @@ func (s *BuildSuite) TestBuildHandler(c *check.C) {
 			"app.name":   a.Name,
 			"commit":     "",
 			"filesize":   12,
-			"kind":       "upload",
+			"kind":       "uploadbuild",
 			"archiveurl": "",
 			"user":       s.token.GetUserName(),
 			"image":      "",
 			"origin":     "",
-			"build":      false,
+			"build":      true,
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{
@@ -245,7 +244,7 @@ func (s *BuildSuite) TestBuildArchiveURL(c *check.C) {
 			"user":       s.token.GetUserName(),
 			"image":      "",
 			"origin":     "",
-			"build":      false,
+			"build":      true,
 			"rollback":   false,
 		},
 		EndCustomData: map[string]interface{}{

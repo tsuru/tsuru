@@ -457,7 +457,7 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 
 	if !isDeploy {
 		hostConfig.Memory = app.GetMemory()
-		hostConfig.MemorySwap = app.GetMemory() + app.GetSwap()
+		hostConfig.MemorySwap = app.GetMemory()
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(c.ExposedPort): {{HostIP: "", HostPort: ""}},

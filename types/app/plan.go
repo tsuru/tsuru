@@ -9,7 +9,6 @@ import "context"
 type Plan struct {
 	Name   string `json:"name"`
 	Memory int64  `json:"memory"`
-	Swap   int64  `json:"swap"`
 	// CpuShare is DEPRECATED, use CPUMilli instead
 	CpuShare int          `json:"cpushare"`
 	CPUMilli int          `json:"cpumilli"`

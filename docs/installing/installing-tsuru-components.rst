@@ -19,6 +19,5 @@ ride.
 .. toctree::
 
     api
-    planb-router
     adding-nodes
     dashboard

@@ -1172,7 +1172,6 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	s.plan = appTypes.Plan{
 		Name:     "myplan",
 		Memory:   4194304,
-		Swap:     5,
 		CpuShare: 10,
 	}
 	data := "name=someapp&platform=zend&plan=myplan"
@@ -2020,8 +2019,8 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 	config.Set("docker:router", "fake")
 	defer config.Unset("docker:router")
 	plans := []appTypes.Plan{
-		{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100},
-		{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100},
+		{Name: "hiperplan", Memory: 536870912, CpuShare: 100},
+		{Name: "superplan", Memory: 268435456, CpuShare: 100},
 		s.defaultPlan,
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
@@ -2061,7 +2060,7 @@ func (s *S) TestUpdateAppPlanOnly(c *check.C) {
 func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 	config.Set("docker:router", "fake")
 	defer config.Unset("docker:router")
-	originalPlan := appTypes.Plan{Name: "hiperplan", Memory: 536870912, Swap: 536870912, CpuShare: 100}
+	originalPlan := appTypes.Plan{Name: "hiperplan", Memory: 536870912, CpuShare: 100}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		return &originalPlan, nil
 	}
@@ -2075,34 +2074,30 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 
 	tests := []struct {
 		body               string
-		memory, swap       int64
+		memory             int64
 		cpuShare, cpuMilli int
 	}{
 		{
 			body:     "planoverride.memory=314572800",
 			memory:   314572800,
-			swap:     536870912,
 			cpuShare: 100,
 			cpuMilli: 0,
 		},
 		{
 			body:     "planoverride.cpumilli=200",
 			memory:   314572800,
-			swap:     536870912,
 			cpuShare: 100,
 			cpuMilli: 200,
 		},
 		{
 			body:     "planoverride.memory=",
 			memory:   536870912,
-			swap:     536870912,
 			cpuShare: 100,
 			cpuMilli: 200,
 		},
 		{
 			body:     "planoverride.cpumilli=100",
 			memory:   536870912,
-			swap:     536870912,
 			cpuShare: 100,
 			cpuMilli: 100,
 		},
@@ -2121,7 +2116,6 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 		dbApp, err := app.GetByName(context.TODO(), a.Name)
 		c.Assert(err, check.IsNil)
 		c.Assert(dbApp.GetMemory(), check.Equals, tt.memory)
-		c.Assert(dbApp.GetSwap(), check.Equals, tt.swap)
 		c.Assert(dbApp.GetCpuShare(), check.Equals, tt.cpuShare)
 		c.Assert(dbApp.GetMilliCPU(), check.Equals, tt.cpuMilli)
 		c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, i+1)
@@ -2129,7 +2123,7 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 }
 
 func (s *S) TestUpdateAppPlanNotFound(c *check.C) {
-	s.plan = appTypes.Plan{Name: "superplan", Memory: 268435456, Swap: 268435456, CpuShare: 100}
+	s.plan = appTypes.Plan{Name: "superplan", Memory: 268435456, CpuShare: 100}
 	a := app.App{Name: "someapp", Platform: "zend", TeamOwner: s.team.Name, Plan: s.plan}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)

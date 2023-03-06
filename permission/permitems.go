@@ -19,6 +19,7 @@ var (
 	PermAppDeploy                        = PermissionRegistry.get("app.deploy")                          // [global app team pool]
 	PermAppDeployArchiveUrl              = PermissionRegistry.get("app.deploy.archive-url")              // [global app team pool]
 	PermAppDeployBuild                   = PermissionRegistry.get("app.deploy.build")                    // [global app team pool]
+	PermAppDeployDockerfile              = PermissionRegistry.get("app.deploy.dockerfile")               // [global app team pool]
 	PermAppDeployGit                     = PermissionRegistry.get("app.deploy.git")                      // [global app team pool]
 	PermAppDeployImage                   = PermissionRegistry.get("app.deploy.image")                    // [global app team pool]
 	PermAppDeployRollback                = PermissionRegistry.get("app.deploy.rollback")                 // [global app team pool]

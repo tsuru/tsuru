@@ -41,6 +41,7 @@ const (
 	DeployUpload       DeployKind = "upload"
 	DeployUploadBuild  DeployKind = "uploadbuild"
 	DeployRebuild      DeployKind = "rebuild"
+	DeployDockerfile   DeployKind = "dockerfile"
 )
 
 var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
@@ -183,6 +184,7 @@ type DeployOptions struct {
 	Commit           string
 	BuildTag         string
 	ArchiveURL       string
+	Dockerfile       string
 	FileSize         int64
 	File             io.ReadCloser `bson:"-"`
 	OutputStream     io.Writer     `bson:"-"`
@@ -209,25 +211,40 @@ func (o *DeployOptions) GetOrigin() string {
 }
 
 func (o *DeployOptions) GetKind() (kind DeployKind) {
-	defer func() {
-		o.Kind = kind
-	}()
+	if o.Kind != "" {
+		return o.Kind
+	}
+
+	defer func() { o.Kind = kind }()
+
+	if o.Dockerfile != "" {
+		return DeployDockerfile
+	}
+
 	if o.Rollback {
 		return DeployRollback
 	}
+
 	if o.Image != "" {
 		return DeployImage
 	}
+
 	if o.File != nil {
 		if o.Build {
 			return DeployUploadBuild
 		}
 		return DeployUpload
 	}
+
 	if o.Commit != "" {
 		return DeployGit
 	}
-	return DeployArchiveURL
+
+	if o.ArchiveURL != "" {
+		return DeployArchiveURL
+	}
+
+	return DeployKind("")
 }
 
 func Build(ctx context.Context, opts DeployOptions) (string, error) {
@@ -379,6 +396,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	if opts.Kind == "" {
 		opts.GetKind()
 	}
+
 	if opts.App.GetPlatform() == "" && opts.Kind != DeployImage && opts.Kind != DeployRollback {
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
@@ -406,6 +424,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 			return "", err
 		}
 	}
+
 	return deployer.Deploy(ctx, provision.DeployArgs{
 		App:              opts.App,
 		Version:          version,
@@ -416,25 +435,40 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 }
 
 func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
-	isRebuild := opts.Kind == DeployRebuild
 	buildOpts := builder.BuildOpts{
-		BuildFromFile: opts.Build,
-		ArchiveURL:    opts.ArchiveURL,
-		ArchiveFile:   opts.File,
-		ArchiveSize:   opts.FileSize,
-		Rebuild:       isRebuild,
-		ImageID:       opts.Image,
-		Tag:           opts.BuildTag,
-		Message:       opts.Message,
+		Rebuild:     opts.GetKind() == DeployRebuild,
+		ArchiveURL:  opts.ArchiveURL,
+		ArchiveFile: opts.File,
+		ArchiveSize: opts.FileSize,
+		ImageID:     opts.Image,
+		Tag:         opts.BuildTag,
+		Message:     opts.Message,
+		Output:      evt,
+		Dockerfile:  opts.Dockerfile,
 	}
-	builder, err := opts.App.getBuilder()
+
+	b, err := opts.App.getBuilder()
 	if err != nil {
 		return nil, err
 	}
-	version, err := builder.Build(ctx, prov, opts.App, evt, &buildOpts)
+
+	if bv2, ok := b.(builder.BuilderV2); ok {
+		var version appTypes.AppVersion
+		version, err = bv2.BuildV2(ctx, opts.App, evt, buildOpts)
+		if err != nil && !errors.Is(err, builder.ErrBuildV2NotSupported) {
+			return nil, err
+		}
+
+		if err == nil { // app build successfully using build v2
+			return version, nil
+		}
+	}
+
+	version, err := b.Build(ctx, prov, opts.App, evt, &buildOpts)
 	if buildOpts.IsTsuruBuilderImage {
 		opts.Kind = DeployBuildedImage
 	}
+
 	return version, err
 }
 
