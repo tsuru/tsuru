@@ -140,7 +140,6 @@ func (s *S) SetUpTest(c *check.C) {
 	s.defaultPlan = appTypes.Plan{
 		Name:     "default-plan",
 		Memory:   1024,
-		Swap:     1024,
 		CpuShare: 100,
 		Default:  true,
 	}

@@ -275,7 +275,6 @@ type Job interface {
 	Named
 	GetMemory() int64
 	GetMilliCPU() int
-	GetSwap() int64
 	GetCpuShare() int
 	GetPool() string
 	GetTeamOwner() string

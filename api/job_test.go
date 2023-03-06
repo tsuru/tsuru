@@ -382,7 +382,6 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 			Plan: app.Plan{
 				Name:     "default-plan",
 				Memory:   1024,
-				Swap:     1024,
 				CpuShare: 100,
 				Default:  true,
 			},
@@ -484,7 +483,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Plan: app.Plan{
 				Name:     "default-plan",
 				Memory:   1024,
-				Swap:     1024,
 				CpuShare: 100,
 				Default:  true,
 			},
@@ -737,7 +735,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Plan: app.Plan{
 				Name:     "default-plan",
 				Memory:   1024,
-				Swap:     1024,
 				CpuShare: 100,
 				Default:  true,
 			},

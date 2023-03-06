@@ -122,11 +122,6 @@ func (job *Job) GetMilliCPU() int {
 	return job.Plan.CPUMilli
 }
 
-// GetSwap returns the swap limit (in bytes) for the job.
-func (job *Job) GetSwap() int64 {
-	return job.Plan.Swap
-}
-
 // GetCpuShare returns the cpu share for the job.
 func (job *Job) GetCpuShare() int {
 	return job.Plan.CpuShare
