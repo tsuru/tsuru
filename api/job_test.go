@@ -904,7 +904,7 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/trigger/%s", j1.Name), nil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -935,7 +935,7 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/trigger/%s", j1.Name), nil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -951,7 +951,7 @@ func (s *S) TestTriggerJobNotFound(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	request, err := http.NewRequest("PUT", "/jobs/trigger/some-name", nil)
+	request, err := http.NewRequest("PUT", "/jobs/some-name/trigger", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()

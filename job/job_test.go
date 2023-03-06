@@ -100,7 +100,7 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 	err = RemoveJobFromDb(job.Name)
 	c.Assert(err, check.IsNil)
 	_, err = GetByName(context.TODO(), job.Name)
-	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound.Error())
+	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
 }
 
 func (s *S) TestJobUnits(c *check.C) {
