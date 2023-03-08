@@ -519,12 +519,12 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("1.0", http.MethodGet, "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
-	m.Add("1.12", http.MethodPost, "/jobs", AuthorizationRequiredHandler(createJob))
-	m.Add("1.12", http.MethodPut, "/jobs/{name}/trigger", AuthorizationRequiredHandler(jobTrigger))
-	m.Add("1.12", http.MethodGet, "/jobs/{name}", AuthorizationRequiredHandler(jobInfo))
-	m.Add("1.12", http.MethodDelete, "/jobs", AuthorizationRequiredHandler(deleteJob))
-	m.Add("1.12", http.MethodPut, "/jobs", AuthorizationRequiredHandler(updateJob))
-	m.Add("1.12", http.MethodGet, "/jobs", AuthorizationRequiredHandler(jobList))
+	m.Add("1.13", http.MethodPost, "/jobs", AuthorizationRequiredHandler(createJob))
+	m.Add("1.13", http.MethodPut, "/jobs/{name}/trigger", AuthorizationRequiredHandler(jobTrigger))
+	m.Add("1.13", http.MethodGet, "/jobs/{name}", AuthorizationRequiredHandler(jobInfo))
+	m.Add("1.13", http.MethodDelete, "/jobs", AuthorizationRequiredHandler(deleteJob))
+	m.Add("1.13", http.MethodPut, "/jobs", AuthorizationRequiredHandler(updateJob))
+	m.Add("1.13", http.MethodGet, "/jobs", AuthorizationRequiredHandler(jobList))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
