@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/config"
