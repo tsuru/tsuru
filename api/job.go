@@ -105,7 +105,7 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // title: job trigger
 // path: /job/trigger/{name}
 // method: PUT
-// produce: application/x-json-stream
+// produce: application/json
 // responses:
 //	200: OK
 //	401: Unauthorized
@@ -154,7 +154,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // title: job info
 // path: /jobs
 // method: GET
-// produce: application/x-json-stream
+// produce: application/json
 // responses:
 //	200: OK
 //	401: Unauthorized
@@ -172,22 +172,9 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !canGet {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     jobTarget(j.Name),
-		Kind:       permission.PermJobRead,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt.SetLogWriter(writer)
-	w.Header().Set("Content-Type", "application/x-json-stream")
+	w.Header().Set("Content-Type", "application/json")
 	units, err := j.Units()
 	if err != nil {
 		return err
@@ -220,12 +207,13 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //	401: Unauthorized
 func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
+	name := r.URL.Query().Get(":name")
 	var ij inputJob
 	err = ParseInput(r, &ij)
 	if err != nil {
 		return err
 	}
-	oldJob, err := getJob(ctx, ij.Name)
+	oldJob, err := getJob(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -264,6 +252,9 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(&newJob)...),
 	})
+	if err != nil {
+		return err
+	}
 	defer func() {
 		evt.Done(err)
 	}()
@@ -370,20 +361,20 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // title: delete job
 // path: /jobs
 // method: DELETE
-// produce: application/x-json-stream
+// produce: application/json
 // responses:
 //	200: Job removed
 //	401: Unauthorized
 //	404: Not found
 func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
+	name := r.URL.Query().Get(":name")
 	var ij inputJob
 	err = ParseInput(r, &ij)
 	if err != nil {
 		return err
 	}
-
-	j, err := getJob(ctx, ij.Name)
+	j, err := getJob(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -408,7 +399,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	w.Header().Set("Content-Type", "application/x-json-stream")
+	w.Header().Set("Content-Type", "application/json")
 	if err = job.RemoveJobFromDb(j.Name); err != nil {
 		return err
 	}

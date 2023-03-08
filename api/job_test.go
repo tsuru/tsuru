@@ -54,7 +54,7 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -91,7 +91,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -126,7 +126,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermJobDelete,
@@ -138,7 +138,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget(myJob.Name),
 		Owner:  token.GetUserName(),
@@ -172,7 +172,7 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c)
 	request.Header.Set("Authorization", "b "+token.GetValue())
@@ -211,7 +211,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermJobDelete,
@@ -222,7 +222,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget("my-cron"),
 		Owner:  token.GetUserName(),
@@ -238,7 +238,7 @@ func (s *S) TestDeleteJobNotFound(c *check.C) {
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(job)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", job.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -257,7 +257,7 @@ func (s *S) TestDeleteCronjobNotFound(c *check.C) {
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(job)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/jobs", &buffer)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", job.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -653,7 +653,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -717,7 +717,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -795,7 +795,7 @@ func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -832,7 +832,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -869,7 +869,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", "/jobs", &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s",ij.Name) , &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
