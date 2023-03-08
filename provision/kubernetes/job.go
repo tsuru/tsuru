@@ -20,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-const jobPrefix = "tsuru-"
-
 func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
 	return batchv1.JobSpec{
 		Template: v1.PodTemplateSpec{
