@@ -5,6 +5,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -26,9 +27,9 @@ var provisionJob = action.Action{
 		case *Job:
 			job = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner()
+		prov, err := job.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +43,7 @@ var provisionJob = action.Action{
 		default:
 			return
 		}
-		prov, err := job.getProvisioner()
+		prov, err := job.getProvisioner(ctx.Context)
 		if err == nil {
 			prov.DestroyJob(ctx.Context, job)
 		}
@@ -58,9 +59,9 @@ var triggerCron = action.Action{
 		case *Job:
 			job = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner()
+		prov, err := job.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -77,9 +78,9 @@ var updateJobProv = action.Action{
 		case *Job:
 			job = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner()
+		prov, err := job.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -100,9 +101,9 @@ var jobUpdateDB = action.Action{
 		case *Job:
 			j = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
-		return nil, updateJobDB(j)
+		return nil, updateJobDB(ctx.Context, j)
 	},
 	MinParams: 1,
 }
@@ -121,9 +122,9 @@ var insertJob = action.Action{
 		case *Job:
 			j = ctx.Params[0].(*Job)
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
-		err := insertJobDB(j)
+		err := insertJobDB(ctx.Context, j)
 		if err != nil {
 			return nil, err
 		}
@@ -136,13 +137,13 @@ var insertJob = action.Action{
 	MinParams: 1,
 }
 
-func insertJobDB(job *Job) error {
+func insertJobDB(ctx context.Context, job *Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	_, err = GetByName(job.ctx, job.Name)
+	_, err = GetByName(ctx, job.Name)
 	if err == jobTypes.ErrJobNotFound {
 		return conn.Jobs().Insert(job)
 	} else if err == nil {
@@ -151,20 +152,20 @@ func insertJobDB(job *Job) error {
 	return err
 }
 
-func updateJobDB(job *Job) error {
+func updateJobDB(ctx context.Context, job *Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	oldJob, err := GetByName(job.ctx, job.Name)
+	oldJob, err := GetByName(ctx, job.Name)
 	if err != nil {
 		return err
 	}
 	if reflect.DeepEqual(*oldJob, *job) {
 		return errors.New(fmt.Sprintf("no new values to be patched into job %s", job.Name))
 	}
-	return conn.Jobs().Update(bson.M{"tsurujob.name": job.Name}, job)
+	return conn.Jobs().Update(bson.M{"name": job.Name}, job)
 }
 
 var reserveTeamCronjob = action.Action{
@@ -178,7 +179,7 @@ var reserveTeamCronjob = action.Action{
 				return nil, errors.New("job type must be cron to increment team quota")
 			}
 		default:
-			return nil, errors.New("first parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
 		if err := servicemanager.TeamQuota.Inc(ctx.Context, &authTypes.Team{Name: job.TeamOwner}, 1); err != nil {
 			return nil, err
@@ -208,7 +209,7 @@ var reserveUserCronjob = action.Action{
 				return nil, errors.New("job type must be cron to increment team quota")
 			}
 		default:
-			return nil, errors.New("First parameter must be *Job.")
+			return nil, errors.New("first parameter must be *Job")
 		}
 		var user auth.User
 		switch ctx.Params[1].(type) {
@@ -217,7 +218,7 @@ var reserveUserCronjob = action.Action{
 		case *auth.User:
 			user = *ctx.Params[1].(*auth.User)
 		default:
-			return nil, errors.New("Second parameter must be auth.User or *auth.User.")
+			return nil, errors.New("second parameter must be auth.User or *auth.User")
 		}
 		if user.FromToken {
 			// there's no quota to update as the user was generated from team token.

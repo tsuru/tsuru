@@ -42,9 +42,11 @@ func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map
 }
 
 func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
-	k8sCronjob, err := client.BatchV1beta1().CronJobs(client.Namespace()).Create(ctx, &apiv1beta1.CronJob{
+	namespace := client.PoolNamespace(job.GetPool())
+	k8sCronjob, err := client.BatchV1beta1().CronJobs(namespace).Create(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.GetName(),
+			Namespace:   namespace,
 			Labels:      labels,
 			Annotations: annotations,
 		},
@@ -59,9 +61,11 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 }
 
 func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
-	k8sJob, err := client.BatchV1().Jobs(client.Namespace()).Create(ctx, &batchv1.Job{
+	namespace := client.PoolNamespace(job.GetPool())
+	k8sJob, err := client.BatchV1().Jobs(namespace).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.GetName(),
+			Namespace: namespace,
 			Labels:      labels,
 			Annotations: annotations,
 		},

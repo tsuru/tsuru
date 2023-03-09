@@ -175,7 +175,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/json")
-	units, err := j.Units()
+	units, err := j.Units(ctx)
 	if err != nil {
 		return err
 	}
@@ -228,16 +228,16 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	newJob := job.Job{
-		TsuruJob: job.TsuruJob{
-			TeamOwner:   ij.TeamOwner,
-			Plan:        appTypes.Plan{Name: ij.Plan},
-			Name:        ij.Name,
-			Description: ij.Description,
-			Pool:        ij.Pool,
-			Metadata:    ij.Metadata,
+		TeamOwner:   ij.TeamOwner,
+		Plan:        appTypes.Plan{Name: ij.Plan},
+		Name:        ij.Name,
+		Description: ij.Description,
+		Pool:        ij.Pool,
+		Metadata:    ij.Metadata,
+		Spec: job.JobSpec{
+			Schedule:  ij.Schedule,
+			Container: ij.Container,
 		},
-		Schedule:  ij.Schedule,
-		Container: ij.Container,
 	}
 	if newJob.TeamOwner == "" {
 		oldJob.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -295,16 +295,16 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	j := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner:   ij.TeamOwner,
 			Plan:        appTypes.Plan{Name: ij.Plan},
 			Name:        ij.Name,
 			Description: ij.Description,
 			Pool:        ij.Pool,
 			Metadata:    ij.Metadata,
-		},
-		Schedule:  ij.Schedule,
-		Container: ij.Container,
+			Spec: job.JobSpec{
+				Schedule:  ij.Schedule,
+				Container: ij.Container,
+			},
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)

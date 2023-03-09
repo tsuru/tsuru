@@ -29,8 +29,7 @@ import (
 // A job currently represent a Kubernetes Job object or a Cronjob object
 // this struct is composited of a TsuruJob and all the metadata tsuru natively uses
 // as well as job specific definitions such as schedule and container image and commands
-type Job struct {
-	TsuruJob
+type JobSpec struct {
 	// Specifies the maximum desired number of pods the job should
 	// run at any given time. The actual number of pods running in steady state will
 	// be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism),
@@ -63,7 +62,7 @@ type Job struct {
 	Container jobTypes.ContainerInfo `json:"container,omitempty"`
 }
 
-type TsuruJob struct {
+type Job struct {
 	Name        string            `json:"name,omitempty"`
 	Teams       []string          `json:"teams,omitempty"`
 	TeamOwner   string            `json:"teamowner,omitempty"`
@@ -73,16 +72,17 @@ type TsuruJob struct {
 	Pool        string            `json:"pool,omitempty"`
 	Description string            `json:"description,omitempty"`
 
-	ctx         context.Context
+	Spec JobSpec
+
 	provisioner provision.JobProvisioner
 }
 
-func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
+func (job *Job) getProvisioner(ctx context.Context) (provision.JobProvisioner, error) {
 	var err error
 	if job.provisioner != nil {
 		return job.provisioner, nil
 	}
-	prov, err := pool.GetProvisionerForPool(job.ctx, job.Pool)
+	prov, err := pool.GetProvisionerForPool(ctx, job.Pool)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +95,8 @@ func (job *Job) getProvisioner() (provision.JobProvisioner, error) {
 }
 
 // Units returns the list of units.
-func (job *Job) Units() ([]provision.Unit, error) {
-	prov, err := job.getProvisioner()
+func (job *Job) Units(ctx context.Context) ([]provision.Unit, error) {
+	prov, err := job.getProvisioner(ctx)
 	if err != nil {
 		return []provision.Unit{}, err
 	}
@@ -143,15 +143,15 @@ func (job *Job) GetMetadata() appTypes.Metadata {
 }
 
 func (job *Job) IsCron() bool {
-	return job.Schedule != ""
+	return job.Spec.Schedule != ""
 }
 
 func (job *Job) GetContainerInfo() jobTypes.ContainerInfo {
-	return job.Container
+	return job.Spec.Container
 }
 
 func (job *Job) GetSchedule() string {
-	return job.Schedule
+	return job.Spec.Schedule
 }
 
 // GetByName queries the database to find a job identified by the given
@@ -163,11 +163,10 @@ func GetByName(ctx context.Context, name string) (*Job, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Find(bson.M{"tsurujob.name": name}).One(&job)
+	err = conn.Jobs().Find(bson.M{"name": name}).One(&job)
 	if err == mgo.ErrNotFound {
 		return nil, jobTypes.ErrJobNotFound
 	}
-	job.ctx = ctx
 	return &job, err
 }
 
@@ -177,7 +176,7 @@ func RemoveJobFromDb(jobName string) error {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Remove(bson.M{"tsurujob.name": jobName})
+	err = conn.Jobs().Remove(bson.M{"name": jobName})
 	if err == mgo.ErrNotFound {
 		return jobTypes.ErrJobNotFound
 	}
@@ -185,11 +184,11 @@ func RemoveJobFromDb(jobName string) error {
 }
 
 func DeleteFromProvisioner(ctx context.Context, job *Job) error {
-	prov, err := job.getProvisioner()
+	prov, err := job.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	return prov.DestroyJob(job.ctx, job)
+	return prov.DestroyJob(ctx, job)
 }
 
 // CreateJob creates a new job or cronjob.
@@ -199,9 +198,6 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
 func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) error {
-	if job.ctx == nil {
-		job.ctx = ctx
-	}
 	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if err := buildName(ctx, job); err != nil {
 		jobCreationErr.Err = err
@@ -306,19 +302,19 @@ func (f *Filter) Query() bson.M {
 		query["$or"] = orBlock
 	}
 	if f.Name != "" {
-		query["tsurujob.name"] = bson.M{"$regex": f.Name}
+		query["name"] = bson.M{"$regex": f.Name}
 	}
 	if f.TeamOwner != "" {
-		query["tsurujob.teamowner"] = f.TeamOwner
+		query["teamowner"] = f.TeamOwner
 	}
 	if f.UserOwner != "" {
-		query["tsurujob.owner"] = f.UserOwner
+		query["owner"] = f.UserOwner
 	}
 	if f.Pool != "" {
-		query["tsurujob.pool"] = f.Pool
+		query["pool"] = f.Pool
 	}
 	if len(f.Pools) > 0 {
-		query["tsurujob.pool"] = bson.M{"$in": f.Pools}
+		query["pool"] = bson.M{"$in": f.Pools}
 	}
 	return query
 }
@@ -398,7 +394,7 @@ func validateJob(ctx context.Context, j Job) error {
 		return err
 	}
 	if j.IsCron() {
-		if err := validateSchedule(j.Name, j.Schedule); err != nil {
+		if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
 			return &tsuruErrors.ValidationError{Message: err.Error()}
 		}
 	}

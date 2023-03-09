@@ -37,10 +37,8 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := job.Job{
-		TsuruJob: job.TsuruJob{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-		},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	err := job.CreateJob(context.TODO(), &j, s.user, true)
 	c.Assert(err, check.IsNil)
@@ -72,12 +70,12 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := job.Job{
-		TsuruJob: job.TsuruJob{
-			Name:      "this-is-a-cronjob",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "this-is-a-cronjob",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
 		},
-		Schedule: "* * * * *",
 	}
 	err := job.CreateJob(context.TODO(), &j, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -109,10 +107,8 @@ func (s *S) TestDeleteJob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := &job.Job{
-		TsuruJob: job.TsuruJob{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-		},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	err := job.CreateJob(context.TODO(), j, s.user, true)
 	c.Assert(err, check.IsNil)
@@ -155,10 +151,8 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := &job.Job{
-		TsuruJob: job.TsuruJob{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-		},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	err := job.CreateJob(context.TODO(), j, s.user, true)
 	c.Assert(err, check.IsNil)
@@ -192,12 +186,12 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := &job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "my-cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), j, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -302,7 +296,7 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotJob job.Job
-	err = s.conn.Jobs().Find(bson.M{"tsurujob.name": jobName, "tsurujob.teamowner": s.team.Name}).One(&gotJob)
+	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
@@ -371,10 +365,9 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotJob job.Job
-	err = s.conn.Jobs().Find(bson.M{"tsurujob.name": jobName, "tsurujob.teamowner": s.team.Name}).One(&gotJob)
+	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      obtained["jobName"],
 			Teams:     []string{s.team.Name},
 			TeamOwner: s.team.Name,
@@ -401,12 +394,13 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 			},
 			Pool:        "test1",
 			Description: "some description",
-		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
-		},
+			Spec: job.JobSpec{
+				Container: jobTypes.ContainerInfo{
+					Name:    "c1",
+					Image:   "busybox:1.28",
+					Command: []string{"/bin/sh", "-c", "echo Hello!"},
+				},
+			},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 }
@@ -472,10 +466,9 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var gotJob job.Job
-	err = s.conn.Jobs().Find(bson.M{"tsurujob.name": jobName, "tsurujob.teamowner": s.team.Name}).One(&gotJob)
+	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      obtained["jobName"],
 			Teams:     []string{s.team.Name},
 			TeamOwner: s.team.Name,
@@ -502,13 +495,14 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			},
 			Pool:        "test1",
 			Description: "some description",
-		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Container: jobTypes.ContainerInfo{
+					Name:    "c1",
+					Image:   "busybox:1.28",
+					Command: []string{"/bin/sh", "-c", "echo Hello!"},
+				},
+				Schedule: "* * * * *",
+			},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 	c.Assert(gotJob.IsCron(), check.Equals, true)
@@ -545,11 +539,9 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	oldJob := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	err := job.CreateJob(context.TODO(), &oldJob, s.user, true)
 	c.Assert(err, check.IsNil)
@@ -632,16 +624,14 @@ func (s *S) TestUpdateJob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-		},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, true)
 	c.Assert(err, check.IsNil)
 	gotJob, err := job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	ij := inputJob{
 		Name: j1.Name,
 		Container: jobTypes.ContainerInfo{
@@ -662,7 +652,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
 	gotJob, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Container, check.DeepEquals, ij.Container)
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, ij.Container)
 }
 
 func (s *S) TestUpdateCronjob(c *check.C) {
@@ -674,19 +664,19 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 			Name:      "cron",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
 	gotJob, err := job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
-	c.Assert(gotJob.Schedule, check.DeepEquals, "* * * * *")
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
+	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	ij := inputJob{
 		Name:        j1.Name,
 		TeamOwner:   s.team.Name,
@@ -727,7 +717,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	gotJob, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      j1.Name,
 			Teams:     []string{s.team.Name},
 			TeamOwner: s.team.Name,
@@ -754,25 +743,16 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			},
 			Pool:        "test1",
 			Description: "some description",
+		Spec: job.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "busybox:1.28",
+				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			},
+			Schedule: "*/15 * * * *",
 		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
-		},
-		Schedule: "*/15 * * * *",
 	}
-	// we have to check the values 1 by 1 because the value of job.ctx is != nil
-	c.Assert(gotJob.Name, check.DeepEquals, expectedJob.Name)
-	c.Assert(gotJob.Teams, check.DeepEquals, expectedJob.Teams)
-	c.Assert(gotJob.TeamOwner, check.DeepEquals, expectedJob.TeamOwner)
-	c.Assert(gotJob.Owner, check.DeepEquals, expectedJob.Owner)
-	c.Assert(gotJob.Plan, check.DeepEquals, expectedJob.Plan)
-	c.Assert(gotJob.Metadata, check.DeepEquals, expectedJob.Metadata)
-	c.Assert(gotJob.Pool, check.DeepEquals, expectedJob.Pool)
-	c.Assert(gotJob.Description, check.DeepEquals, expectedJob.Description)
-	c.Assert(gotJob.Container, check.DeepEquals, expectedJob.Container)
-	c.Assert(gotJob.Schedule, check.DeepEquals, expectedJob.Schedule)
+	c.Assert(*gotJob, check.DeepEquals, expectedJob)
 }
 
 func (s *S) TestUpdateCronjobNotFound(c *check.C) {
@@ -814,12 +794,12 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 			Name:      "cron",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -851,12 +831,12 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 			Name:      "cron",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -888,16 +868,16 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 			Name:      "manual-job",
-		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
-		},
+			Spec: job.JobSpec{
+				Container: jobTypes.ContainerInfo{
+					Name:    "c1",
+					Image:   "ubuntu:latest",
+					Command: []string{"echo", "hello world"},
+				},
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -918,17 +898,17 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
 			Name:      "manual-job",
-		},
-		Schedule: "* */15 * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
-		},
+			Spec: job.JobSpec{				
+				Schedule: "* */15 * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "c1",
+					Image:   "ubuntu:latest",
+					Command: []string{"echo", "hello world"},
+				},
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -965,25 +945,21 @@ func (s *S) TestJobList(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j2 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "manual",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j3 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1012,25 +988,21 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j2 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "manual",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j3 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1067,25 +1039,21 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j2 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "manual",
 			TeamOwner: team.Name,
 			Pool:      "test1",
-		},
 	}
 	j3 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1120,25 +1088,21 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j2 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "manual",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j3 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1170,25 +1134,21 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "pool1",
-		},
 	}
 	j2 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "manual",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
 	}
 	j3 := job.Job{
-		TsuruJob: job.TsuruJob{
 			Name:      "cron",
 			TeamOwner: s.team.Name,
 			Pool:      "test1",
-		},
-		Schedule: "* * * * *",
+			Spec: job.JobSpec{
+				Schedule: "* * * * *",
+			},
 	}
 	err = job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1220,10 +1180,8 @@ func (s *S) TestJobInfo(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-		TsuruJob: job.TsuruJob{
 			TeamOwner: s.team.Name,
 			Pool:      "pool1",
-		},
 	}
 	err = job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)

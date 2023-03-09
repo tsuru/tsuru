@@ -86,7 +86,7 @@ func (s *Storage) Apps() *storage.Collection {
 
 // Jobs returns the jobs collection from MongoDB.
 func (s *Storage) Jobs() *storage.Collection {
-	jobNameIndex := mgo.Index{Key: []string{"tsurujob.name"}, Unique: true}
+	jobNameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
 	c := s.Collection("jobs")
 	c.EnsureIndex(jobNameIndex)
 	return c

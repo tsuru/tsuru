@@ -25,17 +25,17 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 		{
 			scenario: func() {
 				cj := job.Job{
-					TsuruJob: job.TsuruJob{
 						Name:      "myjob",
 						TeamOwner: s.team.Name,
 						Pool:      "test-default",
-					},
-					Schedule: "* * * * *",
-					Container: jobTypes.ContainerInfo{
-						Name:    "c1",
-						Image:   "ubuntu:latest",
-						Command: []string{"echo", "hello world"},
-					},
+						Spec: job.JobSpec{
+							Schedule: "* * * * *",
+							Container: jobTypes.ContainerInfo{
+								Name:    "c1",
+								Image:   "ubuntu:latest",
+								Command: []string{"echo", "hello world"},
+							},
+						},
 				}
 				_, err := s.p.CreateJob(context.TODO(), &cj)
 				waitCron()

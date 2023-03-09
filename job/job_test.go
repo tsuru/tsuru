@@ -13,12 +13,10 @@ import (
 
 func (s *S) TestGetByName(c *check.C) {
 	newJob := Job{
-		TsuruJob: TsuruJob{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-		},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
 	}
 	err := CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -29,17 +27,17 @@ func (s *S) TestGetByName(c *check.C) {
 
 func (s *S) TestCreateCronjob(c *check.C) {
 	newCron := Job{
-		TsuruJob: TsuruJob{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
+			},
 		},
 	}
 	err := CreateJob(context.TODO(), &newCron, s.user, false)
@@ -58,18 +56,18 @@ func (s *S) TestGetJobByNameNotFound(c *check.C) {
 
 func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 	newJob := Job{
-		TsuruJob: TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      s.Pool,
 			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
-		},
+			Spec: JobSpec{
+				Schedule: "* * * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "augustine",
+					Image:   "alpine:latest",
+					Command: []string{"echo", "hello!"},
+				},
+			},
 	}
 	err := CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -83,18 +81,18 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 
 func (s *S) TestDeleteJobFromDB(c *check.C) {
 	newJob := Job{
-		TsuruJob: TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      s.Pool,
 			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
-		},
+			Spec: JobSpec{
+				Schedule: "* * * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "augustine",
+					Image:   "alpine:latest",
+					Command: []string{"echo", "hello!"},
+				},
+			},
 	}
 	err := CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -109,50 +107,50 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 
 func (s *S) TestJobUnits(c *check.C) {
 	newJob := Job{
-		TsuruJob: TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      s.Pool,
 			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
-		},
+			Spec: JobSpec{
+				Schedule: "* * * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "augustine",
+					Image:   "alpine:latest",
+					Command: []string{"echo", "hello!"},
+				},
+			},
 	}
 	_, err := s.provisioner.NewJobWithUnits(context.TODO(), &newJob)
 	c.Assert(err, check.IsNil)
-	units, err := newJob.Units()
+	units, err := newJob.Units(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 2)
 }
 
 func (s *S) TestUpdateJob(c *check.C) {
 	j1 := Job{
-		TsuruJob: TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      s.Pool,
 			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
-		},
+			Spec: JobSpec{
+				Schedule: "* * * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "augustine",
+					Image:   "alpine:latest",
+					Command: []string{"echo", "hello!"},
+				},
+			},
 	}
 	j2 := Job{
-		TsuruJob: TsuruJob{
 			Name: "some-job",
-		},
-		Schedule: "* */2 * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "betty",
-			Command: []string{"echo", "hello world!"},
-		},
+			Spec: JobSpec{
+				Schedule: "* */2 * * *",
+				Container: jobTypes.ContainerInfo{
+					Name:    "betty",
+					Command: []string{"echo", "hello world!"},
+				},
+			},
 	}
 	err := CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -163,22 +161,22 @@ func (s *S) TestUpdateJob(c *check.C) {
 	c.Assert(updatedJob.TeamOwner, check.Equals, j1.TeamOwner)
 	c.Assert(updatedJob.Pool, check.Equals, j1.Pool)
 	c.Assert(updatedJob.Teams, check.DeepEquals, j1.Teams)
-	c.Assert(updatedJob.Container, check.DeepEquals, j2.Container)
-	c.Assert(updatedJob.Schedule, check.DeepEquals, j2.Schedule)
+	c.Assert(updatedJob.Spec.Container, check.DeepEquals, j2.Spec.Container)
+	c.Assert(updatedJob.Spec.Schedule, check.DeepEquals, j2.Spec.Schedule)
 }
 
 func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 	j1 := Job{
-		TsuruJob: TsuruJob{
 			Name:      "some-job",
 			TeamOwner: s.team.Name,
 			Pool:      s.Pool,
 			Teams:     []string{s.team.Name},
-		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "betty",
-			Command: []string{"echo", "hello world!"},
-		},
+			Spec: JobSpec{
+				Container: jobTypes.ContainerInfo{
+					Name:    "betty",
+					Command: []string{"echo", "hello world!"},
+				},
+			},
 	}
 	err := CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -190,30 +188,30 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 
 func (s *S) TestList(c *check.C) {
 	j1 := Job{
-		TsuruJob: TsuruJob{
-			Name:      "j1",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-		},
-		Container: jobTypes.ContainerInfo{
-			Name:    "augustine",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello!"},
+		Name:      "j1",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
+			},
 		},
 	}
 	j2 := Job{
-		TsuruJob: TsuruJob{
-			Name:      "j2",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-		},
-		Schedule: "* */2 * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "betty",
-			Image:   "alpine:latest",
-			Command: []string{"echo", "hello world!"},
+		Name:      "j2",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* */2 * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "betty",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello world!"},
+			},
 		},
 	}
 	err := CreateJob(context.TODO(), &j1, s.user, false)
