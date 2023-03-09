@@ -262,10 +262,11 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	msg := map[string]interface{}{
-		"status": "success",
+	updatedJob, err := getJob(ctx, name)
+	if err != nil {
+		return err
 	}
-	jsonMsg, err := json.Marshal(msg)
+	jsonMsg, err := json.Marshal(updatedJob)
 	if err != nil {
 		return err
 	}
