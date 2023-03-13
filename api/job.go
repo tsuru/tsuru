@@ -178,8 +178,6 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !canGet {
 		return permission.ErrUnauthorized
 	}
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
-	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/json")
 	units, err := j.Units(ctx)
 	if err != nil {
