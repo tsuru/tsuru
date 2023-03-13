@@ -25,7 +25,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// Job is another main type in tsuru as of version *insert current version*.
+// JobSpec is another main type in tsuru as of version *insert current version*.
 // A job currently represent a Kubernetes Job object or a Cronjob object
 // this struct is composited of a TsuruJob and all the metadata tsuru natively uses
 // as well as job specific definitions such as schedule and container image and commands
@@ -36,7 +36,7 @@ type JobSpec struct {
 	// i.e. when the work left to do is less than max parallelism.
 	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
 	// +optional
-	Parallelism *int32 `json:"parallelism,omitempty" protobuf:"varint,1,opt,name=parallelism"`
+	Parallelism *int32
 
 	// Specifies the desired number of successfully finished pods the
 	// job should be run with.  Setting to nil means that the success of any
@@ -45,32 +45,32 @@ type JobSpec struct {
 	// pod signals the success of the job.
 	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
 	// +optional
-	Completions *int32 `json:"completions,omitempty" protobuf:"varint,2,opt,name=completions"`
+	Completions *int32
 
 	// Specifies the duration in seconds relative to the startTime that the job may be active
 	// before the system tries to terminate it; value must be positive integer
 	// +optional
-	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty" protobuf:"varint,3,opt,name=activeDeadlineSeconds"`
+	ActiveDeadlineSeconds *int64
 
 	// Specifies the number of retries before marking this job failed.
 	// Defaults to 6
 	// +optional
-	BackoffLimit *int32 `json:"backoffLimit,omitempty" protobuf:"varint,7,opt,name=backoffLimit"`
+	BackoffLimit *int32
 
-	Schedule string `jsob:"schedule,omitempty"`
+	Schedule string
 
-	Container jobTypes.ContainerInfo `json:"container,omitempty"`
+	Container jobTypes.ContainerInfo
 }
 
 type Job struct {
-	Name        string            `json:"name,omitempty"`
-	Teams       []string          `json:"teams,omitempty"`
-	TeamOwner   string            `json:"teamowner,omitempty"`
-	Owner       string            `json:"owner,omitempty"`
-	Plan        appTypes.Plan     `json:"plan,omitempty"`
-	Metadata    appTypes.Metadata `json:"metadata,omitempty"`
-	Pool        string            `json:"pool,omitempty"`
-	Description string            `json:"description,omitempty"`
+	Name        string           
+	Teams       []string         
+	TeamOwner   string           
+	Owner       string           
+	Plan        appTypes.Plan    
+	Metadata    appTypes.Metadata
+	Pool        string           
+	Description string           
 
 	Spec JobSpec
 
