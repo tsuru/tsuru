@@ -91,7 +91,13 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if pool := r.URL.Query().Get("pool"); pool != "" {
 		filter.Pool = pool
 	}
-	jobs, err := job.List(ctx, jobFilterByContext(permission.ContextsForPermission(t, permission.PermJobRead), filter))
+	contexts := permission.ContextsForPermission(t, permission.PermJobRead)
+	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermJobRead)...)
+	if len(contexts) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+	jobs, err := job.List(ctx, jobFilterByContext(contexts, filter))
 	if err != nil {
 		return err
 	}
