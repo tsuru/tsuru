@@ -95,7 +95,6 @@ type FakeApp struct {
 
 type FakeJob struct {
 	Name      string
-	Container jobTypes.ContainerInfo
 	Units     []provision.Unit
 	Commands  []string
 	Metadata  appTypes.Metadata
@@ -106,7 +105,12 @@ type FakeJob struct {
 	Swap      int64
 	CpuShare  int
 	MilliCPU  int
-	Schedule  string
+	Container jobTypes.ContainerInfo
+	Completions *int32
+	Parallelism *int32
+	ActiveDeadlineSeconds *int64
+	BackoffLimit *int32
+	Schedule string
 }
 
 func (fj *FakeJob) GetName() string {
@@ -155,6 +159,17 @@ func (fj *FakeJob) GetContainerInfo() jobTypes.ContainerInfo {
 
 func (fj *FakeJob) GetSchedule() string {
 	return fj.Schedule
+}
+
+func (fj *FakeJob) GetSpec() jobTypes.JobSpec{
+	return jobTypes.JobSpec{
+		Parallelism: fj.Parallelism,
+		Completions: fj.Completions,
+		ActiveDeadlineSeconds: fj.ActiveDeadlineSeconds,
+		BackoffLimit: fj.BackoffLimit,
+		Schedule: fj.Schedule,
+		ContainerInfo: fj.Container,
+	}
 }
 
 func NewFakeJob(name, pool, teamOwner string, units int) *FakeJob {

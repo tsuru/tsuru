@@ -281,8 +281,8 @@ type Job interface {
 	GetTeamsName() []string
 	GetMetadata() appTypes.Metadata
 	IsCron() bool
-	GetContainerInfo() jobTypes.ContainerInfo
 	GetSchedule() string
+	GetSpec() jobTypes.JobSpec
 }
 
 type BuilderDockerClient interface {

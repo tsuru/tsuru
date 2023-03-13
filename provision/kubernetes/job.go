@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
-	jobTypes "github.com/tsuru/tsuru/types/job"
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
@@ -20,8 +19,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map[string]string) batchv1.JobSpec {
+func createJobSpec(job provision.Job, labels, annotations map[string]string) batchv1.JobSpec {
+	jSpec := job.GetSpec()
 	return batchv1.JobSpec{
+		Parallelism: jSpec.Parallelism,
+		BackoffLimit: jSpec.BackoffLimit,
+		Completions: jSpec.Completions,
+		ActiveDeadlineSeconds: jSpec.ActiveDeadlineSeconds,
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      labels,
@@ -31,9 +35,9 @@ func createJobSpec(containerInfo jobTypes.ContainerInfo, labels, annotations map
 				RestartPolicy: "OnFailure",
 				Containers: []v1.Container{
 					{
-						Name:    containerInfo.Name,
-						Image:   containerInfo.Image,
-						Command: containerInfo.Command,
+						Name:    jSpec.ContainerInfo.Name,
+						Image:   jSpec.ContainerInfo.Image,
+						Command: jSpec.ContainerInfo.Command,
 					},
 				},
 			},
@@ -84,7 +88,7 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
-	jobSpec := createJobSpec(j.GetContainerInfo(), jobLabels, jobAnnotations)
+	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
 	if j.IsCron() {
 		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
 	}
@@ -144,7 +148,7 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) 
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
-	jobSpec := createJobSpec(j.GetContainerInfo(), jobLabels, jobAnnotations)
+	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
 	_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        j.GetName(),

@@ -17,12 +17,6 @@ var (
 	ErrInvalidSchedule    = errors.New("invalid schedule")
 )
 
-type ContainerInfo struct {
-	Name    string
-	Image   string
-	Command []string
-}
-
 type JobCreationError struct {
 	Job string
 	Err error

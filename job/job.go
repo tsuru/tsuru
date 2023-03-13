@@ -72,7 +72,7 @@ type Job struct {
 	Pool        string           
 	Description string           
 
-	Spec JobSpec
+	Spec 		JobSpec
 
 	provisioner provision.JobProvisioner
 }
@@ -146,12 +146,19 @@ func (job *Job) IsCron() bool {
 	return job.Spec.Schedule != ""
 }
 
-func (job *Job) GetContainerInfo() jobTypes.ContainerInfo {
-	return job.Spec.Container
-}
-
 func (job *Job) GetSchedule() string {
 	return job.Spec.Schedule
+}
+
+func (job *Job) GetSpec() jobTypes.JobSpec{
+	return jobTypes.JobSpec{
+		Parallelism: job.Spec.Parallelism,
+		Completions: job.Spec.Completions,
+		ActiveDeadlineSeconds: job.Spec.ActiveDeadlineSeconds,
+		BackoffLimit: job.Spec.BackoffLimit,
+		Schedule: job.Spec.Schedule,
+		ContainerInfo: job.Spec.Container,
+	}
 }
 
 // GetByName queries the database to find a job identified by the given
