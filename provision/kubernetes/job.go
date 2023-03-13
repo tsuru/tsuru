@@ -84,10 +84,24 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 		return "", err
 	}
 	jobLabels := provision.JobLabels(ctx, j).ToLabels()
+	if jobLabels == nil {
+		jobLabels = make(map[string]string)
+	}
+	customData := j.GetMetadata()
+	for _, l := range customData.Labels {
+		// don't let custom labels overwrite tsuru labels
+		if _, ok := jobLabels[l.Name]; ok {
+			continue
+		}
+		jobLabels[l.Name] = l.Value
+	}
 	jobAnnotations := map[string]string{}
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
+
+	fmt.Printf("%+v\n\n", jobLabels)
+	fmt.Printf("%+v\n\n", jobAnnotations)
 	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
 	if j.IsCron() {
 		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)

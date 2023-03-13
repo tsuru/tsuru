@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/job"
+	"github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	check "gopkg.in/check.v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -30,6 +31,20 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 						Name:      "myjob",
 						TeamOwner: s.team.Name,
 						Pool:      "test-default",
+						Metadata: app.Metadata{
+							Labels: []app.MetadataItem{
+								{
+									Name: "label1",
+									Value: "value1",
+								},
+							},
+							Annotations: []app.MetadataItem{
+								{
+									Name: "annotation1",
+									Value: "value2",
+								},
+							},
+						},
 						Spec: job.JobSpec{
 							Schedule: "* * * * *",
 							Parallelism: func() *int32 { r := int32(3); return &r}(),
@@ -59,8 +74,9 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 					"tsuru.io/job-name":"myjob",
 					"tsuru.io/job-pool":"test-default",
 					"tsuru.io/job-team":"admin",
+					"label1":"value1",
 				},
-				Annotations: make(map[string]string),
+				Annotations: map[string]string{"annotation1":"value2"},
 			},
 			Spec: apiv1beta1.CronJobSpec{
 				Schedule: "* * * * *",
@@ -80,8 +96,9 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 									"tsuru.io/job-name":"myjob",
 									"tsuru.io/job-pool":"test-default",
 									"tsuru.io/job-team":"admin",
+									"label1":"value1",
 								},
-								Annotations: make(map[string]string),
+								Annotations: map[string]string{"annotation1":"value2"},
 							},
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -100,7 +117,6 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 		},
 	},
 }
-
 	for _, tt := range tests {
 		tt.scenario()
 		gotCron, err := s.client.BatchV1beta1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
