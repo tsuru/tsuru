@@ -185,33 +185,6 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}
 }
 
-func (s *KubeMock) DefaultCronJobReactions(c *check.C) (*provisiontest.FakeJob, func(), func()) {
-	cj := provisiontest.NewFakeJob("job1", s.client.Namespace(), "root", 2)
-	_, err := s.jp.CreateJob(context.TODO(), cj)
-	c.Assert(err, check.IsNil)
-	podReaction, deployPodReady := s.jobPodReaction(cj, c)
-	rollbackCron := s.CronJobReactions(c)
-	s.client.PrependReactor("create", "pods", podReaction)
-	// s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
-	srv, wg := s.CreateDeployReadyServer(c)
-	s.MockfakeNodes(c, srv.URL)
-	return cj, func() {
-			rollbackCron()
-			deployPodReady.Wait()
-			wg.Wait()
-		}, func() {
-			rebuild.Shutdown(context.Background())
-			rollbackCron()
-			deployPodReady.Wait()
-			wg.Wait()
-			if srv == nil {
-				return
-			}
-			srv.Close()
-			srv = nil
-		}
-}
-
 func (s *KubeMock) NoNodeReactions(c *check.C) (*provisiontest.FakeApp, func(), func()) {
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
@@ -798,10 +771,10 @@ func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJ
 	}
 	pod.Spec.NodeName = "n1"
 	pod.Status.HostIP = "192.168.99.1"
-	// err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
-	// 	LabelSelector: labels.SelectorFromSet(labels.Set(cron.Spec.JobTemplate.Spec.Selector.MatchLabels)).String(),
-	// }, cron.Namespace, s.factory)
-	// c.Assert(err, check.IsNil)
+	err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(cron.Spec.JobTemplate.Spec.Selector.MatchLabels)).String(),
+	}, cron.Namespace, s.factory)
+	c.Assert(err, check.IsNil)
 	for i := int32(1); i <= specJobs; i++ {
 		id := atomic.AddInt32(counter, 1)
 		pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", cron.Name, id, i)
