@@ -548,6 +548,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(len(listJobs.Items), check.Equals, 1)
 				gotJob, err := s.client.BatchV1().Jobs(expected.Namespace).Get(context.TODO(), expected.Name, v1.GetOptions{})
+				c.Assert(err, check.IsNil)
 				c.Assert(gotJob, check.DeepEquals, expected)
 				// cleanup
 				err = s.client.BatchV1beta1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", v1.DeleteOptions{})

@@ -94,23 +94,23 @@ type FakeApp struct {
 }
 
 type FakeJob struct {
-	Name      string
-	Units     []provision.Unit
-	Commands  []string
-	Metadata  appTypes.Metadata
-	Pool      string
-	TeamOwner string
-	Teams     []string
-	Memory    int64
-	Swap      int64
-	CpuShare  int
-	MilliCPU  int
-	Container jobTypes.ContainerInfo
-	Completions *int32
-	Parallelism *int32
+	Name                  string
+	Units                 []provision.Unit
+	Commands              []string
+	Metadata              appTypes.Metadata
+	Pool                  string
+	TeamOwner             string
+	Teams                 []string
+	Memory                int64
+	Swap                  int64
+	CpuShare              int
+	MilliCPU              int
+	Container             jobTypes.ContainerInfo
+	Completions           *int32
+	Parallelism           *int32
 	ActiveDeadlineSeconds *int64
-	BackoffLimit *int32
-	Schedule string
+	BackoffLimit          *int32
+	Schedule              string
 }
 
 func (fj *FakeJob) GetName() string {
@@ -161,14 +161,14 @@ func (fj *FakeJob) GetSchedule() string {
 	return fj.Schedule
 }
 
-func (fj *FakeJob) GetSpec() jobTypes.JobSpec{
+func (fj *FakeJob) GetSpec() jobTypes.JobSpec {
 	return jobTypes.JobSpec{
-		Parallelism: fj.Parallelism,
-		Completions: fj.Completions,
+		Parallelism:           fj.Parallelism,
+		Completions:           fj.Completions,
 		ActiveDeadlineSeconds: fj.ActiveDeadlineSeconds,
-		BackoffLimit: fj.BackoffLimit,
-		Schedule: fj.Schedule,
-		ContainerInfo: fj.Container,
+		BackoffLimit:          fj.BackoffLimit,
+		Schedule:              fj.Schedule,
+		ContainerInfo:         fj.Container,
 	}
 }
 

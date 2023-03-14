@@ -563,34 +563,6 @@ func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.Reac
 	}, &wg
 }
 
-func (s *KubeMock) jobPodReaction(j provision.Job, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
-	wg := sync.WaitGroup{}
-	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		defer func() {
-			err := s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
-			c.Assert(err, check.IsNil)
-		}()
-		if !s.IgnorePool {
-			c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-				"tsuru.io/pool": j.GetPool(),
-			})
-		}
-		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/job-name"], check.Equals, j.GetName())
-		if !s.IgnorePool {
-			c.Assert(pod.ObjectMeta.Labels["tsuru.io/job-pool"], check.Equals, j.GetPool())
-		}
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
-		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
-		pod.Status.Phase = apiv1.PodSucceeded
-		pod.Status.HostIP = "192.168.99.1"
-		pod.Spec.NodeName = "n1"
-		return false, nil, nil
-	}, &wg
-}
-
 func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
 	wg := sync.WaitGroup{}
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
