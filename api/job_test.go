@@ -186,12 +186,12 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := &job.Job{
-			Name:      "my-cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "my-cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), j, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -368,39 +368,39 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-			Name:      obtained["jobName"],
-			Teams:     []string{s.team.Name},
-			TeamOwner: s.team.Name,
-			Owner:     "majortom@groundcontrol.com",
-			Plan: app.Plan{
-				Name:     "default-plan",
-				Memory:   1024,
-				CpuShare: 100,
-				Default:  true,
-			},
-			Metadata: app.Metadata{
-				Labels: []app.MetadataItem{
-					{
-						Name:  "label1",
-						Value: "value1",
-					},
-				},
-				Annotations: []app.MetadataItem{
-					{
-						Name:  "annotation1",
-						Value: "value2",
-					},
+		Name:      obtained["jobName"],
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Owner:     "majortom@groundcontrol.com",
+		Plan: app.Plan{
+			Name:     "default-plan",
+			Memory:   1024,
+			CpuShare: 100,
+			Default:  true,
+		},
+		Metadata: app.Metadata{
+			Labels: []app.MetadataItem{
+				{
+					Name:  "label1",
+					Value: "value1",
 				},
 			},
-			Pool:        "test1",
-			Description: "some description",
-			Spec: job.JobSpec{
-				Container: jobTypes.ContainerInfo{
-					Name:    "c1",
-					Image:   "busybox:1.28",
-					Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			Annotations: []app.MetadataItem{
+				{
+					Name:  "annotation1",
+					Value: "value2",
 				},
 			},
+		},
+		Pool:        "test1",
+		Description: "some description",
+		Spec: job.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "busybox:1.28",
+				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			},
+		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 }
@@ -469,40 +469,40 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-			Name:      obtained["jobName"],
-			Teams:     []string{s.team.Name},
-			TeamOwner: s.team.Name,
-			Owner:     "majortom@groundcontrol.com",
-			Plan: app.Plan{
-				Name:     "default-plan",
-				Memory:   1024,
-				CpuShare: 100,
-				Default:  true,
-			},
-			Metadata: app.Metadata{
-				Labels: []app.MetadataItem{
-					{
-						Name:  "label1",
-						Value: "value1",
-					},
-				},
-				Annotations: []app.MetadataItem{
-					{
-						Name:  "annotation1",
-						Value: "value2",
-					},
+		Name:      obtained["jobName"],
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Owner:     "majortom@groundcontrol.com",
+		Plan: app.Plan{
+			Name:     "default-plan",
+			Memory:   1024,
+			CpuShare: 100,
+			Default:  true,
+		},
+		Metadata: app.Metadata{
+			Labels: []app.MetadataItem{
+				{
+					Name:  "label1",
+					Value: "value1",
 				},
 			},
-			Pool:        "test1",
-			Description: "some description",
-			Spec: job.JobSpec{
-				Container: jobTypes.ContainerInfo{
-					Name:    "c1",
-					Image:   "busybox:1.28",
-					Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			Annotations: []app.MetadataItem{
+				{
+					Name:  "annotation1",
+					Value: "value2",
 				},
-				Schedule: "* * * * *",
 			},
+		},
+		Pool:        "test1",
+		Description: "some description",
+		Spec: job.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "busybox:1.28",
+				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			},
+			Schedule: "* * * * *",
+		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
 	c.Assert(gotJob.IsCron(), check.Equals, true)
@@ -539,9 +539,9 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	oldJob := job.Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	err := job.CreateJob(context.TODO(), &oldJob, s.user, true)
 	c.Assert(err, check.IsNil)
@@ -664,12 +664,12 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Name:      "cron",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "cron",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -717,32 +717,32 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	gotJob, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	expectedJob := job.Job{
-			Name:      j1.Name,
-			Teams:     []string{s.team.Name},
-			TeamOwner: s.team.Name,
-			Owner:     "super-root-toremove@groundcontrol.com",
-			Plan: app.Plan{
-				Name:     "default-plan",
-				Memory:   1024,
-				CpuShare: 100,
-				Default:  true,
-			},
-			Metadata: app.Metadata{
-				Labels: []app.MetadataItem{
-					{
-						Name:  "label1",
-						Value: "value1",
-					},
-				},
-				Annotations: []app.MetadataItem{
-					{
-						Name:  "annotation1",
-						Value: "value2",
-					},
+		Name:      j1.Name,
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Owner:     "super-root-toremove@groundcontrol.com",
+		Plan: app.Plan{
+			Name:     "default-plan",
+			Memory:   1024,
+			CpuShare: 100,
+			Default:  true,
+		},
+		Metadata: app.Metadata{
+			Labels: []app.MetadataItem{
+				{
+					Name:  "label1",
+					Value: "value1",
 				},
 			},
-			Pool:        "test1",
-			Description: "some description",
+			Annotations: []app.MetadataItem{
+				{
+					Name:  "annotation1",
+					Value: "value2",
+				},
+			},
+		},
+		Pool:        "test1",
+		Description: "some description",
 		Spec: job.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
@@ -794,12 +794,12 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Name:      "cron",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "cron",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -831,12 +831,12 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Name:      "cron",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "cron",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -849,7 +849,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s",ij.Name) , &buffer)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	request.Header.Set("Content-Type", "application/json")
@@ -868,16 +868,16 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Name:      "manual-job",
-			Spec: job.JobSpec{
-				Container: jobTypes.ContainerInfo{
-					Name:    "c1",
-					Image:   "ubuntu:latest",
-					Command: []string{"echo", "hello world"},
-				},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "manual-job",
+		Spec: job.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "ubuntu:latest",
+				Command: []string{"echo", "hello world"},
 			},
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -898,17 +898,17 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Name:      "manual-job",
-			Spec: job.JobSpec{				
-				Schedule: "* */15 * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "c1",
-					Image:   "ubuntu:latest",
-					Command: []string{"echo", "hello world"},
-				},
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "manual-job",
+		Spec: job.JobSpec{
+			Schedule: "* */15 * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "ubuntu:latest",
+				Command: []string{"echo", "hello world"},
 			},
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -945,21 +945,21 @@ func (s *S) TestJobList(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j2 := job.Job{
-			Name:      "manual",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "manual",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j3 := job.Job{
-			Name:      "cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -988,21 +988,21 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j2 := job.Job{
-			Name:      "manual",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "manual",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j3 := job.Job{
-			Name:      "cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1039,21 +1039,21 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j2 := job.Job{
-			Name:      "manual",
-			TeamOwner: team.Name,
-			Pool:      "test1",
+		Name:      "manual",
+		TeamOwner: team.Name,
+		Pool:      "test1",
 	}
 	j3 := job.Job{
-			Name:      "cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1088,21 +1088,21 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j2 := job.Job{
-			Name:      "manual",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "manual",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j3 := job.Job{
-			Name:      "cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err := job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1134,21 +1134,21 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
 	}
 	j2 := job.Job{
-			Name:      "manual",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
+		Name:      "manual",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
 	}
 	j3 := job.Job{
-			Name:      "cron",
-			TeamOwner: s.team.Name,
-			Pool:      "test1",
-			Spec: job.JobSpec{
-				Schedule: "* * * * *",
-			},
+		Name:      "cron",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: job.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	err = job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -1180,8 +1180,8 @@ func (s *S) TestJobInfo(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := job.Job{
-			TeamOwner: s.team.Name,
-			Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
 	}
 	err = job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)

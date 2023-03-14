@@ -73,6 +73,7 @@ contextsLoop:
 // method: GET
 // produce: application/json
 // responses:
+//
 //	200: List jobs
 //	204: No content
 //	401: Unauthorized
@@ -113,6 +114,7 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: PUT
 // produce: application/json
 // responses:
+//
 //	200: OK
 //	401: Unauthorized
 //	404: Not found
@@ -162,6 +164,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // method: GET
 // produce: application/json
 // responses:
+//
 //	200: OK
 //	401: Unauthorized
 //	404: Not found
@@ -206,6 +209,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
+//
 //	201: Job updated
 //	400: Invalid data
 //	401: Unauthorized
@@ -286,6 +290,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
+//
 //	201: Job created
 //	400: Invalid data
 //	401: Unauthorized
@@ -299,16 +304,16 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	j := job.Job{
-			TeamOwner:   ij.TeamOwner,
-			Plan:        appTypes.Plan{Name: ij.Plan},
-			Name:        ij.Name,
-			Description: ij.Description,
-			Pool:        ij.Pool,
-			Metadata:    ij.Metadata,
-			Spec: job.JobSpec{
-				Schedule:  ij.Schedule,
-				Container: ij.Container,
-			},
+		TeamOwner:   ij.TeamOwner,
+		Plan:        appTypes.Plan{Name: ij.Plan},
+		Name:        ij.Name,
+		Description: ij.Description,
+		Pool:        ij.Pool,
+		Metadata:    ij.Metadata,
+		Spec: job.JobSpec{
+			Schedule:  ij.Schedule,
+			Container: ij.Container,
+		},
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -368,6 +373,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // method: DELETE
 // produce: application/json
 // responses:
+//
 //	200: Job removed
 //	401: Unauthorized
 //	404: Not found
