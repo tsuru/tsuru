@@ -62,7 +62,7 @@ func samlRequestId(schemeData map[string]string) string {
 	return schemeData["request_id"]
 }
 
-//Return timeout in seconds
+// Return timeout in seconds
 func samlRequestTimeout(schemeData map[string]string) int {
 	p := schemeData["request_timeout"]
 	timeout, _ := strconv.Atoi(p)

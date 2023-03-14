@@ -744,7 +744,7 @@ func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJ
 	pod.Spec.NodeName = "n1"
 	pod.Status.HostIP = "192.168.99.1"
 	err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{"tsuru.io/job-name":fmt.Sprintf("%s", cron.Name)})).String(),
+		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{"tsuru.io/job-name": fmt.Sprintf("%s", cron.Name)})).String(),
 	}, cron.Namespace, s.factory)
 	c.Assert(err, check.IsNil)
 	for i := int32(1); i <= specJobs; i++ {

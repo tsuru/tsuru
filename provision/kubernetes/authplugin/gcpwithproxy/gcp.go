@@ -54,35 +54,34 @@ var (
 // tokens for kubectl to authenticate itself to the apiserver. A sample json config
 // is provided below with all recognized options described.
 //
-// {
-//   'auth-provider': {
-//     # Required
-//     "name": "gcp",
+//	{
+//	  'auth-provider': {
+//	    # Required
+//	    "name": "gcp",
 //
-//     'config': {
-//       # Authentication options
-//       # These options are used while getting a token.
+//	    'config': {
+//	      # Authentication options
+//	      # These options are used while getting a token.
 //
-//       # comma-separated list of GCP API scopes. default value of this field
-//       # is "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email".
-// 		 # to override the API scopes, specify this field explicitly.
-//       "scopes": "https://www.googleapis.com/auth/cloud-platform"
+//	      # comma-separated list of GCP API scopes. default value of this field
+//	      # is "https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email".
+//			 # to override the API scopes, specify this field explicitly.
+//	      "scopes": "https://www.googleapis.com/auth/cloud-platform"
 //
-//       # Caching options
+//	      # Caching options
 //
-//       # Raw string data representing cached access token.
-//       "access-token": "ya29.CjWdA4GiBPTt",
-//       # RFC3339Nano expiration timestamp for cached access token.
-//       "expiry": "2016-10-31 22:31:9.123",
+//	      # Raw string data representing cached access token.
+//	      "access-token": "ya29.CjWdA4GiBPTt",
+//	      # RFC3339Nano expiration timestamp for cached access token.
+//	      "expiry": "2016-10-31 22:31:9.123",
 //
-//       # Command execution options
-//       # These options direct the plugin to execute a specified command and parse
-//       # token and expiry time from the output of the command.
+//	      # Command execution options
+//	      # These options direct the plugin to execute a specified command and parse
+//	      # token and expiry time from the output of the command.
 //
-//     }
-//   }
-// }
-//
+//	    }
+//	  }
+//	}
 type gcpAuthProvider struct {
 	tokenSource oauth2.TokenSource
 	persister   restclient.AuthProviderConfigPersister

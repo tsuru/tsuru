@@ -360,8 +360,8 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 //
 // Creating a new app is a process composed of the following steps:
 //
-//       1. Save the app in the database
-//       2. Provision the app using the provisioner
+//  1. Save the app in the database
+//  2. Provision the app using the provisioner
 func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	if app.ctx == nil {
 		app.ctx = ctx
@@ -939,8 +939,8 @@ func (app *App) ensureNoAutoscaler(process string) error {
 // RemoveUnits removes n units from the app. It's a process composed of
 // multiple steps:
 //
-//     1. Remove units from the provisioner
-//     2. Update quota
+//  1. Remove units from the provisioner
+//  2. Update quota
 func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
 	err := app.ensureNoAutoscaler(process)
 	if err != nil {
