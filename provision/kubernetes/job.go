@@ -62,7 +62,10 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 			},
 		},
 	}, metav1.CreateOptions{})
-	return k8sCronjob.Name, err
+	if err != nil {
+		return "", err
+	}
+	return k8sCronjob.Name, nil
 }
 
 func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
@@ -76,7 +79,10 @@ func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jo
 		},
 		Spec: jobSpec,
 	}, metav1.CreateOptions{})
-	return k8sJob.Name, err
+	if err != nil {
+		return "", err
+	}
+	return k8sJob.Name, nil
 }
 
 func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) (string, error) {
@@ -109,12 +115,13 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	return createJob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
 }
 
-func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, j provision.Job) error {
-	client, err := clusterForPool(ctx, j.GetPool())
+func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
+	client, err := clusterForPool(ctx, pool)
 	if err != nil {
 		return err
 	}
-	cron, err := client.BatchV1beta1().CronJobs(client.Namespace()).Get(ctx, j.GetName(), metav1.GetOptions{})
+	namespace := client.PoolNamespace(pool)
+	cron, err := client.BatchV1beta1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -212,10 +219,11 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job)
 	if err != nil {
 		return err
 	}
+	namespace := client.PoolNamespace(j.GetPool())
 	if j.IsCron() {
-		return client.BatchV1beta1().CronJobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
+		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
 	}
-	return client.BatchV1().Jobs(client.Namespace()).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
+	return client.BatchV1().Jobs(namespace).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
 }
 
 func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []provision.Job) ([]apiv1.Pod, error) {

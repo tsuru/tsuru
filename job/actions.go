@@ -65,7 +65,7 @@ var triggerCron = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.TriggerCron(ctx.Context, job)
+		return nil, prov.TriggerCron(ctx.Context, job.GetName(), job.GetPool())
 	},
 	MinParams: 1,
 }

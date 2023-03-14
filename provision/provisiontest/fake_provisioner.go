@@ -1746,10 +1746,10 @@ func (p *JobProvisioner) UpdateJob(ctx context.Context, job provision.Job) error
 	return nil
 }
 
-func (p *JobProvisioner) TriggerCron(ctx context.Context, job provision.Job) error {
+func (p *JobProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	j, ok := p.jobs[job.GetName()]
+	j, ok := p.jobs[name]
 	if !ok {
 		return errNotProvisioned
 	}

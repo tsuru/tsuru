@@ -419,7 +419,7 @@ type JobProvisioner interface {
 
 	UpdateJob(context.Context, Job) error
 
-	TriggerCron(context.Context, Job) error
+	TriggerCron(ctx context.Context, name, pool string) error
 }
 
 type ExecOptions struct {
