@@ -275,7 +275,7 @@ func Trigger(ctx context.Context, job *Job) error {
 	} else {
 		actions = []*action.Action{&provisionJob}
 	}
-	return action.NewPipeline(actions...).Execute(ctx, job.Name, job.Pool)
+	return action.NewPipeline(actions...).Execute(ctx, job)
 }
 
 type Filter struct {
