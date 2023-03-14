@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -98,6 +99,40 @@ func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
 		roles[i].filterValidSchemes()
 	}
 	return roles, nil
+}
+
+// ListRolesWithPermission returns all roles valid for a specific Context or
+// having any scheme permission which is valid for the specific Context.
+func ListRolesWithPermissionWithContext(contextValue permTypes.ContextType) ([]Role, error) {
+	allRoles, err := ListRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	filteredRoles := []Role{}
+	for _, role := range allRoles {
+		if role.ContextType == contextValue || role.hasPermissionWithContext(contextValue) {
+			filteredRoles = append(filteredRoles, role)
+		}
+	}
+
+	return filteredRoles, nil
+}
+
+func (r *Role) hasPermissionWithContext(contextValue permTypes.ContextType) bool {
+	for _, schemeName := range r.SchemeNames {
+		scheme, err := SafeGet(schemeName)
+		if err != nil {
+			log.Errorf("error getting permission scheme %q: %s", schemeName, err.Error())
+			continue
+		}
+		for _, sCtx := range scheme.contexts {
+			if sCtx == contextValue {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func FindRole(name string) (Role, error) {
