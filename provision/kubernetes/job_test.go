@@ -230,3 +230,152 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
 	}
 }
+
+
+func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+
+	tests := []struct {
+		name           	string
+		setup       	func()
+		scenario 		func()
+		expectedTarget *apiv1beta1.CronJob
+	}{
+		{
+			name: "simple update cronjob",
+			setup: func() {
+				cj := job.Job{
+					Name:      "myjob",
+					TeamOwner: s.team.Name,
+					Pool:      "test-default",
+					Metadata: app.Metadata{
+						Labels: []app.MetadataItem{
+							{
+								Name:  "label1",
+								Value: "value1",
+							},
+						},
+						Annotations: []app.MetadataItem{
+							{
+								Name:  "annotation1",
+								Value: "value2",
+							},
+						},
+					},
+					Spec: job.JobSpec{
+						Schedule:              "* * * * *",
+						Parallelism:           func() *int32 { r := int32(3); return &r }(),
+						Completions:           func() *int32 { r := int32(1); return &r }(),
+						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
+						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
+						Container: jobTypes.ContainerInfo{
+							Name:    "c1",
+							Image:   "ubuntu:latest",
+							Command: []string{"echo", "hello world"},
+						},
+					},
+				}
+				_, err := s.p.CreateJob(context.TODO(), &cj)
+				waitCron()
+				c.Assert(err, check.IsNil)
+			},
+			scenario: func() {
+				newCJ := job.Job{
+					Name:      "myjob",
+					TeamOwner: s.team.Name,
+					Pool:      "test-default",
+					Metadata: app.Metadata{
+						Labels: []app.MetadataItem{
+							{
+								Name:  "label2",
+								Value: "value3",
+							},
+						},
+						Annotations: []app.MetadataItem{
+							{
+								Name:  "annotation2",
+								Value: "value4",
+							},
+						},
+					},
+					Spec: job.JobSpec{
+						Schedule:              "* * * * *",
+						Parallelism:           func() *int32 { r := int32(2); return &r }(),
+						Completions:           func() *int32 { r := int32(1); return &r }(),
+						ActiveDeadlineSeconds: func() *int64 { r := int64(4 * 60); return &r }(),
+						BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
+						Container: jobTypes.ContainerInfo{
+							Name:    "c1",
+							Image:   "ubuntu:latest",
+							Command: []string{"echo", "hello world"},
+						},
+					},
+				}
+				err := s.p.UpdateJob(context.TODO(), &newCJ)
+				waitCron()
+				c.Assert(err, check.IsNil)
+			},
+			expectedTarget: &apiv1beta1.CronJob{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "myjob",
+					Namespace: "default",
+					Labels: map[string]string{
+						"job.kubernetes.io/component":  "tsuru-job",
+						"job.kubernetes.io/managed-by": "tsuru",
+						"job.kubernetes.io/name":       "myjob",
+						"tsuru.io/is-tsuru":            "true",
+						"tsuru.io/job-name":            "myjob",
+						"tsuru.io/job-pool":            "test-default",
+						"tsuru.io/job-team":            "admin",
+						"label2":                       "value3",
+					},
+					Annotations: map[string]string{"annotation2": "value4"},
+				},
+				Spec: apiv1beta1.CronJobSpec{
+					Schedule: "* * * * *",
+					JobTemplate: apiv1beta1.JobTemplateSpec{
+						Spec: batchv1.JobSpec{
+							Parallelism:           func() *int32 { r := int32(2); return &r }(),
+							Completions:           func() *int32 { r := int32(1); return &r }(),
+							ActiveDeadlineSeconds: func() *int64 { r := int64(4 * 60); return &r }(),
+							BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
+							Template: corev1.PodTemplateSpec{
+								ObjectMeta: v1.ObjectMeta{
+									Labels: map[string]string{
+										"job.kubernetes.io/component":  "tsuru-job",
+										"job.kubernetes.io/managed-by": "tsuru",
+										"job.kubernetes.io/name":       "myjob",
+										"tsuru.io/is-tsuru":            "true",
+										"tsuru.io/job-name":            "myjob",
+										"tsuru.io/job-pool":            "test-default",
+										"tsuru.io/job-team":            "admin",
+										"label2":                       "value3",
+									},
+									Annotations: map[string]string{"annotation2": "value4"},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:    "c1",
+											Image:   "ubuntu:latest",
+											Command: []string{"echo", "hello world"},
+										},
+									},
+									RestartPolicy: "OnFailure",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt.setup()
+		tt.scenario()
+		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
+	}
+}

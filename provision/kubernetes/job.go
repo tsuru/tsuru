@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
@@ -22,9 +23,9 @@ import (
 func createJobSpec(job provision.Job, labels, annotations map[string]string) batchv1.JobSpec {
 	jSpec := job.GetSpec()
 	return batchv1.JobSpec{
-		Parallelism: jSpec.Parallelism,
-		BackoffLimit: jSpec.BackoffLimit,
-		Completions: jSpec.Completions,
+		Parallelism:           jSpec.Parallelism,
+		BackoffLimit:          jSpec.BackoffLimit,
+		Completions:           jSpec.Completions,
 		ActiveDeadlineSeconds: jSpec.ActiveDeadlineSeconds,
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -69,7 +70,7 @@ func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jo
 	k8sJob, err := client.BatchV1().Jobs(namespace).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.GetName(),
-			Namespace: namespace,
+			Namespace:   namespace,
 			Labels:      labels,
 			Annotations: annotations,
 		},
@@ -90,8 +91,10 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	customData := j.GetMetadata()
 	for _, l := range customData.Labels {
 		// don't let custom labels overwrite tsuru labels
-		if _, ok := jobLabels[l.Name]; ok {
-			continue
+		if label, ok := jobLabels[l.Name]; ok {
+			if strings.Contains(label, "tsuru.io") {
+				continue
+			}
 		}
 		jobLabels[l.Name] = l.Value
 	}
@@ -99,9 +102,6 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) 
 	for _, a := range j.GetMetadata().Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
-
-	fmt.Printf("%+v\n\n", jobLabels)
-	fmt.Printf("%+v\n\n", jobAnnotations)
 	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
 	if j.IsCron() {
 		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
@@ -158,14 +158,29 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) 
 		return err
 	}
 	jobLabels := provision.JobLabels(ctx, j).ToLabels()
+	if jobLabels == nil {
+		jobLabels = make(map[string]string)
+	}
+	customData := j.GetMetadata()
+	for _, l := range customData.Labels {
+		// don't allow custom labels overwrite tsuru labels
+		if label, ok := jobLabels[l.Name]; ok {
+			if strings.Contains(label, "tsuru.io") {
+				continue
+			}
+		}
+		jobLabels[l.Name] = l.Value
+	}
 	jobAnnotations := map[string]string{}
-	for _, a := range j.GetMetadata().Annotations {
+	for _, a := range customData.Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
 	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
-	_, err = client.BatchV1beta1().CronJobs(client.Namespace()).Update(ctx, &apiv1beta1.CronJob{
+	namespace := client.PoolNamespace(j.GetPool())
+	_, err = client.BatchV1beta1().CronJobs(namespace).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        j.GetName(),
+			Namespace:   namespace,
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 		},
