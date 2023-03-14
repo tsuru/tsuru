@@ -50,7 +50,6 @@ func init() {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -108,7 +107,6 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -194,7 +192,6 @@ func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // method: GET
 // produce: application/json
 // responses:
-//
 //	200: Ok
 //	401: Unauthorized
 func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -225,7 +222,6 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
