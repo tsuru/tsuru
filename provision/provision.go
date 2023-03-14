@@ -100,32 +100,29 @@ func ParseStatus(status string) (Status, error) {
 	return Status(""), ErrInvalidStatus
 }
 
-// Flow:
-//
-//	+----------------------------------------------+
-//	|                                              |
-//	|            Start                             |
-//
-// +----------+                   |                      +---------+             |
-// | Building |                   +---------------------+| Stopped |             |
-// +----------+                   |                      +---------+             |
-//
-//	     ^                        |                           ^                  |
-//	     |                        |                           |                  |
-//	deploy unit                   |                         Stop                 |
-//	     |                        |                           |                  |
-//	     +                        v       RegisterUnit        +                  +
-//	+---------+  app unit   +----------+  SetUnitStatus  +---------+  Sleep  +--------+
-//	| Created | +---------> | Starting | +-------------> | Started |+------->| Asleep |
-//	+---------+             +----------+                 +---------+         +--------+
-//	                              +                         ^ +
-//	                              |                         | |
-//	                        SetUnitStatus                   | |
-//	                              |                         | |
-//	                              v                         | |
-//	                          +-------+     SetUnitStatus   | |
-//	                          | Error | +-------------------+ |
-//	                          +-------+ <---------------------+
+//     Flow:
+//                                    +----------------------------------------------+
+//                                    |                                              |
+//                                    |            Start                             |
+//     +----------+                   |                      +---------+             |
+//     | Building |                   +---------------------+| Stopped |             |
+//     +----------+                   |                      +---------+             |
+//           ^                        |                           ^                  |
+//           |                        |                           |                  |
+//      deploy unit                   |                         Stop                 |
+//           |                        |                           |                  |
+//           +                        v       RegisterUnit        +                  +
+//      +---------+  app unit   +----------+  SetUnitStatus  +---------+  Sleep  +--------+
+//      | Created | +---------> | Starting | +-------------> | Started |+------->| Asleep |
+//      +---------+             +----------+                 +---------+         +--------+
+//                                    +                         ^ +
+//                                    |                         | |
+//                              SetUnitStatus                   | |
+//                                    |                         | |
+//                                    v                         | |
+//                                +-------+     SetUnitStatus   | |
+//                                | Error | +-------------------+ |
+//                                +-------+ <---------------------+
 const (
 	// StatusCreated is the initial status of a unit in the database,
 	// it should transition shortly to a more specific status
