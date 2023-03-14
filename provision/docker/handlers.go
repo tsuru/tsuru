@@ -50,10 +50,11 @@ func init() {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Not found
 func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	params := map[string]string{}
 	err = api.ParseInput(r, &params)
@@ -107,10 +108,11 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Not found
 func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	params := map[string]string{}
@@ -192,8 +194,9 @@ func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := permission.ListContextValues(t, permission.PermPoolUpdateLogs, true)
 	if err != nil {
@@ -222,9 +225,10 @@ func logsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
 func logsConfigSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	pool := api.InputValue(r, "pool")
 	restart, _ := strconv.ParseBool(api.InputValue(r, "restart"))

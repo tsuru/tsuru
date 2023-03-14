@@ -63,16 +63,16 @@ type JobSpec struct {
 }
 
 type Job struct {
-	Name        string           
-	Teams       []string         
-	TeamOwner   string           
-	Owner       string           
-	Plan        appTypes.Plan    
+	Name        string
+	Teams       []string
+	TeamOwner   string
+	Owner       string
+	Plan        appTypes.Plan
 	Metadata    appTypes.Metadata
-	Pool        string           
-	Description string           
+	Pool        string
+	Description string
 
-	Spec 		JobSpec
+	Spec JobSpec
 
 	provisioner provision.JobProvisioner
 }
@@ -150,14 +150,14 @@ func (job *Job) GetSchedule() string {
 	return job.Spec.Schedule
 }
 
-func (job *Job) GetSpec() jobTypes.JobSpec{
+func (job *Job) GetSpec() jobTypes.JobSpec {
 	return jobTypes.JobSpec{
-		Parallelism: job.Spec.Parallelism,
-		Completions: job.Spec.Completions,
+		Parallelism:           job.Spec.Parallelism,
+		Completions:           job.Spec.Completions,
 		ActiveDeadlineSeconds: job.Spec.ActiveDeadlineSeconds,
-		BackoffLimit: job.Spec.BackoffLimit,
-		Schedule: job.Spec.Schedule,
-		ContainerInfo: job.Spec.Container,
+		BackoffLimit:          job.Spec.BackoffLimit,
+		Schedule:              job.Spec.Schedule,
+		ContainerInfo:         job.Spec.Container,
 	}
 }
 

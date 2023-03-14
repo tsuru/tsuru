@@ -9,13 +9,13 @@
 // docker provision package. Then call provision.Get("docker") to get an
 // instance of Docker provisioner:
 //
-//     import (
-//         "github.com/tsuru/tsuru/provision"
-//         _ "github.com/tsuru/tsuru/provision/docker"
-//     )
-//     // ...
-//     func main() {
-//         provisioner, err := provision.Get("docker")
-//         // Use provisioner.
-//     }
+//	import (
+//	    "github.com/tsuru/tsuru/provision"
+//	    _ "github.com/tsuru/tsuru/provision/docker"
+//	)
+//	// ...
+//	func main() {
+//	    provisioner, err := provision.Get("docker")
+//	    // Use provisioner.
+//	}
 package docker

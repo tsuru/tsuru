@@ -56,18 +56,18 @@ func (s *S) TestGetJobByNameNotFound(c *check.C) {
 
 func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 	newJob := Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-			Spec: JobSpec{
-				Schedule: "* * * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "augustine",
-					Image:   "alpine:latest",
-					Command: []string{"echo", "hello!"},
-				},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
 			},
+		},
 	}
 	err := CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -81,18 +81,18 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 
 func (s *S) TestDeleteJobFromDB(c *check.C) {
 	newJob := Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-			Spec: JobSpec{
-				Schedule: "* * * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "augustine",
-					Image:   "alpine:latest",
-					Command: []string{"echo", "hello!"},
-				},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
 			},
+		},
 	}
 	err := CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -107,18 +107,18 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 
 func (s *S) TestJobUnits(c *check.C) {
 	newJob := Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-			Spec: JobSpec{
-				Schedule: "* * * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "augustine",
-					Image:   "alpine:latest",
-					Command: []string{"echo", "hello!"},
-				},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
 			},
+		},
 	}
 	_, err := s.provisioner.NewJobWithUnits(context.TODO(), &newJob)
 	c.Assert(err, check.IsNil)
@@ -129,28 +129,28 @@ func (s *S) TestJobUnits(c *check.C) {
 
 func (s *S) TestUpdateJob(c *check.C) {
 	j1 := Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-			Spec: JobSpec{
-				Schedule: "* * * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "augustine",
-					Image:   "alpine:latest",
-					Command: []string{"echo", "hello!"},
-				},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "augustine",
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
 			},
+		},
 	}
 	j2 := Job{
-			Name: "some-job",
-			Spec: JobSpec{
-				Schedule: "* */2 * * *",
-				Container: jobTypes.ContainerInfo{
-					Name:    "betty",
-					Command: []string{"echo", "hello world!"},
-				},
+		Name: "some-job",
+		Spec: JobSpec{
+			Schedule: "* */2 * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "betty",
+				Command: []string{"echo", "hello world!"},
 			},
+		},
 	}
 	err := CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
@@ -167,16 +167,16 @@ func (s *S) TestUpdateJob(c *check.C) {
 
 func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 	j1 := Job{
-			Name:      "some-job",
-			TeamOwner: s.team.Name,
-			Pool:      s.Pool,
-			Teams:     []string{s.team.Name},
-			Spec: JobSpec{
-				Container: jobTypes.ContainerInfo{
-					Name:    "betty",
-					Command: []string{"echo", "hello world!"},
-				},
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Name:    "betty",
+				Command: []string{"echo", "hello world!"},
 			},
+		},
 	}
 	err := CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
