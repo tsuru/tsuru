@@ -1634,7 +1634,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 			Spec: apiv1.ServiceSpec{
 				Selector:              svcData.selector,
 				Ports:                 svcData.ports,
-				Type:                  apiv1.ServiceTypeNodePort,
+				Type:                  apiv1.ServiceTypeClusterIP,
 				ExternalTrafficPolicy: policy,
 			},
 		}

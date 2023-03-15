@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -236,13 +235,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ":30000"},
-			Addresses: []url.URL{
-				{Scheme: "http", Host: ":30000"},
-			},
-			Routable: true,
-			Restarts: &restarts,
-			Ready:    &ready,
+			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -252,13 +247,9 @@ func (s *S) TestNodeUnits(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ":30000"},
-			Addresses: []url.URL{
-				{Scheme: "http", Host: ":30000"},
-			},
-			Routable: true,
-			Restarts: &restarts,
-			Ready:    &ready,
+			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 	})
 }
@@ -353,8 +344,6 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ""},
-			Addresses:   []url.URL{},
 			Routable:    true,
 			Restarts:    &restarts,
 			Ready:       &ready,
@@ -367,8 +356,6 @@ func (s *S) TestNodeUnitsUsingPoolNamespaces(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ""},
-			Addresses:   []url.URL{},
 			Routable:    true,
 			Restarts:    &restarts,
 			Ready:       &ready,
@@ -441,13 +428,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ":30000"},
-			Addresses: []url.URL{
-				{Scheme: "http", Host: ":30000"},
-			},
-			Routable: true,
-			Restarts: &restarts,
-			Ready:    &ready,
+			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 		{
 			ID:          "myapp-worker-pod-2-1",
@@ -457,13 +440,9 @@ func (s *S) TestNodeUnitsOnlyFromServices(c *check.C) {
 			Type:        "python",
 			IP:          "",
 			Status:      "started",
-			Address:     &url.URL{Scheme: "http", Host: ":30000"},
-			Addresses: []url.URL{
-				{Scheme: "http", Host: ":30000"},
-			},
-			Routable: true,
-			Restarts: &restarts,
-			Ready:    &ready,
+			Routable:    true,
+			Restarts:    &restarts,
+			Ready:       &ready,
 		},
 	})
 }

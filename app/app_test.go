@@ -2868,6 +2868,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 				"HostPort":     "1",
 				"ID":           "name-0",
 				"IP":           "addr1",
+				"InternalIP":   "",
 				"Name":         "",
 				"ProcessName":  "web",
 				"Ready":        nil,

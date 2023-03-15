@@ -260,7 +260,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeClusterIP,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
@@ -817,7 +817,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 					Name:       "udp-default-2",
 				},
 			},
-			Type:                  apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeClusterIP,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
@@ -2871,7 +2871,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeClusterIP,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}
@@ -5004,7 +5004,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeClusterIP,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	})
@@ -5328,7 +5328,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeNodePort,
+			Type:                  apiv1.ServiceTypeClusterIP,
 			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}

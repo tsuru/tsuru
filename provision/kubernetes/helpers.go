@@ -932,24 +932,6 @@ func appPodsFromNode(ctx context.Context, client *ClusterClient, nodeName string
 	return podsFromNode(ctx, client, nodeName, labelFilter)
 }
 
-func getServicePorts(svcInformer v1informers.ServiceInformer, srvName, namespace string) ([]int32, error) {
-	if namespace == "" {
-		namespace = "default"
-	}
-	srv, err := svcInformer.Lister().Services(namespace).Get(srvName)
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return nil, nil
-		}
-		return nil, errors.WithStack(err)
-	}
-	svcPorts := make([]int32, len(srv.Spec.Ports))
-	for i, p := range srv.Spec.Ports {
-		svcPorts[i] = p.NodePort
-	}
-	return svcPorts, nil
-}
-
 func labelOnlySetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 	return labelOnlySetFromMetaPrefix(meta, true)
 }

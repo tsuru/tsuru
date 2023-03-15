@@ -12,15 +12,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/router/rebuild"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	vpaInformers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions"
 	vpaV1Informers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/autoscaling.k8s.io/v1"
 	vpaInternalInterfaces "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/internalinterfaces"
@@ -42,16 +38,6 @@ const (
 	leaderElectionName = "tsuru-controller"
 )
 
-var eventKindsIgnoreRebuild = []string{
-	permission.PermAppDeploy.FullName(),
-	permission.PermAppUpdateUnitAdd.FullName(),
-	permission.PermAppUpdateUnitRemove.FullName(),
-	permission.PermAppUpdateRestart.FullName(),
-	permission.PermAppUpdateStop.FullName(),
-	permission.PermAppUpdateStart.FullName(),
-	permission.PermAppUpdateRoutable.FullName(),
-}
-
 type podListener interface {
 	OnPodEvent(pod *apiv1.Pod)
 }
@@ -69,7 +55,6 @@ type clusterController struct {
 	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
 	stopCh                  chan struct{}
 	cancel                  context.CancelFunc
-	resourceReadyCache      map[types.NamespacedName]bool
 	startedAt               time.Time
 	podListeners            map[string]podListener
 	podListenersMu          sync.RWMutex
@@ -92,12 +77,11 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &clusterController{
-		cluster:            cluster,
-		stopCh:             make(chan struct{}),
-		cancel:             cancel,
-		resourceReadyCache: make(map[types.NamespacedName]bool),
-		startedAt:          time.Now(),
-		podListeners:       make(map[string]podListener),
+		cluster:      cluster,
+		stopCh:       make(chan struct{}),
+		cancel:       cancel,
+		startedAt:    time.Now(),
+		podListeners: make(map[string]podListener),
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
@@ -148,35 +132,6 @@ func (c *clusterController) start() (v1informers.PodInformer, error) {
 	if err != nil {
 		return nil, err
 	}
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			if !c.isLeader() {
-				return
-			}
-			err := c.onAdd(obj)
-			if err != nil {
-				log.Errorf("[router-update-controller] error on add pod event: %v", err)
-			}
-		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
-			if !c.isLeader() {
-				return
-			}
-			err := c.onUpdate(oldObj, newObj)
-			if err != nil {
-				log.Errorf("[router-update-controller] error on update pod event: %v", err)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			if !c.isLeader() {
-				return
-			}
-			err := c.onDelete(obj)
-			if err != nil {
-				log.Errorf("[router-update-controller] error on delete pod event: %v", err)
-			}
-		},
-	})
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -197,45 +152,6 @@ func (c *clusterController) start() (v1informers.PodInformer, error) {
 	})
 
 	return informer, nil
-}
-
-func (c *clusterController) onAdd(obj interface{}) error {
-	// Pods are never ready on add, ignore and do nothing
-	return nil
-}
-
-func (c *clusterController) onUpdate(_, newObj interface{}) error {
-	newPod, ok := newObj.(*apiv1.Pod)
-	if !ok {
-		return errors.Errorf("object is not a pod: %#v", newObj)
-	}
-	name := types.NamespacedName{Namespace: newPod.Namespace, Name: newPod.Name}
-	podReady := isPodReady(newPod)
-	// We keep track of the last seen ready state and only update the routes if
-	// it changes.
-	if c.resourceReadyCache[name] == podReady {
-		return nil
-	}
-	c.resourceReadyCache[name] = podReady
-	c.enqueuePod(newPod)
-	return nil
-}
-
-func (c *clusterController) onDelete(obj interface{}) error {
-	if pod, ok := obj.(*apiv1.Pod); ok {
-		c.enqueuePodDelete(pod)
-		return nil
-	}
-	tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-	if !ok {
-		return errors.Errorf("couldn't get object from tombstone %#v", obj)
-	}
-	pod, ok := tombstone.Obj.(*apiv1.Pod)
-	if !ok {
-		return errors.Errorf("tombstone contained object that is not a Pod: %#v", obj)
-	}
-	c.enqueuePodDelete(pod)
-	return nil
 }
 
 func (c *clusterController) notifyPodChanges(pod *apiv1.Pod) {
@@ -259,43 +175,6 @@ func (c *clusterController) removePodListener(key string) {
 	defer c.podListenersMu.Unlock()
 
 	delete(c.podListeners, key)
-}
-
-func (c *clusterController) enqueuePodDelete(pod *apiv1.Pod) {
-	name := types.NamespacedName{Namespace: pod.Namespace, Name: pod.Name}
-	delete(c.resourceReadyCache, name)
-	c.enqueuePod(pod)
-}
-
-func (c *clusterController) enqueuePod(pod *apiv1.Pod) {
-	labelSet := labelSetFromMeta(&pod.ObjectMeta)
-	appName := labelSet.AppName()
-	if appName == "" {
-		return
-	}
-	if labelSet.IsDeploy() || labelSet.IsIsolatedRun() {
-		return
-	}
-	runningTrue := true
-	evts, err := event.List(&event.Filter{
-		Running: &runningTrue,
-		Target: event.Target{
-			Type:  event.TargetTypeApp,
-			Value: appName,
-		},
-		KindType:  event.KindTypePermission,
-		KindNames: eventKindsIgnoreRebuild,
-		Limit:     1,
-	})
-	if err == nil && len(evts) > 0 {
-		return
-	}
-	runRoutesRebuild(appName)
-}
-
-// runRoutesRebuild is used in tests for mocking rebuild
-var runRoutesRebuild = func(appName string) {
-	rebuild.EnqueueRoutesRebuild(appName)
 }
 
 func (c *clusterController) getPodInformer() (v1informers.PodInformer, error) {

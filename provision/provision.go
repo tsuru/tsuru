@@ -159,10 +159,11 @@ type Unit struct {
 	ProcessName  string
 	Type         string
 	IP           string
+	InternalIP   string
 	Status       Status
 	StatusReason string
-	Address      *url.URL
-	Addresses    []url.URL
+	Address      *url.URL  // TODO: deprecate after drop docker provisioner
+	Addresses    []url.URL // TODO: deprecate after drop docker provisioner
 	Version      int
 	Routable     bool
 	Restarts     *int32

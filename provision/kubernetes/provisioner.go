@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -718,42 +717,21 @@ func (p *kubernetesProvisioner) podsToUnits(ctx context.Context, client *Cluster
 }
 
 func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App) ([]provision.Unit, error) {
-	var err error
 	if len(pods) == 0 {
 		return nil, nil
 	}
 	appMap := map[string]provision.App{}
-	portsMap := map[string][]int32{}
 	for _, baseApp := range baseApps {
 		appMap[baseApp.GetName()] = baseApp
 	}
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	svcInformer, err := controller.getServiceInformer()
-	if err != nil {
-		return nil, err
-	}
+
 	var units []provision.Unit
 	for _, pod := range pods {
 		if isTerminating(pod) || podIsAllowedToFail(pod) {
 			continue
 		}
 		l := labelSetFromMeta(&pod.ObjectMeta)
-		podApp, ok := appMap[l.AppName()]
-		if !ok {
-			podApp, err = app.GetByName(ctx, l.AppName())
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			appMap[podApp.GetName()] = podApp
-		}
-		u := &url.URL{
-			Scheme: "http",
-			Host:   pod.Status.HostIP,
-		}
-		urls := []url.URL{}
+
 		appProcess := l.AppProcess()
 		appVersion := l.AppVersion()
 		isRoutable := l.IsRoutable()
@@ -762,28 +740,6 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			if len(pod.Spec.Containers) > 0 {
 				_, tag := image.SplitImageName(pod.Spec.Containers[0].Image)
 				appVersion, _ = strconv.Atoi(strings.TrimPrefix(tag, "v"))
-			}
-		}
-		if appProcess != "" {
-			var srvName string
-			if isRoutable {
-				srvName = serviceNameForAppBase(podApp, appProcess)
-			} else {
-				srvName = serviceNameForApp(podApp, appProcess, appVersion)
-			}
-			ports, ok := portsMap[srvName]
-			if !ok {
-				ports, err = getServicePorts(svcInformer, srvName, pod.ObjectMeta.Namespace)
-				if err != nil {
-					return nil, err
-				}
-				portsMap[srvName] = ports
-			}
-			if len(ports) > 0 {
-				u.Host = fmt.Sprintf("%s:%d", u.Host, ports[0])
-				for _, p := range ports {
-					urls = append(urls, url.URL{Scheme: "http", Host: fmt.Sprintf("%s:%d", pod.Status.HostIP, p)})
-				}
 			}
 		}
 
@@ -804,10 +760,9 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client 
 			ProcessName:  appProcess,
 			Type:         l.AppPlatform(),
 			IP:           pod.Status.HostIP,
+			InternalIP:   pod.Status.PodIP,
 			Status:       status,
 			StatusReason: reason,
-			Address:      u,
-			Addresses:    urls,
 			Version:      appVersion,
 			Routable:     isRoutable,
 			Restarts:     containersRestarts(pod.Status.ContainerStatuses),
