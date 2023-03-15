@@ -508,20 +508,17 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	includedUsers := make([]*apiUser, 0)
 
-	filteredRoles, err := permission.ListRolesWithPermissionWithContext(permTypes.CtxTeam)
+	filteredRolesMap, err := permission.ListRolesWithPermissionWithContextMap(permTypes.CtxTeam)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	filteredRolesMap := map[string]bool{}
-	for _, role := range filteredRoles {
-		filteredRolesMap[role.Name] = true
 	}
 
 	canInclude := permission.Check(t, permission.PermTeam)
 	if canInclude {
 		for _, user := range users {
 			for _, roleInstance := range user.Roles {
-				if _, found := filteredRolesMap[roleInstance.Name]; found {
+				_, found := filteredRolesMap[roleInstance.Name]
+				if found && roleInstance.ContextValue == teamName {
 					roleMap := make(map[string]*permission.Role)
 					perms, err := t.Permissions()
 					if err != nil {

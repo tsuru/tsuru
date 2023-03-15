@@ -103,16 +103,16 @@ func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
 
 // ListRolesWithPermission returns all roles valid for a specific Context or
 // having any scheme permission which is valid for the specific Context.
-func ListRolesWithPermissionWithContext(contextValue permTypes.ContextType) ([]Role, error) {
+func ListRolesWithPermissionWithContextMap(contextValue permTypes.ContextType) (map[string]Role, error) {
 	allRoles, err := ListRoles()
 	if err != nil {
 		return nil, err
 	}
 
-	filteredRoles := []Role{}
+	filteredRoles := make(map[string]Role)
 	for _, role := range allRoles {
 		if role.ContextType == contextValue || role.hasPermissionWithContext(contextValue) {
-			filteredRoles = append(filteredRoles, role)
+			filteredRoles[role.Name] = role
 		}
 	}
 
@@ -126,7 +126,7 @@ func (r *Role) hasPermissionWithContext(contextValue permTypes.ContextType) bool
 			log.Errorf("error getting permission scheme %q: %s", schemeName, err.Error())
 			continue
 		}
-		for _, sCtx := range scheme.contexts {
+		for _, sCtx := range scheme.AllowedContexts() {
 			if sCtx == contextValue {
 				return true
 			}
