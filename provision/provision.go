@@ -182,7 +182,11 @@ func (u *Unit) GetIp() string {
 
 func (u *Unit) MarshalJSON() ([]byte, error) {
 	type UnitForMarshal Unit
-	host, port, _ := net.SplitHostPort(u.Address.Host)
+
+	var host, port string
+	if u.Address != nil {
+		host, port, _ = net.SplitHostPort(u.Address.Host)
+	}
 	// New fields added for compatibility with old routes returning containers.
 	return json.Marshal(&struct {
 		*UnitForMarshal
