@@ -25,10 +25,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// JobSpec is another main type in tsuru as of version *insert current version*.
-// A job currently represent a Kubernetes Job object or a Cronjob object
-// this struct is composited of a TsuruJob and all the metadata tsuru natively uses
-// as well as job specific definitions such as schedule and container image and commands
+// JobSpec defines how a job should be run, i.e if it has a schedule it will be created as a CronJob object
 type JobSpec struct {
 	// Specifies the maximum desired number of pods the job should
 	// run at any given time. The actual number of pods running in steady state will
@@ -62,6 +59,10 @@ type JobSpec struct {
 	Container jobTypes.ContainerInfo
 }
 
+// Job is another main type in tsuru as of version 1.13
+// a job currently represents a Kubernetes Job object or a Cronjob object
+// this struct carries some tsuru metadata as is the case with the app object
+// it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
 	Name        string
 	Teams       []string

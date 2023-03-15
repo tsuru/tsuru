@@ -9,12 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -400,15 +398,18 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt.SetLogWriter(writer)
-	w.Header().Set("Content-Type", "application/json")
 	if err = job.RemoveJobFromDb(j.Name); err != nil {
+		if err == jobTypes.ErrJobNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
 		return err
 	}
-	return job.DeleteFromProvisioner(ctx, j)
+	err = job.DeleteFromProvisioner(ctx, j)
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
 }
 
 func jobTarget(jobName string) event.Target {

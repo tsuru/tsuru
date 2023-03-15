@@ -197,7 +197,7 @@ var reserveTeamCronjob = action.Action{
 
 // reserveUserCronjob reserves the job for the user, only if the user has a quota
 // of jobs. If the user does not have a quota, meaning that it's unlimited,
-// reserveUserCronjob.Forward just return nil.
+// reserveUserCronjob.Forward just returns nil.
 var reserveUserCronjob = action.Action{
 	Name: "reserve-user-cronjob",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

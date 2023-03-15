@@ -134,7 +134,6 @@ func (s *S) TestDeleteJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget(myJob.Name),
 		Owner:  token.GetUserName(),
@@ -216,7 +215,6 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	c.Assert(eventtest.EventDesc{
 		Target: jobTarget("my-cron"),
 		Owner:  token.GetUserName(),

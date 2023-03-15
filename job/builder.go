@@ -73,9 +73,9 @@ func buildPlan(ctx context.Context, job *Job) error {
 	}
 	if job.Plan.Name != "" {
 		plan, err = servicemanager.Plan.FindByName(ctx, job.Plan.Name)
-	}
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 	job.Plan = *plan
 	return nil
