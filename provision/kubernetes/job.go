@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
@@ -85,34 +84,34 @@ func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jo
 	return k8sJob.Name, nil
 }
 
-func (p *kubernetesProvisioner) CreateJob(ctx context.Context, j provision.Job) (string, error) {
-	client, err := clusterForPool(ctx, j.GetPool())
+func genJobMetadata(ctx context.Context, job provision.Job) (map[string]string, map[string]string) {
+	jobLabels := provision.JobLabels(ctx, job).ToLabels()
+	customData := job.GetMetadata()
+	for _, label := range customData.Labels {
+		// don't let custom labels overwrite tsuru labels
+		if _, ok := jobLabels[label.Name]; ok {
+			continue
+		}
+		jobLabels[label.Name] = label.Value
+	}
+	jobAnnotations := map[string]string{}
+	for _, a := range job.GetMetadata().Annotations {
+		jobAnnotations[a.Name] = a.Value
+	}
+	return jobLabels, jobAnnotations
+}
+
+func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job provision.Job) (string, error) {
+	client, err := clusterForPool(ctx, job.GetPool())
 	if err != nil {
 		return "", err
 	}
-	jobLabels := provision.JobLabels(ctx, j).ToLabels()
-	if jobLabels == nil {
-		jobLabels = make(map[string]string)
+	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
+	jobSpec := createJobSpec(job, jobLabels, jobAnnotations)
+	if job.IsCron() {
+		return createCronjob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
 	}
-	customData := j.GetMetadata()
-	for _, l := range customData.Labels {
-		// don't let custom labels overwrite tsuru labels
-		if label, ok := jobLabels[l.Name]; ok {
-			if strings.Contains(label, "tsuru.io") {
-				continue
-			}
-		}
-		jobLabels[l.Name] = l.Value
-	}
-	jobAnnotations := map[string]string{}
-	for _, a := range j.GetMetadata().Annotations {
-		jobAnnotations[a.Name] = a.Value
-	}
-	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
-	if j.IsCron() {
-		return createCronjob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
-	}
-	return createJob(ctx, client, j, jobSpec, jobLabels, jobAnnotations)
+	return createJob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
 }
 
 func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
@@ -159,40 +158,23 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool stri
 	return err
 }
 
-func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) error {
-	client, err := clusterForPool(ctx, j.GetPool())
+func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job provision.Job) error {
+	client, err := clusterForPool(ctx, job.GetPool())
 	if err != nil {
 		return err
 	}
-	jobLabels := provision.JobLabels(ctx, j).ToLabels()
-	if jobLabels == nil {
-		jobLabels = make(map[string]string)
-	}
-	customData := j.GetMetadata()
-	for _, l := range customData.Labels {
-		// don't allow custom labels overwrite tsuru labels
-		if label, ok := jobLabels[l.Name]; ok {
-			if strings.Contains(label, "tsuru.io") {
-				continue
-			}
-		}
-		jobLabels[l.Name] = l.Value
-	}
-	jobAnnotations := map[string]string{}
-	for _, a := range customData.Annotations {
-		jobAnnotations[a.Name] = a.Value
-	}
-	jobSpec := createJobSpec(j, jobLabels, jobAnnotations)
-	namespace := client.PoolNamespace(j.GetPool())
+	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
+	jobSpec := createJobSpec(job, jobLabels, jobAnnotations)
+	namespace := client.PoolNamespace(job.GetPool())
 	_, err = client.BatchV1beta1().CronJobs(namespace).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        j.GetName(),
+			Name:        job.GetName(),
 			Namespace:   namespace,
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 		},
 		Spec: apiv1beta1.CronJobSpec{
-			Schedule: j.GetSchedule(),
+			Schedule: job.GetSchedule(),
 			JobTemplate: apiv1beta1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
@@ -202,28 +184,28 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, j provision.Job) 
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *kubernetesProvisioner) JobUnits(ctx context.Context, j provision.Job) ([]provision.Unit, error) {
-	client, err := clusterForPool(ctx, j.GetPool())
+func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job provision.Job) ([]provision.Unit, error) {
+	client, err := clusterForPool(ctx, job.GetPool())
 	if err != nil {
 		return nil, err
 	}
-	pods, err := p.podsForJobs(ctx, client, []provision.Job{j})
+	pods, err := p.podsForJobs(ctx, client, []provision.Job{job})
 	if err != nil {
 		return nil, err
 	}
-	return p.podsToJobUnits(ctx, client, pods, j)
+	return p.podsToJobUnits(ctx, client, pods, job)
 }
 
-func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, j provision.Job) error {
-	client, err := clusterForPool(ctx, j.GetPool())
+func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job provision.Job) error {
+	client, err := clusterForPool(ctx, job.GetPool())
 	if err != nil {
 		return err
 	}
-	namespace := client.PoolNamespace(j.GetPool())
-	if j.IsCron() {
-		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
+	namespace := client.PoolNamespace(job.GetPool())
+	if job.IsCron() {
+		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.GetName(), metav1.DeleteOptions{})
 	}
-	return client.BatchV1().Jobs(namespace).Delete(ctx, j.GetName(), metav1.DeleteOptions{})
+	return client.BatchV1().Jobs(namespace).Delete(ctx, job.GetName(), metav1.DeleteOptions{})
 }
 
 func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []provision.Job) ([]apiv1.Pod, error) {
