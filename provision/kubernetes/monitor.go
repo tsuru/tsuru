@@ -13,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,16 +37,6 @@ const (
 
 	leaderElectionName = "tsuru-controller"
 )
-
-var eventKindsIgnoreRebuild = []string{
-	permission.PermAppDeploy.FullName(),
-	permission.PermAppUpdateUnitAdd.FullName(),
-	permission.PermAppUpdateUnitRemove.FullName(),
-	permission.PermAppUpdateRestart.FullName(),
-	permission.PermAppUpdateStop.FullName(),
-	permission.PermAppUpdateStart.FullName(),
-	permission.PermAppUpdateRoutable.FullName(),
-}
 
 type podListener interface {
 	OnPodEvent(pod *apiv1.Pod)
