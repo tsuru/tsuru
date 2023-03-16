@@ -1,6 +1,0 @@
-database:
-  url: 127.0.0.1:27017
-  name: tsuru_install_test?maxPoolSize=100
-auth:
-  salt: tsuru-salt
-  token-expire-days: 2

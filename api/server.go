@@ -445,10 +445,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
 	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
-	m.Add("1.2", http.MethodPost, "/install/hosts", AuthorizationRequiredHandler(installHostAdd))
-	m.Add("1.2", http.MethodGet, "/install/hosts", AuthorizationRequiredHandler(installHostList))
-	m.Add("1.2", http.MethodGet, "/install/hosts/{name}", AuthorizationRequiredHandler(installHostInfo))
-
 	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
