@@ -1477,15 +1477,6 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 		return err
 	}
 
-	policyLocal, err := m.client.ExternalPolicyLocal(a.GetPool())
-	if err != nil {
-		return err
-	}
-	policy := apiv1.ServiceExternalTrafficPolicyTypeCluster
-	if policyLocal {
-		policy = apiv1.ServiceExternalTrafficPolicyTypeLocal
-	}
-
 	routableLabels := labels.WithoutVersion().WithoutIsolated()
 	routableLabels.SetIsRoutable()
 
@@ -1632,10 +1623,9 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 				Annotations: svcData.annotations,
 			},
 			Spec: apiv1.ServiceSpec{
-				Selector:              svcData.selector,
-				Ports:                 svcData.ports,
-				Type:                  apiv1.ServiceTypeClusterIP,
-				ExternalTrafficPolicy: policy,
+				Selector: svcData.selector,
+				Ports:    svcData.ports,
+				Type:     apiv1.ServiceTypeClusterIP,
 			},
 		}
 		var isNew bool

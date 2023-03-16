@@ -61,7 +61,6 @@ const (
 	memoryOvercommitClusterKey    = "memory-overcommit-factor"
 	cpuBurstKey                   = "cpu-burst-factor"
 	namespaceLabelsKey            = "namespace-labels"
-	externalPolicyLocalKey        = "external-policy-local"
 	disableHeadlessKey            = "disable-headless"
 	maxSurgeKey                   = "max-surge"
 	maxUnavailableKey             = "max-unavailable"
@@ -105,7 +104,6 @@ var (
 		memoryOvercommitClusterKey:    "Overcommit factor for Memory resources. The requested value will be divided by this factor. This config may be prefixed with `<pool-name>:`.",
 		cpuBurstKey:                   "CPU burst factor, that increases the limit of resource. The requested value will be multiplied by this factor. This config may be prefixed with `<pool-name>:`.",
 		namespaceLabelsKey:            "Extra labels added to dynamically created namespaces in the format <label1>=<value1>,<label2>=<value2>... This config may be prefixed with `<pool-name>:`.",
-		externalPolicyLocalKey:        "Use external policy local in created services. This is not recommended as depending on the used router it can cause downtimes during restarts. This config may be prefixed with `<pool-name>:`.",
 		disableHeadlessKey:            "Disable headless service creation for every app-process. This config may be prefixed with `<pool-name>:`.",
 		maxSurgeKey:                   "Max surge for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 100%.",
 		maxUnavailableKey:             "Max unavailable for deployments rollout. This config may be prefixed with `<pool-name>:`. Defaults to 0.",
@@ -394,18 +392,6 @@ func (c *ClusterClient) ephemeralStorage(pool string) (resource.Quantity, error)
 		return defaultEphemeralStorageLimit, nil
 	}
 	return quantity, nil
-}
-
-func (c *ClusterClient) ExternalPolicyLocal(pool string) (bool, error) {
-	if c.CustomData == nil {
-		return false, nil
-	}
-	externalPolicyLocalConf := c.configForContext(pool, externalPolicyLocalKey)
-	if externalPolicyLocalConf == "" {
-		return false, nil
-	}
-	externalPolicyLocal, err := strconv.ParseBool(externalPolicyLocalConf)
-	return externalPolicyLocal, err
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (float64, error) {

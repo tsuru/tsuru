@@ -260,8 +260,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeClusterIP,
-			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: apiv1.ServiceTypeClusterIP,
 		},
 	})
 	_, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-v1", metav1.GetOptions{})
@@ -817,8 +816,7 @@ func (s *S) TestServiceManagerDeployServiceCustomPorts(c *check.C) {
 					Name:       "udp-default-2",
 				},
 			},
-			Type:                  apiv1.ServiceTypeClusterIP,
-			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: apiv1.ServiceTypeClusterIP,
 		},
 	})
 	srv, err = s.client.CoreV1().Services(nsName).Get(context.TODO(), "myapp-p1-units", metav1.GetOptions{})
@@ -2871,8 +2869,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeClusterIP,
-			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: apiv1.ServiceTypeClusterIP,
 		},
 	}
 	c.Assert(v2Svc, check.DeepEquals, expectedSvc, check.Commentf("Diff:\n%s\n", strings.Join(pretty.Diff(v2Svc, expectedSvc), "\n")))
@@ -5004,8 +5001,7 @@ func (s *S) TestServiceManagerDeployServiceWithDisableHeadless(c *check.C) {
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeClusterIP,
-			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: apiv1.ServiceTypeClusterIP,
 		},
 	})
 }
@@ -5328,8 +5324,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 					Name:       "http-default-1",
 				},
 			},
-			Type:                  apiv1.ServiceTypeClusterIP,
-			ExternalTrafficPolicy: apiv1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: apiv1.ServiceTypeClusterIP,
 		},
 	}
 
