@@ -14,9 +14,8 @@ import (
 
 func (s *S) TestPlanAdd(c *check.C) {
 	p := appTypes.Plan{
-		Name:     "plan1",
-		Memory:   9223372036854775807,
-		CpuShare: 100,
+		Name:   "plan1",
+		Memory: 9223372036854775807,
 	}
 	ps := &planService{
 		storage: &appTypes.MockPlanStorage{
@@ -33,21 +32,14 @@ func (s *S) TestPlanAdd(c *check.C) {
 func (s *S) TestPlanAddInvalid(c *check.C) {
 	invalidPlans := []appTypes.Plan{
 		{
-			Memory:   9223372036854775807,
-			CpuShare: 100,
+			Memory: 9223372036854775807,
 		},
 		{
-			Name:     "plan1",
-			Memory:   9223372036854775807,
-			CpuShare: 1,
-		},
-		{
-			Name:     "plan1",
-			Memory:   4,
-			CpuShare: 100,
+			Name:   "plan1",
+			Memory: 4,
 		},
 	}
-	expectedError := []error{appTypes.PlanValidationError{Field: "name"}, appTypes.ErrLimitOfCpuShare, appTypes.ErrLimitOfMemory}
+	expectedError := []error{appTypes.PlanValidationError{Field: "name"}, appTypes.ErrLimitOfMemory}
 	ps := &planService{
 		storage: &appTypes.MockPlanStorage{
 			OnInsert: func(appTypes.Plan) error {
@@ -67,8 +59,8 @@ func (s *S) TestPlansList(c *check.C) {
 		storage: &appTypes.MockPlanStorage{
 			OnFindAll: func() ([]appTypes.Plan, error) {
 				return []appTypes.Plan{
-					{Name: "plan1", Memory: 1, CpuShare: 3},
-					{Name: "plan2", Memory: 3, CpuShare: 5},
+					{Name: "plan1", Memory: 1},
+					{Name: "plan2", Memory: 3},
 				}, nil
 			},
 		},
@@ -96,10 +88,9 @@ func (s *S) TestDefaultPlan(c *check.C) {
 		storage: &appTypes.MockPlanStorage{
 			OnFindDefault: func() (*appTypes.Plan, error) {
 				return &appTypes.Plan{
-					Name:     "default-plan",
-					Memory:   1024,
-					CpuShare: 100,
-					Default:  true,
+					Name:    "default-plan",
+					Memory:  1024,
+					Default: true,
 				}, nil
 			},
 		},
@@ -148,9 +139,8 @@ func (s *S) TestFindPlanByName(c *check.C) {
 			OnFindByName: func(name string) (*appTypes.Plan, error) {
 				c.Check(name, check.Equals, "plan1")
 				return &appTypes.Plan{
-					Name:     "plan1",
-					Memory:   9223372036854775807,
-					CpuShare: 100,
+					Name:   "plan1",
+					Memory: 9223372036854775807,
 				}, nil
 			},
 		},

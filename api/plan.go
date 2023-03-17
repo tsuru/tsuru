@@ -30,7 +30,6 @@ import (
 //   409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	cpuShare, _ := strconv.Atoi(InputValue(r, "cpushare"))
 	cpuMilli, _ := strconv.Atoi(InputValue(r, "cpumilli"))
 
 	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
@@ -38,7 +37,6 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	plan := appTypes.Plan{
 		Name:     InputValue(r, "name"),
 		Memory:   memory,
-		CpuShare: cpuShare,
 		CPUMilli: cpuMilli,
 		Default:  isDefault,
 	}
@@ -65,7 +63,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			Message: err.Error(),
 		}
 	}
-	if err == appTypes.ErrLimitOfMemory || err == appTypes.ErrLimitOfCpuShare {
+	if err == appTypes.ErrLimitOfMemory {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),

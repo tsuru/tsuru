@@ -52,9 +52,8 @@ func (s *S) TestPlanAdd(c *check.C) {
 func (s *S) TestPlanAddWithDeprecatedCPUShare(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:     "xyz",
-			Memory:   9223372036854775807,
-			CpuShare: 100,
+			Name:   "xyz",
+			Memory: 9223372036854775807,
 		})
 		return nil
 	}
@@ -84,9 +83,8 @@ func (s *S) TestPlanAddWithDeprecatedCPUShare(c *check.C) {
 func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:     "xyz",
-			Memory:   536870912,
-			CpuShare: 100,
+			Name:   "xyz",
+			Memory: 536870912,
 		})
 		return nil
 	}
@@ -103,9 +101,8 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:     "xyz",
-			Memory:   536870912,
-			CpuShare: 100,
+			Name:   "xyz",
+			Memory: 536870912,
 		})
 		return nil
 	}
@@ -122,9 +119,8 @@ func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
 func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:     "xyz",
-			Memory:   9223372036854775807,
-			CpuShare: 100,
+			Name:   "xyz",
+			Memory: 9223372036854775807,
 		})
 		return nil
 	}
@@ -152,13 +148,12 @@ func (s *S) TestPlanAddWithNoPermission(c *check.C) {
 
 func (s *S) TestPlanAddDupp(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
-		if plan.CpuShare == 3 {
+		if plan.CPUMilli == 300 {
 			return appTypes.ErrPlanAlreadyExists
 		}
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:     "xyz",
-			Memory:   9223372036854775807,
-			CpuShare: 100,
+			Name:   "xyz",
+			Memory: 9223372036854775807,
 		})
 		return nil
 	}
@@ -170,7 +165,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	body = strings.NewReader("name=xyz&memory=9223372036854775807&swap=2&cpushare=3")
+	body = strings.NewReader("name=xyz&memory=9223372036854775807&swap=2&cpumilli=300")
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
@@ -185,7 +180,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
-			{"name": "cpushare", "value": "3"},
+			{"name": "cpumilli", "value": "300"},
 		},
 		ErrorMatches: `plan already exists`,
 	}, eventtest.HasEvent)
@@ -205,8 +200,8 @@ func (s *S) TestPlanListEmpty(c *check.C) {
 
 func (s *S) TestPlanList(c *check.C) {
 	expected := []appTypes.Plan{
-		{Name: "plan1", Memory: 1, CpuShare: 3},
-		{Name: "plan2", Memory: 3, CpuShare: 5},
+		{Name: "plan1", Memory: 1},
+		{Name: "plan2", Memory: 3},
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return expected, nil

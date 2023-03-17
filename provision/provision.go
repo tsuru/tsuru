@@ -251,7 +251,6 @@ type App interface {
 
 	GetMemory() int64
 	GetMilliCPU() int
-	GetCpuShare() int
 
 	GetUpdatePlatform() bool
 
@@ -273,7 +272,6 @@ type Job interface {
 	Named
 	GetMemory() int64
 	GetMilliCPU() int
-	GetCpuShare() int
 	GetPool() string
 	GetTeamOwner() string
 	GetTeamsName() []string

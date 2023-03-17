@@ -100,8 +100,6 @@ var (
 	PermHealingDelete                    = PermissionRegistry.get("healing.delete")                      // [global pool]
 	PermHealingRead                      = PermissionRegistry.get("healing.read")                        // [global pool]
 	PermHealingUpdate                    = PermissionRegistry.get("healing.update")                      // [global pool]
-	PermInstall                          = PermissionRegistry.get("install")                             // [global]
-	PermInstallManage                    = PermissionRegistry.get("install.manage")                      // [global]
 	PermJob                              = PermissionRegistry.get("job")                                 // [global team pool job]
 	PermJobCreate                        = PermissionRegistry.get("job.create")                          // [global team]
 	PermJobDelete                        = PermissionRegistry.get("job.delete")                          // [global team pool job]

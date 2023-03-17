@@ -240,10 +240,6 @@ func (a *FakeApp) GetMemory() int64 {
 	return a.Memory
 }
 
-func (a *FakeApp) GetCpuShare() int {
-	return a.CpuShare
-}
-
 func (a *FakeApp) GetTeamsName() []string {
 	return a.Teams
 }

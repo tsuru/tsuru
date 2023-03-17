@@ -17,7 +17,6 @@ var (
 	ErrPlanAlreadyExists      = errors.New("plan already exists")
 	ErrPlanDefaultAmbiguous   = errors.New("more than one default plan found")
 	ErrPlanDefaultNotFound    = errors.New("default plan not found")
-	ErrLimitOfCpuShare        = errors.New("The minimum allowed cpu-shares is 2")
 	ErrLimitOfMemory          = errors.New("The minimum allowed memory is 4MB")
 	ErrPlatformNameMissing    = errors.New("Platform name is required.")
 	ErrPlatformImageMissing   = errors.New("Platform image is required.")

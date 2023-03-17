@@ -7,10 +7,8 @@ package app
 import "context"
 
 type Plan struct {
-	Name   string `json:"name"`
-	Memory int64  `json:"memory"`
-	// CpuShare is DEPRECATED, use CPUMilli instead
-	CpuShare int          `json:"cpushare"`
+	Name     string       `json:"name"`
+	Memory   int64        `json:"memory"`
 	CPUMilli int          `json:"cpumilli"`
 	Default  bool         `json:"default,omitempty"`
 	Override PlanOverride `json:"override,omitempty"`

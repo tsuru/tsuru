@@ -252,7 +252,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	plan := map[string]interface{}{
 		"name":     app.Plan.Name,
 		"memory":   app.Plan.Memory,
-		"cpushare": app.Plan.CpuShare,
 		"cpumilli": app.Plan.CPUMilli,
 		"override": app.Plan.Override,
 	}
@@ -1653,11 +1652,6 @@ func (app *App) GetMilliCPU() int {
 		return *app.Plan.Override.CPUMilli
 	}
 	return app.Plan.CPUMilli
-}
-
-// GetCpuShare returns the cpu share for the app.
-func (app *App) GetCpuShare() int {
-	return app.Plan.CpuShare
 }
 
 func (app *App) GetAddresses() ([]string, error) {

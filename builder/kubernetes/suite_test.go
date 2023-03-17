@@ -135,9 +135,8 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	plan := appTypes.Plan{
-		Name:     "default",
-		Default:  true,
-		CpuShare: 100,
+		Name:    "default",
+		Default: true,
 	}
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Plan = &appTypes.MockPlanService{

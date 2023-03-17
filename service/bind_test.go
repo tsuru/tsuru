@@ -77,9 +77,8 @@ func (s *BindSuite) SetUpTest(c *check.C) {
 	}
 
 	plan := appTypes.Plan{
-		Name:     "default",
-		Default:  true,
-		CpuShare: 100,
+		Name:    "default",
+		Default: true,
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil

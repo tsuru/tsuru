@@ -157,10 +157,9 @@ func (s *S) setupMocks() {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
 	s.defaultPlan = appTypes.Plan{
-		Name:     "default-plan",
-		Memory:   1024,
-		CpuShare: 100,
-		Default:  true,
+		Name:    "default-plan",
+		Memory:  1024,
+		Default: true,
 	}
 	s.plan = appTypes.Plan{}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {

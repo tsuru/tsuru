@@ -118,10 +118,9 @@ func (s *BuildSuite) SetUpTest(c *check.C) {
 	}
 
 	defaultPlan := appTypes.Plan{
-		Name:     "default-plan",
-		Memory:   1024,
-		CpuShare: 100,
-		Default:  true,
+		Name:    "default-plan",
+		Memory:  1024,
+		Default: true,
 	}
 
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {

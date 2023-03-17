@@ -452,7 +452,7 @@ func (c *Container) hostConfig(app provision.App, isDeploy bool) (*docker.HostCo
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	hostConfig := docker.HostConfig{
-		CPUShares: int64(app.GetCpuShare()),
+		CPUShares: int64(1024),
 	}
 
 	if !isDeploy {

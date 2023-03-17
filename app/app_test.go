@@ -434,7 +434,7 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -458,7 +458,7 @@ func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -482,7 +482,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardForPool(c *check.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -503,7 +503,7 @@ func (s *S) TestCreateAppDefaultPlanWildCardNotMatchForPoolReturnError(c *check.
 }
 
 func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
-	s.plan = appTypes.Plan{Name: "large", Memory: 4194304, CpuShare: 3}
+	s.plan = appTypes.Plan{Name: "large", Memory: 4194304}
 	pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
@@ -528,9 +528,8 @@ func (s *S) TestCreateAppDefaultPlanWildCardDefaultPlan(c *check.C) {
 
 func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	myPlan := appTypes.Plan{
-		Name:     "myplan",
-		Memory:   4194304,
-		CpuShare: 3,
+		Name:   "myplan",
+		Memory: 4194304,
 	}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{s.defaultPlan, myPlan}, nil
@@ -559,9 +558,8 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 
 func (s *S) TestCreateAppWithExplicitPlanConstraint(c *check.C) {
 	myPlan := appTypes.Plan{
-		Name:     "myplan",
-		Memory:   4194304,
-		CpuShare: 3,
+		Name:   "myplan",
+		Memory: 4194304,
 	}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
@@ -2543,8 +2541,8 @@ func (s *S) TestIsValid(c *check.C) {
 		}
 		return nil, authTypes.ErrTeamNotFound
 	}
-	plan1 := appTypes.Plan{Name: "plan1", Memory: 1, CpuShare: 1}
-	plan2 := appTypes.Plan{Name: "plan2", Memory: 1, CpuShare: 1}
+	plan1 := appTypes.Plan{Name: "plan1", Memory: 1}
+	plan2 := appTypes.Plan{Name: "plan2", Memory: 1}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{s.defaultPlan, plan1, plan2}, nil
 	}
@@ -2784,7 +2782,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	s.plan = appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100}
+	s.plan = appTypes.Plan{Name: "myplan", Memory: 64}
 	team := authTypes.Team{Name: "myteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
 		return []authTypes.Team{team, {Name: s.team.Name}}, nil
@@ -2974,7 +2972,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		Deploys:     7,
 		Pool:        "test",
 		Description: "description",
-		Plan:        appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100},
+		Plan:        appTypes.Plan{Name: "myplan", Memory: 64},
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
@@ -3160,7 +3158,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		Deploys:         7,
 		Pool:            "test",
 		Description:     "description",
-		Plan:            appTypes.Plan{Name: "myplan", Memory: 64, CpuShare: 100},
+		Plan:            appTypes.Plan{Name: "myplan", Memory: 64},
 		TeamOwner:       "myteam",
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
@@ -3963,10 +3961,9 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			},
 			ServiceEnvs: []bind.ServiceEnvVar{},
 			Plan: appTypes.Plan{
-				Name:     "default-plan",
-				Memory:   1024,
-				CpuShare: 100,
-				Default:  true,
+				Name:    "default-plan",
+				Memory:  1024,
+				Default: true,
 			},
 			Pool:       "pool1",
 			RouterOpts: map[string]string{},
@@ -3992,10 +3989,9 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			},
 			ServiceEnvs: []bind.ServiceEnvVar{},
 			Plan: appTypes.Plan{
-				Name:     "default-plan",
-				Memory:   1024,
-				CpuShare: 100,
-				Default:  true,
+				Name:    "default-plan",
+				Memory:  1024,
+				Default: true,
 			},
 			Pool: "pool1",
 			Metadata: appTypes.Metadata{
@@ -5364,8 +5360,8 @@ func (s *S) TestUpdatePoolWithBindedVolumeSameProvisioner(c *check.C) {
 }
 
 func (s *S) TestUpdatePlan(c *check.C) {
-	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
@@ -5381,8 +5377,8 @@ func (s *S) TestUpdatePlan(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
-	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
@@ -5398,7 +5394,7 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
-	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
 		Field:     pool.ConstraintTypePlan,
@@ -5406,7 +5402,7 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 		Blacklist: true,
 	})
 	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
@@ -5415,8 +5411,8 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
-	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
@@ -5447,8 +5443,8 @@ func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
-	s.plan = appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, TeamOwner: s.team.Name}
+	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
@@ -5489,8 +5485,8 @@ func (s *S) TestUpdatePlanNotFound(c *check.C) {
 }
 
 func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
-	oldPlan := appTypes.Plan{Name: "old", CpuShare: 50, Memory: 536870912}
+	plan := appTypes.Plan{Name: "something", Memory: 268435456}
+	oldPlan := appTypes.Plan{Name: "old", Memory: 536870912}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
 		if name == plan.Name {
 			return &plan, nil
@@ -5596,7 +5592,7 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	plan := appTypes.Plan{Name: "something", CpuShare: 100, Memory: 268435456}
+	plan := appTypes.Plan{Name: "something", Memory: 268435456}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{s.defaultPlan, plan}, nil
 	}
@@ -5607,7 +5603,7 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 		c.Assert(name, check.Equals, plan.Name)
 		return &plan, nil
 	}
-	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912, CpuShare: 50}, Description: "blablabla", Pool: "test"}
+	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, Description: "blablabla", Pool: "test"}
 	err = CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)

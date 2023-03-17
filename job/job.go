@@ -123,11 +123,6 @@ func (job *Job) GetMilliCPU() int {
 	return job.Plan.CPUMilli
 }
 
-// GetCpuShare returns the cpu share for the job.
-func (job *Job) GetCpuShare() int {
-	return job.Plan.CpuShare
-}
-
 func (job *Job) GetPool() string {
 	return job.Pool
 }

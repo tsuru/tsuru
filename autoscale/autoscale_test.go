@@ -69,7 +69,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
 	s.appInstance.Pool = "pool1"
 	s.p.Provision(context.TODO(), s.appInstance)
-	plan := appTypes.Plan{Memory: 4194304, Name: "default", CpuShare: 10}
+	plan := appTypes.Plan{Memory: 4194304, Name: "default"}
 	servicemock.SetMockService(&s.mockService)
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil
@@ -739,7 +739,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	config.Unset("docker:auto-scale:max-container-count")
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
-	plan := appTypes.Plan{Memory: 25165824, Name: "default", CpuShare: 10}
+	plan := appTypes.Plan{Memory: 25165824, Name: "default"}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil
 	}

@@ -142,10 +142,9 @@ func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	s.defaultPlan = appTypes.Plan{
-		Name:     "default-plan",
-		Memory:   1024,
-		CpuShare: 100,
-		Default:  true,
+		Name:    "default-plan",
+		Memory:  1024,
+		Default: true,
 	}
 	s.plan = appTypes.Plan{}
 	s.Pool = "pool1"

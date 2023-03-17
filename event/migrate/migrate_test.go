@@ -51,7 +51,7 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
 	servicemock.SetMockService(&s.mockService)
-	plan := appTypes.Plan{Name: "default", CpuShare: 100, Default: true}
+	plan := appTypes.Plan{Name: "default", Default: true}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
 		return []appTypes.Plan{plan}, nil
 	}

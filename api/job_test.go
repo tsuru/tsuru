@@ -371,10 +371,9 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
 		Plan: app.Plan{
-			Name:     "default-plan",
-			Memory:   1024,
-			CpuShare: 100,
-			Default:  true,
+			Name:    "default-plan",
+			Memory:  1024,
+			Default: true,
 		},
 		Metadata: app.Metadata{
 			Labels: []app.MetadataItem{
@@ -472,10 +471,9 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
 		Plan: app.Plan{
-			Name:     "default-plan",
-			Memory:   1024,
-			CpuShare: 100,
-			Default:  true,
+			Name:    "default-plan",
+			Memory:  1024,
+			Default: true,
 		},
 		Metadata: app.Metadata{
 			Labels: []app.MetadataItem{
@@ -720,10 +718,9 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Owner:     "super-root-toremove@groundcontrol.com",
 		Plan: app.Plan{
-			Name:     "default-plan",
-			Memory:   1024,
-			CpuShare: 100,
-			Default:  true,
+			Name:    "default-plan",
+			Memory:  1024,
+			Default: true,
 		},
 		Metadata: app.Metadata{
 			Labels: []app.MetadataItem{

@@ -161,9 +161,6 @@ func (s *planService) Create(ctx context.Context, plan appTypes.Plan) error {
 	if plan.Name == "" {
 		return appTypes.PlanValidationError{Field: "name"}
 	}
-	if plan.CpuShare > 0 && plan.CpuShare < 2 {
-		return appTypes.ErrLimitOfCpuShare
-	}
 	if plan.Memory > 0 && plan.Memory < 4194304 {
 		return appTypes.ErrLimitOfMemory
 	}
