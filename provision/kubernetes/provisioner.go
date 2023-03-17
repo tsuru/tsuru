@@ -240,7 +240,6 @@ func initLocalCluster() {
 		Local:       true,
 		Provisioner: provisionerName,
 		CustomData: map[string]string{
-			enableLogsFromAPIServerKey:    "true",
 			disableDefaultNodeSelectorKey: "true",
 			disableUnitRegisterCmdKey:     "true",
 			disableNodeContainers:         "true",

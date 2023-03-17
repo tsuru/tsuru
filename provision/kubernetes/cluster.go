@@ -74,7 +74,6 @@ const (
 	buildPlanSideCarKey           = "build-plan-sidecar"
 	baseServicesAnnotations       = "base-services-annotations"
 	allServicesAnnotations        = "all-services-annotations"
-	enableLogsFromAPIServerKey    = "enable-logs-from-apiserver"
 	registryKey                   = "registry"
 	registryInsecureKey           = "registry-insecure"
 	sidecarImageKey               = "sidecar-image"
@@ -113,7 +112,6 @@ var (
 		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
 		buildPlanKey:                  "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
 		buildPlanSideCarKey:           "Name of sidecar plan to be used during pod build. Defaults same as build-plan if omitted",
-		enableLogsFromAPIServerKey:    "Enable tsuru to request application logs from kubernetes api-server, will be enabled by default in next tsuru major version",
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
 		registryInsecureKey:           "Pull and push container images to insecure registry (over plain HTTP)",
 		buildServiceAccountKey:        "Custom service account used in build containers.",

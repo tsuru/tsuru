@@ -116,9 +116,7 @@ func (s *S) SetUpTest(c *check.C) {
 		Addresses:   []string{"https://clusteraddr"},
 		Default:     true,
 		Provisioner: provisionerName,
-		CustomData: map[string]string{
-			enableLogsFromAPIServerKey: "true",
-		},
+		CustomData:  map[string]string{},
 	}
 	s.clusterClient, err = NewClusterClient(clus)
 	c.Assert(err, check.IsNil)

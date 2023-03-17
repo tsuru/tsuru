@@ -1006,14 +1006,12 @@ func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns str
 
 	var crashedUnitsLogs []appTypes.Applog
 
-	if client.LogsFromAPIServerEnabled() {
-		crashedUnitsLogs, err = listLogsFromPods(ctx, client, ns, pods, appTypes.ListLogArgs{
-			Limit: 10,
-		})
+	crashedUnitsLogs, err = listLogsFromPods(ctx, client, ns, pods, appTypes.ListLogArgs{
+		Limit: 10,
+	})
 
-		if err != nil {
-			return errors.Wrap(err, "Could not get logs from crashed units")
-		}
+	if err != nil {
+		return errors.Wrap(err, "Could not get logs from crashed units")
 	}
 
 	return provision.ErrUnitStartup{

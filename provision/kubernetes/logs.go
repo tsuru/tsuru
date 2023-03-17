@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	apiv1 "k8s.io/api/core/v1"
@@ -36,9 +35,6 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 	clusterClient, err := clusterForPool(ctx, app.GetPool())
 	if err != nil {
 		return nil, err
-	}
-	if !clusterClient.LogsFromAPIServerEnabled() {
-		return nil, provision.ErrLogsUnavailable
 	}
 	clusterController, err := getClusterController(p, clusterClient)
 	if err != nil {
@@ -69,9 +65,6 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 	clusterClient, err := clusterForPool(ctx, app.GetPool())
 	if err != nil {
 		return nil, err
-	}
-	if !clusterClient.LogsFromAPIServerEnabled() {
-		return nil, provision.ErrLogsUnavailable
 	}
 	clusterClient.SetTimeout(watchTimeout)
 
