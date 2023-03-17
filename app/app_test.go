@@ -2903,7 +2903,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3014,7 +3013,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3095,7 +3093,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "",
 			"memory":   float64(0),
-			"cpushare": float64(0),
 			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3190,7 +3187,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
-			"cpushare": float64(100),
 			"cpumilli": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
@@ -3289,7 +3285,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"cpushare": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,
@@ -3418,7 +3413,6 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"cpushare": float64(0),
 			"router":   "fake",
 			"override": map[string]interface{}{
 				"cpumilli": nil,

@@ -49,37 +49,6 @@ func (s *S) TestPlanAdd(c *check.C) {
 	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
 }
 
-func (s *S) TestPlanAddWithDeprecatedCPUShare(c *check.C) {
-	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
-		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:   "xyz",
-			Memory: 9223372036854775807,
-		})
-		return nil
-	}
-	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=1024&cpushare=100")
-	request, err := http.NewRequest("POST", "/plans", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
-		Owner:  s.token.GetUserName(),
-		Kind:   "plan.create",
-		StartCustomData: []map[string]interface{}{
-			{"name": "name", "value": "xyz"},
-			{"name": "memory", "value": "9223372036854775807"},
-			{"name": "cpushare", "value": "100"},
-		},
-	}, eventtest.HasEvent)
-
-	fill := map[string]interface{}{}
-	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
-}
-
 func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
 		c.Assert(plan, check.DeepEquals, appTypes.Plan{
@@ -89,25 +58,7 @@ func (s *S) TestPlanAddWithMegabyteAsMemoryUnit(c *check.C) {
 		return nil
 	}
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100")
-	request, err := http.NewRequest("POST", "/plans", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-}
-
-func (s *S) TestPlanAddWithMegabyteAsSwapUnit(c *check.C) {
-	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
-		c.Assert(plan, check.DeepEquals, appTypes.Plan{
-			Name:   "xyz",
-			Memory: 536870912,
-		})
-		return nil
-	}
-	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=512M&swap=1024&cpushare=100")
+	body := strings.NewReader("name=xyz&memory=512M")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -125,7 +76,7 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 		return nil
 	}
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=512M&cpushare=100")
+	body := strings.NewReader("name=xyz&memory=9223372036854775807")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -137,7 +88,7 @@ func (s *S) TestPlanAddWithGigabyteAsMemoryUnit(c *check.C) {
 func (s *S) TestPlanAddWithNoPermission(c *check.C) {
 	token := userWithPermission(c)
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=1&swap=2&cpushare=3")
+	body := strings.NewReader("name=xyz&memory=1")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -158,14 +109,14 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 		return nil
 	}
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader("name=xyz&memory=9223372036854775807&swap=1024&cpushare=100")
+	body := strings.NewReader("name=xyz&memory=9223372036854775807")
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	body = strings.NewReader("name=xyz&memory=9223372036854775807&swap=2&cpumilli=300")
+	body = strings.NewReader("name=xyz&memory=9223372036854775807")
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)

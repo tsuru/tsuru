@@ -5392,9 +5392,6 @@ definitions:
         type: integer
         format: int64
         minimum: 0
-      cpushare:
-        type: integer
-        minimum: 0
       cpumilli:
         type: integer
         minimum: 0

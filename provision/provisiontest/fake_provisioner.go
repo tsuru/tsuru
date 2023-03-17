@@ -75,7 +75,6 @@ type FakeApp struct {
 	logMut            sync.Mutex
 	Commands          []string
 	Memory            int64
-	CpuShare          int
 	MilliCPU          int
 	commMut           sync.Mutex
 	Deploys           uint
@@ -103,7 +102,6 @@ type FakeJob struct {
 	Teams                 []string
 	Memory                int64
 	Swap                  int64
-	CpuShare              int
 	MilliCPU              int
 	Container             jobTypes.ContainerInfo
 	Completions           *int32
@@ -127,10 +125,6 @@ func (fj *FakeJob) GetMilliCPU() int {
 
 func (fj *FakeJob) GetSwap() int64 {
 	return fj.Swap
-}
-
-func (fj *FakeJob) GetCpuShare() int {
-	return fj.CpuShare
 }
 
 func (fj *FakeJob) GetPool() string {

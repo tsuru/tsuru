@@ -81,7 +81,6 @@ func (s *S) TestContainerCreate(c *check.C) {
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	app.CpuShare = 50
 	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
 	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
@@ -117,7 +116,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Args, check.DeepEquals, []string{"run"})
 	c.Assert(container.Config.Memory, check.Equals, app.Memory)
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory)
-	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
+	c.Assert(container.Config.CPUShares, check.Equals, int64(1024))
 	sort.Strings(container.Config.Env)
 	expectedLabels, err := provision.ProcessLabels(context.TODO(), provision.ProcessLabelsOpts{
 		App:         app,
@@ -147,7 +146,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
 	c.Assert(container.HostConfig.Memory, check.Equals, int64(15))
 	c.Assert(container.HostConfig.MemorySwap, check.Equals, int64(15))
-	c.Assert(container.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(container.HostConfig.CPUShares, check.Equals, int64(1024))
 	c.Assert(container.HostConfig.OomScoreAdj, check.Equals, 0)
 	c.Assert(cont.Status, check.Equals, "created")
 }
@@ -215,7 +214,6 @@ func (s *S) TestContainerCreateAllocatesPort(c *check.C) {
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	app.CpuShare = 50
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
 	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	img := "tsuru/brainfuck:latest"
@@ -256,7 +254,6 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	defer config.Unset("docker:security-opts")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	app.CpuShare = 50
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
 	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	img := "tsuru/brainfuck:latest"
@@ -293,7 +290,6 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	}))
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	app.CpuShare = 50
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
 	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	img := "tsuru/brainfuck:latest"
@@ -324,7 +320,7 @@ func (s *S) TestContainerCreateForDeploy(c *check.C) {
 	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "json-file")
 	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(0))
 	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(0))
-	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
+	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(1024))
 	c.Assert(dockerContainer.HostConfig.OomScoreAdj, check.Equals, 1000)
 }
 
