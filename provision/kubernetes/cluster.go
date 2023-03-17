@@ -453,14 +453,7 @@ func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
 	return burst, nil
 }
 
-func (c *ClusterClient) LogsFromAPIServerEnabled() bool {
-	if c.CustomData == nil {
-		return defaultLogsFromAPIServer
-	}
 
-	enabled, _ := strconv.ParseBool(c.CustomData[enableLogsFromAPIServerKey])
-	return enabled
-}
 
 func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error) {
 	annotations := map[string]string{}
