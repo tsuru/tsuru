@@ -80,7 +80,6 @@ const (
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	disablePDBKey                 = "disable-pdb"
-	defaultLogsFromAPIServer      = false
 	versionedServices             = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
@@ -452,8 +451,6 @@ func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
 	}
 	return burst, nil
 }
-
-
 
 func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error) {
 	annotations := map[string]string{}
