@@ -19,6 +19,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
+	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
@@ -68,6 +69,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/Microsoft/hcsshim v0.9.2 // indirect
 	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
+	github.com/adhocore/gronx v1.1.2
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff v0.0.0-20160904140958-8edc80b07f38 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -98,7 +100,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/howeyc/fsnotify v0.9.0 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.12
 	github.com/intel-go/cpuid v0.0.0-20181003105527-1a4a6f06a1c6 // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect

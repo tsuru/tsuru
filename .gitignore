@@ -8,3 +8,4 @@ build
 data
 dist/
 vendor/
+etc/tsuru-local.conf

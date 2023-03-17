@@ -53,6 +53,7 @@ var (
 
 	ErrUnitRecreationCanceled = errors.New("unit creation canceled by user action")
 	ErrMultipleVersions       = errors.New("docker provisioner does not support multiple versions")
+	ErrCronjobNotImplemented  = errors.New("docker provisioner does not support jobs nor cron jobs")
 )
 
 const (

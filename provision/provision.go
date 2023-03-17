@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -182,7 +183,6 @@ func (u *Unit) GetIp() string {
 
 func (u *Unit) MarshalJSON() ([]byte, error) {
 	type UnitForMarshal Unit
-
 	var host, port string
 	if u.Address != nil {
 		host, port, _ = net.SplitHostPort(u.Address.Host)
@@ -267,6 +267,20 @@ type App interface {
 	GetMetadata() appTypes.Metadata
 
 	GetRegistry() (imgTypes.ImageRegistry, error)
+}
+
+type Job interface {
+	Named
+	GetMemory() int64
+	GetMilliCPU() int
+	GetCpuShare() int
+	GetPool() string
+	GetTeamOwner() string
+	GetTeamsName() []string
+	GetMetadata() appTypes.Metadata
+	IsCron() bool
+	GetSchedule() string
+	GetSpec() jobTypes.JobSpec
 }
 
 type BuilderDockerClient interface {
@@ -390,6 +404,20 @@ type Provisioner interface {
 
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(context.Context, App, string, map[string]interface{}) error
+}
+
+type JobProvisioner interface {
+	// JobUnits returns information about units related to a specific Job or CronJob
+	JobUnits(context.Context, Job) ([]Unit, error)
+
+	// JobSchedule creates a cronjob object in the cluster
+	CreateJob(context.Context, Job) (string, error)
+
+	DestroyJob(context.Context, Job) error
+
+	UpdateJob(context.Context, Job) error
+
+	TriggerCron(ctx context.Context, name, pool string) error
 }
 
 type ExecOptions struct {

@@ -256,4 +256,18 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"router.read.events",
 	"router.update",
 	"router.delete",
+).addWithCtx(
+	"job", []permTypes.ContextType{permTypes.CtxTeam, permTypes.CtxPool, permTypes.CtxJob},
+).addWithCtx(
+	"job.create", []permTypes.ContextType{permTypes.CtxTeam},
+).add(
+	"job.update",
+).add(
+	"job.run",
+).add(
+	"job.read",
+).add(
+	"job.delete",
+).add(
+	"job.read.events",
 )

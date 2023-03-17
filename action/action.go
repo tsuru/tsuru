@@ -172,7 +172,6 @@ func (p *Pipeline) Execute(ctx context.Context, params ...interface{}) (err erro
 		} else {
 			fwCtx.Context = actionCtx
 			r, err = a.Forward(fwCtx)
-
 			a.rMutex.Lock()
 			a.result = r
 			a.rMutex.Unlock()

@@ -144,8 +144,8 @@ type RecordingFs struct {
 // argument, RecordingFs will store locally the action "open /tmp/file.txt" and
 // you can check it calling HasAction:
 //
-//     rfs.Open("/tmp/file.txt")
-//     rfs.HasAction("open /tmp/file.txt") // true
+//	rfs.Open("/tmp/file.txt")
+//	rfs.HasAction("open /tmp/file.txt") // true
 func (r *RecordingFs) HasAction(action string) bool {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()

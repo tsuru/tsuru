@@ -75,7 +75,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	kubeProv.TsuruClientForConfig = func(conf *rest.Config) (tsuruv1clientset.Interface, error) {
 		return s.client.TsuruClientset, nil
 	}
-	s.mock = kubeTesting.NewKubeMock(s.client, kubeProv.GetProvisioner(), nil)
+	prov := kubeProv.GetProvisioner()
+	s.mock = kubeTesting.NewKubeMock(s.client, prov, prov, nil)
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	kubeProv.ExtensionsClientForConfig = func(conf *rest.Config) (apiextensionsclientset.Interface, error) {
 		return s.client.ApiExtensionsClientset, nil

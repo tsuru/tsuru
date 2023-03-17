@@ -36,6 +36,8 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -83,7 +85,7 @@ type KubeMock struct {
 	IgnoreAppName bool
 }
 
-func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, factory informers.SharedInformerFactory) *KubeMock {
+func NewKubeMock(cluster *ClientWrapper, p provision.Provisioner, jp provision.JobProvisioner, factory informers.SharedInformerFactory) *KubeMock {
 	stream := make(map[string]StreamResult)
 	return &KubeMock{
 		client:      cluster,
@@ -654,6 +656,104 @@ func (s *KubeMock) deploymentWithPodReaction(c *check.C) (ktesting.ReactionFunc,
 		}()
 		return false, nil, nil
 	}, &wg
+}
+
+func (s *KubeMock) CronJobReactions(c *check.C) func() {
+	cronReaction, cronPodReady := s.cronWithPodReactions(c)
+	lastReactor := s.client.ReactionChain[len(s.client.ReactionChain)-1]
+	s.client.PrependReactor("create", "cronjobs", cronReaction)
+	s.client.PrependReactor("update", "cronjobs", cronReaction)
+	s.client.PrependReactor("patch", "cronjobs", func(action ktesting.Action) (bool, runtime.Object, error) {
+		_, ret, err := lastReactor.React(action)
+		if err != nil {
+			return false, nil, err
+		}
+		cronPodReady.Add(1)
+		patchAction := action.(ktesting.PatchAction)
+		go func() {
+			defer cronPodReady.Done()
+			cron, _ := s.client.BatchV1beta1().CronJobs(patchAction.GetNamespace()).Get(context.TODO(), patchAction.GetName(), metav1.GetOptions{})
+			s.client.BatchV1beta1().CronJobs(patchAction.GetNamespace()).Update(context.TODO(), cron, metav1.UpdateOptions{})
+		}()
+		return true, ret, nil
+	})
+	return func() {
+		cronPodReady.Wait()
+	}
+}
+
+func (s *KubeMock) cronWithPodReactions(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
+	var counter int32
+	wg := sync.WaitGroup{}
+	return func(action ktesting.Action) (bool, runtime.Object, error) {
+		if action.GetSubresource() != "" {
+			return false, nil, nil
+		}
+		job := action.(ktesting.CreateAction).GetObject().(*apiv1beta1.CronJob)
+		if job.Annotations == nil {
+			job.Annotations = make(map[string]string)
+		}
+		specJobs := int32(1)
+		if job.Spec.JobTemplate.Spec.Parallelism != nil {
+			specJobs = *job.Spec.JobTemplate.Spec.Parallelism
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.jobWithPodReactionFromCron(c, job, specJobs, &counter)
+		}()
+		return false, nil, nil
+	}, &wg
+}
+
+func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJob, specJobs int32, counter *int32) {
+	jobs := []batchv1.Job{}
+	for i := int32(0); i < specJobs; i++ {
+		j := batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        cron.Name + "-" + strconv.Itoa(int(i)),
+				Namespace:   cron.Namespace,
+				Labels:      cron.Labels,
+				Annotations: cron.Annotations,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						Name:       cron.Name,
+						Kind:       "CronJob",
+						UID:        cron.UID,
+						APIVersion: "batch/v1",
+					},
+				},
+			},
+			Spec: cron.Spec.JobTemplate.Spec,
+		}
+		jobs = append(jobs, j)
+	}
+
+	pod := &apiv1.Pod{
+		ObjectMeta: cron.ObjectMeta,
+		Spec:       cron.Spec.JobTemplate.Spec.Template.Spec,
+	}
+	pod.ObjectMeta.CreationTimestamp = metav1.Time{Time: time.Now()}
+	pod.Status.Phase = apiv1.PodRunning
+	pod.Status.StartTime = &metav1.Time{Time: time.Now()}
+	pod.ObjectMeta.Namespace = cron.Namespace
+	pod.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(cron, appsv1.SchemeGroupVersion.WithKind("CronJob")),
+	}
+	pod.Spec.NodeName = "n1"
+	pod.Status.HostIP = "192.168.99.1"
+	err := cleanupPods(s.client.ClusterInterface, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{"tsuru.io/job-name": cron.Name})).String(),
+	}, cron.Namespace, s.factory)
+	c.Assert(err, check.IsNil)
+	for i := int32(1); i <= specJobs; i++ {
+		id := atomic.AddInt32(counter, 1)
+		pod.ObjectMeta.Name = fmt.Sprintf("%s-pod-%d-%d", cron.Name, id, i)
+		_, err := s.client.CoreV1().Pods(cron.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+		c.Assert(err, check.IsNil)
+		err = s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *KubeMock) deployWithPodReaction(c *check.C, dep *appsv1.Deployment, specReplicas int32, counter *int32) {

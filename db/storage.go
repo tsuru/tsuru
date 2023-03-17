@@ -84,6 +84,14 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
+// Jobs returns the jobs collection from MongoDB.
+func (s *Storage) Jobs() *storage.Collection {
+	jobNameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
+	c := s.Collection("jobs")
+	c.EnsureIndex(jobNameIndex)
+	return c
+}
+
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *storage.Collection {
 	return s.Collection("services")

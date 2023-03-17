@@ -19,15 +19,15 @@ A pipeline is composed of a list of actions. For each action execution, the
 executor will provide two possible contexts, based on the current phase of the
 executor:
 
-  * in forward phase, the Forward function will receive a FWContext, that
-  contains a list of parameters passed to executor in the Execute() call and
-  the the result of the previous action (which will be nil for the first action
-  in the pipeline);
+  - in forward phase, the Forward function will receive a FWContext, that
+    contains a list of parameters passed to executor in the Execute() call and
+    the the result of the previous action (which will be nil for the first action
+    in the pipeline);
 
-  * in backward phase, the Backward function will receive a BWContext, that
-  also contains the list of parameters given to the executor, but instead of
-  the previous result, it receives the result of the forward phase of the
-  current action.
+  - in backward phase, the Backward function will receive a BWContext, that
+    also contains the list of parameters given to the executor, but instead of
+    the previous result, it receives the result of the forward phase of the
+    current action.
 
 Besides the Context, the Backward function will also receive the result of the
 Forward call.

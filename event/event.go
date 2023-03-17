@@ -94,6 +94,7 @@ var (
 
 	TargetTypeGlobal          = TargetType("global")
 	TargetTypeApp             = TargetType("app")
+	TargetTypeJob             = TargetType("job")
 	TargetTypeNode            = TargetType("node")
 	TargetTypeContainer       = TargetType("container")
 	TargetTypePool            = TargetType("pool")

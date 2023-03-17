@@ -46,6 +46,7 @@ import (
 
 type testProv interface {
 	provision.Provisioner
+	provision.JobProvisioner
 	provision.BuilderDeployKubeClient
 	shutdown.Shutdownable
 }
@@ -169,7 +170,7 @@ func (s *S) SetUpTest(c *check.C) {
 	kubeProv.InformerFactory = func(client *kubeProv.ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
-	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.factory)
+	s.mock = kubeTesting.NewKubeMock(s.client, s.p, s.p, s.factory)
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
 	s.user = &auth.User{Email: "whiskeyjack@genabackis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
