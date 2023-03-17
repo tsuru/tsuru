@@ -116,7 +116,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	body = strings.NewReader("name=xyz&memory=9223372036854775807")
+	body = strings.NewReader("name=xyz&memory=9223372036854775807&cpumilli=300")
 	recorder = httptest.NewRecorder()
 	request, err = http.NewRequest("POST", "/plans", body)
 	c.Assert(err, check.IsNil)
