@@ -317,7 +317,7 @@ func (s *S) TestBindAppDBActionForwardInvalidParam(c *check.C) {
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.Not(check.IsNil))
-	c.Assert(err, check.ErrorMatches, "^invalid arguments for pipeline, expected \\*bindPipelineArgs.$")
+	c.Assert(err, check.ErrorMatches, "^invalid arguments for pipeline, expected \\*bindAppPipelineArgs.$")
 }
 
 func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
@@ -434,7 +434,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
 	_, err := setBoundEnvsAction.Forward(ctx)
-	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindPipelineArgs.")
+	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 }
 
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {

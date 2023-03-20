@@ -303,7 +303,7 @@ var bindAppEndpointAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
@@ -377,7 +377,7 @@ var setBoundEnvsAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		envMap := ctx.Previous.(map[string]string)
 		envs := make([]bind.ServiceEnvVar, 0, len(envMap))
@@ -453,7 +453,7 @@ var bindUnitsAction = &action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return ctx.Previous, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return ctx.Previous, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
@@ -499,7 +499,7 @@ var unbindUnits = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
@@ -557,7 +557,7 @@ var unbindAppDB = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
 	},
@@ -576,7 +576,7 @@ var unbindAppEndpoint = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
 		if err != nil {
@@ -620,7 +620,7 @@ var removeBoundEnvs = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
 		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindPipelineArgs.")
+			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		si := args.serviceInstance
 		return nil, args.app.RemoveInstance(bind.RemoveInstanceArgs{
