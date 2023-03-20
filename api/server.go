@@ -233,6 +233,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/services/{service}/instances/{instance}/status", AuthorizationRequiredHandler(serviceInstanceStatus))
 	m.Add("1.0", http.MethodPut, "/services/{service}/instances/{instance}/{app}", AuthorizationRequiredHandler(bindServiceInstance))
 	m.Add("1.0", http.MethodDelete, "/services/{service}/instances/{instance}/{app}", AuthorizationRequiredHandler(unbindServiceInstance))
+	m.Add("1.13", http.MethodPut, "/services/{service}/instances/{instance}/jobs/{job}", AuthorizationRequiredHandler(bindJobServiceInstance))
+	//m.Add("1.13", http.MethodDelete, "/services/{service}/instances/{instance}/job/{job}", AuthorizationRequiredHandler(unbindServiceInstance))
+
 	m.Add("1.0", http.MethodPut, "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceGrantTeam))
 	m.Add("1.0", http.MethodDelete, "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceRevokeTeam))
 

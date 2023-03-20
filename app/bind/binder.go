@@ -54,6 +54,11 @@ type App interface {
 	RemoveInstance(args RemoveInstanceArgs) error
 }
 
+type Job interface {
+	// GetName returns the job name.
+	GetName() string
+}
+
 type SetEnvArgs struct {
 	Envs          []EnvVar
 	Writer        io.Writer
