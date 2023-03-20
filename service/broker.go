@@ -421,6 +421,16 @@ func (b *brokerClient) BindUnit(ctx context.Context, instance *ServiceInstance, 
 	return nil
 }
 
+// UnbindJob is a no-op for OSB API implementations
+func (b *brokerClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
+	return nil
+}
+
+// BindJob is a no-op for OSB API implementations
+func (b *brokerClient) BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error) {
+	return nil, nil
+}
+
 func (b *brokerClient) getCatalog(ctx context.Context, name string) (*osb.CatalogResponse, error) {
 	catalog, err := servicemanager.ServiceBrokerCatalogCache.Load(ctx, name)
 	if err != nil || catalog == nil {

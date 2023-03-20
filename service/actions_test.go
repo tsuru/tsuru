@@ -299,7 +299,7 @@ func (s *S) TestBindAppDBActionForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -327,7 +327,7 @@ func (s *S) TestBindAppDBActionForwardTwice(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	_, err = bindAppDBAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -342,7 +342,7 @@ func (s *S) TestBindAppDBActionBackwardRemovesAppFromServiceInstance(c *check.C)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	bindAppDBAction.Backward(ctx)
 	c.Assert(err, check.IsNil)
@@ -369,7 +369,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params: []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params: []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 	}
 	envs, err := bindAppEndpointAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
@@ -399,7 +399,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	bwCtx := action.BWContext{
-		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	bindAppEndpointAction.Backward(bwCtx)
@@ -415,7 +415,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	evt := createEvt(c)
 	ctx := action.FWContext{
-		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
 	result, err := setBoundEnvsAction.Forward(ctx)
@@ -450,7 +450,7 @@ func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	ctx := action.BWContext{
-		Params:   []interface{}{&bindPipelineArgs{app: a, serviceInstance: &si, event: evt}},
+		Params:   []interface{}{&bindAppPipelineArgs{app: a, serviceInstance: &si, event: evt}},
 		FWResult: nil,
 	}
 	setBoundEnvsAction.Backward(ctx)
@@ -483,7 +483,7 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 	}
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -535,7 +535,7 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	}
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -594,7 +594,7 @@ func (s *S) TestUnbindUnitsBackward(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 4)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -631,7 +631,7 @@ func (s *S) TestUnbindAppDBForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -655,7 +655,7 @@ func (s *S) TestUnbindAppDBBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -684,7 +684,7 @@ func (s *S) TestUnbindAppEndpointForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -714,7 +714,7 @@ func (s *S) TestUnbindAppEndpointForwardNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -744,7 +744,7 @@ func (s *S) TestUnbindAppEndpointBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,
@@ -775,7 +775,7 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt := createEvt(c)
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		event:           evt,
 		app:             a,
 		serviceInstance: &si,

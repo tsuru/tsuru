@@ -200,6 +200,14 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	return nil, log.WrapError(err)
 }
 
+func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error) {
+	return nil, errors.New("TODO: not implemented yet")
+}
+
+func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
+	return errors.New("TODO: not implemented yet")
+}
+
 func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()

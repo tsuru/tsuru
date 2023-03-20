@@ -1307,33 +1307,12 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 }
 
 func (app *App) ValidateService(services ...string) error {
-	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
+	_, err := pool.GetPoolByName(app.ctx, app.Pool)
 	if err != nil {
 		return err
 	}
 
-	poolServices, err := servicemanager.Pool.Services(app.ctx, app.Pool)
-	if err != nil {
-		return err
-	}
-	for _, svc := range services {
-		valid := false
-		for _, v := range poolServices {
-			if v == svc {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			msg := fmt.Sprintf("service %q is not available for pool %q.", svc, pool.Name)
-
-			if len(poolServices) > 0 {
-				msg += fmt.Sprintf(" Available services are: %q", strings.Join(poolServices, ", "))
-			}
-			return &tsuruErrors.ValidationError{Message: msg}
-		}
-	}
-	return nil
+	return pool.ValidatePoolService(app.ctx, app.Pool, services)
 }
 
 // InstanceEnvs returns a map of environment variables that belongs to the

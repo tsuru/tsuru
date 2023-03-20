@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -1472,11 +1471,6 @@ func followLogs(ctx stdContext.Context, appName string, watcher appTypes.LogWatc
 }
 
 func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appName string) (*service.ServiceInstance, *app.App, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, nil, err
-	}
-	defer conn.Close()
 	instance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
 	if err != nil {
 		return nil, nil, err

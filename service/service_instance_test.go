@@ -191,7 +191,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 		"bindAppDBAction", "bindAppEndpointAction",
 		"setBoundEnvsAction", "bindUnitsAction",
 	}
-	expectedParams := []interface{}{&bindPipelineArgs{
+	expectedParams := []interface{}{&bindAppPipelineArgs{
 		app:             a,
 		serviceInstance: &si,
 		writer:          &buf,

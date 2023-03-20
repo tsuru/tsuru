@@ -33,6 +33,7 @@ var (
 	ErrAccessNotAllowed                         = errors.New("user does not have access to this service instance")
 	ErrTeamMandatory                            = errors.New("please specify the team that owns the service instance")
 	ErrAppAlreadyBound                          = errors.New("app is already bound to this service instance")
+	ErrJobAlreadyBound                          = errors.New("job is already bound to this service instance")
 	ErrAppNotBound                              = errors.New("app is not bound to this service instance")
 	ErrUnitNotBound                             = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound                     = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
@@ -237,7 +238,7 @@ func (si *ServiceInstance) updateData(update bson.M) error {
 
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		serviceInstance: si,
 		app:             app,
 		writer:          writer,
@@ -251,6 +252,25 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 		bindAppEndpointAction,
 		setBoundEnvsAction,
 		bindUnitsAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(si.ctx, &args)
+}
+
+// BindJob makes the bind between the service instance and a job.
+func (si *ServiceInstance) BindJob(job bind.Job, writer io.Writer, evt *event.Event, requestID string) error {
+
+	args := bindJobPipelineArgs{
+		serviceInstance: si,
+		job:             job,
+		writer:          writer,
+		event:           evt,
+		requestID:       requestID,
+	}
+	actions := []*action.Action{
+		bindJobDBAction,
+		bindJobEndpointAction,
+		setJobBoundEnvsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
@@ -323,7 +343,7 @@ func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
 	if si.FindApp(unbindArgs.App.GetName()) == -1 {
 		return ErrAppNotBound
 	}
-	args := bindPipelineArgs{
+	args := bindAppPipelineArgs{
 		serviceInstance: si,
 		app:             unbindArgs.App,
 		writer:          unbindArgs.Event,

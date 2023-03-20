@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -415,6 +416,82 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	w.WriteHeader(http.StatusOK)
+	return nil
+}
+
+// title: bind service instance to a job
+// path: /services/{service}/instances/{instance}/jobs/{job}
+// method: PUT
+// consume: application/x-www-form-urlencoded
+// produce: application/x-json-stream
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
+func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	instanceName := r.URL.Query().Get(":instance")
+	jobName := r.URL.Query().Get(":job")
+	serviceName := r.URL.Query().Get(":service")
+
+	instance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	j, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+	canUpdate := permission.Check(t, permission.PermJobUpdate,
+		contextsForJob(j)...,
+	)
+	if !canUpdate {
+		return permission.ErrUnauthorized
+	}
+
+	err = pool.ValidatePoolService(ctx, j.Pool, []string{serviceName})
+	if err != nil {
+		if err == pool.ErrPoolHasNoService {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		}
+		return err
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target: jobTarget(j.Name),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: serviceInstanceTarget(serviceName, instanceName)},
+		},
+		Kind:       permission.PermJobUpdate,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	err = instance.BindJob(j, evt, evt, requestIDHeader(r))
+	if err != nil {
+		status, errStatus := instance.Status(requestIDHeader(r))
+		if errStatus != nil {
+			return fmt.Errorf("%v (failed to retrieve instance status: %v)", err, errStatus)
+		}
+		return fmt.Errorf("%v (%q is %v)", err, instanceName, status)
+	}
 	return nil
 }
 

@@ -605,6 +605,31 @@ func GetPoolByName(ctx context.Context, name string) (*Pool, error) {
 	return &p, nil
 }
 
+func ValidatePoolService(ctx context.Context, pool string, services []string) error {
+	poolServices, err := servicemanager.Pool.Services(ctx, pool)
+	if err != nil {
+		return err
+	}
+	for _, svc := range services {
+		valid := false
+		for _, v := range poolServices {
+			if v == svc {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			msg := fmt.Sprintf("service %q is not available for pool %q.", svc, pool)
+
+			if len(poolServices) > 0 {
+				msg += fmt.Sprintf(" Available services are: %q", strings.Join(poolServices, ", "))
+			}
+			return &tsuruErrors.ValidationError{Message: msg}
+		}
+	}
+	return nil
+}
+
 func GetDefaultPool(ctx context.Context) (*Pool, error) {
 	conn, err := db.Conn()
 	if err != nil {
