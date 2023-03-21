@@ -53,15 +53,15 @@ type clusterController struct {
 	cluster                 *ClusterClient
 	informerFactory         informers.SharedInformerFactory
 	filteredInformerFactory informers.SharedInformerFactory
-	jobInformerFactory 		informers.SharedInformerFactory
+	jobInformerFactory      informers.SharedInformerFactory
 	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
 	serviceInformer         v1informers.ServiceInformer
 	nodeInformer            v1informers.NodeInformer
 	hpaInformer             autoscalingInformers.HorizontalPodAutoscalerInformer
 	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
-	jobsInformer			jobsInformer.JobInformer
-	eventsInformer			v1informers.EventInformer
+	jobsInformer            jobsInformer.JobInformer
+	eventsInformer          v1informers.EventInformer
 	stopCh                  chan struct{}
 	cancel                  context.CancelFunc
 	startedAt               time.Time
@@ -142,7 +142,7 @@ func (c *clusterController) isLeader() bool {
 	return atomic.LoadInt32(&c.leader) == 1
 }
 
-func (c *clusterController) startJobInformer() (error) {
+func (c *clusterController) startJobInformer() error {
 	eventsInformer, err := c.getEventInformerWait(false)
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func (c *clusterController) startJobInformer() (error) {
 			createJobEvent(job, evt)
 		},
 	})
-	
+
 	return nil
 }
 
@@ -584,10 +584,10 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
 		}
 	}
 	opts := event.Opts{
-		Kind: kind,
-		Target:       event.Target{Type: targetType, Value: realJobOwner},
-		Allowed: event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
-		RawOwner: event.Owner{Type: event.OwnerTypeInternal},
+		Kind:       kind,
+		Target:     event.Target{Type: targetType, Value: realJobOwner},
+		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
+		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
 		Cancelable: false,
 	}
 	e, err := event.New(&opts)
@@ -595,11 +595,11 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
 		return
 	}
 	customData := map[string]string{
-		"job-name": job.Name,
-		"job-controller": realJobOwner,
-		"event-type": evt.Type,
-		"event-reason": evt.Reason,
-		"message": evt.Message,
+		"job-name":           job.Name,
+		"job-controller":     realJobOwner,
+		"event-type":         evt.Type,
+		"event-reason":       evt.Reason,
+		"message":            evt.Message,
 		"cluster-start-time": evt.CreationTimestamp.String(),
 	}
 	e.DoneCustomData(evtErr, customData)
