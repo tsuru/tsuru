@@ -78,7 +78,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						"tsuru.io/job-name":            "myjob",
 						"tsuru.io/job-pool":            "test-default",
 						"tsuru.io/job-team":            "admin",
-						"tsuru.io/tsuru-job": 			"true",
+						"tsuru.io/tsuru-job":           "true",
 						"label1":                       "value1",
 					},
 					Annotations: map[string]string{"annotation1": "value2"},
