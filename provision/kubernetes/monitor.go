@@ -575,17 +575,15 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
 		return
 	}
 
-	targetType := event.TargetTypeJob
 	realJobOwner := job.Name
 	for _, owner := range job.OwnerReferences {
 		if owner.Kind == "CronJob" {
 			realJobOwner = owner.Name
-			targetType = event.TargetTypeCronJob
 		}
 	}
 	opts := event.Opts{
 		Kind:       kind,
-		Target:     event.Target{Type: targetType, Value: realJobOwner},
+		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},
 		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
 		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
 		Cancelable: false,
