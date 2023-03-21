@@ -6,14 +6,19 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	permTypes "github.com/tsuru/tsuru/types/permission"
+	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +27,7 @@ import (
 	vpaInternalInterfaces "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/internalinterfaces"
 	"k8s.io/client-go/informers"
 	autoscalingInformers "k8s.io/client-go/informers/autoscaling/v2beta2"
+	jobsInformer "k8s.io/client-go/informers/batch/v1"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -47,12 +53,15 @@ type clusterController struct {
 	cluster                 *ClusterClient
 	informerFactory         informers.SharedInformerFactory
 	filteredInformerFactory informers.SharedInformerFactory
+	jobInformerFactory 		informers.SharedInformerFactory
 	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
 	serviceInformer         v1informers.ServiceInformer
 	nodeInformer            v1informers.NodeInformer
 	hpaInformer             autoscalingInformers.HorizontalPodAutoscalerInformer
 	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
+	jobsInformer			jobsInformer.JobInformer
+	eventsInformer			v1informers.EventInformer
 	stopCh                  chan struct{}
 	cancel                  context.CancelFunc
 	startedAt               time.Time
@@ -93,6 +102,12 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
+	// jobs informer
+	err = c.startJobInformer()
+	if err != nil {
+		c.stop(ctx)
+		return nil, err
+	}
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
 }
@@ -125,6 +140,38 @@ func (c *clusterController) stop(ctx context.Context) {
 
 func (c *clusterController) isLeader() bool {
 	return atomic.LoadInt32(&c.leader) == 1
+}
+
+func (c *clusterController) startJobInformer() (error) {
+	eventsInformer, err := c.getEventInformerWait(false)
+	if err != nil {
+		return err
+	}
+	eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			evt, ok := obj.(*apiv1.Event)
+			if !ok {
+				return
+			}
+			if evt.InvolvedObject == (apiv1.ObjectReference{}) {
+				return
+			}
+			if evt.InvolvedObject.Kind != "Job" {
+				return
+			}
+			jobInformer, err := c.getJobInformer()
+			if err != nil {
+				return
+			}
+			job, err := jobInformer.Lister().Jobs(evt.Namespace).Get(evt.InvolvedObject.Name)
+			if err != nil {
+				return
+			}
+			createJobEvent(job, evt)
+		},
+	})
+	
+	return nil
 }
 
 func (c *clusterController) start() (v1informers.PodInformer, error) {
@@ -248,6 +295,41 @@ func (c *clusterController) getVPAInformer() (vpaV1Informers.VerticalPodAutoscal
 	return c.vpaInformer, err
 }
 
+func (c *clusterController) getJobInformer() (jobsInformer.JobInformer, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.jobsInformer == nil {
+		err := c.withJobInformerFactory(func(factory informers.SharedInformerFactory) {
+			c.jobsInformer = factory.Batch().V1().Jobs()
+			c.jobsInformer.Informer()
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	err := c.waitForSync(c.jobsInformer.Informer())
+	return c.jobsInformer, err
+}
+
+func (c *clusterController) getEventInformerWait(wait bool) (v1informers.EventInformer, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.eventsInformer == nil {
+		err := c.withInformerFactory(func(factory informers.SharedInformerFactory) {
+			c.eventsInformer = factory.Core().V1().Events()
+			c.eventsInformer.Informer()
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	var err error
+	if wait {
+		err = c.waitForSync(c.eventsInformer.Informer())
+	}
+	return c.eventsInformer, err
+}
+
 func (c *clusterController) getPodInformerWait(wait bool) (v1informers.PodInformer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -277,15 +359,6 @@ func (c *clusterController) withInformerFactory(fn func(factory informers.Shared
 	return nil
 }
 
-func (c *clusterController) getFactory() (informers.SharedInformerFactory, error) {
-	if c.informerFactory != nil {
-		return c.informerFactory, nil
-	}
-	var err error
-	c.informerFactory, err = InformerFactory(c.cluster, nil)
-	return c.informerFactory, err
-}
-
 func (c *clusterController) withFilteredInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
 	factory, err := c.getFilteredFactory()
 	if err != nil {
@@ -294,6 +367,34 @@ func (c *clusterController) withFilteredInformerFactory(fn func(factory informer
 	fn(factory)
 	factory.Start(c.stopCh)
 	return nil
+}
+
+func (c *clusterController) withJobInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
+	factory, err := c.getJobFactory()
+	if err != nil {
+		return err
+	}
+	fn(factory)
+	factory.Start(c.stopCh)
+	return nil
+}
+
+func (c *clusterController) getJobFactory() (informers.SharedInformerFactory, error) {
+	if c.jobInformerFactory != nil {
+		return c.jobInformerFactory, nil
+	}
+	var err error
+	c.jobInformerFactory, err = InformerFactory(c.cluster, tsuruJobTweakFunc())
+	return c.jobInformerFactory, err
+}
+
+func (c *clusterController) getFactory() (informers.SharedInformerFactory, error) {
+	if c.informerFactory != nil {
+		return c.informerFactory, nil
+	}
+	var err error
+	c.informerFactory, err = InformerFactory(c.cluster, nil)
+	return c.informerFactory, err
 }
 
 func (c *clusterController) getFilteredFactory() (informers.SharedInformerFactory, error) {
@@ -396,15 +497,22 @@ func (c *clusterController) initLeaderElection(ctx context.Context) error {
 	return nil
 }
 
-func tsuruOnlyTweakFunc() internalinterfaces.TweakListOptionsFunc {
+func tsuruServiceTweakFunc() internalinterfaces.TweakListOptionsFunc {
 	return func(opts *metav1.ListOptions) {
-		ls := provision.IsServiceLabelSet(tsuruLabelPrefix)
+		ls := provision.ServiceLabelSet(tsuruLabelPrefix)
+		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
+	}
+}
+
+func tsuruJobTweakFunc() internalinterfaces.TweakListOptionsFunc {
+	return func(opts *metav1.ListOptions) {
+		ls := provision.TsuruJobLabelSet(tsuruLabelPrefix)
 		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsServiceSelector())).String()
 	}
 }
 
 func filteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
-	return InformerFactory(client, tsuruOnlyTweakFunc())
+	return InformerFactory(client, tsuruServiceTweakFunc())
 }
 
 type informerFactoryArgs struct {
@@ -443,11 +551,56 @@ var InformerFactory = func(client *ClusterClient, tweak internalinterfaces.Tweak
 }
 
 var VPAInformerFactory = func(client *ClusterClient) (vpaInformers.SharedInformerFactory, error) {
-	args := newInformerFactoryArgs(client, tsuruOnlyTweakFunc())
+	args := newInformerFactoryArgs(client, tsuruServiceTweakFunc())
 	cli, err := VPAClientForConfig(args.restConfig)
 	if err != nil {
 		return nil, err
 	}
 	tweak := vpaInternalInterfaces.TweakListOptionsFunc(args.tweak)
 	return vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak), nil
+}
+
+func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
+	var evtErr error
+	var kind *permission.PermissionScheme
+	switch evt.Reason {
+	case "Completed":
+		kind = permission.PermJobRun
+	case "BackoffLimitExceeded":
+		kind = permission.PermJobRun
+		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
+	case "SuccessfulCreate":
+		kind = permission.PermJobCreate
+	default:
+		return
+	}
+
+	targetType := event.TargetTypeJob
+	realJobOwner := job.Name
+	for _, owner := range job.OwnerReferences {
+		if owner.Kind == "CronJob" {
+			realJobOwner = owner.Name
+			targetType = event.TargetTypeCronJob
+		}
+	}
+	opts := event.Opts{
+		Kind: kind,
+		Target:       event.Target{Type: targetType, Value: realJobOwner},
+		Allowed: event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
+		RawOwner: event.Owner{Type: event.OwnerTypeInternal},
+		Cancelable: false,
+	}
+	e, err := event.New(&opts)
+	if err != nil {
+		return
+	}
+	customData := map[string]string{
+		"job-name": job.Name,
+		"job-controller": realJobOwner,
+		"event-type": evt.Type,
+		"event-reason": evt.Reason,
+		"message": evt.Message,
+		"cluster-start-time": evt.CreationTimestamp.String(),
+	}
+	e.DoneCustomData(evtErr, customData)
 }
