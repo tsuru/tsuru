@@ -37,6 +37,7 @@ const (
 	LabelAppVersion   = "app-version"
 	LabelAppTeamOwner = "app-team"
 
+	LabelIsTsuruJob   = "tsuru-job"
 	LabelJobName      = "job-name"
 	LabelJobPool      = "job-pool"
 	LabelJobTeamOwner = "job-team"
@@ -475,6 +476,7 @@ func JobLabels(ctx context.Context, job Job) *LabelSet {
 			LabelJobName:      job.GetName(),
 			LabelJobTeamOwner: job.GetTeamOwner(),
 			LabelJobPool:      job.GetPool(),
+			LabelIsTsuruJob:   strconv.FormatBool(true),
 		},
 		RawLabels: map[string]string{
 			"job.kubernetes.io/name":       job.GetName(),
@@ -687,10 +689,18 @@ func subMap(m map[string]string, keys ...string) map[string]string {
 	return result
 }
 
-func IsServiceLabelSet(prefix string) *LabelSet {
+func ServiceLabelSet(prefix string) *LabelSet {
 	labels := map[string]string{
 		labelIsTsuru:   strconv.FormatBool(true),
 		labelIsService: strconv.FormatBool(true),
+	}
+	return &LabelSet{Labels: labels, Prefix: prefix}
+}
+
+func TsuruJobLabelSet(prefix string) *LabelSet {
+	labels := map[string]string{
+		labelIsTsuru:    strconv.FormatBool(true),
+		LabelIsTsuruJob: strconv.FormatBool(true),
 	}
 	return &LabelSet{Labels: labels, Prefix: prefix}
 }
