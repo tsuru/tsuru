@@ -37,7 +37,7 @@ const (
 	LabelAppVersion   = "app-version"
 	LabelAppTeamOwner = "app-team"
 
-	LabelIsTsuruJob   = "tsuru-job"
+	LabelIsTsuruJob   = "is-tsuru-job"
 	LabelJobName      = "job-name"
 	LabelJobPool      = "job-pool"
 	LabelJobTeamOwner = "job-team"
