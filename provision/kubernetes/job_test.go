@@ -7,15 +7,20 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/job"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
+	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sTypes "k8s.io/apimachinery/pkg/types"
 )
 
 func (s *S) TestProvisionerCreateCronJob(c *check.C) {
@@ -574,6 +579,205 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 	}
 	for _, tt := range tests {
 		tt.setup()
+		tt.scenario()
+		tt.testScenario(c)
+	}
+}
+
+func (s *S) TestCreateJobEvent(c *check.C) {
+	boolTrue := true
+	tests := []struct {
+		name         string
+		scenario     func()
+		testScenario func(c *check.C)
+	}{
+		{
+			name: "when job and evt (jobcreate) are valid",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: v1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "c1",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				evt := &apiv1.Event{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Created pod: myjob-somehash",
+					Reason:  "SuccessfulCreate",
+					Type:    "Normal",
+				}
+				createJobEvent(j, evt)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				var gotEvt *event.Event
+				for _, evt := range evts {
+					if evt.Kind.Name == "job.create" {
+						gotEvt = evt
+						break
+					}
+				}
+				c.Assert(gotEvt, check.NotNil)
+				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				expectedCustomData := map[string]string{
+					"job-name":           "myjob",
+					"job-controller":     "myjob",
+					"event-type":         "Normal",
+					"event-reason":       "SuccessfulCreate",
+					"message":            "Created pod: myjob-somehash",
+					"cluster-start-time": v1.Time{}.String(),
+				}
+				gotCustomData := map[string]string{}
+				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
+				c.Assert(err, check.IsNil)
+				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+			},
+		},
+		{
+			name: "when job and evt (jobrun) are valid and job has cronjob owner reference",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+						OwnerReferences: []v1.OwnerReference{
+							{
+								APIVersion:         "batch/v1beta1",
+								Controller:         &boolTrue,
+								BlockOwnerDeletion: &boolTrue,
+								Kind:               "CronJob",
+								Name:               "cronjob-parent",
+								UID:                k8sTypes.UID("1234"),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: v1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "c1",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				evt := &apiv1.Event{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Job completed",
+					Reason:  "Completed",
+					Type:    "Normal",
+				}
+				createJobEvent(j, evt)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				var gotEvt *event.Event
+				for _, evt := range evts {
+					if evt.Kind.Name == "job.run" {
+						gotEvt = evt
+						break
+					}
+				}
+				c.Assert(gotEvt, check.NotNil)
+				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "cronjob-parent"})
+				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "cronjob-parent")))
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				expectedCustomData := map[string]string{
+					"job-name":           "myjob",
+					"job-controller":     "cronjob-parent",
+					"event-type":         "Normal",
+					"event-reason":       "Completed",
+					"message":            "Job completed",
+					"cluster-start-time": v1.Time{}.String(),
+				}
+				gotCustomData := map[string]string{}
+				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
+				c.Assert(err, check.IsNil)
+				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+			},
+		},
+	}
+
+	for _, tt := range tests {
 		tt.scenario()
 		tt.testScenario(c)
 	}
