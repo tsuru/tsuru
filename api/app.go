@@ -1080,7 +1080,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
-	var result []bind.EnvVar
+	var result []appTypes.EnvVar
 	w.Header().Set("Content-Type", "application/json")
 	if len(variables) > 0 {
 		for _, variable := range variables {
@@ -1159,7 +1159,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.Done(err) }()
 	envs := map[string]string{}
-	variables := []bind.EnvVar{}
+	variables := []appTypes.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
 		private := false
@@ -1170,7 +1170,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		if e.Private {
 			private = true
 		}
-		variables = append(variables, bind.EnvVar{
+		variables = append(variables, appTypes.EnvVar{
 			Name:      v.Name,
 			Value:     v.Value,
 			Public:    !private,

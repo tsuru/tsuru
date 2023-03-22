@@ -16,7 +16,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -26,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
@@ -82,23 +82,23 @@ func (s *EventSuite) generateEventCustomData(appName string) *app.DeployOptions 
 	return &app.DeployOptions{
 		App: &app.App{
 			Name: appName,
-			Env: map[string]bind.EnvVar{
+			Env: map[string]appTypes.EnvVar{
 				"MY_PASSWORD": {
 					Name:   "MY_PASSWORD",
 					Public: false,
 					Value:  "password123",
 				},
 			},
-			ServiceEnvs: []bind.ServiceEnvVar{
+			ServiceEnvs: []appTypes.ServiceEnvVar{
 				{
-					EnvVar: bind.EnvVar{
+					EnvVar: appTypes.EnvVar{
 						Name:   "MY_IMPORTANT_VAR",
 						Public: true,
 						Value:  "123",
 					},
 				},
 				{
-					EnvVar: bind.EnvVar{
+					EnvVar: appTypes.EnvVar{
 						Name:   "MY_PRECIOUS_VAR",
 						Public: false,
 						Value:  "123",
@@ -454,23 +454,23 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	err = bson.Unmarshal(result.StartCustomData.Data, deployOptions)
 	c.Assert(err, check.IsNil)
 
-	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
+	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]appTypes.EnvVar{
 		"MY_PASSWORD": {
 			Name:   "MY_PASSWORD",
 			Value:  "*** (private variable)",
 			Alias:  "",
 			Public: false,
 		}})
-	c.Assert(deployOptions.App.ServiceEnvs, check.DeepEquals, []bind.ServiceEnvVar{
+	c.Assert(deployOptions.App.ServiceEnvs, check.DeepEquals, []appTypes.ServiceEnvVar{
 		{
-			EnvVar: bind.EnvVar{
+			EnvVar: appTypes.EnvVar{
 				Name:   "MY_IMPORTANT_VAR",
 				Value:  "123",
 				Public: true,
 			},
 		},
 		{
-			EnvVar: bind.EnvVar{
+			EnvVar: appTypes.EnvVar{
 				Name:  "MY_PRECIOUS_VAR",
 				Value: "*** (private variable)",
 			},
@@ -490,7 +490,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	deployOptions = &app.DeployOptions{}
 	err = bson.Unmarshal(results[0].StartCustomData.Data, deployOptions)
 	c.Assert(err, check.IsNil)
-	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bind.EnvVar{
+	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]appTypes.EnvVar{
 		"MY_PASSWORD": {
 			Name:   "MY_PASSWORD",
 			Value:  "*** (private variable)",

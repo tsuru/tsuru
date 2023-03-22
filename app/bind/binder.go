@@ -8,22 +8,9 @@ package bind
 
 import (
 	"io"
+
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
-
-// EnvVar represents a environment variable for an app.
-type EnvVar struct {
-	Name      string `json:"name"`
-	Value     string `json:"value"`
-	Alias     string `json:"alias"`
-	Public    bool   `json:"public"`
-	ManagedBy string `json:"managedBy,omitempty"`
-}
-
-type ServiceEnvVar struct {
-	EnvVar       `bson:",inline"`
-	ServiceName  string `json:"-"`
-	InstanceName string `json:"-"`
-}
 
 // Unit represents an application unit to be used in binds.
 type Unit interface {
@@ -63,7 +50,7 @@ type Job interface {
 }
 
 type SetEnvArgs struct {
-	Envs          []EnvVar
+	Envs          []appTypes.EnvVar
 	Writer        io.Writer
 	ManagedBy     string
 	PruneUnused   bool
@@ -77,7 +64,7 @@ type UnsetEnvArgs struct {
 }
 
 type AddInstanceArgs struct {
-	Envs          []ServiceEnvVar
+	Envs          []appTypes.ServiceEnvVar
 	Writer        io.Writer
 	ShouldRestart bool
 }

@@ -12,7 +12,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -42,7 +41,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	cmds := []string{"ps", "-ef"}
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	version := newVersionForApp(c, client, app, nil)
-	app.SetEnv(bind.EnvVar{
+	app.SetEnv(appTypes.EnvVar{
 		Name:  "env1",
 		Value: "val1",
 	})

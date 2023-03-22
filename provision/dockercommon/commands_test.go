@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
@@ -54,7 +53,7 @@ func (s *S) TestArchiveBuildCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := bind.EnvVar{
+	tokenEnv := appTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
@@ -71,7 +70,7 @@ func (s *S) TestDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := bind.EnvVar{
+	tokenEnv := appTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
@@ -142,7 +141,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := bind.EnvVar{
+	tokenEnv := appTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,

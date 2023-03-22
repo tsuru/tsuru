@@ -20,7 +20,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
@@ -238,7 +237,7 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	Envs() map[string]bind.EnvVar
+	Envs() map[string]appTypes.EnvVar
 
 	GetMemory() int64
 	GetMilliCPU() int

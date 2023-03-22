@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
@@ -1024,9 +1025,9 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 		ShouldRestart: true,
 	})
@@ -1060,7 +1061,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	siDB, err := GetServiceInstance(context.TODO(), "mysql", si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
-	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{})
+	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []appTypes.ServiceEnvVar{})
 }
 
 func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
@@ -1091,9 +1092,9 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 		ShouldRestart: true,
 	})
@@ -1133,9 +1134,9 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
-	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{
-		{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-		{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []appTypes.ServiceEnvVar{
+		{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 	})
 }
 
@@ -1167,9 +1168,9 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 		ShouldRestart: true,
 	})
@@ -1205,7 +1206,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
-	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{})
+	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []appTypes.ServiceEnvVar{})
 }
 
 func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
@@ -1343,9 +1344,9 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
-	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []bind.ServiceEnvVar{
-		{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-		{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+	c.Assert(a.GetServiceEnvs(), check.DeepEquals, []appTypes.ServiceEnvVar{
+		{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 	})
 }
 

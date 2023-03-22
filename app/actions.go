@@ -221,7 +221,7 @@ var exportEnvironmentsAction = action.Action{
 			return nil, err
 		}
 		t := ctx.Previous.(*auth.Token)
-		envVars := []bind.EnvVar{
+		envVars := []appTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
