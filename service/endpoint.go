@@ -46,6 +46,7 @@ var (
 	reservedProxyPaths = []string{
 		"",
 		"bind-app",
+		"bind-job",
 		"bind",
 	}
 )
@@ -201,11 +202,43 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 }
 
 func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error) {
-	return nil, errors.New("TODO: not implemented yet")
-}
+	log.Debugf("Calling bind of instance %q and %q job at %q API",
+		instance.Name, job.GetName(), instance.ServiceName)
 
-func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
-	return errors.New("TODO: not implemented yet")
+	params, err := buildBindJobParams(ctx, evt, job)
+	if err != nil {
+		log.Errorf("Errors found while building the bind job parameters: %v", err)
+		return nil, err
+	}
+
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-job", "POST", params, header)
+	if err != nil {
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.GetName(), instance.ServiceName, instance.Name))
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusPreconditionFailed:
+		return nil, ErrInstanceNotReady
+	case http.StatusNotFound:
+		return nil, ErrInstanceNotFoundInAPI
+	}
+
+	if resp.StatusCode >= 300 {
+		err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the job %q`, instance.ServiceName, instance.Name, job.GetName())
+		return nil, log.WrapError(err)
+	}
+
+	var result map[string]string
+	err = c.jsonFromResponse(resp, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
@@ -276,6 +309,39 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 		}
 	}
 	return err
+}
+
+func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
+	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.GetName(), instance.ServiceName)
+
+	url := "/resources/" + instance.GetIdentifier() + "/bind-job"
+	params := map[string][]string{
+		"job-name": {job.GetName()},
+		"user":     {evt.Owner.Name},
+		"eventid":  {evt.UniqueID.Hex()},
+	}
+
+	header, err := baseHeader(ctx, evt, instance, requestID)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode > 299 {
+		if resp.StatusCode == http.StatusNotFound {
+			return ErrInstanceNotFoundInAPI
+		}
+
+		err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to unbind (%q)", url)
+		return log.WrapError(err)
+	}
+
+	return nil
 }
 
 func (c *endpointClient) UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
@@ -588,5 +654,38 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 	for _, addr := range c.Addresses {
 		params.Add("app-cluster-addresses", addr)
 	}
+	return params, nil
+}
+
+func buildBindJobParams(ctx context.Context, evt *event.Event, job bind.Job) (url.Values, error) {
+	if job == nil {
+		return nil, errors.New("job cannot be nil")
+	}
+
+	params := url.Values{}
+	params.Set("job-name", job.GetName())
+	if evt != nil {
+		params.Set("user", evt.Owner.Name)
+		params.Set("eventid", evt.UniqueID.Hex())
+	}
+
+	p, err := servicemanager.Pool.FindByName(ctx, job.GetPool())
+	if err != nil {
+		if err == provTypes.ErrPoolNotFound {
+			return params, nil
+		}
+		return nil, err
+	}
+	if p == nil {
+		return params, nil
+	}
+	params.Set("job-pool-name", p.Name)
+
+	c, err := servicemanager.Cluster.FindByPool(ctx, p.Provisioner, p.Name)
+	if err != nil || c == nil {
+		return params, nil
+	}
+	params.Set("job-cluster-name", c.Name)
+
 	return params, nil
 }

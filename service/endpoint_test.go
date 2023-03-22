@@ -531,6 +531,124 @@ func (s *S) TestBindAppInstanceNotFound(c *check.C) {
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
+func (s *S) TestBindJobEndpointDown(c *check.C) {
+	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `Failed to bind job "test-job" to service instance "redis/job-redis": Post .*http://localhost:1234/resources/job-redis/bind-job.*:.*connection refused.*`)
+}
+
+func (s *S) TestBindJobShouldSendAPOSTToTheResourceURL(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
+		return &provTypes.Pool{Name: "test-pool", Provisioner: "kubernetes"}, nil
+	}
+	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
+		return &provTypes.Cluster{
+			Name:        "test-cluster",
+			Provisioner: "kubernetes",
+			Addresses:   []string{"https://kubernetes.example.com", "https://backup.kubernetes.example.com"},
+		}, nil
+	}
+	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+	h.Lock()
+	defer h.Unlock()
+
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-job")
+	c.Assert(h.method, check.Equals, http.MethodPost)
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{
+		"job-name":         {"test-job"},
+		"job-pool-name":    {"test-pool"},
+		"job-cluster-name": {"test-cluster"},
+		"user":             {"my@user"},
+		"eventid":          {evt.UniqueID.Hex()},
+	}
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
+}
+
+func (s *S) TestBindJobShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
+	expected := map[string]string{
+		"MYSQL_DATABASE_NAME": "CHICO",
+		"MYSQL_HOST":          "localhost",
+		"MYSQL_PORT":          "3306",
+	}
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	originalPoolService := servicemanager.Pool
+	servicemanager.Pool = &provTypes.MockPoolService{
+		OnFindByName: func(name string) (*provTypes.Pool, error) {
+			return &provTypes.Pool{Name: "test-default", Provisioner: "docker"}, nil
+		},
+	}
+	defer func() { servicemanager.Pool = originalPoolService }()
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	env, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.IsNil)
+	c.Assert(env, check.DeepEquals, expected)
+}
+
+func (s *S) TestBindJobShouldReturnErrorIfTheRequestFail(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "redis/test-redis" to the job "test-job": invalid response: Server failed to do its job. \(code: 500\)$`)
+}
+
+func (s *S) TestBindJobInstanceNotReady(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusPreconditionFailed)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.Equals, ErrInstanceNotReady)
+}
+
+func (s *S) TestBindJobInstanceNotFound(c *check.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
 func (s *S) TestBindUnit(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -649,6 +767,60 @@ func (s *S) TestUnbindAppInstanceNotFound(c *check.C) {
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindApp(context.TODO(), &instance, a, evt, "")
+	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
+}
+
+func (s *S) TestUnbindJob(c *check.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
+	h.Lock()
+	defer h.Unlock()
+
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/test-redis/bind-job")
+	c.Assert(h.method, check.Equals, http.MethodDelete)
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{
+		"job-name": {"test-job"},
+		"user":     {"my@user"},
+		"eventid":  {evt.UniqueID.Hex()},
+	}
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
+}
+
+func (s *S) TestUnbindJobRequestFailure(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
+
+	c.Assert(err, check.NotNil)
+	expected := `Failed to unbind ("/resources/test-redis/bind-job"): invalid response: Server failed to do its job. (code: 500)`
+	c.Assert(err.Error(), check.Equals, expected)
+}
+
+func (s *S) TestUnbindJobInstanceNotFound(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
+	evt := createEvt(c)
+	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
+
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 

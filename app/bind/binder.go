@@ -57,6 +57,9 @@ type App interface {
 type Job interface {
 	// GetName returns the job name.
 	GetName() string
+
+	// GetPool returns the job pool.
+	GetPool() string
 }
 
 type SetEnvArgs struct {
