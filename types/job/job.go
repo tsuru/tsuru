@@ -4,6 +4,10 @@
 
 package job
 
+import (
+	appTypes "github.com/tsuru/tsuru/types/app"
+)
+
 type Job interface {
 	GetName() string
 	GetPool() string
@@ -25,18 +29,6 @@ type JobSpec struct {
 	BackoffLimit          *int32
 	Schedule              string
 	ContainerInfo         ContainerInfo
-	ServiceEnvs           []ServiceEnv
-	Env                   []EnvVar
-}
-
-type ServiceEnv struct {
-	EnvVar       `bson:",inline"`
-	ServiceName  string `json:"-"`
-	InstanceName string `json:"-"`
-}
-
-type EnvVar struct {
-	Name    string `json:"name"`
-	Value   string `json:"value"`
-	Private bool   `json:"private"`
+	ServiceEnvs           []appTypes.ServiceEnvVar
+	Envs                  []appTypes.EnvVar
 }
