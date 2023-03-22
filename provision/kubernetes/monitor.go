@@ -6,19 +6,14 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	permTypes "github.com/tsuru/tsuru/types/permission"
-	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -151,9 +146,6 @@ func (c *clusterController) startJobInformer() error {
 		AddFunc: func(obj interface{}) {
 			evt, ok := obj.(*apiv1.Event)
 			if !ok {
-				return
-			}
-			if evt.InvolvedObject == (apiv1.ObjectReference{}) {
 				return
 			}
 			if evt.InvolvedObject.Kind != "Job" {
@@ -560,45 +552,3 @@ var VPAInformerFactory = func(client *ClusterClient) (vpaInformers.SharedInforme
 	return vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak), nil
 }
 
-func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
-	var evtErr error
-	var kind *permission.PermissionScheme
-	switch evt.Reason {
-	case "Completed":
-		kind = permission.PermJobRun
-	case "BackoffLimitExceeded":
-		kind = permission.PermJobRun
-		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
-	case "SuccessfulCreate":
-		kind = permission.PermJobCreate
-	default:
-		return
-	}
-
-	realJobOwner := job.Name
-	for _, owner := range job.OwnerReferences {
-		if owner.Kind == "CronJob" {
-			realJobOwner = owner.Name
-		}
-	}
-	opts := event.Opts{
-		Kind:       kind,
-		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},
-		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
-		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
-		Cancelable: false,
-	}
-	e, err := event.New(&opts)
-	if err != nil {
-		return
-	}
-	customData := map[string]string{
-		"job-name":           job.Name,
-		"job-controller":     realJobOwner,
-		"event-type":         evt.Type,
-		"event-reason":       evt.Reason,
-		"message":            evt.Message,
-		"cluster-start-time": evt.CreationTimestamp.String(),
-	}
-	e.DoneCustomData(evtErr, customData)
-}
