@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
@@ -578,6 +579,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 
 func (s *S) TestCreateJobEvent(c *check.C) {
 	boolTrue := true
+	cleanup := func() {
+		err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+		c.Assert(err, check.IsNil)
+	}
 	tests := []struct {
 		name         string
 		scenario     func()
@@ -644,13 +649,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
 				c.Assert(err, check.IsNil)
-				var gotEvt *event.Event
-				for _, evt := range evts {
-					if evt.Kind.Name == "job.create" {
-						gotEvt = evt
-						break
-					}
-				}
+				c.Assert(len(evts), check.Equals, 1)
+				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
 				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
@@ -668,6 +668,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
 				c.Assert(err, check.IsNil)
 				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+				c.Assert(gotEvt.Error, check.Equals, "")
 			},
 		},
 		{
@@ -741,13 +742,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
 				c.Assert(err, check.IsNil)
-				var gotEvt *event.Event
-				for _, evt := range evts {
-					if evt.Kind.Name == "job.run" {
-						gotEvt = evt
-						break
-					}
-				}
+				c.Assert(len(evts), check.Equals, 1)
+				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
 				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "cronjob-parent"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "cronjob-parent")))
@@ -765,6 +761,153 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
 				c.Assert(err, check.IsNil)
 				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+				c.Assert(gotEvt.Error, check.Equals, "")
+			},
+		},
+		{
+			name: "when job and evt (backofflimitexceeded) are valid",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: v1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "c1",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				evt := &apiv1.Event{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Job has reached the specified backoff limit",
+					Reason:  "BackoffLimitExceeded",
+					Type:    "Warning",
+				}
+				createJobEvent(j, evt)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				c.Assert(len(evts), check.Equals, 1)
+				gotEvt := evts[0]
+				c.Assert(gotEvt, check.NotNil)
+				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				expectedCustomData := map[string]string{
+					"job-name":           "myjob",
+					"job-controller":     "myjob",
+					"event-type":         "Warning",
+					"event-reason":       "BackoffLimitExceeded",
+					"message":            "Job has reached the specified backoff limit",
+					"cluster-start-time": v1.Time{}.String(),
+				}
+				gotCustomData := map[string]string{}
+				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
+				c.Assert(err, check.IsNil)
+				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+			},
+		},
+		{
+			name: "when evt reason does not apply",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: v1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "c1",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				evt := &apiv1.Event{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Some error message",
+					Reason:  "SomeOtherReason",
+					Type:    "Warning",
+				}
+				createJobEvent(j, evt)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				c.Assert(len(evts), check.Equals, 0)
 			},
 		},
 	}
@@ -772,5 +915,6 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 	for _, tt := range tests {
 		tt.scenario()
 		tt.testScenario(c)
+		cleanup()
 	}
 }
