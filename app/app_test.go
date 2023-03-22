@@ -54,7 +54,7 @@ func (s *S) TestGetAppByName(c *check.C) {
 	newApp := App{Name: "my-app", Platform: "Django", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &newApp, s.user)
 	c.Assert(err, check.IsNil)
-	newApp.Env = map[string]bind.EnvVar{}
+	newApp.Env = map[string]appTypes.EnvVar{}
 	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, check.IsNil)
 	myApp, err := GetByName(context.TODO(), "my-app")
@@ -1363,14 +1363,14 @@ func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *check.C)
 func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *check.C) {
 	a := App{Name: "how-many-more-times"}
 	c.Assert(a.Env, check.IsNil)
-	env := bind.EnvVar{Name: "PATH", Value: "/"}
+	env := appTypes.EnvVar{Name: "PATH", Value: "/"}
 	a.setEnv(env)
 	c.Assert(a.Env, check.NotNil)
 }
 
 func (s *S) TestSetPublicEnvironmentVariableToApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django"}
-	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: true})
+	a.setEnv(appTypes.EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, check.Equals, "PATH")
 	c.Assert(env.Value, check.Equals, "/")
@@ -1379,7 +1379,7 @@ func (s *S) TestSetPublicEnvironmentVariableToApp(c *check.C) {
 
 func (s *S) TestSetPrivateEnvironmentVariableToApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django"}
-	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: false})
+	a.setEnv(appTypes.EnvVar{Name: "PATH", Value: "/", Public: false})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, check.Equals, "PATH")
 	c.Assert(env.Value, check.Equals, "/")
@@ -1388,8 +1388,8 @@ func (s *S) TestSetPrivateEnvironmentVariableToApp(c *check.C) {
 
 func (s *S) TestSetMultiplePublicEnvironmentVariableToApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django"}
-	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: true})
-	a.setEnv(bind.EnvVar{Name: "DATABASE", Value: "mongodb", Public: true})
+	a.setEnv(appTypes.EnvVar{Name: "PATH", Value: "/", Public: true})
+	a.setEnv(appTypes.EnvVar{Name: "DATABASE", Value: "mongodb", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, check.Equals, "PATH")
 	c.Assert(env.Value, check.Equals, "/")
@@ -1402,8 +1402,8 @@ func (s *S) TestSetMultiplePublicEnvironmentVariableToApp(c *check.C) {
 
 func (s *S) TestSetMultiplePrivateEnvironmentVariableToApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django"}
-	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: false})
-	a.setEnv(bind.EnvVar{Name: "DATABASE", Value: "mongodb", Public: false})
+	a.setEnv(appTypes.EnvVar{Name: "PATH", Value: "/", Public: false})
+	a.setEnv(appTypes.EnvVar{Name: "DATABASE", Value: "mongodb", Public: false})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, check.Equals, "PATH")
 	c.Assert(env.Value, check.Equals, "/")
@@ -1417,9 +1417,9 @@ func (s *S) TestSetMultiplePrivateEnvironmentVariableToApp(c *check.C) {
 func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
-		ServiceEnvs: []bind.ServiceEnvVar{
+		ServiceEnvs: []appTypes.ServiceEnvVar{
 			{
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Name:   "DATABASE_HOST",
 					Value:  "localhost",
 					Public: false,
@@ -1435,7 +1435,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	newSuccessfulAppVersion(c, &a)
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	envs := []bind.EnvVar{
+	envs := []appTypes.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
@@ -1456,7 +1456,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
@@ -1478,7 +1478,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
@@ -1490,7 +1490,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	envs := []bind.EnvVar{
+	envs := []appTypes.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
@@ -1509,7 +1509,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
@@ -1528,7 +1528,7 @@ func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
 func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
@@ -1540,7 +1540,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	envs := []bind.EnvVar{
+	envs := []appTypes.EnvVar{
 		{
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
@@ -1559,7 +1559,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "remotehost",
@@ -1599,7 +1599,7 @@ func (s *S) TestSetEnvsValidation(c *check.C) {
 		{"0NO_LEADING_NUMBER", false},
 	}
 	for _, test := range tests {
-		envs := []bind.EnvVar{
+		envs := []appTypes.EnvVar{
 			{
 				Name:  test.envName,
 				Value: "any value",
@@ -1617,16 +1617,16 @@ func (s *S) TestSetEnvsValidation(c *check.C) {
 func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"DATABASE_PASSWORD": {
 				Name:   "DATABASE_PASSWORD",
 				Value:  "123",
 				Public: false,
 			},
 		},
-		ServiceEnvs: []bind.ServiceEnvVar{
+		ServiceEnvs: []appTypes.ServiceEnvVar{
 			{
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Name:   "DATABASE_HOST",
 					Value:  "localhost",
 					Public: false,
@@ -1651,7 +1651,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
@@ -1667,7 +1667,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
@@ -1695,13 +1695,13 @@ func (s *S) TestUnsetEnvWithNoRestartFlag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(newApp.Env, check.DeepEquals, map[string]appTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	a := App{
 		Name: "myapp",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"DATABASE_HOST": {
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
@@ -1725,13 +1725,13 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(newApp.Env, check.DeepEquals, map[string]appTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *check.C) {
 	a := App{Name: "whole-lotta-love"}
-	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/"})
+	a.setEnv(appTypes.EnvVar{Name: "PATH", Value: "/"})
 	v, err := a.getEnv("PATH")
 	c.Assert(err, check.IsNil)
 	c.Assert(v.Value, check.Equals, "/")
@@ -1739,7 +1739,7 @@ func (s *S) TestGetEnvironmentVariableFromApp(c *check.C) {
 
 func (s *S) TestGetEnvReturnsErrorIfTheVariableIsNotDeclared(c *check.C) {
 	a := App{Name: "what-is-and-what-should-never"}
-	a.Env = make(map[string]bind.EnvVar)
+	a.Env = make(map[string]appTypes.EnvVar)
 	_, err := a.getEnv("PATH")
 	c.Assert(err, check.NotNil)
 }
@@ -1751,13 +1751,13 @@ func (s *S) TestGetEnvReturnsErrorIfTheEnvironmentMapIsNil(c *check.C) {
 }
 
 func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *check.C) {
-	envs := []bind.ServiceEnvVar{
-		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, ServiceName: "srv1", InstanceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "srv1", InstanceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "postgresaddr"}, ServiceName: "srv2", InstanceName: "postgres"},
-		{EnvVar: bind.EnvVar{Name: "HOST", Value: "10.0.2.1"}, ServiceName: "srv3", InstanceName: "redis"},
+	envs := []appTypes.ServiceEnvVar{
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "srv1", InstanceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "postgresaddr"}, ServiceName: "srv2", InstanceName: "postgres"},
+		{EnvVar: appTypes.EnvVar{Name: "HOST", Value: "10.0.2.1"}, ServiceName: "srv3", InstanceName: "redis"},
 	}
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost"},
 		"DATABASE_USER": {Name: "DATABASE_USER", Value: "root"},
 	}
@@ -1767,7 +1767,7 @@ func (s *S) TestInstanceEnvironmentReturnEnvironmentVariablesForTheServer(c *che
 
 func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *check.C) {
 	a := App{Name: "hi-there"}
-	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(a.InstanceEnvs("srv1", "mysql"), check.DeepEquals, map[string]appTypes.EnvVar{})
 }
 
 func (s *S) TestAddCName(c *check.C) {
@@ -2051,10 +2051,10 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
-			{EnvVar: bind.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
-			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, InstanceName: "myinstance", ServiceName: "srv1"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
 		ShouldRestart: true,
 	})
@@ -2081,7 +2081,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	delete(allEnvs, "TSURU_APPDIR")
 	delete(allEnvs, "TSURU_APPNAME")
 	delete(allEnvs, "TSURU_APP_TOKEN")
-	c.Assert(allEnvs, check.DeepEquals, map[string]bind.EnvVar{
+	c.Assert(allEnvs, check.DeepEquals, map[string]appTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
@@ -2106,16 +2106,16 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ZMQ_PEER", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
 	// inserts duplicated
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ZMQ_PEER", Value: "8.8.8.8"}, InstanceName: "myinstance", ServiceName: "srv1"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ZMQ_PEER", Value: "8.8.8.8"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		},
 		ShouldRestart: true,
 	})
@@ -2134,7 +2134,7 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["ZMQ_PEER"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["ZMQ_PEER"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "ZMQ_PEER",
 		Value:  "8.8.8.8",
 		Public: false,
@@ -2149,8 +2149,8 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
 		ShouldRestart: true,
 	})
@@ -2171,7 +2171,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "DATABASE_HOST",
 		Value:  "localhost",
 		Public: false,
@@ -2187,8 +2187,8 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
 		ShouldRestart: false,
 	})
@@ -2209,7 +2209,7 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "DATABASE_HOST",
 		Value:  "localhost",
 		Public: false,
@@ -2222,22 +2222,22 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host3"}, InstanceName: "instance3", ServiceName: "mongodb"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "host3"}, InstanceName: "instance3", ServiceName: "mongodb"},
 		},
 		ShouldRestart: false,
 	})
@@ -2264,7 +2264,7 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "DATABASE_HOST",
 		Value:  "host3",
 		Public: false,
@@ -2276,21 +2276,21 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "host1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_HOST", Value: "host2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "DATABASE_HOST",
 		Value:  "host2",
 		Public: false,
@@ -2315,7 +2315,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs = a.Envs()
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{
 		Name:   "DATABASE_HOST",
 		Value:  "host1",
 		Public: false,
@@ -2336,8 +2336,8 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
 		},
 		ShouldRestart: false,
 	})
@@ -2349,7 +2349,7 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{})
+	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, appTypes.EnvVar{})
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
@@ -2361,16 +2361,16 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 	a := &App{Name: "dark", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	toAdd := []bind.ServiceEnvVar{
-		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "yourdb"}, InstanceName: "yourdb", ServiceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "hisdb"}, InstanceName: "hisdb", ServiceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "herdb"}, InstanceName: "herdb", ServiceName: "mysql"},
-		{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "ourdb"}, InstanceName: "ourdb", ServiceName: "mysql"},
+	toAdd := []appTypes.ServiceEnvVar{
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "yourdb"}, InstanceName: "yourdb", ServiceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "hisdb"}, InstanceName: "hisdb", ServiceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "herdb"}, InstanceName: "herdb", ServiceName: "mysql"},
+		{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "ourdb"}, InstanceName: "ourdb", ServiceName: "mysql"},
 	}
 	for _, env := range toAdd {
 		err = a.AddInstance(bind.AddInstanceArgs{
-			Envs:          []bind.ServiceEnvVar{env},
+			Envs:          []appTypes.ServiceEnvVar{env},
 			ShouldRestart: false,
 		})
 		c.Assert(err, check.IsNil)
@@ -2401,7 +2401,7 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, appTypes.EnvVar{
 		Name:  "DATABASE_NAME",
 		Value: "ourdb",
 	})
@@ -2412,7 +2412,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		Envs:          []appTypes.ServiceEnvVar{{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
@@ -2435,7 +2435,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, appTypes.EnvVar{
 		Name:  "DATABASE_NAME",
 		Value: "mydb",
 	})
@@ -2446,7 +2446,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	err := CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		Envs:          []appTypes.ServiceEnvVar{{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
@@ -2469,7 +2469,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 			}},
 		},
 	})
-	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, appTypes.EnvVar{
 		Name:  "DATABASE_NAME",
 		Value: "mydb",
 	})
@@ -2483,7 +2483,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		Envs:          []appTypes.ServiceEnvVar{{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
@@ -2500,7 +2500,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
-	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, appTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
 
@@ -2512,7 +2512,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs:          []bind.ServiceEnvVar{{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
+		Envs:          []appTypes.ServiceEnvVar{{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
@@ -2529,7 +2529,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
-	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bind.EnvVar{})
+	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, appTypes.EnvVar{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
@@ -3608,7 +3608,7 @@ func (s *S) TestRunWithoutUnitsIsolated(c *check.C) {
 func (s *S) TestEnvs(c *check.C) {
 	app := App{
 		Name: "time",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
 				Value:  "http://theirproxy.com:3128/",
@@ -3616,7 +3616,7 @@ func (s *S) TestEnvs(c *check.C) {
 			},
 		},
 	}
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
 			Value:  "http://theirproxy.com:3128/",
@@ -3634,14 +3634,14 @@ func (s *S) TestEnvs(c *check.C) {
 func (s *S) TestEnvsInterpolate(c *check.C) {
 	app := App{
 		Name: "time",
-		ServiceEnvs: []bind.ServiceEnvVar{
+		ServiceEnvs: []appTypes.ServiceEnvVar{
 			{
-				EnvVar:       bind.EnvVar{Name: "DB_HOST", Value: "host1"},
+				EnvVar:       appTypes.EnvVar{Name: "DB_HOST", Value: "host1"},
 				ServiceName:  "srv1",
 				InstanceName: "inst1",
 			},
 		},
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"a":  {Name: "a", Value: "1"},
 			"aa": {Name: "aa", Alias: "c"},
 			"b":  {Name: "b", Alias: "a"},
@@ -3661,7 +3661,7 @@ func (s *S) TestEnvsInterpolate(c *check.C) {
 			"i": {Name: "i", Alias: "notfound"},
 		},
 	}
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"a":              {Name: "a", Value: "1"},
 		"aa":             {Name: "aa", Value: "1", Alias: "c"},
 		"b":              {Name: "b", Value: "1", Alias: "a"},
@@ -3681,7 +3681,7 @@ func (s *S) TestEnvsInterpolate(c *check.C) {
 func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 	app := App{
 		Name: "time",
-		Env: map[string]bind.EnvVar{
+		Env: map[string]appTypes.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
 				Value:  "http://theirproxy.com:3128/",
@@ -3692,9 +3692,9 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 				Value: "manual_host",
 			},
 		},
-		ServiceEnvs: []bind.ServiceEnvVar{
+		ServiceEnvs: []appTypes.ServiceEnvVar{
 			{
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Name:  "DB_HOST",
 					Value: "host1",
 				},
@@ -3702,7 +3702,7 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 				InstanceName: "inst1",
 			},
 			{
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Name:  "DB_HOST",
 					Value: "host2",
 				},
@@ -3711,7 +3711,7 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 			},
 		},
 	}
-	expected := map[string]bind.EnvVar{
+	expected := map[string]appTypes.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
 			Value:  "http://theirproxy.com:3128/",
@@ -3949,11 +3949,11 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Teams:     []string{"tsuruteam"},
 			TeamOwner: "tsuruteam",
 			Owner:     "whydidifall@thewho.com",
-			Env: map[string]bind.EnvVar{
+			Env: map[string]appTypes.EnvVar{
 				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app1"},
 				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
 			},
-			ServiceEnvs: []bind.ServiceEnvVar{},
+			ServiceEnvs: []appTypes.ServiceEnvVar{},
 			Plan: appTypes.Plan{
 				Name:    "default-plan",
 				Memory:  1024,
@@ -3977,11 +3977,11 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Teams:     []string{"tsuruteam"},
 			TeamOwner: "tsuruteam",
 			Owner:     "whydidifall@thewho.com",
-			Env: map[string]bind.EnvVar{
+			Env: map[string]appTypes.EnvVar{
 				"TSURU_APPNAME": {Name: "TSURU_APPNAME", Value: "app2"},
 				"TSURU_APPDIR":  {Name: "TSURU_APPDIR", Value: "/home/application/current"},
 			},
-			ServiceEnvs: []bind.ServiceEnvVar{},
+			ServiceEnvs: []appTypes.ServiceEnvVar{},
 			Plan: appTypes.Plan{
 				Name:    "default-plan",
 				Memory:  1024,
@@ -4044,8 +4044,8 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 			CName:       []string{},
 			Teams:       []string{"tsuruteam"},
 			TeamOwner:   "tsuruteam",
-			Env:         map[string]bind.EnvVar{},
-			ServiceEnvs: []bind.ServiceEnvVar{},
+			Env:         map[string]appTypes.EnvVar{},
+			ServiceEnvs: []appTypes.ServiceEnvVar{},
 			Router:      "fake",
 			RouterOpts:  map[string]string{},
 			Tags:        []string{},

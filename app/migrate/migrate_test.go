@@ -13,7 +13,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
@@ -79,18 +78,18 @@ func (s *S) TestMigrateAppPlanRouterToRouterWithoutDefaultRouter(c *check.C) {
 func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 	tests := []struct {
 		app                 app.App
-		expected            []bind.ServiceEnvVar
-		expectedAllEnvs     map[string]bind.EnvVar
+		expected            []appTypes.ServiceEnvVar
+		expectedAllEnvs     map[string]appTypes.EnvVar
 		expectedServicesEnv string
 	}{
 		{
 			app:             app.App{},
-			expected:        []bind.ServiceEnvVar{},
-			expectedAllEnvs: map[string]bind.EnvVar{},
+			expected:        []appTypes.ServiceEnvVar{},
+			expectedAllEnvs: map[string]appTypes.EnvVar{},
 		},
 		{
 			app: app.App{
-				Env: map[string]bind.EnvVar{
+				Env: map[string]appTypes.EnvVar{
 					"TSURU_SERVICES": {
 						Name: "TSURU_SERVICES",
 						Value: `{
@@ -103,56 +102,56 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val2"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val2"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst2",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val3"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val3"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst3",
 				},
 			},
-			expectedAllEnvs: map[string]bind.EnvVar{
+			expectedAllEnvs: map[string]appTypes.EnvVar{
 				"ENV1": {Name: "ENV1", Value: "val3"},
 			},
 		},
 		{
 			app: app.App{
-				Env: map[string]bind.EnvVar{
+				Env: map[string]appTypes.EnvVar{
 					"TSURU_SERVICES": {
 						Name:  "TSURU_SERVICES",
 						Value: `{"srv1": [{"instance_name": "myinst","envs": {"ENV1": "val1"}}]}`,
 					},
 				},
-				ServiceEnvs: []bind.ServiceEnvVar{
+				ServiceEnvs: []appTypes.ServiceEnvVar{
 					{
-						EnvVar:       bind.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
+						EnvVar:       appTypes.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
 						ServiceName:  "srv2",
 						InstanceName: "myinst",
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
+					EnvVar:       appTypes.EnvVar{Name: "NO_MIGRATION_VAR", Value: "valx"},
 					ServiceName:  "srv2",
 					InstanceName: "myinst",
 				},
 			},
-			expectedAllEnvs: map[string]bind.EnvVar{
+			expectedAllEnvs: map[string]appTypes.EnvVar{
 				"ENV1":             {Name: "ENV1", Value: "val1"},
 				"NO_MIGRATION_VAR": {Name: "NO_MIGRATION_VAR", Value: "valx"},
 			},
@@ -160,7 +159,7 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		},
 		{
 			app: app.App{
-				Env: map[string]bind.EnvVar{
+				Env: map[string]appTypes.EnvVar{
 					"OTHER_VAR": {
 						Name:  "OTHER_VAR",
 						Value: "otherval",
@@ -179,24 +178,24 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 					},
 				},
 			},
-			expected: []bind.ServiceEnvVar{
+			expected: []appTypes.ServiceEnvVar{
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV1", Value: "val1"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV1", Value: "val1"},
 					ServiceName:  "srv1",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV2", Value: "val2"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV2", Value: "val2"},
 					ServiceName:  "srv2",
 					InstanceName: "myinst",
 				},
 				{
-					EnvVar:       bind.EnvVar{Name: "ENV3", Value: "val3"},
+					EnvVar:       appTypes.EnvVar{Name: "ENV3", Value: "val3"},
 					ServiceName:  "srv3",
 					InstanceName: "myinst2",
 				},
 			},
-			expectedAllEnvs: map[string]bind.EnvVar{
+			expectedAllEnvs: map[string]appTypes.EnvVar{
 				"ENV1":      {Name: "ENV1", Value: "val1"},
 				"ENV2":      {Name: "ENV2", Value: "val2"},
 				"ENV3":      {Name: "ENV3", Value: "val3"},

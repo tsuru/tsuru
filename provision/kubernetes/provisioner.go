@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -1941,7 +1940,7 @@ func normalizeConfigs(version appTypes.AppVersion) (*provTypes.TsuruYamlKubernet
 	return config, nil
 }
 
-func EnvsForApp(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []bind.EnvVar {
+func EnvsForApp(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []appTypes.EnvVar {
 	envs := provision.EnvsForApp(a, process, isDeploy, version)
 	if isDeploy {
 		return envs
@@ -1963,15 +1962,15 @@ func EnvsForApp(a provision.App, process string, version appTypes.AppVersion, is
 		}
 		portValue[i] = fmt.Sprintf("%d", targetPort)
 	}
-	portEnv := bind.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")}
+	portEnv := appTypes.EnvVar{Name: fmt.Sprintf("PORT_%s", process), Value: strings.Join(portValue, ",")}
 	if !isDefaultPort(portsConfig) {
 		envs = removeDefaultPortEnvs(envs)
 	}
 	return append(envs, portEnv)
 }
 
-func removeDefaultPortEnvs(envs []bind.EnvVar) []bind.EnvVar {
-	envsWithoutPort := []bind.EnvVar{}
+func removeDefaultPortEnvs(envs []appTypes.EnvVar) []appTypes.EnvVar {
+	envsWithoutPort := []appTypes.EnvVar{}
 	defaultPortEnvs := provision.DefaultWebPortEnvs()
 	for _, env := range envs {
 		isDefaultPortEnv := false

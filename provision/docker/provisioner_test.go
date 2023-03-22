@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/permission"
@@ -1252,7 +1251,7 @@ func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 	a := provisiontest.NewFakeApp("almah", "static", 1)
 	_, err := newSuccessfulVersionForApp(s.p, a, nil)
 	c.Assert(err, check.IsNil)
-	a.SetEnv(bind.EnvVar{Name: "ENV", Value: "OK"})
+	a.SetEnv(appTypes.EnvVar{Name: "ENV", Value: "OK"})
 	var stdout, stderr bytes.Buffer
 	var created bool
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

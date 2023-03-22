@@ -12,9 +12,10 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type AppWithPlanRouter struct {
@@ -80,7 +81,7 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 		if err != nil {
 			return err
 		}
-		envsMap := map[bind.ServiceEnvVar]struct{}{}
+		envsMap := map[appTypes.ServiceEnvVar]struct{}{}
 		for _, sEnv := range a.ServiceEnvs {
 			envsMap[sEnv] = struct{}{}
 		}
@@ -89,15 +90,15 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 			serviceNames = append(serviceNames, serviceName)
 		}
 		sort.Strings(serviceNames)
-		var serviceEnvs []bind.ServiceEnvVar
+		var serviceEnvs []appTypes.ServiceEnvVar
 		for _, serviceName := range serviceNames {
 			instances := data[serviceName]
 			for _, instance := range instances {
 				for k, v := range instance.Envs {
-					toAppendEnv := bind.ServiceEnvVar{
+					toAppendEnv := appTypes.ServiceEnvVar{
 						ServiceName:  serviceName,
 						InstanceName: instance.InstanceName,
-						EnvVar:       bind.EnvVar{Name: k, Value: v},
+						EnvVar:       appTypes.EnvVar{Name: k, Value: v},
 					}
 					if _, ok := envsMap[toAppendEnv]; !ok {
 						serviceEnvs = append(serviceEnvs, toAppendEnv)

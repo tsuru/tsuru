@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -421,9 +422,9 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 	result, err := setBoundEnvsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	args := bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 	}
 	c.Assert(result, check.DeepEquals, args)
@@ -434,16 +435,16 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
 	_, err := setBoundEnvsAction.Forward(ctx)
-	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgs.")
+	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgsx	.")
 }
 
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	err := a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 		ShouldRestart: true,
 	})
@@ -766,9 +767,9 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
-			{EnvVar: bind.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-			{EnvVar: bind.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		Envs: []appTypes.ServiceEnvVar{
+			{EnvVar: appTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: appTypes.EnvVar{Name: "ENV2", Value: "VAL2"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
 		ShouldRestart: true,
 	})
@@ -785,5 +786,5 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	_, err = removeBoundEnvs.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	envs := a.GetServiceEnvs()
-	c.Assert(envs, check.DeepEquals, []bind.ServiceEnvVar{})
+	c.Assert(envs, check.DeepEquals, []appTypes.ServiceEnvVar{})
 }

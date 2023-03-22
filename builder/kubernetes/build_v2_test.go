@@ -22,11 +22,10 @@ import (
 	"google.golang.org/grpc/status"
 	check "gopkg.in/check.v1"
 
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	apptypes "github.com/tsuru/tsuru/types/app"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
@@ -162,8 +161,8 @@ func (s *S) TestBuildV2_BuildWithSourceCode(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	a.SetEnv(bind.EnvVar{Name: "MY_ENV1", Value: "value 1"})
-	a.SetEnv(bind.EnvVar{Name: "MY_ENV2", Value: "value 2"})
+	a.SetEnv(appTypes.EnvVar{Name: "MY_ENV1", Value: "value 1"})
+	a.SetEnv(appTypes.EnvVar{Name: "MY_ENV2", Value: "value 2"})
 
 	s.mockService.PlatformImage.OnCurrentImage = func(registry imagetypes.ImageRegistry, platform string) (string, error) {
 		if c.Check(registry, check.DeepEquals, imagetypes.ImageRegistry("")) &&
@@ -588,13 +587,13 @@ func (s *S) TestPlatformBuildV2_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := s.b.PlatformBuildV2(ctx, apptypes.PlatformOptions{})
+	_, err := s.b.PlatformBuildV2(ctx, appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "context canceled")
 }
 
 func (s *S) TestPlatformBuildV2_MissingBuildServiceAddress(c *check.C) {
-	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{})
+	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
 	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
@@ -606,7 +605,7 @@ func (s *S) TestPlatformBuildV2_ClusterWithPlatformBuildDisabled(c *check.C) {
 	s.clusterClient.CustomData[disablePlatformBuildKey] = "true"
 
 	var output bytes.Buffer
-	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
 		Output: &output,
 	})
 	c.Assert(err, check.NotNil)
@@ -619,7 +618,7 @@ func (s *S) TestPlatformBuildV2_ClusterWithoutRegistry(c *check.C) {
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
 	var output bytes.Buffer
-	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
 		Output: &output,
 	})
 	c.Assert(err, check.NotNil)
@@ -632,7 +631,7 @@ func (s *S) TestPlatformBuildV2_RollbackVersion(c *check.C) {
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
-	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{RollbackVersion: 42})
+	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{RollbackVersion: 42})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "rollback not implemented")
 }
@@ -646,7 +645,7 @@ func (s *S) TestPlatformBuildV2_BuildServiceReturnsError(c *check.C) {
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
-	_, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{})
+	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "something went wrong").Error())
 }
@@ -684,7 +683,7 @@ func (s *S) TestPlatformBuildV2_SuccesfulPlatformBuild(c *check.C) {
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
 	var output bytes.Buffer
-	images, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+	images, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
 		Name:      "my-platform",
 		Version:   42,
 		ExtraTags: []string{"latest"},
@@ -726,7 +725,7 @@ func (s *S) TestPlatformBuildV2_InsecureRegistry_SuccessfulPlatformBuild(c *chec
 	s.clusterClient.CustomData[registryInsecureKey] = "true"
 
 	var output bytes.Buffer
-	images, err := s.b.PlatformBuildV2(context.TODO(), apptypes.PlatformOptions{
+	images, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
 		Name:      "my-platform",
 		Version:   42,
 		ExtraTags: []string{"latest"},

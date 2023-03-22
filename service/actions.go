@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 // notifyCreateServiceInstance is an action that calls the service endpoint
@@ -380,12 +381,12 @@ var setBoundEnvsAction = &action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 		}
 		envMap := ctx.Previous.(map[string]string)
-		envs := make([]bind.ServiceEnvVar, 0, len(envMap))
+		envs := make([]appTypes.ServiceEnvVar, 0, len(envMap))
 		for k, v := range envMap {
-			envs = append(envs, bind.ServiceEnvVar{
+			envs = append(envs, appTypes.ServiceEnvVar{
 				ServiceName:  args.serviceInstance.ServiceName,
 				InstanceName: args.serviceInstance.Name,
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Public: false,
 					Name:   k,
 					Value:  v,
@@ -424,12 +425,12 @@ var setJobBoundEnvsAction = &action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
 		envMap := ctx.Previous.(map[string]string)
-		envs := make([]bind.ServiceEnvVar, 0, len(envMap))
+		envs := make([]appTypes.ServiceEnvVar, 0, len(envMap))
 		for k, v := range envMap {
-			envs = append(envs, bind.ServiceEnvVar{
+			envs = append(envs, appTypes.ServiceEnvVar{
 				ServiceName:  args.serviceInstance.ServiceName,
 				InstanceName: args.serviceInstance.Name,
-				EnvVar: bind.EnvVar{
+				EnvVar: appTypes.EnvVar{
 					Public: false,
 					Name:   k,
 					Value:  v,

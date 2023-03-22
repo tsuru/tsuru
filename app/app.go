@@ -103,8 +103,8 @@ const (
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env             map[string]bind.EnvVar
-	ServiceEnvs     []bind.ServiceEnvVar
+	Env             map[string]appTypes.EnvVar
+	ServiceEnvs     []appTypes.ServiceEnvVar
 	Platform        string `bson:"framework"`
 	PlatformVersion string
 	Name            string
@@ -1204,9 +1204,9 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 }
 
 // setEnv sets the given environment variable in the app.
-func (app *App) setEnv(env bind.EnvVar) {
+func (app *App) setEnv(env appTypes.EnvVar) {
 	if app.Env == nil {
-		app.Env = make(map[string]bind.EnvVar)
+		app.Env = make(map[string]appTypes.EnvVar)
 	}
 	app.Env[env.Name] = env
 	if env.Public {
@@ -1216,11 +1216,11 @@ func (app *App) setEnv(env bind.EnvVar) {
 
 // getEnv returns the environment variable if it's declared in the app. It will
 // return an error if the variable is not defined in this app.
-func (app *App) getEnv(name string) (bind.EnvVar, error) {
+func (app *App) getEnv(name string) (appTypes.EnvVar, error) {
 	if env, ok := app.Env[name]; ok {
 		return env, nil
 	}
-	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
+	return appTypes.EnvVar{}, errors.New("Environment variable not declared for this app.")
 }
 
 // validateNew checks app name format, pool and plan
@@ -1317,8 +1317,8 @@ func (app *App) ValidateService(services ...string) error {
 
 // InstanceEnvs returns a map of environment variables that belongs to the
 // given service and service instance.
-func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bind.EnvVar {
-	envs := make(map[string]bind.EnvVar)
+func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]appTypes.EnvVar {
+	envs := make(map[string]appTypes.EnvVar)
 	for _, env := range app.ServiceEnvs {
 		if env.ServiceName == serviceName && env.InstanceName == instanceName {
 			envs[env.Name] = env.EnvVar
@@ -1715,7 +1715,7 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
+func interpolate(mergedEnvs map[string]appTypes.EnvVar, toInterpolate map[string]string, envName, varName string) {
 	delete(toInterpolate, envName)
 	if toInterpolate[varName] != "" {
 		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
@@ -1730,8 +1730,8 @@ func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]str
 }
 
 // Envs returns a map representing the apps environment variables.
-func (app *App) Envs() map[string]bind.EnvVar {
-	mergedEnvs := make(map[string]bind.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
+func (app *App) Envs() map[string]appTypes.EnvVar {
+	mergedEnvs := make(map[string]appTypes.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
 	toInterpolate := make(map[string]string)
 	var toInterpolateKeys []string
 	for _, e := range app.Env {
@@ -1882,7 +1882,7 @@ func (app *App) RemoveCName(cnames ...string) error {
 	return err
 }
 
-func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
+func serviceEnvsFromEnvVars(vars []appTypes.ServiceEnvVar) appTypes.EnvVar {
 	type serviceInstanceEnvs struct {
 		InstanceName string            `json:"instance_name"`
 		Envs         map[string]string `json:"envs"`
@@ -1905,7 +1905,7 @@ func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
 		}
 	}
 	jsonVal, _ := json.Marshal(result)
-	return bind.EnvVar{
+	return appTypes.EnvVar{
 		Name:   TsuruServicesEnvVar,
 		Value:  string(jsonVal),
 		Public: false,
@@ -2977,7 +2977,7 @@ func (app *App) RemoveAutoScale(process string) error {
 	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
 }
 
-func envInSet(envName string, envs []bind.EnvVar) bool {
+func envInSet(envName string, envs []appTypes.EnvVar) bool {
 	for _, e := range envs {
 		if e.Name == envName {
 			return true
