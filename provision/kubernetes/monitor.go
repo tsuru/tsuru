@@ -551,4 +551,3 @@ var VPAInformerFactory = func(client *ClusterClient) (vpaInformers.SharedInforme
 	tweak := vpaInternalInterfaces.TweakListOptionsFunc(args.tweak)
 	return vpaInformers.NewFilteredSharedInformerFactory(cli, args.resync, metav1.NamespaceAll, tweak), nil
 }
-
