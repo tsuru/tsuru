@@ -539,7 +539,7 @@ func (s *S) TestBindJobEndpointDown(c *check.C) {
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
 
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, `Failed to bind job "test-job" to service instance "redis/job-redis": Post .*http://localhost:1234/resources/job-redis/bind-job.*:.*connection refused.*`)
+	c.Assert(err, check.ErrorMatches, `Failed to bind job "test-job" to service instance "redis/job-redis": Put .*http://localhost:1234/resources/job-redis/jobs/test-job/bind.*:.*connection refused.*`)
 }
 
 func (s *S) TestBindJobShouldSendAPOSTToTheResourceURL(c *check.C) {
@@ -565,8 +565,8 @@ func (s *S) TestBindJobShouldSendAPOSTToTheResourceURL(c *check.C) {
 	defer h.Unlock()
 
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-job")
-	c.Assert(h.method, check.Equals, http.MethodPost)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/jobs/"+job.Name+"/bind")
+	c.Assert(h.method, check.Equals, http.MethodPut)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
@@ -783,17 +783,10 @@ func (s *S) TestUnbindJob(c *check.C) {
 	defer h.Unlock()
 
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url, check.Equals, "/resources/test-redis/bind-job")
+	c.Assert(h.url, check.Equals, "/resources/test-redis/jobs/test-job/bind")
 	c.Assert(h.method, check.Equals, http.MethodDelete)
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
-	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, check.IsNil)
-	expected := map[string][]string{
-		"job-name": {"test-job"},
-		"user":     {"my@user"},
-		"eventid":  {evt.UniqueID.Hex()},
-	}
-	c.Assert(map[string][]string(v), check.DeepEquals, expected)
+	c.Assert(string(h.body), check.Equals, "")
 }
 
 func (s *S) TestUnbindJobRequestFailure(c *check.C) {
@@ -806,7 +799,7 @@ func (s *S) TestUnbindJobRequestFailure(c *check.C) {
 	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
 
 	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/test-redis/bind-job"): invalid response: Server failed to do its job. (code: 500)`
+	expected := `Failed to unbind ("/resources/test-redis/jobs/test-job/bind"): invalid response: Server failed to do its job. (code: 500)`
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
