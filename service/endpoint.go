@@ -215,7 +215,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind-job", "POST", params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/jobs/"+job.GetName()+"/bind", http.MethodPut, params, header)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.GetName(), instance.ServiceName, instance.Name))
 	}
@@ -314,19 +314,14 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.GetName(), instance.ServiceName)
 
-	url := "/resources/" + instance.GetIdentifier() + "/bind-job"
-	params := map[string][]string{
-		"job-name": {job.GetName()},
-		"user":     {evt.Owner.Name},
-		"eventid":  {evt.UniqueID.Hex()},
-	}
+	url := "/resources/" + instance.GetIdentifier() + "/jobs/" + job.GetName() + "/bind"
 
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
+	resp, err := c.issueRequest(ctx, url, http.MethodDelete, nil, header)
 	if err != nil {
 		return err
 	}
@@ -532,14 +527,19 @@ func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error
 }
 
 func (c *endpointClient) issueRequest(ctx context.Context, path, method string, params map[string][]string, header http.Header) (*http.Response, error) {
-	v := url.Values(params)
 	var suffix string
-	var body io.Reader
-	if method == "GET" {
-		suffix = "?" + v.Encode()
-	} else {
-		body = strings.NewReader(v.Encode())
+	var body io.Reader = nil
+
+	if params != nil {
+		v := url.Values(params)
+
+		if method == "GET" {
+			suffix = "?" + v.Encode()
+		} else {
+			body = strings.NewReader(v.Encode())
+		}
 	}
+
 	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {

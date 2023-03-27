@@ -435,7 +435,7 @@ func (s *S) TestSetBoundEnvsActionForward(c *check.C) {
 func (s *S) TestSetBoundEnvsActionForwardWrongParameter(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
 	_, err := setBoundEnvsAction.Forward(ctx)
-	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgsx	.")
+	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindAppPipelineArgs.")
 }
 
 func (s *S) TestSetBoundEnvsActionBackward(c *check.C) {
