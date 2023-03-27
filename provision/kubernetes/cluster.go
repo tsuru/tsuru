@@ -86,6 +86,7 @@ const (
 	buildServiceAddressKey        = "build-service-address"
 	buildServiceTLSKey            = "build-service-tls"
 	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
+	jobEventCreation              = "job-event-creation"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -123,6 +124,7 @@ var (
 		buildServiceAddressKey:        "Address of build service (deploy-agent v2)",
 		buildServiceTLSKey:            "Whether should access Build service through TLS",
 		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
+		jobEventCreation:              "Enable k8s event data tracking cross-referencing with Jobs and send them to tsuru database",
 	}
 )
 
@@ -565,6 +567,17 @@ func (c *ClusterClient) EnableVersionedServices() (bool, error) {
 		return false, nil
 	}
 	enable, ok := c.CustomData[versionedServices]
+	if enable == "" || !ok {
+		return false, nil
+	}
+	return strconv.ParseBool(enable)
+}
+
+func (c *ClusterClient) EnableJobEventCreation() (bool, error) {
+	if c.CustomData == nil {
+		return false, nil
+	}
+	enable, ok := c.CustomData[jobEventCreation]
 	if enable == "" || !ok {
 		return false, nil
 	}
