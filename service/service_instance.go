@@ -35,6 +35,7 @@ var (
 	ErrAppAlreadyBound                          = errors.New("app is already bound to this service instance")
 	ErrJobAlreadyBound                          = errors.New("job is already bound to this service instance")
 	ErrAppNotBound                              = errors.New("app is not bound to this service instance")
+	ErrJobNotBound                              = errors.New("job is not bound to this service instance")
 	ErrUnitNotBound                             = errors.New("unit is not bound to this service instance")
 	ErrServiceInstanceBound                     = errors.New("This service instance is bound to at least one app. Unbind them before removing it")
 	ErrMultiClusterServiceRequiresPool          = errors.New("multi-cluster service instance requires a pool")
@@ -51,6 +52,7 @@ type ServiceInstance struct {
 	ServiceName string                 `bson:"service_name" json:"service_name"`
 	PlanName    string                 `bson:"plan_name" json:"plan_name"`
 	Apps        []string               `json:"apps"`
+	Jobs        []string               `json:"jobs"`
 	BoundUnits  []Unit                 `bson:"bound_units" json:"bound_units"`
 	Teams       []string               `json:"teams"`
 	TeamOwner   string                 `json:"team_owner"`
@@ -205,6 +207,17 @@ func (si *ServiceInstance) FindApp(appName string) int {
 	return index
 }
 
+func (si *ServiceInstance) FindJob(jobName string) int {
+	index := -1
+	for i, name := range si.Jobs {
+		if name == jobName {
+			index = i
+			break
+		}
+	}
+	return index
+}
+
 // Update changes informations of the service instance.
 func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, evt *event.Event, requestID string) error {
 	err := validateServiceInstanceTeamOwner(updateData)
@@ -271,6 +284,35 @@ func (si *ServiceInstance) BindJob(job bind.Job, writer io.Writer, evt *event.Ev
 		bindJobDBAction,
 		bindJobEndpointAction,
 		setJobBoundEnvsAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(si.ctx, &args)
+}
+
+type UnbindJobArgs struct {
+	Job         bind.Job
+	ForceRemove bool
+	Event       *event.Event
+	RequestID   string
+}
+
+// UnbindJob makes the unbind between the service instance and a job.
+func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
+	if si.FindJob(unbindArgs.Job.GetName()) == -1 {
+		return ErrJobNotBound
+	}
+	args := bindJobPipelineArgs{
+		serviceInstance: si,
+		job:             unbindArgs.Job,
+		writer:          unbindArgs.Event,
+		event:           unbindArgs.Event,
+		requestID:       unbindArgs.RequestID,
+		forceRemove:     unbindArgs.ForceRemove,
+	}
+	actions := []*action.Action{
+		&unbindJobDB,
+		&unbindJobEndpoint,
+		&removeJobBoundEnvs,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
