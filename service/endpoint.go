@@ -215,7 +215,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/jobs/"+job.GetName()+"/bind", http.MethodPut, params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/binds/jobs/"+job.GetName(), http.MethodPut, params, header)
 	if err != nil {
 		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.GetName(), instance.ServiceName, instance.Name))
 	}
@@ -314,7 +314,7 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.GetName(), instance.ServiceName)
 
-	url := "/resources/" + instance.GetIdentifier() + "/jobs/" + job.GetName() + "/bind"
+	url := "/resources/" + instance.GetIdentifier() + "/binds/jobs/" + job.GetName()
 
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
