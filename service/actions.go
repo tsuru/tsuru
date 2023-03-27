@@ -635,3 +635,81 @@ var removeBoundEnvs = action.Action{
 	},
 	MinParams: 1,
 }
+
+var unbindJobDB = action.Action{
+	Name: "unbind-job-db",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		if args == nil {
+			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+		}
+		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.GetName()}})
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"jobs": args.job.GetName()}})
+		if err != nil {
+			log.Errorf("[unbind-job-db backward] failed to rebind job in db: %s", err)
+		}
+	},
+	MinParams: 1,
+}
+
+var unbindJobEndpoint = action.Action{
+	Name: "unbind-job-endpoint",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		if args == nil {
+			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+		}
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
+		if err != nil {
+			return nil, err
+		}
+		if endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool); err == nil {
+			err := endpoint.UnbindJob(ctx.Context, args.serviceInstance, args.job, args.event, args.requestID)
+			if err != nil && err != ErrInstanceNotFoundInAPI {
+				if args.forceRemove {
+					msg := fmt.Sprintf("[unbind-job-endpoint] ignored error due to force: %v", err.Error())
+					if args.writer != nil {
+						fmt.Fprintln(args.writer, msg)
+					}
+					log.Errorf("%s", msg)
+					return nil, nil
+				}
+				return nil, err
+			}
+		}
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		s, err := Get(ctx.Context, args.serviceInstance.ServiceName)
+		if err != nil {
+			log.Errorf("[unbind-job-endpoint backward] failed to rebind job in endpoint: %s", err)
+			return
+		}
+		if endpoint, err := s.getClientForPool(ctx.Context, args.serviceInstance.Pool); err == nil {
+			_, err := endpoint.BindJob(ctx.Context, args.serviceInstance, args.job, args.event, args.requestID)
+			if err != nil {
+				log.Errorf("[unbind-job-endpoint backward] failed to rebind job in endpoint: %s", err)
+			}
+		}
+	},
+	MinParams: 1,
+}
+
+var removeJobBoundEnvs = action.Action{
+	Name: "remove-job-bound-envs",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		if args == nil {
+			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+		}
+		//si := args.serviceInstance
+		return nil, errors.New("TODO: drop service envs")
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 1,
+}

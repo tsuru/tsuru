@@ -9,14 +9,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/service"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -425,7 +429,6 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -492,6 +495,91 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 		}
 		return fmt.Errorf("%v (%q is %v)", err, instanceName, status)
 	}
+	return nil
+}
+
+// title: unbind service instance for a job
+// path: /services/{service}/instances/{instance}/job/{job}
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Job not found
+func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	instanceName := r.URL.Query().Get(":instance")
+	jobName := r.URL.Query().Get(":job")
+	serviceName := r.URL.Query().Get(":service")
+	force, _ := strconv.ParseBool(InputValue(r, "force"))
+
+	j, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+
+	instance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
+		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
+			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
+			permission.Context(permTypes.CtxServiceInstance, instance.Name),
+		)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	allowed = permission.Check(t, permission.PermJobUpdate,
+		contextsForJob(j)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	if force {
+		s, errGet := service.Get(ctx, instance.ServiceName)
+		if errGet != nil {
+			return errGet
+		}
+		allowed = permission.Check(t, permission.PermServiceUpdate,
+			contextsForServiceProvision(&s)...,
+		)
+		if !allowed {
+			return permission.ErrUnauthorized
+		}
+	}
+	evt, err := event.New(&event.Opts{
+		Target: jobTarget(jobName),
+		ExtraTargets: []event.ExtraTarget{
+			{Target: serviceInstanceTarget(serviceName, instanceName)},
+		},
+		Kind:       permission.PermAppUpdateUnbind,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	err = instance.UnbindJob(service.UnbindJobArgs{
+		Job:         j,
+		ForceRemove: force,
+		Event:       evt,
+		RequestID:   requestIDHeader(r),
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(evt, "\nInstance %q is not bound to the job %q anymore.\n", instanceName, jobName)
 	return nil
 }
 
