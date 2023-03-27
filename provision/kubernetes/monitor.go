@@ -97,11 +97,12 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	// jobs informer
-	err = c.startJobInformer()
-	if err != nil {
-		c.stop(ctx)
-		return nil, err
+	if enableJobEvents, _ := c.cluster.EnableJobEventCreation(); enableJobEvents {
+		err = c.startJobInformer()
+		if err != nil {
+			c.stop(ctx)
+			return nil, err
+		}
 	}
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
