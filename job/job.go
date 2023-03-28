@@ -25,40 +25,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// JobSpec defines how a job should be run, i.e if it has a schedule it will be created as a CronJob object
-type JobSpec struct {
-	// Specifies the maximum desired number of pods the job should
-	// run at any given time. The actual number of pods running in steady state will
-	// be less than this number when ((.spec.completions - .status.successful) < .spec.parallelism),
-	// i.e. when the work left to do is less than max parallelism.
-	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
-	// +optional
-	Parallelism *int32
-
-	// Specifies the desired number of successfully finished pods the
-	// job should be run with.  Setting to nil means that the success of any
-	// pod signals the success of all pods, and allows parallelism to have any positive
-	// value.  Setting to 1 means that parallelism is limited to 1 and the success of that
-	// pod signals the success of the job.
-	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/
-	// +optional
-	Completions *int32
-
-	// Specifies the duration in seconds relative to the startTime that the job may be active
-	// before the system tries to terminate it; value must be positive integer
-	// +optional
-	ActiveDeadlineSeconds *int64
-
-	// Specifies the number of retries before marking this job failed.
-	// Defaults to 6
-	// +optional
-	BackoffLimit *int32
-
-	Schedule string
-
-	Container jobTypes.ContainerInfo
-}
-
 // Job is another main type in tsuru as of version 1.13
 // a job currently represents a Kubernetes Job object or a Cronjob object
 // this struct carries some tsuru metadata as is the case with the app object
@@ -73,7 +39,7 @@ type Job struct {
 	Pool        string
 	Description string
 
-	Spec JobSpec
+	Spec jobTypes.JobSpec
 
 	provisioner provision.JobProvisioner
 }
@@ -147,14 +113,7 @@ func (job *Job) GetSchedule() string {
 }
 
 func (job *Job) GetSpec() jobTypes.JobSpec {
-	return jobTypes.JobSpec{
-		Parallelism:           job.Spec.Parallelism,
-		Completions:           job.Spec.Completions,
-		ActiveDeadlineSeconds: job.Spec.ActiveDeadlineSeconds,
-		BackoffLimit:          job.Spec.BackoffLimit,
-		Schedule:              job.Spec.Schedule,
-		ContainerInfo:         job.Spec.Container,
-	}
+	return job.Spec
 }
 
 // GetByName queries the database to find a job identified by the given

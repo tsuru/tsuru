@@ -54,7 +54,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							},
 						},
 					},
-					Spec: job.JobSpec{
+					Spec: jobTypes.JobSpec{
 						Schedule:              "* * * * *",
 						Parallelism:           func() *int32 { r := int32(3); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
@@ -174,7 +174,7 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 							},
 						},
 					},
-					Spec: job.JobSpec{
+					Spec: jobTypes.JobSpec{
 						Parallelism:           func() *int32 { r := int32(3); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
 						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
@@ -289,7 +289,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 							},
 						},
 					},
-					Spec: job.JobSpec{
+					Spec: jobTypes.JobSpec{
 						Schedule:              "* * * * *",
 						Parallelism:           func() *int32 { r := int32(3); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
@@ -325,7 +325,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 							},
 						},
 					},
-					Spec: job.JobSpec{
+					Spec: jobTypes.JobSpec{
 						Schedule:              "* * * * *",
 						Parallelism:           func() *int32 { r := int32(2); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
@@ -423,7 +423,7 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 		Name:      "mycronjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test-default",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
@@ -436,7 +436,7 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 		Name:      "myjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test-default",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
 				Image:   "ubuntu:latest",
@@ -509,7 +509,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
-					Spec: job.JobSpec{
+					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
 						Container: jobTypes.ContainerInfo{
 							Name:    "c1",

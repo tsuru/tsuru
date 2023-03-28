@@ -73,7 +73,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 		Name:      "this-is-a-cronjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -188,7 +188,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		Name:      "my-cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -391,7 +391,7 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 		},
 		Pool:        "test1",
 		Description: "some description",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
 				Image:   "busybox:1.28",
@@ -491,7 +491,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		},
 		Pool:        "test1",
 		Description: "some description",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
 				Image:   "busybox:1.28",
@@ -663,7 +663,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -738,7 +738,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		},
 		Pool:        "test1",
 		Description: "some description",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
 				Image:   "busybox:1.28",
@@ -792,7 +792,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -829,7 +829,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -866,7 +866,7 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "manual-job",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
 				Image:   "ubuntu:latest",
@@ -896,7 +896,7 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "manual-job",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* */15 * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "c1",
@@ -952,7 +952,7 @@ func (s *S) TestJobList(c *check.C) {
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -995,7 +995,7 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -1046,7 +1046,7 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -1095,7 +1095,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
@@ -1141,7 +1141,7 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
