@@ -1,0 +1,28 @@
+site_name: tsuru
+site_url: https://docs.tsuru.github.com
+site_author: Tsuru Team
+
+repo_url: https://github.com/tsuru/tsuru/
+edit_uri: blob/main/docs/
+
+theme:
+  name: readthedocs
+
+nav:
+- Home: index.md
+- Getting started: []
+- User guides:
+  - Deploy:
+    - Using Dockerfile: ./user_guides/deploy_using_dockerfile.md
+- Admin guides: []
+- References:
+  - Configuration files:
+    - Procfile: references/procfile.md
+    - tsuru.yaml: references/tsuru.yaml.md
+    - tsurud.yaml: references/tsurud.yaml.md
+- Contributing: []
+
+markdown_extensions:
+- admonition
+- pymdownx.details
+- pymdownx.superfences
