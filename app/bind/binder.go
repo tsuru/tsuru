@@ -41,14 +41,6 @@ type App interface {
 	RemoveInstance(args RemoveInstanceArgs) error
 }
 
-type Job interface {
-	// GetName returns the job name.
-	GetName() string
-
-	// GetPool returns the job pool.
-	GetPool() string
-}
-
 type SetEnvArgs struct {
 	Envs          []bindTypes.EnvVar
 	Writer        io.Writer

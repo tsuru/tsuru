@@ -533,7 +533,7 @@ func (s *S) TestBindAppInstanceNotFound(c *check.C) {
 
 func (s *S) TestBindJobEndpointDown(c *check.C) {
 	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: "http://localhost:1234", username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
@@ -557,7 +557,7 @@ func (s *S) TestBindJobShouldSendAPOSTToTheResourceURL(c *check.C) {
 		}, nil
 	}
 	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
@@ -590,7 +590,7 @@ func (s *S) TestBindJobShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "job-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	originalPoolService := servicemanager.Pool
 	servicemanager.Pool = &provTypes.MockPoolService{
 		OnFindByName: func(name string) (*provTypes.Pool, error) {
@@ -610,7 +610,7 @@ func (s *S) TestBindJobShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
@@ -626,7 +626,7 @@ func (s *S) TestBindJobInstanceNotReady(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
@@ -641,7 +641,7 @@ func (s *S) TestBindJobInstanceNotFound(c *check.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	_, err := client.BindJob(context.TODO(), &instance, job, evt, "")
@@ -775,7 +775,7 @@ func (s *S) TestUnbindJob(c *check.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
@@ -793,7 +793,7 @@ func (s *S) TestUnbindJobRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
@@ -809,7 +809,7 @@ func (s *S) TestUnbindJobInstanceNotFound(c *check.C) {
 	}))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "test-redis", ServiceName: "redis"}
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner", 1)
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
 	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
 	evt := createEvt(c)
 	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")

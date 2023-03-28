@@ -22,28 +22,28 @@ import (
 var provisionJob = action.Action{
 	Name: "provision-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, job)
 		if err != nil {
 			return nil, err
 		}
 		return prov.CreateJob(ctx.Context, job)
 	},
 	Backward: func(ctx action.BWContext) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return
 		}
-		prov, err := job.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, job)
 		if err == nil {
 			prov.DestroyJob(ctx.Context, job)
 		}
@@ -54,18 +54,18 @@ var provisionJob = action.Action{
 var triggerCron = action.Action{
 	Name: "trigger-cronjob",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, job)
 		if err != nil {
 			return nil, err
 		}
-		return nil, prov.TriggerCron(ctx.Context, job.GetName(), job.GetPool())
+		return nil, prov.TriggerCron(ctx.Context, job.Name, job.Pool)
 	},
 	MinParams: 1,
 }
@@ -73,14 +73,14 @@ var triggerCron = action.Action{
 var updateJobProv = action.Action{
 	Name: "update-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := job.getProvisioner(ctx.Context)
+		prov, err := getProvisioner(ctx.Context, job)
 		if err != nil {
 			return nil, err
 		}
@@ -96,10 +96,10 @@ var updateJobProv = action.Action{
 var jobUpdateDB = action.Action{
 	Name: "update-job-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var j *Job
+		var j *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			j = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			j = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
@@ -117,10 +117,10 @@ var jobUpdateDB = action.Action{
 var insertJob = action.Action{
 	Name: "insert-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var j *Job
+		var j *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			j = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			j = ctx.Params[0].(*jobTypes.Job)
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
@@ -131,13 +131,13 @@ var insertJob = action.Action{
 		return j, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		job := ctx.FWResult.(*Job)
+		job := ctx.FWResult.(*jobTypes.Job)
 		RemoveJobFromDb(job.Name)
 	},
 	MinParams: 1,
 }
 
-func insertJobDB(ctx context.Context, job *Job) error {
+func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func insertJobDB(ctx context.Context, job *Job) error {
 	return err
 }
 
-func updateJobDB(ctx context.Context, job *Job) error {
+func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -171,10 +171,10 @@ func updateJobDB(ctx context.Context, job *Job) error {
 var reserveTeamCronjob = action.Action{
 	Name: "reserve-team-job",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 			if !job.IsCron() {
 				return nil, errors.New("job type must be cron to increment team quota")
 			}
@@ -201,10 +201,10 @@ var reserveTeamCronjob = action.Action{
 var reserveUserCronjob = action.Action{
 	Name: "reserve-user-cronjob",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var job *Job
+		var job *jobTypes.Job
 		switch ctx.Params[0].(type) {
-		case *Job:
-			job = ctx.Params[0].(*Job)
+		case *jobTypes.Job:
+			job = ctx.Params[0].(*jobTypes.Job)
 			if !job.IsCron() {
 				return nil, errors.New("job type must be cron to increment team quota")
 			}

@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 var (
@@ -271,7 +272,7 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 }
 
 // BindJob makes the bind between the service instance and a job.
-func (si *ServiceInstance) BindJob(job bind.Job, writer io.Writer, evt *event.Event, requestID string) error {
+func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *event.Event, requestID string) error {
 
 	args := bindJobPipelineArgs{
 		serviceInstance: si,
@@ -290,7 +291,7 @@ func (si *ServiceInstance) BindJob(job bind.Job, writer io.Writer, evt *event.Ev
 }
 
 type UnbindJobArgs struct {
-	Job         bind.Job
+	Job         *jobTypes.Job
 	ForceRemove bool
 	Event       *event.Event
 	RequestID   string
@@ -298,7 +299,7 @@ type UnbindJobArgs struct {
 
 // UnbindJob makes the unbind between the service instance and a job.
 func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
-	if si.FindJob(unbindArgs.Job.GetName()) == -1 {
+	if si.FindJob(unbindArgs.Job.Name) == -1 {
 		return ErrJobNotBound
 	}
 	args := bindJobPipelineArgs{

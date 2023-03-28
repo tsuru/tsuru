@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
 )
 
@@ -422,12 +423,12 @@ func (b *brokerClient) BindUnit(ctx context.Context, instance *ServiceInstance, 
 }
 
 // UnbindJob is a no-op for OSB API implementations
-func (b *brokerClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
+func (b *brokerClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error {
 	return nil
 }
 
 // BindJob is a no-op for OSB API implementations
-func (b *brokerClient) BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error) {
+func (b *brokerClient) BindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) (map[string]string, error) {
 	return nil, nil
 }
 

@@ -21,7 +21,7 @@ func checkCollision(ctx context.Context, jobName string) bool {
 	return err != jobTypes.ErrJobNotFound
 }
 
-func (job *Job) genUniqueName() error {
+func genUniqueName(job *jobTypes.Job) error {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -30,10 +30,10 @@ func (job *Job) genUniqueName() error {
 	return nil
 }
 
-func oneTimeJobName(ctx context.Context, job *Job) error {
+func oneTimeJobName(ctx context.Context, job *jobTypes.Job) error {
 	collision := true
 	for i := 0; i < jobTypes.MaxAttempts; i++ {
-		if err := job.genUniqueName(); err != nil {
+		if err := genUniqueName(job); err != nil {
 			return err
 		}
 		if collision = checkCollision(ctx, job.Name); !collision {
@@ -46,7 +46,7 @@ func oneTimeJobName(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func buildName(ctx context.Context, job *Job) error {
+func buildName(ctx context.Context, job *jobTypes.Job) error {
 	if job.Name != "" {
 		// check if the given name is already in the database
 		if _, err := GetByName(ctx, job.Name); err == nil {
@@ -62,7 +62,7 @@ func buildName(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func buildPlan(ctx context.Context, job *Job) error {
+func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 	jobPool, err := pool.GetPoolByName(ctx, job.Pool)
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func buildPlan(ctx context.Context, job *Job) error {
 	return nil
 }
 
-func buildTsuruInfo(ctx context.Context, job *Job, user *auth.User) {
+func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *auth.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
 }

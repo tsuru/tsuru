@@ -12,7 +12,7 @@ import (
 )
 
 func (s *S) TestGetByName(c *check.C) {
-	newJob := Job{
+	newJob := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -26,7 +26,7 @@ func (s *S) TestGetByName(c *check.C) {
 }
 
 func (s *S) TestCreateCronjob(c *check.C) {
-	newCron := Job{
+	newCron := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -55,7 +55,7 @@ func (s *S) TestGetJobByNameNotFound(c *check.C) {
 }
 
 func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
-	newJob := Job{
+	newJob := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -80,7 +80,7 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 }
 
 func (s *S) TestDeleteJobFromDB(c *check.C) {
-	newJob := Job{
+	newJob := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -106,7 +106,7 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 }
 
 func (s *S) TestJobUnits(c *check.C) {
-	newJob := Job{
+	newJob := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -122,13 +122,13 @@ func (s *S) TestJobUnits(c *check.C) {
 	}
 	_, err := s.provisioner.NewJobWithUnits(context.TODO(), &newJob)
 	c.Assert(err, check.IsNil)
-	units, err := newJob.Units(context.TODO())
+	units, err := Units(context.TODO(), &newJob)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 2)
 }
 
 func (s *S) TestUpdateJob(c *check.C) {
-	j1 := Job{
+	j1 := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -142,7 +142,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 		},
 	}
-	j2 := Job{
+	j2 := jobTypes.Job{
 		Name: "some-job",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
@@ -166,7 +166,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 }
 
 func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
-	j1 := Job{
+	j1 := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -187,7 +187,7 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 }
 
 func (s *S) TestList(c *check.C) {
-	j1 := Job{
+	j1 := jobTypes.Job{
 		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
@@ -200,7 +200,7 @@ func (s *S) TestList(c *check.C) {
 			},
 		},
 	}
-	j2 := Job{
+	j2 := jobTypes.Job{
 		Name:      "j2",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,

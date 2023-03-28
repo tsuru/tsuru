@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
@@ -36,7 +37,7 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := job.Job{
+	j := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
@@ -69,7 +70,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := job.Job{
+	j := jobTypes.Job{
 		Name:      "this-is-a-cronjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -106,7 +107,7 @@ func (s *S) TestDeleteJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &job.Job{
+	j := &jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
@@ -149,7 +150,7 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &job.Job{
+	j := &jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
@@ -184,7 +185,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &job.Job{
+	j := &jobTypes.Job{
 		Name:      "my-cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -293,7 +294,7 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	jobName, ok := obtained["jobName"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotJob job.Job
+	var gotJob jobTypes.Job
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Teams, check.DeepEquals, []string{s.team.Name})
@@ -362,10 +363,10 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	jobName, ok := obtained["jobName"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotJob job.Job
+	var gotJob jobTypes.Job
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
-	expectedJob := job.Job{
+	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
@@ -397,6 +398,8 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -462,10 +465,10 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	jobName, ok := obtained["jobName"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotJob job.Job
+	var gotJob jobTypes.Job
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
-	expectedJob := job.Job{
+	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
@@ -497,7 +500,9 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule: "* * * * *",
+			Schedule:    "* * * * *",
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -534,7 +539,7 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	oldJob := job.Job{
+	oldJob := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -619,7 +624,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
@@ -659,7 +664,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
@@ -712,7 +717,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
 	gotJob, err = job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	expectedJob := job.Job{
+	expectedJob := jobTypes.Job{
 		Name:      j1.Name,
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
@@ -744,7 +749,9 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule: "*/15 * * * *",
+			Schedule:    "*/15 * * * *",
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(*gotJob, check.DeepEquals, expectedJob)
@@ -788,7 +795,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
@@ -825,7 +832,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "cron",
@@ -862,7 +869,7 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "manual-job",
@@ -892,7 +899,7 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Name:      "manual-job",
@@ -939,16 +946,16 @@ func (s *S) TestJobList(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j2 := job.Job{
+	j2 := jobTypes.Job{
 		Name:      "manual",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j3 := job.Job{
+	j3 := jobTypes.Job{
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -968,7 +975,7 @@ func (s *S) TestJobList(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	jobs := []job.Job{}
+	jobs := []jobTypes.Job{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 3)
@@ -982,16 +989,16 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j2 := job.Job{
+	j2 := jobTypes.Job{
 		Name:      "manual",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j3 := job.Job{
+	j3 := jobTypes.Job{
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -1011,7 +1018,7 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	jobs := []job.Job{}
+	jobs := []jobTypes.Job{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
@@ -1033,16 +1040,16 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j2 := job.Job{
+	j2 := jobTypes.Job{
 		Name:      "manual",
 		TeamOwner: team.Name,
 		Pool:      "test1",
 	}
-	j3 := job.Job{
+	j3 := jobTypes.Job{
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -1062,7 +1069,7 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	jobs := []job.Job{}
+	jobs := []jobTypes.Job{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
@@ -1082,16 +1089,16 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j2 := job.Job{
+	j2 := jobTypes.Job{
 		Name:      "manual",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j3 := job.Job{
+	j3 := jobTypes.Job{
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -1111,7 +1118,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	jobs := []job.Job{}
+	jobs := []jobTypes.Job{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
@@ -1128,16 +1135,16 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 	}
-	j2 := job.Job{
+	j2 := jobTypes.Job{
 		Name:      "manual",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	j3 := job.Job{
+	j3 := jobTypes.Job{
 		Name:      "cron",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
@@ -1157,7 +1164,7 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	jobs := []job.Job{}
+	jobs := []jobTypes.Job{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
@@ -1174,7 +1181,7 @@ func (s *S) TestJobInfo(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j1 := job.Job{
+	j1 := jobTypes.Job{
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 	}
@@ -1187,7 +1194,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	var result struct {
-		Job   job.Job          `json:"job,omitempty"`
+		Job   jobTypes.Job     `json:"job,omitempty"`
 		Units []provision.Unit `json:"units,omitempty"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)

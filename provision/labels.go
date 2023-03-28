@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/set"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -469,17 +470,17 @@ func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, erro
 	return set, nil
 }
 
-func JobLabels(ctx context.Context, job Job) *LabelSet {
+func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 	return &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
-			LabelJobName:      job.GetName(),
-			LabelJobTeamOwner: job.GetTeamOwner(),
-			LabelJobPool:      job.GetPool(),
+			LabelJobName:      job.Name,
+			LabelJobTeamOwner: job.TeamOwner,
+			LabelJobPool:      job.Pool,
 			LabelIsJob:        strconv.FormatBool(true),
 		},
 		RawLabels: map[string]string{
-			"job.kubernetes.io/name":       job.GetName(),
+			"job.kubernetes.io/name":       job.Name,
 			"job.kubernetes.io/component":  "tsuru-job",
 			"job.kubernetes.io/managed-by": "tsuru",
 		},

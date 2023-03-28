@@ -20,35 +20,12 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
-	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2/bson"
 )
 
-// Job is another main type in tsuru as of version 1.13
-// a job currently represents a Kubernetes Job object or a Cronjob object
-// this struct carries some tsuru metadata as is the case with the app object
-// it also holds a JobSpec value that defines how the Job is supposed to be run
-type Job struct {
-	Name        string
-	Teams       []string
-	TeamOwner   string
-	Owner       string
-	Plan        appTypes.Plan
-	Metadata    appTypes.Metadata
-	Pool        string
-	Description string
+func getProvisioner(ctx context.Context, job *jobTypes.Job) (provision.JobProvisioner, error) {
 
-	Spec jobTypes.JobSpec
-
-	provisioner provision.JobProvisioner
-}
-
-func (job *Job) getProvisioner(ctx context.Context) (provision.JobProvisioner, error) {
-	var err error
-	if job.provisioner != nil {
-		return job.provisioner, nil
-	}
 	prov, err := pool.GetProvisionerForPool(ctx, job.Pool)
 	if err != nil {
 		return nil, err
@@ -57,69 +34,22 @@ func (job *Job) getProvisioner(ctx context.Context) (provision.JobProvisioner, e
 	if !ok {
 		return nil, errors.Errorf("provisioner %q does not support native jobs and cronjobs scheduling", prov.GetName())
 	}
-	job.provisioner = jobProv
-	return job.provisioner, nil
+	return jobProv, nil
 }
 
 // Units returns the list of units.
-func (job *Job) Units(ctx context.Context) ([]provision.Unit, error) {
-	prov, err := job.getProvisioner(ctx)
+func Units(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
+	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return []provision.Unit{}, err
 	}
 	return prov.JobUnits(context.TODO(), job)
 }
 
-func (job *Job) GetName() string {
-	return job.Name
-}
-
-// GetMemory returns the memory limit (in bytes) for the job.
-func (job *Job) GetMemory() int64 {
-	if job.Plan.Override.Memory != nil {
-		return *job.Plan.Override.Memory
-	}
-	return job.Plan.Memory
-}
-
-func (job *Job) GetMilliCPU() int {
-	if job.Plan.Override.CPUMilli != nil {
-		return *job.Plan.Override.CPUMilli
-	}
-	return job.Plan.CPUMilli
-}
-
-func (job *Job) GetPool() string {
-	return job.Pool
-}
-
-func (job *Job) GetTeamOwner() string {
-	return job.TeamOwner
-}
-func (job *Job) GetTeamsName() []string {
-	return job.Teams
-}
-
-func (job *Job) GetMetadata() appTypes.Metadata {
-	return job.Metadata
-}
-
-func (job *Job) IsCron() bool {
-	return job.Spec.Schedule != ""
-}
-
-func (job *Job) GetSchedule() string {
-	return job.Spec.Schedule
-}
-
-func (job *Job) GetSpec() jobTypes.JobSpec {
-	return job.Spec
-}
-
 // GetByName queries the database to find a job identified by the given
 // name.
-func GetByName(ctx context.Context, name string) (*Job, error) {
-	var job Job
+func GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {
+	var job jobTypes.Job
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -145,8 +75,8 @@ func RemoveJobFromDb(jobName string) error {
 	return err
 }
 
-func DeleteFromProvisioner(ctx context.Context, job *Job) error {
-	prov, err := job.getProvisioner(ctx)
+func DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
+	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err
 	}
@@ -159,7 +89,7 @@ func DeleteFromProvisioner(ctx context.Context, job *Job) error {
 //
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
-func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) error {
+func CreateJob(ctx context.Context, job *jobTypes.Job, user *auth.User, trigger bool) error {
 	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if err := buildName(ctx, job); err != nil {
 		jobCreationErr.Err = err
@@ -171,7 +101,7 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 	}
 	buildTsuruInfo(ctx, job, user)
 
-	if err := validateJob(ctx, *job); err != nil {
+	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
 
@@ -206,11 +136,11 @@ func CreateJob(ctx context.Context, job *Job, user *auth.User, trigger bool) err
 //
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
-func UpdateJob(ctx context.Context, newJob, oldJob *Job, user *auth.User) error {
+func UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, user *auth.User) error {
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
 	}
-	if err := validateJob(ctx, *newJob); err != nil {
+	if err := validateJob(ctx, newJob); err != nil {
 		return err
 	}
 	actions := []*action.Action{
@@ -223,7 +153,7 @@ func UpdateJob(ctx context.Context, newJob, oldJob *Job, user *auth.User) error 
 }
 
 // Trigger triggers an execution of either job or cronjob object
-func Trigger(ctx context.Context, job *Job) error {
+func Trigger(ctx context.Context, job *jobTypes.Job) error {
 	var actions []*action.Action
 	if job.IsCron() {
 		actions = []*action.Action{&triggerCron}
@@ -281,8 +211,8 @@ func (f *Filter) Query() bson.M {
 	return query
 }
 
-func List(ctx context.Context, filter *Filter) ([]Job, error) {
-	jobs := []Job{}
+func List(ctx context.Context, filter *Filter) ([]jobTypes.Job, error) {
+	jobs := []jobTypes.Job{}
 	query := filter.Query()
 	conn, err := db.Conn()
 	if err != nil {
@@ -304,7 +234,7 @@ func validateSchedule(jobName, schedule string) error {
 	return nil
 }
 
-func validatePool(ctx context.Context, job Job) error {
+func validatePool(ctx context.Context, job *jobTypes.Job) error {
 	p, err := pool.GetPoolByName(ctx, job.Pool)
 	if err != nil {
 		return err
@@ -329,7 +259,7 @@ func validatePlan(ctx context.Context, poolName, planName string) error {
 	return nil
 }
 
-func validateTeamOwner(ctx context.Context, job Job, p *pool.Pool) error {
+func validateTeamOwner(ctx context.Context, job *jobTypes.Job, p *pool.Pool) error {
 	_, err := servicemanager.Team.FindByName(ctx, job.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
@@ -348,7 +278,7 @@ func validateTeamOwner(ctx context.Context, job Job, p *pool.Pool) error {
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
-func validateJob(ctx context.Context, j Job) error {
+func validateJob(ctx context.Context, j *jobTypes.Job) error {
 	if err := validatePool(ctx, j); err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
