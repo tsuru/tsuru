@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
 )
 
@@ -221,7 +222,7 @@ var exportEnvironmentsAction = action.Action{
 			return nil, err
 		}
 		t := ctx.Previous.(*auth.Token)
-		envVars := []appTypes.EnvVar{
+		envVars := []bindTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},

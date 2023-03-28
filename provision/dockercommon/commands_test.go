@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
@@ -53,7 +54,7 @@ func (s *S) TestArchiveBuildCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := appTypes.EnvVar{
+	tokenEnv := bindTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
@@ -70,7 +71,7 @@ func (s *S) TestDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := appTypes.EnvVar{
+	tokenEnv := bindTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
@@ -141,7 +142,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	config.Set("host", "tsuru_host")
 	defer config.Unset("host")
-	tokenEnv := appTypes.EnvVar{
+	tokenEnv := bindTypes.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,

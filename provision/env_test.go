@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
@@ -45,9 +46,9 @@ func (s *S) TestWebProcessDefaultPortWithConfig(c *check.C) {
 
 func (s *S) TestEnvsForApp(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(appTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 	envs := provision.EnvsForApp(a, "p1", false, nil)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_HOST", Value: ""},
@@ -55,14 +56,14 @@ func (s *S) TestEnvsForApp(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 	})
 	envs = provision.EnvsForApp(a, "p1", true, nil)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "TSURU_HOST", Value: ""},
 	})
 }
 
 func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(appTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 
 	svc, err := version.AppVersionService()
 	c.Assert(err, check.IsNil)
@@ -70,7 +71,7 @@ func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	envs := provision.EnvsForApp(a, "p1", false, version)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -79,7 +80,7 @@ func (s *S) TestEnvsForAppWithVersion(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 	})
 	envs = provision.EnvsForApp(a, "p1", true, version)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "TSURU_HOST", Value: ""},
 	})
 }
@@ -90,9 +91,9 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 	defer config.Unset("host")
 	defer config.Unset("docker:run-cmd:port")
 	a := provisiontest.NewFakeApp("myapp", "crystal", 1)
-	a.SetEnv(appTypes.EnvVar{Name: "e1", Value: "v1"})
+	a.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 	envs := provision.EnvsForApp(a, "p1", false, nil)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_HOST", Value: "cloud.tsuru.io"},
@@ -100,7 +101,7 @@ func (s *S) TestEnvsForAppCustomConfig(c *check.C) {
 		{Name: "PORT", Value: "8989"},
 	})
 	envs = provision.EnvsForApp(a, "p1", true, nil)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "TSURU_HOST", Value: "cloud.tsuru.io"},
 	})
 }

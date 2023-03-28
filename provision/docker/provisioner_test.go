@@ -43,6 +43,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
@@ -1251,7 +1252,7 @@ func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 	a := provisiontest.NewFakeApp("almah", "static", 1)
 	_, err := newSuccessfulVersionForApp(s.p, a, nil)
 	c.Assert(err, check.IsNil)
-	a.SetEnv(appTypes.EnvVar{Name: "ENV", Value: "OK"})
+	a.SetEnv(bindTypes.EnvVar{Name: "ENV", Value: "OK"})
 	var stdout, stderr bytes.Buffer
 	var created bool
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

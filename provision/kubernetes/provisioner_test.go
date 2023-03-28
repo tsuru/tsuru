@@ -35,6 +35,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
@@ -3238,10 +3239,10 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
-	fa.SetEnv(appTypes.EnvVar{Name: "e1", Value: "v1"})
+	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 
 	envs := EnvsForApp(fa, "web", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "web"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3305,10 +3306,10 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
-	fa.SetEnv(appTypes.EnvVar{Name: "e1", Value: "v1"})
+	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 
 	envs := EnvsForApp(fa, "proc1", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3317,7 +3318,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 
 	envs = EnvsForApp(fa, "proc2", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3326,7 +3327,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 
 	envs = EnvsForApp(fa, "proc3", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3335,7 +3336,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 
 	envs = EnvsForApp(fa, "proc4", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3346,7 +3347,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 
 	envs = EnvsForApp(fa, "proc5", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3354,7 +3355,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	})
 
 	envs = EnvsForApp(fa, "proc6", version, false)
-	c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},
 		{Name: "TSURU_APPVERSION", Value: "1"},

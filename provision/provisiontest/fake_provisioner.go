@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -77,10 +78,10 @@ type FakeApp struct {
 	MilliCPU          int
 	commMut           sync.Mutex
 	Deploys           uint
-	env               map[string]appTypes.EnvVar
+	env               map[string]bindTypes.EnvVar
 	bindCalls         []*provision.Unit
 	bindLock          sync.Mutex
-	serviceEnvs       []appTypes.ServiceEnvVar
+	serviceEnvs       []bindTypes.ServiceEnvVar
 	serviceLock       sync.Mutex
 	Pool              string
 	UpdatePlatform    bool
@@ -278,7 +279,7 @@ func (a *FakeApp) GetCname() []string {
 	return a.cname
 }
 
-func (a *FakeApp) GetServiceEnvs() []appTypes.ServiceEnvVar {
+func (a *FakeApp) GetServiceEnvs() []bindTypes.ServiceEnvVar {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	return a.serviceEnvs
@@ -391,9 +392,9 @@ func (a *FakeApp) AddUnit(u provision.Unit) {
 	a.units = append(a.units, u)
 }
 
-func (a *FakeApp) SetEnv(env appTypes.EnvVar) {
+func (a *FakeApp) SetEnv(env bindTypes.EnvVar) {
 	if a.env == nil {
-		a.env = map[string]appTypes.EnvVar{}
+		a.env = map[string]bindTypes.EnvVar{}
 	}
 	a.env[env.Name] = env
 }
@@ -420,7 +421,7 @@ func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
 	return units, nil
 }
 
-func (a *FakeApp) Envs() map[string]appTypes.EnvVar {
+func (a *FakeApp) Envs() map[string]bindTypes.EnvVar {
 	return a.env
 }
 

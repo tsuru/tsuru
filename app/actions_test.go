@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -213,16 +214,16 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	app := App{
 		Name:      "moon",
 		Platform:  "opeth",
-		Env:       make(map[string]appTypes.EnvVar),
+		Env:       make(map[string]bindTypes.EnvVar),
 		TeamOwner: s.team.Name,
 	}
 	for _, name := range envNames {
-		envVar := appTypes.EnvVar{Name: name, Value: name, Public: false}
+		envVar := bindTypes.EnvVar{Name: name, Value: name, Public: false}
 		app.Env[name] = envVar
 	}
 	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	app.Env["TSURU_APP_TOKEN"] = appTypes.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
+	app.Env["TSURU_APP_TOKEN"] = bindTypes.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}

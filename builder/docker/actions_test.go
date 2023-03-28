@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
@@ -41,7 +42,7 @@ func (s *S) TestCreateContainerForward(c *check.C) {
 	cmds := []string{"ps", "-ef"}
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	version := newVersionForApp(c, client, app, nil)
-	app.SetEnv(appTypes.EnvVar{
+	app.SetEnv(bindTypes.EnvVar{
 		Name:  "env1",
 		Value: "val1",
 	})

@@ -9,7 +9,7 @@ package bind
 import (
 	"io"
 
-	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
 // Unit represents an application unit to be used in binds.
@@ -50,7 +50,7 @@ type Job interface {
 }
 
 type SetEnvArgs struct {
-	Envs          []appTypes.EnvVar
+	Envs          []bindTypes.EnvVar
 	Writer        io.Writer
 	ManagedBy     string
 	PruneUnused   bool
@@ -64,7 +64,7 @@ type UnsetEnvArgs struct {
 }
 
 type AddInstanceArgs struct {
-	Envs          []appTypes.ServiceEnvVar
+	Envs          []bindTypes.ServiceEnvVar
 	Writer        io.Writer
 	ShouldRestart bool
 }

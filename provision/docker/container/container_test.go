@@ -30,7 +30,7 @@ import (
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
@@ -81,8 +81,8 @@ func (s *S) TestContainerCreate(c *check.C) {
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	app.SetEnv(appTypes.EnvVar{Name: "A", Value: "myenva"})
-	app.SetEnv(appTypes.EnvVar{Name: "ABCD", Value: "other env"})
+	app.SetEnv(bindTypes.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bindTypes.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
 	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	img := "tsuru/brainfuck:latest"
@@ -337,8 +337,8 @@ func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
 	config.Set("host", "my.cool.tsuru.addr:8080")
 	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
-	app.SetEnv(appTypes.EnvVar{Name: "A", Value: "myenva"})
-	app.SetEnv(appTypes.EnvVar{Name: "ABCD", Value: "other env"})
+	app.SetEnv(bindTypes.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bindTypes.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(context.TODO(), app)
 	defer routertest.FakeRouter.RemoveBackend(context.TODO(), app)
 	img := "tsuru/brainfuck:latest"
