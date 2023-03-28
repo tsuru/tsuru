@@ -43,9 +43,9 @@ func createJobSpec(job provision.Job, client *ClusterClient, labels, annotations
 				RestartPolicy: "OnFailure",
 				Containers: []v1.Container{
 					{
-						Name:      jSpec.ContainerInfo.Name,
-						Image:     jSpec.ContainerInfo.Image,
-						Command:   jSpec.ContainerInfo.Command,
+						Name:      jSpec.Container.Name,
+						Image:     jSpec.Container.Image,
+						Command:   jSpec.Container.Command,
 						Resources: requirements,
 					},
 				},

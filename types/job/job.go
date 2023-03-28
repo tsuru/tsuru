@@ -8,14 +8,6 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
-type Job interface {
-	GetName() string
-	GetPool() string
-	GetTeamOwner() string
-	GetTeamsName() []string
-	GetExecutions() []uint
-}
-
 type ContainerInfo struct {
 	Name    string
 	Image   string
@@ -28,7 +20,7 @@ type JobSpec struct {
 	ActiveDeadlineSeconds *int64
 	BackoffLimit          *int32
 	Schedule              string
-	ContainerInfo         ContainerInfo
+	Container             ContainerInfo
 	ServiceEnvs           []bindTypes.ServiceEnvVar
 	Envs                  []bindTypes.EnvVar
 }

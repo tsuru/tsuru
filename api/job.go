@@ -245,7 +245,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description: ij.Description,
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
 		},
@@ -313,7 +313,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Description: ij.Description,
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
-		Spec: job.JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
 		},

@@ -162,7 +162,7 @@ func (fj *FakeJob) GetSpec() jobTypes.JobSpec {
 		ActiveDeadlineSeconds: fj.ActiveDeadlineSeconds,
 		BackoffLimit:          fj.BackoffLimit,
 		Schedule:              fj.Schedule,
-		ContainerInfo:         fj.Container,
+		Container:             fj.Container,
 	}
 }
 

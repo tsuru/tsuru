@@ -31,7 +31,7 @@ func (s *S) TestCreateCronjob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
@@ -60,7 +60,7 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
@@ -85,7 +85,7 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
@@ -111,7 +111,7 @@ func (s *S) TestJobUnits(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
@@ -133,7 +133,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
@@ -144,7 +144,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 	}
 	j2 := Job{
 		Name: "some-job",
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "betty",
@@ -171,7 +171,7 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "betty",
 				Command: []string{"echo", "hello world!"},
@@ -192,7 +192,7 @@ func (s *S) TestList(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Name:    "augustine",
 				Image:   "alpine:latest",
@@ -205,7 +205,7 @@ func (s *S) TestList(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
-		Spec: JobSpec{
+		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
 				Name:    "betty",
