@@ -23,21 +23,6 @@ type App interface {
 	GetUpdatePlatform() bool
 }
 
-// EnvVar represents a environment variable for an app.
-type EnvVar struct {
-	Name      string `json:"name"`
-	Value     string `json:"value"`
-	Alias     string `json:"alias"`
-	Public    bool   `json:"public"`
-	ManagedBy string `json:"managedBy,omitempty"`
-}
-
-type ServiceEnvVar struct {
-	EnvVar       `bson:",inline"`
-	ServiceName  string `json:"-"`
-	InstanceName string `json:"-"`
-}
-
 type AppRouter struct {
 	Name         string            `json:"name"`
 	Opts         map[string]string `json:"opts"`

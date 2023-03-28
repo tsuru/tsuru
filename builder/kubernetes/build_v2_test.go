@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -161,8 +162,8 @@ func (s *S) TestBuildV2_BuildWithSourceCode(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	a.SetEnv(appTypes.EnvVar{Name: "MY_ENV1", Value: "value 1"})
-	a.SetEnv(appTypes.EnvVar{Name: "MY_ENV2", Value: "value 2"})
+	a.SetEnv(bindTypes.EnvVar{Name: "MY_ENV1", Value: "value 1"})
+	a.SetEnv(bindTypes.EnvVar{Name: "MY_ENV2", Value: "value 2"})
 
 	s.mockService.PlatformImage.OnCurrentImage = func(registry imagetypes.ImageRegistry, platform string) (string, error) {
 		if c.Check(registry, check.DeepEquals, imagetypes.ImageRegistry("")) &&

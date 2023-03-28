@@ -5,7 +5,7 @@
 package job
 
 import (
-	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
 type Job interface {
@@ -29,6 +29,6 @@ type JobSpec struct {
 	BackoffLimit          *int32
 	Schedule              string
 	ContainerInfo         ContainerInfo
-	ServiceEnvs           []appTypes.ServiceEnvVar
-	Envs                  []appTypes.EnvVar
+	ServiceEnvs           []bindTypes.ServiceEnvVar
+	Envs                  []bindTypes.EnvVar
 }

@@ -4,12 +4,14 @@
 
 package app
 
-import appTypes "github.com/tsuru/tsuru/types/app"
+import (
+	bindTypes "github.com/tsuru/tsuru/types/bind"
+)
 
 var SuppressedEnv = "*** (private variable)"
 
 func (a *App) SuppressSensitiveEnvs() {
-	newEnv := map[string]appTypes.EnvVar{}
+	newEnv := map[string]bindTypes.EnvVar{}
 	for key, env := range a.Env {
 		if !env.Public {
 			env.Value = SuppressedEnv

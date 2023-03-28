@@ -23,7 +23,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
@@ -67,13 +67,13 @@ func (s *S) TestFakeAppGetMemory(c *check.C) {
 
 func (s *S) TestEnvs(c *check.C) {
 	app := FakeApp{name: "time"}
-	env := appTypes.EnvVar{
+	env := bindTypes.EnvVar{
 		Name:   "http_proxy",
 		Value:  "http://theirproxy.com:3128/",
 		Public: true,
 	}
 	app.SetEnv(env)
-	envs := map[string]appTypes.EnvVar{
+	envs := map[string]bindTypes.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
 			Value:  "http://theirproxy.com:3128/",
@@ -85,7 +85,7 @@ func (s *S) TestEnvs(c *check.C) {
 
 func (s *S) TestSetEnvs(c *check.C) {
 	app := FakeApp{name: "time"}
-	envs := []appTypes.EnvVar{
+	envs := []bindTypes.EnvVar{
 		{
 			Name:   "http_proxy",
 			Value:  "http://theirproxy.com:3128/",
@@ -101,7 +101,7 @@ func (s *S) TestSetEnvs(c *check.C) {
 		Envs:          envs,
 		ShouldRestart: true,
 	})
-	expected := map[string]appTypes.EnvVar{
+	expected := map[string]bindTypes.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
 			Value:  "http://theirproxy.com:3128/",
@@ -128,7 +128,7 @@ func (s *S) TestGetUnitsReturnUnits(c *check.C) {
 
 func (s *S) TestUnsetEnvs(c *check.C) {
 	app := FakeApp{name: "time"}
-	env := appTypes.EnvVar{
+	env := bindTypes.EnvVar{
 		Name:   "http_proxy",
 		Value:  "http://theirproxy.com:3128/",
 		Public: true,
@@ -138,7 +138,7 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		VariableNames: []string{"http_proxy"},
 		ShouldRestart: true,
 	})
-	c.Assert(app.env, check.DeepEquals, map[string]appTypes.EnvVar{})
+	c.Assert(app.env, check.DeepEquals, map[string]bindTypes.EnvVar{})
 }
 
 func (s *S) TestFakeAppBindUnit(c *check.C) {
@@ -176,38 +176,38 @@ func (s *S) TestFakeAppGetCname(c *check.C) {
 func (s *S) TestFakeAppAddInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
-		Envs: []appTypes.ServiceEnvVar{
+		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
 				InstanceName: "inst1",
-				EnvVar:       appTypes.EnvVar{Name: "env1", Value: "val1"},
+				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
 			},
 		},
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
 	err = app.AddInstance(bind.AddInstanceArgs{
-		Envs: []appTypes.ServiceEnvVar{
+		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
 				InstanceName: "inst2",
-				EnvVar:       appTypes.EnvVar{Name: "env2", Value: "val2"},
+				EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
 			},
 		},
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
 	envs := app.GetServiceEnvs()
-	c.Assert(envs, check.DeepEquals, []appTypes.ServiceEnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{
 		{
 			ServiceName:  "mysql",
 			InstanceName: "inst1",
-			EnvVar:       appTypes.EnvVar{Name: "env1", Value: "val1"},
+			EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
 		},
 		{
 			ServiceName:  "mongodb",
 			InstanceName: "inst2",
-			EnvVar:       appTypes.EnvVar{Name: "env2", Value: "val2"},
+			EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
 		},
 	})
 }
@@ -215,22 +215,22 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
-		Envs: []appTypes.ServiceEnvVar{
+		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
 				InstanceName: "inst1",
-				EnvVar:       appTypes.EnvVar{Name: "env1", Value: "val1"},
+				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
 			},
 		},
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
 	err = app.AddInstance(bind.AddInstanceArgs{
-		Envs: []appTypes.ServiceEnvVar{
+		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
 				InstanceName: "inst2",
-				EnvVar:       appTypes.EnvVar{Name: "env2", Value: "val2"},
+				EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
 			},
 		},
 		ShouldRestart: true,
@@ -243,11 +243,11 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	envs := app.GetServiceEnvs()
-	c.Assert(envs, check.DeepEquals, []appTypes.ServiceEnvVar{
+	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{
 		{
 			ServiceName:  "mongodb",
 			InstanceName: "inst2",
-			EnvVar:       appTypes.EnvVar{Name: "env2", Value: "val2"},
+			EnvVar:       bindTypes.EnvVar{Name: "env2", Value: "val2"},
 		},
 	})
 }
@@ -255,11 +255,11 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.AddInstance(bind.AddInstanceArgs{
-		Envs: []bind.ServiceEnvVar{
+		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
 				InstanceName: "inst1",
-				EnvVar:       appTypes.EnvVar{Name: "env1", Value: "val1"},
+				EnvVar:       bindTypes.EnvVar{Name: "env1", Value: "val1"},
 			},
 		},
 		ShouldRestart: true,

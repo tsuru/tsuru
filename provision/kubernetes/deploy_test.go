@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
@@ -3281,7 +3282,7 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	defer waitDep()
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	a.Env = map[string]appTypes.EnvVar{
+	a.Env = map[string]bindTypes.EnvVar{
 		"env1": {
 			Name:  "env1",
 			Value: "a$()b$$c",

@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -237,7 +238,7 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	Envs() map[string]appTypes.EnvVar
+	Envs() map[string]bindTypes.EnvVar
 
 	GetMemory() int64
 	GetMilliCPU() int
