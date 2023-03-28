@@ -92,108 +92,22 @@ type FakeApp struct {
 	InternalAddresses []provision.AppInternalAddress
 }
 
-type FakeJob struct {
-	Name                  string
-	Units                 []provision.Unit
-	Commands              []string
-	Metadata              appTypes.Metadata
-	Pool                  string
-	TeamOwner             string
-	Teams                 []string
-	Memory                int64
-	Swap                  int64
-	MilliCPU              int
-	Container             jobTypes.ContainerInfo
-	Completions           *int32
-	Parallelism           *int32
-	ActiveDeadlineSeconds *int64
-	BackoffLimit          *int32
-	Schedule              string
-}
-
-func (fj *FakeJob) GetName() string {
-	return fj.Name
-}
-
-func (fj *FakeJob) GetMemory() int64 {
-	return fj.Memory
-}
-
-func (fj *FakeJob) GetMilliCPU() int {
-	return fj.MilliCPU
-}
-
-func (fj *FakeJob) GetSwap() int64 {
-	return fj.Swap
-}
-
-func (fj *FakeJob) GetPool() string {
-	return fj.Pool
-}
-
-func (fj *FakeJob) GetTeamOwner() string {
-	return fj.TeamOwner
-}
-
-func (fj *FakeJob) GetTeamsName() []string {
-	return fj.Teams
-}
-
-func (fj *FakeJob) GetMetadata() appTypes.Metadata {
-	return fj.Metadata
-}
-
-func (fj *FakeJob) IsCron() bool {
-	return fj.Schedule != ""
-}
-
-func (fj *FakeJob) GetContainerInfo() jobTypes.ContainerInfo {
-	return fj.Container
-}
-
-func (fj *FakeJob) GetSchedule() string {
-	return fj.Schedule
-}
-
-func (fj *FakeJob) GetSpec() jobTypes.JobSpec {
-	return jobTypes.JobSpec{
-		Parallelism:           fj.Parallelism,
-		Completions:           fj.Completions,
-		ActiveDeadlineSeconds: fj.ActiveDeadlineSeconds,
-		BackoffLimit:          fj.BackoffLimit,
-		Schedule:              fj.Schedule,
-		Container:             fj.Container,
-	}
-}
-
-func NewFakeJob(name, pool, teamOwner string, units int) *FakeJob {
-	job := FakeJob{
+func NewFakeJob(name, pool, teamOwner string) *jobTypes.Job {
+	job := &jobTypes.Job{
 		Name:      name,
-		Units:     make([]provision.Unit, units),
 		Pool:      pool,
 		TeamOwner: teamOwner,
 		Teams:     []string{teamOwner},
-		Schedule:  "* * * * *",
-		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
-			Image:   "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Name:    "c1",
+				Image:   "ubuntu:latest",
+				Command: []string{"echo", "hello world"},
+			},
 		},
 	}
-	namefmt := "%s-%d"
-	for i := 0; i < units; i++ {
-		val := atomic.AddInt32(&uniqueIpCounter, 1)
-		job.Units[i] = provision.Unit{
-			ID:     fmt.Sprintf(namefmt, name, i),
-			Status: provision.StatusStarted,
-			IP:     fmt.Sprintf("10.10.10.%d", val),
-			Address: &url.URL{
-				Scheme: "http",
-				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
-			},
-		}
-	}
-	return &job
+	return job
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -903,10 +817,10 @@ func (p *FakeProvisioner) Provisioned(app provision.App) bool {
 }
 
 // ProvisionedJob checks whether the given job has been provisioned.
-func (p *FakeProvisioner) ProvisionedJob(job provision.Job) bool {
+func (p *FakeProvisioner) ProvisionedJob(job *jobTypes.Job) bool {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	_, ok := p.jobs[job.GetName()]
+	_, ok := p.jobs[job.Name]
 	return ok
 }
 
@@ -1639,7 +1553,7 @@ type provisionedApp struct {
 
 type provisionedJob struct {
 	units      []provision.Unit
-	job        provision.Job
+	job        *jobTypes.Job
 	executions int
 }
 
@@ -1696,17 +1610,17 @@ type JobProvisioner struct {
 var _ provision.JobProvisioner = &JobProvisioner{}
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *JobProvisioner) JobUnits(ctx context.Context, job provision.Job) ([]provision.Unit, error) {
+func (p *JobProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	return p.jobs[job.GetName()].units, nil
+	return p.jobs[job.Name].units, nil
 }
 
 // JobSchedule creates a cronjob object in the cluster
-func (p *JobProvisioner) CreateJob(ctx context.Context, job provision.Job) (string, error) {
+func (p *JobProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (string, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	name := job.GetName()
+	name := job.Name
 	p.jobs[name] = provisionedJob{
 		units: []provision.Unit{},
 		job:   job,
@@ -1714,25 +1628,25 @@ func (p *JobProvisioner) CreateJob(ctx context.Context, job provision.Job) (stri
 	return name, nil
 }
 
-func (p *JobProvisioner) DestroyJob(ctx context.Context, job provision.Job) error {
+func (p *JobProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
 	if !p.ProvisionedJob(job) {
 		return errNotProvisioned
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	delete(p.jobs, job.GetName())
+	delete(p.jobs, job.Name)
 	return nil
 }
 
-func (p *JobProvisioner) UpdateJob(ctx context.Context, job provision.Job) error {
+func (p *JobProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	j, ok := p.jobs[job.GetName()]
+	j, ok := p.jobs[job.Name]
 	if !ok {
 		return errNotProvisioned
 	}
 	j.job = job
-	p.jobs[job.GetName()] = j
+	p.jobs[job.Name] = j
 	return nil
 }
 
@@ -1747,10 +1661,10 @@ func (p *JobProvisioner) TriggerCron(ctx context.Context, name, pool string) err
 	return nil
 }
 
-func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job provision.Job) (string, error) {
+func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job *jobTypes.Job) (string, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	name := job.GetName()
+	name := job.Name
 	p.jobs[name] = provisionedJob{
 		units: []provision.Unit{
 			{

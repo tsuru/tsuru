@@ -216,6 +216,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Tags:        []string{},
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1", "app2"},
+		Jobs:        []string{},
 		BoundUnits:  []Unit{},
 		Parameters:  map[string]interface{}{},
 	}
@@ -227,6 +228,7 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Tags:        []string{},
 		Apps:        []string{"app1"},
 		BoundUnits:  []Unit{},
+		Jobs:        []string{},
 		Teams:       []string{},
 		Parameters:  map[string]interface{}{},
 	}
@@ -1474,9 +1476,9 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
 	})
 }
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -36,7 +35,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		{
 			name: "simple create cronjob",
 			scenario: func() {
-				cj := job.Job{
+				cj := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
@@ -156,7 +155,7 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 		{
 			name: "simple create job",
 			scenario: func() {
-				j := job.Job{
+				j := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
@@ -271,7 +270,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 		{
 			name: "simple update cronjob",
 			setup: func() {
-				cj := job.Job{
+				cj := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
@@ -307,7 +306,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				c.Assert(err, check.IsNil)
 			},
 			scenario: func() {
-				newCJ := job.Job{
+				newCJ := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
@@ -419,7 +418,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 func (s *S) TestProvisionerDeleteJob(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
-	cj := job.Job{
+	cj := jobTypes.Job{
 		Name:      "mycronjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test-default",
@@ -432,7 +431,7 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 			},
 		},
 	}
-	j := job.Job{
+	j := jobTypes.Job{
 		Name:      "myjob",
 		TeamOwner: s.team.Name,
 		Pool:      "test-default",
@@ -505,7 +504,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 		{
 			name: "simple trigger cronjob",
 			setup: func() {
-				cj := job.Job{
+				cj := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",

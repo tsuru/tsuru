@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -63,10 +64,10 @@ type ServiceClient interface {
 	Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
 	BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
 	BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
-	BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error)
+	BindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) (map[string]string, error)
 	UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
 	UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
-	UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error
+	UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error
 	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
 	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)
 	Plans(ctx context.Context, pool, requestID string) ([]Plan, error)

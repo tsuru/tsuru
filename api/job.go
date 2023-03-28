@@ -39,7 +39,7 @@ type inputJob struct {
 	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
 }
 
-func getJob(ctx stdContext.Context, name string) (*job.Job, error) {
+func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
 	j, err := job.GetByName(ctx, name)
 	if err != nil {
 		if err == jobTypes.ErrJobNotFound {
@@ -185,15 +185,15 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	units, err := j.Units(ctx)
+	units, err := job.Units(ctx, j)
 	if err != nil {
 		return err
 	}
 	result := struct {
-		Job   job.Job          `json:"job,omitempty"`
+		Job   *jobTypes.Job    `json:"job,omitempty"`
 		Units []provision.Unit `json:"units,omitempty"`
 	}{
-		Job:   *j,
+		Job:   j,
 		Units: units,
 	}
 	jsonMsg, err := json.Marshal(&result)
@@ -238,7 +238,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	newJob := job.Job{
+	newJob := jobTypes.Job{
 		TeamOwner:   ij.TeamOwner,
 		Plan:        appTypes.Plan{Name: ij.Plan},
 		Name:        ij.Name,
@@ -306,7 +306,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	j := job.Job{
+	j := &jobTypes.Job{
 		TeamOwner:   ij.TeamOwner,
 		Plan:        appTypes.Plan{Name: ij.Plan},
 		Name:        ij.Name,
@@ -334,7 +334,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	err = job.CreateJob(ctx, &j, u, ij.Trigger)
+	err = job.CreateJob(ctx, j, u, ij.Trigger)
 	if err != nil {
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
@@ -349,7 +349,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Kind:       permission.PermJobCreate,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(&j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	defer func() {
 		evt.Done(err)
@@ -587,7 +587,7 @@ func jobTarget(jobName string) event.Target {
 	return event.Target{Type: event.TargetTypeJob, Value: jobName}
 }
 
-func contextsForJob(job *job.Job) []permTypes.PermissionContext {
+func contextsForJob(job *jobTypes.Job) []permTypes.PermissionContext {
 	return append(permission.Contexts(permTypes.CtxTeam, job.Teams),
 		permission.Context(permTypes.CtxJob, job.Name),
 		permission.Context(permTypes.CtxPool, job.Pool),

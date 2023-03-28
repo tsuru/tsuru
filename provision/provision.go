@@ -259,19 +259,6 @@ type App interface {
 	GetRegistry() (imgTypes.ImageRegistry, error)
 }
 
-type Job interface {
-	Named
-	GetMemory() int64
-	GetMilliCPU() int
-	GetPool() string
-	GetTeamOwner() string
-	GetTeamsName() []string
-	GetMetadata() appTypes.Metadata
-	IsCron() bool
-	GetSchedule() string
-	GetSpec() jobTypes.JobSpec
-}
-
 type ResourceGetter interface {
 	GetMemory() int64
 	GetMilliCPU() int
@@ -403,14 +390,14 @@ type Provisioner interface {
 
 type JobProvisioner interface {
 	// JobUnits returns information about units related to a specific Job or CronJob
-	JobUnits(context.Context, Job) ([]Unit, error)
+	JobUnits(context.Context, *jobTypes.Job) ([]Unit, error)
 
 	// JobSchedule creates a cronjob object in the cluster
-	CreateJob(context.Context, Job) (string, error)
+	CreateJob(context.Context, *jobTypes.Job) (string, error)
 
-	DestroyJob(context.Context, Job) error
+	DestroyJob(context.Context, *jobTypes.Job) error
 
-	UpdateJob(context.Context, Job) error
+	UpdateJob(context.Context, *jobTypes.Job) error
 
 	TriggerCron(ctx context.Context, name, pool string) error
 }

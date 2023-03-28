@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 // notifyCreateServiceInstance is an action that calls the service endpoint
@@ -227,7 +228,7 @@ type bindAppPipelineArgs struct {
 }
 
 type bindJobPipelineArgs struct {
-	job             bind.Job
+	job             *jobTypes.Job
 	writer          io.Writer
 	serviceInstance *ServiceInstance
 	event           *event.Event
@@ -280,8 +281,8 @@ var bindJobDBAction = &action.Action{
 		}
 		defer conn.Close()
 		si := args.serviceInstance
-		updateOp := bson.M{"$addToSet": bson.M{"jobs": args.job.GetName()}}
-		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "jobs": bson.M{"$ne": args.job.GetName()}}, updateOp)
+		updateOp := bson.M{"$addToSet": bson.M{"jobs": args.job.Name}}
+		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "jobs": bson.M{"$ne": args.job.Name}}, updateOp)
 		if err != nil {
 			if err == mgo.ErrNotFound {
 				return nil, ErrJobAlreadyBound
@@ -292,7 +293,7 @@ var bindJobDBAction = &action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		if err := args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.GetName()}}); err != nil {
+		if err := args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.Name}}); err != nil {
 			log.Errorf("[bind-job-db backward] could not remove job from service instance: %s", err)
 		}
 	},
@@ -643,11 +644,11 @@ var unbindJobDB = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
-		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.GetName()}})
+		return nil, args.serviceInstance.updateData(bson.M{"$pull": bson.M{"jobs": args.job.Name}})
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"jobs": args.job.GetName()}})
+		err := args.serviceInstance.updateData(bson.M{"$addToSet": bson.M{"jobs": args.job.Name}})
 		if err != nil {
 			log.Errorf("[unbind-job-db backward] failed to rebind job in db: %s", err)
 		}

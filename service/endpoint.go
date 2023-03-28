@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/servicemanager"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -201,9 +202,9 @@ func (c *endpointClient) BindApp(ctx context.Context, instance *ServiceInstance,
 	return nil, log.WrapError(err)
 }
 
-func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) (map[string]string, error) {
+func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and %q job at %q API",
-		instance.Name, job.GetName(), instance.ServiceName)
+		instance.Name, job.Name, instance.ServiceName)
 
 	params, err := buildBindJobParams(ctx, evt, job)
 	if err != nil {
@@ -215,9 +216,9 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/binds/jobs/"+job.GetName(), http.MethodPut, params, header)
+	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/binds/jobs/"+job.Name, http.MethodPut, params, header)
 	if err != nil {
-		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.GetName(), instance.ServiceName, instance.Name))
+		return nil, log.WrapError(errors.Wrapf(err, `Failed to bind job %q to service instance "%s/%s"`, job.Name, instance.ServiceName, instance.Name))
 	}
 	defer resp.Body.Close()
 
@@ -229,7 +230,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	}
 
 	if resp.StatusCode >= 300 {
-		err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the job %q`, instance.ServiceName, instance.Name, job.GetName())
+		err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the job %q`, instance.ServiceName, instance.Name, job.Name)
 		return nil, log.WrapError(err)
 	}
 
@@ -311,10 +312,10 @@ func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstanc
 	return err
 }
 
-func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job bind.Job, evt *event.Event, requestID string) error {
-	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.GetName(), instance.ServiceName)
+func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error {
+	log.Debugf("Calling unbind of service instance %q and job %q at %q", instance.Name, job.Name, instance.ServiceName)
 
-	url := "/resources/" + instance.GetIdentifier() + "/binds/jobs/" + job.GetName()
+	url := "/resources/" + instance.GetIdentifier() + "/binds/jobs/" + job.Name
 
 	header, err := baseHeader(ctx, evt, instance, requestID)
 	if err != nil {
@@ -657,19 +658,19 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 	return params, nil
 }
 
-func buildBindJobParams(ctx context.Context, evt *event.Event, job bind.Job) (url.Values, error) {
+func buildBindJobParams(ctx context.Context, evt *event.Event, job *jobTypes.Job) (url.Values, error) {
 	if job == nil {
 		return nil, errors.New("job cannot be nil")
 	}
 
 	params := url.Values{}
-	params.Set("job-name", job.GetName())
+	params.Set("job-name", job.Name)
 	if evt != nil {
 		params.Set("user", evt.Owner.Name)
 		params.Set("eventid", evt.UniqueID.Hex())
 	}
 
-	p, err := servicemanager.Pool.FindByName(ctx, job.GetPool())
+	p, err := servicemanager.Pool.FindByName(ctx, job.Pool)
 	if err != nil {
 		if err == provTypes.ErrPoolNotFound {
 			return params, nil

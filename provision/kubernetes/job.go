@@ -21,10 +21,12 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-func createJobSpec(job provision.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
-	jSpec := job.GetSpec()
+func createJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
+	jSpec := job.Spec
 	requirements, err := resourceRequirements(job, client, requirementsFactors{})
 	if err != nil {
 		return batchv1.JobSpec{}, err
@@ -54,17 +56,17 @@ func createJobSpec(job provision.Job, client *ClusterClient, labels, annotations
 	}, nil
 }
 
-func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
-	namespace := client.PoolNamespace(job.GetPool())
+func createCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
+	namespace := client.PoolNamespace(job.Pool)
 	k8sCronjob, err := client.BatchV1beta1().CronJobs(namespace).Create(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.GetName(),
+			Name:        job.Name,
 			Namespace:   namespace,
 			Labels:      labels,
 			Annotations: annotations,
 		},
 		Spec: apiv1beta1.CronJobSpec{
-			Schedule: job.GetSchedule(),
+			Schedule: job.Spec.Schedule,
 			JobTemplate: apiv1beta1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
@@ -76,11 +78,11 @@ func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job
 	return k8sCronjob.Name, nil
 }
 
-func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
-	namespace := client.PoolNamespace(job.GetPool())
+func createJob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
+	namespace := client.PoolNamespace(job.Pool)
 	k8sJob, err := client.BatchV1().Jobs(namespace).Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.GetName(),
+			Name:        job.Name,
 			Namespace:   namespace,
 			Labels:      labels,
 			Annotations: annotations,
@@ -93,9 +95,9 @@ func createJob(ctx context.Context, client *ClusterClient, job provision.Job, jo
 	return k8sJob.Name, nil
 }
 
-func genJobMetadata(ctx context.Context, job provision.Job) (map[string]string, map[string]string) {
+func genJobMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
 	jobLabels := provision.JobLabels(ctx, job).ToLabels()
-	customData := job.GetMetadata()
+	customData := job.Metadata
 	for _, label := range customData.Labels {
 		// don't let custom labels overwrite tsuru labels
 		if _, ok := jobLabels[label.Name]; ok {
@@ -104,14 +106,14 @@ func genJobMetadata(ctx context.Context, job provision.Job) (map[string]string, 
 		jobLabels[label.Name] = label.Value
 	}
 	jobAnnotations := map[string]string{}
-	for _, a := range job.GetMetadata().Annotations {
+	for _, a := range job.Metadata.Annotations {
 		jobAnnotations[a.Name] = a.Value
 	}
 	return jobLabels, jobAnnotations
 }
 
-func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job provision.Job) (string, error) {
-	client, err := clusterForPool(ctx, job.GetPool())
+func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (string, error) {
+	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
 		return "", err
 	}
@@ -170,8 +172,8 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool stri
 	return err
 }
 
-func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job provision.Job) error {
-	client, err := clusterForPool(ctx, job.GetPool())
+func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job) error {
+	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
 		return err
 	}
@@ -180,16 +182,16 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job provision.Job
 	if err != nil {
 		return err
 	}
-	namespace := client.PoolNamespace(job.GetPool())
+	namespace := client.PoolNamespace(job.Pool)
 	_, err = client.BatchV1beta1().CronJobs(namespace).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.GetName(),
+			Name:        job.Name,
 			Namespace:   namespace,
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 		},
 		Spec: apiv1beta1.CronJobSpec{
-			Schedule: job.GetSchedule(),
+			Schedule: job.Spec.Schedule,
 			JobTemplate: apiv1beta1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
@@ -199,34 +201,34 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job provision.Job
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job provision.Job) ([]provision.Unit, error) {
-	client, err := clusterForPool(ctx, job.GetPool())
+func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
+	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := p.podsForJobs(ctx, client, []provision.Job{job})
+	pods, err := p.podsForJobs(ctx, client, []*jobTypes.Job{job})
 	if err != nil {
 		return nil, err
 	}
 	return p.podsToJobUnits(ctx, client, pods, job)
 }
 
-func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job provision.Job) error {
-	client, err := clusterForPool(ctx, job.GetPool())
+func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
+	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
 		return err
 	}
-	namespace := client.PoolNamespace(job.GetPool())
+	namespace := client.PoolNamespace(job.Pool)
 	if job.IsCron() {
-		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.GetName(), metav1.DeleteOptions{})
+		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 	}
-	return client.BatchV1().Jobs(namespace).Delete(ctx, job.GetName(), metav1.DeleteOptions{})
+	return client.BatchV1().Jobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 }
 
-func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []provision.Job) ([]apiv1.Pod, error) {
+func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []*jobTypes.Job) ([]apiv1.Pod, error) {
 	podList := []apiv1.Pod{}
 	for _, j := range jobs {
-		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/job-name": j.GetName(), "tsuru.io/job-team": j.GetTeamOwner()}}
+		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/job-name": j.Name, "tsuru.io/job-team": j.TeamOwner}}
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 		}
@@ -239,7 +241,7 @@ func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *Cluster
 	return podList, nil
 }
 
-func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job provision.Job) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job *jobTypes.Job) ([]provision.Unit, error) {
 	if len(pods) == 0 {
 		return nil, nil
 	}
