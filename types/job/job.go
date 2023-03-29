@@ -49,9 +49,8 @@ func (job *Job) GetPool() string {
 }
 
 type ContainerInfo struct {
-	Name    string
-	Image   string
-	Command []string
+	Image   string   `json:"image"`
+	Command []string `json:"command"`
 }
 
 type JobSpec struct {

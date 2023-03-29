@@ -333,7 +333,6 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 			},
 		},
 		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
@@ -394,7 +393,6 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
@@ -434,7 +432,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			},
 		},
 		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
@@ -496,7 +493,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
@@ -636,7 +632,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 	ij := inputJob{
 		Name: j1.Name,
 		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
 			Image:   "ubuntu:latest",
 			Command: []string{"echo", "hello world"},
 		},
@@ -699,7 +694,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			},
 		},
 		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
@@ -745,7 +739,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
@@ -768,7 +761,6 @@ func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	ij := inputJob{
 		Name: "i-dont-exist",
 		Container: jobTypes.ContainerInfo{
-			Name:    "c1",
 			Image:   "ubuntu:latest",
 			Command: []string{"echo", "hello world"},
 		},
@@ -875,7 +867,6 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 		Name:      "manual-job",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
 			},
@@ -906,7 +897,6 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */15 * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
 			},

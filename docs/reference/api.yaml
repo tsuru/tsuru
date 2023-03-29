@@ -4406,6 +4406,45 @@ paths:
         - auth
       security:
         - Bearer: []
+
+  /1.13/jobs:
+    post:
+      operationId: CreateJob
+      description: Create a job that runs periodically 
+      parameters:
+        - name: job
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/InputJob"
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      responses:
+        "201":
+          description: Job created
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Quota exceeded
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: App already exists
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+      
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
@@ -5320,6 +5359,46 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
+  InputJob:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        description: Job name.
+      tags:
+        type: array
+        items:
+          type: string
+        description: Job tags.
+      schedule:
+        type: string
+        description: how often this job will run.
+      plan:
+        type: string
+        description: job plan name.
+      pool:
+        type: string
+        description: job pool name.
+      description:
+        type: string
+        description: job description.
+      teamOwner:
+        type: string
+        description: Team that owns the job.
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
+      container:
+        type: object
+        properties:
+          image:
+            type: string
+          command:
+            type: array
+            items:
+              type: string
   AppCreateResponse:
     description: Newly created app information.
     type: object
