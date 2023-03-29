@@ -101,7 +101,6 @@ func NewFakeJob(name, pool, teamOwner string) *jobTypes.Job {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
 			},
