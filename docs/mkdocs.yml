@@ -14,7 +14,10 @@ nav:
 - User guides:
   - Deploy:
     - Using Dockerfile: ./user_guides/deploy_using_dockerfile.md
-- Admin guides: []
+- Admin guides:
+  - Local Environment:
+    - With Makefile: admin/local_environment/make-local.md
+    - With Helm: admin/local_environment/helm.md
 - References:
   - Configuration files:
     - Procfile: references/procfile.md
