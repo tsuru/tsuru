@@ -34,7 +34,6 @@ func (s *S) TestCreateCronjob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -63,7 +62,6 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -88,7 +86,6 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -114,7 +111,6 @@ func (s *S) TestJobUnits(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -136,7 +132,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -147,7 +142,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "betty",
 				Command: []string{"echo", "hello world!"},
 			},
 		},
@@ -173,7 +167,6 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "betty",
 				Command: []string{"echo", "hello world!"},
 			},
 		},
@@ -194,7 +187,6 @@ func (s *S) TestList(c *check.C) {
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "augustine",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
 			},
@@ -208,7 +200,6 @@ func (s *S) TestList(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "betty",
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello world!"},
 			},
