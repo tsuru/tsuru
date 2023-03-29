@@ -60,7 +60,6 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Name:    "c1",
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
@@ -113,7 +112,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
 										{
-											Name:    "c1",
+											Name:    "job",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
 											Resources: apiv1.ResourceRequirements{
@@ -179,7 +178,6 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Name:    "c1",
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
@@ -229,7 +227,7 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
-									Name:    "c1",
+									Name:    "job",
 									Image:   "ubuntu:latest",
 									Command: []string{"echo", "hello world"},
 									Resources: apiv1.ResourceRequirements{
@@ -295,7 +293,6 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Name:    "c1",
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
@@ -331,7 +328,6 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(4 * 60); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Name:    "c1",
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
@@ -384,7 +380,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 								Spec: corev1.PodSpec{
 									Containers: []corev1.Container{
 										{
-											Name:    "c1",
+											Name:    "job",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
 											Resources: apiv1.ResourceRequirements{
@@ -425,7 +421,6 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
 			},
@@ -437,7 +432,6 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 		Pool:      "test-default",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Name:    "c1",
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
 			},
@@ -511,7 +505,6 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
 						Container: jobTypes.ContainerInfo{
-							Name:    "c1",
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
@@ -571,7 +564,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
-										Name:    "c1",
+										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
 										Resources: apiv1.ResourceRequirements{
@@ -648,7 +641,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
-										Name:    "c1",
+										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
 									},
@@ -741,7 +734,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
-										Name:    "c1",
+										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
 									},
@@ -824,7 +817,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
-										Name:    "c1",
+										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
 									},
@@ -906,7 +899,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
-										Name:    "c1",
+										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
 									},
