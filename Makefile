@@ -52,13 +52,14 @@ api-doc: _install_api_doc
 check-api-doc: _install_api_doc
 	@exit $$(tsuru-api-docs | grep missing | wc -l)
 
-doc-deps:
-	@pip install -r requirements.txt
+doc:
+	@cd docs && make serve BUILDDIR=docs
 
-doc: doc-deps
-	@cd docs && make html SPHINXOPTS="-N -W"
+doc-html:
+	@cd docs && make html BUILDDIR=docs
 
 docs: doc
+docs-html: doc-html
 
 release:
 	@if [ ! $(version) ]; then \
@@ -137,7 +138,7 @@ local:
 	@make local-api
 
 local-api:
-	docker-compose up -d
+	docker-compose up -d --remove-orphans
 	go build -o $(TSR_BIN) $(TSR_SRC)
 	$(TSR_BIN) api -c ./etc/tsuru-local.conf
 
