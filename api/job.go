@@ -27,7 +27,7 @@ import (
 )
 
 type inputJob struct {
-	TeamOwner   string            `json:"team-owner"`
+	TeamOwner   string            `json:"teamOwner"`
 	Plan        string            `json:"plan"`
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
