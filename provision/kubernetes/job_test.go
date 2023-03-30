@@ -20,6 +20,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
 )
@@ -27,7 +28,6 @@ import (
 func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
-
 	tests := []struct {
 		name           string
 		scenario       func()
@@ -119,6 +119,14 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 											Name:    "c1",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
+											Resources: apiv1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+												},
+												Requests: corev1.ResourceList{
+													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+												},
+											},
 										},
 									},
 									RestartPolicy: "OnFailure",
@@ -229,6 +237,14 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 									Name:    "c1",
 									Image:   "ubuntu:latest",
 									Command: []string{"echo", "hello world"},
+									Resources: apiv1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+										},
+										Requests: corev1.ResourceList{
+											apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+										},
+									},
 								},
 							},
 							RestartPolicy: "OnFailure",
@@ -378,6 +394,14 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 											Name:    "c1",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
+											Resources: apiv1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+												},
+												Requests: corev1.ResourceList{
+													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+												},
+											},
 										},
 									},
 									RestartPolicy: "OnFailure",
@@ -559,6 +583,14 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 										Name:    "c1",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
+										Resources: apiv1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+											},
+											Requests: corev1.ResourceList{
+												apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+											},
+										},
 									},
 								},
 								RestartPolicy: "OnFailure",

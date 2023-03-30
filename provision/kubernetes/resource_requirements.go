@@ -65,20 +65,20 @@ func burstValue(v int64, burst float64) int64 {
 	return int64(float64(v) * burst)
 }
 
-func appResourceRequirements(app provision.App, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
+func resourceRequirements(object provision.ResourceGetter, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
 	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
-	memory := app.GetMemory()
+	memory := object.GetMemory()
 	if memory != 0 {
 		resourceLimits[apiv1.ResourceMemory] = factors.memoryLimits(memory)
 		resourceRequests[apiv1.ResourceMemory] = factors.memoryRequests(memory)
 	}
-	cpuMilli := int64(app.GetMilliCPU())
+	cpuMilli := int64(object.GetMilliCPU())
 	if cpuMilli != 0 {
 		resourceLimits[apiv1.ResourceCPU] = factors.cpuLimits(cpuMilli)
 		resourceRequests[apiv1.ResourceCPU] = factors.cpuRequests(cpuMilli)
 	}
-	ephemeral, err := client.ephemeralStorage(app.GetPool())
+	ephemeral, err := client.ephemeralStorage(object.GetPool())
 	if err != nil {
 		return apiv1.ResourceRequirements{}, err
 	}

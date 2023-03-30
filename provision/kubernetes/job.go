@@ -23,8 +23,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func createJobSpec(job provision.Job, labels, annotations map[string]string) batchv1.JobSpec {
+func createJobSpec(job provision.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
 	jSpec := job.GetSpec()
+	requirements, err := resourceRequirements(job, client, requirementsFactors{})
+	if err != nil {
+		return batchv1.JobSpec{}, err
+	}
 	return batchv1.JobSpec{
 		Parallelism:           jSpec.Parallelism,
 		BackoffLimit:          jSpec.BackoffLimit,
@@ -39,14 +43,15 @@ func createJobSpec(job provision.Job, labels, annotations map[string]string) bat
 				RestartPolicy: "OnFailure",
 				Containers: []v1.Container{
 					{
-						Name:    jSpec.ContainerInfo.Name,
-						Image:   jSpec.ContainerInfo.Image,
-						Command: jSpec.ContainerInfo.Command,
+						Name:      jSpec.ContainerInfo.Name,
+						Image:     jSpec.ContainerInfo.Image,
+						Command:   jSpec.ContainerInfo.Command,
+						Resources: requirements,
 					},
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 func createCronjob(ctx context.Context, client *ClusterClient, job provision.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
@@ -111,7 +116,10 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job provision.Job
 		return "", err
 	}
 	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
-	jobSpec := createJobSpec(job, jobLabels, jobAnnotations)
+	jobSpec, err := createJobSpec(job, client, jobLabels, jobAnnotations)
+	if err != nil {
+		return "", err
+	}
 	if job.IsCron() {
 		return createCronjob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
 	}
@@ -168,7 +176,10 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job provision.Job
 		return err
 	}
 	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
-	jobSpec := createJobSpec(job, jobLabels, jobAnnotations)
+	jobSpec, err := createJobSpec(job, client, jobLabels, jobAnnotations)
+	if err != nil {
+		return err
+	}
 	namespace := client.PoolNamespace(job.GetPool())
 	_, err = client.BatchV1beta1().CronJobs(namespace).Update(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{

@@ -6,7 +6,7 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func (s *S) TestGetAppResourceRequirements(c *check.C) {
+func (s *S) TestGetresourceRequirements(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "plat", 1)
 	a.Memory = 10 * 1024
 	a.MilliCPU = 1000
@@ -89,7 +89,7 @@ func (s *S) TestGetAppResourceRequirements(c *check.C) {
 	}
 
 	for _, testCase := range testsCases {
-		requirements, err := appResourceRequirements(a, clusterClient, testCase.factors)
+		requirements, err := resourceRequirements(a, clusterClient, testCase.factors)
 		c.Assert(err, check.IsNil)
 
 		memoryLimits := requirements.Limits["memory"]
