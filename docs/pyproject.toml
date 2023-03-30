@@ -9,6 +9,7 @@ readme = "docs/index.md"
 python = "^3.10"
 mkdocs = "^1.4.2"
 pymdown-extensions = "^9.10"
+pygments = "^2.14.0"
 
 
 [build-system]
