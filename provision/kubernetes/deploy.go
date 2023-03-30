@@ -714,7 +714,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster memory overcommit factor")
 	}
-	resourceRequirements, err := appResourceRequirements(a, client, requirementsFactors{
+	resourceRequirements, err := resourceRequirements(a, client, requirementsFactors{
 		overCommit:       overCommit,
 		cpuOverCommit:    cpuOverCommit,
 		cpuBurst:         cpuBurst,

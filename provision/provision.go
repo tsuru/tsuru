@@ -281,6 +281,12 @@ type Job interface {
 	GetSpec() jobTypes.JobSpec
 }
 
+type ResourceGetter interface {
+	GetMemory() int64
+	GetMilliCPU() int
+	GetPool() string
+}
+
 type BuilderDockerClient interface {
 	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error)
 	RemoveContainer(opts docker.RemoveContainerOptions) error
