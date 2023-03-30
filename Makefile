@@ -53,13 +53,8 @@ check-api-doc: _install_api_doc
 	@exit $$(tsuru-api-docs | grep missing | wc -l)
 
 doc:
-	@cd docs && make serve BUILDDIR=docs
-
-doc-html:
-	@cd docs && make html BUILDDIR=docs
-
+	@cd docs && make serve
 docs: doc
-docs-html: doc-html
 
 release:
 	@if [ ! $(version) ]; then \

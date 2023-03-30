@@ -3,7 +3,7 @@ name = "docs"
 version = "0.1.0"
 description = ""
 authors = ["tsuru <tsuru@g.globo>"]
-readme = "README.md"
+readme = "docs/index.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
