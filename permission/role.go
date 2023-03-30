@@ -100,6 +100,39 @@ func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
 	return roles, nil
 }
 
+// ListRolesWithPermissionWithContextMap returns a map with all roles valid for a
+// specific Context or having any scheme permission which is valid for the specific Context.
+func ListRolesWithPermissionWithContextMap(contextValue permTypes.ContextType) (map[string]Role, error) {
+	allRoles, err := ListRoles()
+	if err != nil {
+		return nil, err
+	}
+
+	filteredRoles := make(map[string]Role)
+	for _, role := range allRoles {
+		if role.ContextType == contextValue || role.hasPermissionWithContext(contextValue) {
+			filteredRoles[role.Name] = role
+		}
+	}
+
+	return filteredRoles, nil
+}
+
+func (r *Role) hasPermissionWithContext(contextValue permTypes.ContextType) bool {
+	for _, schemeName := range r.SchemeNames {
+		scheme, err := SafeGet(schemeName)
+		if err != nil {
+			continue
+		}
+		for _, sCtx := range scheme.AllowedContexts() {
+			if sCtx == contextValue {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func FindRole(name string) (Role, error) {
 	var role Role
 	coll, err := rolesCollection()

@@ -506,22 +506,19 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	cachedRoles := make(map[string]permission.Role)
 	includedUsers := make([]*apiUser, 0)
-	for _, user := range users {
-		for _, roleInstance := range user.Roles {
-			role, ok := cachedRoles[roleInstance.Name]
-			if !ok {
-				roleFound, err := permission.FindRole(roleInstance.Name)
-				if err != nil {
-					return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-				}
-				cachedRoles[roleInstance.Name] = roleFound
-				role = cachedRoles[roleInstance.Name]
-			}
-			if role.ContextType == permTypes.CtxGlobal || (role.ContextType == permTypes.CtxTeam && roleInstance.ContextValue == team.Name) {
-				canInclude := permission.Check(t, permission.PermTeam)
-				if canInclude {
+
+	filteredRolesMap, err := permission.ListRolesWithPermissionWithContextMap(permTypes.CtxTeam)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+
+	canInclude := permission.Check(t, permission.PermTeam)
+	if canInclude {
+		for _, user := range users {
+			for _, roleInstance := range user.Roles {
+				_, found := filteredRolesMap[roleInstance.Name]
+				if found && roleInstance.ContextValue == teamName {
 					roleMap := make(map[string]*permission.Role)
 					perms, err := t.Permissions()
 					if err != nil {
@@ -532,7 +529,6 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 						return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
 					}
 					includedUsers = append(includedUsers, userData)
-					break
 				}
 			}
 		}
