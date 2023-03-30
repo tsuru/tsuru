@@ -210,6 +210,25 @@ func (s *S) TestListRolesForEvent(c *check.C) {
 	c.Assert(roles[0].Name, check.Equals, "myrole2")
 }
 
+func (s *S) TestListRolesWithPermissionWithContextMap(c *check.C) {
+	_, err := NewRole("myrole1", "global", "") // no permissions for teamCtx
+	c.Assert(err, check.IsNil)
+	r2, err := NewRole("myrole2", "global", "") // with permissions for teamCtx
+	c.Assert(err, check.IsNil)
+	r3, err := NewRole("myrole3", "global", "") // with permissions NOT for teamCtx
+	c.Assert(err, check.IsNil)
+	_, err = NewRole("myrole4", "team", "") // with roleCtx for teamCtx
+	c.Assert(err, check.IsNil)
+
+	r2.AddPermissions("app.update", "app.update.env.set")
+	r3.AddPermissions("role.update.assign")
+	roles, err := ListRolesWithPermissionWithContextMap(permTypes.CtxTeam)
+	c.Assert(err, check.IsNil)
+	c.Assert(roles, check.HasLen, 2)
+	c.Assert(roles["myrole2"].Name, check.Equals, "myrole2")
+	c.Assert(roles["myrole4"].Name, check.Equals, "myrole4")
+}
+
 func (s *S) TestUpdate(c *check.C) {
 	_, err := NewRole("myrole", "team", "")
 	c.Assert(err, check.IsNil)
