@@ -4444,7 +4444,60 @@ paths:
         - job
       security:
         - Bearer: []
-      
+    get:
+      operationId: ListJob
+      description: List jobs that runs periodically
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: JobList.
+          schema:
+            $ref: "#/definitions/JobList"
+        "404":
+          description: Not founds.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+  
+  /1.13/jobs/{name}:
+    get:
+      operationId: GetJob
+      description: Get a job that runs periodically
+      parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Name of job
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: JobInfo.
+          schema:
+            $ref: "#/definitions/JobInfo"
+        "404":
+          description: Not founds.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
@@ -5359,6 +5412,60 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
+
+  JobInfo:
+    type: object
+    properties:
+      job:
+        type: object
+        $ref: "#/definitions/Job"
+
+  JobList:
+    type: array
+    items:
+      type: object
+      $ref: "#/definitions/Job"
+
+  Job:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Job name.
+      pool:
+        type: string
+        description: job pool name.
+      description:
+        type: string
+        description: job description.
+      owner:
+        type: string
+        description: who created this job.
+      teamOwner:
+        type: string
+        description: Team that owns the job.
+      teams:
+        type: array
+        items:
+          type: string
+        description: Teams that have access to this job
+      plan:
+        type: object
+        $ref: "#/definitions/Plan"
+      spec:
+        type: object
+        properties:
+          schedule:
+            type: string
+          container:
+            type: object
+            properties:
+              image:
+                type: string
+              command:
+                type: array
+                items:
+                  type: string
   InputJob:
     type: object
     required:
@@ -5467,17 +5574,11 @@ definitions:
         type: integer
         format: int64
         minimum: 0
-      swap:
-        type: integer
-        format: int64
-        minimum: 0
       cpumilli:
         type: integer
         minimum: 0
       default:
         type: boolean
-      router:
-        type: string
       override:
         type: object
         $ref: "#/definitions/PlanOverride"
