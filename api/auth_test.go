@@ -599,6 +599,49 @@ func (s *AuthSuite) TestTeamInfoReturns200Success(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
+func (s *AuthSuite) TestTeamInfoReturnsUsers(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	u1 := auth.User{Email: "myuser1@example.com", Roles: []authTypes.RoleInstance{{Name: "team-member", ContextValue: teamName}}}
+	err := u1.Create()
+	c.Assert(err, check.IsNil)
+
+	u2 := auth.User{Email: "myuser2@example.com", Roles: []authTypes.RoleInstance{{Name: "god"}, {Name: "team-member", ContextValue: "other-team"}}}
+	err = u2.Create()
+	c.Assert(err, check.IsNil)
+
+	role, err := permission.NewRole("team-member", "team", "")
+	c.Assert(err, check.IsNil)
+
+	err = role.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	role, err = permission.NewRole("god", "global", "")
+	c.Assert(err, check.IsNil)
+
+	err = role.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	type result struct {
+		Users []apiUser
+	}
+	r := &result{}
+	json.Unmarshal(recorder.Body.Bytes(), r)
+	c.Assert(r.Users, check.HasLen, 1)
+	c.Assert(u1.Email, check.Equals, r.Users[0].Email)
+}
+
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
