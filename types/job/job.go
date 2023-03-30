@@ -14,16 +14,16 @@ import (
 // this struct carries some tsuru metadata as is the case with the app object
 // it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
-	Name        string
-	Teams       []string
-	TeamOwner   string
-	Owner       string
-	Plan        appTypes.Plan
-	Metadata    appTypes.Metadata
-	Pool        string
-	Description string
+	Name        string            `json:"name"`
+	Teams       []string          `json:"teams"`
+	TeamOwner   string            `json:"teamOwner"`
+	Owner       string            `json:"owner"`
+	Plan        appTypes.Plan     `json:"plan"`
+	Metadata    appTypes.Metadata `json:"metadata"`
+	Pool        string            `json:"pool"`
+	Description string            `json:"description"`
 
-	Spec JobSpec
+	Spec JobSpec `json:"spec"`
 }
 
 func (job *Job) IsCron() bool {
@@ -54,12 +54,12 @@ type ContainerInfo struct {
 }
 
 type JobSpec struct {
-	Completions           *int32
-	Parallelism           *int32
-	ActiveDeadlineSeconds *int64
-	BackoffLimit          *int32
-	Schedule              string
-	Container             ContainerInfo
-	ServiceEnvs           []bindTypes.ServiceEnvVar
-	Envs                  []bindTypes.EnvVar
+	Completions           *int32                    `json:"completions,omitempty"`
+	Parallelism           *int32                    `json:"parallelism,omitempty"`
+	ActiveDeadlineSeconds *int64                    `json:"activeDeadlineSeconds,omitempty"`
+	BackoffLimit          *int32                    `json:"backoffLimit,omitempty"`
+	Schedule              string                    `json:"schedule"`
+	Container             ContainerInfo             `json:"container"`
+	ServiceEnvs           []bindTypes.ServiceEnvVar `json:"-"`
+	Envs                  []bindTypes.EnvVar        `json:"envs"`
 }
