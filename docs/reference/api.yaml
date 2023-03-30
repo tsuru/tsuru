@@ -5419,6 +5419,11 @@ definitions:
       job:
         type: object
         $ref: "#/definitions/Job"
+      units:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/Unit"
 
   JobList:
     type: array
@@ -5691,6 +5696,8 @@ definitions:
       restarts:
         type: integer
         x-go-custom-type: "*int"
+      createdAt:
+        type: string
       address:
         type: object
         $ref: "#/definitions/URL"
