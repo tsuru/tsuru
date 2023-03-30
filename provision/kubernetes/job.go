@@ -228,11 +228,13 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []*jobTypes.Job) ([]apiv1.Pod, error) {
 	podList := []apiv1.Pod{}
 	for _, j := range jobs {
-		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/job-name": j.Name, "tsuru.io/job-team": j.TeamOwner}}
+		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/job-name": j.Name}}
 		listOptions := metav1.ListOptions{
 			LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 		}
-		pods, err := client.CoreV1().Pods(client.Namespace()).List(ctx, listOptions)
+		namespace := client.PoolNamespace(j.Pool)
+
+		pods, err := client.CoreV1().Pods(namespace).List(ctx, listOptions)
 		if err != nil {
 			return podList, err
 		}
