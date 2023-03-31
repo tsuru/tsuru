@@ -11,6 +11,7 @@ mkdocs = "^1.4.2"
 pymdown-extensions = "^9.10"
 pygments = "^2.14.0"
 mike = "^1.1.2"
+mkdocs-material = "^9.1.5"
 
 
 [build-system]

@@ -6,14 +6,15 @@ repo_url: https://github.com/tsuru/tsuru/
 edit_uri: edit/main/docs/docs
 
 theme:
-  name: readthedocs
+  name: material
 
 plugins:
 - search
 - mike: {}
 
 extra:
-  version: dev
+  version:
+    provider: mike
 
 markdown_extensions:
 - admonition
