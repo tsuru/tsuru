@@ -29,7 +29,7 @@ func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	c.Assert(buffer.size <= defaultMaxAppBufferSize, check.Equals, true)
 	c.Assert(buffer.start.prev, check.Equals, buffer.end)
 	c.Assert(buffer.end.next, check.Equals, buffer.start)
-	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
+	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
 		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-10"},
@@ -54,7 +54,7 @@ func (s *S) Test_MemoryLogService_MessageLargerThanLimit(c *check.C) {
 	buffer := svc.getAppBuffer("myapp")
 	c.Assert(buffer.length, check.Equals, 1)
 	c.Assert(buffer.size <= defaultMaxAppBufferSize, check.Equals, true)
-	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
+	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
 		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "avranakern"},
@@ -74,7 +74,7 @@ func (s *S) Test_MemoryLogService_MessagExactLimit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(buffer.length, check.Equals, 1)
 	c.Assert(buffer.size == defaultMaxAppBufferSize, check.Equals, true)
-	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{AppName: "myapp"})
+	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
 		{Message: newMessage, AppName: "myapp", Source: "tsuru", Unit: "avranakern2"},

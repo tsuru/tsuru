@@ -106,18 +106,18 @@ func (s *memoryLogService) Add(appName, message, source, unit string) error {
 }
 
 func (s *memoryLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	if args.AppName == "" {
+	if args.Name == "" {
 		return nil, errors.New("app name required to list logs")
 	}
 	if args.Limit < 0 {
 		return []appTypes.Applog{}, nil
 	}
-	buffer := s.getAppBuffer(args.AppName)
+	buffer := s.getAppBuffer(args.Name)
 	return buffer.list(args), nil
 }
 
 func (s *memoryLogService) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	buffer := s.getAppBuffer(args.AppName)
+	buffer := s.getAppBuffer(args.Name)
 	watcher := &memoryWatcher{
 		buffer:     buffer,
 		ch:         make(chan appTypes.Applog, watchBufferSize),

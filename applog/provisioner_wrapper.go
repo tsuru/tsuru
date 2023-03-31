@@ -46,7 +46,7 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 }
 
 func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	a, err := servicemanager.App.GetByName(ctx, args.AppName)
+	a, err := servicemanager.App.GetByName(ctx, args.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs
 }
 
 func (k *provisionerWrapper) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	a, err := servicemanager.App.GetByName(ctx, args.AppName)
+	a, err := servicemanager.App.GetByName(ctx, args.Name)
 	if err != nil {
 		return nil, err
 	}

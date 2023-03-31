@@ -77,7 +77,8 @@ func (s *S) Test_Aggregator_List(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
+		Type: "app",
 	})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{
@@ -102,7 +103,8 @@ func (s *S) Test_Aggregator_ListFilter(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		AppName:      "myapp",
+		Name:      "myapp",
+		Type: "app",
 		Source:       "tsuru",
 		Units:        []string{"myunit", "otherunit"},
 		InvertSource: true,
@@ -126,7 +128,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 				"Date": "2019-07-23T10:51:20-03:00",
 				"Message": "msg1",
 				"Source": "web",
-				"AppName": "myapp",
+				"Name": "myapp",
 				"Unit": "unit1"
 			}]`))
 		case 1:
@@ -134,7 +136,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 				"Date": "2019-07-23T13:50:26.634644022Z",
 				"Message": "msg2",
 				"Source": "tsuru",
-				"AppName": "myapp",
+				"Name": "myapp",
 				"Unit": "api"
 			}]`))
 		case 2:
@@ -142,7 +144,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 				"Date": "2019-07-23T12:57:47.197062857Z",
 				"Message": "msg3",
 				"Source": "tsuru",
-				"AppName": "myapp",
+				"Name": "myapp",
 				"Unit": "api"
 			}]`))
 		case 3:
@@ -150,7 +152,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 				"Date": "2019-07-23T13:21:44.675499702Z",
 				"Message": "msg4",
 				"Source": "tsuru",
-				"AppName": "myapp",
+				"Name": "myapp",
 				"Unit": "api"
 			}]`))
 		case 4:
@@ -158,7 +160,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 				"Date": "2019-07-23T13:08:16.014858022Z",
 				"Message": "msg5",
 				"Source": "tsuru",
-				"AppName": "myapp",
+				"Name": "myapp",
 				"Unit": "api"
 			}]`))
 		case 5:
@@ -169,7 +171,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 		Limit:   1,
 	})
 	c.Assert(err, check.IsNil)
@@ -189,7 +191,7 @@ func (s *S) Test_Aggregator_List_WithError(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	_, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	c.Assert(err, check.ErrorMatches, `(?s)\[log instance .*\]: invalid status code 500:.*`)
 }
@@ -205,7 +207,7 @@ func (s *S) Test_Aggregator_List_WithErrorSingleRequest(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	_, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	c.Assert(err, check.ErrorMatches, `(?s)\[log instance .*\]: invalid status code 500:.*`)
 }
@@ -234,7 +236,7 @@ func (s *S) Test_Aggregator_Watch(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	watcher, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	c.Assert(err, check.IsNil)
 	defer watcher.Close()
@@ -292,7 +294,7 @@ func (s *S) Test_Aggregator_Watch_WithErrorAfterMessages(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	watcher, err := svc.Watch(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	c.Assert(err, check.IsNil)
 	defer watcher.Close()

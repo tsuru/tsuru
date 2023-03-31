@@ -6821,7 +6821,8 @@ func (s *S) TestFollowLogs(c *check.C) {
 		done: make(chan struct{}),
 	}
 	l, err := servicemanager.AppLog.Watch(context.TODO(), appTypes.ListLogArgs{
-		AppName: a.Name,
+		Name: a.Name,
+		Type: "app",
 		Token:   s.token,
 	})
 	c.Assert(err, check.IsNil)

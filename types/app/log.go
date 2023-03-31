@@ -30,7 +30,8 @@ type AppLogServiceInstance interface {
 }
 
 type ListLogArgs struct {
-	AppName      string
+	Name      string
+	Type	  string
 	Source       string
 	Units        []string
 	Limit        int

@@ -1388,7 +1388,8 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	listArgs := appTypes.ListLogArgs{
-		AppName:      a.Name,
+		Name:      a.Name,
+		Type: "app",
 		Limit:        lines,
 		Source:       source,
 		InvertSource: invert,

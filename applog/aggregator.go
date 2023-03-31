@@ -222,7 +222,7 @@ func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follo
 		if follow {
 			urlValues.Add("follow", "1")
 		}
-		u := fmt.Sprintf("http://%s:%s/apps/%s/log-instance?%s", ipAddr, instance.Port, args.AppName, urlValues.Encode())
+		u := fmt.Sprintf("http://%s:%s/apps/%s/log-instance?%s", ipAddr, instance.Port, args.Name, urlValues.Encode())
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
 			return nil, err

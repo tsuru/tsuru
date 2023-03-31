@@ -337,6 +337,14 @@ func List(ctx context.Context, filter *Filter) ([]Job, error) {
 	return jobs, nil
 }
 
+// LastLogs returns a list of the last `lines` log of the app, matching the
+// fields in the log instance received as an example.
+func (job *Job) LastLogs(ctx context.Context, logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	args.Name = job.Name
+	args.Type = "job"
+	return logService.List(ctx, args)
+}
+
 func validateSchedule(jobName, schedule string) error {
 	gronx := gronx.New()
 	if !gronx.IsValid(schedule) {

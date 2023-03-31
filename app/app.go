@@ -2006,7 +2006,8 @@ func (app *App) LastLogs(ctx context.Context, logService appTypes.AppLogService,
 			return nil, errors.New(doc)
 		}
 	}
-	args.AppName = app.Name
+	args.Name = app.Name
+	args.Type = "app"
 	return logService.List(ctx, args)
 }
 

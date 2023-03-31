@@ -51,7 +51,7 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 	c.Check(err, check.IsNil)
 
 	logs, err := s.provisionerWrapper.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Message < logs[j].Message
@@ -64,7 +64,7 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 
 func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
 	watcher, err := s.provisionerWrapper.Watch(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	c.Assert(err, check.IsNil)
 

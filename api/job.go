@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -16,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -411,6 +414,76 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
+
+// title: job log
+// path: /jobs/{job}/log
+// method: GET
+// produce: application/x-json-stream
+// responses:
+//   200: Ok
+//   400: Invalid data
+//   401: Unauthorized
+//   404: Job not found
+func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	var err error
+	var lines int
+	if l := r.URL.Query().Get("lines"); l != "" {
+		lines, err = strconv.Atoi(l)
+		if err != nil {
+			msg := `Parameter "lines" must be an integer.`
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+		}
+	} else {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: `Parameter "lines" is mandatory.`}
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	urlValues := r.URL.Query()
+	// follow, _ := strconv.ParseBool(urlValues.Get("follow"))
+	jobName := urlValues.Get(":job")
+
+	j, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermJobRead,
+		contextsForJob(j)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	logService := servicemanager.AppLog
+	if strings.Contains(r.URL.Path, "/log-instance") {
+		if svcInstance, ok := servicemanager.AppLog.(appTypes.AppLogServiceInstance); ok {
+			logService = svcInstance.Instance()
+		}
+	}
+	listArgs := appTypes.ListLogArgs{
+		Name:      j.Name,
+		Type: "job",
+		Limit:        lines,
+		Token:        t,
+	}
+	logs, err := j.LastLogs(ctx, logService, listArgs)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(w)
+	err = encoder.Encode(logs)
+	if err != nil {
+		return err
+	}
+	return nil
+	// if !follow {
+	// 	return nil
+	// }
+	// watcher, err := logService.Watch(ctx, listArgs)
+	// if err != nil {
+	// 	return err
+	// }
+	// return followLogs(tsuruNet.CancelableParentContext(r.Context()), j.Name, watcher, encoder)
+}
+
 
 func jobTarget(jobName string) event.Target {
 	return event.Target{Type: event.TargetTypeJob, Value: jobName}

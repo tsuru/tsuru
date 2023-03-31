@@ -207,7 +207,7 @@ func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
 	m := map[string]string{
 		tsuruLabelIsBuild:  "false",
 		tsuruLabelIsDeploy: "false",
-		tsuruLabelAppName:  args.AppName,
+		tsuruLabelAppName:  args.Name,
 	}
 	if args.Source != "" {
 		m[tsuruLabelAppProcess] = args.Source
@@ -336,7 +336,7 @@ func (k *k8sLogsWatcher) Close() {
 
 func (k *k8sLogsWatcher) OnPodEvent(pod *apiv1.Pod) {
 	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
-	if k.logArgs.AppName != appName {
+	if k.logArgs.Name != appName {
 		return
 	}
 
