@@ -5,4 +5,8 @@ install-deps:
 	@poetry install -q
 
 serve: install-deps
-	@poetry run mkdocs serve
+	@if [ ! -f "docs/versions.json" ] ; then \
+		echo '[{"version": ".", "title": "dev", "aliases": [""]},{"version": ".", "title": "latest", "aliases": []}]' > docs/versions.json ; \
+		trap "trap - SIGINT SIGTERM ERR EXIT ; rm docs/versions.json; " SIGINT SIGTERM ERR EXIT ; \
+	fi ; \
+	poetry run mkdocs serve

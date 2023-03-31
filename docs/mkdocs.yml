@@ -12,6 +12,9 @@ plugins:
 - search
 - mike: {}
 
+extra:
+  version: dev
+
 markdown_extensions:
 - admonition
 - pymdownx.details
