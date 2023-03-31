@@ -6,6 +6,7 @@ SHELL = /bin/bash -o pipefail
 BUILD_DIR = build
 TSR_BIN = $(BUILD_DIR)/tsurud
 TSR_SRC = ./cmd/tsurud
+K8S_VERSION=v1.20.0
 
 ifeq (, $(shell go env GOBIN))
 GOBIN := $(shell go env GOPATH)/bin
@@ -121,19 +122,19 @@ generate-test-certs:
 
 # reference for minikube macOS registry: https://minikube.sigs.k8s.io/docs/handbook/registry/#docker-on-macos
 local-mac:
-	minikube start --driver=virtualbox
+	minikube start --driver=virtualbox --kubernetes-version=$(K8S_VERSION)
 	minikube addons enable registry
 	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
 	@make local-api
 
 local-mac-m1:
-	minikube start --driver=docker --alsologtostderr
+	minikube start --driver=docker --alsologtostderr --kubernetes-version=$(K8S_VERSION)
 	minikube addons enable registry
 	docker run -d --rm --network=host alpine ash -c "apk add socat && socat TCP-LISTEN:5000,reuseaddr,fork TCP:$(minikube ip):5000"
 	@make local-api
 
 local:
-	minikube start --driver=none
+	minikube start --driver=none --kubernetes-version=$(K8S_VERSION)
 	@make local-api
 
 local-api:
