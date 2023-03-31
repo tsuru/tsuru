@@ -160,7 +160,7 @@ func setupServices() error {
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize catalog cache service")
 	}
-	servicemanager.AppLog, err = applog.AppLogService()
+	servicemanager.LogService, err = applog.AppLogService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize app log service")
 	}
@@ -528,6 +528,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.13", http.MethodGet, "/jobs", AuthorizationRequiredHandler(jobList))
 	m.Add("1.13", http.MethodPost, "/jobs/{name}/env", AuthorizationRequiredHandler(setJobEnv))
 	m.Add("1.13", http.MethodDelete, "/jobs/{name}/env", AuthorizationRequiredHandler(unsetJobEnv))
+	m.Add("1.13", http.MethodGet, "/jobs/{name}/log", AuthorizationRequiredHandler(jobLog))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	knet "k8s.io/apimachinery/pkg/util/net"
@@ -31,8 +32,8 @@ var (
 	watchTimeout = time.Hour
 )
 
-func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	clusterClient, err := clusterForPool(ctx, app.GetPool())
+func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	clusterClient, err := clusterForPool(ctx, obj.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 		return nil, err
 	}
 
-	ns, err := clusterClient.AppNamespace(ctx, app)
+	ns := clusterClient.PoolNamespace(obj.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +62,9 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 	return listLogsFromPods(ctx, clusterClient, ns, pods, args)
 }
 
-func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	clusterClient, err := clusterForPool(ctx, app.GetPool())
+func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
+	pool := obj.GetPool()
+	clusterClient, err := clusterForPool(ctx, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +75,7 @@ func (p *kubernetesProvisioner) WatchLogs(ctx context.Context, app appTypes.App,
 		return nil, err
 	}
 
-	ns, err := clusterClient.AppNamespace(ctx, app)
-	if err != nil {
-		return nil, err
-	}
+	ns := clusterClient.PoolNamespace(pool)
 
 	podInformer, err := clusterController.getPodInformer()
 	if err != nil {
@@ -150,7 +149,7 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 				return
 			}
 
-			appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
+			name, logType := logMetadata(pod.ObjectMeta.Labels)
 			appProcess := pod.ObjectMeta.Labels[tsuruLabelAppProcess]
 
 			reader := bufio.NewReader(stream)
@@ -171,7 +170,8 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 
 				tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 				tsuruLog.Unit = pod.ObjectMeta.Name
-				tsuruLog.AppName = appName
+				tsuruLog.Name = name
+				tsuruLog.Type = logType
 				tsuruLog.Source = appProcess
 				tsuruLogs = append(tsuruLogs, tsuruLog)
 			}
@@ -207,7 +207,11 @@ func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
 	m := map[string]string{
 		tsuruLabelIsBuild:  "false",
 		tsuruLabelIsDeploy: "false",
-		tsuruLabelAppName:  args.AppName,
+	}
+	if args.Type == logTypes.LogTypeJob {
+		m[tsuruLabelJobName] = args.Name
+	} else {
+		m[tsuruLabelAppName] = args.Name
 	}
 	if args.Source != "" {
 		m[tsuruLabelAppProcess] = args.Source
@@ -245,7 +249,7 @@ func errToLog(podName, appName string, err error) appTypes.Applog {
 		Date:    time.Now().UTC(),
 		Message: fmt.Sprintf("Could not get logs from unit: %s, error: %s", podName, err.Error()),
 		Unit:    "apiserver",
-		AppName: appName,
+		Name:    appName,
 		Source:  "kubernetes",
 	}
 }
@@ -255,7 +259,7 @@ func infoToLog(appName string, message string) appTypes.Applog {
 		Date:    time.Now().UTC(),
 		Message: message,
 		Unit:    "apiserver",
-		AppName: appName,
+		Name:    appName,
 		Source:  "kubernetes",
 	}
 }
@@ -275,15 +279,23 @@ type k8sLogsWatcher struct {
 	watchingPods      map[string]bool
 }
 
-func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
+func logMetadata(labels map[string]string) (string, logTypes.LogType) {
+	if appName, ok := labels[tsuruLabelAppName]; ok {
+		return appName, logTypes.LogTypeApp
+	} else if jobName, ok := labels[tsuruLabelJobName]; ok {
+		return jobName, logTypes.LogTypeJob
+	}
+	return "", logTypes.LogTypeApp
+}
 
+func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 	defer k.wg.Done()
-	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
+	name, logType := logMetadata(pod.ObjectMeta.Labels)
 	appProcess := pod.ObjectMeta.Labels[tsuruLabelAppProcess]
 	var tailLines int64
 
 	if addedLater {
-		k.ch <- infoToLog(appName, "Starting to watch new unit: "+pod.ObjectMeta.Name)
+		k.ch <- infoToLog(name, "Starting to watch new unit: "+pod.ObjectMeta.Name)
 		tailLines = int64(k.logArgs.Limit) // shun that startup logs be forgotten
 	}
 
@@ -294,7 +306,7 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 	})
 	stream, err := request.Stream(k.ctx)
 	if err != nil {
-		k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
+		k.ch <- errToLog(pod.ObjectMeta.Name, name, err)
 		return
 	}
 
@@ -304,7 +316,7 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			if !knet.IsProbableEOF(err) && err != context.Canceled {
-				k.ch <- errToLog(pod.ObjectMeta.Name, appName, err)
+				k.ch <- errToLog(pod.ObjectMeta.Name, name, err)
 			}
 			break
 		}
@@ -315,7 +327,8 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 
 		tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 		tsuruLog.Unit = pod.ObjectMeta.Name
-		tsuruLog.AppName = appName
+		tsuruLog.Name = name
+		tsuruLog.Type = logType
 		tsuruLog.Source = appProcess
 		k.ch <- tsuruLog
 	}
@@ -336,7 +349,8 @@ func (k *k8sLogsWatcher) Close() {
 
 func (k *k8sLogsWatcher) OnPodEvent(pod *apiv1.Pod) {
 	appName := pod.ObjectMeta.Labels[tsuruLabelAppName]
-	if k.logArgs.AppName != appName {
+	jobName := pod.ObjectMeta.Labels[tsuruLabelJobName]
+	if k.logArgs.Name != appName && k.logArgs.Name != jobName {
 		return
 	}
 

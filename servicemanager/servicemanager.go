@@ -33,7 +33,7 @@ var (
 	Cluster                   provision.ClusterService
 	ServiceBroker             service.ServiceBrokerService
 	ServiceBrokerCatalogCache service.ServiceBrokerCatalogCacheService
-	AppLog                    app.AppLogService
+	LogService                app.AppLogService
 	InstanceTracker           tracker.InstanceService
 	AppVersion                app.AppVersionService
 	DynamicRouter             router.DynamicRouterService

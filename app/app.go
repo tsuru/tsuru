@@ -773,7 +773,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to release team quota", err)
 	}
-	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
 		err = plog.CleanUp(app.Name)
 		if err != nil {
 			logErr("Unable to remove logs", err)
@@ -1211,7 +1211,7 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 	}
 	app.Env[env.Name] = env
 	if env.Public {
-		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
+		servicemanager.LogService.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
 	}
 }
 
@@ -1986,7 +1986,8 @@ func (app *App) LastLogs(ctx context.Context, logService appTypes.AppLogService,
 			return nil, errors.New(doc)
 		}
 	}
-	args.AppName = app.Name
+	args.Name = app.Name
+	args.Type = "app"
 	return logService.List(ctx, args)
 }
 

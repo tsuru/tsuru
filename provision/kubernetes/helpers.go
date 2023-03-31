@@ -46,6 +46,7 @@ const (
 	tsuruExtraLabelsMeta      = tsuruLabelPrefix + "extra-labels"
 	tsuruExtraAnnotationsMeta = tsuruLabelPrefix + "extra-annotations"
 	tsuruLabelAppName         = tsuruLabelPrefix + provision.LabelAppName
+	tsuruLabelJobName         = tsuruLabelPrefix + provision.LabelJobName
 	tsuruLabelAppVersion      = tsuruLabelPrefix + provision.LabelAppVersion
 	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
 	tsuruLabelIsBuild         = tsuruLabelPrefix + provision.LabelIsBuild

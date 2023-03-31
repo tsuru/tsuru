@@ -73,7 +73,7 @@ func memoryAppLogService() (appTypes.AppLogService, error) {
 }
 
 func (s *memoryLogService) Enqueue(entry *appTypes.Applog) error {
-	buffer := s.getAppBuffer(entry.AppName)
+	buffer := s.getAppBuffer(entry.Name)
 	buffer.add(entry)
 	return nil
 }
@@ -87,7 +87,7 @@ func (s *memoryLogService) Add(appName, message, source, unit string) error {
 				Date:    time.Now().In(time.UTC),
 				Message: msg,
 				Source:  source,
-				AppName: appName,
+				Name:    appName,
 				Unit:    unit,
 			}
 			logs = append(logs, l)
@@ -106,18 +106,18 @@ func (s *memoryLogService) Add(appName, message, source, unit string) error {
 }
 
 func (s *memoryLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	if args.AppName == "" {
+	if args.Name == "" {
 		return nil, errors.New("app name required to list logs")
 	}
 	if args.Limit < 0 {
 		return []appTypes.Applog{}, nil
 	}
-	buffer := s.getAppBuffer(args.AppName)
+	buffer := s.getAppBuffer(args.Name)
 	return buffer.list(args), nil
 }
 
 func (s *memoryLogService) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	buffer := s.getAppBuffer(args.AppName)
+	buffer := s.getAppBuffer(args.Name)
 	watcher := &memoryWatcher{
 		buffer:     buffer,
 		ch:         make(chan appTypes.Applog, watchBufferSize),
@@ -264,7 +264,7 @@ func (b *appLogBuffer) removeWatcher(watcher *memoryWatcher) bool {
 }
 
 func entrySize(entry *appTypes.Applog) uint {
-	return uint(len(entry.AppName) +
+	return uint(len(entry.Name) +
 		len(entry.Message) +
 		len(entry.MongoID) +
 		len(entry.Source) +
@@ -299,7 +299,7 @@ func (w *memoryWatcher) notify(entry *appTypes.Applog, dropCounter prometheus.Co
 			go func() {
 				defer w.wg.Done()
 				select {
-				case w.ch <- slowWatcherWarning(entry.AppName):
+				case w.ch <- slowWatcherWarning(entry.Name):
 				case <-w.quit:
 				}
 				w.nextNotify.Reset(watchWarningInterval)
@@ -323,7 +323,7 @@ func (w *memoryWatcher) Close() {
 
 func slowWatcherWarning(appName string) appTypes.Applog {
 	return appTypes.Applog{
-		AppName: appName,
+		Name:    appName,
 		Date:    time.Now(),
 		Message: "Log messages dropped due to slow tail client or too many messages being produced.",
 		Source:  "tsuru",

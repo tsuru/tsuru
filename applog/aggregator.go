@@ -50,6 +50,10 @@ func (s *aggregatorLogService) Add(appName, message, source, unit string) error 
 }
 
 func (s *aggregatorLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	return listAppLogs(ctx, args)
+}
+
+func listAppLogs(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	requests, err := buildInstanceRequests(ctx, args, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "[aggregator service]")
@@ -221,7 +225,7 @@ func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follo
 		if follow {
 			urlValues.Add("follow", "1")
 		}
-		u := fmt.Sprintf("http://%s:%s/apps/%s/log-instance?%s", ipAddr, instance.Port, args.AppName, urlValues.Encode())
+		u := fmt.Sprintf("http://%s:%s/apps/%s/log-instance?%s", ipAddr, instance.Port, args.Name, urlValues.Encode())
 		req, err := http.NewRequest(http.MethodGet, u, nil)
 		if err != nil {
 			return nil, err

@@ -6,6 +6,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/types/auth"
+	logTypes "github.com/tsuru/tsuru/types/log"
 )
 
 type LogWatcher interface {
@@ -30,7 +31,8 @@ type AppLogServiceInstance interface {
 }
 
 type ListLogArgs struct {
-	AppName      string
+	Name         string
+	Type         logTypes.LogType
 	Source       string
 	Units        []string
 	Limit        int
@@ -44,6 +46,7 @@ type Applog struct {
 	Date    time.Time
 	Message string
 	Source  string
-	AppName string
+	Name    string
+	Type    logTypes.LogType
 	Unit    string
 }

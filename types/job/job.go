@@ -26,6 +26,10 @@ type Job struct {
 	Spec JobSpec `json:"spec"`
 }
 
+func (job *Job) GetName() string {
+	return job.Name
+}
+
 func (job *Job) IsCron() bool {
 	return job.Spec.Schedule != ""
 }

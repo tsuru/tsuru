@@ -52,11 +52,11 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	bodyStr := `
-	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
-	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
-	{"date": "2015-06-16T15:00:02.000Z", "message": "msg3", "source": "web", "appname": "myapp1", "unit": "unit3"}
-	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "appname": "myapp2", "unit": "unit4"}
-	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "appname": "myapp1", "unit": "unit3"}
+	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "name": "myapp1", "unit": "unit1"}
+	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "name": "myapp2", "unit": "unit2"}
+	{"date": "2015-06-16T15:00:02.000Z", "message": "msg3", "source": "web", "name": "myapp1", "unit": "unit3"}
+	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "name": "myapp2", "unit": "unit4"}
+	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "name": "myapp1", "unit": "unit3"}
 	`
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -80,11 +80,11 @@ loop:
 			logs1 []appTypes.Applog
 			logs2 []appTypes.Applog
 		)
-		logs1, err = a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+		logs1, err = a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: 3,
 		})
 		c.Assert(err, check.IsNil)
-		logs2, err = a2.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+		logs2, err = a2.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: 2,
 		})
 		c.Assert(err, check.IsNil)
@@ -98,24 +98,24 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 3,
 	})
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
-		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
-		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
+		{Date: baseTime, Message: "msg1", Source: "web", Name: "myapp1", Unit: "unit1"},
+		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", Name: "myapp1", Unit: "unit3"},
+		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", Name: "myapp1", Unit: "unit3"},
 	})
-	logs, err = a2.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err = a2.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 2,
 	})
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
-		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
+		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", Name: "myapp2", Unit: "unit2"},
+		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", Name: "myapp2", Unit: "unit4"},
 	})
 }
 
@@ -133,8 +133,8 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()
 	bodyPart := `
-	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "appname": "myapp1", "unit": "unit1"}
-	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "appname": "myapp2", "unit": "unit2"}
+	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "name": "myapp1", "unit": "unit1"}
+	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "name": "myapp2", "unit": "unit2"}
 	`
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
 	c.Assert(err, check.IsNil)
@@ -164,7 +164,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 loop:
 	for {
 		var logs1 []appTypes.Applog
-		logs1, err = a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+		logs1, err = a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: nConcurrency,
 		})
 		c.Assert(err, check.IsNil)
@@ -178,12 +178,12 @@ loop:
 		default:
 		}
 	}
-	logs, err := a1.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := a1.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
+		{Date: baseTime, Message: "msg1", Source: "web", Name: "myapp1", Unit: "unit1"},
 	})
 }
 
@@ -242,8 +242,8 @@ func (s *S) BenchmarkScanLogs(c *check.C) {
 	w.Close()
 	<-done
 	c.StopTimer()
-	servicemanager.AppLog.(shutdown.Shutdownable).Shutdown(context.Background())
+	servicemanager.LogService.(shutdown.Shutdownable).Shutdown(context.Background())
 	var err error
-	servicemanager.AppLog, err = applog.AppLogService()
+	servicemanager.LogService, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }
