@@ -8,6 +8,16 @@ edit_uri: edit/main/docs/docs
 theme:
   name: readthedocs
 
+plugins:
+- search
+- mike: {}
+
+markdown_extensions:
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- footnotes
+
 nav:
 - Home: index.md
 - Getting started: []
@@ -24,9 +34,3 @@ nav:
     - tsuru.yaml: references/tsuru.yaml.md
     - tsurud.yaml: references/tsurud.yaml.md
 - Contributing: []
-
-markdown_extensions:
-- admonition
-- pymdownx.details
-- pymdownx.superfences
-- footnotes
