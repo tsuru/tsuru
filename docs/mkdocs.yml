@@ -3,10 +3,36 @@ site_url: https://docs.tsuru.github.com
 site_author: Tsuru Team
 
 repo_url: https://github.com/tsuru/tsuru/
+repo_name: tsuru/tsuru
 edit_uri: edit/main/docs/docs
 
 theme:
   name: material
+  logo: tsuru.png
+  icon:
+    repo: fontawesome/brands/github
+  favicon: favicon.ico
+  features:
+    - navigation.instant
+    # - navigation.sections
+    - navigation.top
+    - search.share
+    - content.action.edit
+
+  palette:
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
 
 plugins:
 - search
