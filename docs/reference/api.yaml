@@ -4497,6 +4497,31 @@ paths:
         - job
       security:
         - Bearer: []
+    delete:
+      operationId: DeleteJob
+      description: Remove a job
+      parameters:
+        - name: name
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: Name of job
+      responses:
+        "200":
+          description: Job removed
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Plan not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
 
 definitions:
   AutoScaleSpec:
