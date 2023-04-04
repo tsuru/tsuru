@@ -4578,7 +4578,7 @@ func (s *S) TestAppLogFollow(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	err = servicemanager.AppLog.Add(a.Name, "x", "", "")
+	err = servicemanager.LogService.Add(a.Name, "x", "", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
 	cancel()
@@ -4627,9 +4627,9 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		}
 		logTracker.Unlock()
 	}
-	err = servicemanager.AppLog.Add(a.Name, "x", "app", "")
+	err = servicemanager.LogService.Add(a.Name, "x", "app", "")
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "y", "web", "")
+	err = servicemanager.LogService.Add(a.Name, "y", "web", "")
 	c.Assert(err, check.IsNil)
 	time.Sleep(500 * time.Millisecond)
 	cancel()
@@ -4658,7 +4658,7 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
@@ -4682,7 +4682,7 @@ func (s *S) TestAppLogAllowNegativeLines(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
@@ -4706,7 +4706,7 @@ func (s *S) TestAppLogExplicitZeroLines(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "")
+		servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "")
 	}
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
@@ -4729,8 +4729,8 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "")
-	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "")
+	servicemanager.LogService.Add(a.Name, "mars log", "mars", "")
+	servicemanager.LogService.Add(a.Name, "earth log", "earth", "")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4755,8 +4755,8 @@ func (s *S) TestAppLogSelectBySourceInvert(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "")
-	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "")
+	servicemanager.LogService.Add(a.Name, "mars log", "mars", "")
+	servicemanager.LogService.Add(a.Name, "earth log", "earth", "")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4781,9 +4781,9 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "prospero")
-	servicemanager.AppLog.Add(a.Name, "mars log", "mars", "mahnmut")
-	servicemanager.AppLog.Add(a.Name, "earth log", "earth", "caliban")
+	servicemanager.LogService.Add(a.Name, "mars log", "mars", "prospero")
+	servicemanager.LogService.Add(a.Name, "mars log", "mars", "mahnmut")
+	servicemanager.LogService.Add(a.Name, "earth log", "earth", "caliban")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -4813,7 +4813,7 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLatestEntries(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		err = servicemanager.AppLog.Add(a.Name, strconv.Itoa(i), "source", "unit")
+		err = servicemanager.LogService.Add(a.Name, strconv.Itoa(i), "source", "unit")
 		c.Assert(err, check.IsNil)
 	}
 	token := userWithPermission(c, permission.Permission{
@@ -4841,15 +4841,15 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(app1.Name, "app1 log", "source", "")
+	servicemanager.LogService.Add(app1.Name, "app1 log", "source", "")
 	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &app2, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(app2.Name, "app2 log", "sourc ", "")
+	servicemanager.LogService.Add(app2.Name, "app2 log", "sourc ", "")
 	app3 := app.App{Name: "app3", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &app3, s.user)
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog.Add(app3.Name, "app3 log", "tsuru", "")
+	servicemanager.LogService.Add(app3.Name, "app3 log", "tsuru", "")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadLog,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
@@ -6042,7 +6042,7 @@ func (s *S) TestAddLog(c *check.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := a.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 5,
 		Token: token,
 	})
@@ -6820,14 +6820,14 @@ func (s *S) TestFollowLogs(c *check.C) {
 	enc := &fakeEncoder{
 		done: make(chan struct{}),
 	}
-	l, err := servicemanager.AppLog.Watch(context.TODO(), appTypes.ListLogArgs{
+	l, err := servicemanager.LogService.Watch(context.TODO(), appTypes.ListLogArgs{
 		Name: a.Name,
 		Type: "app",
 		Token:   s.token,
 	})
 	c.Assert(err, check.IsNil)
 	go func() {
-		err = servicemanager.AppLog.Add(a.Name, "xyz", "", "")
+		err = servicemanager.LogService.Add(a.Name, "xyz", "", "")
 		c.Assert(err, check.IsNil)
 		<-enc.done
 		cancel()

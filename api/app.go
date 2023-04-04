@@ -1381,9 +1381,9 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	logService := servicemanager.AppLog
+	logService := servicemanager.LogService
 	if strings.Contains(r.URL.Path, "/log-instance") {
-		if svcInstance, ok := servicemanager.AppLog.(appTypes.AppLogServiceInstance); ok {
+		if svcInstance, ok := servicemanager.LogService.(appTypes.AppLogServiceInstance); ok {
 			logService = svcInstance.Instance()
 		}
 	}
@@ -1777,7 +1777,7 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	unit := InputValue(r, "unit")
 	for _, log := range logs {
-		err = servicemanager.AppLog.Add(a.Name, log, source, unit)
+		err = servicemanager.LogService.Add(a.Name, log, source, unit)
 		if err != nil {
 			return err
 		}

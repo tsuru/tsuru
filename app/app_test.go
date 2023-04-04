@@ -79,7 +79,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
+	err = servicemanager.LogService.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
@@ -121,7 +121,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "msg", "src", "unit")
+	err = servicemanager.LogService.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, app)
 	version2 := newSuccessfulAppVersion(c, app)
@@ -2691,11 +2691,11 @@ func (s *S) TestLastLogs(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
+		servicemanager.LogService.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
-	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	servicemanager.LogService.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	logs, err := app.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit:  10,
 		Source: "tsuru",
 	})
@@ -2716,11 +2716,11 @@ func (s *S) TestLastLogsInvertFilters(c *check.C) {
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	for i := 0; i < 15; i++ {
-		servicemanager.AppLog.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
+		servicemanager.LogService.Add(app.Name, strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
-	servicemanager.AppLog.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
-	logs, err := app.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	servicemanager.LogService.Add(app.Name, "app3 log from circus", "circus", "rdaneel")
+	logs, err := app.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit:        10,
 		Source:       "tsuru",
 		InvertSource: true,
@@ -2754,7 +2754,7 @@ func (s *S) TestLastLogsDisabled(c *check.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, err = app.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	_, err = app.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 10,
 	})
 	c.Assert(err, check.ErrorMatches, "my doc msg")
@@ -3505,7 +3505,7 @@ func (s *S) TestRun(c *check.C) {
 	var logs []appTypes.Applog
 	timeout := time.After(5 * time.Second)
 	for {
-		logs, err = app.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+		logs, err = app.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 			Limit: 10,
 		})
 		c.Assert(err, check.IsNil)

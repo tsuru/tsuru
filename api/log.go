@@ -58,7 +58,7 @@ func scanLogs(stream io.Reader) error {
 		if entry.Date.IsZero() || entry.AppName == "" || entry.Message == "" {
 			continue
 		}
-		err = servicemanager.AppLog.Enqueue(&entry)
+		err = servicemanager.LogService.Enqueue(&entry)
 		if err != nil {
 			return err
 		}

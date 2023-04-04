@@ -151,14 +151,14 @@ func createApp(app *App) error {
 		return ErrAppAlreadyExists
 	}
 
-	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
 		plog.Provision(app.Name)
 	}
 	return nil
 }
 
 func removeApp(app *App) error {
-	if plog, ok := servicemanager.AppLog.(appTypes.AppLogServiceProvision); ok {
+	if plog, ok := servicemanager.LogService.(appTypes.AppLogServiceProvision); ok {
 		err := plog.CleanUp(app.Name)
 		if err != nil {
 			log.Errorf("Unable to cleanup logs: %v", err)

@@ -29,6 +29,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -1552,7 +1553,7 @@ func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App
 
 }
 
-func (p *FakeProvisioner) ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+func (p *FakeProvisioner) ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	if !p.LogsEnabled {
 		return nil, provision.ErrLogsUnavailable
 	}

@@ -472,6 +472,7 @@ func JobLabels(ctx context.Context, job Job) *LabelSet {
 	return &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
+			labelIsService:    strconv.FormatBool(true),
 			LabelJobName:      job.GetName(),
 			LabelJobTeamOwner: job.GetTeamOwner(),
 			LabelJobPool:      job.GetPool(),

@@ -15,8 +15,11 @@ import (
 
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/job"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	knet "k8s.io/apimachinery/pkg/util/net"
@@ -31,8 +34,8 @@ var (
 	watchTimeout = time.Hour
 )
 
-func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	clusterClient, err := clusterForPool(ctx, app.GetPool())
+func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	clusterClient, err := clusterForPool(ctx, obj.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +44,7 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 		return nil, err
 	}
 
-	ns, err := clusterClient.AppNamespace(ctx, app)
+	ns := clusterClient.PoolNamespace(obj.GetPool())
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +54,18 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, app appTypes.App, 
 		return nil, err
 	}
 
-	pods, err := podInformer.Lister().Pods(ns).List(listPodsSelectorForLog(args))
+	var selector labels.Selector
+	if args.Type == logTypes.LogTypeApp {
+		selector = listPodsSelectorForLog(args)
+	} else {
+		job, err := job.GetByName(ctx, obj.GetName())
+		if err != nil {
+			return nil, err
+		}
+		selector = labels.SelectorFromSet(provision.JobLabels(ctx, job).ToLabels())
+	}
+
+	pods, err := podInformer.Lister().Pods(ns).List(selector)
 	if err != nil {
 		return nil, err
 	}

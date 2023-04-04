@@ -25,6 +25,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -436,7 +437,7 @@ type ExecutableProvisioner interface {
 
 // LogsProvisioner is a provisioner that is self responsible for storage logs.
 type LogsProvisioner interface {
-	ListLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
+	ListLogs(ctx context.Context, obj logTypes.LogabbleObject, args appTypes.ListLogArgs) ([]appTypes.Applog, error)
 	WatchLogs(ctx context.Context, app appTypes.App, args appTypes.ListLogArgs) (appTypes.LogWatcher, error)
 }
 

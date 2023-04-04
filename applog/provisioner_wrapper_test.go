@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	"gopkg.in/check.v1"
 )
 
@@ -32,7 +33,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 
 	s.provisionerWrapper = &provisionerWrapper{
 		logService: s.tsuruLogService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -137,7 +138,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw := &provisionerWrapper{
 		logService: memoryService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -150,7 +151,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw = &provisionerWrapper{
 		logService: aggregatorService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}

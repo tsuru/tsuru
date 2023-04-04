@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	"github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -452,15 +453,15 @@ func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	logService := servicemanager.AppLog
+	logService := servicemanager.LogService
 	if strings.Contains(r.URL.Path, "/log-instance") {
-		if svcInstance, ok := servicemanager.AppLog.(appTypes.AppLogServiceInstance); ok {
+		if svcInstance, ok := servicemanager.LogService.(appTypes.AppLogServiceInstance); ok {
 			logService = svcInstance.Instance()
 		}
 	}
 	listArgs := appTypes.ListLogArgs{
-		Name:      j.Name,
-		Type: "job",
+		Name:         j.Name,
+		Type: 	 	  log.LogTypeJob,
 		Limit:        lines,
 		Token:        t,
 	}

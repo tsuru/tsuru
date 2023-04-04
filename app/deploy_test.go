@@ -683,7 +683,7 @@ func (s *S) TestDeployAppShowLogLinesOnStartupError(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "msg1", "src1", "unit1")
+	err = servicemanager.LogService.Add(a.Name, "msg1", "src1", "unit1")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
@@ -723,7 +723,7 @@ func (s *S) TestDeployAppShowLogEmbeddedLinesOnStartupError(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.AppLog.Add(a.Name, "msg1", "src1", "unit1")
+	err = servicemanager.LogService.Add(a.Name, "msg1", "src1", "unit1")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	evt, err := event.New(&event.Opts{
