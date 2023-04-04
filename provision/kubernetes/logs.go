@@ -58,11 +58,12 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.Logab
 	if args.Type == logTypes.LogTypeApp {
 		selector = listPodsSelectorForLog(args)
 	} else {
-		job, err := job.GetByName(ctx, obj.GetName())
+		var j *job.Job
+		j, err = job.GetByName(ctx, obj.GetName())
 		if err != nil {
 			return nil, err
 		}
-		selector = labels.SelectorFromSet(provision.JobLabels(ctx, job).ToLabels())
+		selector = labels.SelectorFromSet(provision.JobLabels(ctx, j).ToLabels())
 	}
 
 	pods, err := podInformer.Lister().Pods(ns).List(selector)

@@ -103,8 +103,8 @@ func (s *S) Test_Aggregator_ListFilter(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		Name:      "myapp",
-		Type: "app",
+		Name:         "myapp",
+		Type:         "app",
 		Source:       "tsuru",
 		Units:        []string{"myunit", "otherunit"},
 		InvertSource: true,
@@ -171,8 +171,8 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 	defer rollback()
 	svc := &aggregatorLogService{}
 	logs, err := svc.List(context.TODO(), appTypes.ListLogArgs{
-		Name: "myapp",
-		Limit:   1,
+		Name:  "myapp",
+		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, logs, []appTypes.Applog{{
