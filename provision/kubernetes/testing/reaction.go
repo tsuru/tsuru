@@ -35,7 +35,6 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -706,28 +705,6 @@ func (s *KubeMock) cronWithPodReactions(c *check.C) (ktesting.ReactionFunc, *syn
 }
 
 func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJob, specJobs int32, counter *int32) {
-	jobs := []batchv1.Job{}
-	for i := int32(0); i < specJobs; i++ {
-		j := batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        cron.Name + "-" + strconv.Itoa(int(i)),
-				Namespace:   cron.Namespace,
-				Labels:      cron.Labels,
-				Annotations: cron.Annotations,
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						Name:       cron.Name,
-						Kind:       "CronJob",
-						UID:        cron.UID,
-						APIVersion: "batch/v1",
-					},
-				},
-			},
-			Spec: cron.Spec.JobTemplate.Spec,
-		}
-		jobs = append(jobs, j)
-	}
-
 	pod := &apiv1.Pod{
 		ObjectMeta: cron.ObjectMeta,
 		Spec:       cron.Spec.JobTemplate.Spec.Template.Spec,

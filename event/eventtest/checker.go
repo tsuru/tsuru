@@ -163,9 +163,7 @@ func (evtEqualsChecker) Check(params []interface{}, names []string) (bool, strin
 				evts[i] = append(evts[i], &e[j])
 			}
 		case []*event.Event:
-			for j := range e {
-				evts[i] = append(evts[i], e[j])
-			}
+			evts[i] = append(evts[i], e...)
 		default:
 			evts[i] = nil
 		}
