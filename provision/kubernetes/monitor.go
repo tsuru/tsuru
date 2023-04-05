@@ -25,18 +25,12 @@ import (
 	jobsInformer "k8s.io/client-go/informers/batch/v1"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
 )
 
 const (
 	informerSyncTimeout = 10 * time.Second
-
-	leaderElectionName = "tsuru-controller"
 )
 
 type podListener interface {
@@ -63,7 +57,6 @@ type clusterController struct {
 	podListeners            map[string]podListener
 	podListenersMu          sync.RWMutex
 	wg                      sync.WaitGroup
-	leader                  int32
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -132,10 +125,6 @@ func (c *clusterController) stop(ctx context.Context) {
 	<-time.After(time.Second - time.Since(c.startedAt))
 	c.cancel()
 	c.wg.Wait()
-}
-
-func (c *clusterController) isLeader() bool {
-	return atomic.LoadInt32(&c.leader) == 1
 }
 
 func (c *clusterController) startJobInformer() error {
@@ -422,71 +411,12 @@ func (c *clusterController) waitForSync(informer cache.SharedInformer) error {
 	return errors.Wrap(ctx.Err(), "error waiting for informer sync")
 }
 
-func (c *clusterController) createElector(hostID string) (*leaderelection.LeaderElector, error) {
-	broadcaster := record.NewBroadcaster()
-	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
-		Component: leaderElectionName,
-	})
-	lock, err := resourcelock.New(
-		resourcelock.EndpointsResourceLock,
-		c.cluster.Namespace(),
-		leaderElectionName,
-		c.cluster.CoreV1(),
-		c.cluster.CoordinationV1(),
-		resourcelock.ResourceLockConfig{
-			Identity:      hostID,
-			EventRecorder: recorder,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
-		Lock:          lock,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {
-				atomic.StoreInt32(&c.leader, 1)
-			},
-			OnStoppedLeading: func() {
-				atomic.StoreInt32(&c.leader, 0)
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return le, nil
-}
-
 func (c *clusterController) initLeaderElection(ctx context.Context) error {
-	id, err := os.Hostname()
+	err := ensureNamespace(ctx, c.cluster, c.cluster.Namespace())
 	if err != nil {
 		return err
 	}
-	err = ensureNamespace(ctx, c.cluster, c.cluster.Namespace())
-	if err != nil {
-		return err
-	}
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		for {
-			le, err := c.createElector(id)
-			if err != nil {
-				log.Errorf("unable to create leader elector: %v", err)
-				continue
-			}
-			le.Run(ctx)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(500 * time.Millisecond):
-			}
-		}
-	}()
+
 	return nil
 }
 
