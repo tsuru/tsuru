@@ -6,13 +6,10 @@ package kubernetes
 
 import (
 	"context"
-	"os"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
