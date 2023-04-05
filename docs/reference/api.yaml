@@ -5537,12 +5537,18 @@ definitions:
           container:
             type: object
             properties:
+              envs:
+                type: array
+                items:
+                  type: object
+                  $ref: "#/definitions/EnvVar"
               image:
                 type: string
               command:
                 type: array
                 items:
                   type: string
+
   InputJob:
     type: object
     required:
@@ -5583,6 +5589,11 @@ definitions:
             type: array
             items:
               type: string
+          envs:
+            type: array
+            items:
+              type: object
+              $ref: "#/definitions/EnvVar"
   AppCreateResponse:
     description: Newly created app information.
     type: object
