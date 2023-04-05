@@ -198,25 +198,21 @@ func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
 }
 
 func (si *ServiceInstance) FindApp(appName string) int {
-	index := -1
 	for i, name := range si.Apps {
 		if name == appName {
-			index = i
-			break
+			return i
 		}
 	}
-	return index
+	return -1
 }
 
 func (si *ServiceInstance) FindJob(jobName string) int {
-	index := -1
 	for i, name := range si.Jobs {
 		if name == jobName {
-			index = i
-			break
+			return i
 		}
 	}
-	return index
+	return -1
 }
 
 // Update changes informations of the service instance.

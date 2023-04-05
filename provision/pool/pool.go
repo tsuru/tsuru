@@ -611,14 +611,7 @@ func ValidatePoolService(ctx context.Context, pool string, services []string) er
 		return err
 	}
 	for _, svc := range services {
-		valid := false
-		for _, v := range poolServices {
-			if v == svc {
-				valid = true
-				break
-			}
-		}
-		if !valid {
+		if !contains(poolServices, svc) {
 			msg := fmt.Sprintf("service %q is not available for pool %q.", svc, pool)
 
 			if len(poolServices) > 0 {
@@ -628,6 +621,15 @@ func ValidatePoolService(ctx context.Context, pool string, services []string) er
 		}
 	}
 	return nil
+}
+
+func contains(arr []string, c string) bool {
+	for _, item := range arr {
+		if item == c {
+			return true
+		}
+	}
+	return false
 }
 
 func GetDefaultPool(ctx context.Context) (*Pool, error) {
