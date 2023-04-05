@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -391,7 +390,7 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	}
 	resp, err := r.client.Do(req)
 	if r.debug {
-		bodyData, _ := ioutil.ReadAll(body)
+		bodyData, _ := io.ReadAll(body)
 		if err == nil {
 			code = resp.StatusCode
 		}
@@ -402,7 +401,7 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	}
 	defer resp.Body.Close()
 	code = resp.StatusCode
-	data, err = ioutil.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return data, code, errors.Errorf("failed to read response body for %s: %s", url, err)
 	}

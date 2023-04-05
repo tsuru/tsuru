@@ -7,7 +7,7 @@ package oauth
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -127,7 +127,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 }
 
 func (s *S) TestOAuthParse(c *check.C) {
-	b := ioutil.NopCloser(bytes.NewBufferString(`{"email":"x@x.com"}`))
+	b := io.NopCloser(bytes.NewBufferString(`{"email":"x@x.com"}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := &oAuthScheme{}
 	email, err := parser.parse(rsp)
@@ -136,7 +136,7 @@ func (s *S) TestOAuthParse(c *check.C) {
 }
 
 func (s *S) TestOAuthParseWithGroups(c *check.C) {
-	b := ioutil.NopCloser(bytes.NewBufferString(`{"email":"x@x.com", "groups": ["g1", "g2"]}`))
+	b := io.NopCloser(bytes.NewBufferString(`{"email":"x@x.com", "groups": ["g1", "g2"]}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := &oAuthScheme{}
 	email, err := parser.parse(rsp)
@@ -145,7 +145,7 @@ func (s *S) TestOAuthParseWithGroups(c *check.C) {
 }
 
 func (s *S) TestOAuthParseInvalid(c *check.C) {
-	b := ioutil.NopCloser(bytes.NewBufferString(`{xxxxxxx}`))
+	b := io.NopCloser(bytes.NewBufferString(`{xxxxxxx}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := &oAuthScheme{}
 	_, err := parser.parse(rsp)
@@ -153,7 +153,7 @@ func (s *S) TestOAuthParseInvalid(c *check.C) {
 }
 
 func (s *S) TestOAuthParseInvalidStatus(c *check.C) {
-	b := ioutil.NopCloser(bytes.NewBufferString(`invalid token`))
+	b := io.NopCloser(bytes.NewBufferString(`invalid token`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusUnauthorized}
 	parser := &oAuthScheme{}
 	_, err := parser.parse(rsp)

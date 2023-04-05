@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/pkg/errors"
@@ -60,7 +59,7 @@ func (p *dockerProvisioner) deployPipeline(ctx context.Context, app provision.Ap
 	pipeline := action.NewPipeline(actions...)
 	var writer io.Writer = evt
 	if evt == nil {
-		writer = ioutil.Discard
+		writer = io.Discard
 	}
 	newBaseImage, err := version.BaseImageName()
 	if err != nil {

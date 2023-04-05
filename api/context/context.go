@@ -7,7 +7,7 @@ package context
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/opentracing/opentracing-go"
@@ -45,13 +45,13 @@ func GetBody(r *http.Request) ([]byte, error) {
 	if v, ok := r.Context().Value(reqBodyKey).([]byte); ok {
 		return v, nil
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 	newReq := r.WithContext(context.WithValue(r.Context(), reqBodyKey, data))
 	*r = *newReq
-	r.Body = ioutil.NopCloser(bytes.NewReader(data))
+	r.Body = io.NopCloser(bytes.NewReader(data))
 	return data, nil
 }
 

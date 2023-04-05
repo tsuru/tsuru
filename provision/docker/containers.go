@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -106,7 +105,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(ctx context.Context, w io.Wr
 		toHost = toHosts[0]
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
@@ -146,7 +145,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(ctx context.Context, w io.Wr
 
 func (p *dockerProvisioner) runCreateUnitsPipeline(ctx context.Context, w io.Writer, a provision.App, toAdd map[string]*containersToAdd, version appTypes.AppVersion) ([]container.Container, error) {
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	evt, _ := w.(*event.Event)
 	args := changeUnitsPipelineArgs{
@@ -212,7 +211,7 @@ func (p *dockerProvisioner) MoveOneContainer(ctx context.Context, c container.Co
 	evt, _ := writer.(*event.Event)
 	if evt != nil {
 		evtClone = evt.Clone()
-		evtClone.SetLogWriter(ioutil.Discard)
+		evtClone.SetLogWriter(io.Discard)
 		pipelineWriter = evtClone
 	}
 	addedContainers, err := p.runReplaceUnitsPipeline(ctx, pipelineWriter, a, toAdd, []container.Container{c}, version, destHosts...)
@@ -327,10 +326,10 @@ func (p *dockerProvisioner) rebalanceContainersByHost(ctx context.Context, addre
 
 func (p *dockerProvisioner) runCommandInContainer(ctx context.Context, version appTypes.AppVersion, app provision.App, stdin io.Reader, stdout, stderr io.Writer, pty container.Pty, cmds ...string) error {
 	if stdout == nil {
-		stdout = ioutil.Discard
+		stdout = io.Discard
 	}
 	if stderr == nil {
-		stderr = ioutil.Discard
+		stderr = io.Discard
 	}
 	var envs []string
 	for _, e := range provision.EnvsForApp(app, "", false, version) {

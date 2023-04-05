@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -63,7 +63,7 @@ func (s *S) TestCallbackHandler(c *check.C) {
 	c.Assert(expectedPage, check.Equals, recorder.Body.String())
 	file, err := rfs.Open(JoinWithUserDir(".tsuru", "token"))
 	c.Assert(err, check.IsNil)
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	c.Assert(err, check.IsNil)
 	c.Assert(string(data), check.Equals, "xpto")
 }

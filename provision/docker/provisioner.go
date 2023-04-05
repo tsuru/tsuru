@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/url"
 	"strings"
@@ -287,7 +286,7 @@ func (p *dockerProvisioner) Restart(ctx context.Context, a provision.App, proces
 		return err
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	toAdd := make(map[string]*containersToAdd, len(containers))
 	for _, c := range containers {
@@ -444,7 +443,7 @@ func (p *dockerProvisioner) Destroy(ctx context.Context, app provision.App) erro
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toRemove:    containers,
-		writer:      ioutil.Discard,
+		writer:      io.Discard,
 		provisioner: p,
 		appDestroy:  true,
 	}
@@ -495,7 +494,7 @@ func addContainersWithHost(ctx context.Context, args *changeUnitsPipelineArgs) (
 		destinationHost = []string{args.toHost}
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	fmt.Fprintf(w, "\n---- Starting %d new %s %s ----\n", units, pluralize("unit", units), strings.Join(processMsg, " "))
 	oldContainers := make([]container.Container, 0, units)
@@ -552,7 +551,7 @@ func (p *dockerProvisioner) AddUnits(ctx context.Context, a provision.App, units
 		return errors.New("Cannot add 0 units")
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	_, err := p.runCreateUnitsPipeline(ctx, w, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, version)
 	return err
@@ -566,7 +565,7 @@ func (p *dockerProvisioner) RemoveUnits(ctx context.Context, a provision.App, un
 		return errors.New("cannot remove zero units")
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	if version != nil {
 		cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -319,7 +318,7 @@ func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, 
 		switch resp.StatusCode {
 		case http.StatusOK:
 			var data []byte
-			data, err = ioutil.ReadAll(resp.Body)
+			data, err = io.ReadAll(resp.Body)
 			return string(data), err
 		case http.StatusAccepted:
 			return "pending", nil
@@ -452,7 +451,7 @@ func (c *endpointClient) buildErrorMessage(err error, resp *http.Response) error
 	}
 	if resp != nil {
 		defer resp.Body.Close()
-		b, _ := ioutil.ReadAll(resp.Body)
+		b, _ := io.ReadAll(resp.Body)
 		return errors.Errorf("invalid response: %s (code: %d)", string(b), resp.StatusCode)
 	}
 	return nil

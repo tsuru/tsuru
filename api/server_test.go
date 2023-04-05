@@ -12,7 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"math/rand"
 	"net"
@@ -64,7 +64,7 @@ func (s *S) testRequest(url string, c *check.C) {
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Do(req)
 	c.Assert(err, check.IsNil)
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	c.Assert(err, check.IsNil)
 	defer resp.Body.Close()
 	c.Assert(string(bytes), check.Equals, "GET")

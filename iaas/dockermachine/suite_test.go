@@ -6,7 +6,6 @@ package dockermachine
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -89,7 +88,7 @@ func (f *fakeLibMachineAPI) NewHost(driverName string, rawDriver []byte) (*host.
 }
 
 func createTempFile(content string) (*os.File, error) {
-	file, err := ioutil.TempFile("", "")
+	file, err := os.CreateTemp("", "")
 	if err != nil {
 		return nil, err
 	}

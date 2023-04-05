@@ -8,7 +8,7 @@ import (
 	stdcontext "context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -77,7 +77,7 @@ func convertToken(code, redirectURL string) (string, error) {
 		return token, errors.Wrap(err, "Error during login post")
 	}
 	defer resp.Body.Close()
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return token, errors.Wrap(err, "Error reading body")
 	}

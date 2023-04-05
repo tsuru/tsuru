@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -587,7 +587,7 @@ func (s *ProvisionSuite) TestServiceProxyPost(c *check.C) {
 	)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		proxyedBody, err = ioutil.ReadAll(r.Body)
+		proxyedBody, err = io.ReadAll(r.Body)
 		c.Assert(err, check.IsNil)
 		proxyedRequest = r
 		w.Header().Set("X-Response-Custom", "custom response header")
@@ -646,7 +646,7 @@ func (s *ProvisionSuite) TestServiceProxyPostRawBody(c *check.C) {
 	)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		proxyedBody, err = ioutil.ReadAll(r.Body)
+		proxyedBody, err = io.ReadAll(r.Body)
 		c.Assert(err, check.IsNil)
 		proxyedRequest = r
 		w.Header().Set("X-Response-Custom", "custom response header")

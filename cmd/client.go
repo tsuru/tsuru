@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -50,7 +49,7 @@ type Client struct {
 }
 
 func NewClient(client *http.Client, context *Context, manager *Manager) *Client {
-	w := ioutil.Discard
+	w := io.Discard
 	if context != nil && context.Stdout != nil {
 		w = context.Stdout
 	}
@@ -119,7 +118,7 @@ and download the last version.
 		}
 
 		defer response.Body.Close()
-		body, _ := ioutil.ReadAll(response.Body)
+		body, _ := io.ReadAll(response.Body)
 		if len(body) > 0 {
 			err.Message = string(body)
 		}

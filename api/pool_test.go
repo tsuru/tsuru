@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -68,7 +68,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	rec = httptest.NewRecorder()
-	req.Body = ioutil.NopCloser(bytes.NewBufferString("name=pool1"))
+	req.Body = io.NopCloser(bytes.NewBufferString("name=pool1"))
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, pool.ErrPoolAlreadyExists.Error()+"\n")

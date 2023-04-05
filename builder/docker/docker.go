@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/pkg/errors"
@@ -57,7 +56,7 @@ func (b *dockerBuilder) buildPipeline(ctx context.Context, p provision.BuilderDe
 	cmds := dockercommon.ArchiveBuildCmds(app, archiveFileURI)
 	var writer io.Writer = evt
 	if evt == nil {
-		writer = ioutil.Discard
+		writer = io.Discard
 	}
 	args := runContainerActionsArgs{
 		app:         app,

@@ -5,7 +5,7 @@
 package cmd
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -75,7 +75,7 @@ func ReadToken() (string, error) {
 		tkFile, err = filesystem().Open(tokenPath)
 		if err == nil {
 			defer tkFile.Close()
-			token, err = ioutil.ReadAll(tkFile)
+			token, err = io.ReadAll(tkFile)
 			if err != nil {
 				return "", err
 			}

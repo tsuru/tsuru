@@ -7,7 +7,6 @@ package ec2
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -76,7 +75,7 @@ func (s *S) SetUpTest(c *check.C) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		data, _ := ioutil.ReadAll(rsp.Body)
+		data, _ := io.ReadAll(rsp.Body)
 		re := regexp.MustCompile(`>(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}).*?<`)
 		data = re.ReplaceAll(data, []byte(`>${1}Z<`))
 		io.Copy(w, bytes.NewReader(data))
@@ -257,7 +256,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 		rsp, err := http.DefaultClient.Do(req)
 		c.Assert(err, check.IsNil)
 		w.WriteHeader(rsp.StatusCode)
-		bytes, err := ioutil.ReadAll(rsp.Body)
+		bytes, err := io.ReadAll(rsp.Body)
 		if action == "RunInstances" {
 			re := regexp.MustCompile(`<dnsName>.+</dnsName>`)
 			bytes = re.ReplaceAll(bytes, []byte{})

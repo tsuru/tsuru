@@ -11,10 +11,10 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"sync/atomic"
@@ -4938,9 +4938,9 @@ func (s *S) TestShellNoUnits(c *check.C) {
 func (s *S) TestSetCertificateForApp(c *check.C) {
 	cname := "app.io"
 	routertest.TLSRouter.SetBackendAddr(context.TODO(), "my-test-app", cname)
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -4953,9 +4953,9 @@ func (s *S) TestSetCertificateForApp(c *check.C) {
 
 func (s *S) TestSetCertificateForAppCName(c *check.C) {
 	cname := "app.io"
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -4967,9 +4967,9 @@ func (s *S) TestSetCertificateForAppCName(c *check.C) {
 }
 
 func (s *S) TestSetCertificateNonTLSRouter(c *check.C) {
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, CName: []string{"app.io"}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -4990,9 +4990,9 @@ func (s *S) TestSetCertificateInvalidCName(c *check.C) {
 
 func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
 	cname := "example.io"
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -5006,9 +5006,9 @@ func (s *S) TestSetCertificateInvalidCertificateForCName(c *check.C) {
 func (s *S) TestRemoveCertificate(c *check.C) {
 	cname := "app.io"
 	routertest.TLSRouter.SetBackendAddr(context.TODO(), "my-test-app", cname)
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -5023,9 +5023,9 @@ func (s *S) TestRemoveCertificate(c *check.C) {
 
 func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
 	cname := "app.io"
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)
@@ -5040,9 +5040,9 @@ func (s *S) TestRemoveCertificateForAppCName(c *check.C) {
 
 func (s *S) TestGetCertificates(c *check.C) {
 	cname := "app.io"
-	cert, err := ioutil.ReadFile("testdata/certificate.crt")
+	cert, err := os.ReadFile("testdata/certificate.crt")
 	c.Assert(err, check.IsNil)
-	key, err := ioutil.ReadFile("testdata/private.key")
+	key, err := os.ReadFile("testdata/private.key")
 	c.Assert(err, check.IsNil)
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake-tls"}}, CName: []string{cname}}
 	err = CreateApp(context.TODO(), &a, s.user)

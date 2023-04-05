@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"sort"
 	"strings"
@@ -776,7 +775,7 @@ func (p *FakeProvisioner) rebalanceNodesLocked(opts provision.RebalanceNodesOpti
 	}
 	var w io.Writer
 	if opts.Event == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	} else {
 		w = opts.Event
 	}

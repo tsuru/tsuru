@@ -7,7 +7,7 @@ package fstest
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -283,7 +283,7 @@ func (s *S) TestRecordingFsOpenFileAppend(c *check.C) {
 	f, err = fs.Open("/my/file")
 	c.Assert(err, check.IsNil)
 	defer f.Close()
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	c.Assert(err, check.IsNil)
 	c.Assert(string(b), check.Equals, "Hi there!\nHi there!\n")
 }
@@ -413,7 +413,7 @@ func (s *S) TestRecordingFsRename(c *check.C) {
 	f, err = fs.Open("/your/file")
 	c.Assert(err, check.IsNil)
 	defer f.Close()
-	b, _ := ioutil.ReadAll(f)
+	b, _ := io.ReadAll(f)
 	c.Assert(string(b), check.Equals, "hello, hello!")
 	c.Assert(fs.HasAction("rename /my/file /your/file"), check.Equals, true)
 }
@@ -430,7 +430,7 @@ func (s *S) TestRecordingFsRenameAddExtension(c *check.C) {
 	f, err = fs.Open("/my/file.bak")
 	c.Assert(err, check.IsNil)
 	defer f.Close()
-	b, _ := ioutil.ReadAll(f)
+	b, _ := io.ReadAll(f)
 	c.Assert(string(b), check.Equals, "hello, hello!")
 	c.Assert(fs.HasAction("rename /my/file /my/file.bak"), check.Equals, true)
 }

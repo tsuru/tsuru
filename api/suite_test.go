@@ -6,9 +6,9 @@ package api
 
 import (
 	stdcontext "context"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -106,9 +106,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.TestLogWriterWaitOnClose = true
 	rand.Seed(time.Now().UnixNano())
 	s.testServer = RunServer(true)
-	testCertData, err := ioutil.ReadFile("./testdata/cert.pem")
+	testCertData, err := os.ReadFile("./testdata/cert.pem")
 	c.Assert(err, check.IsNil)
-	testKeyData, err := ioutil.ReadFile("./testdata/key.pem")
+	testKeyData, err := os.ReadFile("./testdata/key.pem")
 	c.Assert(err, check.IsNil)
 	testCert = string(testCertData)
 	testKey = string(testKeyData)

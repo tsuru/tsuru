@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"sync"
 	"time"
@@ -333,7 +332,7 @@ var provisionAddUnitsToHost = action.Action{
 		containers := ctx.FWResult.([]container.Container)
 		w := args.writer
 		if w == nil {
-			w = ioutil.Discard
+			w = io.Discard
 		}
 		units := len(containers)
 		fmt.Fprintf(w, "\n---- Destroying %d created %s ----\n", units, pluralize("unit", units))
@@ -365,7 +364,7 @@ var bindAndHealthcheck = action.Action{
 		newContainers := ctx.Previous.([]container.Container)
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		doHealthcheck := true
 		for _, c := range args.toRemove {
@@ -411,7 +410,7 @@ var bindAndHealthcheck = action.Action{
 		newContainers := ctx.FWResult.([]container.Container)
 		w := args.writer
 		if w == nil {
-			w = ioutil.Discard
+			w = io.Discard
 		}
 		units := len(newContainers)
 		fmt.Fprintf(w, "\n---- Unbinding %d created %s ----\n", units, pluralize("unit", units))
@@ -472,7 +471,7 @@ var addNewRoutes = action.Action{
 		newContainers := ctx.Previous.([]container.Container)
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		if len(newContainers) > 0 {
 			fmt.Fprintf(writer, "\n---- Adding routes to new units ----\n")
@@ -516,7 +515,7 @@ var addNewRoutes = action.Action{
 		newContainers := ctx.FWResult.([]container.Container)
 		w := args.writer
 		if w == nil {
-			w = ioutil.Discard
+			w = io.Discard
 		}
 		fmt.Fprintf(w, "\n---- Removing routes from created units ----\n")
 		var routesToRemove []*url.URL
@@ -559,7 +558,7 @@ var setRouterHealthcheck = action.Action{
 		}
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		newHCData := yamlData.ToRouterHC()
 		msg := fmt.Sprintf("Path: %s", newHCData.Path)
@@ -645,7 +644,7 @@ var removeOldRoutes = action.Action{
 		}
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		if len(args.toRemove) > 0 {
 			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
@@ -704,7 +703,7 @@ var removeOldRoutes = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		w := args.writer
 		if w == nil {
-			w = ioutil.Discard
+			w = io.Discard
 		}
 		fmt.Fprintf(w, "\n---- Adding back routes to old units ----\n")
 		var routesToAdd []*url.URL
@@ -742,7 +741,7 @@ var provisionRemoveOldUnits = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		total := len(args.toRemove)
 		fmt.Fprintf(writer, "\n---- Removing %d old %s ----\n", total, pluralize("unit", total))
@@ -768,7 +767,7 @@ var provisionUnbindOldUnits = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		writer := args.writer
 		if writer == nil {
-			writer = ioutil.Discard
+			writer = io.Discard
 		}
 		total := len(args.toRemove)
 		fmt.Fprintf(writer, "\n---- Unbinding %d old %s ----\n", total, pluralize("unit", total))

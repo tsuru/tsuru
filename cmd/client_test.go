@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -284,7 +284,7 @@ func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *chec
 func (s *S) TestStreamJSONResponse(c *check.C) {
 	reader := bytes.NewBufferString(`{"message":"hello!"}`)
 	var resp http.Response
-	resp.Body = ioutil.NopCloser(reader)
+	resp.Body = io.NopCloser(reader)
 	var buf bytes.Buffer
 	err := StreamJSONResponse(&buf, &resp)
 	c.Assert(err, check.IsNil)

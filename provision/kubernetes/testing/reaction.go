@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -300,7 +299,7 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			}
 		}
 		if stdin := streamMap[apiv1.StreamTypeStdin]; stdin != nil {
-			data, _ := ioutil.ReadAll(stdin)
+			data, _ := io.ReadAll(stdin)
 			mu.Lock()
 			res := s.Stream[cont]
 			res.Stdin = string(data)

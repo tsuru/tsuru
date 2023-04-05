@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	stdErrors "errors"
 	"fmt"
-	"io/ioutil"
+	stdIo "io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -2187,7 +2187,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		proxyedBody, err = ioutil.ReadAll(r.Body)
+		proxyedBody, err = stdIo.ReadAll(r.Body)
 		c.Assert(err, check.IsNil)
 		proxyedRequest = r
 		w.Header().Set("X-Response-Custom", "custom response header")
@@ -2239,7 +2239,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostRawBody(c *check.C) {
 	)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		proxyedBody, err = ioutil.ReadAll(r.Body)
+		proxyedBody, err = stdIo.ReadAll(r.Body)
 		c.Assert(err, check.IsNil)
 		proxyedRequest = r
 		w.Header().Set("X-Response-Custom", "custom response header")
@@ -2289,7 +2289,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPostJSON(c *check.C) {
 	)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		proxyedBody, err = ioutil.ReadAll(r.Body)
+		proxyedBody, err = stdIo.ReadAll(r.Body)
 		c.Assert(err, check.IsNil)
 		proxyedRequest = r
 		w.Header().Set("X-Response-Custom", "custom response header")

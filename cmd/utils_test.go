@@ -5,7 +5,7 @@
 package cmd
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 
@@ -39,7 +39,7 @@ func (s *S) TestWriteToken(c *check.C) {
 	tokenPath := JoinWithUserDir(".tsuru", "token")
 	c.Assert(rfs.HasAction("create "+tokenPath), check.Equals, true)
 	fil, _ := fsystem.Open(tokenPath)
-	b, _ := ioutil.ReadAll(fil)
+	b, _ := io.ReadAll(fil)
 	c.Assert(string(b), check.Equals, "abc")
 }
 
@@ -57,10 +57,10 @@ func (s *S) TestWriteTokenWithTarget(c *check.C) {
 	tokenPath2 := JoinWithUserDir(".tsuru", "token.d", "test")
 	c.Assert(rfs.HasAction("create "+tokenPath2), check.Equals, true)
 	fil, _ := fsystem.Open(tokenPath1)
-	b, _ := ioutil.ReadAll(fil)
+	b, _ := io.ReadAll(fil)
 	c.Assert(string(b), check.Equals, "abc")
 	fil, _ = fsystem.Open(tokenPath2)
-	b, _ = ioutil.ReadAll(fil)
+	b, _ = io.ReadAll(fil)
 	c.Assert(string(b), check.Equals, "abc")
 }
 

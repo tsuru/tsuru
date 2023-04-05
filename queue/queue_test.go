@@ -6,7 +6,7 @@ package queue
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"testing"
 	"time"
 
@@ -54,6 +54,6 @@ func (s *S) TestQueue(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.Equals, "result")
 	c.Assert(queueData.instance, check.NotNil)
-	shutdown.Do(context.Background(), ioutil.Discard)
+	shutdown.Do(context.Background(), io.Discard)
 	c.Assert(queueData.instance, check.IsNil)
 }

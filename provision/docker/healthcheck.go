@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -86,7 +85,7 @@ func runHealthcheck(cont *container.Container, yamlData provTypes.TsuruYamlData,
 			if status != 0 && rsp.StatusCode != status {
 				lastError = errors.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.ShortID(), status, rsp.StatusCode)
 			} else if matchRE != nil {
-				result, err := ioutil.ReadAll(rsp.Body)
+				result, err := io.ReadAll(rsp.Body)
 
 				if err != nil {
 					lastError = err

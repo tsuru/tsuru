@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
@@ -162,7 +161,7 @@ func (w *aggregateWatcher) goWatchRequest(req *http.Request) error {
 		err = decoder.Decode(&logs)
 		if err != nil {
 			if err != io.EOF && err != context.Canceled {
-				buffered, _ := ioutil.ReadAll(decoder.Buffered())
+				buffered, _ := io.ReadAll(decoder.Buffered())
 				return errors.Wrapf(err, "unable to parse as json: %q", string(buffered))
 			}
 			return nil
@@ -183,7 +182,7 @@ func listRequest(req *http.Request) ([]appTypes.Applog, error) {
 		return nil, errors.WithStack(err)
 	}
 	defer rsp.Body.Close()
-	data, err := ioutil.ReadAll(rsp.Body)
+	data, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -78,7 +77,7 @@ func (s *S) TestFlushingWriterHijack(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conn, check.Equals, expectedConn)
 	buf.Write([]byte("hello world"))
-	b, err := ioutil.ReadAll(rw)
+	b, err := io.ReadAll(rw)
 	c.Assert(err, check.IsNil)
 	c.Assert(string(b), check.Equals, "hello world")
 	rw.Write([]byte("hi, how are you?"))
@@ -187,7 +186,7 @@ func (s *S) TestFlushingWriterFlushAfterWrite(c *check.C) {
 	rsp, err := http.Get(srv.URL)
 	c.Assert(err, check.IsNil)
 	defer rsp.Body.Close()
-	_, err = ioutil.ReadAll(rsp.Body)
+	_, err = io.ReadAll(rsp.Body)
 	c.Assert(err, check.IsNil)
 	wg.Wait()
 }

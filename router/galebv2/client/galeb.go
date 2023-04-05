@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -119,7 +119,7 @@ func (c *GalebClient) regenerateToken(ctx context.Context) (err error) {
 	if rsp.StatusCode != http.StatusOK {
 		return errors.Errorf("GET %s: invalid status code in request to /token: %d", path, rsp.StatusCode)
 	}
-	data, err := ioutil.ReadAll(rsp.Body)
+	data, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return err
 	}
@@ -185,11 +185,11 @@ func (c *GalebClient) doRequestRetry(ctx context.Context, method, path string, p
 		}
 		var rspData []byte
 		if rsp != nil {
-			rspData, err = ioutil.ReadAll(rsp.Body)
+			rspData, err = io.ReadAll(rsp.Body)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error reading request body %s %s", method, url)
 			}
-			rsp.Body = ioutil.NopCloser(bytes.NewReader(rspData))
+			rsp.Body = io.NopCloser(bytes.NewReader(rspData))
 		}
 		log.Debugf("galebv2 debug %s %s %q: %d %q", method, url, bodyData, code, rspData)
 	}
@@ -217,7 +217,7 @@ func (c *GalebClient) doCreateResource(ctx context.Context, path string, params 
 		return "", ErrItemAlreadyExists{path: path, params: params}
 	}
 	if rsp.StatusCode != http.StatusCreated {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
+		responseData, _ := io.ReadAll(rsp.Body)
 		return "", errors.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
 	location := rsp.Header.Get("Location")
@@ -329,7 +329,7 @@ func (c *GalebClient) UpdateVirtualHostWithGroup(ctx context.Context, addr strin
 	}
 	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusNoContent {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
+		responseData, _ := io.ReadAll(rsp.Body)
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	if wait {
@@ -382,7 +382,7 @@ func (c *GalebClient) UpdatePoolProperties(ctx context.Context, poolName string,
 	}
 	defer rsp.Body.Close()
 	if rsp.StatusCode != http.StatusNoContent {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
+		responseData, _ := io.ReadAll(rsp.Body)
 		return errors.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return c.waitStatusOK(ctx, poolID)
@@ -620,7 +620,7 @@ func (c *GalebClient) Healthcheck(ctx context.Context) error {
 		return err
 	}
 	defer rsp.Body.Close()
-	data, _ := ioutil.ReadAll(rsp.Body)
+	data, _ := io.ReadAll(rsp.Body)
 	dataStr := string(data)
 	if rsp.StatusCode != http.StatusOK {
 		return errors.Errorf("wrong healthcheck status code: %d. content: %s", rsp.StatusCode, dataStr)
@@ -638,7 +638,7 @@ func (c *GalebClient) removeResource(ctx context.Context, resourceURI string) (s
 		return "", err
 	}
 	defer rsp.Body.Close()
-	responseData, _ := ioutil.ReadAll(rsp.Body)
+	responseData, _ := io.ReadAll(rsp.Body)
 
 	if rsp.StatusCode != http.StatusNoContent {
 		return "", errors.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
@@ -693,7 +693,7 @@ func (c *GalebClient) fetchPathStatus(ctx context.Context, path string) (map[str
 		return nil, -1, errors.Wrapf(err, "GET %s: unable to make request", path)
 	}
 	defer rsp.Body.Close()
-	responseData, _ := ioutil.ReadAll(rsp.Body)
+	responseData, _ := io.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusNotFound {
 		return nil, -1, errors.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
@@ -756,7 +756,7 @@ func (c *GalebClient) getObj(ctx context.Context, path string, data interface{})
 		return err
 	}
 	defer rsp.Body.Close()
-	responseData, _ := ioutil.ReadAll(rsp.Body)
+	responseData, _ := io.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
 		return errors.Errorf("GET %s: wrong status code: %d. content: %s", path, rsp.StatusCode, string(responseData))
 	}

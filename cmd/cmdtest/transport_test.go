@@ -6,7 +6,7 @@ package cmdtest
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -32,14 +32,14 @@ func (S) TestTransport(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
 	defer r.Body.Close()
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	c.Assert(string(b), check.Equals, "Ok")
 	c.Assert(r.Header.Get("Authorization"), check.Equals, "something")
 }
 
 func (S) TestBodyTransport(c *check.C) {
 	var t http.RoundTripper = &BodyTransport{
-		Body:    ioutil.NopCloser(bytes.NewReader([]byte("Ok"))),
+		Body:    io.NopCloser(bytes.NewReader([]byte("Ok"))),
 		Status:  http.StatusOK,
 		Headers: map[string][]string{"Authorization": {"something"}},
 	}
@@ -48,7 +48,7 @@ func (S) TestBodyTransport(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
 	defer r.Body.Close()
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	c.Assert(string(b), check.Equals, "Ok")
 	c.Assert(r.Header.Get("Authorization"), check.Equals, "something")
 }
@@ -68,7 +68,7 @@ func (S) TestConditionalTransport(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
 	defer r.Body.Close()
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	c.Assert(string(b), check.Equals, "Ok")
 	req, _ = http.NewRequest("GET", "/", nil)
 	r, err = t.RoundTrip(req)
@@ -137,12 +137,12 @@ func (S) TestAnyConditionalTransport(c *check.C) {
 	r, err := a.RoundTrip(req)
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	c.Assert(string(body), check.Equals, "something else")
 	r, err = a.RoundTrip(req)
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusOK)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	c.Assert(string(body), check.Equals, "something else")
 	req, _ = http.NewRequest(http.MethodGet, "/foo", nil)
 	r, err = a.RoundTrip(req)
@@ -153,6 +153,6 @@ func (S) TestAnyConditionalTransport(c *check.C) {
 	r, err = a.RoundTrip(req)
 	c.Assert(err, check.IsNil)
 	c.Assert(r.StatusCode, check.Equals, http.StatusUnauthorized)
-	body, _ = ioutil.ReadAll(r.Body)
+	body, _ = io.ReadAll(r.Body)
 	c.Assert(string(body), check.Equals, "some response")
 }

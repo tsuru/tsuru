@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -241,7 +240,7 @@ func (s *webhookService) doHook(hook eventTypes.Webhook, evt *event.Event) (err 
 	}
 	defer rsp.Body.Close()
 	if rsp.StatusCode < 200 || rsp.StatusCode >= 400 {
-		data, _ := ioutil.ReadAll(rsp.Body)
+		data, _ := io.ReadAll(rsp.Body)
 		return errors.Errorf("invalid status code calling hook: %d: %s", rsp.StatusCode, string(data))
 	}
 	return nil

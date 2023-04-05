@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -2160,7 +2160,7 @@ func (s *S) TestRemoveNodeContainer(c *check.C) {
 		},
 	}, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
-	err = s.p.RemoveNodeContainer(context.TODO(), "bs", "p1", ioutil.Discard)
+	err = s.p.RemoveNodeContainer(context.TODO(), "bs", "p1", io.Discard)
 	c.Assert(err, check.IsNil)
 	daemons, err := s.client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)

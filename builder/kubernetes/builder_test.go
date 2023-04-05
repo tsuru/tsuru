@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -33,7 +32,7 @@ func (s *S) TestArchiveFile(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	bopts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
 	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
@@ -56,7 +55,7 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	bopts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 		Tag:         "mytag",
 	}
@@ -371,7 +370,7 @@ func (s *S) TestRebuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	bopts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
 	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
