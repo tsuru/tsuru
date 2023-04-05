@@ -277,13 +277,12 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	jsonMsg, err := json.Marshal(updatedJob)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	err = json.NewEncoder(w).Encode(updatedJob)
 	if err != nil {
 		return err
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	w.Write(jsonMsg)
 	return nil
 }
 

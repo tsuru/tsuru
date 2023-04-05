@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,6 +32,23 @@ func createJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations
 	if err != nil {
 		return batchv1.JobSpec{}, err
 	}
+
+	envs := []v1.EnvVar{}
+
+	for _, env := range jSpec.Envs {
+		envs = append(envs, v1.EnvVar{
+			Name:  env.Name,
+			Value: strings.ReplaceAll(env.Value, "$", "$$"),
+		})
+	}
+
+	for _, env := range jSpec.ServiceEnvs {
+		envs = append(envs, v1.EnvVar{
+			Name:  env.Name,
+			Value: strings.ReplaceAll(env.Value, "$", "$$"),
+		})
+	}
+
 	return batchv1.JobSpec{
 		Parallelism:           jSpec.Parallelism,
 		BackoffLimit:          jSpec.BackoffLimit,
@@ -49,6 +67,7 @@ func createJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations
 						Image:     jSpec.Container.Image,
 						Command:   jSpec.Container.Command,
 						Resources: requirements,
+						Env:       envs,
 					},
 				},
 			},

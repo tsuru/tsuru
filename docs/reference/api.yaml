@@ -4497,6 +4497,50 @@ paths:
         - job
       security:
         - Bearer: []
+
+    put:
+      operationId: UpdateJob
+      description: Update a job that runs periodically 
+      parameters:
+        - name: name
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: Name of job
+        - name: job
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/InputJob"
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: Job Updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "403":
+          description: Quota exceeded
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "409":
+          description: App already exists
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+
     delete:
       operationId: DeleteJob
       description: Remove a job
@@ -5482,6 +5526,9 @@ definitions:
       plan:
         type: object
         $ref: "#/definitions/Plan"
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
       spec:
         type: object
         properties:
