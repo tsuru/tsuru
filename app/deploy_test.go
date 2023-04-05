@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -313,8 +313,8 @@ func (s *S) TestBuildApp(c *check.C) {
 	buf := strings.NewReader("my file")
 	imgID, err := Build(context.TODO(), DeployOptions{
 		App:          &a,
-		OutputStream: ioutil.Discard,
-		File:         ioutil.NopCloser(buf),
+		OutputStream: io.Discard,
+		File:         io.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		Event:        evt,
 	})
@@ -343,7 +343,7 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(context.TODO(), DeployOptions{
 		App:          &a,
-		File:         ioutil.NopCloser(buf),
+		File:         io.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		OutputStream: writer,
 		Event:        evt,
@@ -411,7 +411,7 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = Deploy(context.TODO(), DeployOptions{
 		App:          &a,
-		File:         ioutil.NopCloser(buf),
+		File:         io.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		OutputStream: writer,
 		Event:        evt,
@@ -479,7 +479,7 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 		App:          &a,
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
 		Event:        evt,
-		OutputStream: ioutil.Discard,
+		OutputStream: io.Discard,
 	})
 	c.Assert(err, check.ErrorMatches, "(?s).*can't deploy app without platform, if it's not an image or rollback.*")
 }
@@ -601,7 +601,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	_, err = Deploy(context.TODO(), DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		File:         ioutil.NopCloser(buf),
+		File:         io.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		Origin:       "app-deploy",
 		Event:        evt,
@@ -634,7 +634,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	_, err = Deploy(context.TODO(), DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		File:         ioutil.NopCloser(buf),
+		File:         io.NopCloser(buf),
 		FileSize:     int64(buf.Len()),
 		Origin:       "drag-and-drop",
 		Event:        evt,
@@ -861,7 +861,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
-	opts := DeployOptions{App: &a, File: ioutil.NopCloser(buf), FileSize: int64(buf.Len())}
+	opts := DeployOptions{App: &a, File: io.NopCloser(buf), FileSize: int64(buf.Len())}
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
@@ -1055,11 +1055,11 @@ func (s *S) TestDeployKind(c *check.C) {
 			DeployImage,
 		},
 		{
-			DeployOptions{File: ioutil.NopCloser(bytes.NewBuffer(nil))},
+			DeployOptions{File: io.NopCloser(bytes.NewBuffer(nil))},
 			DeployUpload,
 		},
 		{
-			DeployOptions{File: ioutil.NopCloser(bytes.NewBuffer(nil)), Build: true},
+			DeployOptions{File: io.NopCloser(bytes.NewBuffer(nil)), Build: true},
 			DeployUploadBuild,
 		},
 		{

@@ -5,7 +5,6 @@
 package dockermachine
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -46,7 +45,7 @@ func (s *S) TestNewDockerMachineRaceCheck(c *check.C) {
 }
 
 func (s *S) TestNewDockerMachineCreatesStoreIfDefinedAndDoesNotExists(c *check.C) {
-	storePath, err := ioutil.TempDir("", "")
+	storePath, err := os.MkdirTemp("", "")
 	c.Assert(err, check.IsNil)
 	err = os.RemoveAll(storePath)
 	c.Assert(err, check.IsNil)
@@ -63,21 +62,21 @@ func (s *S) TestNewDockerMachineCreatesStoreIfDefinedAndDoesNotExists(c *check.C
 }
 
 func (s *S) TestNewDockerMachineCopyCaFiles(c *check.C) {
-	caPath, err := ioutil.TempDir("", "")
+	caPath, err := os.MkdirTemp("", "")
 	c.Assert(err, check.IsNil)
 	defer os.RemoveAll(caPath)
-	err = ioutil.WriteFile(filepath.Join(caPath, "ca.pem"), []byte("ca content"), 0700)
+	err = os.WriteFile(filepath.Join(caPath, "ca.pem"), []byte("ca content"), 0700)
 	c.Assert(err, check.IsNil)
-	err = ioutil.WriteFile(filepath.Join(caPath, "ca-key.pem"), []byte("ca key content"), 0700)
+	err = os.WriteFile(filepath.Join(caPath, "ca-key.pem"), []byte("ca key content"), 0700)
 	c.Assert(err, check.IsNil)
 	dmAPI, err := NewDockerMachine(DockerMachineConfig{CaPath: caPath})
 	c.Assert(err, check.IsNil)
 	defer dmAPI.Close()
 	dm := dmAPI.(*DockerMachine)
 	c.Assert(dm.client, check.NotNil)
-	ca, err := ioutil.ReadFile(filepath.Join(dm.CertsPath, "ca.pem"))
+	ca, err := os.ReadFile(filepath.Join(dm.CertsPath, "ca.pem"))
 	c.Assert(err, check.IsNil)
-	caKey, err := ioutil.ReadFile(filepath.Join(dm.CertsPath, "ca-key.pem"))
+	caKey, err := os.ReadFile(filepath.Join(dm.CertsPath, "ca-key.pem"))
 	c.Assert(err, check.IsNil)
 	c.Assert(string(ca), check.Equals, "ca content")
 	c.Assert(string(caKey), check.Equals, "ca key content")
@@ -235,16 +234,16 @@ func (s *S) TestRegisterMachine(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Base, check.DeepEquals, base)
-	caCert, err := ioutil.ReadFile(m.Host.AuthOptions().CaCertPath)
+	caCert, err := os.ReadFile(m.Host.AuthOptions().CaCertPath)
 	c.Assert(err, check.IsNil)
 	c.Assert(caCert, check.DeepEquals, base.CaCert)
-	clientCert, err := ioutil.ReadFile(m.Host.AuthOptions().ClientCertPath)
+	clientCert, err := os.ReadFile(m.Host.AuthOptions().ClientCertPath)
 	c.Assert(err, check.IsNil)
 	c.Assert(clientCert, check.DeepEquals, base.ClientCert)
-	clientKey, err := ioutil.ReadFile(m.Host.AuthOptions().ClientKeyPath)
+	clientKey, err := os.ReadFile(m.Host.AuthOptions().ClientKeyPath)
 	c.Assert(err, check.IsNil)
 	c.Assert(clientKey, check.DeepEquals, base.ClientKey)
-	sshKey, err := ioutil.ReadFile(m.Host.Driver.GetSSHKeyPath())
+	sshKey, err := os.ReadFile(m.Host.Driver.GetSSHKeyPath())
 	c.Assert(err, check.IsNil)
 	c.Assert(sshKey, check.DeepEquals, []byte("private-key"))
 }

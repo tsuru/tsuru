@@ -7,7 +7,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
@@ -116,7 +115,7 @@ func ReadTarget() (string, error) {
 func readTarget(targetPath string) (string, error) {
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
-		if b, err := ioutil.ReadAll(f); err == nil {
+		if b, err := io.ReadAll(f); err == nil {
 			return strings.TrimSpace(string(b)), nil
 		}
 	}
@@ -295,7 +294,7 @@ func getTargets() (map[string]string, error) {
 	}
 	if err == nil {
 		defer f.Close()
-		if b, err := ioutil.ReadAll(f); err == nil {
+		if b, err := io.ReadAll(f); err == nil {
 			var targetLines = strings.Split(strings.TrimSpace(string(b)), "\n")
 			for i := range targetLines {
 				var targetSplit = strings.Split(targetLines[i], "\t")

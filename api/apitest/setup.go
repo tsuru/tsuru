@@ -6,7 +6,7 @@
 package apitest
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"sync"
@@ -23,7 +23,7 @@ type TestHandler struct {
 func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Method = r.Method
 	h.URL = r.URL.String()
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	h.Body = b
 	h.Header = r.Header
 	w.Write([]byte(h.Content))
@@ -47,7 +47,7 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer h.mu.Unlock()
 	h.Method = append(h.Method, r.Method)
 	h.URL = append(h.URL, r.URL.String())
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 	h.Body = append(h.Body, b)
 	h.Header = append(h.Header, r.Header)
 	if h.Hook != nil && h.Hook(w, r) {

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -267,7 +267,7 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)
 	})
@@ -514,8 +514,8 @@ func (s *S) TestRollbackDeployFailureDoesntEraseImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p.Provision(ctx, &a)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		data, _ := io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(data))
 		var result docker.Config
 		jsonErr := json.Unmarshal(data, &result)
 		if jsonErr == nil {
@@ -569,7 +569,7 @@ func (s *S) TestDeployImageID(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)
 	})
@@ -1257,8 +1257,8 @@ func (s *S) TestProvisionerExecuteCommandNoUnits(c *check.C) {
 	var created bool
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		created = true
-		data, _ := ioutil.ReadAll(r.Body)
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		data, _ := io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(data))
 		var config docker.Config
 		json.Unmarshal(data, &config)
 		sort.Strings(config.Env)
@@ -1998,8 +1998,8 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 	defer s.removeTestContainer(container)
 	var reqBodies [][]byte
 	s.server.CustomHandler("/containers/"+container.ID+"/exec", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		data, _ := io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(data))
 		reqBodies = append(reqBodies, data)
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))

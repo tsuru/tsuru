@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"sort"
 	"testing"
 
@@ -1262,17 +1262,17 @@ func (s *S) TestFakeNodeHealthCheckerSetHealth(c *check.C) {
 
 func (s *S) TestFakeUpgradeNodeContainer(c *check.C) {
 	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", ioutil.Discard)
+	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
 }
 
 func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
 	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", ioutil.Discard)
+	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
-	err = p.RemoveNodeContainer(context.TODO(), "c1", "p1", ioutil.Discard)
+	err = p.RemoveNodeContainer(context.TODO(), "c1", "p1", io.Discard)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, false)
 }

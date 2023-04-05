@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,7 +40,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return &tErrors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	defer file.Close()
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -546,7 +546,7 @@ func (s *S) TestListUnitsByHostHandler(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(rec.Body)
+	body, err := io.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	var result []provision.Unit
 	var resultMap []map[string]interface{}
@@ -601,7 +601,7 @@ func (s *S) TestListUnitsByAppHandler(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(rec.Body)
+	body, err := io.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	var result []provision.Unit
 	var resultMap []map[string]interface{}
@@ -639,7 +639,7 @@ func (s *S) TestListUnitsByAppHandlerNotAdminUser(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(rec.Body)
+	body, err := io.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	var result []provision.Unit
 	var resultMap []map[string]interface{}

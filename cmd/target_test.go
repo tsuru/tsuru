@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -18,7 +18,7 @@ import (
 func readRecordedTarget(fs *fstest.RecordingFs) string {
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru", "target")
 	fil, _ := fsystem.Open(filePath)
-	b, _ := ioutil.ReadAll(fil)
+	b, _ := io.ReadAll(fil)
 	return string(b)
 }
 
@@ -405,7 +405,7 @@ func (s *S) TestGetTargetsLegacy(c *check.C) {
 	f, err = fsystem.Open(JoinWithUserDir(".tsuru", "targets"))
 	c.Assert(err, check.IsNil)
 	defer f.Close()
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	c.Assert(err, check.IsNil)
 	c.Assert(string(b), check.Equals, content)
 }

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -67,15 +67,15 @@ func (s *S) TestRecreateNamedContainers(c *check.C) {
 		"POST /containers/create?name=big-sibling",
 		"POST /containers/big-sibling/start?",
 	}
-	err = RecreateNamedContainers(p, ioutil.Discard, "big-sibling", "")
+	err = RecreateNamedContainers(p, io.Discard, "big-sibling", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(paths, check.DeepEquals, expectedPaths)
 	c.Assert(paths2, check.DeepEquals, expectedPaths)
-	err = RemoveNamedContainers(p, ioutil.Discard, "big-sibling", "")
+	err = RemoveNamedContainers(p, io.Discard, "big-sibling", "")
 	c.Assert(err, check.IsNil)
 	paths = nil
 	paths2 = nil
-	err = RecreateNamedContainers(p, ioutil.Discard, "big-sibling", "p-1")
+	err = RecreateNamedContainers(p, io.Discard, "big-sibling", "p-1")
 	c.Assert(err, check.IsNil)
 	c.Assert(paths, check.DeepEquals, []string(nil))
 	c.Assert(paths2, check.DeepEquals, expectedPaths)
@@ -121,10 +121,10 @@ func (s *S) TestEnsureContainersStarted(c *check.C) {
 	server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mut.Lock()
 		defer mut.Unlock()
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		createBodies = append(createBodies, string(data))
 		names = append(names, r.URL.Query().Get("name"))
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		r.Body = io.NopCloser(bytes.NewBuffer(data))
 		server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	defer p.Destroy()
@@ -906,20 +906,20 @@ func (s *S) TestRemoveNamedContainers(c *check.C) {
 		paths2 = append(paths2, r.Method+" "+r.URL.Path+"?"+r.URL.RawQuery)
 		server2.DefaultHandler().ServeHTTP(w, r)
 	}))
-	err = ensureContainersStarted(p, ioutil.Discard, true, nil)
+	err = ensureContainersStarted(p, io.Discard, true, nil)
 	c.Assert(err, check.IsNil)
 	paths = nil
 	paths2 = nil
 	expectedPaths := []string{"POST /containers/big-sibling/stop?t=10", "DELETE /containers/big-sibling?force=1"}
-	err = RemoveNamedContainers(p, ioutil.Discard, "big-sibling", "")
+	err = RemoveNamedContainers(p, io.Discard, "big-sibling", "")
 	c.Assert(err, check.IsNil)
 	c.Assert(paths, check.DeepEquals, expectedPaths)
 	c.Assert(paths2, check.DeepEquals, expectedPaths)
-	err = ensureContainersStarted(p, ioutil.Discard, true, nil)
+	err = ensureContainersStarted(p, io.Discard, true, nil)
 	c.Assert(err, check.IsNil)
 	paths = nil
 	paths2 = nil
-	err = RemoveNamedContainers(p, ioutil.Discard, "big-sibling", "p-1")
+	err = RemoveNamedContainers(p, io.Discard, "big-sibling", "p-1")
 	c.Assert(err, check.IsNil)
 	c.Assert(paths, check.DeepEquals, []string(nil))
 	c.Assert(paths2, check.DeepEquals, expectedPaths)

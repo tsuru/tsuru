@@ -5,7 +5,6 @@
 package integration
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -27,7 +26,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	var err error
-	s.tmpDir, err = ioutil.TempDir("", "tsuru-integration")
+	s.tmpDir, err = os.MkdirTemp("", "tsuru-integration")
 	c.Assert(err, check.IsNil)
 	log.Printf("Using INTEGRATION HOME: %v", s.tmpDir)
 	err = os.Setenv("HOME", s.tmpDir)

@@ -8,7 +8,7 @@ package iaas
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 
@@ -76,7 +76,7 @@ func (i *UserDataIaaS) ReadUserData(params map[string]string) (string, error) {
 		return "", errors.Errorf("Invalid user-data status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

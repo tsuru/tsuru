@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -22,7 +21,7 @@ type Transport struct {
 
 func (t Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	wt := BodyTransport{
-		Body:    ioutil.NopCloser(bytes.NewBufferString(t.Message)),
+		Body:    io.NopCloser(bytes.NewBufferString(t.Message)),
 		Status:  t.Status,
 		Headers: t.Headers,
 	}

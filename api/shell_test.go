@@ -7,7 +7,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http/httptest"
 	"net/url"
 	"time"
@@ -92,7 +92,7 @@ func (s *S) TestAppShellWithAppNameInvalidPermission(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var result string
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		part, readErr := ioutil.ReadAll(wsConn)
+		part, readErr := io.ReadAll(wsConn)
 		if readErr != nil {
 			return false
 		}
@@ -220,7 +220,7 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var result string
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		part, readErr := ioutil.ReadAll(wsConn)
+		part, readErr := io.ReadAll(wsConn)
 		if readErr != nil {
 			return false
 		}
@@ -246,7 +246,7 @@ func (s *S) TestAppShellGenericError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var result string
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		part, readErr := ioutil.ReadAll(wsConn)
+		part, readErr := io.ReadAll(wsConn)
 		if readErr != nil {
 			c.Log(readErr)
 			return false

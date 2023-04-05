@@ -7,11 +7,12 @@ package integration
 import (
 	"fmt"
 	"go/build"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +72,7 @@ func installerConfigTest() ExecFlow {
 		provides: []string{"installerconfig"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		f, err := ioutil.TempFile("", "installer-config")
+		f, err := os.CreateTemp("", "installer-config")
 		c.Assert(err, check.IsNil)
 		defer f.Close()
 		f.Write([]byte(installerConfig))
@@ -90,10 +91,10 @@ func installerComposeTest() ExecFlow {
 		provides: []string{"installercompose"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		composeFile, err := ioutil.TempFile("", "installer-compose")
+		composeFile, err := os.CreateTemp("", "installer-compose")
 		c.Assert(err, check.IsNil)
 		defer composeFile.Close()
-		f, err := ioutil.TempFile("", "installer-config")
+		f, err := os.CreateTemp("", "installer-config")
 		c.Assert(err, check.IsNil)
 		defer func() {
 			res := NewCommand("rm", f.Name()).Run(env)
@@ -552,7 +553,7 @@ func testCases() ExecFlow {
 				gopath = build.Default.GOPATH
 			}
 			casesDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "testapps")
-			files, err := ioutil.ReadDir(casesDir)
+			files, err := readDir(casesDir)
 			c.Assert(err, check.IsNil)
 			env.Add("testcasesdir", casesDir)
 			for _, f := range files {
@@ -563,6 +564,20 @@ func testCases() ExecFlow {
 			}
 		},
 	}
+}
+
+func readDir(dirname string) ([]fs.FileInfo, error) {
+	f, err := os.Open(dirname)
+	if err != nil {
+		return nil, err
+	}
+	list, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Name() < list[j].Name() })
+	return list, nil
 }
 
 func unitAddRemove() ExecFlow {
@@ -808,7 +823,7 @@ func testApps() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		path := path.Join(env.Get("testcasesdir"), env.Get("case"), "platform")
-		plat, err := ioutil.ReadFile(path)
+		plat, err := os.ReadFile(path)
 		c.Assert(err, check.IsNil)
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
 		res := T("app-create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
@@ -916,7 +931,7 @@ func serviceCreate() ExecFlow {
 			return code >= 200 && code < 500
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
-		dir, err := ioutil.TempDir("", "service")
+		dir, err := os.MkdirTemp("", "service")
 		c.Assert(err, check.IsNil)
 		currDir, err := os.Getwd()
 		c.Assert(err, check.IsNil)

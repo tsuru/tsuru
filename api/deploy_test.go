@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -849,11 +849,11 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 			permission.PermAppDeployImage,
 		},
 		{
-			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil))},
+			app.DeployOptions{File: io.NopCloser(bytes.NewReader(nil))},
 			permission.PermAppDeployUpload,
 		},
 		{
-			app.DeployOptions{File: ioutil.NopCloser(bytes.NewReader(nil)), Build: true},
+			app.DeployOptions{File: io.NopCloser(bytes.NewReader(nil)), Build: true},
 			permission.PermAppDeployBuild,
 		},
 		{
@@ -861,7 +861,7 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 			permission.PermAppDeployDockerfile,
 		},
 		{
-			app.DeployOptions{Dockerfile: "FROM busybox", File: ioutil.NopCloser(bytes.NewReader(nil))},
+			app.DeployOptions{Dockerfile: "FROM busybox", File: io.NopCloser(bytes.NewReader(nil))},
 			permission.PermAppDeployDockerfile,
 		},
 		{

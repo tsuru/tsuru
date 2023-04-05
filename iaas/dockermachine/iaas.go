@@ -9,7 +9,6 @@ import (
 	"encoding/base32"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strconv"
@@ -93,7 +92,7 @@ func (i *dockerMachineIaaS) CreateMachine(params map[string]string) (*iaas.Machi
 		userDataFileParam, err = i.base.GetConfigString("driver:user-data-file-param")
 	}
 	if err == nil {
-		f, errTemp := ioutil.TempFile("", "")
+		f, errTemp := os.CreateTemp("", "")
 		if errTemp != nil {
 			return nil, errors.Wrap(errTemp, "failed to create userdata file")
 		}

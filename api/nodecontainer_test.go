@@ -7,7 +7,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -554,7 +554,7 @@ func (s *S) TestNodeContainerDelete(c *check.C) {
 			{"name": ":name", "value": "c1"},
 		},
 	}, eventtest.HasEvent)
-	s.provisioner.UpgradeNodeContainer(context.TODO(), "c1", "p1", ioutil.Discard)
+	s.provisioner.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
 	request, err = http.NewRequest("DELETE", "/1.2/nodecontainers/c1?pool=p1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -576,7 +576,7 @@ func (s *S) TestNodeContainerDeleteKillsRunningContainers(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	s.provisioner.UpgradeNodeContainer(context.TODO(), "c1", "p1", ioutil.Discard)
+	s.provisioner.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
 	c.Assert(s.provisioner.HasNodeContainer("c1", "p1"), check.Equals, true)
 	request, err := http.NewRequest("DELETE", "/1.2/nodecontainers/c1?pool=p1&kill=1", nil)
 	c.Assert(err, check.IsNil)

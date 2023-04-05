@@ -7,7 +7,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -235,7 +235,7 @@ type userData struct {
 
 func (s *oAuthScheme) parse(infoResponse *http.Response) (userData, error) {
 	var user userData
-	data, err := ioutil.ReadAll(infoResponse.Body)
+	data, err := io.ReadAll(infoResponse.Body)
 	if err != nil {
 		return user, errors.Wrap(err, "unable to read user data response")
 	}

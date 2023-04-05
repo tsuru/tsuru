@@ -7,7 +7,7 @@ package service_test
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http/httptest"
 	"sort"
 	"time"
@@ -140,7 +140,7 @@ func (s *SyncSuite) TestBindSyncer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	<-callCh
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	shutdown.Do(ctx, ioutil.Discard)
+	shutdown.Do(ctx, io.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
 	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
@@ -229,7 +229,7 @@ func (s *SyncSuite) TestBindSyncerMultipleAppsBound(c *check.C) {
 	case <-time.After(time.Second * 5):
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	shutdown.Do(ctx, ioutil.Discard)
+	shutdown.Do(ctx, io.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
 	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
@@ -260,7 +260,7 @@ func (s *SyncSuite) TestBindSyncerNoOp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	<-callCh
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	shutdown.Do(ctx, ioutil.Discard)
+	shutdown.Do(ctx, io.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
 	evts, err := event.All()
@@ -316,7 +316,7 @@ func (s *SyncSuite) TestBindSyncerError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	<-callCh
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	shutdown.Do(ctx, ioutil.Discard)
+	shutdown.Do(ctx, io.Discard)
 	cancel()
 	c.Assert(err, check.IsNil)
 	instance, err = service.GetServiceInstance(context.TODO(), "mysql", "my-mysql")
@@ -388,7 +388,7 @@ func (s *SyncSuite) TestBindSyncerServiceWithBindOfUnitsDisabled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	<-ch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	shutdown.Do(ctx, ioutil.Discard)
+	shutdown.Do(ctx, io.Discard)
 	cancel()
 	events, err := event.All()
 	c.Assert(err, check.IsNil)

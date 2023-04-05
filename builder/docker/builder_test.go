@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -107,7 +107,7 @@ func (s *S) TestBuilderArchiveFile(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	bopts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)
@@ -163,14 +163,14 @@ func (s *S) TestBuilderImageID(c *check.C) {
 			atomic.AddInt32(&containerDeleteCount, 1)
 		}
 		if r.Method == http.MethodPost {
-			data, _ := ioutil.ReadAll(r.Body)
+			data, _ := io.ReadAll(r.Body)
 			var parsed struct {
 				Cmd []string
 			}
 			jsonErr := json.Unmarshal(data, &parsed)
 			c.Assert(jsonErr, check.IsNil)
 			createCmds = append(createCmds, parsed.Cmd...)
-			r.Body = ioutil.NopCloser(bytes.NewReader(data))
+			r.Body = io.NopCloser(bytes.NewReader(data))
 		}
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
@@ -621,7 +621,7 @@ func (s *S) TestBuilderRebuild(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my upload data")
 	bopts := builder.BuildOpts{
-		ArchiveFile: ioutil.NopCloser(buf),
+		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
 	version, err := s.b.Build(context.TODO(), s.provisioner, a, evt, &bopts)

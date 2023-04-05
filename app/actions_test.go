@@ -6,7 +6,7 @@ package app
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -642,7 +642,7 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	newSuccessfulAppVersion(c, &app)
 	err = app.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
+	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)
 	c.Assert(err, check.IsNil)
 	units, err := app.Units()
@@ -650,7 +650,7 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	provApp, err := p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(provApp.GetPlatform(), check.Equals, "python")
-	bwctx := action.BWContext{Params: []interface{}{&newApp, &app, ioutil.Discard}}
+	bwctx := action.BWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	updateAppProvisioner.Backward(bwctx)
 	units, err = app.Units()
 	c.Assert(err, check.IsNil)

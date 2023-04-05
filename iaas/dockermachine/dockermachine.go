@@ -7,7 +7,6 @@ package dockermachine
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -74,12 +73,12 @@ func InitLogging(outWriter, errorWriter io.Writer, isDebug bool) {
 	if outWriter != nil {
 		log.SetOutWriter(outWriter)
 	} else {
-		log.SetOutWriter(ioutil.Discard)
+		log.SetOutWriter(io.Discard)
 	}
 	if errorWriter != nil {
 		log.SetOutWriter(errorWriter)
 	} else {
-		log.SetOutWriter(ioutil.Discard)
+		log.SetOutWriter(io.Discard)
 	}
 	log.SetDebug(isDebug)
 }
@@ -88,7 +87,7 @@ func NewDockerMachine(config DockerMachineConfig) (DockerMachineAPI, error) {
 	storePath := config.StorePath
 	temp := false
 	if storePath == "" {
-		tempPath, err := ioutil.TempDir("", "")
+		tempPath, err := os.MkdirTemp("", "")
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create temp dir")
 		}
@@ -221,19 +220,19 @@ func (d *DockerMachine) RegisterMachine(opts RegisterMachineOpts) (*Machine, err
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(h.Driver.GetSSHKeyPath(), opts.SSHPrivateKey, 0700)
+	err = os.WriteFile(h.Driver.GetSSHKeyPath(), opts.SSHPrivateKey, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	err = ioutil.WriteFile(h.AuthOptions().CaCertPath, opts.Base.CaCert, 0700)
+	err = os.WriteFile(h.AuthOptions().CaCertPath, opts.Base.CaCert, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	err = ioutil.WriteFile(h.AuthOptions().ClientCertPath, opts.Base.ClientCert, 0700)
+	err = os.WriteFile(h.AuthOptions().ClientCertPath, opts.Base.ClientCert, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	err = ioutil.WriteFile(h.AuthOptions().ClientKeyPath, opts.Base.ClientKey, 0700)
+	err = os.WriteFile(h.AuthOptions().ClientKeyPath, opts.Base.ClientKey, 0700)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -299,15 +298,15 @@ func newMachine(h *host.Host) (*Machine, error) {
 	}
 	m.Base.Address = address
 	if h.AuthOptions() != nil {
-		m.Base.CaCert, err = ioutil.ReadFile(h.AuthOptions().CaCertPath)
+		m.Base.CaCert, err = os.ReadFile(h.AuthOptions().CaCertPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host ca cert")
 		}
-		m.Base.ClientCert, err = ioutil.ReadFile(h.AuthOptions().ClientCertPath)
+		m.Base.ClientCert, err = os.ReadFile(h.AuthOptions().ClientCertPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host client cert")
 		}
-		m.Base.ClientKey, err = ioutil.ReadFile(h.AuthOptions().ClientKeyPath)
+		m.Base.ClientKey, err = os.ReadFile(h.AuthOptions().ClientKeyPath)
 		if err != nil {
 			return m, errors.Wrap(err, "failed to read host client key")
 		}

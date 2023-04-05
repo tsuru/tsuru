@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -102,7 +102,7 @@ func requestToken(schemeData map[string]string) (string, error) {
 			return "", errors.Wrap(err, "Error during login post")
 		}
 		defer resp.Body.Close()
-		result, err := ioutil.ReadAll(resp.Body)
+		result, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "Error reading body")
 		}

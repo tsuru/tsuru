@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -54,7 +53,7 @@ func RecreateNamedContainers(p DockerProvisioner, w io.Writer, name string, pool
 
 func ensureContainersStarted(p DockerProvisioner, w io.Writer, relaunch bool, names []string, nodes ...cluster.Node) error {
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	var err error
 	if len(names) == 0 {

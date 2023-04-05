@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"sort"
@@ -646,7 +645,7 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 		dep.Spec.Replicas = &zero
 	}
 	if w == nil {
-		w = ioutil.Discard
+		w = io.Discard
 	}
 	newReplicas := int(*dep.Spec.Replicas) + units
 	if newReplicas <= 0 {

@@ -6,7 +6,7 @@ package docker
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -159,7 +159,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	var serviceBodies []string
 	var serviceMethods []string
 	rollback := s.addServiceInstance(c, appInstance.GetName(), []string{addedConts[0].ID}, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
+		data, _ := io.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		serviceMethods = append(serviceMethods, r.Method)
 		w.WriteHeader(http.StatusOK)

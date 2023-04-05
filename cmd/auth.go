@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -59,7 +58,7 @@ func nativeLogin(context *Context, client *Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	result, err := ioutil.ReadAll(response.Body)
+	result, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}

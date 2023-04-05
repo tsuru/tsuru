@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"sort"
 	"strings"
@@ -54,7 +53,7 @@ func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) (map[string]Rebu
 	writer := opts.Writer
 
 	if writer == nil {
-		opts.Writer = ioutil.Discard
+		opts.Writer = io.Discard
 	}
 
 	for _, appRouter := range opts.App.GetRouters() {
@@ -88,7 +87,7 @@ func diffRoutes(old []*url.URL, new []*url.URL) (toAdd []*url.URL, toRemove []*u
 func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o RebuildRoutesOpts) (*RebuildRoutesResult, error) {
 	log.Debugf("[rebuild-routes] rebuilding routes for app %q", o.App.GetName())
 	if o.Writer == nil {
-		o.Writer = ioutil.Discard
+		o.Writer = io.Discard
 	}
 	fmt.Fprintf(o.Writer, "\n---- Updating router [%s] ----\n", appRouter.Name)
 	r, err := router.Get(ctx, appRouter.Name)

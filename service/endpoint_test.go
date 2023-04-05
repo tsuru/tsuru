@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -70,7 +70,7 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	content := `{"MYSQL_DATABASE_NAME": "CHICO", "MYSQL_HOST": "localhost", "MYSQL_PORT": "3306"}`
 	h.method = r.Method
 	h.url = r.URL.String()
-	h.body, _ = ioutil.ReadAll(r.Body)
+	h.body, _ = io.ReadAll(r.Body)
 	h.request = r
 	if h.Err != nil {
 		http.Error(w, h.Err.Error(), http.StatusInternalServerError)
@@ -718,7 +718,7 @@ func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *check.C) {
 func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 	cli := endpointClient{}
 	body := strings.NewReader("something went wrong")
-	resp := &http.Response{Body: ioutil.NopCloser(body)}
+	resp := &http.Response{Body: io.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(nil, resp), check.ErrorMatches, `invalid response: something went wrong \(code: 0\)`)
 }
 
@@ -726,7 +726,7 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	cli := endpointClient{}
 	err := errors.New("epic fail")
 	body := strings.NewReader("something went wrong")
-	resp := &http.Response{Body: ioutil.NopCloser(body)}
+	resp := &http.Response{Body: io.NopCloser(body)}
 	c.Assert(cli.buildErrorMessage(err, resp), check.ErrorMatches, "epic fail")
 }
 
@@ -829,7 +829,7 @@ func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	var proxiedRequest *http.Request
 	var readBodyStr []byte
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
-		readBodyStr, _ = ioutil.ReadAll(r.Body)
+		readBodyStr, _ = io.ReadAll(r.Body)
 		proxiedRequest = r
 		w.WriteHeader(http.StatusNoContent)
 	}

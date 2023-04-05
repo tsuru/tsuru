@@ -6,7 +6,7 @@ package shutdown
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -47,7 +47,7 @@ func (s *S) TestDo(c *check.C) {
 	ts2 := &testShutdown{}
 	Register(ts)
 	Register(ts2)
-	err := Do(context.Background(), ioutil.Discard)
+	err := Do(context.Background(), io.Discard)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&ts.calls), check.Equals, int32(1))
 	c.Assert(atomic.LoadInt32(&ts2.calls), check.Equals, int32(1))
@@ -59,7 +59,7 @@ func (s *S) TestDoTimeout(c *check.C) {
 	}
 	Register(ts)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
-	err := Do(ctx, ioutil.Discard)
+	err := Do(ctx, io.Discard)
 	cancel()
 	c.Assert(err, check.DeepEquals, context.DeadlineExceeded)
 	c.Assert(atomic.LoadInt32(&ts.calls), check.Equals, int32(1))

@@ -7,7 +7,7 @@ package webhook
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -74,7 +74,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 	var receivedBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(called)
-		receivedBody, _ = ioutil.ReadAll(r.Body)
+		receivedBody, _ = io.ReadAll(r.Body)
 		receivedReq = r
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -132,7 +132,7 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 	var receivedBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(called)
-		receivedBody, _ = ioutil.ReadAll(r.Body)
+		receivedBody, _ = io.ReadAll(r.Body)
 		receivedReq = r
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -172,7 +172,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 	var receivedBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(called)
-		receivedBody, _ = ioutil.ReadAll(r.Body)
+		receivedBody, _ = io.ReadAll(r.Body)
 		receivedReq = r
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -230,7 +230,7 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 	var receivedBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(called)
-		receivedBody, _ = ioutil.ReadAll(r.Body)
+		receivedBody, _ = io.ReadAll(r.Body)
 		receivedReq = r
 		w.WriteHeader(http.StatusOK)
 	}))

@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
@@ -105,7 +104,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 		CustomBuildTag: "mytag",
 	})
 	c.Assert(err, check.IsNil)
-	err = client.BuildPod(context.TODO(), a, evt, ioutil.NopCloser(buf), version)
+	err = client.BuildPod(context.TODO(), a, evt, io.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 }
 
@@ -165,7 +164,7 @@ mkdir -p $(dirname /home/application/archive.tar.gz) && cat >/home/application/a
 		CustomBuildTag: "mytag",
 	})
 	c.Assert(err, check.IsNil)
-	err = client.BuildPod(context.TODO(), a, evt, ioutil.NopCloser(buf), version)
+	err = client.BuildPod(context.TODO(), a, evt, io.NopCloser(buf), version)
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&counter), check.Equals, int32(1))
 }
@@ -461,7 +460,7 @@ func (s *S) TestDownloadFromContainer(c *check.C) {
 	archiveReader, err := client.DownloadFromContainer(context.TODO(), a, evt, "tsuru/app-myapp:tag1")
 	c.Assert(err, check.IsNil)
 	c.Assert(archiveReader, check.NotNil)
-	archive, err := ioutil.ReadAll(archiveReader)
+	archive, err := io.ReadAll(archiveReader)
 	c.Assert(err, check.IsNil)
 	c.Assert(archive, check.DeepEquals, expectedFile)
 }

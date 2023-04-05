@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -1238,7 +1237,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 
 func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.DeployServiceOpts) error {
 	if m.writer == nil {
-		m.writer = ioutil.Discard
+		m.writer = io.Discard
 	}
 
 	err := ensureNodeContainers(opts.App)
