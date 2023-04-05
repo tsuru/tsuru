@@ -20,8 +20,9 @@ import (
 // method: GET
 // produce: application/xml
 // responses:
-//   200: Ok
-//   400: Invalid data
+//
+//	200: Ok
+//	400: Invalid data
 func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 	if app.AuthScheme.Name() != "saml" {
 		return &errors.HTTP{
@@ -42,8 +43,9 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 // path: /auth/saml
 // method: POST
 // responses:
-//   200: Ok
-//   400: Invalid data
+//
+//	200: Ok
+//	400: Invalid data
 func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	if app.AuthScheme.Name() != "saml" {

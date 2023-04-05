@@ -98,9 +98,10 @@ func addNodeForParams(ctx context.Context, p provision.NodeProvisioner, params p
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   201: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	201: Ok
+//	401: Unauthorized
+//	404: Not found
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var params provision.AddNodeOptions
@@ -167,9 +168,10 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /{provisioner}/node/{address}
 // method: DELETE
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Not found
 func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	address := r.URL.Query().Get(":address")
@@ -220,8 +222,9 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
+//
+//	200: Ok
+//	204: No content
 func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	filter := &provTypes.NodeFilter{}
@@ -311,10 +314,11 @@ func listNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Not found
 func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var params provision.UpdateNodeOptions
@@ -383,10 +387,11 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	204: No content
+//	401: Unauthorized
+//	404: Not found
 func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	address := r.URL.Query().Get(":address")
@@ -422,10 +427,11 @@ func listUnitsByNode(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	204: No content
+//	401: Unauthorized
+//	404: Not found
 func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":appname")
@@ -462,8 +468,9 @@ func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := permission.ListContextValues(t, permission.PermHealingRead, true)
 	if err != nil {
@@ -496,8 +503,9 @@ func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	poolName := InputValue(r, "pool")
 	var ctxs []permTypes.PermissionContext
@@ -533,8 +541,9 @@ func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	poolName := r.URL.Query().Get("pool")
 	var ctxs []permTypes.PermissionContext
@@ -575,9 +584,10 @@ func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
 func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var params provision.RebalanceNodesOptions
@@ -663,9 +673,10 @@ func rebalanceNodesHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Not found
 func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	address := r.URL.Query().Get(":address")

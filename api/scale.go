@@ -17,9 +17,10 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -48,10 +49,11 @@ func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 // method: POST
 // consume: application/json
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -103,9 +105,10 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: POST
 // consume: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	process := InputValue(r, "process")

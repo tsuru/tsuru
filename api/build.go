@@ -48,10 +48,11 @@ func init() {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: OK
-//   400: Invalid data
-//   403: Forbidden
-//   404: Not found
+//
+//	200: OK
+//	400: Invalid data
+//	403: Forbidden
+//	404: Not found
 func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	startingBuildTime := time.Now()
 	ctx := r.Context()

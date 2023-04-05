@@ -92,10 +92,11 @@ func getApp(ctx stdContext.Context, name string) (*app.App, error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
-//   404: Version not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
+//	404: Version not found
 func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	versionString := r.URL.Query().Get(":version")
@@ -139,9 +140,10 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: App removed
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: App removed
+//	401: Unauthorized
+//	404: Not found
 func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
@@ -250,9 +252,10 @@ contextsLoop:
 // method: GET
 // produce: application/json
 // responses:
-//   200: List apps
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List apps
+//	204: No content
+//	401: Unauthorized
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	filter := &app.Filter{}
@@ -328,9 +331,10 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Not found
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -384,11 +388,12 @@ func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.Permis
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
-//   201: App created
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Quota exceeded
-//   409: App already exists
+//
+//	201: App created
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Quota exceeded
+//	409: App already exists
 func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var ia inputApp
@@ -504,10 +509,11 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: App updated
-//   400: Invalid new pool
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: App updated
+//	400: Invalid new pool
+//	401: Unauthorized
+//	404: Not found
 func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var ia inputApp
@@ -655,10 +661,11 @@ func numberOfUnits(r *http.Request) (uint, error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Units added
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Units added
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
 	if err != nil {
@@ -707,11 +714,12 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: Units removed
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Not enough reserved units
-//   404: App not found
+//
+//	200: Units removed
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Not enough reserved units
+//	404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	n, err := numberOfUnits(r)
 	if err != nil {
@@ -760,10 +768,11 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App or unit not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App or unit not found
 func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	unitName := r.URL.Query().Get(":unit")
@@ -804,10 +813,11 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: DELETE
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App or unit not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App or unit not found
 func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	unitName := r.URL.Query().Get(":unit")
@@ -862,10 +872,11 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App or unit not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App or unit not found
 func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	if t.GetAppName() != app.InternalAppName {
@@ -891,10 +902,11 @@ func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // path: /apps/{app}/teams/{team}
 // method: PUT
 // responses:
-//   200: Access granted
-//   401: Unauthorized
-//   404: App or team not found
-//   409: Grant already exists
+//
+//	200: Access granted
+//	401: Unauthorized
+//	404: App or team not found
+//	409: Grant already exists
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
@@ -936,10 +948,11 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /apps/{app}/teams/{team}
 // method: DELETE
 // responses:
-//   200: Access revoked
-//   401: Unauthorized
-//   403: Forbidden
-//   404: App or team not found
+//
+//	200: Access revoked
+//	401: Unauthorized
+//	403: Forbidden
+//	404: App or team not found
 func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
@@ -991,9 +1004,10 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 // produce: application/x-json-stream
 // method: POST
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the command to run"
 	command := InputValue(r, "command")
@@ -1041,9 +1055,10 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // method: GET
 // produce: application/x-json-stream
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: App not found
 func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var variables []string
 	if envs, ok := r.URL.Query()["env"]; ok {
@@ -1088,10 +1103,11 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 // consume: application/json
 // produce: application/x-json-stream
 // responses:
-//   200: Envs updated
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Envs updated
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
@@ -1197,10 +1213,11 @@ func internalEnvs() []string {
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: Envs removed
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Envs removed
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
@@ -1253,10 +1270,11 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	cNameMsg := "You must provide the cname."
 	cnames, _ := InputValues(r, "cname")
@@ -1299,10 +1317,11 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 // path: /apps/{app}/cname
 // method: DELETE
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	cnames, _ := InputValues(r, "cname")
 	if len(cnames) == 0 {
@@ -1346,10 +1365,11 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // method: GET
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	var err error
@@ -1482,10 +1502,11 @@ func getServiceInstance(ctx stdContext.Context, serviceName, instanceName, appNa
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
@@ -1570,10 +1591,11 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	instanceName, appName, serviceName := r.URL.Query().Get(":instance"), r.URL.Query().Get(":app"),
@@ -1651,9 +1673,10 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
@@ -1699,10 +1722,11 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	version := InputValue(r, "version")
@@ -1752,10 +1776,11 @@ func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	a, err := app.GetByName(ctx, r.URL.Query().Get(":app"))
@@ -1790,12 +1815,13 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
-//   409: App locked
-//   412: Number of units or platform don't match
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
+//	409: App locked
+//	412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	app1Name := InputValue(r, "app1")
@@ -1872,9 +1898,10 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
@@ -1920,9 +1947,10 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	process := InputValue(r, "process")
 	version := InputValue(r, "version")
@@ -1967,7 +1995,8 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // method: DELETE
 // produce: application/json
 // responses:
-//   410: Not available anymore
+//
+//	410: Not available anymore
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
@@ -1984,9 +2013,10 @@ func isDeployAgentUA(r *http.Request) bool {
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
@@ -2041,9 +2071,10 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -2076,9 +2107,10 @@ type compatRebuildRoutesResult struct {
 // method: POST
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
@@ -2137,10 +2169,11 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -2182,10 +2215,11 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // method: DELETE
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: App not found
 func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -2225,9 +2259,10 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 // method: GET
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: App not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: App not found
 func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {

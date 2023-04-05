@@ -3495,7 +3495,7 @@ paths:
         - application/json
       responses:
         "201":
-          description: Role created           
+          description: Role created
         "400":
           description: Invalid data
           schema:
@@ -3522,12 +3522,12 @@ paths:
           required: true
           in: body
           schema:
-            $ref: "#/definitions/RoleUpdateData" 
+            $ref: "#/definitions/RoleUpdateData"
       produces:
         - application/json
       responses:
         "201":
-          description: Role updated          
+          description: Role updated
         "400":
           description: Invalid data
           schema:
@@ -3576,8 +3576,8 @@ paths:
           in: path
           type: string
         - name: PermissionData
-          required: true 
-          in: body 
+          required: true
+          in: body
           schema:
             $ref: "#/definitions/PermissionData"
       produces:

@@ -24,8 +24,9 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
+//
+//	200: OK
+//	204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var filter *event.Filter
 	err := ParseInput(r, &filter)
@@ -61,8 +62,9 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
+//
+//	200: OK
+//	204: No content
 func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	kinds, err := event.GetKinds()
 	if err != nil {
@@ -81,10 +83,11 @@ func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   400: Invalid uuid
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: OK
+//	400: Invalid uuid
+//	401: Unauthorized
+//	404: Not found
 func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	uuid := r.URL.Query().Get(":uuid")
 	if !bson.IsObjectIdHex(uuid) {
@@ -117,10 +120,11 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/json
 // responses:
-//   204: OK
-//   400: Invalid uuid or empty reason
-//   401: Unauthorized
-//   404: Not found
+//
+//	204: OK
+//	400: Invalid uuid or empty reason
+//	401: Unauthorized
+//	404: Not found
 func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	uuid := r.URL.Query().Get(":uuid")
 	if !bson.IsObjectIdHex(uuid) {
@@ -160,9 +164,10 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
-//   401: Unauthorized
+//
+//	200: OK
+//	204: No content
+//	401: Unauthorized
 func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermEventBlockRead) {
 		return permission.ErrUnauthorized
@@ -189,9 +194,10 @@ func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: OK
-//   400: Invalid data or empty reason
-//   401: Unauthorized
+//
+//	200: OK
+//	400: Invalid data or empty reason
+//	401: Unauthorized
 func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermEventBlockAdd) {
 		return permission.ErrUnauthorized
@@ -226,10 +232,11 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // path: /events/blocks/{uuid}
 // method: DELETE
 // responses:
-//   200: OK
-//   400: Invalid uuid
-//   401: Unauthorized
-//   404: Active block with provided uuid not found
+//
+//	200: OK
+//	400: Invalid uuid
+//	401: Unauthorized
+//	404: Active block with provided uuid not found
 func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermEventBlockRemove) {
 		return permission.ErrUnauthorized

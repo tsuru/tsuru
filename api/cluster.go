@@ -29,11 +29,12 @@ import (
 // consume: application/json
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Pool does not exist
-//   409: Cluster already exists
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Pool does not exist
+//	409: Cluster already exists
 func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermClusterCreate)
@@ -104,10 +105,11 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // consume: application/json
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Cluster not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Cluster not found
 func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermClusterUpdate)
@@ -181,9 +183,10 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No Content
-//   401: Unauthorized
+//
+//	200: Ok
+//	204: No Content
+//	401: Unauthorized
 func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermClusterRead)
@@ -213,9 +216,10 @@ func listClusters(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Cluster not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Cluster not found
 func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermClusterRead)
@@ -242,9 +246,10 @@ func clusterInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Cluster not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Cluster not found
 func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermClusterDelete)
@@ -296,9 +301,10 @@ type provisionerInfo struct {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No Content
-//   401: Unauthorized
+//
+//	200: Ok
+//	204: No Content
+//	401: Unauthorized
 func provisionerList(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowed := permission.Check(t, permission.PermClusterRead)
 	if !allowed {

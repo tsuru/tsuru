@@ -21,8 +21,9 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedGetConfig := permission.Check(t, permission.PermNodeAutoscaleRead)
 	if !allowedGetConfig {
@@ -41,9 +42,10 @@ func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) er
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
+//
+//	200: Ok
+//	204: No content
+//	401: Unauthorized
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	allowedListRule := permission.Check(t, permission.PermNodeAutoscaleRead)
 	if !allowedListRule {
@@ -65,9 +67,10 @@ func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) er
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
 func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowedSetRule := permission.Check(t, permission.PermNodeAutoscaleUpdate)
 	if !allowedSetRule {
@@ -101,9 +104,10 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 // path: /autoscale/rules/{id}
 // method: DELETE
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Not found
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowedDeleteRule := permission.Check(t, permission.PermNodeAutoscale)
 	if !allowedDeleteRule {
@@ -138,9 +142,10 @@ func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
-//   401: Unauthorized
+//
+//	200: Ok
+//	204: No content
+//	401: Unauthorized
 func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermNodeAutoscale) {
 		return permission.ErrUnauthorized
@@ -164,8 +169,9 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 // method: POST
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermNodeAutoscaleUpdateRun) {
 		return permission.ErrUnauthorized
