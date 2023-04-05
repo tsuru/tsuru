@@ -24,9 +24,10 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: User not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: User not found
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	email := r.URL.Query().Get(":email")
 	allowed := permission.Check(t, permission.PermUserReadQuota, permission.Context(permTypes.CtxUser, email))
@@ -52,11 +53,12 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Quota updated
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Limit lower than allocated value
-//   404: User not found
+//
+//	200: Quota updated
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Limit lower than allocated value
+//	404: User not found
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	email := r.URL.Query().Get(":email")
@@ -107,9 +109,10 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Application not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Application not found
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -132,11 +135,12 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Quota updated
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Limit lower than allocated
-//   404: Application not found
+//
+//	200: Quota updated
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Limit lower than allocated
+//	404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
@@ -181,9 +185,10 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Team not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Team not found
 func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamReadQuota, permission.Context(permTypes.CtxTeam, teamName))
@@ -209,11 +214,12 @@ func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Quota updated
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Limit lower than allocated value
-//   404: Team not found
+//
+//	200: Quota updated
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Limit lower than allocated value
+//	404: Team not found
 func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	teamName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))

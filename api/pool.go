@@ -24,9 +24,10 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   404: Not found
-//   401: Unauthorized
+//
+//	200: OK
+//	404: Not found
+//	401: Unauthorized
 func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	poolName := r.URL.Query().Get(":name")
@@ -51,9 +52,10 @@ func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
-//   401: Unauthorized
+//
+//	200: OK
+//	204: No content
+//	401: Unauthorized
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var teams, poolNames []string
 	isGlobal := false
@@ -113,10 +115,11 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Pool created
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Pool already exists
+//
+//	201: Pool created
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Pool already exists
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	allowed := permission.Check(t, permission.PermPoolCreate)
 	if !allowed {
@@ -168,10 +171,11 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /pools/{name}
 // method: DELETE
 // responses:
-//   200: Pool removed
-//   401: Unauthorized
-//   403: Pool still has apps
-//   404: Pool not found
+//
+//	200: Pool removed
+//	401: Unauthorized
+//	403: Pool still has apps
+//	404: Pool not found
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPoolDelete)
@@ -212,10 +216,11 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Pool updated
-//   401: Unauthorized
-//   400: Invalid data
-//   404: Pool not found
+//
+//	200: Pool updated
+//	401: Unauthorized
+//	400: Invalid data
+//	404: Pool not found
 func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	poolName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermPoolUpdateTeamAdd, permission.Context(permTypes.CtxPool, poolName))
@@ -248,10 +253,11 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // path: /pools/{name}/team
 // method: DELETE
 // responses:
-//   200: Pool updated
-//   401: Unauthorized
-//   400: Invalid data
-//   404: Pool not found
+//
+//	200: Pool updated
+//	401: Unauthorized
+//	400: Invalid data
+//	404: Pool not found
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	poolName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermPoolUpdateTeamRemove, permission.Context(permTypes.CtxPool, poolName))
@@ -288,10 +294,11 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Pool updated
-//   401: Unauthorized
-//   404: Pool not found
-//   409: Default pool already defined
+//
+//	200: Pool updated
+//	401: Unauthorized
+//	404: Pool not found
+//	409: Default pool already defined
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPoolUpdate)
@@ -334,9 +341,10 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
-//   401: Unauthorized
+//
+//	200: OK
+//	204: No content
+//	401: Unauthorized
 func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermPoolReadConstraints) {
 		return permission.ErrUnauthorized
@@ -358,8 +366,9 @@ func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) er
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: OK
-//   401: Unauthorized
+//
+//	200: OK
+//	401: Unauthorized
 func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !permission.Check(t, permission.PermPoolUpdateConstraintsSet) {
 		return permission.ErrUnauthorized

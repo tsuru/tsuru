@@ -102,7 +102,8 @@ var (
 // method: GET
 // produce: Websocket connection upgrade
 // responses:
-//   101: Switch Protocol to websocket
+//
+//	101: Switch Protocol to websocket
 func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

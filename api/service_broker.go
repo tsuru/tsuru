@@ -18,9 +18,10 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: List service brokers
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List service brokers
+//	204: No content
+//	401: Unauthorized
 func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerRead) {
 		return permission.ErrUnauthorized
@@ -42,9 +43,10 @@ func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // path: /brokers
 // method: POST
 // responses:
-//   201: Service broker created
-//   401: Unauthorized
-//   409: Broker already exists
+//
+//	201: Service broker created
+//	401: Unauthorized
+//	409: Broker already exists
 func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerCreate) {
 		return permission.ErrUnauthorized
@@ -79,9 +81,10 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // path: /brokers/{broker}
 // method: PUT
 // responses:
-//   200: Service broker updated
-//   401: Unauthorized
-//   404: Not Found
+//
+//	200: Service broker updated
+//	401: Unauthorized
+//	404: Not Found
 func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerUpdate) {
 		return permission.ErrUnauthorized
@@ -116,9 +119,10 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 // path: /brokers/{broker}
 // method: DELETE
 // responses:
-//   200: Service broker deleted
-//   401: Unauthorized
-//   404: Not Found
+//
+//	200: Service broker deleted
+//	401: Unauthorized
+//	404: Not Found
 func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermServiceBrokerDelete) {
 		return permission.ErrUnauthorized

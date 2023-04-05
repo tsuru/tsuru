@@ -52,9 +52,10 @@ func contextsForVolume(v *volumeTypes.Volume) []permTypes.PermissionContext {
 // method: GET
 // produce: application/json
 // responses:
-//   200: List volumes
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List volumes
+//	204: No content
+//	401: Unauthorized
 func volumesList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermVolumeRead)
@@ -79,9 +80,10 @@ func volumesList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Show volume
-//   401: Unauthorized
-//   404: Volume not found
+//
+//	200: Show volume
+//	401: Unauthorized
+//	404: Volume not found
 func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	v, err := servicemanager.Volume.Get(ctx, r.URL.Query().Get(":name"))
@@ -108,9 +110,10 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/json
 // responses:
-//   201: Volume created
-//   401: Unauthorized
-//   409: Volume already exists
+//
+//	201: Volume created
+//	401: Unauthorized
+//	409: Volume already exists
 func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var inputVolume volumeTypes.Volume
@@ -165,9 +168,10 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // method: POST
 // produce: application/json
 // responses:
-//   200: Volume updated
-//   401: Unauthorized
-//   404: Volume not found
+//
+//	200: Volume updated
+//	401: Unauthorized
+//	404: Volume not found
 func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var inputVolume volumeTypes.Volume
@@ -209,8 +213,9 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // method: GET
 // produce: application/json
 // responses:
-//   200: List volume plans
-//   401: Unauthorized
+//
+//	200: List volume plans
+//	401: Unauthorized
 func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermVolumeCreate)
@@ -234,9 +239,10 @@ func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: Volume deleted
-//   401: Unauthorized
-//   404: Volume not found
+//
+//	200: Volume deleted
+//	401: Unauthorized
+//	404: Volume not found
 func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	volumeName := r.URL.Query().Get(":name")
@@ -271,10 +277,11 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/json
 // responses:
-//   200: Volume binded
-//   401: Unauthorized
-//   404: Volume not found
-//   409: Volume bind already exists
+//
+//	200: Volume binded
+//	401: Unauthorized
+//	404: Volume not found
+//	409: Volume bind already exists
 func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	var bindInfo struct {
@@ -343,9 +350,10 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: Volume unbinded
-//   401: Unauthorized
-//   404: Volume not found
+//
+//	200: Volume unbinded
+//	401: Unauthorized
+//	404: Volume not found
 func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	var bindInfo struct {

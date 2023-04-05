@@ -17,8 +17,9 @@ import (
 // path: /healthcheck
 // method: GET
 // responses:
-//   200: OK
-//   500: Internal server error
+//
+//	200: OK
+//	500: Internal server error
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	var checks []string
 	values := r.URL.Query()
