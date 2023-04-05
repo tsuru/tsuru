@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
@@ -115,6 +116,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 											Name:    "job",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
+											Env:     []corev1.EnvVar{},
 											Resources: apiv1.ResourceRequirements{
 												Limits: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
@@ -238,6 +240,7 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 											apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 										},
 									},
+									Env: []corev1.EnvVar{},
 								},
 							},
 							RestartPolicy: "OnFailure",
@@ -383,6 +386,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 											Name:    "job",
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
+											Env:     []corev1.EnvVar{},
 											Resources: apiv1.ResourceRequirements{
 												Limits: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
@@ -508,6 +512,22 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 							Image:   "ubuntu:latest",
 							Command: []string{"echo", "hello world"},
 						},
+						Envs: []bindTypes.EnvVar{
+							{
+								Name:  "MY_ENV",
+								Value: "** value",
+							},
+						},
+						ServiceEnvs: []bindTypes.ServiceEnvVar{
+							{
+								ServiceName:  "database-as-service",
+								InstanceName: "my-redis",
+								EnvVar: bindTypes.EnvVar{
+									Name:  "REDIS_HOST",
+									Value: "localhost",
+								},
+							},
+						},
 					},
 				}
 				_, err := s.p.CreateJob(context.TODO(), &cj)
@@ -567,6 +587,16 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 										Name:    "job",
 										Image:   "ubuntu:latest",
 										Command: []string{"echo", "hello world"},
+										Env: []corev1.EnvVar{
+											{
+												Name:  "MY_ENV",
+												Value: "** value",
+											},
+											{
+												Name:  "REDIS_HOST",
+												Value: "localhost",
+											},
+										},
 										Resources: apiv1.ResourceRequirements{
 											Limits: corev1.ResourceList{
 												apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
