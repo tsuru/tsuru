@@ -24,10 +24,11 @@ import (
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Plan created
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Plan already exists
+//
+//	201: Plan created
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	cpuMilli, _ := strconv.Atoi(InputValue(r, "cpumilli"))
@@ -81,8 +82,9 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
+//
+//	200: OK
+//	204: No content
 func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	plans, err := servicemanager.Plan.List(r.Context())
 	if err != nil {
@@ -100,9 +102,10 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // path: /plans/{name}
 // method: DELETE
 // responses:
-//   200: Plan removed
-//   401: Unauthorized
-//   404: Plan not found
+//
+//	200: Plan removed
+//	401: Unauthorized
+//	404: Plan not found
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermPlanDelete)

@@ -28,8 +28,9 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
+//
+//	200: Ok
+//	401: Unauthorized
 func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := permission.ListContextValues(t, permission.PermNodecontainerRead, true)
 	if err != nil {
@@ -65,9 +66,10 @@ func nodeContainerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invald data
-//   401: Unauthorized
+//
+//	200: Ok
+//	400: Invald data
+//	401: Unauthorized
 func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var config nodecontainer.NodeContainerConfig
 	err = ParseInput(r, &config)
@@ -112,9 +114,10 @@ func nodeContainerCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Not found
 func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	pools, err := permission.ListContextValues(t, permission.PermNodecontainerRead, true)
 	if err != nil {
@@ -154,10 +157,11 @@ func nodeContainerInfo(w http.ResponseWriter, r *http.Request, t auth.Token) err
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invald data
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	400: Invald data
+//	401: Unauthorized
+//	404: Not found
 func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var config nodecontainer.NodeContainerConfig
 	err = ParseInput(r, &config)
@@ -208,9 +212,10 @@ func nodeContainerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // path: /docker/nodecontainers/{name}
 // method: DELETE
 // responses:
-//   200: Ok
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	401: Unauthorized
+//	404: Not found
 func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
@@ -277,10 +282,11 @@ func nodeContainerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: Ok
-//   400: Invald data
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Ok
+//	400: Invald data
+//	401: Unauthorized
+//	404: Not found
 func nodeContainerUpgrade(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")

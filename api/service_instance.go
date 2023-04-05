@@ -41,10 +41,11 @@ func serviceIntancePermName(serviceName, instanceName string) string {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Service created
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Service already exists
+//
+//	201: Service created
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Service already exists
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -131,10 +132,11 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Service instance updated
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: Service instance updated
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Service instance not found
 func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -217,10 +219,11 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
-//   200: Service removed
-//   400: Bad request
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: Service removed
+//	400: Bad request
+//	401: Unauthorized
+//	404: Service instance not found
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	ignoreErrors := r.URL.Query().Get("ignoreerrors")
@@ -348,9 +351,10 @@ func readableServices(ctx stdContext.Context, t auth.Token, contexts []permTypes
 // method: GET
 // produce: application/json
 // responses:
-//   200: List services instances
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List services instances
+//	204: No content
+//	401: Unauthorized
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get("app")
@@ -399,9 +403,10 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 // path: /services/{service}/instances/{instance}/status
 // method: GET
 // responses:
-//   200: List services instances
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: List services instances
+//	401: Unauthorized
+//	404: Service instance not found
 func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
@@ -443,9 +448,10 @@ type serviceInstanceInfo struct {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Service instance not found
 func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
@@ -494,7 +500,8 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
+//
+//	200: OK
 func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
@@ -522,9 +529,10 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // path: /services/{name}/doc
 // method: GET
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Not found
 func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
@@ -565,9 +573,10 @@ func getServiceInstanceOrError(ctx stdContext.Context, serviceName string, insta
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Service not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Service not found
 func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")
@@ -651,8 +660,9 @@ func teamsForToken(t auth.Token) (global bool, teams []string) {
 // path: /services/{service}/proxy/{instance}
 // method: "*"
 // responses:
-//   401: Unauthorized
-//   404: Instance not found
+//
+//	401: Unauthorized
+//	404: Instance not found
 func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -695,9 +705,10 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 // consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
-//   200: Access granted
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: Access granted
+//	401: Unauthorized
+//	404: Service instance not found
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
@@ -733,9 +744,10 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 // path: /services/{service}/instances/permission/{instance}/{team}
 // method: DELETE
 // responses:
-//   200: Access revoked
-//   401: Unauthorized
-//   404: Service instance not found
+//
+//	200: Access revoked
+//	401: Unauthorized
+//	404: Service instance not found
 func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")

@@ -35,9 +35,10 @@ func provisionReadableServices(ctx context.Context, t auth.Token, contexts []per
 // method: GET
 // produce: application/json
 // responses:
-//   200: List services
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List services
+//	204: No content
+//	401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
@@ -114,10 +115,11 @@ func parseService(r *http.Request) (service.Service, error) {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Service created
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Service already exists
+//
+//	201: Service created
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Service already exists
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	s, err := parseService(r)
 	if err != nil {
@@ -174,11 +176,12 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Service updated
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Forbidden (team is not the owner)
-//   404: Service not found
+//
+//	200: Service updated
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden (team is not the owner)
+//	404: Service not found
 func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	d, err := parseService(r)
 	if err != nil {
@@ -223,10 +226,11 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // path: /services/{name}
 // method: DELETE
 // responses:
-//   200: Service removed
-//   401: Unauthorized
-//   403: Forbidden (team is not the owner or service with instances)
-//   404: Service not found
+//
+//	200: Service removed
+//	401: Unauthorized
+//	403: Forbidden (team is not the owner or service with instances)
+//	404: Service not found
 func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	s, err := getService(ctx, r.URL.Query().Get(":name"))
@@ -267,8 +271,9 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 // path: /services/proxy/service/{service}
 // method: "*"
 // responses:
-//   401: Unauthorized
-//   404: Service not found
+//
+//	401: Unauthorized
+//	404: Service not found
 func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -308,11 +313,12 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // path: /services/{service}/team/{team}
 // method: PUT
 // responses:
-//   200: Service updated
-//   400: Team not found
-//   401: Unauthorized
-//   404: Service not found
-//   409: Team already has access to this service
+//
+//	200: Service updated
+//	400: Team not found
+//	401: Unauthorized
+//	404: Service not found
+//	409: Team already has access to this service
 func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -357,11 +363,12 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 // path: /services/{service}/team/{team}
 // method: DELETE
 // responses:
-//   200: Access revoked
-//   400: Team not found
-//   401: Unauthorized
-//   404: Service not found
-//   409: Team does not has access to this service
+//
+//	200: Access revoked
+//	400: Team not found
+//	401: Unauthorized
+//	404: Service not found
+//	409: Team does not has access to this service
 func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
@@ -411,9 +418,10 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 // consume: application/x-www-form-urlencoded
 // method: PUT
 // responses:
-//   200: Documentation updated
-//   401: Unauthorized
-//   403: Forbidden (team is not the owner or service with instances)
+//
+//	200: Documentation updated
+//	401: Unauthorized
+//	403: Forbidden (team is not the owner or service with instances)
 func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":name")

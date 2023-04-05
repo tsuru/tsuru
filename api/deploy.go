@@ -49,10 +49,11 @@ func init() {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: OK
-//   400: Invalid data
-//   403: Forbidden
-//   404: Not found
+//
+//	200: OK
+//	400: Invalid data
+//	403: Forbidden
+//	404: Not found
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	startingDeployTime := time.Now()
 	ctx := r.Context()
@@ -184,7 +185,8 @@ func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   410: Gone
+//
+//	410: Gone
 func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return &tsuruErrors.HTTP{Code: http.StatusGone, Message: "diff deploy is deprecated, this call does nothing"}
 }
@@ -195,10 +197,11 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: OK
-//   400: Invalid data
-//   403: Forbidden
-//   404: Not found
+//
+//	200: OK
+//	400: Invalid data
+//	403: Forbidden
+//	404: Not found
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
@@ -272,8 +275,9 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
+//
+//	200: OK
+//	204: No content
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermAppReadDeploy)
@@ -304,9 +308,10 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Not found
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	depID := r.URL.Query().Get(":deploy")
@@ -335,10 +340,11 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
-//   200: OK
-//   400: Invalid data
-//   403: Forbidden
-//   404: Not found
+//
+//	200: OK
+//	400: Invalid data
+//	403: Forbidden
+//	404: Not found
 func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
@@ -401,9 +407,10 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Rollback updated
-//   400: Invalid data
-//   403: Forbidden
+//
+//	200: Rollback updated
+//	400: Invalid data
+//	403: Forbidden
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")

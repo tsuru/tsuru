@@ -25,9 +25,10 @@ import (
 // path: /routers
 // method: POST
 // responses:
-//   201: Created
-//   400: Invalid router
-//   409: Router already exists
+//
+//	201: Created
+//	400: Invalid router
+//	409: Router already exists
 func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var dynamicRouter routerTypes.DynamicRouter
@@ -69,9 +70,10 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // path: /routers/{name}
 // method: PUT
 // responses:
-//   200: OK
-//   400: Invalid router
-//   404: Router not found
+//
+//	200: OK
+//	400: Invalid router
+//	404: Router not found
 func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var dynamicRouter routerTypes.DynamicRouter
@@ -115,8 +117,9 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // path: /routers/{name}
 // method: DELETE
 // responses:
-//   200: OK
-//   404: Router not found
+//
+//	200: OK
+//	404: Router not found
 func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	routerName := r.URL.Query().Get(":name")
@@ -154,8 +157,9 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
+//
+//	200: OK
+//	204: No content
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
@@ -220,9 +224,10 @@ contexts:
 // method: POST
 // produce: application/json
 // responses:
-//   200: OK
-//   404: App or router not found
-//   400: Invalid request
+//
+//	200: OK
+//	404: App or router not found
+//	400: Invalid request
 func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var appRouter appTypes.AppRouter
@@ -281,9 +286,10 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 // method: PUT
 // produce: application/json
 // responses:
-//   200: OK
-//   404: App or router not found
-//   400: Invalid request
+//
+//	200: OK
+//	404: App or router not found
+//	400: Invalid request
 func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var appRouter appTypes.AppRouter
@@ -344,8 +350,9 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: OK
-//   404: App or router not found
+//
+//	200: OK
+//	404: App or router not found
 func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	appName := r.URL.Query().Get(":app")
 	routerName := r.URL.Query().Get(":router")
@@ -383,9 +390,10 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   204: No content
-//   404: App not found
+//
+//	200: OK
+//	204: No content
+//	404: App not found
 func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
@@ -418,10 +426,11 @@ type setRoutableRequest struct {
 // path: /app/{app}/routable
 // method: POST
 // responses:
-//   200: OK
-//   400: Bad request
-//   401: Not authorized
-//   404: App not found
+//
+//	200: OK
+//	400: Bad request
+//	401: Not authorized
+//	404: App not found
 func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var args setRoutableRequest

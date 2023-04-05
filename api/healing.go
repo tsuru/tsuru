@@ -19,10 +19,11 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: Ok
-//   204: No content
-//   400: Invalid data
-//   401: Unauthorized
+//
+//	200: Ok
+//	204: No content
+//	400: Invalid data
+//	401: Unauthorized
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermHealingRead) {
 		return permission.ErrUnauthorized

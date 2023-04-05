@@ -65,11 +65,12 @@ func teamTarget(t string) event.Target {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: User created
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Forbidden
-//   409: User already exists
+//
+//	201: User created
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden
+//	409: User already exists
 func createUser(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	registrationEnabled, _ := config.GetBool("auth:user-registration")
@@ -115,11 +116,12 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 // consume: application/x-www-form-urlencoded
 // produce: application/json
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Forbidden
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden
+//	404: Not found
 func login(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 	params := map[string]string{
@@ -140,7 +142,8 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 // path: /users/tokens
 // method: DELETE
 // responses:
-//   200: Ok
+//
+//	200: Ok
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return app.AuthScheme.Logout(r.Context(), t.GetValue())
 }
@@ -150,11 +153,12 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Forbidden
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden
+//	404: Not found
 func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
@@ -198,11 +202,12 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /users/{email}/password
 // method: POST
 // responses:
-//   200: Ok
-//   400: Invalid data
-//   401: Unauthorized
-//   403: Forbidden
-//   404: Not found
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden
+//	404: Not found
 func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
@@ -249,10 +254,11 @@ var teamRenameFns = []func(ctx context.Context, oldName, newName string) error{
 // method: PUT
 // consume: application/x-www-form-urlencoded
 // responses:
-//   200: Team updated
-//   400: Invalid data
-//   401: Unauthorized
-//   404: Team not found
+//
+//	200: Team updated
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Team not found
 func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
@@ -334,10 +340,11 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // consume: application/x-www-form-urlencoded
 // responses:
-//   201: Team created
-//   400: Invalid data
-//   401: Unauthorized
-//   409: Team already exists
+//
+//	201: Team created
+//	400: Invalid data
+//	401: Unauthorized
+//	409: Team already exists
 func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	allowed := permission.Check(t, permission.PermTeamCreate)
@@ -383,10 +390,11 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // path: /teams/{name}
 // method: DELETE
 // responses:
-//   200: Team removed
-//   401: Unauthorized
-//   403: Forbidden
-//   404: Not found
+//
+//	200: Team removed
+//	401: Unauthorized
+//	403: Forbidden
+//	404: Not found
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
@@ -427,9 +435,10 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 // method: GET
 // produce: application/json
 // responses:
-//   200: List teams
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List teams
+//	204: No content
+//	401: Unauthorized
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	permsForTeam := permission.PermissionRegistry.PermissionsWithContextType(permTypes.CtxTeam)
@@ -478,9 +487,10 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Info team
-//   404: Not found
-//   401: Unauthorized
+//
+//	200: Info team
+//	404: Not found
+//	401: Unauthorized
 func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
@@ -548,9 +558,10 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // path: /users
 // method: DELETE
 // responses:
-//   200: User removed
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: User removed
+//	401: Unauthorized
+//	404: Not found
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	email := r.URL.Query().Get("user")
@@ -592,7 +603,8 @@ type schemeData struct {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
+//
+//	200: OK
 func authScheme(w http.ResponseWriter, r *http.Request) error {
 	info, err := app.AuthScheme.Info(r.Context())
 	if err != nil {
@@ -608,9 +620,10 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 // method: POST
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: User not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: User not found
 func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	email := r.URL.Query().Get("user")
 	if email == "" {
@@ -651,9 +664,10 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
-//   404: User not found
+//
+//	200: OK
+//	401: Unauthorized
+//	404: User not found
 func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
@@ -781,8 +795,9 @@ func expandRoleData(perms []permission.Permission, userRole authTypes.RoleInstan
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
+//
+//	200: OK
+//	401: Unauthorized
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	userEmail := r.URL.Query().Get("userEmail")
 	roleName := r.URL.Query().Get("role")
@@ -854,8 +869,9 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
-//   401: Unauthorized
+//
+//	200: OK
+//	401: Unauthorized
 func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	user, err := auth.ConvertNewUser(t.User())
 	if err != nil {

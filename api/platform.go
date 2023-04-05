@@ -29,9 +29,10 @@ import (
 // consume: multipart/form-data
 // produce: application/x-json-stream
 // responses:
-//   200: Platform created
-//   400: Invalid data
-//   401: Unauthorized
+//
+//	200: Platform created
+//	400: Invalid data
+//	401: Unauthorized
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := InputValue(r, "name")
@@ -94,9 +95,10 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // method: PUT
 // produce: application/x-json-stream
 // responses:
-//   200: Platform updated
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Platform updated
+//	401: Unauthorized
+//	404: Not found
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
@@ -158,9 +160,10 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // path: /platforms/{name}
 // method: DELETE
 // responses:
-//   200: Platform removed
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: Platform removed
+//	401: Unauthorized
+//	404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
@@ -192,9 +195,10 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 // method: GET
 // produce: application/json
 // responses:
-//   200: List platforms
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List platforms
+//	204: No content
+//	401: Unauthorized
 func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
@@ -216,9 +220,10 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Platform info
-//   401: Unauthorized
-//   404: NotFound
+//
+//	200: Platform info
+//	401: Unauthorized
+//	404: NotFound
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
@@ -251,10 +256,11 @@ func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/x-json-stream
 // responses:
-//   200: OK
-//   400: BadRequest
-//   401: Unauthorized
-//   404: Not found
+//
+//	200: OK
+//	400: BadRequest
+//	401: Unauthorized
+//	404: Not found
 func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")

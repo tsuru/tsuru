@@ -22,9 +22,10 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: List tokens
-//   204: No content
-//   401: Unauthorized
+//
+//	200: List tokens
+//	204: No content
+//	401: Unauthorized
 func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	tokens, err := servicemanager.TeamToken.FindByUserToken(ctx, t)
@@ -44,8 +45,9 @@ func tokenList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: GET
 // produce: application/json
 // responses:
-//   200: Get token
-//   401: Unauthorized
+//
+//	200: Get token
+//	401: Unauthorized
 func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	tokenID := r.URL.Query().Get(":token_id")
@@ -80,9 +82,10 @@ func tokenInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // method: POST
 // produce: application/json
 // responses:
-//   201: Token created
-//   401: Unauthorized
-//   409: Token already exists
+//
+//	201: Token created
+//	401: Unauthorized
+//	409: Token already exists
 func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var args authTypes.TeamTokenCreateArgs
@@ -136,9 +139,10 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // method: PUT
 // produce: application/json
 // responses:
-//   200: Token updated
-//   401: Unauthorized
-//   404: Token not found
+//
+//	200: Token updated
+//	401: Unauthorized
+//	404: Token not found
 func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var args authTypes.TeamTokenUpdateArgs
@@ -193,9 +197,10 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 // method: DELETE
 // produce: application/json
 // responses:
-//   200: Token created
-//   401: Unauthorized
-//   404: Token not found
+//
+//	200: Token created
+//	401: Unauthorized
+//	404: Token not found
 func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	tokenID := r.URL.Query().Get(":token_id")

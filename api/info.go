@@ -16,7 +16,8 @@ import (
 // method: GET
 // produce: application/json
 // responses:
-//   200: OK
+//
+//	200: OK
 func info(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	data := map[string]string{}
 	data["version"] = Version
