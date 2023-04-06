@@ -32,16 +32,16 @@ func (s *S) Test_MemoryLogService_AddWrapsOnLimit(c *check.C) {
 	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-10"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-11"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-12"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-13"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-14"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-15"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-16"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-17"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-18"},
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "unit-19"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-10"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-11"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-12"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-13"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-14"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-15"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-16"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-17"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-18"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "unit-19"},
 	})
 }
 
@@ -57,7 +57,7 @@ func (s *S) Test_MemoryLogService_MessageLargerThanLimit(c *check.C) {
 	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
-		{Message: bigMessage, AppName: "myapp", Source: "tsuru", Unit: "avranakern"},
+		{Message: bigMessage, Name: "myapp", Source: "tsuru", Unit: "avranakern"},
 	})
 }
 
@@ -77,6 +77,6 @@ func (s *S) Test_MemoryLogService_MessagExactLimit(c *check.C) {
 	msgs, err := svc.List(context.TODO(), appTypes.ListLogArgs{Name: "myapp"})
 	c.Assert(err, check.IsNil)
 	compareLogsNoDate(c, msgs, []appTypes.Applog{
-		{Message: newMessage, AppName: "myapp", Source: "tsuru", Unit: "avranakern2"},
+		{Message: newMessage, Name: "myapp", Source: "tsuru", Unit: "avranakern2"},
 	})
 }

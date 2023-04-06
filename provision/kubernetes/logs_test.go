@@ -75,7 +75,7 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 }
 
@@ -115,7 +115,7 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 }
 
@@ -156,7 +156,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
 	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
@@ -206,7 +206,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
 	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{

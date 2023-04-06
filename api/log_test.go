@@ -104,9 +104,9 @@ loop:
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
-		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", AppName: "myapp1", Unit: "unit3"},
-		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", AppName: "myapp1", Unit: "unit3"},
+		{Date: baseTime, Message: "msg1", Source: "web", Name: "myapp1", Unit: "unit1"},
+		{Date: baseTime.Add(2 * time.Second), Message: "msg3", Source: "web", Name: "myapp1", Unit: "unit3"},
+		{Date: baseTime.Add(4 * time.Second), Message: "msg5", Source: "worker", Name: "myapp1", Unit: "unit3"},
 	})
 	logs, err = a2.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 2,
@@ -114,8 +114,8 @@ loop:
 	c.Assert(err, check.IsNil)
 	sort.Sort(LogList(logs))
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
-		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
+		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", Name: "myapp2", Unit: "unit2"},
+		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", Name: "myapp2", Unit: "unit4"},
 	})
 }
 
@@ -183,7 +183,7 @@ loop:
 	})
 	c.Assert(err, check.IsNil)
 	compareLogs(c, logs, []appTypes.Applog{
-		{Date: baseTime, Message: "msg1", Source: "web", AppName: "myapp1", Unit: "unit1"},
+		{Date: baseTime, Message: "msg1", Source: "web", Name: "myapp1", Unit: "unit1"},
 	})
 }
 

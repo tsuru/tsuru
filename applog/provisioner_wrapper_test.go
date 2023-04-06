@@ -46,7 +46,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 
 func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 	err := s.tsuruLogService.Enqueue(&appTypes.Applog{
-		AppName: "myapp",
+		Name:    "myapp",
 		Message: "Fake message from tsuru logs",
 	})
 	c.Check(err, check.IsNil)
@@ -68,15 +68,12 @@ func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
 		Name: "myapp",
 	})
 	c.Assert(err, check.IsNil)
-
 	err = s.tsuruLogService.Enqueue(&appTypes.Applog{
-		AppName: "myapp",
+		Name:    "myapp",
 		Message: "Fake message from tsuru logs",
 	})
 	c.Check(err, check.IsNil)
-
 	logs := []appTypes.Applog{}
-
 	ch := watcher.Chan()
 	timer := time.After(time.Second)
 loop:
@@ -94,7 +91,6 @@ loop:
 			break loop
 		}
 	}
-
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Message < logs[j].Message
 	})

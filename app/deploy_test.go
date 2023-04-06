@@ -708,7 +708,7 @@ func (s *S) TestDeployAppShowLogEmbeddedLinesOnStartupError(c *check.C) {
 		Err: errors.New("deploy error"),
 		CrashedUnitsLogs: []appTypes.Applog{
 			{
-				AppName: "myapp",
+				Name:    "myapp",
 				Source:  "web",
 				Unit:    "myapp-web-001",
 				Message: "embedded log message",

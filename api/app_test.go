@@ -46,6 +46,7 @@ import (
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -6821,9 +6822,9 @@ func (s *S) TestFollowLogs(c *check.C) {
 		done: make(chan struct{}),
 	}
 	l, err := servicemanager.LogService.Watch(context.TODO(), appTypes.ListLogArgs{
-		Name: a.Name,
-		Type: "app",
-		Token:   s.token,
+		Name:  a.Name,
+		Type:  logTypes.LogTypeApp,
+		Token: s.token,
 	})
 	c.Assert(err, check.IsNil)
 	go func() {

@@ -178,7 +178,7 @@ func (s *S) Test_Aggregator_ListReorderMessages(c *check.C) {
 	compareLogsNoDate(c, logs, []appTypes.Applog{{
 		Message: "msg1",
 		Source:  "web",
-		AppName: "myapp",
+		Name:    "myapp",
 		Unit:    "unit1",
 	}})
 }

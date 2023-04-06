@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
@@ -1408,8 +1409,8 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	listArgs := appTypes.ListLogArgs{
-		Name:      a.Name,
-		Type: "app",
+		Name:         a.Name,
+		Type:         logTypes.LogTypeApp,
 		Limit:        lines,
 		Source:       source,
 		InvertSource: invert,

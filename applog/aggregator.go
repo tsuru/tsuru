@@ -17,14 +17,10 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
-	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	logTypes "github.com/tsuru/tsuru/types/log"
 )
 
 type aggregatorLogService struct {
@@ -54,26 +50,7 @@ func (s *aggregatorLogService) Add(appName, message, source, unit string) error 
 }
 
 func (s *aggregatorLogService) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	if args.Type == logTypes.LogTypeJob {
-		return listJobLogs(ctx, args)
-	}
 	return listAppLogs(ctx, args)
-}
-
-func listJobLogs(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	job, err := job.GetByName(ctx, args.Name)
-	if err != nil {
-		return nil, err
-	}
-	prov, err := pool.GetProvisionerForPool(ctx, job.Pool)
-	if err != nil {
-		return nil, err
-	}
-	logsProvisioner, ok := prov.(provision.LogsProvisioner)
-	if !ok {
-		return nil, errors.New("provisioner does not implement logging")
-	}
-	return logsProvisioner.ListLogs(ctx, job, args)
 }
 
 func listAppLogs(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {

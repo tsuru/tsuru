@@ -31,8 +31,8 @@ type AppLogServiceInstance interface {
 }
 
 type ListLogArgs struct {
-	Name      	 string
-	Type	  	 logTypes.LogType
+	Name         string
+	Type         logTypes.LogType
 	Source       string
 	Units        []string
 	Limit        int
@@ -46,6 +46,7 @@ type Applog struct {
 	Date    time.Time
 	Message string
 	Source  string
-	AppName string
+	Name    string
+	Type    logTypes.LogType
 	Unit    string
 }

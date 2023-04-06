@@ -50,37 +50,38 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
 	var obj logTypes.LogabbleObject
 	var err error
-	if args.Type == logTypes.LogTypeApp {
-		obj, err = servicemanager.App.GetByName(ctx, args.Name)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	logs := []appTypes.Applog{}
+	switch args.Type {
+	case logTypes.LogTypeJob:
 		obj, err = job.GetByName(ctx, args.Name)
 		if err != nil {
 			return nil, err
 		}
-	}
-	tsuruLogs, err := k.logService.List(ctx, args)
-	if err != nil {
-		return nil, err
+	default:
+		obj, err = servicemanager.App.GetByName(ctx, args.Name)
+		if err != nil {
+			return nil, err
+		}
+		logs, err = k.logService.List(ctx, args)
+		if err != nil {
+			return nil, err
+		}
 	}
 	logsProvisioner, err := k.provisionerGetter(ctx, obj)
 	if err == provision.ErrLogsUnavailable {
-		return tsuruLogs, nil
+		return logs, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	logs, err := logsProvisioner.ListLogs(ctx, obj, args)
+	provLogs, err := logsProvisioner.ListLogs(ctx, obj, args)
 	if err == provision.ErrLogsUnavailable {
-		return tsuruLogs, nil
+		return logs, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	logs = append(logs, tsuruLogs...)
+	logs = append(logs, provLogs...)
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Date.Before(logs[j].Date)
 	})

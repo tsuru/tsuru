@@ -55,7 +55,7 @@ func scanLogs(stream io.Reader) error {
 			}
 			return errors.Wrap(err, "wslogs: parsing log line")
 		}
-		if entry.Date.IsZero() || entry.AppName == "" || entry.Message == "" {
+		if entry.Date.IsZero() || entry.Name == "" || entry.Message == "" {
 			continue
 		}
 		err = servicemanager.LogService.Enqueue(&entry)

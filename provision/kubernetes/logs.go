@@ -186,7 +186,8 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 
 				tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 				tsuruLog.Unit = pod.ObjectMeta.Name
-				tsuruLog.AppName = appName
+				tsuruLog.Name = appName
+				tsuruLog.Type = args.Type
 				tsuruLog.Source = appProcess
 				tsuruLogs = append(tsuruLogs, tsuruLog)
 			}
@@ -260,7 +261,7 @@ func errToLog(podName, appName string, err error) appTypes.Applog {
 		Date:    time.Now().UTC(),
 		Message: fmt.Sprintf("Could not get logs from unit: %s, error: %s", podName, err.Error()),
 		Unit:    "apiserver",
-		AppName: appName,
+		Name:    appName,
 		Source:  "kubernetes",
 	}
 }
@@ -270,7 +271,7 @@ func infoToLog(appName string, message string) appTypes.Applog {
 		Date:    time.Now().UTC(),
 		Message: message,
 		Unit:    "apiserver",
-		AppName: appName,
+		Name:    appName,
 		Source:  "kubernetes",
 	}
 }
@@ -330,7 +331,7 @@ func (k *k8sLogsWatcher) watchPod(pod *apiv1.Pod, addedLater bool) {
 
 		tsuruLog := parsek8sLogLine(strings.TrimSpace(string(line)))
 		tsuruLog.Unit = pod.ObjectMeta.Name
-		tsuruLog.AppName = appName
+		tsuruLog.Name = appName
 		tsuruLog.Source = appProcess
 		k.ch <- tsuruLog
 	}

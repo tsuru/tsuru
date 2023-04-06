@@ -26,7 +26,7 @@ func (s *ServiceSuite) Test_LogService_Add(c *check.C) {
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
-	c.Assert(logs[0].AppName, check.Equals, "myapp")
+	c.Assert(logs[0].Name, check.Equals, "myapp")
 	c.Assert(logs[0].Unit, check.Equals, "outermachine")
 }
 
@@ -210,9 +210,9 @@ func (s *ServiceSuite) TestWatch(c *check.C) {
 
 func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
-		Name: "myapp",
-		Source:  "web",
-		Units:   []string{"u1", "u9"},
+		Name:   "myapp",
+		Source: "web",
+		Units:  []string{"u1", "u9"},
 	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
@@ -240,7 +240,7 @@ func (s *ServiceSuite) TestWatchFiltered(c *check.C) {
 
 func (s *ServiceSuite) TestWatchFilteredInvertSource(c *check.C) {
 	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
-		Name:      "myapp",
+		Name:         "myapp",
 		Source:       "web",
 		InvertSource: true,
 		Units:        []string{"u1"},
@@ -313,8 +313,8 @@ func (s *ServiceSuite) TestWatchNotify(c *check.C) {
 		}
 	}()
 	ms := []appTypes.Applog{
-		{Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "some", AppName: "fade"},
-		{Message: "This program has performed an illegal operation.", Source: "tsuru", Unit: "some", AppName: "fade"},
+		{Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "some", Name: "fade"},
+		{Message: "This program has performed an illegal operation.", Source: "tsuru", Unit: "some", Name: "fade"},
 	}
 	for _, log := range ms {
 		addLog(c, s.svc, "fade", log.Message, log.Source, log.Unit)
@@ -354,9 +354,9 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 		sync.Mutex
 	}
 	l, err := s.svc.Watch(context.TODO(), appTypes.ListLogArgs{
-		Name: "fade",
-		Source:  "tsuru",
-		Units:   []string{"unit1"},
+		Name:   "fade",
+		Source: "tsuru",
+		Units:  []string{"unit1"},
 	})
 	c.Assert(err, check.IsNil)
 	defer l.Close()
@@ -402,7 +402,7 @@ func (s *ServiceSuite) TestWatchNotifyFiltered(c *check.C) {
 	logs.Lock()
 	defer logs.Unlock()
 	compareLogsNoDate(c, logs.l, []appTypes.Applog{
-		{Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1", AppName: "fade"},
+		{Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1", Name: "fade"},
 	})
 }
 
