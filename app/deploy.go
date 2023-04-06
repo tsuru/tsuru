@@ -294,8 +294,8 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 			return logErr
 		}
 
-		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
-		token, _ := AuthScheme.Auth(app.ctx, tokenValue)
+		tokenEnv, _ := servicemanager.AppEnvVar.Get(context.Background(), app, "TSURU_APP_TOKEN")
+		token, _ := AuthScheme.Auth(app.ctx, tokenEnv.Value)
 
 		logErr.logs, _ = app.LastLogs(app.ctx, servicemanager.AppLog, appTypes.ListLogArgs{
 			Source:       "tsuru",

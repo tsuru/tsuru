@@ -108,6 +108,14 @@ func setupServices() error {
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize app service")
 	}
+	servicemanager.AppEnvVar, err = app.AppEnvVarService()
+	if err != nil {
+		return err
+	}
+	servicemanager.AppServiceEnvVar, err = app.AppServiceEnvVarService()
+	if err != nil {
+		return err
+	}
 	servicemanager.TeamToken, err = auth.TeamTokenService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize team token service")

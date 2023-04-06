@@ -414,7 +414,9 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
-	c.Assert(envs, check.DeepEquals, map[string]bind.EnvVar{"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{}"}})
+	c.Assert(envs["TSURU_SERVICES"], check.DeepEquals, bind.EnvVar{Name: "TSURU_SERVICES", Value: "{}"})
+	_, found := envs["ENV1"]
+	c.Assert(found, check.Equals, false)
 }
 
 func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {

@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -755,10 +754,13 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = AuthScheme.AppLogout(ctx, token)
+	tokenEnv, err := servicemanager.AppEnvVar.Get(ctx, app, "TSURU_APP_TOKEN")
 	if err != nil {
-		logErr("Unable to remove app token in destroy", err)
+		logErr("Unable to remove TSURU_APP_TOKEN", err)
+	} else {
+		if err = AuthScheme.AppLogout(ctx, tokenEnv.Value); err != nil {
+			logErr("Unable to remove app token in destroy", err)
+		}
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
@@ -1203,26 +1205,6 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 	return pool.Name, nil
 }
 
-// setEnv sets the given environment variable in the app.
-func (app *App) setEnv(env bind.EnvVar) {
-	if app.Env == nil {
-		app.Env = make(map[string]bind.EnvVar)
-	}
-	app.Env[env.Name] = env
-	if env.Public {
-		servicemanager.AppLog.Add(app.Name, fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
-	}
-}
-
-// getEnv returns the environment variable if it's declared in the app. It will
-// return an error if the variable is not defined in this app.
-func (app *App) getEnv(name string) (bind.EnvVar, error) {
-	if env, ok := app.Env[name]; ok {
-		return env, nil
-	}
-	return bind.EnvVar{}, errors.New("Environment variable not declared for this app.")
-}
-
 // validateNew checks app name format, pool and plan
 func (app *App) validateNew(ctx context.Context) error {
 	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
@@ -1339,10 +1321,16 @@ func (app *App) ValidateService(services ...string) error {
 // InstanceEnvs returns a map of environment variables that belongs to the
 // given service and service instance.
 func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bind.EnvVar {
+	svcEnvs, _ := servicemanager.AppServiceEnvVar.List(app.Context(), app)
 	envs := make(map[string]bind.EnvVar)
-	for _, env := range app.ServiceEnvs {
+	for _, env := range svcEnvs {
 		if env.ServiceName == serviceName && env.InstanceName == instanceName {
-			envs[env.Name] = env.EnvVar
+			envs[env.Name] = bind.EnvVar{
+				Name:      env.Name,
+				Value:     env.Value,
+				Public:    env.Public,
+				ManagedBy: env.ManagedBy,
+			}
 		}
 	}
 	return envs
@@ -1736,120 +1724,43 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-func interpolate(mergedEnvs map[string]bind.EnvVar, toInterpolate map[string]string, envName, varName string) {
-	delete(toInterpolate, envName)
-	if toInterpolate[varName] != "" {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
-		return
-	}
-	if _, isSet := mergedEnvs[varName]; !isSet {
-		return
-	}
-	env := mergedEnvs[envName]
-	env.Value = mergedEnvs[varName].Value
-	mergedEnvs[envName] = env
-}
-
 // Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bind.EnvVar {
-	mergedEnvs := make(map[string]bind.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
-	toInterpolate := make(map[string]string)
-	var toInterpolateKeys []string
-	for _, e := range app.Env {
-		mergedEnvs[e.Name] = e
-		if e.Alias != "" {
-			toInterpolate[e.Name] = e.Alias
-			toInterpolateKeys = append(toInterpolateKeys, e.Name)
-		}
-	}
-	for _, e := range app.ServiceEnvs {
-		mergedEnvs[e.Name] = e.EnvVar
-	}
-	sort.Strings(toInterpolateKeys)
-	for _, envName := range toInterpolateKeys {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
-	}
-	mergedEnvs[TsuruServicesEnvVar] = serviceEnvsFromEnvVars(app.ServiceEnvs)
-	return mergedEnvs
-}
-
-// SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
-	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
-		return nil
-	}
-
-	for _, env := range setEnvs.Envs {
-		err := validateEnv(env.Name)
-		if err != nil {
-			return err
+	// TODO(nettoclaudio): we should not ignore this error :P
+	envs, _ := servicemanager.AppEnvVar.List(app.Context(), app)
+	envMap := make(map[string]bind.EnvVar)
+	for _, env := range envs {
+		envMap[env.Name] = bind.EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			Alias:     env.Alias,
+			Public:    env.Public,
+			ManagedBy: env.ManagedBy,
 		}
 	}
 
-	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
-		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
-	}
+	// NOTE(nettoclaudio): we should get the service env var as last step to
+	// give it precedence over app env vars.
 
-	if setEnvs.PruneUnused {
-		for name, value := range app.Env {
-			ok := envInSet(name, setEnvs.Envs)
-			// only prune variables managed by requested
-			if !ok && value.ManagedBy == setEnvs.ManagedBy {
-				if setEnvs.Writer != nil {
-					fmt.Fprintf(setEnvs.Writer, "---- Pruning %s from environment variables ----\n", name)
-				}
-				delete(app.Env, name)
-			}
+	svcEnvs, _ := servicemanager.AppServiceEnvVar.List(app.Context(), app)
+	for _, env := range svcEnvs {
+		envMap[env.Name] = bind.EnvVar{
+			Name:      env.Name,
+			Value:     env.Value,
+			Public:    env.Public,
+			ManagedBy: env.ManagedBy,
 		}
 	}
 
-	for _, env := range setEnvs.Envs {
-		app.setEnv(env)
+	env := buildTsuruServiceEnvVar(svcEnvs)
+	envMap[appTypes.TsuruServicesEnvVarName] = bind.EnvVar{
+		Name:      env.Name,
+		Value:     env.Value,
+		Public:    env.Public,
+		ManagedBy: env.ManagedBy,
 	}
 
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-	if err != nil {
-		return err
-	}
-
-	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(setEnvs.Writer)
-	}
-
-	return nil
-}
-
-// UnsetEnvs removes environment variables from an app, serializing the
-// remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
-	if len(unsetEnvs.VariableNames) == 0 {
-		return nil
-	}
-	if unsetEnvs.Writer != nil {
-		fmt.Fprintf(unsetEnvs.Writer, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
-	}
-	for _, name := range unsetEnvs.VariableNames {
-		delete(app.Env, name)
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-	if err != nil {
-		return err
-	}
-	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(unsetEnvs.Writer)
-	}
-	return nil
+	return envMap
 }
 
 func (app *App) restartIfUnits(w io.Writer) error {
@@ -1903,88 +1814,34 @@ func (app *App) RemoveCName(cnames ...string) error {
 	return err
 }
 
-func serviceEnvsFromEnvVars(vars []bind.ServiceEnvVar) bind.EnvVar {
-	type serviceInstanceEnvs struct {
-		InstanceName string            `json:"instance_name"`
-		Envs         map[string]string `json:"envs"`
-	}
-	result := map[string][]serviceInstanceEnvs{}
-	for _, v := range vars {
-		found := false
-		for i, instanceList := range result[v.ServiceName] {
-			if instanceList.InstanceName == v.InstanceName {
-				result[v.ServiceName][i].Envs[v.Name] = v.Value
-				found = true
-				break
-			}
-		}
-		if !found {
-			result[v.ServiceName] = append(result[v.ServiceName], serviceInstanceEnvs{
-				InstanceName: v.InstanceName,
-				Envs:         map[string]string{v.Name: v.Value},
-			})
-		}
-	}
-	jsonVal, _ := json.Marshal(result)
-	return bind.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  string(jsonVal),
-		Public: false,
-	}
-}
-
 func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
-	if len(addArgs.Envs) == 0 {
-		return nil
+	envs := make([]appTypes.ServiceEnvVar, 0, len(addArgs.Envs))
+	for _, e := range addArgs.Envs {
+		envs = append(envs, appTypes.ServiceEnvVar{
+			ServiceName:  e.ServiceName,
+			InstanceName: e.InstanceName,
+			EnvVar: appTypes.EnvVar{
+				Name:      e.Name,
+				Value:     e.Value,
+				Public:    e.Public,
+				ManagedBy: e.ManagedBy,
+			},
+		})
 	}
-	if addArgs.Writer != nil {
-		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
-	}
-	app.ServiceEnvs = append(app.ServiceEnvs, addArgs.Envs...)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-	if addArgs.ShouldRestart {
-		return app.restartIfUnits(addArgs.Writer)
-	}
-	return nil
+
+	return servicemanager.AppServiceEnvVar.Set(app.Context(), app, envs, appTypes.SetEnvArgs{
+		ShouldRestart: addArgs.ShouldRestart,
+		Writer:        addArgs.Writer,
+	})
 }
 
 func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
-	lenBefore := len(app.ServiceEnvs)
-	for i := 0; i < len(app.ServiceEnvs); i++ {
-		se := app.ServiceEnvs[i]
-		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
-			app.ServiceEnvs = append(app.ServiceEnvs[:i], app.ServiceEnvs[i+1:]...)
-			i--
-		}
-	}
-	toUnset := lenBefore - len(app.ServiceEnvs)
-	if toUnset <= 0 {
-		return nil
-	}
-	if removeArgs.Writer != nil {
-		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"serviceenvs": app.ServiceEnvs}})
-	if err != nil {
-		return err
-	}
-	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(removeArgs.Writer)
-	}
-	return nil
+	return servicemanager.AppServiceEnvVar.UnsetAll(app.Context(), app, appTypes.UnsetAllArgs{
+		Service:       removeArgs.ServiceName,
+		Instance:      removeArgs.InstanceName,
+		ShouldRestart: removeArgs.ShouldRestart,
+		Writer:        removeArgs.Writer,
+	})
 }
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
@@ -2840,13 +2697,6 @@ func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
 	return yamlData.ToRouterHC(), nil
 }
 
-func validateEnv(envName string) error {
-	if !envVarNameRegexp.MatchString(envName) {
-		return &tsuruErrors.ValidationError{Message: fmt.Sprintf("Invalid environment variable name: '%s'", envName)}
-	}
-	return nil
-}
-
 func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, isRoutable bool) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -2996,15 +2846,6 @@ func (app *App) RemoveAutoScale(process string) error {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
 	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
-}
-
-func envInSet(envName string, envs []bind.EnvVar) bool {
-	for _, e := range envs {
-		if e.Name == envName {
-			return true
-		}
-	}
-	return false
 }
 
 func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {

@@ -856,6 +856,9 @@ func appEnvs(a provision.App, process string, version appTypes.AppVersion, isDep
 			Value: strings.ReplaceAll(envData.Value, "$", "$$"),
 		}
 	}
+
+	sort.Slice(envs, func(i, j int) bool { return envs[i].Name < envs[j].Name }) // just for testing reasons
+
 	return envs
 }
 

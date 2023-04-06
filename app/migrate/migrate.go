@@ -12,9 +12,10 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/servicemanager"
+	apptypes "github.com/tsuru/tsuru/types/app"
 )
 
 type AppWithPlanRouter struct {
@@ -80,24 +81,32 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 		if err != nil {
 			return err
 		}
-		envsMap := map[bind.ServiceEnvVar]struct{}{}
+		envsMap := map[apptypes.ServiceEnvVar]struct{}{}
 		for _, sEnv := range a.ServiceEnvs {
-			envsMap[sEnv] = struct{}{}
+			envsMap[apptypes.ServiceEnvVar{
+				ServiceName:  sEnv.ServiceName,
+				InstanceName: sEnv.InstanceName,
+				EnvVar: apptypes.EnvVar{
+					Name:   sEnv.Name,
+					Value:  sEnv.Value,
+					Public: sEnv.Public,
+				},
+			}] = struct{}{}
 		}
 		var serviceNames []string
 		for serviceName := range data {
 			serviceNames = append(serviceNames, serviceName)
 		}
 		sort.Strings(serviceNames)
-		var serviceEnvs []bind.ServiceEnvVar
+		var serviceEnvs []apptypes.ServiceEnvVar
 		for _, serviceName := range serviceNames {
 			instances := data[serviceName]
 			for _, instance := range instances {
 				for k, v := range instance.Envs {
-					toAppendEnv := bind.ServiceEnvVar{
+					toAppendEnv := apptypes.ServiceEnvVar{
 						ServiceName:  serviceName,
 						InstanceName: instance.InstanceName,
-						EnvVar:       bind.EnvVar{Name: k, Value: v},
+						EnvVar:       apptypes.EnvVar{Name: k, Value: v},
 					}
 					if _, ok := envsMap[toAppendEnv]; !ok {
 						serviceEnvs = append(serviceEnvs, toAppendEnv)
@@ -105,9 +114,7 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 				}
 			}
 		}
-		err = conn.Apps().Update(bson.M{"name": a.Name}, bson.M{
-			"$push": bson.M{"serviceenvs": bson.M{"$each": serviceEnvs, "$position": 0}},
-		})
+		err = servicemanager.AppServiceEnvVar.Set(context.Background(), &a, serviceEnvs, apptypes.SetEnvArgs{})
 		if err != nil {
 			return err
 		}

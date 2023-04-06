@@ -3156,12 +3156,13 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		Name:      "everything-i-want",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER": {Name: "DATABASE_USER", Value: "root", Public: true},
-		},
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?envs=", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -3178,7 +3179,7 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
 		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
-	result := []bind.EnvVar{}
+	result := []appTypes.EnvVar{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, len(expected))
@@ -3201,13 +3202,14 @@ func (s *S) TestGetEnv(c *check.C) {
 		Name:      "everything-i-want",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+		{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -3234,13 +3236,14 @@ func (s *S) TestGetEnvMultipleVariables(c *check.C) {
 		Name:      "four-sticks",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+		{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST&env=DATABASE_USER", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -3292,13 +3295,14 @@ func (s *S) TestGetEnvWithAppToken(c *check.C) {
 		Name:      "everything-i-want",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+		{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -3354,6 +3358,19 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
+	var appEnvVarSetCalled bool
+	s.mockService.AppEnvVar.OnSet = func(a appTypes.App, envs []appTypes.EnvVar, args appTypes.SetEnvArgs) error {
+		appEnvVarSetCalled = true
+		c.Assert(a.GetName(), check.Equals, "black-dog")
+		c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+			{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		})
+		c.Assert(args.ShouldRestart, check.Equals, true)
+		c.Assert(args.PruneUnused, check.Equals, false)
+		c.Assert(args.ManagedBy, check.Equals, "")
+		c.Assert(args.Writer, check.NotNil)
+		return nil
+	}
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
 		Envs: []apiTypes.Env{
@@ -3373,13 +3390,7 @@ func (s *S) TestSetEnvPublicEnvironmentVariableInTheApp(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
-`)
+	c.Assert(appEnvVarSetCalled, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -3398,7 +3409,20 @@ func (s *S) TestSetEnvPublicAndPrivate(c *check.C) {
 	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-
+	var appEnvVarSetCalled bool
+	s.mockService.AppEnvVar.OnSet = func(a appTypes.App, envs []appTypes.EnvVar, args appTypes.SetEnvArgs) error {
+		appEnvVarSetCalled = true
+		c.Assert(a.GetName(), check.Equals, "black-dog")
+		c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+			{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"},
+			{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"},
+		})
+		c.Assert(args.ShouldRestart, check.Equals, true)
+		c.Assert(args.PruneUnused, check.Equals, false)
+		c.Assert(args.ManagedBy, check.Equals, "terraform")
+		c.Assert(args.Writer, check.NotNil)
+		return nil
+	}
 	d := apiTypes.Envs{
 		Envs: []apiTypes.Env{
 			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
@@ -3406,33 +3430,19 @@ func (s *S) TestSetEnvPublicAndPrivate(c *check.C) {
 		},
 		ManagedBy: "terraform",
 	}
-
 	v, err := json.Marshal(d)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewReader(v)
-
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-
-	expected1 := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected1)
-
-	expected2 := bind.EnvVar{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"}
-	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, expected2)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
-`)
+	c.Assert(appEnvVarSetCalled, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -3450,18 +3460,23 @@ func (s *S) TestSetEnvPublicAndPrivate(c *check.C) {
 }
 
 func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
-	a := app.App{
-		Name:      "black-dog",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
-			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
-		},
-	}
+	a := app.App{Name: "black-dog", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-
+	var appEnvVarSetCalled bool
+	s.mockService.AppEnvVar.OnSet = func(a appTypes.App, envs []appTypes.EnvVar, args appTypes.SetEnvArgs) error {
+		appEnvVarSetCalled = true
+		c.Assert(a.GetName(), check.Equals, "black-dog")
+		c.Assert(envs, check.DeepEquals, []appTypes.EnvVar{
+			{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"},
+			{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"},
+		})
+		c.Assert(args.ShouldRestart, check.Equals, true)
+		c.Assert(args.PruneUnused, check.Equals, true)
+		c.Assert(args.ManagedBy, check.Equals, "terraform")
+		c.Assert(args.Writer, check.NotNil)
+		return nil
+	}
 	d := apiTypes.Envs{
 		Envs: []apiTypes.Env{
 			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
@@ -3470,40 +3485,19 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 		PruneUnused: true,
 		ManagedBy:   "terraform",
 	}
-
 	v, err := json.Marshal(d)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewReader(v)
-
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-
-	_, hasOldVar := app.Env["OLDENV"]
-	c.Assert(hasOldVar, check.Equals, false)
-
-	expected0 := bind.EnvVar{Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"}
-	c.Assert(app.Env["CMDLINE"], check.DeepEquals, expected0)
-
-	expected1 := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false, ManagedBy: "terraform"}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected1)
-
-	expected2 := bind.EnvVar{Name: "MY_DB_HOST", Value: "otherhost", Public: true, ManagedBy: "terraform"}
-	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, expected2)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
-{"Message":".*---- Pruning OLDENV from environment variables ----\\n","Timestamp":".*"}
-`)
+	c.Assert(appEnvVarSetCalled, check.Equals, true)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -3518,721 +3512,6 @@ func (s *S) TestSetEnvCanPruneOldVariables(c *check.C) {
 			{"name": "Private", "value": ""},
 		},
 	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvCanPruneAllVariables(c *check.C) {
-	a := app.App{
-		Name:      "black-dog",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
-			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
-		},
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-
-	d := apiTypes.Envs{
-		Envs:        []apiTypes.Env{},
-		PruneUnused: true,
-		ManagedBy:   "terraform",
-	}
-
-	v, err := json.Marshal(d)
-	c.Assert(err, check.IsNil)
-	b := bytes.NewReader(v)
-
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-
-	_, hasOldVar := app.Env["OLDENV"]
-	c.Assert(hasOldVar, check.Equals, false)
-
-	expected0 := bind.EnvVar{Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"}
-	c.Assert(app.Env["CMDLINE"], check.DeepEquals, expected0)
-
-	c.Assert(recorder.Body.String(), check.Matches,
-		`.*---- Pruning OLDENV from environment variables ----.*
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvDontPruneWhenMissingManagedBy(c *check.C) {
-	a := app.App{
-		Name:      "black-dog",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-		Env: map[string]bind.EnvVar{
-			"CMDLINE": {Name: "CMDLINE", Value: "1", Public: true, ManagedBy: "tsuru-client"},
-			"OLDENV":  {Name: "OLDENV", Value: "1", Public: true, ManagedBy: "terraform"},
-		},
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Private: func(b bool) *bool { return &b }(true)},
-			{Name: "MY_DB_HOST", Value: "otherhost", Private: func(b bool) *bool { return &b }(false)},
-		},
-		PruneUnused: true,
-	}
-
-	v, err := json.Marshal(d)
-	c.Assert(err, check.IsNil)
-	b := bytes.NewReader(v)
-
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text/plain; charset=utf-8")
-	c.Assert(recorder.Body.String(), check.Matches,
-		"Prune unused requires a managed-by value\n")
-}
-
-func (s *S) TestSetEnvPublicEnvironmentVariableAlias(c *check.C) {
-	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "", Alias: "MY_DB_HOST"},
-			{Name: "MY_DB_HOST", Value: "localhost", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   false,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, bind.EnvVar{
-		Name:   "DATABASE_HOST",
-		Alias:  "MY_DB_HOST",
-		Public: true,
-	})
-	c.Assert(app.Env["MY_DB_HOST"], check.DeepEquals, bind.EnvVar{
-		Name:   "MY_DB_HOST",
-		Value:  "localhost",
-		Public: true,
-	})
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Alias", "value": "MY_DB_HOST"},
-			{"name": "Envs.1.Name", "value": "MY_DB_HOST"},
-			{"name": "Envs.1.Value", "value": "localhost"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *check.C) {
-	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   true,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "*****"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(c *check.C) {
-	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   true,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "*****"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-	d = apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "127.0.0.1", Alias: ""},
-			{Name: "DATABASE_PORT", Value: "6379", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   true,
-	}
-	v, err = form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b = strings.NewReader(v.Encode())
-	request, err = http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 2 new environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "*****"},
-			{"name": "Envs.1.Name", "value": "DATABASE_PORT"},
-			{"name": "Envs.1.Value", "value": "*****"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *check.C) {
-	a := app.App{Name: "vigil", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
-			{Name: "DATABASE_USER", Value: "root", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   false,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "vigil")
-	c.Assert(err, check.IsNil)
-	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
-	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expectedHost)
-	c.Assert(app.Env["DATABASE_USER"], check.DeepEquals, expectedUser)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "localhost"},
-			{"name": "Envs.1.Name", "value": "DATABASE_USER"},
-			{"name": "Envs.1.Value", "value": "root"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) {
-	a := &app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bind.ServiceEnvVar{
-		{
-			EnvVar: bind.EnvVar{
-				Name:  "DATABASE_HOST",
-				Value: "privatehost.com",
-			},
-			ServiceName:  "srv1",
-			InstanceName: "some service",
-		},
-	}}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "http://foo.com:8080", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   false,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	a, err = app.GetByName(context.TODO(), "losers")
-	c.Assert(err, check.IsNil)
-	envs := a.Envs()
-	delete(envs, app.TsuruServicesEnvVar)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_HOST": {
-			Name:  "DATABASE_HOST",
-			Value: "privatehost.com",
-		},
-	}
-	c.Assert(envs, check.DeepEquals, expected)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "http://foo.com:8080"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvHandlerNoRestart(c *check.C) {
-	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
-		},
-		NoRestart: true,
-		Private:   false,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "black-dog")
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
-	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "localhost"},
-			{"name": "NoRestart", "value": "true"},
-			{"name": "Private", "value": ""},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSetEnvMissingFormBody(c *check.C) {
-	a := app.App{Name: "rock", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/rock/env", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	msg := ".*missing form body\n"
-	c.Assert(recorder.Body.String(), check.Matches, msg)
-}
-
-func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *check.C) {
-	a := app.App{Name: "rock", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/rock/env", strings.NewReader(""))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	msg := "You must provide the list of environment variables\n"
-	c.Assert(recorder.Body.String(), check.Equals, msg)
-}
-
-func (s *S) TestSetEnvHandlerReturnsNotFoundIfTheAppDoesNotExist(c *check.C) {
-	b := strings.NewReader("noRestart=false&private=&false&envs.0.name=DATABASE_HOST&envs.0.value=localhost")
-	request, err := http.NewRequest("POST", "/apps/unknown/env", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
-}
-
-func (s *S) TestSetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
-	a := app.App{Name: "rock-and-roll", Platform: "zend"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateEnvSet,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
-		},
-		NoRestart: false,
-		Private:   false,
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	request, err := http.NewRequest("POST", url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
-	a := app.App{Name: "black-dog", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env", a.Name)
-	d := apiTypes.Envs{
-		Envs: []apiTypes.Env{
-			{Name: "INVALID ENV", Value: "value", Alias: ""},
-		},
-	}
-	v, err := form.EncodeToValues(&d)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader(v.Encode())
-	request, err := http.NewRequest(http.MethodPost, url, b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-}
-
-func (s *S) TestUnsetEnv(c *check.C) {
-	a := app.App{
-		Name:     "swift",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	expected := a.Env
-	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "swift")
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Env, check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "env", "value": "DATABASE_HOST"},
-			{"name": "noRestart", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestUnsetEnvNoRestart(c *check.C) {
-	a := app.App{
-		Name:     "swift",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	expected := a.Env
-	delete(expected, "DATABASE_HOST")
-	url := fmt.Sprintf("/apps/%s/env?noRestart=true&env=DATABASE_HOST", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "swift")
-	c.Assert(err, check.IsNil)
-	c.Assert(app.Env, check.DeepEquals, expected)
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}
-`)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "env", "value": "DATABASE_HOST"},
-			{"name": "noRestart", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *check.C) {
-	a := app.App{
-		Name:     "let-it-be",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "let-it-be")
-	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "secret",
-			Public: false,
-		},
-	}
-	c.Assert(app.Env, check.DeepEquals, expected)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.unset",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "env", "value": []string{"DATABASE_HOST", "DATABASE_USER"}},
-			{"name": "noRestart", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestUnsetHandlerRemovesPrivateVariables(c *check.C) {
-	a := app.App{
-		Name:     "letitbe",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST&env=DATABASE_USER&env=DATABASE_PASSWORD", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), "letitbe")
-	c.Assert(err, check.IsNil)
-	expected := map[string]bind.EnvVar{}
-	c.Assert(app.Env, check.DeepEquals, expected)
-}
-
-func (s *S) TestUnsetEnvVariablesMissing(c *check.C) {
-	a := app.App{
-		Name:     "swift",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", "/apps/swift/env?noRestart=false&env=", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "You must provide the list of environment variables.\n")
-}
-
-func (s *S) TestUnsetEnvAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("DELETE", "/apps/unknown/env?noRestart=false&env=ble", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "App unknown not found.\n")
-}
-
-func (s *S) TestUnsetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
-	a := app.App{Name: "mountain-mama"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateEnvUnset,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	url := fmt.Sprintf("/apps/%s/env?noRestart=false&env=DATABASE_HOST", a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	err = s.provisioner.Provision(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestAddCName(c *check.C) {
@@ -4970,15 +4249,13 @@ func (s *S) TestBindHandler(c *check.C) {
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 8)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
-	c.Assert(parts[3], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
-	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
-	c.Assert(parts[5], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
-	c.Assert(parts[6], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
-	c.Assert(parts[7], check.Equals, "")
+	c.Assert(parts, check.HasLen, 6)
+	c.Assert(parts[0], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
+	c.Assert(parts[4], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
+	c.Assert(parts[5], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5264,14 +4541,13 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
 	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 7)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
+	c.Assert(parts, check.HasLen, 6)
+	c.Assert(parts[0], check.Matches, `{"Message":"\\nInstance \\"my-mysql\\" is now bound to the app \\"painkiller\\".\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":"The following environment variables are available for use in your app:\\n\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
 	c.Assert(parts[3], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
-	c.Assert(parts[4], check.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n","Timestamp":".*"}`)
-	c.Assert(parts[5], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
-	c.Assert(parts[6], check.Equals, "")
+	c.Assert(parts[4], check.Matches, `{"Message":"- TSURU_SERVICES\\n","Timestamp":".*"}`)
+	c.Assert(parts[5], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name, "service_name": instance.ServiceName}).One(&result)
 	c.Assert(err, check.IsNil)
@@ -5291,10 +4567,10 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 
 func (s *S) TestUnbindHandler(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	var called int32
+	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
-			atomic.StoreInt32(&called, 1)
+			called = true
 		}
 	}))
 	defer ts.Close()
@@ -5322,19 +4598,16 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
-		EnvVar: bind.EnvVar{
-			Name:  "DATABASE_HOST",
-			Value: "arrea",
-		},
-		InstanceName: instance.Name,
-		ServiceName:  instance.ServiceName,
-	})
-	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
-	c.Assert(err, check.IsNil)
+	var unsetAllCalled bool
+	s.mockService.AppServiceEnvVar.OnUnsetAll = func(a appTypes.App, args appTypes.UnsetAllArgs) error {
+		unsetAllCalled = true
+		c.Assert(a.GetName(), check.Equals, "painkiller")
+		c.Assert(args.Service, check.Equals, "mysql")
+		c.Assert(args.Instance, check.Equals, "my-mysql")
+		c.Assert(args.ShouldRestart, check.Equals, true)
+		c.Assert(args.Writer, check.NotNil)
+		return nil
+	}
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=false", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -5342,38 +4615,15 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = unbindServiceInstance(recorder, req, s.token)
 	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(unsetAllCalled, check.Equals, true)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{
-		Name:  "MY_VAR",
-		Value: "123",
-	}
-	allEnvs := otherApp.Envs()
-	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
-	_, ok := allEnvs["DATABASE_HOST"]
-	c.Assert(ok, check.Equals, false)
-	ch := make(chan bool)
-	go func() {
-		t := time.Tick(1)
-		for <-t; atomic.LoadInt32(&called) == 0; <-t {
-		}
-		ch <- true
-	}()
-	select {
-	case <-ch:
-		c.Succeed()
-	case <-time.After(1e9):
-		c.Error("Failed to call API after 1 second.")
-	}
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 4)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
-	c.Assert(parts[3], check.Equals, "")
+	c.Assert(parts, check.HasLen, 2)
+	c.Assert(parts[0], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5390,21 +4640,17 @@ func (s *S) TestUnbindHandler(c *check.C) {
 
 func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
-	var called int32
+	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
-			atomic.StoreInt32(&called, 1)
+			called = true
 		}
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := service.Create(srvc)
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "painkiller",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-	}
+	a := app.App{Name: "painkiller", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
@@ -5420,19 +4666,16 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
-		EnvVar: bind.EnvVar{
-			Name:  "DATABASE_HOST",
-			Value: "arrea",
-		},
-		InstanceName: instance.Name,
-		ServiceName:  instance.ServiceName,
-	})
-	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
-	c.Assert(err, check.IsNil)
+	var unsetAllCalled bool
+	s.mockService.AppServiceEnvVar.OnUnsetAll = func(a appTypes.App, args appTypes.UnsetAllArgs) error {
+		unsetAllCalled = true
+		c.Assert(a.GetName(), check.Equals, "painkiller")
+		c.Assert(args.Service, check.Equals, "mysql")
+		c.Assert(args.Instance, check.Equals, "my-mysql")
+		c.Assert(args.ShouldRestart, check.Equals, false)
+		c.Assert(args.Writer, check.NotNil)
+		return nil
+	}
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&noRestart=true", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -5440,37 +4683,15 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = unbindServiceInstance(recorder, req, s.token)
 	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(unsetAllCalled, check.Equals, true)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{
-		Name:  "MY_VAR",
-		Value: "123",
-	}
-	allEnvs := otherApp.Envs()
-	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
-	_, ok := allEnvs["DATABASE_HOST"]
-	c.Assert(ok, check.Equals, false)
-	ch := make(chan bool)
-	go func() {
-		t := time.Tick(1)
-		for <-t; atomic.LoadInt32(&called) == 0; <-t {
-		}
-		ch <- true
-	}()
-	select {
-	case <-ch:
-		c.Succeed()
-	case <-time.After(1e9):
-		c.Error("Failed to call API after 1 second.")
-	}
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 3)
-	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
-	c.Assert(parts[2], check.Equals, "")
+	c.Assert(parts, check.HasLen, 2)
+	c.Assert(parts[0], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -5518,19 +4739,17 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	otherApp, err := app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	otherApp.ServiceEnvs = append(otherApp.ServiceEnvs, bind.ServiceEnvVar{
-		EnvVar: bind.EnvVar{
-			Name:  "DATABASE_HOST",
-			Value: "arrea",
-		},
-		InstanceName: instance.Name,
-		ServiceName:  instance.ServiceName,
-	})
-	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
-	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
-	c.Assert(err, check.IsNil)
+
+	var unsetAllCalled bool
+	s.mockService.AppServiceEnvVar.OnUnsetAll = func(a appTypes.App, args appTypes.UnsetAllArgs) error {
+		unsetAllCalled = true
+		c.Assert(a.GetName(), check.Equals, "painkiller")
+		c.Assert(args.Service, check.Equals, "mysql")
+		c.Assert(args.Instance, check.Equals, "my-mysql")
+		c.Assert(args.ShouldRestart, check.Equals, true)
+		return nil
+	}
+
 	url := fmt.Sprintf("/services/%s/instances/%s/%s?:service=%s&:instance=%s&:app=%s&force=true", instance.ServiceName, instance.Name, a.Name,
 		instance.ServiceName, instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -5551,23 +4770,12 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-	otherApp, err = app.GetByName(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	expected := bind.EnvVar{
-		Name:  "MY_VAR",
-		Value: "123",
-	}
-	allEnvs := otherApp.Envs()
-	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
-	_, ok := allEnvs["DATABASE_HOST"]
-	c.Assert(ok, check.Equals, false)
+	c.Assert(unsetAllCalled, check.Equals, true)
 	parts := strings.Split(recorder.Body.String(), "\n")
-	c.Assert(parts, check.HasLen, 5)
+	c.Assert(parts, check.HasLen, 3)
 	c.Assert(parts[0], check.Matches, `{"Message":".*\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \(\\"/resources/my-mysql/bind-app\\"\): invalid response: my unbind err \(code: 500\)\\n","Timestamp":".*"}`)
-	c.Assert(parts[1], check.Matches, `{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}`)
-	c.Assert(parts[2], check.Matches, `{"Message":".*restarting app","Timestamp":".*"}`)
-	c.Assert(parts[3], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
-	c.Assert(parts[4], check.Equals, "")
+	c.Assert(parts[1], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the app \\"painkiller\\" anymore.\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
@@ -6357,14 +5565,15 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 
 func (s *S) TestRegisterUnit(c *check.C) {
 	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bind.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
+		Name:      "myappx",
+		Platform:  "python",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "MY_VAR_1", Value: "value1", Public: true},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
@@ -6398,9 +5607,6 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 		Name:     "myappx",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -6422,9 +5628,6 @@ func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
 		Name:     "myappx",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -6453,11 +5656,8 @@ func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
 
 func (s *S) TestRegisterUnitOtherUA(c *check.C) {
 	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bind.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
+		Name:      "myappx",
+		Platform:  "python",
 		TeamOwner: s.team.Name,
 	}
 	err := app.CreateApp(context.TODO(), &a, s.user)
@@ -6478,14 +5678,15 @@ func (s *S) TestRegisterUnitOtherUA(c *check.C) {
 
 func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bind.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
+		Name:      "myappx",
+		Platform:  "python",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := s.mockService.AppEnvVar.Set(context.TODO(), &a, []appTypes.EnvVar{
+		{Name: "MY_VAR_1", Value: "value1", Public: true},
+	}, appTypes.SetEnvArgs{})
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)

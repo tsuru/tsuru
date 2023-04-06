@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -1081,19 +1080,29 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
-	var result []bind.EnvVar
 	w.Header().Set("Content-Type", "application/json")
-	if len(variables) > 0 {
-		for _, variable := range variables {
-			if v, ok := a.Env[variable]; ok {
-				result = append(result, v)
+
+	var result []appTypes.EnvVar
+	for _, env := range a.Envs() {
+		keep := true
+		for _, name := range variables {
+			keep = false
+			if env.Name == name {
+				keep = true
+				break
 			}
 		}
-	} else {
-		for _, v := range a.Envs() {
-			result = append(result, v)
+
+		if keep {
+			result = append(result, appTypes.EnvVar{
+				Name:      env.Name,
+				Value:     env.Value,
+				ManagedBy: env.ManagedBy,
+				Public:    env.Public,
+			})
 		}
 	}
+
 	return json.NewEncoder(w).Encode(result)
 }
 
@@ -1160,7 +1169,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	defer func() { evt.Done(err) }()
 	envs := map[string]string{}
-	variables := []bind.EnvVar{}
+	variables := []appTypes.EnvVar{}
 	for _, v := range e.Envs {
 		envs[v.Name] = v.Value
 		private := false
@@ -1171,7 +1180,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		if e.Private {
 			private = true
 		}
-		variables = append(variables, bind.EnvVar{
+		variables = append(variables, appTypes.EnvVar{
 			Name:      v.Name,
 			Value:     v.Value,
 			Public:    !private,
@@ -1184,8 +1193,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(bind.SetEnvArgs{
-		Envs:          variables,
+	servicemanager.AppEnvVar.Set(r.Context(), &a, variables, appTypes.SetEnvArgs{
 		ManagedBy:     e.ManagedBy,
 		PruneUnused:   e.PruneUnused,
 		ShouldRestart: !e.NoRestart,
@@ -1196,6 +1204,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	return err
 }
+
 func isInternalEnv(envKey string) bool {
 	for _, internalEnv := range internalEnvs() {
 		if internalEnv == envKey {
@@ -1204,6 +1213,7 @@ func isInternalEnv(envKey string) bool {
 	}
 	return false
 }
+
 func internalEnvs() []string {
 	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }
@@ -1258,10 +1268,9 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(bind.UnsetEnvArgs{
-		VariableNames: variables,
-		ShouldRestart: !noRestart,
+	return servicemanager.AppEnvVar.Unset(r.Context(), &a, variables, appTypes.UnsetEnvArgs{
 		Writer:        evt,
+		ShouldRestart: !noRestart,
 	})
 }
 

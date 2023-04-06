@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -198,10 +197,9 @@ var createAppToken = action.Action{
 		var tokenValue string
 		if token, ok := ctx.FWResult.(*auth.Token); ok {
 			tokenValue = (*token).GetValue()
-		} else if app, ok := ctx.Params[0].(*App); ok {
-			if tokenVar, ok := app.Env["TSURU_APP_TOKEN"]; ok {
-				tokenValue = tokenVar.Value
-			}
+		}
+		if app, ok := ctx.Params[0].(*App); ok && tokenValue == "" {
+			tokenValue = app.Envs()["TSURU_APP_TOKEN"].Value
 		}
 		if tokenValue != "" {
 			AuthScheme.Logout(ctx.Context, tokenValue)
@@ -221,15 +219,11 @@ var exportEnvironmentsAction = action.Action{
 			return nil, err
 		}
 		t := ctx.Previous.(*auth.Token)
-		envVars := []bind.EnvVar{
+		err = servicemanager.AppEnvVar.Set(ctx.Context, app, []appTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
-		}
-		err = app.SetEnvs(bind.SetEnvArgs{
-			Envs:          envVars,
-			ShouldRestart: false,
-		})
+		}, appTypes.SetEnvArgs{ShouldRestart: false})
 		if err != nil {
 			return nil, err
 		}
@@ -237,14 +231,9 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		app, err := GetByName(ctx.Context, app.Name)
-		if err == nil {
-			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
-			app.UnsetEnvs(bind.UnsetEnvArgs{
-				VariableNames: vars,
-				ShouldRestart: true,
-			})
-		}
+		servicemanager.AppEnvVar.Unset(ctx.Context, app, []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}, appTypes.UnsetEnvArgs{
+			ShouldRestart: false,
+		})
 	},
 	MinParams: 1,
 }
