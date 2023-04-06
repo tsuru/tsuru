@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +67,7 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
@@ -107,7 +108,7 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
@@ -146,7 +147,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 		Units: []string{"myapp-web-pod-1-1"},
 	})
@@ -160,7 +161,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 
 	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 		Units: []string{"myapp-unit-not-found"},
 	})
@@ -261,7 +262,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
@@ -305,7 +306,7 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
@@ -367,7 +368,7 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
@@ -431,7 +432,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 		Units: []string{"myapp-web-pod-1-1", "not-found-unit"},
 	})
@@ -513,7 +514,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
 		Name:  a.GetName(),
-		Type:  "app",
+		Type:  logTypes.LogTypeApp,
 		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
