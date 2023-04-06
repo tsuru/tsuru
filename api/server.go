@@ -251,6 +251,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodDelete, "/services/{service}/team/{team}", AuthorizationRequiredHandler(revokeServiceAccess))
 
 	m.Add("1.0", http.MethodGet, "/apps", AuthorizationRequiredHandler(appList))
+
+	m.Add("1.12", http.MethodPut, "/apps/{app}/config", AuthorizationRequiredHandler(appConfigSet))
+	m.Add("1.12", http.MethodGet, "/apps/{app}/config", AuthorizationRequiredHandler(appConfigGet))
+	m.Add("1.12", http.MethodDelete, "/apps/{app}/config", AuthorizationRequiredHandler(appConfigUnset))
+
 	m.Add("1.0", http.MethodPost, "/apps", AuthorizationRequiredHandler(createApp))
 	m.Add("1.0", http.MethodGet, "/apps/{app}", AuthorizationRequiredHandler(appInfo))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}", AuthorizationRequiredHandler(appDelete))

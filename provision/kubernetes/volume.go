@@ -60,6 +60,29 @@ func createVolumesForApp(ctx context.Context, client *ClusterClient, app provisi
 		kubeMounts = append(kubeMounts, mounts...)
 		kubeVolumes = append(kubeVolumes, *volume)
 	}
+
+	configs := app.GetConfig()
+	configMapName := serviceAccountNameForApp(app)
+
+	if len(configs) > 0 {
+		volumeName := "configmap"
+		kubeVolumes = append(kubeVolumes, apiv1.Volume{
+			Name: volumeName,
+			VolumeSource: apiv1.VolumeSource{
+				ConfigMap: &apiv1.ConfigMapVolumeSource{
+					LocalObjectReference: apiv1.LocalObjectReference{
+						Name: configMapName,
+					},
+				},
+			},
+		})
+
+		kubeMounts = append(kubeMounts, apiv1.VolumeMount{
+			Name:      volumeName,
+			MountPath: "/etc/configs",
+		})
+	}
+
 	return kubeVolumes, kubeMounts, nil
 }
 

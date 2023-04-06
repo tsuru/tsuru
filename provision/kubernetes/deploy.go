@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -574,6 +575,47 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	}
 	appMeta := a.GetMetadata()
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns, &appMeta)
+}
+
+func ensureConfigMapForApp(ctx context.Context, client *ClusterClient, a provision.App) error {
+	configs := a.GetConfig()
+	if len(configs) == 0 {
+		return nil
+	}
+
+	namespace, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	name := serviceAccountNameForApp(a)
+	configMap := apiv1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Data: configs,
+	}
+
+	existingCM, err := client.CoreV1().ConfigMaps(namespace).Get(ctx, configMap.Name, metav1.GetOptions{})
+	if k8sErrors.IsNotFound(err) {
+		existingCM = nil
+	} else if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if existingCM == nil {
+		_, err = client.CoreV1().ConfigMaps(namespace).Create(ctx, &configMap, metav1.CreateOptions{})
+	} else if reflect.DeepEqual(existingCM.Data, configMap.Data) {
+		return nil
+	} else {
+		configMap.ResourceVersion = existingCM.ResourceVersion
+		configMap.Finalizers = existingCM.Finalizers
+		_, err = client.CoreV1().ConfigMaps(namespace).Update(ctx, &configMap, metav1.UpdateOptions{})
+	}
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func getClusterNodeSelectorFlag(client *ClusterClient) (bool, error) {
@@ -1249,6 +1291,10 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return err
 	}
 	err = ensureServiceAccountForApp(ctx, m.client, opts.App)
+	if err != nil {
+		return err
+	}
+	err = ensureConfigMapForApp(ctx, m.client, opts.App)
 	if err != nil {
 		return err
 	}

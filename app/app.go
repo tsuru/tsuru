@@ -104,6 +104,7 @@ const (
 // teams that have access to it, used platform, etc.
 type App struct {
 	Env             map[string]bind.EnvVar
+	Config          map[string]string
 	ServiceEnvs     []bind.ServiceEnvVar
 	Platform        string `bson:"framework"`
 	PlatformVersion string
@@ -1773,6 +1774,11 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return mergedEnvs
 }
 
+// GetConfig returns a map representing the app config
+func (app *App) GetConfig() map[string]string {
+	return app.Config
+}
+
 // SetEnvs saves a list of environment variables in the app.
 func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
@@ -1823,6 +1829,51 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	}
 
 	return nil
+}
+
+type ConfigArgs struct {
+	Config appTypes.Config
+	Writer io.Writer
+}
+
+func (app *App) SetConfig(configArgs ConfigArgs) error {
+	if app.Config == nil {
+		app.Config = make(map[string]string)
+	}
+
+	app.Config[configArgs.Config.Filename] = configArgs.Config.Content
+	return app.updateAppConfig(configArgs)
+}
+
+func (app *App) UnsetConfig(configArgs ConfigArgs) error {
+	delete(app.Config, configArgs.Config.Filename)
+	return app.updateAppConfig(configArgs)
+}
+
+func (app *App) updateAppConfig(configArgs ConfigArgs) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"config": app.Config}})
+	if err != nil {
+		return err
+	}
+
+	if configArgs.Config.NoRestart {
+		provisioner, err := app.getProvisioner()
+		if err != nil {
+			return err
+		}
+		if p, ok := provisioner.(provision.ConfigReloadableProvisioner); ok {
+			return p.ReloadConfig(app.ctx, app)
+		}
+		return nil
+	}
+
+	return app.restartIfUnits(configArgs.Writer)
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the

@@ -240,6 +240,7 @@ type App interface {
 
 	Envs() map[string]bind.EnvVar
 
+	GetConfig() map[string]string
 	GetMemory() int64
 	GetMilliCPU() int
 
@@ -470,6 +471,10 @@ type AppInternalAddress struct {
 	Port     int32
 	Version  string
 	Process  string
+}
+
+type ConfigReloadableProvisioner interface {
+	ReloadConfig(ctx context.Context, a App) error
 }
 
 // MessageProvisioner is a provisioner that provides a welcome message for

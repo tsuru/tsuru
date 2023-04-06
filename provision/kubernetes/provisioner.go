@@ -104,6 +104,8 @@ var (
 	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
 	_ provision.JobProvisioner           = &kubernetesProvisioner{}
 
+	_ provision.ConfigReloadableProvisioner = &kubernetesProvisioner{}
+
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
 
