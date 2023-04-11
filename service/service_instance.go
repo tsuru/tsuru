@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -21,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -54,7 +52,6 @@ type ServiceInstance struct {
 	PlanName    string                 `bson:"plan_name" json:"plan_name"`
 	Apps        []string               `json:"apps"`
 	Jobs        []string               `json:"jobs"`
-	BoundUnits  []Unit                 `bson:"bound_units" json:"bound_units"`
 	Teams       []string               `json:"teams"`
 	TeamOwner   string                 `json:"team_owner"`
 	Description string                 `json:"description"`
@@ -94,20 +91,6 @@ type BrokerInstanceBind struct {
 	UUID         string
 	OperationKey string
 	Parameters   map[string]interface{}
-}
-
-type Unit struct {
-	AppName string `json:"app_name"`
-	ID      string `json:"id"`
-	IP      string `json:"ip"`
-}
-
-func (bu Unit) GetID() string {
-	return bu.ID
-}
-
-func (bu Unit) GetIp() string {
-	return bu.IP
 }
 
 // DeleteInstance deletes the service instance from the database.
@@ -263,7 +246,6 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 		bindAppDBAction,
 		bindAppEndpointAction,
 		setBoundEnvsAction,
-		bindUnitsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
@@ -318,60 +300,6 @@ func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
 	return pipeline.Execute(si.ctx, &args)
 }
 
-// BindUnit makes the bind between the binder and an unit.
-func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
-	s, err := Get(si.ctx, si.ServiceName)
-	if err != nil {
-		return err
-	}
-	if s.DisableBindUnit {
-		return nil
-	}
-	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	updateOp := bson.M{
-		"$addToSet": bson.M{
-			"bound_units": bson.D([]bson.DocElem{
-				{Name: "appname", Value: app.GetName()},
-				{Name: "id", Value: unit.GetID()},
-				{Name: "ip", Value: unit.GetIp()},
-			}),
-		},
-	}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "bound_units.id": bson.M{"$ne": unit.GetID()}}, updateOp)
-	conn.Close()
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil
-		}
-		return err
-	}
-	err = endpoint.BindUnit(si.ctx, si, app, unit)
-	if err != nil {
-		updateOp = bson.M{
-			"$pull": bson.M{
-				"bound_units": bson.D([]bson.DocElem{
-					{Name: "appname", Value: app.GetName()},
-					{Name: "id", Value: unit.GetID()},
-					{Name: "ip", Value: unit.GetIp()},
-				}),
-			},
-		}
-		rollbackErr := si.updateData(updateOp)
-		if rollbackErr != nil {
-			log.Errorf("[bind unit] could not remove stil unbound unit from db after failure: %s", rollbackErr)
-		}
-		return err
-	}
-	return nil
-}
-
 type UnbindAppArgs struct {
 	App         bind.App
 	Restart     bool
@@ -395,64 +323,12 @@ func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
 		forceRemove:     unbindArgs.ForceRemove,
 	}
 	actions := []*action.Action{
-		&unbindUnits,
 		&unbindAppDB,
 		&unbindAppEndpoint,
 		&removeBoundEnvs,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
-}
-
-// UnbindUnit makes the unbind between the service instance and an unit.
-func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
-	s, err := Get(si.ctx, si.ServiceName)
-	if err != nil {
-		return err
-	}
-	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	updateOp := bson.M{
-		"$pull": bson.M{
-			"bound_units": bson.D([]bson.DocElem{
-				{Name: "appname", Value: app.GetName()},
-				{Name: "id", Value: unit.GetID()},
-				{Name: "ip", Value: unit.GetIp()},
-			}),
-		},
-	}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "service_name": si.ServiceName, "bound_units.id": unit.GetID()}, updateOp)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return ErrUnitNotBound
-		}
-		return err
-	}
-	err = endpoint.UnbindUnit(si.ctx, si, app, unit)
-	if err != nil {
-		updateOp = bson.M{
-			"$addToSet": bson.M{
-				"bound_units": bson.D([]bson.DocElem{
-					{Name: "appname", Value: app.GetName()},
-					{Name: "id", Value: unit.GetID()},
-					{Name: "ip", Value: unit.GetIp()},
-				}),
-			},
-		}
-		rollbackErr := si.updateData(updateOp)
-		if rollbackErr != nil {
-			log.Errorf("[unbind unit] could not add bound unit back to db after failure: %s", rollbackErr)
-		}
-		return err
-	}
-	return nil
 }
 
 // Status returns the service instance status.

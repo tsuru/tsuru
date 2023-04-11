@@ -72,8 +72,6 @@ type FakeApp struct {
 	commMut           sync.Mutex
 	Deploys           uint
 	env               map[string]bindTypes.EnvVar
-	bindCalls         []*provision.Unit
-	bindLock          sync.Mutex
 	serviceEnvs       []bindTypes.ServiceEnvVar
 	serviceLock       sync.Mutex
 	Pool              string
@@ -142,43 +140,6 @@ func (a *FakeApp) GetMemory() int64 {
 
 func (a *FakeApp) GetTeamsName() []string {
 	return a.Teams
-}
-
-func (a *FakeApp) HasBind(unit *provision.Unit) bool {
-	a.bindLock.Lock()
-	defer a.bindLock.Unlock()
-	for _, u := range a.bindCalls {
-		if u.ID == unit.ID {
-			return true
-		}
-	}
-	return false
-}
-
-func (a *FakeApp) BindUnit(unit *provision.Unit) error {
-	a.bindLock.Lock()
-	defer a.bindLock.Unlock()
-	a.bindCalls = append(a.bindCalls, unit)
-	return nil
-}
-
-func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
-	a.bindLock.Lock()
-	defer a.bindLock.Unlock()
-	index := -1
-	for i, u := range a.bindCalls {
-		if u.ID == unit.ID {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return errors.New("not bound")
-	}
-	length := len(a.bindCalls)
-	a.bindCalls[index] = a.bindCalls[length-1]
-	a.bindCalls = a.bindCalls[:length-1]
-	return nil
 }
 
 func (a *FakeApp) GetCname() []string {
@@ -317,14 +278,6 @@ func (a *FakeApp) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 		delete(a.env, env)
 	}
 	return nil
-}
-
-func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
-	units := make([]bind.Unit, len(a.units))
-	for i := range a.units {
-		units[i] = &a.units[i]
-	}
-	return units, nil
 }
 
 func (a *FakeApp) Envs() map[string]bindTypes.EnvVar {

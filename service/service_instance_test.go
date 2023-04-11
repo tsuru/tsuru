@@ -148,12 +148,10 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	oldBindAppDBAction := bindAppDBAction
 	oldBindAppEndpointAction := bindAppEndpointAction
 	oldSetBoundEnvsAction := setBoundEnvsAction
-	oldBindUnitsAction := bindUnitsAction
 	defer func() {
 		bindAppDBAction = oldBindAppDBAction
 		bindAppEndpointAction = oldBindAppEndpointAction
 		setBoundEnvsAction = oldSetBoundEnvsAction
-		bindUnitsAction = oldBindUnitsAction
 	}()
 	var calls []string
 	var params []interface{}
@@ -176,12 +174,6 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 			return nil, nil
 		},
 	}
-	bindUnitsAction = &action.Action{
-		Forward: func(ctx action.FWContext) (action.Result, error) {
-			calls = append(calls, "bindUnitsAction")
-			return nil, nil
-		},
-	}
 	var si ServiceInstance
 	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
@@ -190,7 +182,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
-		"setBoundEnvsAction", "bindUnitsAction",
+		"setBoundEnvsAction",
 	}
 	expectedParams := []interface{}{&bindAppPipelineArgs{
 		app:             a,
@@ -217,7 +209,6 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1", "app2"},
 		Jobs:        []string{},
-		BoundUnits:  []Unit{},
 		Parameters:  map[string]interface{}{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
@@ -227,7 +218,6 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 		ServiceName: "mysql",
 		Tags:        []string{},
 		Apps:        []string{"app1"},
-		BoundUnits:  []Unit{},
 		Jobs:        []string{},
 		Teams:       []string{},
 		Parameters:  map[string]interface{}{},
@@ -255,7 +245,6 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 		Teams:       []string{s.team.Name},
 		Jobs:        []string{"job1", "job2"},
 		Apps:        []string{},
-		BoundUnits:  []Unit{},
 		Parameters:  map[string]interface{}{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
@@ -265,7 +254,6 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 		ServiceName: "mysql",
 		Tags:        []string{},
 		Jobs:        []string{"job1"},
-		BoundUnits:  []Unit{},
 		Apps:        []string{},
 		Teams:       []string{},
 		Parameters:  map[string]interface{}{},
@@ -1075,12 +1063,6 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for i := range units {
-		err = si.BindUnit(a, &units[i])
-		c.Assert(err, check.IsNil)
-	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
@@ -1090,17 +1072,9 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, ".*remove instance")
-	c.Assert(reqs, check.HasLen, 5)
-	c.Assert(reqs[0].Method, check.Equals, "POST")
-	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[1].Method, check.Equals, "POST")
-	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[2].Method, check.Equals, "DELETE")
-	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[3].Method, check.Equals, "DELETE")
-	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[4].Method, check.Equals, "DELETE")
-	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 	siDB, err := GetServiceInstance(context.TODO(), "mysql", si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
@@ -1142,12 +1116,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for i := range units {
-		err = si.BindUnit(a, &units[i])
-		c.Assert(err, check.IsNil)
-	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
@@ -1159,21 +1127,9 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\)`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
-	c.Assert(reqs, check.HasLen, 7)
-	c.Assert(reqs[0].Method, check.Equals, "POST")
-	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[1].Method, check.Equals, "POST")
-	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[2].Method, check.Equals, "DELETE")
-	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[3].Method, check.Equals, "DELETE")
-	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[4].Method, check.Equals, "DELETE")
-	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	c.Assert(reqs[5].Method, check.Equals, "POST")
-	c.Assert(reqs[5].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[6].Method, check.Equals, "POST")
-	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
@@ -1218,12 +1174,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for i := range units {
-		err = si.BindUnit(a, &units[i])
-		c.Assert(err, check.IsNil)
-	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
@@ -1235,17 +1185,9 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*\[unbind-app-endpoint\] ignored error due to force: Failed to unbind \("/resources/my-mysql/bind-app"\): invalid response: my unbind app err \(code: 500\).*remove instance`)
-	c.Assert(reqs, check.HasLen, 5)
-	c.Assert(reqs[0].Method, check.Equals, "POST")
-	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[1].Method, check.Equals, "POST")
-	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[2].Method, check.Equals, "DELETE")
-	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[3].Method, check.Equals, "DELETE")
-	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[4].Method, check.Equals, "DELETE")
-	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{})
@@ -1274,12 +1216,6 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(si)
 	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for i := range units {
-		err = si.BindUnit(a, &units[i])
-		c.Assert(err, check.IsNil)
-	}
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
@@ -1291,61 +1227,14 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `instance not found`)
 	c.Assert(buf.String(), check.Matches, "")
 	c.Assert(si.Apps, check.DeepEquals, []string{"myapp"})
-	c.Assert(reqs, check.HasLen, 8)
-	c.Assert(reqs[0].Method, check.Equals, "POST")
-	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs, check.HasLen, 2)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 	c.Assert(reqs[1].Method, check.Equals, "POST")
-	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[2].Method, check.Equals, "DELETE")
-	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[3].Method, check.Equals, "DELETE")
-	c.Assert(reqs[3].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[4].Method, check.Equals, "DELETE")
-	c.Assert(reqs[4].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	c.Assert(reqs[5].Method, check.Equals, "POST")
-	c.Assert(reqs[5].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	c.Assert(reqs[6].Method, check.Equals, "POST")
-	c.Assert(reqs[6].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[7].Method, check.Equals, "POST")
-	c.Assert(reqs[7].URL.Path, check.Equals, "/resources/my-mysql/bind")
+	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
-}
-
-func (s *InstanceSuite) TestBindUnitWhenDisabled(c *check.C) {
-	serviceCalled := false
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		serviceCalled = true
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-
-	serv := Service{
-		Name:            "mysql",
-		Endpoint:        map[string]string{"production": ts.URL},
-		DisableBindUnit: true,
-		Password:        "s3cr3t",
-		OwnerTeams:      []string{s.team.Name},
-	}
-	err := Create(serv)
-	c.Assert(err, check.IsNil)
-	a := provisiontest.NewFakeApp("myapp", "static", 2)
-
-	si := ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{a.GetName()},
-	}
-	err = s.conn.ServiceInstances().Insert(si)
-	c.Assert(err, check.IsNil)
-
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	err = si.BindUnit(a, &units[0])
-	c.Assert(err, check.IsNil)
-
-	c.Assert(serviceCalled, check.Equals, false)
 }
 
 func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
@@ -1377,13 +1266,9 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	err = si.BindApp(a, nil, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "add instance")
-	c.Assert(reqs, check.HasLen, 3)
+	c.Assert(reqs, check.HasLen, 1)
 	c.Assert(reqs[0].Method, check.Equals, "POST")
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind-app")
-	c.Assert(reqs[1].Method, check.Equals, "POST")
-	c.Assert(reqs[1].URL.Path, check.Equals, "/resources/my-mysql/bind")
-	c.Assert(reqs[2].Method, check.Equals, "POST")
-	c.Assert(reqs[2].URL.Path, check.Equals, "/resources/my-mysql/bind")
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(siDB.Apps, check.DeepEquals, []string{"myapp"})
@@ -1437,7 +1322,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		}(app)
 	}
 	wg.Wait()
-	c.Assert(reqs, check.HasLen, 300)
+	c.Assert(reqs, check.HasLen, 100)
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
@@ -1494,7 +1379,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		}(app)
 	}
 	wg.Wait()
-	c.Assert(reqs, check.HasLen, 120)
+	c.Assert(len(reqs), check.Equals, 40)
 	siDB, err = GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
@@ -1517,9 +1402,9 @@ func (s *S) TestRenameServiceInstanceTeam(c *check.C) {
 	err = s.conn.ServiceInstances().Find(nil).Sort("name").All(&dbInstances)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbInstances, check.DeepEquals, []ServiceInstance{
-		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
-		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, BoundUnits: []Unit{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si1", ServiceName: "mysql", Teams: []string{"team1", "team3", "team9000"}, TeamOwner: "team1", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si2", ServiceName: "mysql", Teams: []string{"team1", "team3"}, TeamOwner: "team9000", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
+		{Name: "si3", ServiceName: "mysql", Teams: []string{"team3", "team9000"}, TeamOwner: "team3", Apps: []string{}, Jobs: []string{}, Tags: []string{}, Parameters: map[string]interface{}{}},
 	})
 }
 

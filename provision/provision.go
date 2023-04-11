@@ -223,9 +223,6 @@ type RunArgs struct {
 type App interface {
 	Named
 
-	BindUnit(*Unit) error
-	UnbindUnit(*Unit) error
-
 	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.
 	GetPlatform() string

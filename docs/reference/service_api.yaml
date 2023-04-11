@@ -103,61 +103,6 @@ paths:
           description: Instance not found
         default:
           $ref: '#/components/schemas/Error'
-  /resources/{name}/bind:
-    parameters:
-    - name: name
-      in: path
-      description: Instance name
-      required: true
-      schema:
-        type: string
-    post:
-      summary: Bind Unit
-      description: |
-        The service endpoint binds a unit to the service instance
-      tags:
-      - Binding
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BindUnitForm'
-      responses:
-        201:
-          description: Unit successfully bound to the service instance
-          content:
-            application/json:
-              schema:
-                type: object
-                description: Environments to be inject on the unit
-                additionalProperties:
-                  type: string
-        404:
-          description: Service instance does not exist
-        412:
-          description: Service instance not ready
-        default:
-          $ref: '#/components/schemas/Error'
-    delete:
-      summary: Unbind Unit
-      description: |
-        The service endpoint unbinds the unit from the service instance
-      tags:
-      - Binding
-      requestBody:
-        required: true
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BindUnitForm'
-      responses:
-        200:
-          description: Unit successfully unbound from service instance
-        404:
-          description: Service instance does not exist
-        default:
-          $ref: '#/components/schemas/Error'
   /resources/{name}/bind-app:
     parameters:
     - name: name
@@ -273,22 +218,6 @@ components:
       - plan
       - team
       - user
-    BindUnitForm:
-      type: object
-      properties:
-        app-host:
-          type: string
-          description: App host
-        app-name:
-          type: string
-          description: App name
-        unit-host:
-          type: string
-          description: Unit address
-      required:
-      - app-host
-      - app-name
-      - unit-host
     BindAppForm:
       type: object
       properties:
