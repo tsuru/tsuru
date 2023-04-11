@@ -428,6 +428,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 // consume: application/x-www-form-urlencoded
 // produce: application/x-json-stream
 // responses:
+//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
@@ -502,6 +503,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
+//
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized

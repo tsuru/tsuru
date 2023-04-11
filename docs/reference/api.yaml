@@ -4567,6 +4567,33 @@ paths:
       security:
         - Bearer: []
 
+  /1.13/jobs/{name}/trigger:
+    post:
+      operationId: TriggerJob
+      description: Trigger a job
+      parameters:
+        - name: name
+          in: path
+          required: true
+          type: string
+          minLength: 1
+          description: Name of job
+      responses:
+        "200":
+          description: Job triggered
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Plan not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
