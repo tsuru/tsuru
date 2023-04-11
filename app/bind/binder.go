@@ -12,12 +12,6 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
-// Unit represents an application unit to be used in binds.
-type Unit interface {
-	GetID() string
-	GetIp() string
-}
-
 type App interface {
 	// GetAddresses returns the app addresses.
 	GetAddresses() ([]string, error)
@@ -30,9 +24,6 @@ type App interface {
 
 	// GetUUID returns the App v4 UUID
 	GetUUID() (string, error)
-
-	// GetUnits returns the app units.
-	GetUnits() ([]Unit, error)
 
 	// AddInstance adds an instance to the application.
 	AddInstance(args AddInstanceArgs) error

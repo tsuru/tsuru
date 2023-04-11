@@ -31,7 +31,6 @@ import (
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/api/tracker"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/app/image/gc"
 	"github.com/tsuru/tsuru/app/version"
@@ -542,18 +541,6 @@ func appFinder(appName string) (rebuild.RebuildApp, error) {
 	return a, err
 }
 
-func bindAppsLister() ([]bind.App, error) {
-	apps, err := app.List(context.TODO(), nil)
-	if err != nil {
-		return nil, err
-	}
-	bindApps := make([]bind.App, len(apps))
-	for i := range apps {
-		bindApps[i] = &apps[i]
-	}
-	return bindApps, nil
-}
-
 func startServer(handler http.Handler) error {
 	span, ctx := opentracing.StartSpanFromContext(
 		context.Background(), "StartServer")
@@ -621,10 +608,6 @@ func startServer(handler http.Handler) error {
 	err = gc.Initialize()
 	if err != nil {
 		return errors.Wrap(err, "unable to initialize old image gc")
-	}
-	err = service.InitializeSync(bindAppsLister)
-	if err != nil {
-		return err
 	}
 	fmt.Println("Checking components status:")
 	results := hc.Check(ctx, "all")

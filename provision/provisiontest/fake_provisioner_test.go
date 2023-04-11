@@ -113,7 +113,7 @@ func (s *S) TestSetEnvs(c *check.C) {
 
 func (s *S) TestGetUnitsReturnUnits(c *check.C) {
 	a := NewFakeApp("foo", "static", 2)
-	units, err := a.GetUnits()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	c.Assert(a.units, check.HasLen, 2)
@@ -134,32 +134,6 @@ func (s *S) TestUnsetEnvs(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(app.env, check.DeepEquals, map[string]bindTypes.EnvVar{})
-}
-
-func (s *S) TestFakeAppBindUnit(c *check.C) {
-	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.BindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.HasBind(&unit), check.Equals, true)
-}
-
-func (s *S) TestFakeAppUnbindUnit(c *check.C) {
-	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.BindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	err = app.UnbindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	c.Assert(app.HasBind(&unit), check.Equals, false)
-}
-
-func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
-	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.UnbindUnit(&unit)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "not bound")
 }
 
 func (s *S) TestFakeAppGetCname(c *check.C) {

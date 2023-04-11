@@ -225,7 +225,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlan(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -255,7 +254,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithPlanImplicitTeam(c *check.C
 		TeamOwner:   s.team.Name,
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -334,7 +332,6 @@ func (s *ServiceInstanceSuite) TestCreateInstance(c *check.C) {
 		TeamOwner:   "tsuruteam",
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -418,7 +415,6 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceIgnoresTeamAuthIfService
 		TeamOwner:   s.team.Name,
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -527,7 +523,6 @@ func (s *ServiceInstanceSuite) TestCreateInstanceWithDescription(c *check.C) {
 		Description: "desc",
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -559,7 +554,6 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 		TeamOwner:   "tsuruteam",
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{"tag a", "tag b"},
 		Parameters:  map[string]interface{}{},
 	})
@@ -613,7 +607,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithDescription(c *check
 		Description: "changed",
 		Apps:        si.Apps,
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -661,7 +654,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTeamOwner(c *check.C
 		TeamOwner:   "changed",
 		Apps:        si.Apps,
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Parameters:  map[string]interface{}{},
 	})
@@ -709,7 +701,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 		TeamOwner:   s.team.Name,
 		Apps:        si.Apps,
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{"tag b", "tag c"},
 		Parameters:  map[string]interface{}{},
 	})
@@ -756,7 +747,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(
 		Teams:       si.Teams,
 		TeamOwner:   s.team.Name,
 		Apps:        si.Apps,
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		Jobs:        []string{},
 		Parameters:  map[string]interface{}{},
@@ -907,7 +897,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParameters(c *check.
 		TeamOwner:   s.team.Name,
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		PlanName:    "large",
 		Parameters: map[string]interface{}{
@@ -957,7 +946,6 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstancePlanParametersWithoutPer
 		TeamOwner:   s.team.Name,
 		Apps:        []string{},
 		Jobs:        []string{},
-		BoundUnits:  []service.Unit{},
 		Tags:        []string{},
 		PlanName:    "large",
 		Parameters: map[string]interface{}{
@@ -1047,15 +1035,12 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWithSameInstaceName(c *c
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(stdContext.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	si := []service.ServiceInstance{
 		{
 			Name:        "foo-instance",
 			ServiceName: "foo",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"app-instance"},
-			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 		{
 			Name:        "foo-instance",
@@ -1150,14 +1135,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithUn
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(stdContext.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -1199,14 +1181,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(stdContext.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(stdContext.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysqlremove",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -1249,14 +1228,11 @@ func (s *ServiceInstanceSuite) TestRemoveServiceInstanceWIthAssociatedAppsWithNo
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(stdContext.TODO(), &ab, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(stdContext.TODO(), &ab)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysqlremove",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app", "app2"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -1380,7 +1356,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 		}},
 		{Service: "redis", Instances: []string{"redis-globo"}, Plans: []string{""}, ServiceInstances: []service.ServiceInstance{
@@ -1391,7 +1366,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstances(c *check.C) {
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 		}},
 	}
@@ -1452,7 +1426,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesAppFilter(c *check.C) {
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 				Parameters:  map[string]interface{}(nil),
 			},
 		}},
@@ -1540,7 +1513,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 			{
 				Name:        "memcached2",
@@ -1549,7 +1521,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 		}},
 		{Service: "mysql", Instances: []string{}, Plans: []string(nil)},
@@ -1562,7 +1533,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 			{
 				Name:        "pgsql2",
@@ -1571,7 +1541,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 		}},
 		{Service: "redis", Instances: []string{"redis1", "redis2"}, Plans: []string{"", ""}, ServiceInstances: []service.ServiceInstance{
@@ -1582,7 +1551,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 			{
 				Name:        "redis2",
@@ -1591,7 +1559,6 @@ func (s *ServiceInstanceSuite) TestListServiceInstancesFilterInstancesPerService
 				Jobs:        []string{},
 				Teams:       []string{s.team.Name},
 				Tags:        []string{},
-				BoundUnits:  []service.Unit{},
 			},
 		}},
 	}
@@ -1922,9 +1889,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 	var instances []service.ServiceInstanceWithInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
-	si1.BoundUnits = []service.Unit{}
 	si1.Tags = []string{}
-	si2.BoundUnits = []service.Unit{}
 	si2.Tags = []string{}
 	expected := []service.ServiceInstanceWithInfo{
 		{
@@ -1978,7 +1943,6 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 	var instances []service.ServiceInstanceWithInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
 	c.Assert(err, check.IsNil)
-	si1.BoundUnits = []service.Unit{}
 	si1.Tags = []string{}
 	expected := []service.ServiceInstanceWithInfo{
 		{

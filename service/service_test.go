@@ -595,10 +595,7 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 				Teams:       []string{"t1", "t2"},
 				Apps:        []string{"app1", "app2"},
 				Jobs:        []string{"job1"},
-				BoundUnits: []Unit{
-					{AppName: "app1", ID: "unitid1", IP: "unitip1"},
-				},
-				Parameters: map[string]interface{}{"parameter": "val"},
+				Parameters:  map[string]interface{}{"parameter": "val"},
 			},
 		}},
 	}
@@ -626,11 +623,6 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 			"plan_name":    "",
 			"service_name": "mysql",
 			"description":  "",
-			"bound_units": []interface{}{map[string]interface{}{
-				"id":       "unitid1",
-				"ip":       "unitip1",
-				"app_name": "app1",
-			}},
 			"parameters": map[string]interface{}{
 				"parameter": "val",
 			},
