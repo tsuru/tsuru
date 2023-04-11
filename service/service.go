@@ -40,9 +40,6 @@ type Service struct {
 	// This field is immutable (after creating Service).
 	IsMultiCluster bool `bson:"is_multi_cluster"`
 
-	// DisableBindUnit indicates that the service receives no bind unit events.
-	DisableBindUnit bool `bson:"disable_bind_unit"`
-
 	ctx context.Context
 }
 
@@ -63,10 +60,8 @@ type ServiceClient interface {
 	Update(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
 	Destroy(ctx context.Context, instance *ServiceInstance, evt *event.Event, requestID string) error
 	BindApp(ctx context.Context, instance *ServiceInstance, app bind.App, params BindAppParameters, evt *event.Event, requestID string) (map[string]string, error)
-	BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
 	BindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) (map[string]string, error)
 	UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error
-	UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error
 	UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error
 	Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error)
 	Info(ctx context.Context, instance *ServiceInstance, requestID string) ([]map[string]string, error)

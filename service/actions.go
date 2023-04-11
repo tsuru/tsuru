@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"sync"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -486,110 +485,6 @@ var reloadJobProvisioner = &action.Action{
 			log.Errorf("[reload-job-provisioner backward] failed to update provisioner with old job: %s", err)
 		}
 	},
-}
-
-var bindUnitsAction = &action.Action{
-	Name: "bind-units",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		if args == nil {
-			return ctx.Previous, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
-		}
-		var wg sync.WaitGroup
-		si := args.serviceInstance
-		units, err := args.app.GetUnits()
-		if err != nil {
-			return nil, err
-		}
-		errCh := make(chan error, len(units))
-		unboundCh := make(chan bind.Unit, len(units))
-		for i := range units {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				unit := units[i]
-				err := si.BindUnit(args.app, unit)
-				if err == nil {
-					unboundCh <- unit
-				} else {
-					errCh <- err
-				}
-			}(i)
-		}
-		wg.Wait()
-		close(errCh)
-		close(unboundCh)
-		if err := <-errCh; err != nil {
-			for unit := range unboundCh {
-				unbindErr := si.UnbindUnit(args.app, unit)
-				if unbindErr != nil {
-					log.Errorf("[bind-units forward] failed to unbind unit after error: %s", unbindErr)
-				}
-			}
-			return ctx.Previous, err
-		}
-		return ctx.Previous, nil
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-}
-
-var unbindUnits = action.Action{
-	Name: "unbind-units",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindAppPipelineArgs.")
-		}
-		var wg sync.WaitGroup
-		si := args.serviceInstance
-		units, err := args.app.GetUnits()
-		if err != nil {
-			return nil, err
-		}
-		errCh := make(chan error, len(units))
-		unboundCh := make(chan bind.Unit, len(units))
-		for i := range units {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				unit := units[i]
-				err := si.UnbindUnit(args.app, unit)
-				if err == nil || err == ErrUnitNotBound {
-					unboundCh <- unit
-				} else {
-					errCh <- err
-				}
-			}(i)
-		}
-		wg.Wait()
-		close(errCh)
-		close(unboundCh)
-		if err := <-errCh; err != nil {
-			for unit := range unboundCh {
-				rebindErr := si.BindUnit(args.app, unit)
-				if rebindErr != nil {
-					log.Errorf("[unbind-units forward] failed to rebind unit after error: %s", rebindErr)
-				}
-			}
-			return nil, err
-		}
-		return nil, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		args, _ := ctx.Params[0].(*bindAppPipelineArgs)
-		units, err := args.app.GetUnits()
-		if err != nil {
-			log.Errorf("[unbind-units backward] failed get units to rebind in rollback: %s", err)
-		}
-		for _, unit := range units {
-			err := args.serviceInstance.BindUnit(args.app, unit)
-			if err != nil {
-				log.Errorf("[unbind-units backward] failed to rebind unit in rollback: %s", err)
-			}
-		}
-	},
-	MinParams: 1,
 }
 
 var unbindAppDB = action.Action{

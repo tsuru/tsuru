@@ -412,16 +412,6 @@ func (b *brokerClient) Proxy(ctx context.Context, opts *ProxyOpts) error {
 	return fmt.Errorf("service proxy is not available for broker services")
 }
 
-// UnbindUnit is a no-op for OSB API implementations
-func (b *brokerClient) UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	return nil
-}
-
-// UnbindUnit is a no-op for OSB API implementations
-func (b *brokerClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	return nil
-}
-
 // UnbindJob is a no-op for OSB API implementations
 func (b *brokerClient) UnbindJob(ctx context.Context, instance *ServiceInstance, job *jobTypes.Job, evt *event.Event, requestID string) error {
 	return nil

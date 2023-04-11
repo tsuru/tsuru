@@ -729,110 +729,6 @@ func (s *S) TestCreateAppUserFromTsuruToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestBindAndUnbindUnit(c *check.C) {
-	var requests []*http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r)
-	}))
-	defer server.Close()
-	app := App{
-		Name: "warpaint", Platform: "python",
-		Quota:     quota.UnlimitedQuota,
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	srvc := service.Service{
-		Name:       "mysql",
-		Endpoint:   map[string]string{"production": server.URL},
-		Password:   "abcde",
-		OwnerTeams: []string{s.team.Name},
-	}
-	err = service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	si1 := service.ServiceInstance{
-		Name:        "mydb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si1)
-	c.Assert(err, check.IsNil)
-	si2 := service.ServiceInstance{
-		Name:        "yourdb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si2)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
-	err = app.BindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	err = app.UnbindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 4)
-	c.Assert(requests[0].Method, check.Equals, "POST")
-	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
-	c.Assert(requests[1].Method, check.Equals, "POST")
-	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
-	c.Assert(requests[2].Method, check.Equals, "DELETE")
-	c.Assert(requests[2].URL.Path, check.Equals, "/resources/mydb/bind")
-	c.Assert(requests[3].Method, check.Equals, "DELETE")
-	c.Assert(requests[3].URL.Path, check.Equals, "/resources/yourdb/bind")
-}
-
-func (s *S) TestBindUnitWithError(c *check.C) {
-	i := 0
-	var requests []*http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r)
-		i++
-		if i > 1 {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("myerr"))
-		}
-	}))
-	defer server.Close()
-	app := App{
-		Name: "warpaint", Platform: "python",
-		Quota:     quota.UnlimitedQuota,
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	srvc := service.Service{
-		Name:       "mysql",
-		Endpoint:   map[string]string{"production": server.URL},
-		Password:   "abcde",
-		OwnerTeams: []string{s.team.Name},
-	}
-	err = service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	si1 := service.ServiceInstance{
-		Name:        "mydb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si1)
-	c.Assert(err, check.IsNil)
-	si2 := service.ServiceInstance{
-		Name:        "yourdb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si2)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{ID: "some-unit", IP: "127.0.2.1"}
-	err = app.BindUnit(&unit)
-	c.Assert(err, check.ErrorMatches, `Failed to bind the instance "mysql/yourdb" to the unit "127.0.2.1": invalid response: myerr \(code: 500\)`)
-	c.Assert(requests, check.HasLen, 3)
-	c.Assert(requests[0].Method, check.Equals, "POST")
-	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
-	c.Assert(requests[1].Method, check.Equals, "POST")
-	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
-	c.Assert(requests[2].Method, check.Equals, "DELETE")
-	c.Assert(requests[2].URL.Path, check.Equals, "/resources/mydb/bind")
-}
-
 func (s *S) TestAddUnits(c *check.C) {
 	app := App{
 		Name: "warpaint", Platform: "python",
@@ -2550,20 +2446,6 @@ func (s *S) TestGetTeams(c *check.C) {
 	c.Assert(teams[0].Name, check.Equals, s.team.Name)
 }
 
-func (s *S) TestGetUnits(c *check.C) {
-	app := App{Name: "app", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &app, 2, "web", newSuccessfulAppVersion(c, &app), nil)
-	bindUnits, err := app.GetUnits()
-	c.Assert(err, check.IsNil)
-	c.Assert(bindUnits, check.HasLen, 2)
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].IP, check.Equals, bindUnits[0].GetIp())
-	c.Assert(units[1].IP, check.Equals, bindUnits[1].GetIp())
-}
-
 func (s *S) TestAppMarshalJSON(c *check.C) {
 	s.plan = appTypes.Plan{Name: "myplan", Memory: 64}
 	team := authTypes.Team{Name: "myteam"}
@@ -3276,7 +3158,7 @@ func (s *S) TestRun(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls -lh"
-	units, err := app.GetUnits()
+	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	allExecs := s.provisioner.AllExecs()
@@ -3327,7 +3209,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls -lh"
-	units, err := app.GetUnits()
+	units, err := app.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	allExecs := s.provisioner.AllExecs()
@@ -4331,54 +4213,6 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	c.Assert(units[1].IP, check.Equals, ips[1])
 	c.Assert(units[2].IP, check.Equals, ips[2])
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, customData)
-}
-
-func (s *S) TestAppRegisterUnitDoesBind(c *check.C) {
-	var requests []*http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r)
-	}))
-	defer server.Close()
-	app := App{
-		Name: "warpaint", Platform: "python",
-		Quota:     quota.UnlimitedQuota,
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	srvc := service.Service{
-		Name:       "mysql",
-		Endpoint:   map[string]string{"production": server.URL},
-		Password:   "abcde",
-		OwnerTeams: []string{s.team.Name},
-	}
-	err = service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	si1 := service.ServiceInstance{
-		Name:        "mydb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si1)
-	c.Assert(err, check.IsNil)
-	si2 := service.ServiceInstance{
-		Name:        "yourdb",
-		ServiceName: "mysql",
-		Apps:        []string{app.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(si2)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &app, 1, "web", newSuccessfulAppVersion(c, &app), nil)
-	units, err := app.Units()
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{"x": "y"}
-	err = app.RegisterUnit(context.TODO(), units[0].GetID(), customData)
-	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 2)
-	c.Assert(requests[0].Method, check.Equals, "POST")
-	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
-	c.Assert(requests[1].Method, check.Equals, "POST")
-	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
 }
 
 func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {

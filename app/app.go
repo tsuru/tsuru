@@ -805,46 +805,6 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 	return nil
 }
 
-func (app *App) BindUnit(unit *provision.Unit) error {
-	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
-	if err != nil {
-		return err
-	}
-	var i int
-	var instance service.ServiceInstance
-	for i, instance = range instances {
-		err = instance.BindUnit(app, unit)
-		if err != nil {
-			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.ID, instance.Name, err)
-			break
-		}
-	}
-	if err != nil {
-		for j := i - 1; j >= 0; j-- {
-			instance = instances[j]
-			rollbackErr := instance.UnbindUnit(app, unit)
-			if rollbackErr != nil {
-				log.Errorf("Error unbinding unit %s with the service instance %s during rollback: %s", unit.ID, instance.Name, rollbackErr)
-			}
-		}
-	}
-	return err
-}
-
-func (app *App) UnbindUnit(unit *provision.Unit) error {
-	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
-	if err != nil {
-		return err
-	}
-	for _, instance := range instances {
-		err = instance.UnbindUnit(app, unit)
-		if err != nil {
-			log.Errorf("Error unbinding the unit %s with the service instance %s: %s", unit.ID, instance.Name, err)
-		}
-	}
-	return nil
-}
-
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
 func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error {
@@ -1399,19 +1359,6 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	return nil
 }
 
-// GetUnits returns the internal list of units converted to bind.Unit.
-func (app *App) GetUnits() ([]bind.Unit, error) {
-	provUnits, err := app.Units()
-	if err != nil {
-		return nil, err
-	}
-	units := make([]bind.Unit, len(provUnits))
-	for i := range provUnits {
-		units[i] = &provUnits[i]
-	}
-	return units, nil
-}
-
 // GetName returns the name of the app.
 func (app *App) GetName() string {
 	return app.Name
@@ -1655,7 +1602,7 @@ func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 }
 
 func (app *App) restartIfUnits(w io.Writer) error {
-	units, err := app.GetUnits()
+	units, err := app.Units()
 	if err != nil {
 		return err
 	}
@@ -2141,17 +2088,8 @@ func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[
 	if err != nil {
 		return err
 	}
-	units, err := prov.Units(ctx, app)
-	if err != nil {
-		return err
-	}
-	for i := range units {
-		if units[i].GetID() == unitId {
-			err = app.BindUnit(&units[i])
-			break
-		}
-	}
-	return err
+
+	return nil
 }
 
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
