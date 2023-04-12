@@ -305,6 +305,37 @@ func (s *S) TestCreateSimpleJob(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateJobWithInvalidEnv(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := inputJob{TeamOwner: s.team.Name, Pool: "test1", Envs: []bindTypes.EnvVar{{Name: "123_abc", Value: "ok"}}}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, token.GetUserName())
+		return nil
+	}
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "\"123_abc\" is not valid environment variable name: a valid environment variable name must consist of alphabetic characters, digits, '_' and must not start with a digit: invalid environment variable name\n")
+}
+
 func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -336,6 +367,7 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
+		Envs: []bindTypes.EnvVar{{Name: "TEST_JOB", Value: "ok"}},
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -397,7 +429,9 @@ func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
+			Envs: []bindTypes.EnvVar{
+				{Name: "TEST_JOB", Value: "ok"},
+			},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)

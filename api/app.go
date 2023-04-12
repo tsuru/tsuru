@@ -1200,16 +1200,25 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 }
 
 func IsEnvVarValid(envs ...apiTypes.Env) error {
+	envNames := make([]string, len(envs))
+	for i, e := range envs {
+		envNames[i] = e.Name
+	}
+
+	return isEnvsNamesVarValid(envNames...)
+}
+
+func isEnvsNamesVarValid(envs ...string) error {
 	var errs errors.MultiError
 
 	for _, e := range envs {
-		if isInternalEnv(e.Name) {
-			errs.Add(fmt.Errorf("cannot change an internal environment variable (%s): %w", e.Name, apiTypes.ErrWriteProtectedEnvVar))
+		if isInternalEnv(e) {
+			errs.Add(fmt.Errorf("cannot change an internal environment variable (%s): %w", e, apiTypes.ErrWriteProtectedEnvVar))
 			continue
 		}
 
-		if err := isEnvVarName(e.Name); err != nil {
-			errs.Add(fmt.Errorf("%q is not valid environment variable name: %w", e.Name, err))
+		if err := isEnvVarName(e); err != nil {
+			errs.Add(fmt.Errorf("%q is not valid environment variable name: %w", e, err))
 			continue
 		}
 	}
