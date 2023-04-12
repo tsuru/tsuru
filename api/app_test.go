@@ -4017,7 +4017,7 @@ func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
 	url := fmt.Sprintf("/apps/%s/env", a.Name)
 	d := apiTypes.Envs{
 		Envs: []apiTypes.Env{
-			{Name: "INVALID ENV", Value: "value", Alias: ""},
+			{Name: "INVALID ENV", Value: "value"},
 		},
 	}
 	v, err := form.EncodeToValues(&d)
@@ -4030,6 +4030,50 @@ func (s *S) TestSetEnvInvalidEnvName(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
+func (s *S) TestIsEnvVarValid(c *check.C) {
+	tests := []struct {
+		envs          []apiTypes.Env
+		expectedError string
+	}{
+		{},
+		{
+			envs:          []apiTypes.Env{{Name: "TSURU_SERVICE"}},
+			expectedError: "cannot change an internal environment variable (TSURU_SERVICE): write-protected environment variable",
+		},
+		{
+			envs:          []apiTypes.Env{{Name: "TSURU_APPNAME"}},
+			expectedError: "cannot change an internal environment variable (TSURU_APPNAME): write-protected environment variable",
+		},
+		{
+			envs:          []apiTypes.Env{{Name: "TSURU_APP_TOKEN"}},
+			expectedError: "cannot change an internal environment variable (TSURU_APP_TOKEN): write-protected environment variable",
+		},
+		{
+			envs:          []apiTypes.Env{{Name: "TSURU_APPDIR"}},
+			expectedError: "cannot change an internal environment variable (TSURU_APPDIR): write-protected environment variable",
+		},
+		{
+			envs:          []apiTypes.Env{{Name: "MY-ENV-NAME"}},
+			expectedError: "\"MY-ENV-NAME\" is not valid environment variable name: a valid environment variable name must consist of alphabetic characters, digits, '_' and must not start with a digit: invalid environment variable name",
+		},
+		{
+			envs:          []apiTypes.Env{{Name: " foo_bar"}},
+			expectedError: "\" foo_bar\" is not valid environment variable name: a valid environment variable name must consist of alphabetic characters, digits, '_' and must not start with a digit: invalid environment variable name",
+		},
+	}
+
+	for i, tt := range tests {
+		got := IsEnvVarValid(tt.envs...)
+
+		if tt.expectedError == "" {
+			c.Assert(got, check.IsNil)
+			continue
+		}
+
+		c.Assert(got.Error(), check.Equals, tt.expectedError, check.Commentf("test case: %d", i+1))
+	}
 }
 
 func (s *S) TestUnsetEnv(c *check.C) {

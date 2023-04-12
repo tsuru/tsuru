@@ -4,6 +4,11 @@
 
 package api
 
+import "errors"
+
+var ErrWriteProtectedEnvVar = errors.New("write-protected environment variable")
+var ErrInvalidEnvVarName = errors.New("invalid environment variable name")
+
 // Envs represents the configuration of an environment variable data
 // for the remote API
 type Envs struct {
