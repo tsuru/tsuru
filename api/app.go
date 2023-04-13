@@ -1060,7 +1060,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //	200: OK
 //	401: Unauthorized
 //	404: App not found
-func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var variables []string
 	if envs, ok := r.URL.Query()["env"]; ok {
 		variables = envs
@@ -1109,7 +1109,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
 	if err != nil {
@@ -1260,7 +1260,7 @@ func isEnvVarName(name string) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
