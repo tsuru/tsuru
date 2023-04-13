@@ -1126,7 +1126,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 
-	if err = IsEnvVarValid(e.Envs...); err != nil {
+	if err = validateApiEnvVars(e.Envs); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("There were errors validating environment variables: %s", err)}
 	}
 
@@ -1199,26 +1199,17 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	return err
 }
 
-func IsEnvVarValid(envs ...apiTypes.Env) error {
-	envNames := make([]string, len(envs))
-	for i, e := range envs {
-		envNames[i] = e.Name
-	}
-
-	return isEnvsNamesVarValid(envNames...)
-}
-
-func isEnvsNamesVarValid(envs ...string) error {
+func validateApiEnvVars(envs []apiTypes.Env) error {
 	var errs errors.MultiError
 
 	for _, e := range envs {
-		if isInternalEnv(e) {
-			errs.Add(fmt.Errorf("cannot change an internal environment variable (%s): %w", e, apiTypes.ErrWriteProtectedEnvVar))
+		if isInternalEnv(e.Name) {
+			errs.Add(fmt.Errorf("cannot change an internal environment variable (%s): %w", e.Name, apiTypes.ErrWriteProtectedEnvVar))
 			continue
 		}
 
-		if err := isEnvVarName(e); err != nil {
-			errs.Add(fmt.Errorf("%q is not valid environment variable name: %w", e, err))
+		if err := isEnvVarUnixLike(e.Name); err != nil {
+			errs.Add(fmt.Errorf("%q is not valid environment variable name: %w", e.Name, err))
 			continue
 		}
 	}
@@ -1240,10 +1231,10 @@ func internalEnvs() []string {
 	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }
 
-var envVarNameRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
+var envVarUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
 
-func isEnvVarName(name string) error {
-	if envVarNameRegexp.MatchString(name) {
+func isEnvVarUnixLike(name string) error {
+	if envVarUnixLikeRegexp.MatchString(name) {
 		return nil
 	}
 

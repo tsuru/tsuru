@@ -4065,7 +4065,7 @@ func (s *S) TestIsEnvVarValid(c *check.C) {
 	}
 
 	for i, tt := range tests {
-		got := IsEnvVarValid(tt.envs...)
+		got := validateApiEnvVars(tt.envs)
 
 		if tt.expectedError == "" {
 			c.Assert(got, check.IsNil)

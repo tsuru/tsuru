@@ -39,7 +39,6 @@ type inputJob struct {
 
 	Schedule  string                 `json:"schedule"`
 	Container jobTypes.ContainerInfo `json:"container"`
-	Envs      []bindTypes.EnvVar     `json:"envs"`
 	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
 }
 
@@ -239,11 +238,6 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return permission.ErrUnauthorized
 	}
 
-	err = isBindEnvVarValid(ij.Envs...)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-
 	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
@@ -258,7 +252,6 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Spec: jobTypes.JobSpec{
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
-			Envs:      ij.Envs,
 		},
 	}
 	if newJob.TeamOwner == "" {
@@ -326,7 +319,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Spec: jobTypes.JobSpec{
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
-			Envs:      ij.Envs,
 		},
 	}
 	if j.TeamOwner == "" {
@@ -340,10 +332,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	)
 	if !canCreate {
 		return permission.ErrUnauthorized
-	}
-	err = isBindEnvVarValid(ij.Envs...)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
@@ -629,7 +617,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 
-	if err = IsEnvVarValid(e.Envs...); err != nil {
+	if err = validateApiEnvVars(e.Envs); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("There were errors validating environment variables: %s", err)}
 	}
 
@@ -766,13 +754,4 @@ func contextsForJob(job *jobTypes.Job) []permTypes.PermissionContext {
 		permission.Context(permTypes.CtxJob, job.Name),
 		permission.Context(permTypes.CtxPool, job.Pool),
 	)
-}
-
-func isBindEnvVarValid(envs ...bindTypes.EnvVar) error {
-	envNames := make([]string, len(envs))
-	for i, e := range envs {
-		envNames[i] = e.Name
-	}
-
-	return isEnvsNamesVarValid(envNames...)
 }
