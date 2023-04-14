@@ -1,7 +1,9 @@
 .PHONY: html docs site
 
 install-deps:
-	@poetry --version &>/dev/null || python3 -m pip install poetry
+ifeq (, $(shell which poetry))
+	python3 -m pip install poetry
+endif
 	@poetry install -q
 
 serve: install-deps
