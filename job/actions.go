@@ -211,12 +211,12 @@ var reserveUserCronjob = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		var user auth.User
+		var user authTypes.User
 		switch ctx.Params[1].(type) {
-		case auth.User:
-			user = ctx.Params[1].(auth.User)
-		case *auth.User:
-			user = *ctx.Params[1].(*auth.User)
+		case authTypes.User:
+			user = ctx.Params[1].(authTypes.User)
+		case *authTypes.User:
+			user = *ctx.Params[1].(*authTypes.User)
 		default:
 			return nil, errors.New("second parameter must be auth.User or *auth.User")
 		}
