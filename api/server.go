@@ -46,6 +46,7 @@ import (
 	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/healer"
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
@@ -185,6 +186,10 @@ func setupServices() error {
 		return errors.Wrapf(err, "could not initialize pool service")
 	}
 	servicemanager.Volume, err = volume.VolumeService()
+	if err != nil {
+		return errors.Wrapf(err, "could not initialize volume service")
+	}
+	servicemanager.Job, err = job.JobService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize volume service")
 	}

@@ -7,6 +7,7 @@ package job
 import (
 	"context"
 
+	"github.com/tsuru/tsuru/servicemanager"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/check.v1"
 )
@@ -18,9 +19,9 @@ func (s *S) TestGetByName(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 	}
-	err := CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
-	myJob, err := GetByName(context.TODO(), newJob.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newJob.Name, check.DeepEquals, myJob.Name)
 }
@@ -39,16 +40,16 @@ func (s *S) TestCreateCronjob(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &newCron, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user, false)
 	c.Assert(err, check.IsNil)
-	myJob, err := GetByName(context.TODO(), newCron.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
 	c.Assert(s.provisioner.ProvisionedJob(&newCron), check.Equals, true)
 }
 
 func (s *S) TestGetJobByNameNotFound(c *check.C) {
-	job, err := GetByName(context.TODO(), "404")
+	job, err := servicemanager.Job.GetByName(context.TODO(), "404")
 	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
 	c.Assert(job, check.IsNil)
 }
@@ -67,12 +68,12 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
-	job, err := GetByName(context.TODO(), newJob.Name)
+	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, true)
-	err = DeleteFromProvisioner(context.TODO(), job)
+	err = servicemanager.Job.DeleteFromProvisioner(context.TODO(), job)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, false)
 }
@@ -91,14 +92,14 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
 	c.Assert(err, check.IsNil)
-	job, err := GetByName(context.TODO(), newJob.Name)
+	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, true)
-	err = RemoveJobFromDb(job.Name)
+	err = servicemanager.Job.RemoveJobFromDb(job.Name)
 	c.Assert(err, check.IsNil)
-	_, err = GetByName(context.TODO(), job.Name)
+	_, err = servicemanager.Job.GetByName(context.TODO(), job.Name)
 	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
 }
 
@@ -146,11 +147,11 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
-	err = UpdateJob(context.TODO(), &j2, &j1, s.user)
+	err = servicemanager.Job.UpdateJob(context.TODO(), &j2, &j1, s.user)
 	c.Assert(err, check.IsNil)
-	updatedJob, err := GetByName(context.TODO(), j2.Name)
+	updatedJob, err := servicemanager.Job.GetByName(context.TODO(), j2.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(updatedJob.TeamOwner, check.Equals, j1.TeamOwner)
 	c.Assert(updatedJob.Pool, check.Equals, j1.Pool)
@@ -171,10 +172,10 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(&j1), check.Equals, false)
-	err = Trigger(context.TODO(), &j1)
+	err = servicemanager.Job.Trigger(context.TODO(), &j1)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(&j1), check.Equals, true)
 }
@@ -205,11 +206,11 @@ func (s *S) TestList(c *check.C) {
 			},
 		},
 	}
-	err := CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
 	c.Assert(err, check.IsNil)
-	err = CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, s.user, false)
 	c.Assert(err, check.IsNil)
-	jobs, err := List(context.TODO(), &Filter{})
+	jobs, err := servicemanager.Job.List(context.TODO(), &jobTypes.Filter{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 2)
 }

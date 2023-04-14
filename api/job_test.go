@@ -17,11 +17,11 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event/eventtest"
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -46,9 +46,10 @@ func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	err := job.CreateJob(context.TODO(), &j, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, true)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByName(context.TODO(), j.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -83,9 +84,10 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByName(context.TODO(), j.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      "this-is-a-cronjob",
@@ -116,9 +118,10 @@ func (s *S) TestDeleteJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	err := job.CreateJob(context.TODO(), j, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), j, user, true)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByName(context.TODO(), j.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -159,9 +162,10 @@ func (s *S) TestDeleteJobForbidden(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	err := job.CreateJob(context.TODO(), j, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), j, user, true)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByName(context.TODO(), j.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -198,9 +202,10 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), j, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), j, user, false)
 	c.Assert(err, check.IsNil)
-	myJob, err := job.GetByName(context.TODO(), j.Name)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      myJob.Name,
@@ -545,7 +550,8 @@ func (s *S) TestCreateJobAlreadyExists(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	err := job.CreateJob(context.TODO(), &oldJob, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &oldJob, user, true)
 	c.Assert(err, check.IsNil)
 	j := inputJob{Name: "some-job", TeamOwner: s.team.Name, Pool: "test1"}
 	var buffer bytes.Buffer
@@ -629,9 +635,10 @@ func (s *S) TestUpdateJob(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, true)
 	c.Assert(err, check.IsNil)
-	gotJob, err := job.GetByName(context.TODO(), j1.Name)
+	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	ij := inputJob{
@@ -651,7 +658,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
-	gotJob, err = job.GetByName(context.TODO(), j1.Name)
+	gotJob, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Spec.Container, check.DeepEquals, ij.Container)
 }
@@ -672,9 +679,10 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	gotJob, err := job.GetByName(context.TODO(), j1.Name)
+	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
@@ -714,7 +722,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
-	gotJob, err = job.GetByName(context.TODO(), j1.Name)
+	gotJob, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	expectedJob := jobTypes.Job{
 		Name:      j1.Name,
@@ -800,9 +808,10 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	_, err = job.GetByName(context.TODO(), j1.Name)
+	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:     "cron",
@@ -837,9 +846,10 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	_, err = job.GetByName(context.TODO(), j1.Name)
+	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
 	ij := inputJob{
 		Name:      "cron",
@@ -877,7 +887,8 @@ func (s *S) TestTriggerManualJob(c *check.C) {
 			},
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -907,7 +918,8 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 			},
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -958,11 +970,12 @@ func (s *S) TestJobList(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs", nil)
 	c.Assert(err, check.IsNil)
@@ -1001,11 +1014,12 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs?name=manual", nil)
 	c.Assert(err, check.IsNil)
@@ -1052,11 +1066,12 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs?teamOwner=angra", nil)
 	c.Assert(err, check.IsNil)
@@ -1101,11 +1116,12 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err := job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j3, u, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs?owner=%s", u.Email), nil)
 	c.Assert(err, check.IsNil)
@@ -1147,11 +1163,12 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	err = job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = job.CreateJob(context.TODO(), &j3, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs?pool=pool1", nil)
 	c.Assert(err, check.IsNil)
@@ -1180,7 +1197,8 @@ func (s *S) TestJobInfo(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 	}
-	err = job.CreateJob(context.TODO(), &j1, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s", j1.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -1212,7 +1230,8 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1"}
-	err = job.CreateJob(context.TODO(), j, s.user, true)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), j, user, true)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/jobs/%s/env", j.Name)
 	d := apiTypes.Envs{
@@ -1233,7 +1252,7 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	j, err = job.GetByName(context.TODO(), "black-dog")
+	j, err = servicemanager.Job.GetByName(context.TODO(), "black-dog")
 	c.Assert(err, check.IsNil)
 	expected := bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(j.Spec.Envs[0], check.DeepEquals, expected)
@@ -1290,7 +1309,8 @@ func (s *S) TestJobLogsList(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name}
-	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s/log?lines=10", j.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -1310,7 +1330,8 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 		s.provisioner.LogsEnabled = false
 	}()
 	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name}
-	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
 	c.Assert(err, check.IsNil)
 	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &j, appTypes.ListLogArgs{
 		Name:  j.Name,

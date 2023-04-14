@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
@@ -673,7 +672,7 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 			return &errors.ValidationError{Message: err.Error()}
 		}
 	case permTypes.CtxJob:
-		if _, err := job.GetByName(ctx, contextValue); err != nil {
+		if _, err := servicemanager.Job.GetByName(ctx, contextValue); err != nil {
 			return &errors.ValidationError{Message: err.Error()}
 		}
 	}

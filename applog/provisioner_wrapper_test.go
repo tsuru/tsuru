@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -28,7 +27,7 @@ type ProvisionerWrapperSuite struct {
 }
 
 func newFakeJob(c *check.C) {
-	_, err := job.GetByName(context.TODO(), "j1")
+	_, err := servicemanager.Job.GetByName(context.TODO(), "j1")
 	if err == jobTypes.ErrJobNotFound {
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)

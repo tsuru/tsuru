@@ -46,7 +46,7 @@ type inputJob struct {
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
-	j, err := job.GetByName(ctx, name)
+	j, err := servicemanager.Job.GetByName(ctx, name)
 	if err != nil {
 		if err == jobTypes.ErrJobNotFound {
 			return nil, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("Job %s not found.", name)}
@@ -56,9 +56,9 @@ func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
 	return j, nil
 }
 
-func jobFilterByContext(contexts []permTypes.PermissionContext, filter *job.Filter) *job.Filter {
+func jobFilterByContext(contexts []permTypes.PermissionContext, filter *jobTypes.Filter) *jobTypes.Filter {
 	if filter == nil {
-		filter = &job.Filter{}
+		filter = &jobTypes.Filter{}
 	}
 contextsLoop:
 	for _, c := range contexts {
@@ -67,14 +67,21 @@ contextsLoop:
 			filter.Extra = nil
 			break contextsLoop
 		case permTypes.CtxTeam:
-			filter.ExtraIn("teams", c.Value)
+			filterExtraIn(filter, "teams", c.Value)
 		case permTypes.CtxJob:
-			filter.ExtraIn("name", c.Value)
+			filterExtraIn(filter, "name", c.Value)
 		case permTypes.CtxPool:
-			filter.ExtraIn("pool", c.Value)
+			filterExtraIn(filter, "pool", c.Value)
 		}
 	}
 	return filter
+}
+
+func filterExtraIn(f *jobTypes.Filter, name string, value string) {
+	if f.Extra == nil {
+		f.Extra = make(map[string][]string)
+	}
+	f.Extra[name] = append(f.Extra[name], value)
 }
 
 // title: job list
@@ -88,7 +95,7 @@ contextsLoop:
 //	401: Unauthorized
 func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	filter := &job.Filter{}
+	filter := &jobTypes.Filter{}
 	if name := r.URL.Query().Get("name"); name != "" {
 		filter.Name = name
 	}
@@ -107,7 +114,7 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
-	jobs, err := job.List(ctx, jobFilterByContext(contexts, filter))
+	jobs, err := servicemanager.Job.List(ctx, jobFilterByContext(contexts, filter))
 	if err != nil {
 		return err
 	}
@@ -151,7 +158,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = job.Trigger(ctx, j)
+	err = servicemanager.Job.Trigger(ctx, j)
 	if err != nil {
 		return err
 	}
@@ -240,8 +247,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
-
-	u, err := auth.ConvertNewUser(t.User())
+	user, err := t.User()
 	if err != nil {
 		return err
 	}
@@ -276,7 +282,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer func() {
 		evt.Done(err)
 	}()
-	err = job.UpdateJob(ctx, &newJob, oldJob, u)
+	err = servicemanager.Job.UpdateJob(ctx, &newJob, oldJob, user)
 	if err != nil {
 		return err
 	}
@@ -336,11 +342,11 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canCreate {
 		return permission.ErrUnauthorized
 	}
-	u, err := auth.ConvertNewUser(t.User())
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	err = job.CreateJob(ctx, j, u, ij.Trigger)
+	err = servicemanager.Job.CreateJob(ctx, j, u, ij.Trigger)
 	if err != nil {
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
@@ -415,13 +421,13 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = job.RemoveJobFromDb(j.Name); err != nil {
+	if err = servicemanager.Job.RemoveJobFromDb(j.Name); err != nil {
 		if err == jobTypes.ErrJobNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err
 	}
-	err = job.DeleteFromProvisioner(ctx, j)
+	err = servicemanager.Job.DeleteFromProvisioner(ctx, j)
 	if err != nil {
 		return err
 	}

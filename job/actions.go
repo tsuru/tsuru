@@ -132,7 +132,7 @@ var insertJob = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		job := ctx.FWResult.(*jobTypes.Job)
-		RemoveJobFromDb(job.Name)
+		servicemanager.Job.RemoveJobFromDb(job.Name)
 	},
 	MinParams: 1,
 }
@@ -143,7 +143,7 @@ func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = GetByName(ctx, job.Name)
+	_, err = servicemanager.Job.GetByName(ctx, job.Name)
 	if err == jobTypes.ErrJobNotFound {
 		return conn.Jobs().Insert(job)
 	} else if err == nil {
@@ -158,7 +158,7 @@ func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	defer conn.Close()
-	oldJob, err := GetByName(ctx, job.Name)
+	oldJob, err := servicemanager.Job.GetByName(ctx, job.Name)
 	if err != nil {
 		return err
 	}
