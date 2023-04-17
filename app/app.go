@@ -1420,8 +1420,7 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	}
 
 	if crg, ok := prov.(provision.CurrentReplicasGetter); ok {
-		err = recordNumberOfReplicas(ctx, app, process, version, crg)
-		if err != nil {
+		if err = saveCurrentReplicasOnProcessPastUnits(ctx, app, process, version, crg); err != nil {
 			log.Errorf("[stop] could not store the old process number: %s", err)
 			return err
 		}
@@ -2934,7 +2933,7 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	return registryProv.RegistryForApp(app.ctx, app)
 }
 
-func recordNumberOfReplicas(ctx context.Context, app *App, process string, version appTypes.AppVersion, crg provision.CurrentReplicasGetter) error {
+func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, process string, version appTypes.AppVersion, crg provision.CurrentReplicasGetter) error {
 	if version == nil {
 		return nil // nothing to do
 	}
