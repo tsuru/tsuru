@@ -51,6 +51,7 @@ var (
 	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
 	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
 	_ provision.NodeRebalanceProvisioner = &FakeProvisioner{}
+	_ provision.CurrentReplicasGetter    = &FakeProvisioner{}
 	_ provision.App                      = &FakeApp{}
 	_ bind.App                           = &FakeApp{}
 )
@@ -1160,6 +1161,28 @@ func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]p
 		allUnits = append(allUnits, p.apps[a.GetName()].units...)
 	}
 	return allUnits, nil
+}
+
+func (p *FakeProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) (int32, error) {
+	a, found := p.apps[app.GetName()]
+	if !found {
+		return 0, nil
+	}
+
+	var replicas int32
+	for _, u := range a.units {
+		if u.ProcessName != process {
+			continue
+		}
+
+		if version != nil && u.Version != version.Version() {
+			continue
+		}
+
+		replicas += 1
+	}
+
+	return replicas, nil
 }
 
 func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provision.UnitMetric, error) {

@@ -103,6 +103,7 @@ var (
 	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
 	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
 	_ provision.JobProvisioner           = &kubernetesProvisioner{}
+	_ provision.CurrentReplicasGetter    = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
@@ -539,6 +540,7 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	if err != nil {
 		return err
 	}
+
 	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
 		return err
@@ -838,6 +840,40 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 		units = append(units, clusterUnits...)
 	}
 	return units, nil
+}
+
+func (p *kubernetesProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) (int32, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	if app == nil {
+		return 0, errors.New("app cannot be nil")
+	}
+
+	if process == "" {
+		return 0, errors.New("process cannot be empty")
+	}
+
+	client, err := clusterForPool(ctx, app.GetPool())
+	if err != nil {
+		return 0, err
+	}
+
+	ns := client.PoolNamespace(app.GetPool())
+
+	deployName := deploymentNameForApp(app, process, version.Version())
+
+	deploy, err := client.AppsV1().Deployments(ns).Get(ctx, deployName, metav1.GetOptions{})
+	if err != nil {
+		return 0, err
+	}
+
+	if deploy.Spec.Replicas == nil {
+		return 0, nil
+	}
+
+	return *deploy.Spec.Replicas, nil
 }
 
 func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {

@@ -159,9 +159,13 @@ func (v *appVersionImpl) UpdatePastUnits(process string, replicas int) error {
 	}
 
 	if v.versionInfo.PastUnits == nil {
-		v.versionInfo.PastUnits = map[string]int{process: replicas}
-	} else {
+		v.versionInfo.PastUnits = make(map[string]int)
+	}
+
+	if replicas > 0 {
 		v.versionInfo.PastUnits[process] = replicas
+	} else {
+		delete(v.versionInfo.PastUnits, process)
 	}
 
 	return v.storage.UpdateVersion(v.ctx, v.app.GetName(), v.versionInfo)

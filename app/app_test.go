@@ -2622,38 +2622,35 @@ func (s *S) TestStop(c *check.C) {
 	a := App{Name: "app", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
-	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(2, "web", "", nil)
+	version := newSuccessfulAppVersion(c, &a)
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		Processes: map[string][]string{
+			"web":    []string{"/path/to/server.sh"},
+			"worker": []string{"/path/to/worker.sh"},
+		},
+	})
 	c.Assert(err, check.IsNil)
-	err = a.Stop(context.TODO(), &buf, "", "")
+	err = a.AddUnits(5, "web", "", io.Discard)
 	c.Assert(err, check.IsNil)
+	err = a.AddUnits(3, "worker", "", io.Discard)
+	c.Assert(err, check.IsNil)
+	var output bytes.Buffer
+	err = a.Stop(context.TODO(), &output, "", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(output.String(), check.Matches, `(?s).*---> Stopping the app "app".*`)
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, check.IsNil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 2)
+	c.Assert(units, check.HasLen, 8)
 	for _, u := range units {
 		c.Assert(u.Status, check.Equals, provision.StatusStopped)
 	}
-}
-
-func (s *S) TestStopPastUnits(c *check.C) {
-	a := App{Name: "app", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
-	version := newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(2, "web", strconv.Itoa(version.Version()), nil)
-	c.Assert(err, check.IsNil)
-	err = a.Stop(context.TODO(), &buf, "", "")
-	c.Assert(err, check.IsNil)
+	versionStr := strconv.Itoa(version.Version())
 	var updatedVersion appTypes.AppVersion
-	updatedVersion, err = a.getVersion(context.TODO(), strconv.Itoa(version.Version()))
+	updatedVersion, err = a.getVersion(context.TODO(), versionStr)
 	c.Assert(err, check.IsNil)
-	pastUnits := updatedVersion.VersionInfo().PastUnits
-	c.Assert(pastUnits, check.HasLen, 1)
-	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 2})
+	c.Assert(updatedVersion.VersionInfo().PastUnits, check.DeepEquals, map[string]int{"web": 5, "worker": 3})
 }
 
 func (s *S) TestSleep(c *check.C) {
@@ -4518,6 +4515,38 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	starts := s.provisioner.Starts(&a, "")
 	c.Assert(starts, check.Equals, 1)
+}
+
+func (s *S) TestStart_StartProcessesUsingReplicasFromLastAppStop(c *check.C) {
+	a := App{Name: "app", TeamOwner: s.team.Name}
+	err := CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newSuccessfulAppVersion(c, &a)
+	err = version.AddData(appTypes.AddVersionDataArgs{
+		Processes: map[string][]string{
+			"web":    []string{"/path/to/server.sh"},
+			"worker": []string{"/path/to/worker.sh"},
+		},
+	})
+	err = version.UpdatePastUnits("web", 5)
+	c.Assert(err, check.IsNil)
+	err = version.UpdatePastUnits("worker", 3)
+	c.Assert(err, check.IsNil)
+	var output bytes.Buffer
+	err = a.Start(context.TODO(), &output, "", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(output.String(), check.Matches, `(?s)(.*)Before being stopped, the "web" process had 5 replicas\.\.\. re-adding them\.(.*)`)
+	c.Assert(output.String(), check.Matches, `(?s)(.*)Before being stopped, the "worker" process had 3 replicas\.\.\. re-adding them\.(.*)`)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 8)
+	for _, u := range units {
+		c.Assert(u.Status, check.Equals, provision.StatusStarted)
+	}
+	versionStr := strconv.Itoa(version.Version())
+	version, err = a.getVersion(context.TODO(), versionStr)
+	c.Assert(err, check.IsNil)
+	c.Assert(version.VersionInfo().PastUnits, check.DeepEquals, map[string]int{})
 }
 
 func (s *S) TestStartAsleepApp(c *check.C) {
