@@ -54,6 +54,7 @@ nav:
 - User guides:
   - Deploy:
     - Using Dockerfile: ./user_guides/deploy_using_dockerfile.md
+    - Using app deploy: ./user_guides/app_deploy.md
 - Admin guides:
   - Local Environment:
     - With Makefile: admin/local_environment/make-local.md
