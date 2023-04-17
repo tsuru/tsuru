@@ -2625,8 +2625,8 @@ func (s *S) TestStop(c *check.C) {
 	version := newSuccessfulAppVersion(c, &a)
 	err = version.AddData(appTypes.AddVersionDataArgs{
 		Processes: map[string][]string{
-			"web":    []string{"/path/to/server.sh"},
-			"worker": []string{"/path/to/worker.sh"},
+			"web":    {"/path/to/server.sh"},
+			"worker": {"/path/to/worker.sh"},
 		},
 	})
 	c.Assert(err, check.IsNil)
@@ -4524,10 +4524,11 @@ func (s *S) TestStart_StartProcessesUsingReplicasFromLastAppStop(c *check.C) {
 	version := newSuccessfulAppVersion(c, &a)
 	err = version.AddData(appTypes.AddVersionDataArgs{
 		Processes: map[string][]string{
-			"web":    []string{"/path/to/server.sh"},
-			"worker": []string{"/path/to/worker.sh"},
+			"web":    {"/path/to/server.sh"},
+			"worker": {"/path/to/worker.sh"},
 		},
 	})
+	c.Assert(err, check.IsNil)
 	err = version.UpdatePastUnits("web", 5)
 	c.Assert(err, check.IsNil)
 	err = version.UpdatePastUnits("worker", 3)
