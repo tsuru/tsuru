@@ -1163,7 +1163,7 @@ func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]p
 	return allUnits, nil
 }
 
-func (p *FakeProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) (int32, error) {
+func (p *FakeProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version int) (int32, error) {
 	a, found := p.apps[app.GetName()]
 	if !found {
 		return 0, nil
@@ -1175,7 +1175,7 @@ func (p *FakeProvisioner) CurrentReplicas(ctx context.Context, app provision.App
 			continue
 		}
 
-		if version != nil && u.Version != version.Version() {
+		if u.Version != version {
 			continue
 		}
 

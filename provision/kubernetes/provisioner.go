@@ -842,17 +842,21 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 	return units, nil
 }
 
-func (p *kubernetesProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) (int32, error) {
+func (p *kubernetesProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version int) (int32, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
 
 	if app == nil {
-		return 0, errors.New("app cannot be nil")
+		return 0, fmt.Errorf("app cannot be nil")
 	}
 
 	if process == "" {
-		return 0, errors.New("process cannot be empty")
+		return 0, fmt.Errorf("process cannot be empty")
+	}
+
+	if version == 0 {
+		return 0, fmt.Errorf("version should be greater than zero")
 	}
 
 	client, err := clusterForPool(ctx, app.GetPool())
@@ -860,20 +864,23 @@ func (p *kubernetesProvisioner) CurrentReplicas(ctx context.Context, app provisi
 		return 0, err
 	}
 
-	ns := client.PoolNamespace(app.GetPool())
-
-	deployName := deploymentNameForApp(app, process, version.Version())
-
-	deploy, err := client.AppsV1().Deployments(ns).Get(ctx, deployName, metav1.GetOptions{})
+	grouped, err := deploymentsDataForProcess(ctx, client, app, process)
 	if err != nil {
 		return 0, err
 	}
 
-	if deploy.Spec.Replicas == nil {
-		return 0, nil
-	}
+	depInfos := grouped.versioned[version]
 
-	return *deploy.Spec.Replicas, nil
+	switch len(depInfos) {
+	case 0:
+		return 0, fmt.Errorf("no deployment found for process")
+
+	case 1:
+		return *depInfos[0].dep.Spec.Replicas, nil
+
+	default:
+		return 0, fmt.Errorf("too many deployments for process")
+	}
 }
 
 func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {

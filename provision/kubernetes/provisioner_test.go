@@ -3421,3 +3421,103 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "true")
 }
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_ContextCanceled(c *check.C) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := s.p.CurrentReplicas(ctx, nil, "", 0)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `context canceled`)
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_AppNotProvided(c *check.C) {
+	_, err := s.p.CurrentReplicas(context.TODO(), nil, "", 0)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `app cannot be nil`)
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_ProcessNotProvided(c *check.C) {
+	a, _, _ := s.mock.DefaultReactions(c)
+	_, err := s.p.CurrentReplicas(context.TODO(), a, "", 0)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `process cannot be empty`)
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_VersionNotProvided(c *check.C) {
+	a, _, _ := s.mock.DefaultReactions(c)
+	_, err := s.p.CurrentReplicas(context.TODO(), a, "web", 0)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `version should be greater than zero`)
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	v1 := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "./path/to/server.sh",
+			"p2": "./path/to/worker.sh",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 5, "p1", v1, io.Discard)
+	c.Assert(err, check.IsNil)
+	err = s.p.AddUnits(context.TODO(), a, 3, "p2", v1, io.Discard)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	replicas, err := s.p.CurrentReplicas(context.TODO(), a, "p1", v1.Version())
+	c.Assert(err, check.IsNil)
+	c.Assert(replicas, check.Equals, int32(5))
+
+	replicas, err = s.p.CurrentReplicas(context.TODO(), a, "p2", v1.Version())
+	c.Assert(err, check.IsNil)
+	c.Assert(replicas, check.Equals, int32(3))
+
+	v2 := newSuccessfulVersion(c, a, map[string]any{
+		"processes": map[string]any{
+			"p1": "./path/to/server.sh",
+		},
+	})
+	err = s.p.AddUnits(context.TODO(), a, 10, "p1", v2, io.Discard)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	replicas, err = s.p.CurrentReplicas(context.TODO(), a, "p1", v2.Version())
+	c.Assert(err, check.IsNil)
+	c.Assert(replicas, check.Equals, int32(10))
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_VersionNotFound(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	v1 := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "./path/to/server.sh",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 5, "p1", v1, io.Discard)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	_, err = s.p.CurrentReplicas(context.TODO(), a, "p1", 42)
+	c.Assert(err, check.ErrorMatches, `no deployment found for process`)
+}
+
+func (s *S) TestKubernetesProvisioner_CurrentReplicas_ProcessNotFound(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	v1 := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "./path/to/server.sh",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 5, "p1", v1, io.Discard)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	_, err = s.p.CurrentReplicas(context.TODO(), a, "p2", 1)
+	c.Assert(err, check.ErrorMatches, `no deployment found for process`)
+}

@@ -2949,7 +2949,7 @@ func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, proces
 		}
 
 		var replicas int32
-		replicas, err = crg.CurrentReplicas(ctx, app, p, version)
+		replicas, err = crg.CurrentReplicas(ctx, app, p, version.Version())
 		if err != nil {
 			return err
 		}
