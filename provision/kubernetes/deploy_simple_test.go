@@ -160,7 +160,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
 						s.hasSvc(c, "myapp0-p2")
 					},
 				},
