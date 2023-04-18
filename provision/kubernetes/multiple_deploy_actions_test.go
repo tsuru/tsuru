@@ -58,9 +58,12 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					deployStep: &deployStep{procs: []string{"p1", "p2"}},
 					check: func() {
 						s.hasDepWithVersion(c, "myapp0-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp0-p2", 1, 1)
 						s.hasSvc(c, "myapp0-p1")
+						s.hasSvc(c, "myapp0-p2")
 
 						s.noSvc(c, "myapp0-p1-v1")
+						s.noSvc(c, "myapp0-p2-v1")
 					},
 				},
 				{
@@ -77,9 +80,9 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				{
 					unitStep: &unitStep{version: 2, units: 2, proc: "p1"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p1-v2", 2, 3)
-
 						s.hasDepWithVersion(c, "myapp0-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp0-p2", 1, 1)
+						s.hasDepWithVersion(c, "myapp0-p1-v2", 2, 3)
 						s.hasDepWithVersion(c, "myapp0-p2-v2", 2, 1)
 						s.hasSvc(c, "myapp0-p1")
 						s.hasSvc(c, "myapp0-p1-v2")
@@ -101,6 +104,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 			},
 		},
+
 		{
 			steps: []stepDef{
 				{
@@ -142,6 +146,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 			},
 		},
+
 		{
 			steps: []stepDef{
 				{
@@ -170,8 +175,12 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				{
 					stopStep: &stopStep{proc: "p1", version: 1},
 					check: func() {
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
 						s.hasDepWithVersion(c, "myapp2-p2", 1, 4)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p2")
 						s.noSvc(c, "myapp2-p1-v1")
+						s.noSvc(c, "myapp2-p2-v1")
 					},
 				},
 				{
@@ -179,22 +188,27 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					check: func() {
 						s.hasDepWithVersion(c, "myapp2-p2", 1, 0)
 						s.hasDepWithVersion(c, "myapp2-p1", 1, 0)
+						s.hasSvc(c, "myapp2-p1")
+						s.hasSvc(c, "myapp2-p2")
+						s.noSvc(c, "myapp2-p1-v1")
+						s.noSvc(c, "myapp2-p2-v1")
 					},
 				},
 				{
 					startStep: &startStep{proc: "p1", version: 1},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p1", 1, 3)
+						s.hasDepWithVersion(c, "myapp2-p1", 1, 1)
 					},
 				},
 				{
 					startStep: &startStep{proc: "p2", version: 1},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp2-p2", 1, 4)
+						s.hasDepWithVersion(c, "myapp2-p2", 1, 1)
 					},
 				},
 			},
 		},
+
 		{
 			steps: []stepDef{
 				{
@@ -249,15 +263,41 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 				},
 			},
 		},
+
 		{
 			steps: []stepDef{
 				{
 					deployStep: &deployStep{procs: []string{"p1", "p2", "p3"}},
-					check:      func() {},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp4-p2", 1, 1)
+						s.hasDepWithVersion(c, "myapp4-p3", 1, 1)
+
+						s.hasSvc(c, "myapp4-p1")
+						s.hasSvc(c, "myapp4-p2")
+						s.hasSvc(c, "myapp4-p3")
+					},
 				},
 				{
 					deployStep: &deployStep{procs: []string{"p1", "p2", "p3"}, newVersion: true},
-					check:      func() {},
+					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1", 1, 1)
+						s.hasDepWithVersion(c, "myapp4-p2", 1, 1)
+						s.hasDepWithVersion(c, "myapp4-p3", 1, 1)
+						s.hasSvc(c, "myapp4-p1")
+						s.hasSvc(c, "myapp4-p2")
+						s.hasSvc(c, "myapp4-p3")
+						s.hasSvc(c, "myapp4-p1-v1")
+						s.hasSvc(c, "myapp4-p2-v1")
+						s.hasSvc(c, "myapp4-p3-v1")
+
+						s.hasDepWithVersion(c, "myapp4-p1-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p2-v2", 2, 1)
+						s.hasDepWithVersion(c, "myapp4-p3-v2", 2, 1)
+						s.hasSvc(c, "myapp4-p1-v2")
+						s.hasSvc(c, "myapp4-p2-v2")
+						s.hasSvc(c, "myapp4-p3-v2")
+					},
 				},
 				{
 					unitStep: &unitStep{version: 1, units: 1, proc: "p1"},
@@ -282,17 +322,33 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						s.hasDepWithVersion(c, "myapp4-p1", 1, 0)
 						s.hasDepWithVersion(c, "myapp4-p2", 1, 0)
 						s.hasDepWithVersion(c, "myapp4-p3", 1, 0)
+						s.hasSvc(c, "myapp4-p1")
+						s.hasSvc(c, "myapp4-p2")
+						s.hasSvc(c, "myapp4-p3")
+
 						s.noDep(c, "myapp4-p1-v2")
 						s.noDep(c, "myapp4-p2-v2")
 						s.noDep(c, "myapp4-p3-v2")
+
+						s.noSvc(c, "myapp4-p1-v2")
+						s.noSvc(c, "myapp4-p2-v2")
+						s.noSvc(c, "myapp4-p3-v2")
 					},
 				},
 				{
 					startStep: &startStep{},
 					check: func() {
+						s.hasDepWithVersion(c, "myapp4-p1", 1, 0)
+						s.hasDepWithVersion(c, "myapp4-p2", 1, 0)
+						s.hasDepWithVersion(c, "myapp4-p3", 1, 0)
+
 						s.hasDepWithVersion(c, "myapp4-p1-v2", 2, 1)
 						s.hasDepWithVersion(c, "myapp4-p2-v2", 2, 1)
 						s.hasDepWithVersion(c, "myapp4-p3-v2", 2, 1)
+
+						s.hasSvc(c, "myapp4-p1-v2")
+						s.hasSvc(c, "myapp4-p2-v2")
+						s.hasSvc(c, "myapp4-p3-v2")
 					},
 				},
 			},
@@ -367,9 +423,6 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 					} else {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.stopStep.proc, true)
 						c.Assert(err, check.IsNil)
-						for _, v := range versions {
-							s.updatePastUnitsAllProcesses(c, a.Name, v)
-						}
 					}
 					for _, v := range versions {
 						err = servicecommon.ChangeAppState(context.TODO(), &serviceManager{
@@ -469,23 +522,6 @@ func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p
 			if dep.Spec.Replicas != nil && strconv.Itoa(v.Version()) == version {
 				err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
 				c.Assert(err, check.IsNil)
-			}
-		}
-	}
-}
-
-func (s *S) updatePastUnitsAllProcesses(c *check.C, appName string, v appTypes.AppVersion) {
-	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("tsuru.io/app-name=%s", appName),
-	})
-	c.Assert(err, check.IsNil)
-	for _, dep := range deps.Items {
-		if version, ok := dep.Spec.Template.Labels["tsuru.io/app-version"]; ok {
-			if strconv.Itoa(v.Version()) == version && dep.Spec.Replicas != nil {
-				if process, ok := dep.Spec.Template.Labels["tsuru.io/app-process"]; ok {
-					err = v.UpdatePastUnits(process, int(*dep.Spec.Replicas))
-					c.Assert(err, check.IsNil)
-				}
 			}
 		}
 	}
