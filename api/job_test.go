@@ -1091,7 +1091,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxGlobal, ""),
 	})
-	u, _ := auth.ConvertNewUser(token.User())
+	u, _ := token.User()
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "jobProv"
@@ -1121,7 +1121,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, u, false)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs?owner=%s", u.Email), nil)
 	c.Assert(err, check.IsNil)
