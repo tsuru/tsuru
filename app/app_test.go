@@ -17,6 +17,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -4541,13 +4542,34 @@ func (s *S) TestStart_StartProcessesUsingReplicasFromLastAppStop(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 8)
+	unitsNumberByProcess := make(map[string]int)
 	for _, u := range units {
+		unitsNumberByProcess[u.ProcessName] += 1
 		c.Assert(u.Status, check.Equals, provision.StatusStarted)
 	}
+	c.Assert(unitsNumberByProcess["web"], check.Equals, 5)
+	c.Assert(unitsNumberByProcess["worker"], check.Equals, 3)
 	versionStr := strconv.Itoa(version.Version())
 	version, err = a.getVersion(context.TODO(), versionStr)
 	c.Assert(err, check.IsNil)
 	c.Assert(version.VersionInfo().PastUnits, check.DeepEquals, map[string]int{})
+	// calling app start again to ensure it won't increase the number of replicas
+	output.Reset()
+	err = a.Start(context.TODO(), &output, "", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(strings.Contains(output.String(), `Before being stopped, the "web" process`), check.Equals, false)
+	c.Assert(strings.Contains(output.String(), `Before being stopped, the "worker" process`), check.Equals, false)
+
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 8)
+	unitsNumberByProcess = make(map[string]int)
+	for _, u := range units {
+		unitsNumberByProcess[u.ProcessName] += 1
+		c.Assert(u.Status, check.Equals, provision.StatusStarted)
+	}
+	c.Assert(unitsNumberByProcess["web"], check.Equals, 5)
+	c.Assert(unitsNumberByProcess["worker"], check.Equals, 3)
 }
 
 func (s *S) TestStartAsleepApp(c *check.C) {
