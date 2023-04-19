@@ -38,22 +38,22 @@ var (
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.NodeProvisioner          = &FakeProvisioner{}
-	_ provision.NodeContainerProvisioner = &FakeProvisioner{}
-	_ provision.InterAppProvisioner      = &FakeProvisioner{}
-	_ provision.UpdatableProvisioner     = &FakeProvisioner{}
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.LogsProvisioner          = &FakeProvisioner{}
-	_ provision.MetricsProvisioner       = &FakeProvisioner{}
-	_ provision.VolumeProvisioner        = &FakeProvisioner{}
-	_ provision.SleepableProvisioner     = &FakeProvisioner{}
-	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
-	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
-	_ provision.NodeRebalanceProvisioner = &FakeProvisioner{}
-	_ provision.CurrentReplicasGetter    = &FakeProvisioner{}
-	_ provision.App                      = &FakeApp{}
-	_ bind.App                           = &FakeApp{}
+	_ provision.Provisioner                = &FakeProvisioner{}
+	_ provision.NodeProvisioner            = &FakeProvisioner{}
+	_ provision.NodeContainerProvisioner   = &FakeProvisioner{}
+	_ provision.InterAppProvisioner        = &FakeProvisioner{}
+	_ provision.UpdatableProvisioner       = &FakeProvisioner{}
+	_ provision.Provisioner                = &FakeProvisioner{}
+	_ provision.LogsProvisioner            = &FakeProvisioner{}
+	_ provision.MetricsProvisioner         = &FakeProvisioner{}
+	_ provision.VolumeProvisioner          = &FakeProvisioner{}
+	_ provision.SleepableProvisioner       = &FakeProvisioner{}
+	_ provision.AppFilterProvisioner       = &FakeProvisioner{}
+	_ provision.ExecutableProvisioner      = &FakeProvisioner{}
+	_ provision.NodeRebalanceProvisioner   = &FakeProvisioner{}
+	_ provision.CurrentReplicasProvisioner = &FakeProvisioner{}
+	_ provision.App                        = &FakeApp{}
+	_ bind.App                             = &FakeApp{}
 )
 
 func init() {

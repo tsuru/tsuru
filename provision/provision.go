@@ -453,7 +453,7 @@ type InterAppProvisioner interface {
 
 // CurrentReplicasGetter implements how to get the current (desired)
 // number of replicas (units) of an app.
-type CurrentReplicasGetter interface {
+type CurrentReplicasProvisioner interface {
 	CurrentReplicas(ctx context.Context, a App, process string, version int) (int32, error)
 }
 

@@ -83,27 +83,27 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
-	_ provision.HCProvisioner            = &kubernetesProvisioner{}
-	_ provision.VersionsProvisioner      = &kubernetesProvisioner{}
-	_ provision.LogsProvisioner          = &kubernetesProvisioner{}
-	_ provision.MetricsProvisioner       = &kubernetesProvisioner{}
-	_ provision.AutoScaleProvisioner     = &kubernetesProvisioner{}
-	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
-	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
-	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
-	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
-	_ provision.JobProvisioner           = &kubernetesProvisioner{}
-	_ provision.CurrentReplicasGetter    = &kubernetesProvisioner{}
+	_ provision.Provisioner                = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner            = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner   = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner         = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner       = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner          = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy              = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient    = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner   = &kubernetesProvisioner{}
+	_ provision.InterAppProvisioner        = &kubernetesProvisioner{}
+	_ provision.HCProvisioner              = &kubernetesProvisioner{}
+	_ provision.VersionsProvisioner        = &kubernetesProvisioner{}
+	_ provision.LogsProvisioner            = &kubernetesProvisioner{}
+	_ provision.MetricsProvisioner         = &kubernetesProvisioner{}
+	_ provision.AutoScaleProvisioner       = &kubernetesProvisioner{}
+	_ cluster.ClusteredProvisioner         = &kubernetesProvisioner{}
+	_ provision.UpdatableProvisioner       = &kubernetesProvisioner{}
+	_ provision.MultiRegistryProvisioner   = &kubernetesProvisioner{}
+	_ provision.KillUnitProvisioner        = &kubernetesProvisioner{}
+	_ provision.JobProvisioner             = &kubernetesProvisioner{}
+	_ provision.CurrentReplicasProvisioner = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )

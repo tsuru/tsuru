@@ -1419,8 +1419,8 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 		return err
 	}
 
-	if crg, ok := prov.(provision.CurrentReplicasGetter); ok {
-		if err = saveCurrentReplicasOnProcessPastUnits(ctx, app, process, version, crg); err != nil {
+	if cr, ok := prov.(provision.CurrentReplicasProvisioner); ok {
+		if err = saveCurrentReplicasOnProcessPastUnits(ctx, app, process, version, cr); err != nil {
 			log.Errorf("[stop] could not store the old process number: %s", err)
 			return err
 		}
@@ -2933,7 +2933,7 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	return registryProv.RegistryForApp(app.ctx, app)
 }
 
-func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, process string, version appTypes.AppVersion, crg provision.CurrentReplicasGetter) error {
+func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, process string, version appTypes.AppVersion, cr provision.CurrentReplicasProvisioner) error {
 	if version == nil {
 		return nil // nothing to do
 	}
@@ -2949,7 +2949,7 @@ func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, proces
 		}
 
 		var replicas int32
-		replicas, err = crg.CurrentReplicas(ctx, app, p, version.Version())
+		replicas, err = cr.CurrentReplicas(ctx, app, p, version.Version())
 		if err != nil {
 			return err
 		}
