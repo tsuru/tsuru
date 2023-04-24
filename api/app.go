@@ -1060,7 +1060,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //	200: OK
 //	401: Unauthorized
 //	404: App not found
-func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var variables []string
 	if envs, ok := r.URL.Query()["env"]; ok {
 		variables = envs
@@ -1109,7 +1109,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
 	if err != nil {
@@ -1126,7 +1126,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 
-	if err = IsEnvVarValid(e.Envs...); err != nil {
+	if err = validateApiEnvVars(e.Envs); err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("There were errors validating environment variables: %s", err)}
 	}
 
@@ -1199,7 +1199,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return err
 }
 
-func IsEnvVarValid(envs ...apiTypes.Env) error {
+func validateApiEnvVars(envs []apiTypes.Env) error {
 	var errs errors.MultiError
 
 	for _, e := range envs {
@@ -1208,7 +1208,7 @@ func IsEnvVarValid(envs ...apiTypes.Env) error {
 			continue
 		}
 
-		if err := isEnvVarName(e.Name); err != nil {
+		if err := isEnvVarUnixLike(e.Name); err != nil {
 			errs.Add(fmt.Errorf("%q is not valid environment variable name: %w", e.Name, err))
 			continue
 		}
@@ -1231,10 +1231,10 @@ func internalEnvs() []string {
 	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
 }
 
-var envVarNameRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
+var envVarUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
 
-func isEnvVarName(name string) error {
-	if envVarNameRegexp.MatchString(name) {
+func isEnvVarUnixLike(name string) error {
+	if envVarUnixLikeRegexp.MatchString(name) {
 		return nil
 	}
 
@@ -1251,7 +1251,7 @@ func isEnvVarName(name string) error {
 //	400: Invalid data
 //	401: Unauthorized
 //	404: App not found
-func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
