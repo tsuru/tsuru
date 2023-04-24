@@ -480,9 +480,11 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 			LabelIsJob:        strconv.FormatBool(true),
 		},
 		RawLabels: map[string]string{
-			"job.kubernetes.io/name":       job.Name,
-			"job.kubernetes.io/component":  "tsuru-job",
-			"job.kubernetes.io/managed-by": "tsuru",
+			// Reference about these labels: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+			"app.kubernetes.io/name":       "tsuru-job",
+			"app.kubernetes.io/instance":   job.Name,
+			"app.kubernetes.io/component":  "job",
+			"app.kubernetes.io/managed-by": "tsuru",
 		},
 		Prefix: tsuruLabelPrefix,
 	}
