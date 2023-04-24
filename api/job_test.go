@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
+	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -20,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	apiTypes "github.com/tsuru/tsuru/types/api"
 	"github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -1194,4 +1197,57 @@ func (s *S) TestJobInfo(c *check.C) {
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
 	c.Assert([]string{s.team.Name}, check.DeepEquals, result.Job.Teams)
 	c.Assert(s.user.Email, check.DeepEquals, result.Job.Owner)
+}
+
+func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1"}
+	err = job.CreateJob(context.TODO(), j, s.user, true)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/jobs/%s/env", j.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	j, err = job.GetByName(context.TODO(), "black-dog")
+	c.Assert(err, check.IsNil)
+	expected := bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
+	c.Assert(j.Spec.Envs[0], check.DeepEquals, expected)
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}
+`)
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(j.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": j.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
 }

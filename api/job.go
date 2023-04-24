@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -21,7 +22,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
+	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
@@ -234,6 +237,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
+
 	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
@@ -582,6 +586,163 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	}
 	fmt.Fprintf(evt, "\nInstance %q is not bound to the job %q anymore.\n", instanceName, jobName)
 	return nil
+}
+
+// title: set envs
+// path: /jobs/{name}/env
+// method: POST
+// consume: application/json
+// produce: application/x-json-stream
+// responses:
+//
+//	200: Envs updated
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Job not found
+func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	var e apiTypes.Envs
+	err = ParseInput(r, &e)
+	if err != nil {
+		return err
+	}
+
+	if e.ManagedBy == "" && len(e.Envs) == 0 {
+		msg := "You must provide the list of environment variables"
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+
+	if e.PruneUnused && e.ManagedBy == "" {
+		msg := "Prune unused requires a managed-by value"
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+
+	if err = validateApiEnvVars(e.Envs); err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: fmt.Sprintf("There were errors validating environment variables: %s", err)}
+	}
+
+	jobName := r.URL.Query().Get(":name")
+	j, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermJobUpdate,
+		contextsForJob(j)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	var toExclude []string
+	for i := 0; i < len(e.Envs); i++ {
+		if (e.Envs[i].Private != nil && *e.Envs[i].Private) || e.Private {
+			toExclude = append(toExclude, fmt.Sprintf("Envs.%d.Value", i))
+		}
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(jobName),
+		Kind:       permission.PermJobUpdate,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r, toExclude...)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	envs := map[string]string{}
+	variables := []bindTypes.EnvVar{}
+	for _, v := range e.Envs {
+		envs[v.Name] = v.Value
+		private := false
+		if v.Private != nil {
+			private = *v.Private
+		}
+		// Global private override individual private definitions
+		if e.Private {
+			private = true
+		}
+		variables = append(variables, bindTypes.EnvVar{
+			Name:      v.Name,
+			Value:     v.Value,
+			Public:    !private,
+			Alias:     v.Alias,
+			ManagedBy: e.ManagedBy,
+		})
+	}
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	err = job.SetEnvs(ctx, j, bind.SetEnvArgs{
+		Envs:        variables,
+		ManagedBy:   e.ManagedBy,
+		PruneUnused: e.PruneUnused,
+		Writer:      evt,
+	})
+	if v, ok := err.(*errors.ValidationError); ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: v.Message}
+	}
+	return err
+}
+
+// title: unset envs
+// path: /apps/{app}/env
+// method: DELETE
+// produce: application/x-json-stream
+// responses:
+//
+//	200: Envs removed
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Job not found
+func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	msg := "You must provide the list of environment variables."
+	if InputValue(r, "env") == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	var variables []string
+	if envs, ok := InputValues(r, "env"); ok {
+		variables = envs
+	} else {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	jobName := r.URL.Query().Get(":name")
+	j, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermAppUpdateEnvUnset,
+		contextsForJob(j)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(jobName),
+		Kind:       permission.PermJobUpdate,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+	w.Header().Set("Content-Type", "application/x-json-stream")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	evt.SetLogWriter(writer)
+	return job.UnsetEnvs(ctx, j, bind.UnsetEnvArgs{
+		VariableNames: variables,
+		Writer:        evt,
+	})
 }
 
 func jobTarget(jobName string) event.Target {

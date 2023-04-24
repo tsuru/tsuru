@@ -7,12 +7,14 @@ package job
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/adhocore/gronx"
 	"github.com/globalsign/mgo"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -20,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -224,6 +227,102 @@ func List(ctx context.Context, filter *Filter) ([]jobTypes.Job, error) {
 		return nil, err
 	}
 	return jobs, nil
+}
+
+func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) error {
+	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
+		return nil
+	}
+
+	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
+		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
+	}
+
+	mapEnvs := map[string]bindTypes.EnvVar{}
+	for _, env := range job.Spec.Envs {
+		mapEnvs[env.Name] = env
+	}
+
+	if setEnvs.PruneUnused {
+		for _, env := range job.Spec.Envs {
+			index := indexEnvInSet(env.Name, setEnvs.Envs)
+			// only prune variables managed by requested
+			if index == -1 && env.ManagedBy == setEnvs.ManagedBy {
+				if setEnvs.Writer != nil {
+					fmt.Fprintf(setEnvs.Writer, "---- Pruning %s from environment variables ----\n", env.Name)
+					delete(mapEnvs, env.Name)
+				}
+			}
+		}
+	}
+
+	for _, env := range setEnvs.Envs {
+		mapEnvs[env.Name] = env
+	}
+
+	job.Spec.Envs = []bindTypes.EnvVar{}
+	for _, env := range mapEnvs {
+		job.Spec.Envs = append(job.Spec.Envs, env)
+	}
+	sort.Slice(job.Spec.Envs, func(i, j int) bool {
+		return job.Spec.Envs[i].Name < job.Spec.Envs[j].Name
+	})
+
+	err := updateJobDB(ctx, job)
+	if err != nil {
+		return err
+	}
+
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+	return prov.UpdateJob(ctx, job)
+
+}
+
+func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bind.UnsetEnvArgs) error {
+	if len(unsetEnvs.VariableNames) == 0 {
+		return nil
+	}
+	if unsetEnvs.Writer != nil {
+		fmt.Fprintf(unsetEnvs.Writer, "---- Unsetting %d environment variables ----\n", len(unsetEnvs.VariableNames))
+	}
+
+	mapEnvs := map[string]bindTypes.EnvVar{}
+	for _, env := range job.Spec.Envs {
+		mapEnvs[env.Name] = env
+	}
+	for _, name := range unsetEnvs.VariableNames {
+		delete(mapEnvs, name)
+	}
+	job.Spec.Envs = []bindTypes.EnvVar{}
+	for _, env := range mapEnvs {
+		job.Spec.Envs = append(job.Spec.Envs, env)
+	}
+	sort.Slice(job.Spec.Envs, func(i, j int) bool {
+		return job.Spec.Envs[i].Name < job.Spec.Envs[j].Name
+	})
+
+	err := updateJobDB(ctx, job)
+	if err != nil {
+		return err
+	}
+
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+	return prov.UpdateJob(ctx, job)
+}
+
+func indexEnvInSet(envName string, envs []bindTypes.EnvVar) int {
+	for i, e := range envs {
+		if e.Name == envName {
+			return i
+		}
+	}
+	return -1
 }
 
 func validateSchedule(jobName, schedule string) error {
