@@ -137,7 +137,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.setupMocks()
 	servicemanager.App, err = app.AppService()
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog, err = applog.AppLogService()
+	servicemanager.LogService, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)

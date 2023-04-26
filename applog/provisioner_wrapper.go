@@ -10,10 +10,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 )
 
 var (
@@ -45,31 +47,40 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 	return k.logService.Enqueue(entry)
 }
 
-func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	a, err := servicemanager.App.GetByName(ctx, args.AppName)
-	if err != nil {
-		return nil, err
+func defineLogabbleObject(ctx context.Context, lType logTypes.LogType, name string) (logTypes.LogabbleObject, error) {
+	if lType == logTypes.LogTypeJob {
+		return job.GetByName(ctx, name)
 	}
-	tsuruLogs, err := k.logService.List(ctx, args)
-	if err != nil {
-		return nil, err
-	}
-	logsProvisioner, err := k.provisionerGetter(ctx, a)
-	if err == provision.ErrLogsUnavailable {
-		return tsuruLogs, nil
-	}
-	if err != nil {
-		return nil, err
-	}
+	return servicemanager.App.GetByName(ctx, name)
+}
 
-	logs, err := logsProvisioner.ListLogs(ctx, a, args)
+func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
+	logs := []appTypes.Applog{}
+	obj, err := defineLogabbleObject(ctx, args.Type, args.Name)
+	if err != nil {
+		return nil, err
+	}
+	if args.Type == logTypes.LogTypeApp || args.Type == "" {
+		logs, err = k.logService.List(ctx, args)
+		if err != nil {
+			return nil, err
+		}
+	}
+	logsProvisioner, err := k.provisionerGetter(ctx, obj)
 	if err == provision.ErrLogsUnavailable {
-		return tsuruLogs, nil
+		return logs, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	logs = append(logs, tsuruLogs...)
+	provLogs, err := logsProvisioner.ListLogs(ctx, obj, args)
+	if err == provision.ErrLogsUnavailable {
+		return logs, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	logs = append(logs, provLogs...)
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Date.Before(logs[j].Date)
 	})
@@ -77,32 +88,35 @@ func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs
 }
 
 func (k *provisionerWrapper) Watch(ctx context.Context, args appTypes.ListLogArgs) (appTypes.LogWatcher, error) {
-	a, err := servicemanager.App.GetByName(ctx, args.AppName)
+	var tsuruWatcher appTypes.LogWatcher
+	obj, err := defineLogabbleObject(ctx, args.Type, args.Name)
 	if err != nil {
 		return nil, err
 	}
-	tsuruWatcher, err := k.logService.Watch(ctx, args)
-	if err != nil {
-		return nil, err
+	if args.Type == logTypes.LogTypeApp || args.Type == "" {
+		tsuruWatcher, err = k.logService.Watch(ctx, args)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	logsProvisioner, err := k.provisionerGetter(ctx, a)
-	if err == provision.ErrLogsUnavailable {
+	logsProvisioner, err := k.provisionerGetter(ctx, obj)
+	if err == provision.ErrLogsUnavailable && args.Type == logTypes.LogTypeApp {
 		return tsuruWatcher, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	provisionerWatcher, err := logsProvisioner.WatchLogs(ctx, a, args)
-	if err == provision.ErrLogsUnavailable {
+	provisionerWatcher, err := logsProvisioner.WatchLogs(ctx, obj, args)
+	if err == provision.ErrLogsUnavailable && tsuruWatcher != nil {
 		return tsuruWatcher, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	return newMultiWatcher(provisionerWatcher, tsuruWatcher), nil
+	if tsuruWatcher != nil {
+		return newMultiWatcher(provisionerWatcher, tsuruWatcher), nil
+	}
+	return newMultiWatcher(provisionerWatcher), nil
 }
 
 func (k *provisionerWrapper) Instance() appTypes.AppLogService {
@@ -113,10 +127,10 @@ func (k *provisionerWrapper) Instance() appTypes.AppLogService {
 	return k.logService
 }
 
-type logsProvisionerGetter func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error)
+type logsProvisionerGetter func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error)
 
-var defaultLogsProvisionerGetter = func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
-	provisioner, err := pool.GetProvisionerForPool(ctx, a.GetPool())
+var defaultLogsProvisionerGetter = func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
+	provisioner, err := pool.GetProvisionerForPool(ctx, obj.GetPool())
 	if err != nil {
 		return nil, err
 	}

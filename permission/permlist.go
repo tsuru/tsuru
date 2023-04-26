@@ -270,4 +270,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"job.delete",
 ).add(
 	"job.read.events",
+).add(
+	"job.read.logs",
 )

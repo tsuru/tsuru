@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,15 +66,16 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 }
 
@@ -105,14 +107,15 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 }
 
@@ -143,22 +146,24 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
-		Units:   []string{"myapp-web-pod-1-1"},
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
+		Units: []string{"myapp-web-pod-1-1"},
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
 	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
-		Units:   []string{"myapp-unit-not-found"},
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
+		Units: []string{"myapp-unit-not-found"},
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
@@ -191,22 +196,24 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
-		Source:  "web",
+		Name:   a.GetName(),
+		Type:   "app",
+		Limit:  10,
+		Source: "web",
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 10)
 	c.Assert(logs[0].Date.IsZero(), check.Equals, false)
 	c.Assert(logs[0].Message, check.Equals, "its a message log: 1")
 	c.Assert(logs[0].Source, check.Equals, "web")
-	c.Assert(logs[0].AppName, check.Equals, a.GetName())
+	c.Assert(logs[0].Name, check.Equals, a.GetName())
 	c.Assert(logs[0].Unit, check.Equals, "myapp-web-pod-1-1")
 
 	logs, err = s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
-		Source:  "not-found",
+		Name:   a.GetName(),
+		Type:   "app",
+		Limit:  10,
+		Source: "not-found",
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
@@ -254,8 +261,9 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 	})
 
 	logs, err := s.p.ListLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 0)
@@ -297,8 +305,9 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	logChan := watcher.Chan()
@@ -358,8 +367,9 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	logChan := watcher.Chan()
@@ -421,9 +431,10 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
-		Units:   []string{"myapp-web-pod-1-1", "not-found-unit"},
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
+		Units: []string{"myapp-web-pod-1-1", "not-found-unit"},
 	})
 	c.Assert(err, check.IsNil)
 	logChan := watcher.Chan()
@@ -502,8 +513,9 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 	})
 
 	watcher, err := s.p.WatchLogs(context.TODO(), a, appTypes.ListLogArgs{
-		AppName: a.GetName(),
-		Limit:   10,
+		Name:  a.GetName(),
+		Type:  logTypes.LogTypeApp,
+		Limit: 10,
 	})
 	c.Assert(err, check.IsNil)
 	logChan := watcher.Chan()
