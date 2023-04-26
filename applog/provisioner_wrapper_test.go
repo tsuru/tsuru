@@ -9,10 +9,14 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	jobTypes "github.com/tsuru/tsuru/types/job"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	"gopkg.in/check.v1"
 )
 
@@ -21,6 +25,21 @@ var _ = check.Suite(&ProvisionerWrapperSuite{})
 type ProvisionerWrapperSuite struct {
 	tsuruLogService    appTypes.AppLogService
 	provisionerWrapper *provisionerWrapper
+}
+
+func newFakeJob(c *check.C) {
+	_, err := job.GetByName(context.TODO(), "j1")
+	if err == jobTypes.ErrJobNotFound {
+		conn, err := db.Conn()
+		c.Assert(err, check.IsNil)
+		defer conn.Close()
+		fakeJob := jobTypes.Job{
+			Name: "j1",
+			Pool: "mypool",
+		}
+		err = conn.Jobs().Insert(fakeJob)
+		c.Assert(err, check.IsNil)
+	}
 }
 
 func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
@@ -32,7 +51,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 
 	s.provisionerWrapper = &provisionerWrapper{
 		logService: s.tsuruLogService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -41,17 +60,18 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
 		},
 	}
+	newFakeJob(c)
 }
 
 func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 	err := s.tsuruLogService.Enqueue(&appTypes.Applog{
-		AppName: "myapp",
+		Name:    "myapp",
 		Message: "Fake message from tsuru logs",
 	})
 	c.Check(err, check.IsNil)
 
 	logs, err := s.provisionerWrapper.List(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+		Name: "myapp",
 	})
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Message < logs[j].Message
@@ -62,20 +82,27 @@ func (s *ProvisionerWrapperSuite) Test_List(c *check.C) {
 	c.Check(logs[1].Message, check.Equals, "Fake message from tsuru logs")
 }
 
-func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
-	watcher, err := s.provisionerWrapper.Watch(context.TODO(), appTypes.ListLogArgs{
-		AppName: "myapp",
+func (s *ProvisionerWrapperSuite) Test_List_LogTypeJob(c *check.C) {
+	logs, err := s.provisionerWrapper.List(context.TODO(), appTypes.ListLogArgs{
+		Name: "j1",
+		Type: logTypes.LogTypeJob,
 	})
 	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 1)
+	c.Check(logs[0].Message, check.Equals, "Fake message from provisioner")
+}
 
+func (s *ProvisionerWrapperSuite) Test_Watch(c *check.C) {
+	watcher, err := s.provisionerWrapper.Watch(context.TODO(), appTypes.ListLogArgs{
+		Name: "myapp",
+	})
+	c.Assert(err, check.IsNil)
 	err = s.tsuruLogService.Enqueue(&appTypes.Applog{
-		AppName: "myapp",
+		Name:    "myapp",
 		Message: "Fake message from tsuru logs",
 	})
 	c.Check(err, check.IsNil)
-
 	logs := []appTypes.Applog{}
-
 	ch := watcher.Chan()
 	timer := time.After(time.Second)
 loop:
@@ -93,13 +120,44 @@ loop:
 			break loop
 		}
 	}
-
 	sort.SliceStable(logs, func(i, j int) bool {
 		return logs[i].Message < logs[j].Message
 	})
 	c.Assert(logs, check.HasLen, 2)
 	c.Check(logs[0].Message, check.Equals, "Fake message from provisioner")
 	c.Check(logs[1].Message, check.Equals, "Fake message from tsuru logs")
+}
+
+func (s *ProvisionerWrapperSuite) Test_Watch_LogTypeJob(c *check.C) {
+	newFakeJob(c)
+	watcher, err := s.provisionerWrapper.Watch(context.TODO(), appTypes.ListLogArgs{
+		Name: "j1",
+		Type: logTypes.LogTypeJob,
+	})
+	c.Assert(err, check.IsNil)
+	err = s.tsuruLogService.Enqueue(&appTypes.Applog{
+		Name:    "j1",
+		Message: "Fake message from tsuru logs",
+	})
+	c.Check(err, check.IsNil)
+	logs := []appTypes.Applog{}
+	ch := watcher.Chan()
+	timer := time.After(time.Second)
+loop:
+	for {
+		select {
+		case log, ok := <-ch:
+			if !ok {
+				break loop
+			}
+			logs = append(logs, log)
+			break loop
+		case <-timer:
+			break loop
+		}
+	}
+	c.Assert(logs, check.HasLen, 1)
+	c.Check(logs[0].Message, check.Equals, "Fake message from provisioner")
 }
 
 func (s *ProvisionerWrapperSuite) Test_MultiWatcher(c *check.C) {
@@ -137,7 +195,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw := &provisionerWrapper{
 		logService: memoryService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}
@@ -150,7 +208,7 @@ func (s *ProvisionerWrapperSuite) Test_Instance(c *check.C) {
 
 	pw = &provisionerWrapper{
 		logService: aggregatorService,
-		provisionerGetter: func(ctx context.Context, a appTypes.App) (provision.LogsProvisioner, error) {
+		provisionerGetter: func(ctx context.Context, obj logTypes.LogabbleObject) (provision.LogsProvisioner, error) {
 			return provisioner, nil
 		},
 	}

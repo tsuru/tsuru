@@ -193,7 +193,7 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
-	servicemanager.AppLog, err = applog.AppLogService()
+	servicemanager.LogService, err = applog.AppLogService()
 	c.Assert(err, check.IsNil)
 }
 

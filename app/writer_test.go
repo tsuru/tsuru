@@ -26,7 +26,7 @@ func (s *S) TestLogWriter(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -46,7 +46,7 @@ func (s *S) TestLogWriterCustomSource(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -84,7 +84,7 @@ func (s *S) TestLogWriterAsync(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -125,7 +125,7 @@ func (s *S) TestLogWriterAsyncCopySlice(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 100,
 	})
 	c.Assert(err, check.IsNil)
@@ -174,7 +174,7 @@ func (s *S) TestLogWriterAsyncWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)
@@ -196,7 +196,7 @@ func (s *S) TestLogWriterWriteClosed(c *check.C) {
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	c.Assert(err, check.IsNil)
-	logs, err := instance.LastLogs(context.TODO(), servicemanager.AppLog, appTypes.ListLogArgs{
+	logs, err := instance.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 1,
 	})
 	c.Assert(err, check.IsNil)

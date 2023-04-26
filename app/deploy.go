@@ -297,7 +297,7 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
 		token, _ := AuthScheme.Auth(app.ctx, tokenValue)
 
-		logErr.logs, _ = app.LastLogs(app.ctx, servicemanager.AppLog, appTypes.ListLogArgs{
+		logErr.logs, _ = app.LastLogs(app.ctx, servicemanager.LogService, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
 			Units:        startupErr.CrashedUnits,

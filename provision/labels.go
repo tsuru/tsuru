@@ -478,6 +478,9 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 			LabelJobTeamOwner: job.TeamOwner,
 			LabelJobPool:      job.Pool,
 			LabelIsJob:        strconv.FormatBool(true),
+			labelIsService:    strconv.FormatBool(true),
+			LabelIsBuild:      strconv.FormatBool(false),
+			LabelIsDeploy:     strconv.FormatBool(false),
 		},
 		RawLabels: map[string]string{
 			"job.kubernetes.io/name":       job.Name,

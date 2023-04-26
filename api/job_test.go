@@ -24,9 +24,11 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	"github.com/tsuru/tsuru/types/app"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -1250,4 +1252,85 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 			{"name": "Private", "value": ""},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestJobLogShouldReturnNotFoundWhenJobDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("GET", "/jobs/unknown/log/?lines=10", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestJobLogReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTheJob(c *check.C) {
+	j := jobTypes.Job{Name: "lost", Pool: "test1"}
+	err := s.conn.Jobs().Insert(j)
+	c.Assert(err, check.IsNil)
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobRead,
+		Context: permission.Context(permTypes.CtxTeam, "no-access"),
+	})
+	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s/log?lines=10", j.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestJobLogsList(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name}
+	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s/log?lines=10", j.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	var logs []appTypes.Applog
+	err = json.Unmarshal(recorder.Body.Bytes(), &logs)
+	c.Assert(err, check.IsNil)
+	c.Assert(logs[0].Message, check.Equals, "Fake message from provisioner")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestJobLogsWatch(c *check.C) {
+	s.provisioner.LogsEnabled = true
+	defer func() {
+		s.provisioner.LogsEnabled = false
+	}()
+	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name}
+	err := job.CreateJob(context.TODO(), &j, s.user, false)
+	c.Assert(err, check.IsNil)
+	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &j, appTypes.ListLogArgs{
+		Name:  j.Name,
+		Type:  logTypes.LogTypeJob,
+		Token: s.token,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(<-logWatcher.Chan(), check.DeepEquals, appTypes.Applog{
+		Message: "Fake message from provisioner",
+	})
+	enc := &fakeEncoder{done: make(chan struct{})}
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		logWatcher.(*app.MockLogWatcher).Enqueue(appTypes.Applog{Message: "xyz"})
+		<-enc.done
+		cancel()
+	}()
+	err = followLogs(ctx, j.Name, logWatcher, enc)
+	c.Assert(err, check.IsNil)
+	msgSlice, ok := enc.msg.([]appTypes.Applog)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(msgSlice, check.DeepEquals, []appTypes.Applog{{Message: "xyz"}})
 }
