@@ -546,6 +546,20 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 		return err
 	}
 
+	if version == nil && state.Stop {
+		var multipleVersions bool
+		multipleVersions, err = hasMultipleVersions(ctx, client, a)
+		if err != nil {
+			return err
+		}
+
+		if multipleVersions {
+			return fmt.Errorf("cannot stop app with multiple active versions, you must specify exactly one to")
+		}
+
+		// TODO: save the last state
+	}
+
 	var versions []appTypes.AppVersion
 	if version == nil {
 		versions, err = versionsForAppProcess(ctx, client, a, process, true)
@@ -2152,4 +2166,13 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 		return "", err
 	}
 	return client.Registry(), nil
+}
+
+func hasMultipleVersions(ctx context.Context, client *ClusterClient, a provision.App) (bool, error) {
+	grouped, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return false, err
+	}
+
+	return len(grouped.versioned) > 1, nil
 }
