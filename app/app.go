@@ -1408,30 +1408,19 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 		msg = fmt.Sprintf("\n ---> Stopping the app %q", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
 	}
-
 	version, err := app.getVersionAllowNil(versionStr)
 	if err != nil {
 		return err
 	}
-
-	if cr, ok := prov.(provision.CurrentReplicasProvisioner); ok {
-		if err = saveCurrentReplicasOnProcessPastUnits(ctx, app, process, version, cr); err != nil {
-			log.Errorf("[stop] could not store the old process number: %s", err)
-			return err
-		}
-	}
-
 	err = prov.Stop(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
 	}
-
 	return nil
 }
 
@@ -2244,15 +2233,11 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 	if err != nil {
 		return err
 	}
-
 	err = prov.Start(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
 	}
-
-	addUnitsFromLastStop(ctx, app, process, version, prov, w)
-
 	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	return err
 }
@@ -2931,58 +2916,4 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 		return "", nil
 	}
 	return registryProv.RegistryForApp(app.ctx, app)
-}
-
-func saveCurrentReplicasOnProcessPastUnits(ctx context.Context, app *App, process string, version appTypes.AppVersion, cr provision.CurrentReplicasProvisioner) error {
-	if version == nil {
-		return nil // nothing to do
-	}
-
-	processes, err := version.Processes()
-	if err != nil {
-		return err
-	}
-
-	for p := range processes {
-		if process != "" && process != p { // if process is set, only matches with the selected
-			continue
-		}
-
-		var replicas int32
-		replicas, err = cr.CurrentReplicas(ctx, app, p, version.Version())
-		if err != nil {
-			return err
-		}
-
-		err = version.UpdatePastUnits(p, int(replicas))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func addUnitsFromLastStop(ctx context.Context, app *App, process string, version appTypes.AppVersion, prov provision.Provisioner, w io.Writer) {
-	if version == nil {
-		return
-	}
-
-	for p, replicas := range version.VersionInfo().PastUnits {
-		if process != "" && process != p {
-			continue
-		}
-
-		fmt.Fprintf(w, "Before being stopped, the %q process had %d replicas... re-adding them.\n", p, replicas)
-
-		err := prov.AddUnits(ctx, app, uint(replicas), p, version, w)
-		if err != nil {
-			fmt.Fprintf(w, "Failed to add units to %q process\n\tError: %s\n", p, err)
-		}
-
-		err = version.UpdatePastUnits(p, -1) // unsets past units for process
-		if err != nil {
-			fmt.Fprintf(w, "Failed to unset past units for %q process:\n\tError: %s\n", p, err)
-		}
-	}
 }

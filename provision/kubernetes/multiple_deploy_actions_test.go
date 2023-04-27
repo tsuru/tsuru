@@ -418,7 +418,6 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						var version appTypes.AppVersion
 						version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 						c.Assert(err, check.IsNil)
-						s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
 						versions = append(versions, version)
 					} else {
 						versions, err = versionsForAppProcess(context.TODO(), s.clusterClient, a, step.stopStep.proc, true)
@@ -506,23 +505,4 @@ func (s *S) noSvc(c *check.C, name string) {
 func (s *S) noDep(c *check.C, name string) {
 	_, err := s.client.Clientset.AppsV1().Deployments("default").Get(context.TODO(), name, metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-}
-
-func (s *S) updatePastUnits(c *check.C, appName string, v appTypes.AppVersion, p string) {
-	nameLabel := "app=" + appName
-	if p != "" {
-		nameLabel = "app=" + appName + "-" + p
-	}
-	deps, err := s.client.Clientset.AppsV1().Deployments("default").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: nameLabel,
-	})
-	c.Assert(err, check.IsNil)
-	for _, dep := range deps.Items {
-		if version, ok := dep.Spec.Template.Labels["tsuru.io/app-version"]; ok {
-			if dep.Spec.Replicas != nil && strconv.Itoa(v.Version()) == version {
-				err = v.UpdatePastUnits(p, int(*dep.Spec.Replicas))
-				c.Assert(err, check.IsNil)
-			}
-		}
-	}
 }

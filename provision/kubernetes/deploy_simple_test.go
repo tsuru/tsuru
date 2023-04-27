@@ -220,7 +220,6 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
-					s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.stopStep.proc, servicecommon.ProcessState{Stop: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()
