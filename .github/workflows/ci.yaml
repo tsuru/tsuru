@@ -214,7 +214,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '2.x'
+        ruby-version: '2.7.8'
     - run: |
         curl -sL https://raw.githubusercontent.com/tsuru/push-to-packagecloud/master/push.sh | bash
       env:
