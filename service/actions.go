@@ -418,38 +418,6 @@ var setBoundEnvsAction = &action.Action{
 	},
 }
 
-var setJobBoundEnvsAction = &action.Action{
-	Name: "set-job-bound-envs",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		if args == nil {
-			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
-		}
-		envMap := ctx.Previous.(map[string]string)
-		envs := make([]bindTypes.ServiceEnvVar, 0, len(envMap))
-		for k, v := range envMap {
-			envs = append(envs, bindTypes.ServiceEnvVar{
-				ServiceName:  args.serviceInstance.ServiceName,
-				InstanceName: args.serviceInstance.Name,
-				EnvVar: bindTypes.EnvVar{
-					Public: false,
-					Name:   k,
-					Value:  v,
-				},
-			})
-		}
-		sort.Slice(envs, func(i, j int) bool {
-			return envs[i].Name < envs[j].Name
-		})
-
-		return nil, errors.New("TODO: assign envs to a job is not implemented")
-	},
-	Backward: func(ctx action.BWContext) {
-		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
-		fmt.Println("TODO: drop envs", args)
-	},
-}
-
 var bindUnitsAction = &action.Action{
 	Name: "bind-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
