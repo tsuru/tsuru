@@ -269,7 +269,6 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 
 // BindJob makes the bind between the service instance and a job.
 func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *event.Event, requestID string) error {
-
 	args := bindJobPipelineArgs{
 		serviceInstance: si,
 		job:             job,
@@ -280,7 +279,6 @@ func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *eve
 	actions := []*action.Action{
 		bindJobDBAction,
 		bindJobEndpointAction,
-		setJobBoundEnvsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
