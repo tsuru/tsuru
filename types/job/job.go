@@ -6,6 +6,7 @@ package job
 
 import (
 	"context"
+	"io"
 
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -80,6 +81,17 @@ type Filter struct {
 	Extra     map[string][]string
 }
 
+type AddInstanceArgs struct {
+	Envs   []bindTypes.ServiceEnvVar
+	Writer io.Writer
+}
+
+type RemoveInstanceArgs struct {
+	ServiceName  string
+	InstanceName string
+	Writer       io.Writer
+}
+
 type JobService interface {
 	CreateJob(ctx context.Context, job *Job, user *authTypes.User, trigger bool) error
 	DeleteFromProvisioner(ctx context.Context, job *Job) error
@@ -88,4 +100,7 @@ type JobService interface {
 	RemoveJobFromDb(jobName string) error
 	Trigger(ctx context.Context, job *Job) error
 	UpdateJob(ctx context.Context, newJob, oldJob *Job, user *authTypes.User) error
+	AddInstance(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
+	RemoveInstance(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
+	UpdateJobProv(ctx context.Context, job *Job) error
 }

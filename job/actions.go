@@ -80,11 +80,7 @@ var updateJobProv = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := getProvisioner(ctx.Context, job)
-		if err != nil {
-			return nil, err
-		}
-		return nil, prov.UpdateJob(ctx.Context, job)
+		return nil, servicemanager.Job.UpdateJobProv(ctx.Context, job)
 	},
 	MinParams: 1,
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/servicemanager"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
@@ -418,6 +419,79 @@ var setBoundEnvsAction = &action.Action{
 	},
 }
 
+var setJobBoundEnvsAction = &action.Action{
+	Name: "set-job-bound-envs",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		if args == nil {
+			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+		}
+		envMap := ctx.Previous.(map[string]string)
+		envs := make([]bindTypes.ServiceEnvVar, 0, len(envMap))
+		for k, v := range envMap {
+			envs = append(envs, bindTypes.ServiceEnvVar{
+				ServiceName:  args.serviceInstance.ServiceName,
+				InstanceName: args.serviceInstance.Name,
+				EnvVar: bindTypes.EnvVar{
+					Public: false,
+					Name:   k,
+					Value:  v,
+				},
+			})
+		}
+		sort.Slice(envs, func(i, j int) bool {
+			return envs[i].Name < envs[j].Name
+		})
+
+		addArgs := jobTypes.AddInstanceArgs{
+			Envs:   envs,
+			Writer: args.writer,
+		}
+		return addArgs, servicemanager.Job.AddInstance(ctx.Context, args.job, addArgs)
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+
+		err := servicemanager.Job.RemoveInstance(ctx.Context, args.job, jobTypes.RemoveInstanceArgs{
+			ServiceName:  args.serviceInstance.ServiceName,
+			InstanceName: args.serviceInstance.Name,
+			Writer:       args.writer,
+		})
+		if err != nil {
+			log.Errorf("[set-bound-envs backward] failed to remove instance: %s", err)
+		}
+	},
+}
+
+var reloadJobProvisioner = &action.Action{
+	Name: "reload-job-provisioner",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+		if args == nil {
+			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+		}
+
+		if !args.job.IsCron() {
+			return nil, nil
+		}
+
+		job, err := servicemanager.Job.GetByName(ctx.Context, args.job.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, servicemanager.Job.UpdateJobProv(ctx.Context, job)
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
+
+		err := servicemanager.Job.UpdateJobProv(ctx.Context, args.job)
+		if err != nil {
+			log.Errorf("[reload-job-provisioner backward] failed to update provisioner with old job: %s", err)
+		}
+	},
+}
+
 var bindUnitsAction = &action.Action{
 	Name: "bind-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -675,8 +749,13 @@ var removeJobBoundEnvs = action.Action{
 		if args == nil {
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
-		//si := args.serviceInstance
-		return nil, errors.New("TODO: drop service envs")
+
+		rmInstanceArgs := jobTypes.RemoveInstanceArgs{
+			ServiceName:  args.serviceInstance.ServiceName,
+			InstanceName: args.serviceInstance.Name,
+			Writer:       args.writer,
+		}
+		return nil, servicemanager.Job.RemoveInstance(ctx.Context, args.job, rmInstanceArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 	},

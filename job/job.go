@@ -163,6 +163,71 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
 
+func (*jobService) AddInstance(ctx context.Context, job *jobTypes.Job, addArgs jobTypes.AddInstanceArgs) error {
+	if len(addArgs.Envs) == 0 {
+		return nil
+	}
+
+	if addArgs.Writer != nil {
+		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
+	}
+	job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs, addArgs.Envs...)
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	err = conn.Jobs().Update(bson.M{"name": job.Name}, bson.M{"$set": bson.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (*jobService) RemoveInstance(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
+	lenBefore := len(job.Spec.ServiceEnvs)
+	for i := 0; i < len(job.Spec.ServiceEnvs); i++ {
+		se := job.Spec.ServiceEnvs[i]
+		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
+			job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs[:i], job.Spec.ServiceEnvs[i+1:]...)
+			i--
+		}
+	}
+
+	toUnset := lenBefore - len(job.Spec.ServiceEnvs)
+	if toUnset <= 0 {
+		return nil
+	}
+	if removeArgs.Writer != nil {
+		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
+	}
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	err = conn.Jobs().Update(bson.M{"name": job.Name}, bson.M{"$set": bson.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (*jobService) UpdateJobProv(ctx context.Context, job *jobTypes.Job) error {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+
+	return prov.UpdateJob(ctx, job)
+}
+
 // Trigger triggers an execution of either job or cronjob object
 func (*jobService) Trigger(ctx context.Context, job *jobTypes.Job) error {
 	var actions []*action.Action
