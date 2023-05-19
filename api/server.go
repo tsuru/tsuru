@@ -191,7 +191,7 @@ func setupServices() error {
 	}
 	servicemanager.Job, err = job.JobService()
 	if err != nil {
-		return errors.Wrapf(err, "could not initialize volume service")
+		return errors.Wrapf(err, "could not initialize job service")
 	}
 	return nil
 }
