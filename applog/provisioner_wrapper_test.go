@@ -61,6 +61,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 		},
 	}
 	servicemanager.Job, err = job.JobService()
+	c.Assert(err, check.IsNil)
 	newFakeJob(c)
 }
 
