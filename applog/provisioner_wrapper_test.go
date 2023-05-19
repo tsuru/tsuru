@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -59,6 +60,7 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
 		},
 	}
+	servicemanager.Job, err = job.JobService()
 	newFakeJob(c)
 }
 

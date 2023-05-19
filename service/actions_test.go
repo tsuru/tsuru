@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	check "gopkg.in/check.v1"
 )
 
@@ -787,4 +788,465 @@ func (s *S) TestRemoveBoundEnvsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	envs := a.GetServiceEnvs()
 	c.Assert(envs, check.DeepEquals, []bindTypes.ServiceEnvVar{})
+}
+
+func (s *S) TestBindJobDBActionForwardInvalidParam(c *check.C) {
+	si := ServiceInstance{
+		Name: "mysql",
+	}
+
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	ctx := action.FWContext{
+		Params: []interface{}{"wrong parameter"},
+	}
+	_, err = bindJobDBAction.Forward(ctx)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(err, check.ErrorMatches, "^invalid arguments for pipeline, expected \\*bindJobPipelineArgs.$")
+}
+
+func (s *S) TestBindJobDBActionJobAlreadyBound(c *check.C) {
+	si := ServiceInstance{
+		Name: "mysql",
+	}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	ctx := action.FWContext{
+		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+	}
+	_, err = bindJobDBAction.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	_, err = bindJobDBAction.Forward(ctx)
+	c.Assert(err, check.Equals, ErrJobAlreadyBound)
+}
+
+func (s *S) TestBindJobDBActionBackwardRemovesAppFromServiceInstance(c *check.C) {
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	si := ServiceInstance{
+		Name: "mysql",
+		Jobs: []string{job.Name},
+	}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	evt := createEvt(c)
+	ctx := action.BWContext{
+		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+	}
+	bindJobDBAction.Backward(ctx)
+
+	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Apps, check.HasLen, 0)
+}
+
+func (s *S) TestBindJobEndpointActionForwardReturnsEnvVars(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+
+	service := Service{
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "s3cr3t",
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := Create(service)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	ctx := action.FWContext{
+		Params: []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+	}
+	envs, err := bindJobEndpointAction.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(envs, check.DeepEquals, map[string]string{
+		"DATABASE_USER":     "root",
+		"DATABASE_PASSWORD": "s3cr3t",
+	})
+}
+
+func (s *S) TestBindJobEndpointActionBackward(c *check.C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	service := Service{
+		Name:       "mysql",
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "s3cr3t",
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := Create(service)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	bwCtx := action.BWContext{
+		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		FWResult: nil,
+	}
+	bindJobEndpointAction.Backward(bwCtx)
+	c.Assert(called, check.Equals, true)
+}
+
+func (s *S) TestSetJobBoundEnvsActionForward(c *check.C) {
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	ctx := action.FWContext{
+		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
+	}
+	result, err := setJobBoundEnvsAction.Forward(ctx)
+	c.Assert(err, check.IsNil)
+
+	args := jobTypes.AddInstanceArgs{
+		Envs: []bindTypes.ServiceEnvVar{
+			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, ServiceName: "mysql", InstanceName: "my-mysql"},
+		},
+	}
+	c.Assert(result, check.DeepEquals, args)
+}
+
+func (s *S) TestSetJobBoundEnvsActionForwardWrongParameter(c *check.C) {
+	ctx := action.FWContext{Params: []interface{}{"something"}}
+	_, err := setJobBoundEnvsAction.Forward(ctx)
+	c.Assert(err.Error(), check.Equals, "invalid arguments for pipeline, expected *bindJobPipelineArgs.")
+}
+
+func (s *S) TestSetJobBoundEnvsActionBackward(c *check.C) {
+	var rmCalled bool
+	s.mockService.JobService.OnRemoveInstance = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
+		argsToBeRemoved := jobTypes.RemoveInstanceArgs{
+			ServiceName:  "mysql",
+			InstanceName: "my-mysql",
+		}
+		c.Assert(rmArgs, check.Equals, argsToBeRemoved)
+		rmCalled = true
+		return nil
+	}
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+
+	evt := createEvt(c)
+	ctx := action.BWContext{
+		Params:   []interface{}{&bindJobPipelineArgs{job: job, serviceInstance: &si, event: evt}},
+		FWResult: nil,
+	}
+	setJobBoundEnvsAction.Backward(ctx)
+
+	c.Assert(rmCalled, check.Equals, true)
+}
+
+func (s *S) TestUnbindJobDBForward(c *check.C) {
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	srv := Service{
+		Name: "mysql",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{job.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.NewBuffer(nil)
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindJobDB.Forward(ctx)
+	c.Assert(err, check.IsNil)
+
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(siDB.Jobs, check.DeepEquals, []string{})
+}
+
+func (s *S) TestUnbindJobDBBackward(c *check.C) {
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	srv := Service{
+		Name: "mysql",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.NewBuffer(nil)
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.BWContext{Params: []interface{}{&args}}
+	unbindJobDB.Backward(ctx)
+	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(siDB.Jobs, check.DeepEquals, []string{job.Name})
+}
+
+func (s *S) TestUnbindJobEndpointForward(c *check.C) {
+	var reqs []*http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	srv := Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": ts.URL},
+		Password: "s3cr3t",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.NewBuffer(nil)
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindJobEndpoint.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/binds/jobs/test-job")
+}
+
+func (s *S) TestUnbindJobEndpointForwardNotFound(c *check.C) {
+	var reqs []*http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	srv := Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": ts.URL},
+		Password: "s3cr3t",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.NewBuffer(nil)
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindJobEndpoint.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "DELETE")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/binds/jobs/test-job")
+}
+
+func (s *S) TestUnbindJobEndpointBackward(c *check.C) {
+	var reqs []*http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	srv := Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": ts.URL},
+		Password: "s3cr3t",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	buf := bytes.NewBuffer(nil)
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.BWContext{Params: []interface{}{&args}}
+	unbindJobEndpoint.Backward(ctx)
+	c.Assert(reqs, check.HasLen, 1)
+	c.Assert(reqs[0].Method, check.Equals, "PUT")
+	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/binds/jobs/test-job")
+}
+
+func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
+	var rmCalled bool
+	s.mockService.JobService.OnRemoveInstance = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
+		argsToBeRemoved := jobTypes.RemoveInstanceArgs{
+			ServiceName:  "mysql",
+			InstanceName: "my-mysql",
+		}
+		c.Assert(rmArgs, check.Equals, argsToBeRemoved)
+		rmCalled = true
+		return nil
+	}
+
+	srv := Service{
+		Name: "mysql",
+	}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = removeJobBoundEnvs.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(rmCalled, check.Equals, true)
+}
+
+func (s *S) TestReloadJobProvisionerForwardForJob(c *check.C) {
+	var reloadCalled bool
+	s.mockService.JobService.OnUpdateJobProv = func(job *jobTypes.Job) error {
+		reloadCalled = true
+		return nil
+	}
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	job.Spec.Schedule = ""
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = reloadJobProvisioner.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reloadCalled, check.Equals, false)
+}
+
+func (s *S) TestReloadJobProvisionerForwardForCronJob(c *check.C) {
+	var reloadCalled bool
+	s.mockService.JobService.OnUpdateJobProv = func(job *jobTypes.Job) error {
+		reloadCalled = true
+		return nil
+	}
+
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+
+	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
+	evt := createEvt(c)
+	args := bindJobPipelineArgs{
+		event:           evt,
+		job:             job,
+		serviceInstance: &si,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = reloadJobProvisioner.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reloadCalled, check.Equals, true)
 }

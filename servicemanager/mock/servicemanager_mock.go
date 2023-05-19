@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/cache"
+	"github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/router"
@@ -36,6 +37,7 @@ type MockService struct {
 	AuthGroup                 *auth.MockGroupService
 	Pool                      *provision.MockPoolService
 	VolumeService             *volume.MockVolumeService
+	JobService                *job.MockJobService
 }
 
 // SetMockService return a new MockService and set as a servicemanager
@@ -55,10 +57,11 @@ func SetMockService(m *MockService) {
 	m.DynamicRouter = &router.MockDynamicRouterService{}
 	m.AuthGroup = &auth.MockGroupService{}
 	m.Pool = &provision.MockPoolService{}
-
 	m.VolumeService = &volume.MockVolumeService{
 		Storage: volume.MockVolumeStorage{},
 	}
+	m.JobService = &job.MockJobService{}
+
 	servicemanager.AppCache = m.Cache
 	servicemanager.Plan = m.Plan
 	servicemanager.Platform = m.Platform
@@ -75,6 +78,7 @@ func SetMockService(m *MockService) {
 	servicemanager.AuthGroup = m.AuthGroup
 	servicemanager.Pool = m.Pool
 	servicemanager.Volume = m.VolumeService
+	servicemanager.Job = m.JobService
 }
 
 func (m *MockService) ResetCache() {

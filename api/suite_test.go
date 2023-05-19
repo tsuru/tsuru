@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/healer"
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
@@ -142,6 +143,8 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 	servicemanager.AuthGroup, err = auth.GroupService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Job, err = job.JobService()
 	c.Assert(err, check.IsNil)
 }
 
