@@ -75,9 +75,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					Name:      "myjob",
 					Namespace: "default",
 					Labels: map[string]string{
-						"job.kubernetes.io/component":  "tsuru-job",
-						"job.kubernetes.io/managed-by": "tsuru",
-						"job.kubernetes.io/name":       "myjob",
+						"app.kubernetes.io/component":  "job",
+						"app.kubernetes.io/managed-by": "tsuru",
+						"app.kubernetes.io/name":       "tsuru-job",
+						"app.kubernetes.io/instance":   "myjob",
 						"tsuru.io/is-tsuru":            "true",
 						"tsuru.io/is-service":          "true",
 						"tsuru.io/job-name":            "myjob",
@@ -101,9 +102,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 							Template: corev1.PodTemplateSpec{
 								ObjectMeta: v1.ObjectMeta{
 									Labels: map[string]string{
-										"job.kubernetes.io/component":  "tsuru-job",
-										"job.kubernetes.io/managed-by": "tsuru",
-										"job.kubernetes.io/name":       "myjob",
+										"app.kubernetes.io/component":  "job",
+										"app.kubernetes.io/managed-by": "tsuru",
+										"app.kubernetes.io/name":       "tsuru-job",
+										"app.kubernetes.io/instance":   "myjob",
 										"tsuru.io/is-tsuru":            "true",
 										"tsuru.io/is-service":          "true",
 										"tsuru.io/job-name":            "myjob",
@@ -200,9 +202,10 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 					Name:      "myjob",
 					Namespace: "default",
 					Labels: map[string]string{
-						"job.kubernetes.io/component":  "tsuru-job",
-						"job.kubernetes.io/managed-by": "tsuru",
-						"job.kubernetes.io/name":       "myjob",
+						"app.kubernetes.io/component":  "job",
+						"app.kubernetes.io/managed-by": "tsuru",
+						"app.kubernetes.io/name":       "tsuru-job",
+						"app.kubernetes.io/instance":   "myjob",
 						"tsuru.io/is-tsuru":            "true",
 						"tsuru.io/is-service":          "true",
 						"tsuru.io/job-name":            "myjob",
@@ -223,9 +226,10 @@ func (s *S) TestProvisionerCreateJob(c *check.C) {
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{
 							Labels: map[string]string{
-								"job.kubernetes.io/component":  "tsuru-job",
-								"job.kubernetes.io/managed-by": "tsuru",
-								"job.kubernetes.io/name":       "myjob",
+								"app.kubernetes.io/component":  "job",
+								"app.kubernetes.io/managed-by": "tsuru",
+								"app.kubernetes.io/name":       "tsuru-job",
+								"app.kubernetes.io/instance":   "myjob",
 								"tsuru.io/is-tsuru":            "true",
 								"tsuru.io/is-service":          "true",
 								"tsuru.io/job-name":            "myjob",
@@ -357,9 +361,10 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					Name:      "myjob",
 					Namespace: "default",
 					Labels: map[string]string{
-						"job.kubernetes.io/component":  "tsuru-job",
-						"job.kubernetes.io/managed-by": "tsuru",
-						"job.kubernetes.io/name":       "myjob",
+						"app.kubernetes.io/component":  "job",
+						"app.kubernetes.io/managed-by": "tsuru",
+						"app.kubernetes.io/name":       "tsuru-job",
+						"app.kubernetes.io/instance":   "myjob",
 						"tsuru.io/is-tsuru":            "true",
 						"tsuru.io/is-service":          "true",
 						"tsuru.io/job-name":            "myjob",
@@ -383,9 +388,10 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 							Template: corev1.PodTemplateSpec{
 								ObjectMeta: v1.ObjectMeta{
 									Labels: map[string]string{
-										"job.kubernetes.io/component":  "tsuru-job",
-										"job.kubernetes.io/managed-by": "tsuru",
-										"job.kubernetes.io/name":       "myjob",
+										"app.kubernetes.io/component":  "job",
+										"app.kubernetes.io/managed-by": "tsuru",
+										"app.kubernetes.io/name":       "tsuru-job",
+										"app.kubernetes.io/instance":   "myjob",
 										"tsuru.io/is-tsuru":            "true",
 										"tsuru.io/is-service":          "true",
 										"tsuru.io/job-name":            "myjob",
@@ -565,9 +571,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						Name:      "myjob-manual-trigger",
 						Namespace: "default",
 						Labels: map[string]string{
-							"job.kubernetes.io/component":  "tsuru-job",
-							"job.kubernetes.io/managed-by": "tsuru",
-							"job.kubernetes.io/name":       "myjob",
+							"app.kubernetes.io/component":  "job",
+							"app.kubernetes.io/managed-by": "tsuru",
+							"app.kubernetes.io/name":       "tsuru-job",
+							"app.kubernetes.io/instance":   "myjob",
 							"tsuru.io/is-tsuru":            "true",
 							"tsuru.io/is-service":          "true",
 							"tsuru.io/job-name":            "myjob",
@@ -591,9 +598,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: v1.ObjectMeta{
 								Labels: map[string]string{
-									"job.kubernetes.io/component":  "tsuru-job",
-									"job.kubernetes.io/managed-by": "tsuru",
-									"job.kubernetes.io/name":       "myjob",
+									"app.kubernetes.io/component":  "job",
+									"app.kubernetes.io/managed-by": "tsuru",
+									"app.kubernetes.io/name":       "tsuru-job",
+									"app.kubernetes.io/instance":   "myjob",
 									"tsuru.io/is-tsuru":            "true",
 									"tsuru.io/is-service":          "true",
 									"tsuru.io/job-name":            "myjob",
