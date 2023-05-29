@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
@@ -463,121 +462,6 @@ func listUnitsByApp(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	return json.NewEncoder(w).Encode(units)
 }
 
-// title: node healing info
-// path: /healing/node
-// method: GET
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-func nodeHealingRead(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	pools, err := permission.ListContextValues(t, permission.PermHealingRead, true)
-	if err != nil {
-		return err
-	}
-	configMap, err := healer.GetConfig()
-	if err != nil {
-		return err
-	}
-	if len(pools) > 0 {
-		allowedPoolSet := map[string]struct{}{}
-		for _, p := range pools {
-			allowedPoolSet[p] = struct{}{}
-		}
-		for k := range configMap {
-			if k == "" {
-				continue
-			}
-			if _, ok := allowedPoolSet[k]; !ok {
-				delete(configMap, k)
-			}
-		}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(configMap)
-}
-
-// title: node healing update
-// path: /healing/node
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-func nodeHealingUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	poolName := InputValue(r, "pool")
-	var ctxs []permTypes.PermissionContext
-	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
-	}
-	if !permission.Check(t, permission.PermHealingUpdate, ctxs...) {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermHealingUpdate,
-		Owner:       t,
-		RemoteAddr:  r.RemoteAddr,
-		CustomData:  event.FormToCustomData(InputFields(r)),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	var config healer.NodeHealerConfig
-	err = ParseInput(r, &config)
-	if err != nil {
-		return err
-	}
-	return healer.UpdateConfig(poolName, config)
-}
-
-// title: remove node healing
-// path: /healing/node
-// method: DELETE
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-func nodeHealingDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	poolName := r.URL.Query().Get("pool")
-	var ctxs []permTypes.PermissionContext
-	if poolName != "" {
-		ctxs = append(ctxs, permission.Context(permTypes.CtxPool, poolName))
-	}
-	if !permission.Check(t, permission.PermHealingDelete, ctxs...) {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:      event.Target{Type: event.TargetTypePool, Value: poolName},
-		Kind:        permission.PermHealingDelete,
-		Owner:       t,
-		RemoteAddr:  r.RemoteAddr,
-		CustomData:  event.FormToCustomData(InputFields(r)),
-		DisableLock: true,
-		Allowed:     event.Allowed(permission.PermPoolReadEvents, ctxs...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	if len(r.URL.Query()["name"]) == 0 {
-		return healer.RemoveConfig(poolName, "")
-	}
-	for _, v := range r.URL.Query()["name"] {
-		err := healer.RemoveConfig(poolName, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // title: rebalance units in nodes
 // path: /node/rebalance
 // method: POST
@@ -710,13 +594,6 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			spec.IaaSID = machine.Iaas
 		}
 	}
-	nodeStatus, err := healer.HealerInstance.GetNodeStatusData(node)
-	if err != nil && err != provision.ErrNodeNotFound {
-		return &tsuruErrors.HTTP{
-			Code:    http.StatusNotFound,
-			Message: err.Error(),
-		}
-	}
 	units, err := node.Units()
 	if err != nil {
 		return &tsuruErrors.HTTP{
@@ -725,9 +602,8 @@ func infoNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		}
 	}
 	response := apiTypes.InfoNodeResponse{
-		Node:   spec,
-		Status: nodeStatus,
-		Units:  units,
+		Node:  spec,
+		Units: units,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(response)

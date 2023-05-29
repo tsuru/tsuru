@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -123,10 +122,7 @@ func removeNodeWithNode(ctx context.Context, node provision.Node, opts provision
 		return err
 	}
 	multi := tsuruErrors.NewMultiError()
-	err = healer.HealerInstance.RemoveNode(node)
-	if err != nil {
-		multi.Add(errors.Wrapf(err, "unable to remove healer data"))
-	}
+
 	if removeIaaS {
 		var m iaas.Machine
 		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(opts.Address))

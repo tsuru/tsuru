@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/provision"
@@ -230,12 +229,9 @@ func (s *S) TestRemoveNode(c *check.C) {
 		Address: "http://addr1",
 	})
 	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode(context.TODO(), "http://addr1")
+	_, err = p1.GetNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
-		{Name: "x1", Successful: true},
-	})
-	c.Assert(err, check.IsNil)
+
 	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Address: "http://addr1",
 		Prov:    p1,
@@ -243,8 +239,7 @@ func (s *S) TestRemoveNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = p1.GetNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	_, err = healer.HealerInstance.GetNodeStatusData(node)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
+
 }
 
 func (s *S) TestRemoveNodeWithNodeInstance(c *check.C) {
@@ -263,17 +258,12 @@ func (s *S) TestRemoveNodeWithNodeInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
-		{Name: "x1", Successful: true},
-	})
-	c.Assert(err, check.IsNil)
+
 	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Node: node,
 	})
 	c.Assert(err, check.IsNil)
 	_, err = p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	_, err = healer.HealerInstance.GetNodeStatusData(node)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	_, err = iaas.FindMachineByAddress(machine.Address)
 	c.Assert(err, check.IsNil)
@@ -295,18 +285,12 @@ func (s *S) TestRemoveNodeWithNodeInstanceRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	node, err := p1.GetNode(context.TODO(), machine.Address)
 	c.Assert(err, check.IsNil)
-	err = healer.HealerInstance.UpdateNodeData([]string{node.Address()}, []provision.NodeCheckResult{
-		{Name: "x1", Successful: true},
-	})
-	c.Assert(err, check.IsNil)
 	err = RemoveNode(context.TODO(), RemoveNodeArgs{
 		Node:       node,
 		RemoveIaaS: true,
 	})
 	c.Assert(err, check.IsNil)
 	_, err = p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	_, err = healer.HealerInstance.GetNodeStatusData(node)
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 	_, err = iaas.FindMachineByAddress(machine.Address)
 	c.Assert(err, check.Equals, iaas.ErrMachineNotFound)

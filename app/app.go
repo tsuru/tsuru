@@ -32,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -1028,51 +1027,6 @@ func findNodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData)
 		return nil, err
 	}
 	return nil, provision.ErrNodeNotFound
-}
-
-// UpdateNodeStatus updates the status of the given node and its units,
-// returning a map which units were found during the update.
-func UpdateNodeStatus(ctx context.Context, nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
-	node, findNodeErr := findNodeForNodeData(ctx, nodeData)
-	var nodeAddresses []string
-	if findNodeErr == nil {
-		nodeAddresses = []string{node.Address()}
-	} else {
-		nodeAddresses = nodeData.Addrs
-	}
-	if healer.HealerInstance != nil {
-		err := healer.HealerInstance.UpdateNodeData(nodeAddresses, nodeData.Checks)
-		if err != nil {
-			log.Errorf("[update node status] unable to set node status in healer: %s", err)
-		}
-	}
-	if findNodeErr == provision.ErrNodeNotFound {
-		counterNodesNotFound.Inc()
-		log.Errorf("[update node status] node not found with nodedata: %#v", nodeData)
-		result := make([]UpdateUnitsResult, len(nodeData.Units))
-		for i, unitData := range nodeData.Units {
-			result[i] = UpdateUnitsResult{ID: unitData.ID, Found: false}
-		}
-		return result, nil
-	}
-	if findNodeErr != nil {
-		return nil, findNodeErr
-	}
-	unitProv, ok := node.Provisioner().(provision.UnitStatusProvisioner)
-	if !ok {
-		return []UpdateUnitsResult{}, nil
-	}
-	result := make([]UpdateUnitsResult, len(nodeData.Units))
-	for i, unitData := range nodeData.Units {
-		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
-		err := unitProv.SetUnitStatus(unit, unitData.Status)
-		_, isNotFound := err.(*provision.UnitNotFoundError)
-		if err != nil && !isNotFound {
-			return nil, err
-		}
-		result[i] = UpdateUnitsResult{ID: unitData.ID, Found: !isNotFound}
-	}
-	return result, nil
 }
 
 // available returns true if at least one of N units is started or unreachable.

@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -205,7 +204,6 @@ func (s *S) TearDownTest(c *check.C) {
 	}
 	s.provisioner.Reset()
 	s.conn.Close()
-	healer.HealerInstance = nil
 	queue.ResetQueue()
 	config.Unset("listen")
 	config.Unset("tls:listen")

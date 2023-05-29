@@ -45,7 +45,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -307,7 +306,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.5", http.MethodGet, "/apps/{app}/routers", AuthorizationRequiredHandler(listAppRouters))
 	m.Add("1.8", http.MethodPost, "/apps/{app}/routable", AuthorizationRequiredHandler(appSetRoutable))
 
-	m.Add("1.0", http.MethodPost, "/node/status", AuthorizationRequiredHandler(setNodeStatus))
+	m.Add("1.0", http.MethodPost, "/node/status", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/deploys", AuthorizationRequiredHandler(deploysList))
 	m.Add("1.0", http.MethodGet, "/deploys/{deploy}", AuthorizationRequiredHandler(deployInfo))
@@ -455,9 +454,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
 	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
-	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
-	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
-	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.3", http.MethodGet, "/healing", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.3", http.MethodGet, "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.8", http.MethodPost, "/routers", AuthorizationRequiredHandler(addRouter))
@@ -510,9 +509,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
 	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
 
-	m.Add("1.0", http.MethodGet, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
-	m.Add("1.0", http.MethodPost, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
-	m.Add("1.0", http.MethodDelete, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
+	m.Add("1.0", http.MethodGet, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.0", http.MethodGet, "/docker/healing", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/docker/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
@@ -678,10 +677,7 @@ func startServer(handler http.Handler) error {
 	if err != nil {
 		return err
 	}
-	_, err = healer.Initialize()
-	if err != nil {
-		return err
-	}
+
 	err = autoscale.Initialize()
 	if err != nil {
 		return err

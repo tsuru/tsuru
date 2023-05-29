@@ -5,7 +5,6 @@
 package api
 
 import (
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 )
@@ -16,7 +15,6 @@ type ListNodeResponse struct {
 }
 
 type InfoNodeResponse struct {
-	Node   provision.NodeSpec    `json:"node"`
-	Status healer.NodeStatusData `json:"status"`
-	Units  []provision.Unit      `json:"units"`
+	Node  provision.NodeSpec `json:"node"`
+	Units []provision.Unit   `json:"units"`
 }
