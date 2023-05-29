@@ -20,8 +20,8 @@ type MockJobService struct {
 	OnRemoveJobFromDb       func(string) error
 	OnTrigger               func(*Job) error
 	OnUpdateJob             func(*Job, *Job, *authTypes.User) error
-	OnAddInstance           func(*Job, AddInstanceArgs) error
-	OnRemoveInstance        func(*Job, RemoveInstanceArgs) error
+	OnAddServiceEnv         func(*Job, AddInstanceArgs) error
+	OnRemoveServiceEnv      func(*Job, RemoveInstanceArgs) error
 	OnUpdateJobProv         func(*Job) error
 }
 
@@ -74,18 +74,18 @@ func (m *MockJobService) UpdateJob(ctx context.Context, newJob, oldJob *Job, use
 	return m.OnUpdateJob(newJob, oldJob, user)
 }
 
-func (m *MockJobService) AddInstance(ctx context.Context, job *Job, addArgs AddInstanceArgs) error {
-	if m.OnAddInstance == nil {
+func (m *MockJobService) AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error {
+	if m.OnAddServiceEnv == nil {
 		return nil
 	}
-	return m.OnAddInstance(job, addArgs)
+	return m.OnAddServiceEnv(job, addArgs)
 }
 
-func (m *MockJobService) RemoveInstance(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error {
-	if m.OnRemoveInstance == nil {
+func (m *MockJobService) RemoveServiceEnv(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error {
+	if m.OnRemoveServiceEnv == nil {
 		return nil
 	}
-	return m.OnRemoveInstance(job, removeArgs)
+	return m.OnRemoveServiceEnv(job, removeArgs)
 }
 
 func (m *MockJobService) UpdateJobProv(ctx context.Context, job *Job) error {

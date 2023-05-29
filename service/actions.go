@@ -447,12 +447,12 @@ var setJobBoundEnvsAction = &action.Action{
 			Envs:   envs,
 			Writer: args.writer,
 		}
-		return addArgs, servicemanager.Job.AddInstance(ctx.Context, args.job, addArgs)
+		return addArgs, servicemanager.Job.AddServiceEnv(ctx.Context, args.job, addArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindJobPipelineArgs)
 
-		err := servicemanager.Job.RemoveInstance(ctx.Context, args.job, jobTypes.RemoveInstanceArgs{
+		err := servicemanager.Job.RemoveServiceEnv(ctx.Context, args.job, jobTypes.RemoveInstanceArgs{
 			ServiceName:  args.serviceInstance.ServiceName,
 			InstanceName: args.serviceInstance.Name,
 			Writer:       args.writer,
@@ -755,7 +755,7 @@ var removeJobBoundEnvs = action.Action{
 			InstanceName: args.serviceInstance.Name,
 			Writer:       args.writer,
 		}
-		return nil, servicemanager.Job.RemoveInstance(ctx.Context, args.job, rmInstanceArgs)
+		return nil, servicemanager.Job.RemoveServiceEnv(ctx.Context, args.job, rmInstanceArgs)
 	},
 	Backward: func(ctx action.BWContext) {
 	},

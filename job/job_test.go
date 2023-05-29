@@ -216,7 +216,7 @@ func (s *S) TestList(c *check.C) {
 	c.Assert(len(jobs), check.Equals, 2)
 }
 
-func (s *S) TestAddInstanceToJobs(c *check.C) {
+func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -253,11 +253,11 @@ func (s *S) TestAddInstanceToJobs(c *check.C) {
 		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
 		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root"}, InstanceName: "myinstance", ServiceName: "srv1"},
 	}
-	err = servicemanager.Job.AddInstance(context.TODO(), &job1, jobTypes.AddInstanceArgs{
+	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
 		Envs: serviceEnvsToAdd,
 	})
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.AddInstance(context.TODO(), &cronjob1, jobTypes.AddInstanceArgs{
+	err = servicemanager.Job.AddServiceEnv(context.TODO(), &cronjob1, jobTypes.AddInstanceArgs{
 		Envs: serviceEnvsToAdd,
 	})
 	c.Assert(err, check.IsNil)
@@ -270,7 +270,7 @@ func (s *S) TestAddInstanceToJobs(c *check.C) {
 	c.Assert(createdCronJob1.Spec.ServiceEnvs, check.DeepEquals, serviceEnvsToAdd)
 }
 
-func (s *S) TestAddMultipleInstancesToJob(c *check.C) {
+func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -287,21 +287,21 @@ func (s *S) TestAddMultipleInstancesToJob(c *check.C) {
 	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.AddInstance(context.TODO(), &job1, jobTypes.AddInstanceArgs{
+	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost1"}, InstanceName: "instance1", ServiceName: "mysql"},
 		},
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.AddInstance(context.TODO(), &job1, jobTypes.AddInstanceArgs{
+	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost2"}, InstanceName: "instance2", ServiceName: "mysql"},
 		},
 	})
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.AddInstance(context.TODO(), &job1, jobTypes.AddInstanceArgs{
+	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost3"}, InstanceName: "instance3", ServiceName: "mongodb"},
 		},
@@ -318,7 +318,7 @@ func (s *S) TestAddMultipleInstancesToJob(c *check.C) {
 	})
 }
 
-func (s *S) TestRemoveInstanceFromJobs(c *check.C) {
+func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -360,12 +360,12 @@ func (s *S) TestRemoveInstanceFromJobs(c *check.C) {
 	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user, false)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "srv1",
 		InstanceName: "myinstance",
 	})
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &cronjob1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &cronjob1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "srv1",
 		InstanceName: "myinstance",
 	})
@@ -379,7 +379,7 @@ func (s *S) TestRemoveInstanceFromJobs(c *check.C) {
 	c.Assert(createdCronJob1.Spec.ServiceEnvs, check.DeepEquals, []bindTypes.ServiceEnvVar{})
 }
 
-func (s *S) TestRemoveInstanceNotFound(c *check.C) {
+func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -401,7 +401,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "srv1",
 		InstanceName: "mynonexistentinstance",
 	})
@@ -416,7 +416,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	})
 }
 
-func (s *S) TestRemoveServiceInstanceNotFound(c *check.C) {
+func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -438,7 +438,7 @@ func (s *S) TestRemoveServiceInstanceNotFound(c *check.C) {
 	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "srv2",
 		InstanceName: "myinstance",
 	})
@@ -453,7 +453,7 @@ func (s *S) TestRemoveServiceInstanceNotFound(c *check.C) {
 	})
 }
 
-func (s *S) TestRemoveInstanceMultipleServices(c *check.C) {
+func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 	job1 := jobTypes.Job{
 		Name:      "job1",
 		TeamOwner: s.team.Name,
@@ -476,7 +476,7 @@ func (s *S) TestRemoveInstanceMultipleServices(c *check.C) {
 	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
 	c.Assert(err, check.IsNil)
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "myservice",
 		InstanceName: "myinstance2",
 	})
@@ -490,7 +490,7 @@ func (s *S) TestRemoveInstanceMultipleServices(c *check.C) {
 		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "myhost"}, InstanceName: "ourinstance1", ServiceName: "ourservice"},
 	})
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "myservice",
 		InstanceName: "myinstance1",
 	})
@@ -502,7 +502,7 @@ func (s *S) TestRemoveInstanceMultipleServices(c *check.C) {
 		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "myhost"}, InstanceName: "ourinstance1", ServiceName: "ourservice"},
 	})
 
-	err = servicemanager.Job.RemoveInstance(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
+	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
 		ServiceName:  "ourservice",
 		InstanceName: "ourinstance1",
 	})

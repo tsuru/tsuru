@@ -27,6 +27,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type jobService struct{}
+
+var _ jobTypes.JobService = &jobService{}
+
 func getProvisioner(ctx context.Context, job *jobTypes.Job) (provision.JobProvisioner, error) {
 
 	prov, err := pool.GetProvisionerForPool(ctx, job.Pool)
@@ -47,6 +51,10 @@ func Units(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
 		return []provision.Unit{}, err
 	}
 	return prov.JobUnits(context.TODO(), job)
+}
+
+func JobService() (jobTypes.JobService, error) {
+	return &jobService{}, nil
 }
 
 // GetByName queries the database to find a job identified by the given
@@ -133,14 +141,6 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	return pipeline.Execute(ctx, job, user)
 }
 
-type jobService struct{}
-
-func JobService() (jobTypes.JobService, error) {
-	return &jobService{}, nil
-}
-
-var _ jobTypes.JobService = &jobService{}
-
 // UpdateJob updates an existing cronjob.
 //
 // Updating a new job is a process composed of the following steps:
@@ -163,7 +163,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
 
-func (*jobService) AddInstance(ctx context.Context, job *jobTypes.Job, addArgs jobTypes.AddInstanceArgs) error {
+func (*jobService) AddServiceEnv(ctx context.Context, job *jobTypes.Job, addArgs jobTypes.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -187,17 +187,20 @@ func (*jobService) AddInstance(ctx context.Context, job *jobTypes.Job, addArgs j
 	return nil
 }
 
-func (*jobService) RemoveInstance(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
+func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
 	lenBefore := len(job.Spec.ServiceEnvs)
-	for i := 0; i < len(job.Spec.ServiceEnvs); i++ {
+	currentLen := len(job.Spec.ServiceEnvs)
+
+	for i := 0; i < currentLen; i++ {
 		se := job.Spec.ServiceEnvs[i]
 		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
 			job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs[:i], job.Spec.ServiceEnvs[i+1:]...)
+			currentLen--
 			i--
 		}
 	}
 
-	toUnset := lenBefore - len(job.Spec.ServiceEnvs)
+	toUnset := lenBefore - currentLen
 	if toUnset <= 0 {
 		return nil
 	}

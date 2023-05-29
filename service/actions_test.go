@@ -946,7 +946,7 @@ func (s *S) TestSetJobBoundEnvsActionForwardWrongParameter(c *check.C) {
 
 func (s *S) TestSetJobBoundEnvsActionBackward(c *check.C) {
 	var rmCalled bool
-	s.mockService.JobService.OnRemoveInstance = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
+	s.mockService.JobService.OnRemoveServiceEnv = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
 		argsToBeRemoved := jobTypes.RemoveInstanceArgs{
 			ServiceName:  "mysql",
 			InstanceName: "my-mysql",
@@ -1157,7 +1157,7 @@ func (s *S) TestUnbindJobEndpointBackward(c *check.C) {
 
 func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
 	var rmCalled bool
-	s.mockService.JobService.OnRemoveInstance = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
+	s.mockService.JobService.OnRemoveServiceEnv = func(job *jobTypes.Job, rmArgs jobTypes.RemoveInstanceArgs) error {
 		argsToBeRemoved := jobTypes.RemoveInstanceArgs{
 			ServiceName:  "mysql",
 			InstanceName: "my-mysql",

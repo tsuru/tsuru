@@ -100,7 +100,7 @@ type JobService interface {
 	RemoveJobFromDb(jobName string) error
 	Trigger(ctx context.Context, job *Job) error
 	UpdateJob(ctx context.Context, newJob, oldJob *Job, user *authTypes.User) error
-	AddInstance(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
-	RemoveInstance(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
+	AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
+	RemoveServiceEnv(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
 	UpdateJobProv(ctx context.Context, job *Job) error
 }
