@@ -13,7 +13,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/docker-cluster/cluster"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -148,17 +147,4 @@ func RegistryAuthConfig(image string) docker.AuthConfiguration {
 	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
 	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
 	return authConfig
-}
-
-func GetNodeByHost(c *cluster.Cluster, host string) (cluster.Node, error) {
-	nodes, err := c.UnfilteredNodes()
-	if err != nil {
-		return cluster.Node{}, err
-	}
-	for _, node := range nodes {
-		if tsuruNet.URLToHost(node.Address) == host {
-			return node, nil
-		}
-	}
-	return cluster.Node{}, errors.Errorf("node with host %q not found", host)
 }

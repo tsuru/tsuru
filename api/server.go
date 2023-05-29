@@ -458,7 +458,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
-	m.Add("1.3", http.MethodGet, "/healing", AuthorizationRequiredHandler(healingHistoryHandler))
+	m.Add("1.3", http.MethodGet, "/healing", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.3", http.MethodGet, "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.8", http.MethodPost, "/routers", AuthorizationRequiredHandler(addRouter))
 	m.Add("1.8", http.MethodPut, "/routers/{name}", AuthorizationRequiredHandler(updateRouter))
@@ -513,7 +513,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
 	m.Add("1.0", http.MethodPost, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
 	m.Add("1.0", http.MethodDelete, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
-	m.Add("1.0", http.MethodGet, "/docker/healing", AuthorizationRequiredHandler(healingHistoryHandler))
+	m.Add("1.0", http.MethodGet, "/docker/healing", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/docker/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
 	m.Add("1.0", http.MethodGet, "/docker/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))

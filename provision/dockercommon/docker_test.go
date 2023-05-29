@@ -12,7 +12,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -137,35 +136,4 @@ func (s *S) TestPushImageNoRegistry(c *check.C) {
 	err = PushImage(client, "localhost:3030/base", "", docker.AuthConfiguration{})
 	c.Assert(err, check.IsNil)
 	c.Assert(request, check.IsNil)
-}
-
-func (s *S) TestGetNodeByHost(c *check.C) {
-	nodes := []cluster.Node{{
-		Address: "http://h1:80",
-	}, {
-		Address: "http://h2:90",
-	}, {
-		Address: "http://h3",
-	}, {
-		Address: "h4",
-	}, {
-		Address: "h5:30123",
-	}}
-	myCluster, err := cluster.New(nil, &cluster.MapStorage{}, "", nodes...)
-	c.Assert(err, check.IsNil)
-	tests := [][]string{
-		{"h1", nodes[0].Address},
-		{"h2", nodes[1].Address},
-		{"h3", nodes[2].Address},
-		{"h4", nodes[3].Address},
-		{"h5", nodes[4].Address},
-	}
-	for _, t := range tests {
-		var n cluster.Node
-		n, err = GetNodeByHost(myCluster, t[0])
-		c.Assert(err, check.IsNil)
-		c.Assert(n.Address, check.DeepEquals, t[1])
-	}
-	_, err = GetNodeByHost(myCluster, "h6")
-	c.Assert(err, check.ErrorMatches, `node with host "h6" not found`)
 }

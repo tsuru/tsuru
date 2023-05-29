@@ -25,8 +25,6 @@ import (
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker"
-	"github.com/tsuru/tsuru/provision/docker/healer"
 	kubeMigrate "github.com/tsuru/tsuru/provision/kubernetes/migrate"
 	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -62,10 +60,6 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-events-deploy", app.MigrateDeploysToEvents)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-events-healer", healer.MigrateHealingToEvents)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -190,7 +184,7 @@ func migrateImages() error {
 		if err != nil {
 			return err
 		}
-		return docker.MigrateImages()
+		return nil
 	}
 	return nil
 }
