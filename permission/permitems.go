@@ -95,8 +95,6 @@ var (
 	PermEventBlockRead                   = PermissionRegistry.get("event-block.read")                    // [global]
 	PermEventBlockReadEvents             = PermissionRegistry.get("event-block.read.events")             // [global]
 	PermEventBlockRemove                 = PermissionRegistry.get("event-block.remove")                  // [global]
-	PermInstall                          = PermissionRegistry.get("install")                             // [global]
-	PermInstallManage                    = PermissionRegistry.get("install.manage")                      // [global]
 	PermJob                              = PermissionRegistry.get("job")                                 // [global team pool job]
 	PermJobCreate                        = PermissionRegistry.get("job.create")                          // [global team]
 	PermJobDelete                        = PermissionRegistry.get("job.delete")                          // [global team pool job]

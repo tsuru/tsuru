@@ -175,8 +175,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 ).add(
 	"debug",
 ).add(
-	"install.manage",
-).add(
 	"event-block.read",
 	"event-block.read.events",
 	"event-block.add",
