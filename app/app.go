@@ -1001,34 +1001,6 @@ type UpdateUnitsResult struct {
 	Found bool
 }
 
-func findNodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData) (provision.Node, error) {
-	provisioners, err := provision.Registry()
-	if err != nil {
-		return nil, err
-	}
-	provErrors := tsuruErrors.NewMultiError()
-	for _, p := range provisioners {
-		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
-			var node provision.Node
-			if len(nodeData.Addrs) == 1 {
-				node, err = nodeProv.GetNode(ctx, nodeData.Addrs[0])
-			} else {
-				node, err = nodeProv.NodeForNodeData(ctx, nodeData)
-			}
-			if err == nil {
-				return node, nil
-			}
-			if errors.Cause(err) != provision.ErrNodeNotFound {
-				provErrors.Add(err)
-			}
-		}
-	}
-	if err = provErrors.ToError(); err != nil {
-		return nil, err
-	}
-	return nil, provision.ErrNodeNotFound
-}
-
 // available returns true if at least one of N units is started or unreachable.
 func (app *App) available() bool {
 	units, err := app.Units()
