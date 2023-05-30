@@ -392,7 +392,7 @@ func sweepOldImages() error {
 	mapAppVersions := map[string]appTypes.AppVersions{}
 	for _, appVersions := range allAppVersions {
 		if appVersions.MarkedToRemoval {
-			err := pruneAllVersionsByApp(ctx, appVersions)
+			err = pruneAllVersionsByApp(ctx, appVersions)
 			if err != nil {
 				multi.Add(err)
 			}
