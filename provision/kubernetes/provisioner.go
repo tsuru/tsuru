@@ -1290,7 +1290,7 @@ func (p *kubernetesProvisioner) StartupMessage() (string, error) {
 	}
 	var out string
 	for _, c := range clusters {
-		out += fmt.Sprintf("Kubernetes provisioner on cluster %q - %s:\n", c.Name, c.restConfig.Host)
+		out += fmt.Sprintf("Kubernetes provisioner on cluster %q - %s\n", c.Name, c.restConfig.Host)
 	}
 	return out, nil
 }

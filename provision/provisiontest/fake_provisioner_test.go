@@ -564,20 +564,6 @@ func (s *S) TestAddUnitsFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "Cannot add more units.")
 }
 
-func (s *S) TestAddUnitsNodeAware(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Reset()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.AddUnits(context.TODO(), app, 2, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	allUnits := p.GetUnits(app)
-	c.Assert(allUnits, check.HasLen, 2)
-	c.Assert(allUnits[0].Address.Host, check.Equals, "n1:1")
-	c.Assert(allUnits[1].Address.Host, check.Equals, "n1:2")
-}
-
 func (s *S) TestAddUnitsToNode(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()

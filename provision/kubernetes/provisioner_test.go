@@ -1883,9 +1883,7 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 func (s *S) TestStartupMessage(c *check.C) {
 	msg, err := s.p.StartupMessage()
 	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr:
-    Kubernetes node: 192.168.99.1
-    Kubernetes node: 192.168.99.2
+	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr
 `)
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return nil, nil

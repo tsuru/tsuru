@@ -234,13 +234,7 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	var nodeDeleteCalls []string
-	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" {
-			nodeDeleteCalls = append(nodeDeleteCalls, r.URL.Path)
-		}
-	}))
-	defer nodeSrv.Close()
+
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
@@ -292,7 +286,6 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 	sort.Ints(markedVersionsToRemoval)
 	sort.Strings(appImgs)
 	sort.Strings(builderImgs)
-	sort.Strings(nodeDeleteCalls)
 	c.Check(markedVersionsToRemoval, check.DeepEquals, []int(nil))
 	c.Check(appImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:v10",
@@ -318,31 +311,6 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v7-builder",
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
-	})
-	c.Check(nodeDeleteCalls, check.DeepEquals, []string{
-		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
-		"/images/" + u.Host + "/tsuru/app-myapp:v10",
-		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v12",
-		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v2",
-		"/images/" + u.Host + "/tsuru/app-myapp:v2-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3",
-		"/images/" + u.Host + "/tsuru/app-myapp:v3-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
 	})
 }
 
@@ -509,13 +477,6 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	var nodeDeleteCalls []string
-	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" {
-			nodeDeleteCalls = append(nodeDeleteCalls, r.URL.Path)
-		}
-	}))
-	defer nodeSrv.Close()
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
@@ -560,7 +521,6 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	sort.Ints(markedVersionsToRemoval)
 	sort.Strings(appImgs)
 	sort.Strings(builderImgs)
-	sort.Strings(nodeDeleteCalls)
 	c.Check(markedVersionsToRemoval, check.DeepEquals, []int{2, 3})
 	c.Check(appImgs, check.DeepEquals, []string{
 		u.Host + "/tsuru/app-myapp:v10",
@@ -587,28 +547,6 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
 	})
-	c.Check(nodeDeleteCalls, check.DeepEquals, []string{
-		"/images/" + u.Host + "/tsuru/app-myapp:my-custom-tag",
-		"/images/" + u.Host + "/tsuru/app-myapp:v10",
-		"/images/" + u.Host + "/tsuru/app-myapp:v10-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11",
-		"/images/" + u.Host + "/tsuru/app-myapp:v11-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v12",
-		"/images/" + u.Host + "/tsuru/app-myapp:v12-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4",
-		"/images/" + u.Host + "/tsuru/app-myapp:v4-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5",
-		"/images/" + u.Host + "/tsuru/app-myapp:v5-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6",
-		"/images/" + u.Host + "/tsuru/app-myapp:v6-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7",
-		"/images/" + u.Host + "/tsuru/app-myapp:v7-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8",
-		"/images/" + u.Host + "/tsuru/app-myapp:v8-builder",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9",
-		"/images/" + u.Host + "/tsuru/app-myapp:v9-builder",
-	})
-
 	evts, err := event.All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -625,11 +563,6 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team, Pool: "p1"}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	var nodeDeleteCalls int
-	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		nodeDeleteCalls++
-	}))
-	defer nodeSrv.Close()
 	var regDeleteCalls int
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		regDeleteCalls++
