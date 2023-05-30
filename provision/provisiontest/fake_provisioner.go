@@ -42,7 +42,6 @@ var (
 	_ provision.LogsProvisioner       = &FakeProvisioner{}
 	_ provision.MetricsProvisioner    = &FakeProvisioner{}
 	_ provision.VolumeProvisioner     = &FakeProvisioner{}
-	_ provision.SleepableProvisioner  = &FakeProvisioner{}
 	_ provision.AppFilterProvisioner  = &FakeProvisioner{}
 	_ provision.ExecutableProvisioner = &FakeProvisioner{}
 	_ provision.App                   = &FakeApp{}
@@ -445,13 +444,6 @@ func (p *FakeProvisioner) Stops(app provision.App, process string) int {
 	return p.apps[app.GetName()].stops[process]
 }
 
-// Sleeps returns the number of sleeps for a given app.
-func (p *FakeProvisioner) Sleeps(app provision.App, process string) int {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].sleeps[process]
-}
-
 func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
@@ -607,7 +599,6 @@ func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) erro
 		restarts: make(map[string]int),
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
-		sleeps:   make(map[string]int),
 	}
 	return nil
 }
@@ -938,22 +929,6 @@ func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process s
 	return nil
 }
 
-func (p *FakeProvisioner) Sleep(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp.sleeps[process]++
-	for i, u := range pApp.units {
-		u.Status = provision.StatusAsleep
-		pApp.units[i] = u
-	}
-	p.apps[app.GetName()] = pApp
-	return nil
-}
-
 func (p *FakeProvisioner) RegisterUnit(ctx context.Context, a provision.App, unitId string, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -1161,7 +1136,6 @@ type provisionedApp struct {
 	restarts  map[string]int
 	starts    map[string]int
 	stops     map[string]int
-	sleeps    map[string]int
 	cnames    []string
 	unitLen   int
 	lastData  map[string]interface{}

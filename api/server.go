@@ -268,7 +268,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/apps/{app}/restart", AuthorizationRequiredHandler(restart))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/start", AuthorizationRequiredHandler(start))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/stop", AuthorizationRequiredHandler(stop))
-	m.Add("1.0", http.MethodPost, "/apps/{app}/sleep", AuthorizationRequiredHandler(sleep))
+	m.Add("1.0", http.MethodPost, "/apps/{app}/sleep", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.10", http.MethodDelete, "/apps/{app}/versions/{version}", AuthorizationRequiredHandler(appVersionDelete))
 	m.Add("1.0", http.MethodGet, "/apps/{app}/quota", AuthorizationRequiredHandler(getAppQuota))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/quota", AuthorizationRequiredHandler(changeAppQuota))

@@ -1900,40 +1900,6 @@ func (s *S) TestStartupMessage(c *check.C) {
 	c.Assert(msg, check.Equals, "")
 }
 
-func (s *S) TestSleepStart(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
-	wait()
-	err = s.p.Sleep(context.TODO(), a, "", version)
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-}
-
 func (s *S) TestGetKubeConfig(c *check.C) {
 	config.Set("kubernetes:deploy-sidecar-image", "img1")
 	config.Set("kubernetes:deploy-inspect-image", "img2")

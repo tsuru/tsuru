@@ -5864,57 +5864,6 @@ func (s *S) TestSleepHandler(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestSleepHandlerReturns400IfTheProxyIsNotSet(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	a := app.App{
-		Name:      "stress",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/stress/sleep?:app=stress", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "Empty proxy URL")
-}
-
-func (s *S) TestSleepHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("POST", "/apps/unknown/sleep?:app=unknown", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
-	a := app.App{Name: "nightmist"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateSleep,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=http://example.com", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-}
-
 type LogList []appTypes.Applog
 
 func (l LogList) Len() int           { return len(l) }

@@ -76,7 +76,6 @@ func (ProvisionSuite) TestStatuses(c *check.C) {
 	c.Check(StatusStarted.String(), check.Equals, "started")
 	c.Check(StatusStopped.String(), check.Equals, "stopped")
 	c.Check(StatusStarting.String(), check.Equals, "starting")
-	c.Check(StatusAsleep.String(), check.Equals, "asleep")
 }
 
 func (ProvisionSuite) TestParseStatus(c *check.C) {
@@ -90,7 +89,6 @@ func (ProvisionSuite) TestParseStatus(c *check.C) {
 		{"error", StatusError, nil},
 		{"started", StatusStarted, nil},
 		{"stopped", StatusStopped, nil},
-		{"asleep", StatusAsleep, nil},
 		{"starting", StatusStarting, nil},
 		{"something", Status(""), ErrInvalidStatus},
 		{"otherthing", Status(""), ErrInvalidStatus},

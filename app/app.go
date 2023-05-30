@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
@@ -860,8 +859,8 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		return err
 	}
 	for _, u := range units {
-		if (u.Status == provision.StatusAsleep) || (u.Status == provision.StatusStopped) {
-			return errors.New("Cannot add units to an app that has stopped or sleeping units")
+		if u.Status == provision.StatusStopped {
+			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
 	version, err := app.getVersion(app.ctx, versionStr)
@@ -1397,64 +1396,6 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	return nil
 }
 
-func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr string, proxyURL *url.URL) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	sleepProv, ok := prov.(provision.SleepableProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "sleeping"}
-	}
-	w = app.withLogWriter(w)
-	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep", process)
-	if process == "" {
-		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep", app.Name)
-	}
-	fmt.Fprintf(w, "%s\n", msg)
-	routers := app.GetRouters()
-	for _, appRouter := range routers {
-		var r router.Router
-		r, err = router.Get(ctx, appRouter.Name)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
-			log.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
-			return fmt.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
-		}
-		var oldRoutes []*url.URL
-		oldRoutes, err = r.Routes(app.ctx, app)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		err = r.RemoveRoutes(app.ctx, app, oldRoutes)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		err = r.AddRoutes(app.ctx, app, []*url.URL{proxyURL})
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-	}
-	version, err := app.getVersionAllowNil(versionStr)
-	if err != nil {
-		return err
-	}
-	err = sleepProv.Sleep(ctx, app, process, version)
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
-		rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-		return newErrorWithLog(err, app, "sleep")
-	}
-	return nil
-}
-
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() ([]bind.Unit, error) {
 	provUnits, err := app.Units()
@@ -1570,7 +1511,7 @@ func (app *App) GetQuotaInUse() (int, error) {
 	counter := 0
 	for _, u := range units {
 		switch u.Status {
-		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped, provision.StatusAsleep:
+		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped:
 			counter++
 		}
 	}

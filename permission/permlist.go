@@ -29,7 +29,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
-	"app.update.sleep",
 	"app.update.start",
 	"app.update.stop",
 	"app.update.swap",

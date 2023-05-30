@@ -83,7 +83,6 @@ type kubernetesProvisioner struct {
 var (
 	_ provision.Provisioner              = &kubernetesProvisioner{}
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
 	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
@@ -688,10 +687,6 @@ func (p *kubernetesProvisioner) Start(ctx context.Context, a provision.App, proc
 
 func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
 	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, w)
-}
-
-func (p *kubernetesProvisioner) Sleep(ctx context.Context, a provision.App, process string, version appTypes.AppVersion) error {
-	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true, Sleep: true}, nil)
 }
 
 var stateMap = map[apiv1.PodPhase]provision.Status{

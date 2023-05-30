@@ -1006,29 +1006,11 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		},
 		{
 			states: []servicecommon.ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true},
-			},
-			fn: func(dep *appsv1.Deployment) {
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.IsAsleep(), check.Equals, true)
-			},
-		},
-		{
-			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(dep *appsv1.Deployment) {
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, false)
-			},
-		},
-		{
-			states: []servicecommon.ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {Start: true},
-			},
-			fn: func(dep *appsv1.Deployment) {
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
 		},
 		{
@@ -1042,15 +1024,6 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 		},
 		{
 			states: []servicecommon.ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {Restart: true},
-			},
-			fn: func(dep *appsv1.Deployment) {
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.IsAsleep(), check.Equals, false)
-			},
-		},
-		{
-			states: []servicecommon.ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {},
 			},
 			fn: func(dep *appsv1.Deployment) {
@@ -1058,15 +1031,6 @@ func (s *S) TestServiceManagerDeployServiceUpdateStates(c *check.C) {
 				c.Assert(*dep.Spec.Replicas, check.Equals, int32(0))
 				ls := labelSetFromMeta(&dep.ObjectMeta)
 				c.Assert(ls.IsStopped(), check.Equals, true)
-			},
-		},
-		{
-			states: []servicecommon.ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {},
-			},
-			fn: func(dep *appsv1.Deployment) {
-				ls := labelSetFromMeta(&dep.ObjectMeta)
-				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
 		},
 		{

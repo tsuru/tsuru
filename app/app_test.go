@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -877,28 +876,7 @@ func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-}
-
-func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
-	a := App{
-		Name: "sejuani", Platform: "python",
-		TeamOwner: s.team.Name,
-		Quota:     quota.UnlimitedQuota,
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(1, "web", "", nil)
-	c.Assert(err, check.IsNil)
-	err = a.Sleep(context.TODO(), nil, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, "web", "", nil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
+	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped units")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -2484,33 +2462,6 @@ func (s *S) TestStopPastUnits(c *check.C) {
 	pastUnits := updatedVersion.VersionInfo().PastUnits
 	c.Assert(pastUnits, check.HasLen, 1)
 	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 2})
-}
-
-func (s *S) TestSleep(c *check.C) {
-	a := App{
-		Name:      "someapp",
-		Platform:  "django",
-		Teams:     []string{s.team.Name},
-		TeamOwner: s.team.Name,
-		Routers:   []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	routertest.FakeRouter.AddBackend(context.TODO(), &a)
-	var b bytes.Buffer
-	err = a.Start(context.TODO(), &b, "", "")
-	c.Assert(err, check.IsNil)
-	proxyURL, err := url.Parse("http://example.com")
-	c.Assert(err, check.IsNil)
-	err = a.Sleep(context.TODO(), &b, "", "", proxyURL)
-	c.Assert(err, check.IsNil)
-	sleeps := s.provisioner.Sleeps(&a, "")
-	c.Assert(sleeps, check.Equals, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, proxyURL.String()), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
 }
 
 func (s *S) TestLastLogs(c *check.C) {
@@ -4100,10 +4051,7 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	var buf bytes.Buffer
 	err := apps[1].Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
-	proxyURL, _ := url.Parse("http://somewhere.com")
-	err = apps[2].Sleep(context.TODO(), &buf, "", "", proxyURL)
-	c.Assert(err, check.IsNil)
-	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped", "asleep"}})
+	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(resultApps, check.HasLen, 2)
 	names := []string{resultApps[0].Name, resultApps[1].Name}
@@ -4348,50 +4296,6 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	starts := s.provisioner.Starts(&a, "")
 	c.Assert(starts, check.Equals, 1)
-}
-
-func (s *S) TestStartAsleepApp(c *check.C) {
-	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
-	var b bytes.Buffer
-	err = a.Sleep(context.TODO(), &b, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
-	}
-	err = a.Start(context.TODO(), &b, "web", "")
-	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
-}
-
-func (s *S) TestRestartAsleepApp(c *check.C) {
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
-	var b bytes.Buffer
-	err = a.Sleep(context.TODO(), &b, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
-	}
-	err = a.Restart(context.TODO(), "web", "", &b)
-	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAppSetUpdatePlatform(c *check.C) {

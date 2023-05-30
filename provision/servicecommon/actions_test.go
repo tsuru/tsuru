@@ -557,27 +557,11 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		},
 		{
 			states: []ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true},
-			},
-			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(ls.IsAsleep(), check.Equals, true)
-			},
-		},
-		{
-			states: []ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {Start: true},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 1)
 				c.Assert(ls.IsStopped(), check.Equals, false)
-			},
-		},
-		{
-			states: []ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {Start: true},
-			},
-			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(ls.IsAsleep(), check.Equals, false)
 			},
 		},
 		{
@@ -599,27 +583,11 @@ func (s *S) TestRunServicePipelineUpdateStates(c *check.C) {
 		},
 		{
 			states: []ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {Restart: true},
-			},
-			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(ls.IsAsleep(), check.Equals, false)
-			},
-		},
-		{
-			states: []ProcessState{
 				{Start: true}, {Increment: 2}, {Stop: true}, {},
 			},
 			fn: func(replicas int, ls *provision.LabelSet) {
 				c.Assert(replicas, check.Equals, 0)
 				c.Assert(ls.IsStopped(), check.Equals, true)
-			},
-		},
-		{
-			states: []ProcessState{
-				{Start: true}, {Increment: 2}, {Sleep: true}, {},
-			},
-			fn: func(replicas int, ls *provision.LabelSet) {
-				c.Assert(ls.IsAsleep(), check.Equals, true)
 			},
 		},
 		{
