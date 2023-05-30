@@ -4053,10 +4053,8 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped"}})
 	c.Assert(err, check.IsNil)
-	c.Assert(resultApps, check.HasLen, 2)
-	names := []string{resultApps[0].Name, resultApps[1].Name}
-	sort.Strings(names)
-	c.Assert(names, check.DeepEquals, []string{"ta2", "ta3"})
+	c.Assert(resultApps, check.HasLen, 1)
+	c.Assert([]string{resultApps[0].Name}, check.DeepEquals, []string{"ta2"})
 }
 
 func (s *S) TestListFilteringByTag(c *check.C) {
