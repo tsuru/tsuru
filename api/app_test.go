@@ -6443,32 +6443,6 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	})
 }
 
-func (s *S) TestMetricEnvsWhenUserDoesNotHaveAccess(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend"}
-	err := s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppReadMetric,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestMetricEnvsWhenAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
-}
-
 func (s *S) TestRebuildRoutes(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
