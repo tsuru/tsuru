@@ -31,8 +31,8 @@ import (
 )
 
 const (
-	defaultDockerProvisioner = "docker"
-	DefaultHealthcheckScheme = "http"
+	defaultKubernetesProvisioner = "kubernetes"
+	DefaultHealthcheckScheme     = "http"
 
 	PoolMetadataName   = "pool"
 	IaaSIDMetadataName = "iaas-id"
@@ -46,7 +46,7 @@ var (
 	ErrNodeNotFound  = errors.New("node not found")
 
 	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
-	DefaultProvisioner = defaultDockerProvisioner
+	DefaultProvisioner = defaultKubernetesProvisioner
 )
 
 type UnitNotFoundError struct {
@@ -627,7 +627,7 @@ func Get(name string) (Provisioner, error) {
 
 func GetDefault() (Provisioner, error) {
 	if DefaultProvisioner == "" {
-		DefaultProvisioner = defaultDockerProvisioner
+		DefaultProvisioner = defaultKubernetesProvisioner
 	}
 	return Get(DefaultProvisioner)
 }
