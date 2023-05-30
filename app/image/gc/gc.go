@@ -58,21 +58,6 @@ var (
 		Help:      "The number of versions of applications that was marked to removal",
 	})
 
-	provisionerPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: promNamespace,
-		Subsystem: promSubsystem,
-		Name:      "provisioner_prune_failures_total",
-		Help:      "The number of failures to prune unused images from provisioner",
-	})
-
-	provisionerPruneDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Namespace: promNamespace,
-		Subsystem: promSubsystem,
-		Name:      "provisioner_prune_duration_seconds",
-		Help:      "How long during single prune to provisioner",
-		Buckets:   prometheus.ExponentialBuckets(0.005, 4, 10),
-	})
-
 	// registry metrics
 	registryPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: promNamespace,

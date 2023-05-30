@@ -2630,20 +2630,6 @@ func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
 	c.Check(e.Message, check.Equals, "App not found")
 }
 
-type updateList []app.UpdateUnitsResult
-
-func (list updateList) Len() int {
-	return len(list)
-}
-
-func (list updateList) Less(i, j int) bool {
-	return list[i].ID < list[j].ID
-}
-
-func (list updateList) Swap(i, j int) {
-	list[i], list[j] = list[j], list[i]
-}
-
 func (s *S) TestAddTeamToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "itshardteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {

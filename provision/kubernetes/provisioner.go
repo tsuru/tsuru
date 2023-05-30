@@ -1114,26 +1114,6 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 	return addresses, nil
 }
 
-type nodeFilter struct {
-	addresses []string
-	metadata  map[string]string
-}
-
-func appendKV(s, outSep, innSep string, m map[string]string) {
-	kvs := strings.Split(s, outSep)
-	for _, kv := range kvs {
-		parts := strings.SplitN(kv, innSep, 2)
-		if len(parts) != 2 {
-			continue
-		}
-		if parts[1] == "" {
-			delete(m, parts[1])
-			continue
-		}
-		m[parts[0]] = parts[1]
-	}
-}
-
 func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
 	client, err := clusterForPool(ctx, args.App.GetPool())
 	if err != nil {
