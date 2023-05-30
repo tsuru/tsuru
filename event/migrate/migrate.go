@@ -83,8 +83,6 @@ func setAllowed(evt *event.Event) (err error) {
 		evt.Allowed = event.Allowed(permission.PermPoolReadEvents, permission.Context(permTypes.CtxPool, evt.Target.Value))
 	case event.TargetTypeUser:
 		evt.Allowed = event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, evt.Target.Value))
-	case event.TargetTypeIaas:
-		evt.Allowed = event.Allowed(permission.PermMachineReadEvents, permission.Context(permTypes.CtxIaaS, evt.Target.Value))
 	case event.TargetTypeContainer:
 		var provisioners []provision.Provisioner
 		provisioners, err = provision.Registry()
