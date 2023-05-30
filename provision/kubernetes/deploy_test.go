@@ -2648,6 +2648,48 @@ func (s *S) TestServiceManagerDeployDnsConfigNdotsEnable(c *check.C) {
 	c.Assert(dep.Spec.Template.Spec.DNSConfig, check.DeepEquals, &apiv1.PodDNSConfig{Options: []apiv1.PodDNSConfigOption{{Name: "ndots", Value: &dnsConfigNdotsValue}}})
 }
 
+func (s *S) TestServiceManagerDeployTopologySpreadConstraintEnable(c *check.C) {
+	waitDep := s.mock.DeploymentReactions(c)
+	defer waitDep()
+	s.clusterClient.CustomData[topologySpreadConstraintsKey] = "[{\"maxskew\":1, \"topologykey\":\"kubernetes.io/hostname\"}, {\"maxskew\":2, \"topologykey\":\"kubernetes.io/zone\"}]"
+	m := serviceManager{client: s.clusterClient}
+	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), a, s.user)
+	c.Assert(err, check.IsNil)
+	version := newCommittedVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"p1": "cm1",
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
+		App:     a,
+		Version: version,
+	}, servicecommon.ProcessSpec{
+		"p1": servicecommon.ProcessState{Start: true},
+	})
+	c.Assert(err, check.IsNil)
+	waitDep()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+	topologySpreadConstraints := []apiv1.TopologySpreadConstraint{
+		{
+			MaxSkew:           1,
+			TopologyKey:       "kubernetes.io/hostname",
+			WhenUnsatisfiable: apiv1.ScheduleAnyway,
+			LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "p1", "tsuru.io/app-version": "1"}},
+		},
+		{
+			MaxSkew:           2,
+			TopologyKey:       "kubernetes.io/zone",
+			WhenUnsatisfiable: apiv1.ScheduleAnyway,
+			LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "p1", "tsuru.io/app-version": "1"}},
+		}}
+	c.Assert(dep.Spec.Template.Spec.TopologySpreadConstraints, check.DeepEquals, topologySpreadConstraints)
+}
+
 func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()

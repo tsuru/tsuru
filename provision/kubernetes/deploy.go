@@ -758,6 +758,11 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	serviceLinks := false
 
+	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.GetPool()))
+	if err != nil {
+		return nil, nil, err
+	}
+
 	routers := a.GetRouters()
 	conditionSet := set.Set{}
 	for _, r := range routers {
@@ -806,6 +811,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 					Annotations: annotations,
 				},
 				Spec: apiv1.PodSpec{
+					TopologySpreadConstraints:     topologySpreadConstraints,
 					TerminationGracePeriodSeconds: &terminationGracePeriod,
 					EnableServiceLinks:            &serviceLinks,
 					ImagePullSecrets:              pullSecrets,

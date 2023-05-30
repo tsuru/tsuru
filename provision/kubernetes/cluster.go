@@ -87,6 +87,7 @@ const (
 	buildServiceTLSKey            = "build-service-tls"
 	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
 	jobEventCreation              = "job-event-creation"
+	topologySpreadConstraintsKey  = "topology-spread-constraints"
 
 	dialTimeout  = 30 * time.Second
 	tcpKeepAlive = 30 * time.Second
@@ -125,6 +126,7 @@ var (
 		buildServiceTLSKey:            "Whether should access Build service through TLS",
 		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
 		jobEventCreation:              "Enable k8s event data tracking cross-referencing with Jobs and send them to tsuru database",
+		topologySpreadConstraintsKey:  "Enable topology spread constraints for apps",
 	}
 )
 
@@ -452,6 +454,17 @@ func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
 		return 0, nil // 0 means no factor defined
 	}
 	return burst, nil
+}
+
+func (c *ClusterClient) TopologySpreadConstraints(pool string) string {
+	if c.CustomData == nil {
+		return ""
+	}
+	tsc := c.configForContext(pool, topologySpreadConstraintsKey)
+	if tsc == "" {
+		return ""
+	}
+	return tsc
 }
 
 func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error) {
