@@ -183,18 +183,6 @@ func (app *App) fillInternalAddresses() error {
 	return nil
 }
 
-func (app *App) CleanImage(img string) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	cleanProv, ok := prov.(provision.CleanImageProvisioner)
-	if !ok {
-		return nil
-	}
-	return cleanProv.CleanImage(app.Name, img)
-}
-
 func (app *App) getProvisioner() (provision.Provisioner, error) {
 	var err error
 	if app.provisioner == nil {
@@ -706,28 +694,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
-	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
-		var versions appTypes.AppVersions
-		versions, err = servicemanager.AppVersion.AppVersions(ctx, app)
-		if err != nil {
-			log.Errorf("failed to list versions for app %s: %s", appName, err)
-		}
-		for _, version := range versions.Versions {
-			var imgs []string
-			if version.BuildImage != "" {
-				imgs = append(imgs, version.BuildImage)
-			}
-			if version.DeployImage != "" {
-				imgs = append(imgs, version.DeployImage)
-			}
-			for _, img := range imgs {
-				err = cleanProv.CleanImage(appName, img)
-				if err != nil {
-					log.Errorf("failed to remove image %q from provisioner %s: %s", img, appName, err)
-				}
-			}
-		}
-	}
+
 	err = servicemanager.AppVersion.DeleteVersions(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)

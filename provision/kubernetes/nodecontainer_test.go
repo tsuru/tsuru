@@ -196,7 +196,6 @@ func (s *S) TestManagerDeployNodeContainerMultiClusterWithApp(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainer(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -334,7 +333,6 @@ func (s *S) TestManagerDeployNodeContainer(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerOnSinglePool(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	s.clusterClient.CustomData[singlePoolKey] = "true"
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
@@ -374,7 +372,6 @@ func (s *S) TestManagerDeployNodeContainerOnSinglePool(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerIgnoreInvalidPools(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -397,7 +394,6 @@ func (s *S) TestManagerDeployNodeContainerIgnoreInvalidPools(c *check.C) {
 func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 	config.Set("kubernetes:use-pool-namespaces", true)
 	defer config.Unset("kubernetes:use-pool-namespaces")
-	s.mock.MockfakeNodes(c)
 	poolName := "mypool"
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: poolName, Provisioner: provisionerName})
 	c.Assert(err, check.IsNil)
@@ -433,7 +429,6 @@ func (s *S) TestManagerDeployNodeContainerWithPoolNamespaces(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{
@@ -503,7 +498,6 @@ func (s *S) TestManagerDeployNodeContainerWithFilter(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: nodecontainer.BsDefaultName,
 		Config: docker.Config{
@@ -559,7 +553,6 @@ func (s *S) TestManagerDeployNodeContainerBSSpecialMount(c *check.C) {
 }
 
 func (s *S) TestManagerDeployNodeContainerBSMultiCluster(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	clust := s.client.GetCluster()
 	c.Assert(clust, check.NotNil)
 	cluster2 := &provTypes.Cluster{
@@ -637,7 +630,6 @@ func (s *S) TestManagerDeployNodeContainerPlacementOnly(c *check.C) {
 	}
 	s.client.PrependReactor("create", "daemonsets", reaction)
 	s.client.PrependReactor("update", "daemonsets", reaction)
-	s.mock.MockfakeNodes(c)
 	c1 := nodecontainer.NodeContainerConfig{
 		Name: "bs",
 		Config: docker.Config{

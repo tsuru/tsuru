@@ -241,11 +241,6 @@ func (s *S) TestGCStartWithApp(c *check.C) {
 		}
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
@@ -361,11 +356,6 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
@@ -447,11 +437,6 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 		http.Error(w, "Unavailable", http.StatusInternalServerError)
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
 			w.Header().Set("Docker-Content-Digest", r.URL.Path)
@@ -489,11 +474,6 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 	nodeSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unavailable", http.StatusInternalServerError)
 	}))
@@ -536,11 +516,6 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		}
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	var regDeleteCalls []string
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
@@ -655,11 +630,6 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 		nodeDeleteCalls++
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	var regDeleteCalls int
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		regDeleteCalls++
@@ -696,11 +666,6 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer nodeSrv.Close()
-	err = provisiontest.ProvisionerInstance.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: nodeSrv.URL,
-		Pool:    "p1",
-	})
-	c.Assert(err, check.IsNil)
 	registrySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -783,13 +748,12 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 func (s *S) TestSelectAppVersions(c *check.C) {
 	now := time.Now()
 	testCases := []struct {
-		explanation                            string
-		historySize                            int
-		appVersions                            func() appTypes.AppVersions
-		deployedVersions                       []int
-		expectedVersionsToRemove               []int
-		expectedVersionsToPruneFromProvisioner []int
-		expectedUnsuccessfulDeployments        []int
+		explanation                     string
+		historySize                     int
+		appVersions                     func() appTypes.AppVersions
+		deployedVersions                []int
+		expectedVersionsToRemove        []int
+		expectedUnsuccessfulDeployments []int
 	}{
 		{
 			explanation: "should use ID to sort when is same updatedAt",
@@ -810,9 +774,8 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
-			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
-			expectedUnsuccessfulDeployments:        []int{},
+			expectedVersionsToRemove:        []int{5, 4, 3, 2, 1},
+			expectedUnsuccessfulDeployments: []int{},
 		},
 		{
 			explanation: "should use updatedAt to short the versions",
@@ -833,9 +796,8 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{5, 4, 3, 2, 1},
-			expectedVersionsToPruneFromProvisioner: []int{9, 8, 7, 6},
-			expectedUnsuccessfulDeployments:        []int{},
+			expectedVersionsToRemove:        []int{5, 4, 3, 2, 1},
+			expectedUnsuccessfulDeployments: []int{},
 		},
 
 		{
@@ -857,9 +819,8 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{10, 8, 6, 4, 2},
-			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 20, 18, 16, 14, 12},
-			expectedUnsuccessfulDeployments:        []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
+			expectedVersionsToRemove:        []int{10, 8, 6, 4, 2},
+			expectedUnsuccessfulDeployments: []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
 		},
 
 		{
@@ -882,9 +843,8 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{6, 4},
-			expectedVersionsToPruneFromProvisioner: []int{28, 26, 24, 22, 18, 16, 14, 12},
-			expectedUnsuccessfulDeployments:        []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
+			expectedVersionsToRemove:        []int{6, 4},
+			expectedUnsuccessfulDeployments: []int{29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1},
 		},
 
 		{
@@ -904,9 +864,8 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 				return appVersions
 			},
-			expectedVersionsToRemove:               []int{},
-			expectedVersionsToPruneFromProvisioner: []int{100},
-			expectedUnsuccessfulDeployments:        []int{},
+			expectedVersionsToRemove:        []int{},
+			expectedUnsuccessfulDeployments: []int{},
 		},
 	}
 
@@ -916,7 +875,6 @@ func (s *S) TestSelectAppVersions(c *check.C) {
 
 		c.Check(versionIDs(selection.toRemove), check.DeepEquals, testCase.expectedVersionsToRemove)
 		c.Check(versionIDs(selection.unsuccessfulDeploys), check.DeepEquals, testCase.expectedUnsuccessfulDeployments)
-		c.Check(versionIDs(selection.toPruneFromProvisioner), check.DeepEquals, testCase.expectedVersionsToPruneFromProvisioner)
 		c.Log("Finished: " + testCase.explanation)
 	}
 }

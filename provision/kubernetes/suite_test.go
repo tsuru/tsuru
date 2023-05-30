@@ -241,10 +241,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) waitNodeUpdate(c *check.C, fn func()) {
-	s.mock.WaitNodeUpdate(c, fn)
-}
-
 func sortPods(pods []*apiv1.Pod) {
 	sort.Slice(pods, func(i, j int) bool {
 		return pods[i].Name < pods[j].Name

@@ -292,7 +292,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 
 func (s *S) TestWaitForPod(c *check.C) {
 	srv, wg := s.mock.CreateDeployReadyServer(c)
-	s.mock.MockfakeNodes(c, srv.URL)
+	s.mock.MockfakeNodes(srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)

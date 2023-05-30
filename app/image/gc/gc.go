@@ -58,14 +58,6 @@ var (
 		Help:      "The number of versions of applications that was marked to removal",
 	})
 
-	// just used for dockercluster provisioner
-	provisionerPruneTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: promNamespace,
-		Subsystem: promSubsystem,
-		Name:      "provisioner_prune_total",
-		Help:      "The number of executions of prune against the provisioner",
-	})
-
 	provisionerPruneFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Subsystem: promSubsystem,
@@ -317,11 +309,6 @@ func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions app
 	}
 
 	selection := selectAppVersions(appVersions, deployedVersions, historySize)
-	if !exclusiveLockAcquired {
-		for _, version := range selection.toPruneFromProvisioner {
-			pruneVersionFromProvisioner(a, version)
-		}
-	}
 	if len(selection.toRemove) == 0 && len(selection.unsuccessfulDeploys) == 0 {
 		return false, nil
 	}
@@ -439,7 +426,6 @@ func sweepOldImages() error {
 	}
 
 	for appName, versions := range versionsToRemove {
-		a, err := app.GetByName(ctx, appName)
 		if err == appTypes.ErrAppNotFound {
 			// in the next mark process will be removed
 			continue
@@ -451,8 +437,6 @@ func sweepOldImages() error {
 
 		versionsToRemove := []int{}
 		for _, version := range versions {
-			pruneVersionFromProvisioner(a, version)
-
 			err = pruneVersionFromRegistry(ctx, version)
 			if err != nil {
 				multi.Add(err)
@@ -473,9 +457,8 @@ func sweepOldImages() error {
 }
 
 type appVersionsSelection struct {
-	toRemove               []appTypes.AppVersionInfo
-	unsuccessfulDeploys    []appTypes.AppVersionInfo
-	toPruneFromProvisioner []appTypes.AppVersionInfo
+	toRemove            []appTypes.AppVersionInfo
+	unsuccessfulDeploys []appTypes.AppVersionInfo
 }
 
 func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, historySize int) *appVersionsSelection {
@@ -507,12 +490,9 @@ func selectAppVersions(versions appTypes.AppVersions, deployedVersions []int, hi
 		}
 		if i >= historySize {
 			selection.toRemove = append(selection.toRemove, version)
-		} else {
-			selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, version)
 		}
 	}
 
-	selection.toPruneFromProvisioner = append(selection.toPruneFromProvisioner, customTagVersions...)
 	return selection
 }
 
@@ -562,39 +542,6 @@ func pruneImageFromRegistry(ctx context.Context, image string) error {
 		err = errors.Wrapf(err, "error removing old image from registry %q. Image kept on list to retry later.", image)
 		log.Errorf("[image gc] %s", err.Error())
 		registryPruneFailuresTotal.Inc()
-		return err
-	}
-
-	return nil
-}
-
-func pruneVersionFromProvisioner(a *app.App, version appTypes.AppVersionInfo) error {
-	multi := tsuruErrors.NewMultiError()
-	if version.DeployImage != "" {
-		err := pruneImageFromProvisioner(a, version.DeployImage)
-		if err != nil {
-			multi.Add(err)
-		}
-	}
-	if version.BuildImage != "" {
-		err := pruneImageFromProvisioner(a, version.BuildImage)
-		if err != nil {
-			multi.Add(err)
-		}
-	}
-	return multi.ToError()
-}
-
-func pruneImageFromProvisioner(a *app.App, image string) error {
-	provisionerPruneTotal.Inc()
-	timer := prometheus.NewTimer(provisionerPruneDuration)
-	defer timer.ObserveDuration()
-
-	err := a.CleanImage(image)
-	if err != nil {
-		err = errors.Wrapf(err, "error removing old image from provisioner for app: %q, image: %s", a.Name, image)
-		log.Errorf("[image gc] %s", err.Error())
-		provisionerPruneFailuresTotal.Inc()
 		return err
 	}
 
