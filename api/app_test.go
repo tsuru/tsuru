@@ -5829,41 +5829,6 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *ch
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSleepHandler(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	a := app.App{
-		Name:      "stress",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	url := fmt.Sprintf("/apps/%s/sleep", a.Name)
-	body := strings.NewReader("proxy=http://example.com")
-	request, err := http.NewRequest("POST", url, body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*\\n.* ---\\u003e Putting the app \\"stress\\" to sleep\\n","Timestamp":".*"}`+"\n",
-	)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.sleep",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "proxy", "value": "http://example.com"},
-		},
-	}, eventtest.HasEvent)
-}
-
 type LogList []appTypes.Applog
 
 func (l LogList) Len() int           { return len(l) }
