@@ -22,7 +22,6 @@ import (
 
 	"github.com/docker/cli/cli/config/configfile"
 	dockerclitypes "github.com/docker/cli/cli/config/types"
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -31,7 +30,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/servicecommon"
 	"github.com/tsuru/tsuru/safe"
@@ -2234,45 +2232,6 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	_, err = s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).* ---> 1 of 1 new units created.*? ---> 0 of 1 new units ready.*? ROLLING BACK AFTER FAILURE .*`)
-}
-
-func (s *S) TestServiceManagerDeployServiceWithNodeContainers(c *check.C) {
-	waitDep := s.mock.DeploymentReactions(c)
-	defer waitDep()
-	c1 := nodecontainer.NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Image: "bsimg",
-		},
-	}
-	err := nodecontainer.AddNewContainer("", &c1)
-	c.Assert(err, check.IsNil)
-	m := serviceManager{client: s.clusterClient}
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
-	version := newCommittedVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"p1": "cm1",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
-		App:     a,
-		Version: version,
-	}, servicecommon.ProcessSpec{
-		"p1": servicecommon.ProcessState{Start: true},
-	})
-	c.Assert(err, check.IsNil)
-	waitDep()
-	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(dep, check.NotNil)
-	daemon, err := s.client.Clientset.AppsV1().DaemonSets(ns).Get(context.TODO(), "node-container-bs-all", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemon, check.NotNil)
 }
 
 func (s *S) TestServiceManagerDeployServiceWithHCInvalidMethod(c *check.C) {

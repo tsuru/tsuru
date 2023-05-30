@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -1030,23 +1029,6 @@ func (s *S) TestGetAppFromUnitIDNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	_, err := p.GetAppFromUnitID("chain-lighting-0")
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestFakeUpgradeNodeContainer(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
-}
-
-func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
-	err = p.RemoveNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, false)
 }
 
 func (s *S) TestUpdateApp(c *check.C) {

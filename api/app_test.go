@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -33,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -6443,30 +6441,6 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",
 	})
-}
-
-func (s *S) TestMetricEnvs(c *check.C) {
-	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-		Name: nodecontainer.BsDefaultName,
-		Config: docker.Config{
-			Image: "img1",
-			Env: []string{
-				"OTHER_ENV=asd",
-				"METRICS_BACKEND=fake",
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"METRICS_BACKEND\":\"fake\"}\n")
 }
 
 func (s *S) TestMetricEnvsWhenUserDoesNotHaveAccess(c *check.C) {

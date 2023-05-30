@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -27,8 +25,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	"github.com/tsuru/tsuru/provision/kubernetes/testing"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
+	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -41,15 +40,112 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/remotecommand"
+	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
+	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
+
+func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
+	cluster1 := &provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"https://clusteraddr1"},
+		Default:     true,
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
+	}
+	clusterClient1, err := NewClusterClient(cluster1)
+	c.Assert(err, check.IsNil)
+	client1 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient1,
+	}
+	clusterClient1.Interface = client1
+
+	cluster2 := &provTypes.Cluster{
+		Name:        "c2",
+		Addresses:   []string{"https://clusteraddr2"},
+		Pools:       []string{"pool2"},
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
+	}
+	clusterClient2, err := NewClusterClient(cluster2)
+	c.Assert(err, check.IsNil)
+	client2 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+	clusterClient2.Interface = client2
+
+	cluster3 := &provTypes.Cluster{
+		Name:        "c3",
+		Addresses:   []string{"https://clusteraddr3"},
+		Pools:       []string{"pool3"},
+		Provisioner: provisionerName,
+		CustomData: map[string]string{
+			disableNodeContainers: "true",
+		},
+	}
+	clusterClient3, err := NewClusterClient(cluster2)
+	c.Assert(err, check.IsNil)
+	client3 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+	clusterClient3.Interface = client3
+
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*cluster1, *cluster2, *cluster3}, nil
+	}
+
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
+		if poolName == "pool2" {
+			return cluster2, nil
+		}
+		if poolName == "pool3" {
+			return cluster3, nil
+		}
+		return cluster1, nil
+	}
+
+	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+		if conf.Host == "https://clusteraddr1" {
+			return client1, nil
+		}
+		if conf.Host == "https://clusteraddr3" {
+			return client3, nil
+		}
+		return client2, nil
+	}
+
+	return client1, client2, client3
+}
 
 func (s *S) TestUnits(c *check.C) {
 	_, err := s.client.CoreV1().Pods("default").Create(context.TODO(), &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{
@@ -1498,95 +1594,6 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
-}
-
-func (s *S) TestUpgradeNodeContainer(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	c1 := nodecontainer.NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Image: "bsimg",
-		},
-		HostConfig: docker.HostConfig{
-			RestartPolicy: docker.AlwaysRestart(),
-			Privileged:    true,
-			Binds:         []string{"/xyz:/abc:ro"},
-		},
-	}
-	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
-	c.Assert(err, check.IsNil)
-	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
-	c.Assert(err, check.IsNil)
-	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
-	c.Assert(err, check.IsNil)
-
-	err = nodecontainer.AddNewContainer("", &c1)
-	c.Assert(err, check.IsNil)
-	c2 := c1
-	c2.Config.Env = []string{"e1=v1"}
-	err = nodecontainer.AddNewContainer("p1", &c2)
-	c.Assert(err, check.IsNil)
-	c3 := c1
-	err = nodecontainer.AddNewContainer("p2", &c3)
-	c.Assert(err, check.IsNil)
-	c4 := c1
-	err = nodecontainer.AddNewContainer("p-ignored", &c4)
-	c.Assert(err, check.IsNil)
-	buf := &bytes.Buffer{}
-	err = s.p.UpgradeNodeContainer(context.TODO(), "bs", "", buf)
-	c.Assert(err, check.IsNil)
-
-	daemons, err := s.client.AppsV1().DaemonSets(s.client.PoolNamespace("")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p1")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p-ignored")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 0)
-}
-
-func (s *S) TestRemoveNodeContainer(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	ns := s.client.PoolNamespace("p1")
-	ds, err := s.client.AppsV1().DaemonSets(ns).Create(context.TODO(), &appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1",
-			Namespace: ns,
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":            "true",
-				"tsuru.io/is-node-container":   "true",
-				"tsuru.io/provisioner":         provisionerName,
-				"tsuru.io/node-container-name": "bs",
-				"tsuru.io/node-container-pool": "p1",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ds, appsv1.SchemeGroupVersion.WithKind("DaemonSet")),
-			},
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	err = s.p.RemoveNodeContainer(context.TODO(), "bs", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
 }
 
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {

@@ -506,11 +506,6 @@ type RebalanceNodesOptions struct {
 	Force          bool
 }
 
-type NodeContainerProvisioner interface {
-	UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
-	RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
-}
-
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit
 // by its id. New provisioners should not implement this interface, this was
 // only used during events format migration and is exclusive to docker

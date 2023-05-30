@@ -21,7 +21,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -61,11 +60,6 @@ var svcIgnoredLabels = []string{
 func serviceAccountNameForApp(a provision.App) string {
 	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
-}
-
-func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
-	name := provision.ValidKubeName(nodeContainer.Name)
-	return fmt.Sprintf("node-container-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string, version int) string {

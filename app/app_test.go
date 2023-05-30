@@ -20,7 +20,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -30,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
@@ -4900,29 +4898,6 @@ func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 	certs, err := a.GetCertificates()
 	c.Assert(err, check.ErrorMatches, "no router with tls support")
 	c.Assert(certs, check.IsNil)
-}
-
-func (s *S) TestAppMetricEnvs(c *check.C) {
-	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-		Name: nodecontainer.BsDefaultName,
-		Config: docker.Config{
-			Image: "img1",
-			Env: []string{
-				"OTHER_ENV=asd",
-				"METRICS_BACKEND=LOGSTASH",
-				"METRICS_LOGSTASH_URI=localhost:2222",
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	a := App{Name: "app-name", Platform: "python"}
-	envs, err := a.MetricEnvs()
-	c.Assert(err, check.IsNil)
-	expected := map[string]string{
-		"METRICS_LOGSTASH_URI": "localhost:2222",
-		"METRICS_BACKEND":      "LOGSTASH",
-	}
-	c.Assert(envs, check.DeepEquals, expected)
 }
 
 func (s *S) TestUpdateAppWithInvalidName(c *check.C) {

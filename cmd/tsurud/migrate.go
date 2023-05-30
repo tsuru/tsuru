@@ -5,12 +5,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strconv"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/gnuflag"
@@ -26,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	kubeMigrate "github.com/tsuru/tsuru/provision/kubernetes/migrate"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -52,10 +49,6 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-service-proxy-actions", migrateServiceProxyActions)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-bs-envs", migrateBSEnvs)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -334,89 +327,6 @@ func migrateRoles() error {
 			err = u.AddRole(teamCreator.Name, "")
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
-			}
-		}
-	}
-	return nil
-}
-
-func migrateBSEnvs() error {
-	scheme, err := config.GetString("auth:scheme")
-	if err != nil {
-		scheme = nativeSchemeName
-	}
-	app.AuthScheme, err = auth.GetScheme(scheme)
-	if err != nil {
-		return err
-	}
-	_, err = nodecontainer.InitializeBS(context.Background(), app.AuthScheme, app.InternalAppName)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var entry map[string]interface{}
-	err = conn.Collection("bsconfig").FindId("bs").One(&entry)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil
-		}
-		return err
-	}
-	image, _ := entry["image"].(string)
-	envs, _ := entry["envs"].([]interface{})
-	var baseEnvs []string
-	for _, envEntry := range envs {
-		mapEntry, _ := envEntry.(map[string]interface{})
-		if mapEntry == nil {
-			continue
-		}
-		name, _ := mapEntry["name"].(string)
-		value, _ := mapEntry["value"].(string)
-		baseEnvs = append(baseEnvs, fmt.Sprintf("%s=%s", name, value))
-	}
-	bsNodeContainer, err := nodecontainer.LoadNodeContainer("", nodecontainer.BsDefaultName)
-	if err != nil {
-		return err
-	}
-	if len(baseEnvs) > 0 {
-		bsNodeContainer.Config.Env = append(bsNodeContainer.Config.Env, baseEnvs...)
-	}
-	bsNodeContainer.PinnedImage = image
-	err = nodecontainer.AddNewContainer("", bsNodeContainer)
-	if err != nil {
-		return err
-	}
-	pools, _ := entry["pools"].([]interface{})
-	for _, poolData := range pools {
-		poolMap, _ := poolData.(map[string]interface{})
-		if poolMap == nil {
-			continue
-		}
-		poolName, _ := poolMap["name"].(string)
-		if poolName == "" {
-			continue
-		}
-		envs, _ := poolMap["envs"].([]interface{})
-		var toAdd []string
-		for _, envEntry := range envs {
-			mapEntry, _ := envEntry.(map[string]interface{})
-			if mapEntry == nil {
-				continue
-			}
-			name, _ := mapEntry["name"].(string)
-			value, _ := mapEntry["value"].(string)
-			toAdd = append(toAdd, fmt.Sprintf("%s=%s", name, value))
-		}
-		if len(toAdd) > 0 {
-			bsCont := nodecontainer.NodeContainerConfig{Name: nodecontainer.BsDefaultName}
-			bsCont.Config.Env = append(bsCont.Config.Env, toAdd...)
-			err = nodecontainer.AddNewContainer(poolName, &bsCont)
-			if err != nil {
-				return err
 			}
 		}
 	}

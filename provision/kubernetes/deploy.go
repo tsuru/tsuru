@@ -1240,11 +1240,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		m.writer = io.Discard
 	}
 
-	err := ensureNodeContainers(opts.App)
-	if err != nil {
-		return err
-	}
-	err = ensureNamespaceForApp(ctx, m.client, opts.App)
+	err := ensureNamespaceForApp(ctx, m.client, opts.App)
 	if err != nil {
 		return err
 	}

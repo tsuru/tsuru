@@ -35,7 +35,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/router"
@@ -2483,20 +2482,6 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		routers[i].Type = planRouter.Type
 	}
 	return routers, multi.ToError()
-}
-
-func (app *App) MetricEnvs() (map[string]string, error) {
-	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
-	if err != nil {
-		return nil, err
-	}
-	envs := bsContainer.EnvMap()
-	for envName := range envs {
-		if !strings.HasPrefix(envName, "METRICS_") {
-			delete(envs, envName)
-		}
-	}
-	return envs, nil
 }
 
 func (app *App) Shell(opts provision.ExecOptions) error {
