@@ -10,8 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/iaas"
-	iaasTesting "github.com/tsuru/tsuru/iaas/testing"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	check "gopkg.in/check.v1"
@@ -240,58 +238,4 @@ func (s *S) TestRemoveNode(c *check.C) {
 	_, err = p1.GetNode(context.TODO(), "http://addr1")
 	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 
-}
-
-func (s *S) TestRemoveNodeWithNodeInstance(c *check.C) {
-	p1 := provisiontest.NewFakeProvisioner()
-	provision.Register("fake1", func() (provision.Provisioner, error) {
-		return p1, nil
-	})
-	defer provision.Unregister("fake1")
-	factory, _ := iaasTesting.NewHealerIaaSConstructorWithInst("host1.com")
-	iaas.RegisterIaasProvider("some-iaas", factory)
-	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
-	c.Assert(err, check.IsNil)
-	err = p1.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: machine.Address,
-	})
-	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.IsNil)
-
-	err = RemoveNode(context.TODO(), RemoveNodeArgs{
-		Node: node,
-	})
-	c.Assert(err, check.IsNil)
-	_, err = p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	_, err = iaas.FindMachineByAddress(machine.Address)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestRemoveNodeWithNodeInstanceRemoveIaaS(c *check.C) {
-	p1 := provisiontest.NewFakeProvisioner()
-	provision.Register("fake1", func() (provision.Provisioner, error) {
-		return p1, nil
-	})
-	defer provision.Unregister("fake1")
-	factory, _ := iaasTesting.NewHealerIaaSConstructorWithInst("host1.com")
-	iaas.RegisterIaasProvider("some-iaas", factory)
-	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{"id": "m1"})
-	c.Assert(err, check.IsNil)
-	err = p1.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: machine.Address,
-	})
-	c.Assert(err, check.IsNil)
-	node, err := p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.IsNil)
-	err = RemoveNode(context.TODO(), RemoveNodeArgs{
-		Node:       node,
-		RemoveIaaS: true,
-	})
-	c.Assert(err, check.IsNil)
-	_, err = p1.GetNode(context.TODO(), machine.Address)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	_, err = iaas.FindMachineByAddress(machine.Address)
-	c.Assert(err, check.Equals, iaas.ErrMachineNotFound)
 }

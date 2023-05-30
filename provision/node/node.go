@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 )
@@ -123,16 +122,6 @@ func removeNodeWithNode(ctx context.Context, node provision.Node, opts provision
 	}
 	multi := tsuruErrors.NewMultiError()
 
-	if removeIaaS {
-		var m iaas.Machine
-		m, err = iaas.FindMachineByIdOrAddress(node.IaaSID(), net.URLToHost(opts.Address))
-		if err == nil {
-			err = m.Destroy(iaas.DestroyParams{})
-		}
-		if err != nil && err != iaas.ErrMachineNotFound {
-			multi.Add(errors.Wrapf(err, "unable to destroy machine in iaas"))
-		}
-	}
 	return multi.ToError()
 }
 

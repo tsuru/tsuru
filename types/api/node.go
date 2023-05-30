@@ -5,13 +5,11 @@
 package api
 
 import (
-	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 )
 
 type ListNodeResponse struct {
-	Nodes    []provision.NodeSpec `json:"nodes"`
-	Machines []iaas.Machine       `json:"machines"`
+	Nodes []provision.NodeSpec `json:"nodes"`
 }
 
 type InfoNodeResponse struct {

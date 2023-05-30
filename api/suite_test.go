@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/job"
@@ -198,10 +197,6 @@ func (s *S) setupMocks() {
 
 func (s *S) TearDownTest(c *check.C) {
 	app.GetAppRouterUpdater().Shutdown(stdcontext.Background())
-	cfg, _ := autoscale.CurrentConfig()
-	if cfg != nil {
-		cfg.Shutdown(stdcontext.Background())
-	}
 	s.provisioner.Reset()
 	s.conn.Close()
 	queue.ResetQueue()
