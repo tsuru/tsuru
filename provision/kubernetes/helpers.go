@@ -1389,12 +1389,14 @@ func topologySpreadConstraints(labels map[string]string, topologySpreadConstrain
 }
 
 func filterAppLabels(labels map[string]string) map[string]string {
-	searchLabels := []string{tsuruLabelAppName, tsuruLabelAppProcess, tsuruLabelAppVersion}
-	filteredLabels := make(map[string]string)
-	for _, label := range searchLabels {
-		if value, ok := labels[label]; ok {
-			filteredLabels[label] = value
-		}
+	filtered := map[string]string{
+		tsuruLabelAppName:    labels[tsuruLabelAppName],
+		tsuruLabelAppProcess: labels[tsuruLabelAppProcess],
 	}
-	return filteredLabels
+
+	if v, found := labels[tsuruLabelAppVersion]; found {
+		filtered[tsuruLabelAppVersion] = v
+	}
+
+	return filtered
 }
