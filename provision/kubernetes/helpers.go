@@ -1359,33 +1359,29 @@ func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
 	}
 }
 
-func topologySpreadConstraints(labels map[string]string, topologySpreadConstraintRule string) ([]apiv1.TopologySpreadConstraint, error) {
+func topologySpreadConstraint(labels map[string]string, topologySpreadConstraintRule string) ([]apiv1.TopologySpreadConstraint, error) {
 	if topologySpreadConstraintRule == "" {
 		return nil, nil
 	}
-	var topologySpreadConstraintList []map[string]interface{}
-	err := json.Unmarshal([]byte(topologySpreadConstraintRule), &topologySpreadConstraintList)
+	var topologySpreadConstraint []apiv1.TopologySpreadConstraint
+	err := json.Unmarshal([]byte(topologySpreadConstraintRule), &topologySpreadConstraint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON object for topologySpreadConstraint: %v", err)
 	}
-	var topologySpreadConstraints []apiv1.TopologySpreadConstraint
-	for _, item := range topologySpreadConstraintList {
-		maxSkew, maxSkewExists := item["maxskew"].(float64)
-		topologyKey, topologyKeyExists := item["topologykey"].(string)
-		if !maxSkewExists || !topologyKeyExists {
+	var topologySpreadConstraintList []apiv1.TopologySpreadConstraint
+	for _, t := range topologySpreadConstraint {
+		if t.MaxSkew < 1 || t.TopologyKey == "" {
 			return nil, errors.New("maxskew and topologykey are required in each topologySpreadConstraint")
 		}
-		constraint := apiv1.TopologySpreadConstraint{
-			MaxSkew:     (int32)(maxSkew),
-			TopologyKey: topologyKey,
-			LabelSelector: &metav1.LabelSelector{
-				MatchLabels: filterAppLabels(labels),
-			},
-			WhenUnsatisfiable: apiv1.ScheduleAnyway,
+		t.LabelSelector = &metav1.LabelSelector{
+			MatchLabels: filterAppLabels(labels),
 		}
-		topologySpreadConstraints = append(topologySpreadConstraints, constraint)
+		if t.WhenUnsatisfiable == "" {
+			t.WhenUnsatisfiable = apiv1.ScheduleAnyway
+		}
+		topologySpreadConstraintList = append(topologySpreadConstraintList, t)
 	}
-	return topologySpreadConstraints, nil
+	return topologySpreadConstraintList, nil
 }
 
 func filterAppLabels(labels map[string]string) map[string]string {

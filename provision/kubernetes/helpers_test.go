@@ -675,7 +675,7 @@ func (s *S) TestTopologySpreadConstraints(c *check.C) {
 		},
 	}
 	for _, tt := range tests {
-		constraints, err := topologySpreadConstraints(tt.labels, tt.constraint)
+		constraints, err := topologySpreadConstraint(tt.labels, tt.constraint)
 		if tt.errorMsg != "" {
 			c.Assert(err, check.ErrorMatches, tt.errorMsg)
 			continue

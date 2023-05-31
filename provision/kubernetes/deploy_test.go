@@ -2651,7 +2651,7 @@ func (s *S) TestServiceManagerDeployDnsConfigNdotsEnable(c *check.C) {
 func (s *S) TestServiceManagerDeployTopologySpreadConstraintEnable(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	s.clusterClient.CustomData[topologySpreadConstraintsKey] = "[{\"maxskew\":1, \"topologykey\":\"kubernetes.io/hostname\"}, {\"maxskew\":2, \"topologykey\":\"kubernetes.io/zone\"}]"
+	s.clusterClient.CustomData[topologySpreadConstraintKey] = "[{\"maxskew\":1, \"topologykey\":\"kubernetes.io/hostname\"}, {\"maxskew\":2, \"topologykey\":\"kubernetes.io/zone\"}]"
 	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
