@@ -758,7 +758,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 	serviceLinks := false
 
-	topologySpreadConstraints, err := topologySpreadConstraint(podLabels, client.TopologySpreadConstraint(a.GetPool()))
+	topologySpreadConstraints, err := topologySpreadConstraints(podLabels, client.TopologySpreadConstraints(a.GetPool()))
 	if err != nil {
 		return nil, nil, err
 	}
