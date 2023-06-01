@@ -2380,6 +2380,254 @@ func (s *S) TestSetJobEnvReturnsBadRequestWhenGivenInvalidEnvName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
+func (s *S) TestUnsetJobEnv(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+				{Name: "DATABASE_USER", Value: "admin", Public: true},
+				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+			},
+		},
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_HOST", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.Envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		{Name: "DATABASE_USER", Value: "admin", Public: true},
+	})
+
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}\n`,
+	)
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "env", "value": "DATABASE_HOST"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+				{Name: "DATABASE_USER", Value: "admin", Public: true},
+				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+			},
+		},
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_HOST&env=DATABASE_USER", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.Envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+	})
+
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Unsetting 2 environment variables ----\\n","Timestamp":".*"}\n`,
+	)
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "env", "value": []string{"DATABASE_HOST", "DATABASE_USER"}},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+			},
+		},
+	}
+
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_PASSWORD", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.Envs, check.DeepEquals, []bindTypes.EnvVar{})
+
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Unsetting 1 environment variables ----\\n","Timestamp":".*"}\n`,
+	)
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "env", "value": "DATABASE_PASSWORD"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUnsetJobEnvReturnsBadRequestWhenVariablesMissing(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_HOST", Value: "fakehost", Public: false},
+			},
+		},
+	}
+	url := fmt.Sprintf("/jobs/%s/env?env=", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide the list of environment variables.\n")
+}
+
+func (s *S) TestUnsetJobEnvReturnsNotFoundWhenJobDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("DELETE", "/jobs/unknown/env?env=ble", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
+}
+
+func (s *S) TestUnsetJobEnvReturnsForbiddenWhenUserDoesNotHaveAccessToTheJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_HOST", Value: "fakehost", Public: false},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxJob, "another-job"),
+	})
+	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_HOST", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	c.Assert(err, check.IsNil)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
 func (s *S) TestJobLogShouldReturnNotFoundWhenJobDoesNotExist(c *check.C) {
 	request, err := http.NewRequest("GET", "/jobs/unknown/log/?lines=10", nil)
 	c.Assert(err, check.IsNil)
