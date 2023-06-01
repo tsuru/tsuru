@@ -261,29 +261,6 @@ type ResourceGetter interface {
 	GetPool() string
 }
 
-type BuilderDockerClient interface {
-	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error)
-	RemoveContainer(opts docker.RemoveContainerOptions) error
-	StartContainer(id string, hostConfig *docker.HostConfig) error
-	StopContainer(id string, timeout uint) error
-	InspectContainer(id string) (*docker.Container, error)
-	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
-	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
-	UploadToContainer(string, docker.UploadToContainerOptions) error
-	AttachToContainerNonBlocking(opts docker.AttachToContainerOptions) (docker.CloseWaiter, error)
-	AttachToContainer(opts docker.AttachToContainerOptions) error
-	WaitContainer(id string) (int, error)
-
-	BuildImage(opts docker.BuildImageOptions) error
-	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
-	InspectImage(string) (*docker.Image, error)
-	TagImage(string, docker.TagImageOptions) error
-	RemoveImage(name string) error
-	ImageHistory(name string) ([]docker.ImageHistory, error)
-
-	SetTimeout(timeout time.Duration)
-}
-
 type ExecDockerClient interface {
 	CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error)
 	StartExec(execId string, opts docker.StartExecOptions) error
@@ -315,11 +292,6 @@ type DeployArgs struct {
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(context.Context, DeployArgs) (string, error)
-}
-
-type BuilderDeployDockerClient interface {
-	BuilderDeploy
-	GetClient(App) (BuilderDockerClient, error)
 }
 
 type BuilderDeployKubeClient interface {
