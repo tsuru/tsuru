@@ -13,7 +13,7 @@ import (
 var _ JobService = &MockJobService{}
 
 type MockJobService struct {
-	OnCreateJob             func(*Job, *authTypes.User, bool) error
+	OnCreateJob             func(*Job, *authTypes.User) error
 	OnDeleteFromProvisioner func(*Job) error
 	OnGetByName             func(string) (*Job, error)
 	OnList                  func(*Filter) ([]Job, error)
@@ -25,11 +25,11 @@ type MockJobService struct {
 	OnUpdateJobProv         func(*Job) error
 }
 
-func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User, trigger bool) error {
+func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User) error {
 	if m.OnCreateJob == nil {
 		return nil
 	}
-	return m.OnCreateJob(job, user, trigger)
+	return m.OnCreateJob(job, user)
 }
 
 func (m *MockJobService) DeleteFromProvisioner(ctx context.Context, job *Job) error {

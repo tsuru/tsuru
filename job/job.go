@@ -100,9 +100,9 @@ func (*jobService) DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job)
 //
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
-func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authTypes.User, trigger bool) error {
+func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authTypes.User) error {
 	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
-	if err := buildName(ctx, job); err != nil {
+	if err := validateName(ctx, job); err != nil {
 		jobCreationErr.Err = err
 		return &jobCreationErr
 	}
@@ -111,32 +111,15 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return &jobCreationErr
 	}
 	buildTsuruInfo(ctx, job, user)
-
 	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
-
-	var actions []*action.Action
-	if job.IsCron() {
-		if trigger {
-			jobCreationErr.Err = errors.New("can't create and forcefully run a cronjob at the same time, please create the cronjob first then trigger a manual run or just create a job with --run")
-			return &jobCreationErr
-		}
-		actions = []*action.Action{
-			&reserveTeamCronjob,
-			&reserveUserCronjob,
-			&insertJob,
-			&provisionJob,
-		}
-	} else {
-		actions = []*action.Action{
-			&insertJob,
-		}
-		if trigger {
-			actions = append(actions, &provisionJob)
-		}
+	actions := []*action.Action{
+		&reserveTeamCronjob,
+		&reserveUserCronjob,
+		&insertJob,
+		&provisionJob,
 	}
-
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(ctx, job, user)
 }
@@ -446,10 +429,8 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 	if err := validatePlan(ctx, j.Pool, j.Plan.Name); err != nil {
 		return err
 	}
-	if j.IsCron() {
-		if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
-		}
+	if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
+		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
 	return nil
 }

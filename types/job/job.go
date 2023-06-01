@@ -67,6 +67,7 @@ type JobSpec struct {
 	ActiveDeadlineSeconds *int64                    `json:"activeDeadlineSeconds,omitempty"`
 	BackoffLimit          *int32                    `json:"backoffLimit,omitempty"`
 	Schedule              string                    `json:"schedule"`
+	Suspended             bool                      `json:"suspended"`
 	Container             ContainerInfo             `json:"container"`
 	ServiceEnvs           []bindTypes.ServiceEnvVar `json:"-"`
 	Envs                  []bindTypes.EnvVar        `json:"envs"`
@@ -93,7 +94,7 @@ type RemoveInstanceArgs struct {
 }
 
 type JobService interface {
-	CreateJob(ctx context.Context, job *Job, user *authTypes.User, trigger bool) error
+	CreateJob(ctx context.Context, job *Job, user *authTypes.User) error
 	DeleteFromProvisioner(ctx context.Context, job *Job) error
 	GetByName(ctx context.Context, name string) (*Job, error)
 	List(ctx context.Context, filter *Filter) ([]Job, error)

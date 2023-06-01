@@ -20,7 +20,7 @@ func (s *S) TestGetByName(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
@@ -41,7 +41,7 @@ func (s *S) TestCreateCronjob(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
 	c.Assert(err, check.IsNil)
@@ -69,7 +69,7 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
@@ -93,7 +93,7 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
@@ -148,7 +148,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Job.UpdateJob(context.TODO(), &j2, &j1, s.user)
 	c.Assert(err, check.IsNil)
@@ -173,7 +173,7 @@ func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(&j1), check.Equals, false)
 	err = servicemanager.Job.Trigger(context.TODO(), &j1)
@@ -207,9 +207,9 @@ func (s *S) TestList(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, s.user)
 	c.Assert(err, check.IsNil)
 	jobs, err := servicemanager.Job.List(context.TODO(), &jobTypes.Filter{})
 	c.Assert(err, check.IsNil)
@@ -243,9 +243,9 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user)
 	c.Assert(err, check.IsNil)
 
 	serviceEnvsToAdd := []bindTypes.ServiceEnvVar{
@@ -284,7 +284,7 @@ func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
@@ -355,9 +355,9 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -398,7 +398,7 @@ func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -435,7 +435,7 @@ func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -473,7 +473,7 @@ func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{

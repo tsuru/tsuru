@@ -346,7 +346,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	err = servicemanager.Job.CreateJob(ctx, j, u, ij.Trigger)
+	err = servicemanager.Job.CreateJob(ctx, j, u)
 	if err != nil {
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
