@@ -493,7 +493,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
@@ -512,7 +512,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 }
 
 // title: unbind service instance for a job
-// path: /services/{service}/instances/{instance}/job/{job}
+// path: /services/{service}/instances/{instance}/jobs/{job}
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
@@ -569,11 +569,11 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 		ExtraTargets: []event.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
-		Kind:       permission.PermAppUpdateUnbind,
+		Kind:       permission.PermJobUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
@@ -699,7 +699,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 }
 
 // title: unset envs
-// path: /apps/{app}/env
+// path: /jobs/{name}/env
 // method: DELETE
 // produce: application/x-json-stream
 // responses:
