@@ -15,17 +15,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2/bson"
 )
+
+type jobService struct{}
+
+var _ jobTypes.JobService = &jobService{}
 
 func getProvisioner(ctx context.Context, job *jobTypes.Job) (provision.JobProvisioner, error) {
 
@@ -49,9 +53,13 @@ func Units(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
 	return prov.JobUnits(context.TODO(), job)
 }
 
+func JobService() (jobTypes.JobService, error) {
+	return &jobService{}, nil
+}
+
 // GetByName queries the database to find a job identified by the given
 // name.
-func GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {
+func (*jobService) GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {
 	var job jobTypes.Job
 	conn, err := db.Conn()
 	if err != nil {
@@ -65,7 +73,7 @@ func GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {
 	return &job, err
 }
 
-func RemoveJobFromDb(jobName string) error {
+func (*jobService) RemoveJobFromDb(jobName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -78,7 +86,7 @@ func RemoveJobFromDb(jobName string) error {
 	return err
 }
 
-func DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
+func (*jobService) DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err
@@ -92,7 +100,7 @@ func DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
 //
 //  1. Save the job in the database
 //  2. Provision the job using the provisioner
-func CreateJob(ctx context.Context, job *jobTypes.Job, user *auth.User, trigger bool) error {
+func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authTypes.User, trigger bool) error {
 	jobCreationErr := jobTypes.JobCreationError{Job: job.Name}
 	if err := buildName(ctx, job); err != nil {
 		jobCreationErr.Err = err
@@ -139,7 +147,7 @@ func CreateJob(ctx context.Context, job *jobTypes.Job, user *auth.User, trigger 
 //
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
-func UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, user *auth.User) error {
+func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, user *authTypes.User) error {
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
@@ -159,8 +167,74 @@ func UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, user *auth.Use
 	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
 
+func (*jobService) AddServiceEnv(ctx context.Context, job *jobTypes.Job, addArgs jobTypes.AddInstanceArgs) error {
+	if len(addArgs.Envs) == 0 {
+		return nil
+	}
+
+	if addArgs.Writer != nil {
+		fmt.Fprintf(addArgs.Writer, "---- Setting %d new environment variables ----\n", len(addArgs.Envs)+1)
+	}
+	job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs, addArgs.Envs...)
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	err = conn.Jobs().Update(bson.M{"name": job.Name}, bson.M{"$set": bson.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
+	lenBefore := len(job.Spec.ServiceEnvs)
+
+	for i := 0; i < len(job.Spec.ServiceEnvs); i++ {
+		se := job.Spec.ServiceEnvs[i]
+		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
+			job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs[:i], job.Spec.ServiceEnvs[i+1:]...)
+			i--
+		}
+	}
+
+	toUnset := lenBefore - len(job.Spec.ServiceEnvs)
+	if toUnset <= 0 {
+		return nil
+	}
+	if removeArgs.Writer != nil {
+		fmt.Fprintf(removeArgs.Writer, "---- Unsetting %d environment variables ----\n", toUnset)
+	}
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	err = conn.Jobs().Update(bson.M{"name": job.Name}, bson.M{"$set": bson.M{"spec.serviceenvs": job.Spec.ServiceEnvs}})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (*jobService) UpdateJobProv(ctx context.Context, job *jobTypes.Job) error {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+
+	return prov.UpdateJob(ctx, job)
+}
+
 // Trigger triggers an execution of either job or cronjob object
-func Trigger(ctx context.Context, job *jobTypes.Job) error {
+func (*jobService) Trigger(ctx context.Context, job *jobTypes.Job) error {
 	var actions []*action.Action
 	if job.IsCron() {
 		actions = []*action.Action{&triggerCron}
@@ -170,23 +244,7 @@ func Trigger(ctx context.Context, job *jobTypes.Job) error {
 	return action.NewPipeline(actions...).Execute(ctx, job)
 }
 
-type Filter struct {
-	Name      string
-	TeamOwner string
-	UserOwner string
-	Pool      string
-	Pools     []string
-	Extra     map[string][]string
-}
-
-func (f *Filter) ExtraIn(name string, value string) {
-	if f.Extra == nil {
-		f.Extra = make(map[string][]string)
-	}
-	f.Extra[name] = append(f.Extra[name], value)
-}
-
-func (f *Filter) Query() bson.M {
+func filterQuery(f *jobTypes.Filter) bson.M {
 	if f == nil {
 		return bson.M{}
 	}
@@ -218,9 +276,9 @@ func (f *Filter) Query() bson.M {
 	return query
 }
 
-func List(ctx context.Context, filter *Filter) ([]jobTypes.Job, error) {
+func (*jobService) List(ctx context.Context, filter *jobTypes.Filter) ([]jobTypes.Job, error) {
 	jobs := []jobTypes.Job{}
-	query := filter.Query()
+	query := filterQuery(filter)
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

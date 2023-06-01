@@ -10,14 +10,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 func checkCollision(ctx context.Context, jobName string) bool {
-	_, err := GetByName(ctx, jobName)
+	_, err := servicemanager.Job.GetByName(ctx, jobName)
 	return err != jobTypes.ErrJobNotFound
 }
 
@@ -49,7 +49,7 @@ func oneTimeJobName(ctx context.Context, job *jobTypes.Job) error {
 func buildName(ctx context.Context, job *jobTypes.Job) error {
 	if job.Name != "" {
 		// check if the given name is already in the database
-		if _, err := GetByName(ctx, job.Name); err == nil {
+		if _, err := servicemanager.Job.GetByName(ctx, job.Name); err == nil {
 			return jobTypes.ErrJobAlreadyExists
 		}
 	} else {
@@ -81,7 +81,7 @@ func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 	return nil
 }
 
-func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *auth.User) {
+func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *authTypes.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
 }

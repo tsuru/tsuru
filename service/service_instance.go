@@ -279,6 +279,8 @@ func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *eve
 	actions := []*action.Action{
 		bindJobDBAction,
 		bindJobEndpointAction,
+		setJobBoundEnvsAction,
+		reloadJobProvisioner,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
@@ -308,6 +310,7 @@ func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
 		&unbindJobDB,
 		&unbindJobEndpoint,
 		&removeJobBoundEnvs,
+		reloadJobProvisioner,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(si.ctx, &args)
