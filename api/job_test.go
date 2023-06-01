@@ -2011,6 +2011,375 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestSetJobEnvPrivateEnvironmentVariableInTheJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_PASSWORD", Value: "secret", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   true,
+	}
+
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.Envs[0], check.DeepEquals, bindTypes.EnvVar{
+		Name: "DATABASE_PASSWORD", Value: "secret", Public: false,
+	})
+	c.Assert(recorder.Body.String(), check.Matches,
+		`{"Message":".*---- Setting 1 new environment variables ----\\n","Timestamp":".*"}\n`,
+	)
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_PASSWORD"},
+			{"name": "Envs.0.Value", "value": "*****"},
+			{"name": "Private", "value": "true"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetJobEnvSetMultipleEnvironmentVariablesInTheJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
+			{Name: "DATABASE_USER", Value: "root", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.Envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "localhost", Public: true},
+		{Name: "DATABASE_USER", Value: "root", Public: true},
+	})
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "localhost"},
+			{"name": "Envs.1.Name", "value": "DATABASE_USER"},
+			{"name": "Envs.1.Value", "value": "root"},
+			{"name": "NoRestart", "value": ""},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetJobEnvNotToChangeValueOfServiceVariables(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Envs: []bindTypes.EnvVar{
+				{Name: "DATABASE_HOST", Value: "envhost", Public: true},
+			},
+			ServiceEnvs: []bindTypes.ServiceEnvVar{
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "servicehost"}, InstanceName: "myinstance", ServiceName: "srv1"},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "newhost", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", url, buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.ServiceEnvs, check.DeepEquals, []bindTypes.ServiceEnvVar{
+		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "servicehost"}, InstanceName: "myinstance", ServiceName: "srv1"},
+	})
+	c.Assert(createdJob.Spec.Envs, check.DeepEquals, []bindTypes.EnvVar{
+		{Name: "DATABASE_HOST", Value: "newhost", Public: true},
+	})
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":name", "value": job.Name},
+			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
+			{"name": "Envs.0.Value", "value": "newhost"},
+			{"name": "Private", "value": ""},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSetBindEnvMissingFormBody(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	request, err := http.NewRequest("POST", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Matches, ".*missing form body\n")
+}
+
+func (s *S) TestSetJobEnvReturnsBadRequestIfVariablesAreMissing(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(""))
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "You must provide the list of environment variables\n")
+}
+
+func (s *S) TestSetJobEnvReturnsNotFoundIfTheJobDoesNotExist(c *check.C) {
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "newhost", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/jobs/unknown/env", buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
+}
+
+func (s *S) TestSetJobEnvReturnsForbiddenIfTheUserDoesNotHaveAccessToTheJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxJob, "another-job"),
+	})
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "DATABASE_HOST", Value: "localhost", Alias: ""},
+		},
+		NoRestart: false,
+		Private:   false,
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	request, err := http.NewRequest("POST", url, buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
+func (s *S) TestSetJobEnvReturnsBadRequestWhenGivenInvalidEnvName(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	d := apiTypes.Envs{
+		Envs: []apiTypes.Env{
+			{Name: "INVALID ENV", Value: "value"},
+		},
+	}
+	v, err := form.EncodeToValues(&d)
+	c.Assert(err, check.IsNil)
+
+	buffer := strings.NewReader(v.Encode())
+	request, err := http.NewRequest(http.MethodPost, url, buffer)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
+
 func (s *S) TestJobLogShouldReturnNotFoundWhenJobDoesNotExist(c *check.C) {
 	request, err := http.NewRequest("GET", "/jobs/unknown/log/?lines=10", nil)
 	c.Assert(err, check.IsNil)
