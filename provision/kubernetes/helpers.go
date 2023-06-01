@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -1356,4 +1357,42 @@ func ignoreBaseDep(versionedGroup map[int][]deploymentInfo) {
 			delete(versionedGroup, versionNum)
 		}
 	}
+}
+
+func topologySpreadConstraints(labels map[string]string, topologySpreadConstraintRule string) ([]apiv1.TopologySpreadConstraint, error) {
+	if topologySpreadConstraintRule == "" {
+		return nil, nil
+	}
+	var topologySpreadConstraints []apiv1.TopologySpreadConstraint
+	err := json.Unmarshal([]byte(topologySpreadConstraintRule), &topologySpreadConstraints)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON object for topologySpreadConstraint: %v", err)
+	}
+	var topologySpreadConstraintList []apiv1.TopologySpreadConstraint
+	for _, t := range topologySpreadConstraints {
+		if t.MaxSkew < 1 || t.TopologyKey == "" {
+			return nil, errors.New("maxskew and topologykey are required in each topologySpreadConstraint")
+		}
+		t.LabelSelector = &metav1.LabelSelector{
+			MatchLabels: filterAppLabels(labels),
+		}
+		if t.WhenUnsatisfiable == "" {
+			t.WhenUnsatisfiable = apiv1.ScheduleAnyway
+		}
+		topologySpreadConstraintList = append(topologySpreadConstraintList, t)
+	}
+	return topologySpreadConstraintList, nil
+}
+
+func filterAppLabels(labels map[string]string) map[string]string {
+	filtered := map[string]string{
+		tsuruLabelAppName:    labels[tsuruLabelAppName],
+		tsuruLabelAppProcess: labels[tsuruLabelAppProcess],
+	}
+
+	if v, found := labels[tsuruLabelAppVersion]; found {
+		filtered[tsuruLabelAppVersion] = v
+	}
+
+	return filtered
 }

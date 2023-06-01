@@ -627,3 +627,60 @@ func (s *S) TestLabelSetFromMeta(c *check.C) {
 		Prefix: tsuruLabelPrefix,
 	})
 }
+
+func (s *S) TestTopologySpreadConstraints(c *check.C) {
+	var tests = []struct {
+		labels     map[string]string
+		constraint string
+		expected   []apiv1.TopologySpreadConstraint
+		errorMsg   string
+	}{
+		{
+			labels:     map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1", "tsuru.io/app-pool": "pool1"},
+			constraint: "[{\"maxskew\":1, \"topologykey\":\"zone\"}]",
+			expected: []apiv1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       "zone",
+					WhenUnsatisfiable: apiv1.ScheduleAnyway,
+					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}},
+				}},
+		},
+		{
+			labels:     map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1", "tsuru.io/app-pool": "pool1"},
+			constraint: "[{\"maxskew\":1, \"topologykey\":\"zone\"}, {\"maxskew\":3, \"topologykey\":\"hostname\"}]",
+			expected: []apiv1.TopologySpreadConstraint{
+				{
+					MaxSkew:           1,
+					TopologyKey:       "zone",
+					WhenUnsatisfiable: apiv1.ScheduleAnyway,
+					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}},
+				},
+				{
+					MaxSkew:           3,
+					TopologyKey:       "hostname",
+					WhenUnsatisfiable: apiv1.ScheduleAnyway,
+					LabelSelector:     &metav1.LabelSelector{MatchLabels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}}},
+			},
+		},
+		{
+			labels: map[string]string{"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-version": "v1"}, constraint: "", expected: nil},
+		{
+			constraint: "[{\"topologykey\":\"testing\"}]",
+			errorMsg:   "maxskew and topologykey are required in each topologySpreadConstraint",
+		},
+		{
+			constraint: "[wrong json]",
+			errorMsg:   "failed to parse JSON object for topologySpreadConstraint: invalid character 'w' looking for beginning of value",
+		},
+	}
+	for _, tt := range tests {
+		constraints, err := topologySpreadConstraints(tt.labels, tt.constraint)
+		if tt.errorMsg != "" {
+			c.Assert(err, check.ErrorMatches, tt.errorMsg)
+			continue
+		}
+		c.Assert(err, check.IsNil)
+		c.Assert(constraints, check.DeepEquals, tt.expected)
+	}
+}
