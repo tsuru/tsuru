@@ -199,7 +199,6 @@ func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, remo
 		se := job.Spec.ServiceEnvs[i]
 		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
 			job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs[:i], job.Spec.ServiceEnvs[i+1:]...)
-			currentLen--
 			i--
 		}
 	}
