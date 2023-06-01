@@ -5,7 +5,11 @@
 package job
 
 import (
+	"context"
+	"io"
+
 	appTypes "github.com/tsuru/tsuru/types/app"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
@@ -66,4 +70,37 @@ type JobSpec struct {
 	Container             ContainerInfo             `json:"container"`
 	ServiceEnvs           []bindTypes.ServiceEnvVar `json:"-"`
 	Envs                  []bindTypes.EnvVar        `json:"envs"`
+}
+
+type Filter struct {
+	Name      string
+	TeamOwner string
+	UserOwner string
+	Pool      string
+	Pools     []string
+	Extra     map[string][]string
+}
+
+type AddInstanceArgs struct {
+	Envs   []bindTypes.ServiceEnvVar
+	Writer io.Writer
+}
+
+type RemoveInstanceArgs struct {
+	ServiceName  string
+	InstanceName string
+	Writer       io.Writer
+}
+
+type JobService interface {
+	CreateJob(ctx context.Context, job *Job, user *authTypes.User, trigger bool) error
+	DeleteFromProvisioner(ctx context.Context, job *Job) error
+	GetByName(ctx context.Context, name string) (*Job, error)
+	List(ctx context.Context, filter *Filter) ([]Job, error)
+	RemoveJobFromDb(jobName string) error
+	Trigger(ctx context.Context, job *Job) error
+	UpdateJob(ctx context.Context, newJob, oldJob *Job, user *authTypes.User) error
+	AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
+	RemoveServiceEnv(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
+	UpdateJobProv(ctx context.Context, job *Job) error
 }

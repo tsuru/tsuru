@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -171,6 +172,8 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.AppVersion, err = version.AppVersionService()
 	c.Assert(err, check.IsNil)
 	servicemanager.Volume, err = volume.VolumeService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Job, err = job.JobService()
 	c.Assert(err, check.IsNil)
 }
 

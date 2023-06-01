@@ -10,7 +10,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -49,7 +48,7 @@ func (k *provisionerWrapper) Enqueue(entry *appTypes.Applog) error {
 
 func defineLogabbleObject(ctx context.Context, lType logTypes.LogType, name string) (logTypes.LogabbleObject, error) {
 	if lType == logTypes.LogTypeJob {
-		return job.GetByName(ctx, name)
+		return servicemanager.Job.GetByName(ctx, name)
 	}
 	return servicemanager.App.GetByName(ctx, name)
 }

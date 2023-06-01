@@ -28,7 +28,7 @@ type ProvisionerWrapperSuite struct {
 }
 
 func newFakeJob(c *check.C) {
-	_, err := job.GetByName(context.TODO(), "j1")
+	_, err := servicemanager.Job.GetByName(context.TODO(), "j1")
 	if err == jobTypes.ErrJobNotFound {
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
@@ -60,6 +60,8 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
 		},
 	}
+	servicemanager.Job, err = job.JobService()
+	c.Assert(err, check.IsNil)
 	newFakeJob(c)
 }
 

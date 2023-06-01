@@ -10,13 +10,13 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -33,7 +33,7 @@ var _ = check.Suite(&S{})
 type S struct {
 	conn        *db.Storage
 	team        authTypes.Team
-	user        *auth.User
+	user        *authTypes.User
 	plan        appTypes.Plan
 	defaultPlan appTypes.Plan
 	provisioner *provisiontest.JobProvisioner
@@ -43,12 +43,10 @@ type S struct {
 }
 
 func (s *S) createUserAndTeam(c *check.C) {
-	s.user = &auth.User{
+	s.user = &authTypes.User{
 		Email: "august@tswift.com",
 		Quota: quota.UnlimitedQuota,
 	}
-	err := s.user.Create()
-	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{
 		Name:  "tsuruteam",
 		Quota: quota.UnlimitedQuota,
@@ -153,4 +151,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	builder.DefaultBuilder = "fake"
 	setupMocks(s)
+	servicemanager.Job, err = JobService()
+	c.Assert(err, check.IsNil)
 }

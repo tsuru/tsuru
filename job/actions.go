@@ -80,11 +80,7 @@ var updateJobProv = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		prov, err := getProvisioner(ctx.Context, job)
-		if err != nil {
-			return nil, err
-		}
-		return nil, prov.UpdateJob(ctx.Context, job)
+		return nil, servicemanager.Job.UpdateJobProv(ctx.Context, job)
 	},
 	MinParams: 1,
 }
@@ -132,7 +128,7 @@ var insertJob = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		job := ctx.FWResult.(*jobTypes.Job)
-		RemoveJobFromDb(job.Name)
+		servicemanager.Job.RemoveJobFromDb(job.Name)
 	},
 	MinParams: 1,
 }
@@ -143,7 +139,7 @@ func insertJobDB(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	defer conn.Close()
-	_, err = GetByName(ctx, job.Name)
+	_, err = servicemanager.Job.GetByName(ctx, job.Name)
 	if err == jobTypes.ErrJobNotFound {
 		return conn.Jobs().Insert(job)
 	} else if err == nil {
@@ -158,7 +154,7 @@ func updateJobDB(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	defer conn.Close()
-	oldJob, err := GetByName(ctx, job.Name)
+	oldJob, err := servicemanager.Job.GetByName(ctx, job.Name)
 	if err != nil {
 		return err
 	}
@@ -211,12 +207,12 @@ var reserveUserCronjob = action.Action{
 		default:
 			return nil, errors.New("first parameter must be *Job")
 		}
-		var user auth.User
+		var user authTypes.User
 		switch ctx.Params[1].(type) {
-		case auth.User:
-			user = ctx.Params[1].(auth.User)
-		case *auth.User:
-			user = *ctx.Params[1].(*auth.User)
+		case authTypes.User:
+			user = ctx.Params[1].(authTypes.User)
+		case *authTypes.User:
+			user = *ctx.Params[1].(*authTypes.User)
 		default:
 			return nil, errors.New("second parameter must be auth.User or *auth.User")
 		}
