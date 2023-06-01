@@ -193,18 +193,16 @@ func (*jobService) AddServiceEnv(ctx context.Context, job *jobTypes.Job, addArgs
 
 func (*jobService) RemoveServiceEnv(ctx context.Context, job *jobTypes.Job, removeArgs jobTypes.RemoveInstanceArgs) error {
 	lenBefore := len(job.Spec.ServiceEnvs)
-	currentLen := len(job.Spec.ServiceEnvs)
 
-	for i := 0; i < currentLen; i++ {
+	for i := 0; i < len(job.Spec.ServiceEnvs); i++ {
 		se := job.Spec.ServiceEnvs[i]
 		if se.ServiceName == removeArgs.ServiceName && se.InstanceName == removeArgs.InstanceName {
 			job.Spec.ServiceEnvs = append(job.Spec.ServiceEnvs[:i], job.Spec.ServiceEnvs[i+1:]...)
-			currentLen--
 			i--
 		}
 	}
 
-	toUnset := lenBefore - currentLen
+	toUnset := lenBefore - len(job.Spec.ServiceEnvs)
 	if toUnset <= 0 {
 		return nil
 	}
