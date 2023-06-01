@@ -1671,7 +1671,7 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, srvc := range srvcs {
-		err := service.Create(srvc)
+		err = service.Create(srvc)
 		c.Assert(err, check.IsNil)
 	}
 
