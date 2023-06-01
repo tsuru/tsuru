@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	"github.com/tsuru/tsuru/types/app"
@@ -1217,6 +1218,267 @@ func (s *S) TestJobInfo(c *check.C) {
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
 	c.Assert([]string{s.team.Name}, check.DeepEquals, result.Job.Teams)
 	c.Assert(s.user.Email, check.DeepEquals, result.Job.Owner)
+}
+
+func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"admin","DATABASE_PASSWORD":"secret"}`))
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusOK)
+	c.Check(recorder.Body.String(), check.Equals, "")
+
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Jobs, check.DeepEquals, []string{job.Name})
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, "fake-mysql", job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Check(recorder.Body.String(), check.Equals, "service instance not found\n")
+}
+
+func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		TeamOwner:   s.team.Name,
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxServiceInstance, "invalid-team"),
+	})
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Check(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestJobServiceInstanceBindWithNonExistentJob(c *check.C) {
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	err := s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, "fake-job-name")
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Check(recorder.Body.String(), check.Equals, "Job fake-job-name not found.\n")
+}
+
+func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxTeam, "invalid-team"),
+	})
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Check(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
+	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
+		return []string{}, nil
+	}
+
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Check(recorder.Body.String(), check.Equals, "service \"mysql\" is not available for pool \"pool1\".\n")
+}
+
+func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Check(recorder.Body.String(), check.Equals, "Failed to bind the instance \"mysql/my-mysql\" to the job \"test-job\": invalid response:  (code: 500) (\"my-mysql\" is down)\n")
 }
 
 func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
