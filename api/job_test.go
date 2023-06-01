@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/ajg/form"
 	"github.com/globalsign/mgo/bson"
@@ -1479,6 +1481,480 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 	s.testServer.ServeHTTP(recorder, request)
 	c.Check(recorder.Code, check.Equals, http.StatusInternalServerError)
 	c.Check(recorder.Body.String(), check.Equals, "Failed to bind the instance \"mysql/my-mysql\" to the job \"test-job\": invalid response:  (code: 500) (\"my-mysql\" is down)\n")
+}
+
+func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/binds/jobs/test-job" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			ServiceEnvs: []bindTypes.ServiceEnvVar{
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "my-mysql", ServiceName: "mysql"},
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{job.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Jobs, check.DeepEquals, []string{})
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.ServiceEnvs, check.DeepEquals, []bindTypes.ServiceEnvVar{
+		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
+	})
+
+	ch := make(chan bool)
+	go func() {
+		t := time.Tick(1)
+		for <-t; atomic.LoadInt32(&called) == 0; <-t {
+		}
+		ch <- true
+	}()
+	select {
+	case <-ch:
+		c.Succeed()
+	case <-time.After(1e9):
+		c.Error("Failed to call API after 1 second.")
+	}
+
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 3)
+	c.Assert(parts[0], check.Matches, `{"Message":".*---- Unsetting 2 environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the job \\"test-job\\" anymore.\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":job", "value": job.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/binds/jobs/test-job" {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("unbind error"))
+		}
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			ServiceEnvs: []bindTypes.ServiceEnvVar{
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "my-mysql", ServiceName: "mysql"},
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{"test-job"},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s?force=true", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Jobs, check.DeepEquals, []string{})
+
+	createdJob, err := servicemanager.Job.GetByName(context.TODO(), job.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(createdJob.Spec.ServiceEnvs, check.DeepEquals, []bindTypes.ServiceEnvVar{
+		{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
+	})
+
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 4)
+	c.Assert(parts[0], check.Matches, `{"Message":".*\[unbind-job-endpoint\] ignored error due to force: Failed to unbind \(\\"/resources/my-mysql/binds/jobs/test-job\\"\): invalid response: unbind error \(code: 500\)\\n","Timestamp":".*"}`)
+	c.Assert(parts[1], check.Matches, `{"Message":".*---- Unsetting 2 environment variables ----\\n","Timestamp":".*"}`)
+	c.Assert(parts[2], check.Matches, `{"Message":".*\\n.*Instance \\"my-mysql\\" is not bound to the job \\"test-job\\" anymore.\\n","Timestamp":".*"}`)
+	c.Assert(parts[3], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(eventtest.EventDesc{
+		Target: jobTarget(job.Name),
+		Owner:  s.token.GetUserName(),
+		Kind:   "job.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":job", "value": job.Name},
+			{"name": ":instance", "value": instance.Name},
+			{"name": ":service", "value": instance.ServiceName},
+			{"name": "force", "value": "true"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/binds/jobs/test-job" {
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer ts.Close()
+
+	srvcs := []service.Service{
+		{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}},
+		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}},
+	}
+	for _, srvc := range srvcs {
+		err := service.Create(srvc)
+		c.Assert(err, check.IsNil)
+	}
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			ServiceEnvs: []bindTypes.ServiceEnvVar{
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
+				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "my-mysql", ServiceName: "mysql2"},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	instances := []service.ServiceInstance{
+		{
+			Name:        "my-mysql",
+			ServiceName: "mysql",
+			Teams:       []string{s.team.Name},
+			Jobs:        []string{job.Name},
+		},
+		{
+			Name:        "my-mysql",
+			ServiceName: "mysql2",
+			Teams:       []string{s.team.Name},
+			Jobs:        []string{job.Name},
+		},
+	}
+	for _, instance := range instances {
+		err = s.conn.ServiceInstances().Insert(instance)
+		c.Assert(err, check.IsNil)
+	}
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instances[0].ServiceName, instances[0].Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+
+	var result service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[0].Name, "service_name": instances[0].ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Jobs, check.DeepEquals, []string{})
+
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instances[1].Name, "service_name": instances[1].ServiceName}).One(&result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Jobs, check.DeepEquals, []string{job.Name})
+}
+
+func (s *S) TestJobServiceInstanceUnbindWithNonExistentJob(c *check.C) {
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	err := s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, "fake-job-name")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Check(recorder.Body.String(), check.Equals, "Job fake-job-name not found.\n")
+}
+
+func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, "fake-mysql", job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Check(recorder.Body.String(), check.Equals, "service instance not found\n")
+}
+
+func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		TeamOwner:   s.team.Name,
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxServiceInstance, "invalid-team"),
+	})
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Check(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateBind,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxTeam, "invalid-team"),
+	})
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Check(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/binds/jobs/test-job" {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("unbind error"))
+		}
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "fake-endpoint"}, Password: "secret", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{job.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s?force=true", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateUnbind,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	}, permission.Permission{
+		Scheme:  permission.PermJobUpdate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
+}
+
+func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *check.C) {
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
+	err = service.Create(srvc)
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	c.Assert(err, check.IsNil)
+
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{job.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(instance)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Check(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Check(recorder.Body.String(), check.Equals, "Failed to unbind (\"/resources/my-mysql/binds/jobs/test-job\"): invalid response:  (code: 500)\n")
 }
 
 func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
