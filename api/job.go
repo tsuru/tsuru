@@ -40,8 +40,9 @@ type inputJob struct {
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
 
-	Schedule  string                 `json:"schedule"`
 	Container jobTypes.ContainerInfo `json:"container"`
+	Schedule  string                 `json:"schedule"`
+	Suspended bool                   `json:"suspended"`
 	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
 }
 
@@ -326,6 +327,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
+			Suspended: ij.Suspended,
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
 		},

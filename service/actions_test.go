@@ -1194,35 +1194,6 @@ func (s *S) TestRemoveJobBoundEnvsForward(c *check.C) {
 	c.Assert(rmCalled, check.Equals, true)
 }
 
-func (s *S) TestReloadJobProvisionerForwardForJob(c *check.C) {
-	var reloadCalled bool
-	s.mockService.JobService.OnUpdateJobProv = func(job *jobTypes.Job) error {
-		reloadCalled = true
-		return nil
-	}
-
-	si := ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-	}
-	err := s.conn.ServiceInstances().Insert(&si)
-	c.Assert(err, check.IsNil)
-
-	job := provisiontest.NewFakeJob("test-job", "test-pool", "test-team-owner")
-	job.Spec.Schedule = ""
-	evt := createEvt(c)
-	args := bindJobPipelineArgs{
-		event:           evt,
-		job:             job,
-		serviceInstance: &si,
-	}
-	ctx := action.FWContext{Params: []interface{}{&args}}
-	_, err = reloadJobProvisioner.Forward(ctx)
-	c.Assert(err, check.IsNil)
-	c.Assert(reloadCalled, check.Equals, false)
-}
-
 func (s *S) TestReloadJobProvisionerForwardForCronJob(c *check.C) {
 	var reloadCalled bool
 	s.mockService.JobService.OnUpdateJobProv = func(job *jobTypes.Job) error {

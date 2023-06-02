@@ -34,10 +34,6 @@ func (job *Job) GetName() string {
 	return job.Name
 }
 
-func (job *Job) IsCron() bool {
-	return job.Spec.Schedule != ""
-}
-
 func (job *Job) GetMemory() int64 {
 	if job.Plan.Override.Memory != nil {
 		return *job.Plan.Override.Memory

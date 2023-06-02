@@ -406,7 +406,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
-	p.jobs = make(map[string]provisionedJob)
+	p.jobs = make(map[string]*provisionedJob)
 	p.execs = make(map[string][]provision.ExecOptions)
 	return &p
 }
@@ -477,11 +477,21 @@ func (p *FakeProvisioner) Provisioned(app provision.App) bool {
 }
 
 // ProvisionedJob checks whether the given job has been provisioned.
-func (p *FakeProvisioner) ProvisionedJob(job *jobTypes.Job) bool {
+func (p *FakeProvisioner) ProvisionedJob(jobName string) bool {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	_, ok := p.jobs[job.Name]
+	_, ok := p.jobs[jobName]
 	return ok
+}
+
+// JobExecutions returns the number of times a job has run
+func (p *FakeProvisioner) JobExecutions(jobName string) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	if j, ok := p.jobs[jobName]; ok {
+		return j.executions
+	}
+	return 0
 }
 
 func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
@@ -534,7 +544,7 @@ func (p *FakeProvisioner) Reset() {
 	p.mut.Unlock()
 
 	p.mut.Lock()
-	p.jobs = make(map[string]provisionedJob)
+	p.jobs = make(map[string]*provisionedJob)
 	p.mut.Unlock()
 
 	p.execsMut.Lock()
@@ -1213,7 +1223,7 @@ func (p *JobProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (stri
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	name := job.Name
-	p.jobs[name] = provisionedJob{
+	p.jobs[name] = &provisionedJob{
 		units: []provision.Unit{},
 		job:   job,
 	}
@@ -1221,7 +1231,7 @@ func (p *JobProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (stri
 }
 
 func (p *JobProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
-	if !p.ProvisionedJob(job) {
+	if !p.ProvisionedJob(job.Name) {
 		return errNotProvisioned
 	}
 	p.mut.Lock()
@@ -1257,7 +1267,7 @@ func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job *jobTypes.Job)
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	name := job.Name
-	p.jobs[name] = provisionedJob{
+	p.jobs[name] = &provisionedJob{
 		units: []provision.Unit{
 			{
 				Name:        "unit1",

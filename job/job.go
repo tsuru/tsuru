@@ -143,9 +143,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	actions := []*action.Action{
 		&jobUpdateDB,
-	}
-	if newJob.IsCron() {
-		actions = append(actions, &updateJobProv)
+		&updateJobProv,
 	}
 	return action.NewPipeline(actions...).Execute(ctx, newJob, user)
 }
@@ -218,13 +216,7 @@ func (*jobService) UpdateJobProv(ctx context.Context, job *jobTypes.Job) error {
 
 // Trigger triggers an execution of either job or cronjob object
 func (*jobService) Trigger(ctx context.Context, job *jobTypes.Job) error {
-	var actions []*action.Action
-	if job.IsCron() {
-		actions = []*action.Action{&triggerCron}
-	} else {
-		actions = []*action.Action{&provisionJob}
-	}
-	return action.NewPipeline(actions...).Execute(ctx, job)
+	return action.NewPipeline([]*action.Action{&triggerCron}...).Execute(ctx, job)
 }
 
 func filterQuery(f *jobTypes.Filter) bson.M {

@@ -173,7 +173,8 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
-		Schedule: "* * * * *",
+		Schedule:  "* * * * *",
+		Suspended: true,
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -235,12 +236,12 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "* * * * *",
+			Suspended:   true,
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
-	c.Assert(gotJob.IsCron(), check.Equals, true)
 }
 
 func (s *S) TestCreateCronjobNoName(c *check.C) {
@@ -474,36 +475,6 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	c.Assert(recorder.Body.String(), check.DeepEquals, "Job team owner \"invalid\" has no access to pool \"test1\"\n")
 }
 
-func (s *S) TestTriggerSuspendedCronjob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-		Name:      "manual-job",
-		Spec: jobTypes.JobSpec{
-			Container: jobTypes.ContainerInfo{
-				Image:   "ubuntu:latest",
-				Command: []string{"echo", "hello world"},
-			},
-		},
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
 func (s *S) TestTriggerCronjob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -544,7 +515,7 @@ func (s *S) TestJobList(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
@@ -595,7 +566,7 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
@@ -654,7 +625,7 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
@@ -711,7 +682,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
@@ -765,7 +736,7 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 		Spec: jobTypes.JobSpec{
@@ -819,7 +790,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		Name: "j1",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 		Spec: jobTypes.JobSpec{
@@ -1773,7 +1744,7 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1", Spec: jobTypes.JobSpec{ Schedule: "* * * * *" }}
+	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1", Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), j, user)
 	c.Assert(err, check.IsNil)
@@ -2489,7 +2460,7 @@ func (s *S) TestJobLogsList(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{ Schedule: "* * * * *" }}
+	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
@@ -2515,7 +2486,7 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{ Schedule: "* * * * *" }}
+	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
