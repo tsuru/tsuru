@@ -160,7 +160,7 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 				{
 					startStep: &startStep{version: 5, proc: "p2"},
 					check: func() {
-						s.hasDepWithVersion(c, "myapp0-p2", 5, 3)
+						s.hasDepWithVersion(c, "myapp0-p2", 5, 1)
 						s.hasSvc(c, "myapp0-p2")
 					},
 				},
@@ -220,7 +220,6 @@ func (s *S) TestServiceManagerDeploySimple(c *check.C) {
 					var version appTypes.AppVersion
 					version, err = servicemanager.AppVersion.VersionByImageOrVersion(context.TODO(), a, strconv.Itoa(step.stopStep.version))
 					c.Assert(err, check.IsNil)
-					s.updatePastUnits(c, a.Name, version, step.stopStep.proc)
 					err = servicecommon.ChangeAppState(context.TODO(), &m, a, step.stopStep.proc, servicecommon.ProcessState{Stop: true}, version)
 					c.Assert(err, check.IsNil)
 					waitDep()

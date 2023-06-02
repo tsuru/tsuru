@@ -39,21 +39,22 @@ var (
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.NodeProvisioner          = &FakeProvisioner{}
-	_ provision.NodeContainerProvisioner = &FakeProvisioner{}
-	_ provision.InterAppProvisioner      = &FakeProvisioner{}
-	_ provision.UpdatableProvisioner     = &FakeProvisioner{}
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.LogsProvisioner          = &FakeProvisioner{}
-	_ provision.MetricsProvisioner       = &FakeProvisioner{}
-	_ provision.VolumeProvisioner        = &FakeProvisioner{}
-	_ provision.SleepableProvisioner     = &FakeProvisioner{}
-	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
-	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
-	_ provision.NodeRebalanceProvisioner = &FakeProvisioner{}
-	_ provision.App                      = &FakeApp{}
-	_ bind.App                           = &FakeApp{}
+	_ provision.Provisioner                = &FakeProvisioner{}
+	_ provision.NodeProvisioner            = &FakeProvisioner{}
+	_ provision.NodeContainerProvisioner   = &FakeProvisioner{}
+	_ provision.InterAppProvisioner        = &FakeProvisioner{}
+	_ provision.UpdatableProvisioner       = &FakeProvisioner{}
+	_ provision.Provisioner                = &FakeProvisioner{}
+	_ provision.LogsProvisioner            = &FakeProvisioner{}
+	_ provision.MetricsProvisioner         = &FakeProvisioner{}
+	_ provision.VolumeProvisioner          = &FakeProvisioner{}
+	_ provision.SleepableProvisioner       = &FakeProvisioner{}
+	_ provision.AppFilterProvisioner       = &FakeProvisioner{}
+	_ provision.ExecutableProvisioner      = &FakeProvisioner{}
+	_ provision.NodeRebalanceProvisioner   = &FakeProvisioner{}
+	_ provision.CurrentReplicasProvisioner = &FakeProvisioner{}
+	_ provision.App                        = &FakeApp{}
+	_ bind.App                             = &FakeApp{}
 )
 
 func init() {
@@ -1161,6 +1162,28 @@ func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]p
 		allUnits = append(allUnits, p.apps[a.GetName()].units...)
 	}
 	return allUnits, nil
+}
+
+func (p *FakeProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version int) (int32, error) {
+	a, found := p.apps[app.GetName()]
+	if !found {
+		return 0, nil
+	}
+
+	var replicas int32
+	for _, u := range a.units {
+		if u.ProcessName != process {
+			continue
+		}
+
+		if u.Version != version {
+			continue
+		}
+
+		replicas += 1
+	}
+
+	return replicas, nil
 }
 
 func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provision.UnitMetric, error) {

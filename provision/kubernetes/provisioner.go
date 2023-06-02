@@ -83,26 +83,27 @@ type kubernetesProvisioner struct {
 }
 
 var (
-	_ provision.Provisioner              = &kubernetesProvisioner{}
-	_ provision.NodeProvisioner          = &kubernetesProvisioner{}
-	_ provision.NodeContainerProvisioner = &kubernetesProvisioner{}
-	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
-	_ provision.SleepableProvisioner     = &kubernetesProvisioner{}
-	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
-	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
-	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
-	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
-	_ provision.HCProvisioner            = &kubernetesProvisioner{}
-	_ provision.VersionsProvisioner      = &kubernetesProvisioner{}
-	_ provision.LogsProvisioner          = &kubernetesProvisioner{}
-	_ provision.MetricsProvisioner       = &kubernetesProvisioner{}
-	_ provision.AutoScaleProvisioner     = &kubernetesProvisioner{}
-	_ cluster.ClusteredProvisioner       = &kubernetesProvisioner{}
-	_ provision.UpdatableProvisioner     = &kubernetesProvisioner{}
-	_ provision.MultiRegistryProvisioner = &kubernetesProvisioner{}
-	_ provision.KillUnitProvisioner      = &kubernetesProvisioner{}
-	_ provision.JobProvisioner           = &kubernetesProvisioner{}
+	_ provision.Provisioner                = &kubernetesProvisioner{}
+	_ provision.NodeProvisioner            = &kubernetesProvisioner{}
+	_ provision.NodeContainerProvisioner   = &kubernetesProvisioner{}
+	_ provision.MessageProvisioner         = &kubernetesProvisioner{}
+	_ provision.SleepableProvisioner       = &kubernetesProvisioner{}
+	_ provision.VolumeProvisioner          = &kubernetesProvisioner{}
+	_ provision.BuilderDeploy              = &kubernetesProvisioner{}
+	_ provision.BuilderDeployKubeClient    = &kubernetesProvisioner{}
+	_ provision.InitializableProvisioner   = &kubernetesProvisioner{}
+	_ provision.InterAppProvisioner        = &kubernetesProvisioner{}
+	_ provision.HCProvisioner              = &kubernetesProvisioner{}
+	_ provision.VersionsProvisioner        = &kubernetesProvisioner{}
+	_ provision.LogsProvisioner            = &kubernetesProvisioner{}
+	_ provision.MetricsProvisioner         = &kubernetesProvisioner{}
+	_ provision.AutoScaleProvisioner       = &kubernetesProvisioner{}
+	_ cluster.ClusteredProvisioner         = &kubernetesProvisioner{}
+	_ provision.UpdatableProvisioner       = &kubernetesProvisioner{}
+	_ provision.MultiRegistryProvisioner   = &kubernetesProvisioner{}
+	_ provision.KillUnitProvisioner        = &kubernetesProvisioner{}
+	_ provision.JobProvisioner             = &kubernetesProvisioner{}
+	_ provision.CurrentReplicasProvisioner = &kubernetesProvisioner{}
 
 	mainKubernetesProvisioner *kubernetesProvisioner
 )
@@ -539,9 +540,24 @@ func changeState(ctx context.Context, a provision.App, process string, version a
 	if err != nil {
 		return err
 	}
+
 	err = ensureAppCustomResourceSynced(ctx, client, a)
 	if err != nil {
 		return err
+	}
+
+	if version == nil && state.Stop {
+		var multipleVersions bool
+		multipleVersions, err = hasMultipleVersions(ctx, client, a)
+		if err != nil {
+			return err
+		}
+
+		if multipleVersions {
+			return fmt.Errorf("cannot stop app with multiple active versions, you must specify exactly one to")
+		}
+
+		// TODO: save the last state
 	}
 
 	var versions []appTypes.AppVersion
@@ -838,6 +854,47 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 		units = append(units, clusterUnits...)
 	}
 	return units, nil
+}
+
+func (p *kubernetesProvisioner) CurrentReplicas(ctx context.Context, app provision.App, process string, version int) (int32, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
+	if app == nil {
+		return 0, fmt.Errorf("app cannot be nil")
+	}
+
+	if process == "" {
+		return 0, fmt.Errorf("process cannot be empty")
+	}
+
+	if version == 0 {
+		return 0, fmt.Errorf("version should be greater than zero")
+	}
+
+	client, err := clusterForPool(ctx, app.GetPool())
+	if err != nil {
+		return 0, err
+	}
+
+	grouped, err := deploymentsDataForProcess(ctx, client, app, process)
+	if err != nil {
+		return 0, err
+	}
+
+	depInfos := grouped.versioned[version]
+
+	switch len(depInfos) {
+	case 0:
+		return 0, fmt.Errorf("no deployment found for process")
+
+	case 1:
+		return *depInfos[0].dep.Spec.Replicas, nil
+
+	default:
+		return 0, fmt.Errorf("too many deployments for process")
+	}
 }
 
 func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *ClusterClient, apps []provision.App) ([]apiv1.Pod, error) {
@@ -2109,4 +2166,13 @@ func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.
 		return "", err
 	}
 	return client.Registry(), nil
+}
+
+func hasMultipleVersions(ctx context.Context, client *ClusterClient, a provision.App) (bool, error) {
+	grouped, err := deploymentsDataForApp(ctx, client, a)
+	if err != nil {
+		return false, err
+	}
+
+	return len(grouped.versioned) > 1, nil
 }
