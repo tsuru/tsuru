@@ -198,13 +198,6 @@ type InfoRouter interface {
 	GetInfo(ctx context.Context) (map[string]string, error)
 }
 
-type AsyncRouter interface {
-	AddBackendAsync(ctx context.Context, app App) error
-	SetCNameAsync(ctx context.Context, cname string, app App) error
-	AddRoutesAsync(ctx context.Context, app App, address []*url.URL) error
-	RemoveRoutesAsync(ctx context.Context, app App, addresses []*url.URL) error
-}
-
 type PrefixRouter interface {
 	RoutesPrefix(ctx context.Context, app App) ([]appTypes.RoutableAddresses, error)
 	Addresses(ctx context.Context, app App) ([]string, error)
