@@ -132,19 +132,10 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		return &resultRouterV2, nil
 	}
 
-	var asyncR router.AsyncRouter
-	if !o.Wait {
-		asyncR, _ = r.(router.AsyncRouter)
-	}
-
 	if optsRouter, ok := r.(router.OptsRouter); ok {
 		err = optsRouter.AddBackendOpts(ctx, o.App, appRouter.Opts)
 	} else {
-		if asyncR == nil {
-			err = r.AddBackend(ctx, o.App)
-		} else {
-			err = asyncR.AddBackendAsync(ctx, o.App)
-		}
+		err = r.AddBackend(ctx, o.App)
 	}
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err
@@ -163,11 +154,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		_, toRemove := diffRoutes(oldCnames, cnameAddrs)
 		for _, cname := range appCnames {
 			fmt.Fprintf(o.Writer, " ---> Adding cname: %s\n", cname)
-			if asyncR == nil {
-				err = cnameRouter.SetCName(ctx, cname, o.App)
-			} else {
-				err = asyncR.SetCNameAsync(ctx, cname, o.App)
-			}
+			err = cnameRouter.SetCName(ctx, cname, o.App)
 			if err != nil && err != router.ErrCNameExists {
 				return nil, err
 			}
@@ -278,10 +265,6 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 
 func syncRoutePrefix(ctx context.Context, o RebuildRoutesOpts, r router.Router, prefix string, newRoutesForPrefix, oldRoutesForPrefix appTypes.RoutableAddresses) (*RebuildPrefixResult, error) {
 	prefixRouter, _ := r.(router.PrefixRouter)
-	var asyncR router.AsyncRouter
-	if !o.Wait {
-		asyncR, _ = r.(router.AsyncRouter)
-	}
 
 	prefixResult := &RebuildPrefixResult{
 		Prefix: prefix,
@@ -313,10 +296,8 @@ func syncRoutePrefix(ctx context.Context, o RebuildRoutesOpts, r router.Router, 
 	if prefixRouter != nil {
 		newRoutesForPrefix.Addresses = toAdd
 		err = prefixRouter.AddRoutesPrefix(ctx, o.App, newRoutesForPrefix, o.Wait)
-	} else if asyncR == nil {
-		err = r.AddRoutes(ctx, o.App, toAdd)
 	} else {
-		err = asyncR.AddRoutesAsync(ctx, o.App, toAdd)
+		err = r.AddRoutes(ctx, o.App, toAdd)
 	}
 	if err != nil {
 		return nil, err
@@ -325,10 +306,8 @@ func syncRoutePrefix(ctx context.Context, o RebuildRoutesOpts, r router.Router, 
 	if prefixRouter != nil {
 		oldRoutesForPrefix.Addresses = toRemove
 		err = prefixRouter.RemoveRoutesPrefix(ctx, o.App, oldRoutesForPrefix, o.Wait)
-	} else if asyncR == nil {
-		err = r.RemoveRoutes(ctx, o.App, toRemove)
 	} else {
-		err = asyncR.RemoveRoutesAsync(ctx, o.App, toRemove)
+		err = r.RemoveRoutes(ctx, o.App, toRemove)
 	}
 	if err != nil {
 		return nil, err
