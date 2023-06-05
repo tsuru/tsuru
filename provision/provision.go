@@ -261,13 +261,6 @@ type ResourceGetter interface {
 	GetPool() string
 }
 
-type ExecDockerClient interface {
-	CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error)
-	StartExec(execId string, opts docker.StartExecOptions) error
-	ResizeExecTTY(execId string, height, width int) error
-	InspectExec(execId string) (*docker.ExecInspect, error)
-}
-
 type InspectData struct {
 	Image     docker.Image
 	TsuruYaml provTypes.TsuruYamlData
