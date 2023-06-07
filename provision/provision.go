@@ -28,6 +28,8 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+
+	_ "github.com/tsuru/tsuru/router/api"
 )
 
 const (
