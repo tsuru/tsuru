@@ -81,9 +81,7 @@ func List() map[string]Builder {
 func GetForProvisioner(p provision.Provisioner) (Builder, error) {
 	builder, err := get(p.GetName())
 	if err != nil {
-		if _, ok := p.(provision.BuilderDeployDockerClient); ok {
-			return get("docker")
-		} else if _, ok := p.(provision.BuilderDeployKubeClient); ok {
+		if _, ok := p.(provision.BuilderDeployKubeClient); ok {
 			return get("kubernetes")
 		}
 	}

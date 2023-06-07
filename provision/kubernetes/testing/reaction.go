@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -164,7 +163,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	s.client.PrependReactor("create", "services", servReaction)
 	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
 	srv, wg := s.CreateDeployReadyServer(c)
-	s.MockfakeNodes(c, srv.URL)
+	s.MockfakeNodes(srv.URL)
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
@@ -209,7 +208,7 @@ func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	srv, wg := s.CreateDeployReadyServer(c)
-	s.MockfakeNodes(c, srv.URL)
+	s.MockfakeNodes(srv.URL)
 	return func() {
 			rollbackDeployment()
 			podReady.Wait()
@@ -379,75 +378,12 @@ func SortNodes(nodes []*apiv1.Node) {
 	})
 }
 
-func (s *KubeMock) WaitNodeUpdate(c *check.C, fn func()) {
-	s.WaitNodeUpdateCount(c, false, fn)
-}
-
-func (s *KubeMock) WaitNodeUpdateCount(c *check.C, countOnly bool, fn func()) {
-	nodes, err := s.p.(provision.NodeProvisioner).ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	var rawNodes []*apiv1.Node
-	for _, n := range nodes {
-		rawNodes = append(rawNodes, n.(interface{ RawNode() *apiv1.Node }).RawNode())
-	}
-	fn()
-	timeout := time.After(5 * time.Second)
-	for {
-		nodes, err = s.p.(provision.NodeProvisioner).ListNodes(context.TODO(), nil)
-		c.Assert(err, check.IsNil)
-		var rawNodesAfter []*apiv1.Node
-		for _, n := range nodes {
-			rawNodesAfter = append(rawNodesAfter, n.(interface{ RawNode() *apiv1.Node }).RawNode())
-		}
-		if countOnly {
-			if len(rawNodes) != len(rawNodesAfter) {
-				return
-			}
-		} else {
-			SortNodes(rawNodes)
-			SortNodes(rawNodesAfter)
-			if !reflect.DeepEqual(rawNodes, rawNodesAfter) {
-				return
-			}
-		}
-		select {
-		case <-time.After(100 * time.Millisecond):
-		case <-timeout:
-			c.Fatal("timeout waiting for node changes")
-		}
-	}
-}
-
-func (s *KubeMock) MockfakeNodes(c *check.C, urls ...string) {
+func (s *KubeMock) MockfakeNodes(urls ...string) {
 	if len(urls) > 0 {
 		s.client.GetCluster().Addresses = urls
 		s.client.ClusterInterface.RestConfig().Host = urls[0]
 	}
-	for i := 1; i <= 2; i++ {
-		s.WaitNodeUpdate(c, func() {
-			_, err := s.client.CoreV1().Nodes().Create(context.TODO(), &apiv1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("n%d", i),
-					Labels: map[string]string{
-						"tsuru.io/pool": "test-default",
-					},
-				},
-				Status: apiv1.NodeStatus{
-					Addresses: []apiv1.NodeAddress{
-						{
-							Type:    apiv1.NodeInternalIP,
-							Address: fmt.Sprintf("192.168.99.%d", i),
-						},
-						{
-							Type:    apiv1.NodeExternalIP,
-							Address: fmt.Sprintf("200.0.0.%d", i),
-						},
-					},
-				},
-			}, metav1.CreateOptions{})
-			c.Assert(err, check.IsNil)
-		})
-	}
+
 }
 
 func (s *KubeMock) AppReaction(a provision.App, c *check.C) ktesting.ReactionFunc {

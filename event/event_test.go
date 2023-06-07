@@ -1029,15 +1029,15 @@ func (s *S) TestNewThrottledExpirationWaitFinishExpired(c *check.C) {
 }
 
 func (s *S) TestListWithFilters(c *check.C) {
-	e1, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermNode), Target: Target{Type: "node"}})
+	e1, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermApp), Target: Target{Type: "node"}})
 	c.Assert(err, check.IsNil)
 	err = e1.Done(nil)
 	c.Assert(err, check.IsNil)
-	e2, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermNode), Target: Target{Type: "container"}})
+	e2, err := New(&Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermApp), Target: Target{Type: "container"}})
 	c.Assert(err, check.IsNil)
 	err = e2.Done(nil)
 	c.Assert(err, check.IsNil)
-	e3, err := New(&Opts{Owner: s.token, Kind: permission.PermAppCreate, Allowed: Allowed(permission.PermNode), Target: Target{Type: "container", Value: "1234"}})
+	e3, err := New(&Opts{Owner: s.token, Kind: permission.PermAppCreate, Allowed: Allowed(permission.PermApp), Target: Target{Type: "container", Value: "1234"}})
 	c.Assert(err, check.IsNil)
 	err = e3.Done(nil)
 	c.Assert(err, check.IsNil)

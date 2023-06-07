@@ -498,10 +498,6 @@ func ensureNamespaceForApp(ctx context.Context, client *ClusterClient, app provi
 	return ensureNamespace(ctx, client, ns)
 }
 
-func ensurePoolNamespace(ctx context.Context, client *ClusterClient, pool string) error {
-	return ensureNamespace(ctx, client, client.PoolNamespace(pool))
-}
-
 func ensureNamespace(ctx context.Context, client *ClusterClient, namespace string) error {
 	nsLabels, err := client.namespaceLabels(namespace)
 	if err != nil {
@@ -1246,11 +1242,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		m.writer = io.Discard
 	}
 
-	err := ensureNodeContainers(opts.App)
-	if err != nil {
-		return err
-	}
-	err = ensureNamespaceForApp(ctx, m.client, opts.App)
+	err := ensureNamespaceForApp(ctx, m.client, opts.App)
 	if err != nil {
 		return err
 	}

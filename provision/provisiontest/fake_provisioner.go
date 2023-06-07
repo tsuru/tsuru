@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/action"
@@ -23,14 +21,12 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
-	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
@@ -39,21 +35,17 @@ var (
 	errNotProvisioned         = &provision.Error{Reason: "App is not provisioned."}
 	uniqueIpCounter     int32 = 0
 
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.NodeProvisioner          = &FakeProvisioner{}
-	_ provision.NodeContainerProvisioner = &FakeProvisioner{}
-	_ provision.InterAppProvisioner      = &FakeProvisioner{}
-	_ provision.UpdatableProvisioner     = &FakeProvisioner{}
-	_ provision.Provisioner              = &FakeProvisioner{}
-	_ provision.LogsProvisioner          = &FakeProvisioner{}
-	_ provision.MetricsProvisioner       = &FakeProvisioner{}
-	_ provision.VolumeProvisioner        = &FakeProvisioner{}
-	_ provision.SleepableProvisioner     = &FakeProvisioner{}
-	_ provision.AppFilterProvisioner     = &FakeProvisioner{}
-	_ provision.ExecutableProvisioner    = &FakeProvisioner{}
-	_ provision.NodeRebalanceProvisioner = &FakeProvisioner{}
-	_ provision.App                      = &FakeApp{}
-	_ bind.App                           = &FakeApp{}
+	_ provision.Provisioner           = &FakeProvisioner{}
+	_ provision.InterAppProvisioner   = &FakeProvisioner{}
+	_ provision.UpdatableProvisioner  = &FakeProvisioner{}
+	_ provision.Provisioner           = &FakeProvisioner{}
+	_ provision.LogsProvisioner       = &FakeProvisioner{}
+	_ provision.MetricsProvisioner    = &FakeProvisioner{}
+	_ provision.VolumeProvisioner     = &FakeProvisioner{}
+	_ provision.AppFilterProvisioner  = &FakeProvisioner{}
+	_ provision.ExecutableProvisioner = &FakeProvisioner{}
+	_ provision.App                   = &FakeApp{}
+	_ bind.App                        = &FakeApp{}
 )
 
 func init() {
@@ -398,17 +390,15 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	Name           string
-	LogsEnabled    bool
-	outputs        chan []byte
-	failures       chan failure
-	apps           map[string]provisionedApp
-	jobs           map[string]provisionedJob
-	mut            sync.RWMutex
-	execs          map[string][]provision.ExecOptions
-	execsMut       sync.Mutex
-	nodes          map[string]FakeNode
-	nodeContainers map[string]int
+	Name        string
+	LogsEnabled bool
+	outputs     chan []byte
+	failures    chan failure
+	apps        map[string]provisionedApp
+	jobs        map[string]provisionedJob
+	mut         sync.RWMutex
+	execs       map[string][]provision.ExecOptions
+	execsMut    sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -418,8 +408,6 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.apps = make(map[string]provisionedApp)
 	p.jobs = make(map[string]provisionedJob)
 	p.execs = make(map[string][]provision.ExecOptions)
-	p.nodes = make(map[string]FakeNode)
-	p.nodeContainers = make(map[string]int)
 	return &p
 }
 
@@ -433,327 +421,6 @@ func (p *FakeProvisioner) getError(method string) error {
 	default:
 	}
 	return nil
-}
-
-type FakeNode struct {
-	ID         string
-	Addr       string
-	PoolName   string
-	Meta       map[string]string
-	status     string
-	p          *FakeProvisioner
-	failures   int
-	hasSuccess bool
-}
-
-func (n *FakeNode) IaaSID() string {
-	return n.ID
-}
-
-func (n *FakeNode) Pool() string {
-	return n.PoolName
-}
-
-func (n *FakeNode) Address() string {
-	return n.Addr
-}
-
-func (n *FakeNode) Metadata() map[string]string {
-	return n.Meta
-}
-
-func (n *FakeNode) MetadataNoPrefix() map[string]string {
-	return n.Meta
-}
-
-func (n *FakeNode) Units() ([]provision.Unit, error) {
-	n.p.mut.Lock()
-	defer n.p.mut.Unlock()
-	return n.unitsLocked()
-}
-
-func (n *FakeNode) unitsLocked() ([]provision.Unit, error) {
-	var units []provision.Unit
-	for _, a := range n.p.apps {
-		for _, u := range a.units {
-			if net.URLToHost(u.Address.String()) == net.URLToHost(n.Addr) {
-				units = append(units, u)
-			}
-		}
-	}
-	return units, nil
-}
-
-func (n *FakeNode) Status() string {
-	return n.status
-}
-
-func (n *FakeNode) FailureCount() int {
-	return n.failures
-}
-
-func (n *FakeNode) HasSuccess() bool {
-	return n.hasSuccess
-}
-
-func (n *FakeNode) ResetFailures() {
-	n.failures = 0
-}
-
-func (n *FakeNode) Provisioner() provision.NodeProvisioner {
-	return n.p
-}
-
-func (n *FakeNode) SetHealth(failures int, hasSuccess bool) {
-	n.failures = failures
-	n.hasSuccess = hasSuccess
-}
-
-func (p *FakeProvisioner) AddNode(ctx context.Context, opts provision.AddNodeOptions) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	if err := p.getError("AddNode"); err != nil {
-		return err
-	}
-	if err := p.getError("AddNode:" + opts.Address); err != nil {
-		return err
-	}
-	metadata := opts.Metadata
-	if metadata == nil {
-		metadata = map[string]string{}
-	}
-	if _, ok := p.nodes[opts.Address]; ok {
-		return errors.New("fake node already exists")
-	}
-	p.nodes[opts.Address] = FakeNode{
-		ID:       opts.IaaSID,
-		Addr:     opts.Address,
-		PoolName: opts.Pool,
-		Meta:     metadata,
-		p:        p,
-		status:   "enabled",
-	}
-	return nil
-}
-
-func (p *FakeProvisioner) GetNode(ctx context.Context, address string) (provision.Node, error) {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	if err := p.getError("GetNode"); err != nil {
-		return nil, err
-	}
-	if n, ok := p.nodes[address]; ok {
-		return &n, nil
-	}
-	return nil, provision.ErrNodeNotFound
-}
-
-func (p *FakeProvisioner) RemoveNode(ctx context.Context, opts provision.RemoveNodeOptions) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	if err := p.getError("RemoveNode"); err != nil {
-		return err
-	}
-	_, ok := p.nodes[opts.Address]
-	if !ok {
-		return provision.ErrNodeNotFound
-	}
-	delete(p.nodes, opts.Address)
-	if opts.Writer != nil {
-		if opts.Rebalance {
-			opts.Writer.Write([]byte("rebalancing..."))
-			p.rebalanceNodesLocked(provision.RebalanceNodesOptions{
-				Force: true,
-			})
-		}
-		opts.Writer.Write([]byte("remove done!"))
-	}
-	return nil
-}
-
-func (p *FakeProvisioner) UpdateNode(ctx context.Context, opts provision.UpdateNodeOptions) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	if err := p.getError("UpdateNode"); err != nil {
-		return err
-	}
-	n, ok := p.nodes[opts.Address]
-	if !ok {
-		return provision.ErrNodeNotFound
-	}
-	if opts.Pool != "" {
-		n.PoolName = opts.Pool
-	}
-	if opts.Metadata != nil {
-		n.Meta = opts.Metadata
-	}
-	if opts.Enable {
-		n.status = "enabled"
-	}
-	if opts.Disable {
-		n.status = "disabled"
-	}
-	p.nodes[opts.Address] = n
-	return nil
-}
-
-type nodeList []provision.Node
-
-func (l nodeList) Len() int           { return len(l) }
-func (l nodeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l nodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
-
-func (p *FakeProvisioner) ListNodes(ctx context.Context, addressFilter []string) ([]provision.Node, error) {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	if err := p.getError("ListNodes"); err != nil {
-		return nil, err
-	}
-	var result []provision.Node
-	if addressFilter != nil {
-		result = make([]provision.Node, 0, len(addressFilter))
-		for _, a := range addressFilter {
-			n := p.nodes[a]
-			result = append(result, &n)
-		}
-	} else {
-		result = make([]provision.Node, 0, len(p.nodes))
-		for a := range p.nodes {
-			n := p.nodes[a]
-			result = append(result, &n)
-		}
-	}
-	sort.Sort(nodeList(result))
-	return result, nil
-}
-
-func (p *FakeProvisioner) ListNodesByFilter(ctx context.Context, filter *provTypes.NodeFilter) ([]provision.Node, error) {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	if err := p.getError("ListNodesByFilter"); err != nil {
-		return nil, err
-	}
-	result := make([]provision.Node, 0, len(p.nodes))
-	filterFunc := func(meta map[string]string) bool {
-		for key, value := range filter.Metadata {
-			metaValue := meta[key]
-			if value != metaValue {
-				return false
-			}
-		}
-		return true
-	}
-	for a := range p.nodes {
-		n := p.nodes[a]
-		if filterFunc(n.Meta) {
-			result = append(result, &n)
-		}
-	}
-	sort.Sort(nodeList(result))
-	return result, nil
-}
-
-func (p *FakeProvisioner) NodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData) (provision.Node, error) {
-	if err := p.getError("NodeForNodeData"); err != nil {
-		return nil, err
-	}
-	nodeAddrMap := map[string]provision.Node{}
-	for addr, n := range p.nodes {
-		n := n
-		nodeAddrMap[net.URLToHost(addr)] = &n
-	}
-	var node provision.Node
-	for _, addr := range nodeData.Addrs {
-		n := nodeAddrMap[net.URLToHost(addr)]
-		if n != nil {
-			if node != nil {
-				return nil, errors.Errorf("addrs match multiple nodes: %v", nodeData.Addrs)
-			}
-			node = n
-		}
-	}
-	if node == nil {
-		return nil, provision.ErrNodeNotFound
-	}
-	return node, nil
-}
-
-func (p *FakeProvisioner) RebalanceNodes(ctx context.Context, opts provision.RebalanceNodesOptions) (bool, error) {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	return p.rebalanceNodesLocked(opts)
-}
-
-func (p *FakeProvisioner) rebalanceNodesLocked(opts provision.RebalanceNodesOptions) (bool, error) {
-	if err := p.getError("RebalanceNodes"); err != nil {
-		return true, err
-	}
-	var w io.Writer
-	if opts.Event == nil {
-		w = io.Discard
-	} else {
-		w = opts.Event
-	}
-	fmt.Fprintf(w, "rebalancing - dry: %v, force: %v\n", opts.Dry, opts.Force)
-	if len(opts.AppFilter) != 0 {
-		fmt.Fprintf(w, "filtering apps: %v\n", opts.AppFilter)
-	}
-	if len(opts.MetadataFilter) != 0 {
-		fmt.Fprintf(w, "filtering metadata: %v\n", opts.MetadataFilter)
-	}
-	if opts.Pool != "" {
-		fmt.Fprintf(w, "filtering pool: %v\n", opts.Pool)
-	}
-	if len(p.nodes) == 0 || opts.Dry {
-		return true, nil
-	}
-	max := 0
-	min := -1
-	var nodes []FakeNode
-	for _, n := range p.nodes {
-		nodes = append(nodes, n)
-		units, err := n.unitsLocked()
-		if err != nil {
-			return true, err
-		}
-		unitCount := len(units)
-		if unitCount > max {
-			max = unitCount
-		}
-		if min == -1 || unitCount < min {
-			min = unitCount
-		}
-	}
-	if max-min < 2 && !opts.Force {
-		return false, nil
-	}
-	gi := 0
-	for _, a := range p.apps {
-		nodeIdx := 0
-		for i := range a.units {
-			u := &a.units[i]
-			firstIdx := nodeIdx
-			var hostAddr string
-			for {
-				idx := nodeIdx
-				nodeIdx = (nodeIdx + 1) % len(nodes)
-				if nodes[idx].Pool() == a.app.GetPool() {
-					hostAddr = net.URLToHost(nodes[idx].Address())
-					break
-				}
-				if nodeIdx == firstIdx {
-					return true, errors.Errorf("unable to find node for pool %s", a.app.GetPool())
-				}
-			}
-			u.IP = hostAddr
-			u.Address = &url.URL{
-				Scheme: "http",
-				Host:   fmt.Sprintf("%s:%d", hostAddr, gi),
-			}
-			gi++
-		}
-	}
-	return true, nil
 }
 
 // Restarts returns the number of restarts for a given app.
@@ -775,13 +442,6 @@ func (p *FakeProvisioner) Stops(app provision.App, process string) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	return p.apps[app.GetName()].stops[process]
-}
-
-// Sleeps returns the number of sleeps for a given app.
-func (p *FakeProvisioner) Sleeps(app provision.App, process string) int {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].sleeps[process]
 }
 
 func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
@@ -881,12 +541,7 @@ func (p *FakeProvisioner) Reset() {
 	p.execs = make(map[string][]provision.ExecOptions)
 	p.execsMut.Unlock()
 
-	p.mut.Lock()
-	p.nodes = make(map[string]FakeNode)
-	p.mut.Unlock()
 	uniqueIpCounter = 0
-
-	p.nodeContainers = make(map[string]int)
 
 	for {
 		select {
@@ -930,32 +585,6 @@ func (p *FakeProvisioner) Deploy(ctx context.Context, args provision.DeployArgs)
 	return args.Version.VersionInfo().DeployImage, nil
 }
 
-func (p *FakeProvisioner) GetClient(app provision.App) (provision.BuilderDockerClient, error) {
-	for _, node := range p.nodes {
-		client, err := docker.NewClient(node.Addr)
-		if err != nil {
-			return nil, err
-		}
-		return &dockercommon.PullAndCreateClient{Client: client}, nil
-	}
-	return nil, errors.New("No node found")
-
-}
-
-func (p *FakeProvisioner) CleanImage(appName, imgName string) error {
-	for _, node := range p.nodes {
-		c, err := docker.NewClient(node.Addr)
-		if err != nil {
-			return err
-		}
-		err = c.RemoveImage(imgName)
-		if err != nil && err != docker.ErrNoSuchImage {
-			return err
-		}
-	}
-	return nil
-}
-
 func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
@@ -970,7 +599,6 @@ func (p *FakeProvisioner) Provision(ctx context.Context, app provision.App) erro
 		restarts: make(map[string]int),
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
-		sleeps:   make(map[string]int),
 	}
 	return nil
 }
@@ -1063,11 +691,6 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 		var hostAddr string
 		if nodeAddr != "" {
 			hostAddr = net.URLToHost(nodeAddr)
-		} else if len(p.nodes) > 0 {
-			for _, n := range p.nodes {
-				hostAddr = net.URLToHost(n.Address())
-				break
-			}
 		} else {
 			hostAddr = fmt.Sprintf("10.10.10.%d", val)
 		}
@@ -1306,22 +929,6 @@ func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process s
 	return nil
 }
 
-func (p *FakeProvisioner) Sleep(ctx context.Context, app provision.App, process string, version appTypes.AppVersion) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp.sleeps[process]++
-	for i, u := range pApp.units {
-		u.Status = provision.StatusAsleep
-		pApp.units[i] = u
-	}
-	p.apps[app.GetName()] = pApp
-	return nil
-}
-
 func (p *FakeProvisioner) RegisterUnit(ctx context.Context, a provision.App, unitId string, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -1397,20 +1004,6 @@ func (p *FakeProvisioner) FilterAppsByUnitStatus(ctx context.Context, apps []pro
 
 func (p *FakeProvisioner) GetName() string {
 	return p.Name
-}
-
-func (p *FakeProvisioner) UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
-	p.nodeContainers[name+"-"+pool]++
-	return nil
-}
-
-func (p *FakeProvisioner) RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
-	p.nodeContainers[name+"-"+pool] = 0
-	return nil
-}
-
-func (p *FakeProvisioner) HasNodeContainer(name string, pool string) bool {
-	return p.nodeContainers[name+"-"+pool] > 0
 }
 
 func (p *FakeProvisioner) DeleteVolume(ctx context.Context, volName, pool string) error {
@@ -1543,7 +1136,6 @@ type provisionedApp struct {
 	restarts  map[string]int
 	starts    map[string]int
 	stops     map[string]int
-	sleeps    map[string]int
 	cnames    []string
 	unitLen   int
 	lastData  map[string]interface{}

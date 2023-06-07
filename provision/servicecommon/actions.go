@@ -26,7 +26,6 @@ type ProcessState struct {
 	Stop      bool
 	Start     bool
 	Restart   bool
-	Sleep     bool
 	Increment int
 }
 
@@ -160,11 +159,9 @@ func rawLabelsAndReplicas(ctx context.Context, args *pipelineArgs, processName s
 func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelReplicas, newVersion appTypes.AppVersion, processName string, pState ProcessState) (labelReplicas, error) {
 	restartCount := 0
 	isStopped := false
-	isAsleep := false
 	if oldLabels.labels != nil {
 		restartCount = oldLabels.labels.Restarts()
 		isStopped = oldLabels.labels.IsStopped()
-		isAsleep = oldLabels.labels.IsAsleep()
 	}
 	if pState.Increment != 0 {
 		oldLabels.realReplicas += pState.Increment
@@ -177,7 +174,6 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 			oldLabels.realReplicas = 1
 		}
 		isStopped = false
-		isAsleep = false
 	}
 	labels, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App:     args.app,
@@ -190,9 +186,6 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 	if isStopped || pState.Stop {
 		oldLabels.realReplicas = 0
 		labels.SetStopped()
-	}
-	if isAsleep || pState.Sleep {
-		labels.SetAsleep()
 	}
 	if pState.Restart {
 		restartCount++

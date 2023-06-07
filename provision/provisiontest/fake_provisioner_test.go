@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
-	"sort"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -18,13 +16,10 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
-	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -348,20 +343,6 @@ func (s *S) TestStops(c *check.C) {
 	c.Assert(p.Stops(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
-func (s *S) TestSleeps(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
-	p := NewFakeProvisioner()
-	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, sleeps: map[string]int{"web": 10, "worker": 1}},
-		app2.GetName(): {app: app1, sleeps: map[string]int{"": 0}},
-	}
-	c.Assert(p.Sleeps(app1, "web"), check.Equals, 10)
-	c.Assert(p.Sleeps(app1, "worker"), check.Equals, 1)
-	c.Assert(p.Sleeps(app2, ""), check.Equals, 0)
-	c.Assert(p.Sleeps(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
-}
-
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
 		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
@@ -462,15 +443,6 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(p.Stops(app, ""), check.Equals, 1)
 }
 
-func (s *S) TestSleep(c *check.C) {
-	app := NewFakeApp("kid-gloves", "rush", 1)
-	p := NewFakeProvisioner()
-	p.Provision(context.TODO(), app)
-	err := p.Sleep(context.TODO(), app, "", nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Sleeps(app, ""), check.Equals, 1)
-}
-
 func (s *S) TestRestartNotProvisioned(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
@@ -568,33 +540,11 @@ func (s *S) TestAddUnitsFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "Cannot add more units.")
 }
 
-func (s *S) TestAddUnitsNodeAware(c *check.C) {
-	app := NewFakeApp("mystic-rhythms", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Reset()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "http://n1:123",
-	})
-	c.Assert(err, check.IsNil)
-	err = p.AddUnits(context.TODO(), app, 2, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	allUnits := p.GetUnits(app)
-	c.Assert(allUnits, check.HasLen, 2)
-	c.Assert(allUnits[0].Address.Host, check.Equals, "n1:1")
-	c.Assert(allUnits[1].Address.Host, check.Equals, "n1:2")
-}
-
 func (s *S) TestAddUnitsToNode(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Reset()
 	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "http://n1:123",
-	})
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnitsToNode(app, 2, "web", nil, "nother", nil)
 	c.Assert(err, check.IsNil)
@@ -1019,176 +969,6 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	c.Assert(p.CustomData(app), check.DeepEquals, data)
 }
 
-func (s *S) TestFakeProvisionerAddNode(c *check.C) {
-	p := NewFakeProvisioner()
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode", Pool: "mypool", Metadata: map[string]string{
-		"m1": "v1",
-	}})
-	c.Assert(p.nodes, check.DeepEquals, map[string]FakeNode{"mynode": {
-		Addr:     "mynode",
-		PoolName: "mypool",
-		Meta:     map[string]string{"m1": "v1"},
-		p:        p,
-		status:   "enabled",
-	}})
-}
-
-type NodeList []provision.Node
-
-func (l NodeList) Len() int           { return len(l) }
-func (l NodeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l NodeList) Less(i, j int) bool { return l[i].Address() < l[j].Address() }
-
-func (s *S) TestFakeProvisionerListNodes(c *check.C) {
-	p := NewFakeProvisioner()
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool", Metadata: map[string]string{
-		"m1": "v1",
-	}})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
-	nodes, err := p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	sort.Sort(NodeList(nodes))
-	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1"}, p: p},
-		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{}, p: p},
-	})
-	nodes, err = p.ListNodes(context.TODO(), []string{"mynode2"})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{}, p: p},
-	})
-}
-
-func (s *S) TestFakeProvisionerListNodesByFilter(c *check.C) {
-	p := NewFakeProvisioner()
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool", Metadata: map[string]string{
-		"m1": "v1",
-		"m2": "v2",
-	}})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool", Metadata: map[string]string{
-		"m1": "v1",
-	}})
-	filter := &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1"}}
-	nodes, err := p.ListNodesByFilter(context.TODO(), filter)
-	c.Assert(err, check.IsNil)
-	sort.Sort(NodeList(nodes))
-	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1", "m2": "v2"}, p: p},
-		&FakeNode{Addr: "mynode2", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1"}, p: p},
-	})
-	filter = &provTypes.NodeFilter{Metadata: map[string]string{"m1": "v1", "m2": "v2"}}
-	nodes, err = p.ListNodesByFilter(context.TODO(), filter)
-	c.Assert(err, check.IsNil)
-	sort.Sort(NodeList(nodes))
-	c.Assert(nodes, check.DeepEquals, []provision.Node{
-		&FakeNode{Addr: "mynode1", status: "enabled", PoolName: "mypool", Meta: map[string]string{"m1": "v1", "m2": "v2"}, p: p},
-	})
-}
-
-func (s *S) TestFakeProvisionerRebalanceNodes(c *check.C) {
-	p := NewFakeProvisioner()
-	app := NewFakeApp("shine-on", "diamond", 1)
-	app.Pool = "mypool"
-	p.Provision(context.TODO(), app)
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
-	p.AddUnitsToNode(app, 4, "web", nil, "mynode1", nil)
-	w := bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "global"},
-		Kind:     permission.PermNodeUpdateRebalance,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
-		Allowed:  event.Allowed(permission.PermNode),
-	})
-	c.Assert(err, check.IsNil)
-	evt.SetLogWriter(&w)
-	isRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
-		Event:          evt,
-		Pool:           "mypool",
-		MetadataFilter: map[string]string{"m1": "x1"},
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s).*rebalancing - dry: false, force: false.*filtering metadata: map\[m1:x1\].*filtering pool: mypool.*`)
-	units, err := p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	var addrs []string
-	for _, u := range units {
-		addrs = append(addrs, u.IP)
-	}
-	sort.Strings(addrs)
-	c.Assert(addrs, check.DeepEquals, []string{"mynode1", "mynode1", "mynode2", "mynode2"})
-}
-
-func (s *S) TestFakeProvisionerRebalanceNodesMultiplePools(c *check.C) {
-	p := NewFakeProvisioner()
-	app1 := NewFakeApp("a1", "diamond", 1)
-	app1.Pool = "mypool"
-	p.Provision(context.TODO(), app1)
-	app2 := NewFakeApp("a2", "diamond", 1)
-	app2.Pool = "mypool2"
-	p.Provision(context.TODO(), app2)
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Pool: "mypool"})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Pool: "mypool"})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode3", Pool: "mypool2"})
-	p.AddUnitsToNode(app1, 4, "web", nil, "mynode1", nil)
-	p.AddUnitsToNode(app2, 4, "web", nil, "mynode3", nil)
-	w := bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "global"},
-		Kind:     permission.PermNodeUpdateRebalance,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
-		Allowed:  event.Allowed(permission.PermNode),
-	})
-	c.Assert(err, check.IsNil)
-	evt.SetLogWriter(&w)
-	isRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
-		Event: evt,
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(isRebalance, check.Equals, true)
-	c.Assert(w.String(), check.Matches, `(?s).*rebalancing - dry: false, force: false.*`)
-	nodes, err := p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 3)
-	u0, _ := nodes[0].Units()
-	u1, _ := nodes[1].Units()
-	u2, _ := nodes[2].Units()
-	c.Assert(u0, check.HasLen, 2)
-	c.Assert(u1, check.HasLen, 2)
-	c.Assert(u2, check.HasLen, 4)
-}
-
-func (s *S) TestFakeProvisionerRebalanceNodesBalanced(c *check.C) {
-	p := NewFakeProvisioner()
-	app := NewFakeApp("shine-on", "diamond", 1)
-	app.Pool = "mypool"
-	p.Provision(context.TODO(), app)
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode2", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	p.AddUnitsToNode(app, 2, "web", nil, "mynode1", nil)
-	p.AddUnitsToNode(app, 2, "web", nil, "mynode2", nil)
-	w := bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "global"},
-		Kind:     permission.PermNodeUpdateRebalance,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "me@me.com"},
-		Allowed:  event.Allowed(permission.PermNode),
-	})
-	c.Assert(err, check.IsNil)
-	evt.SetLogWriter(&w)
-	isRebalance, err := p.RebalanceNodes(context.TODO(), provision.RebalanceNodesOptions{
-		Event:          evt,
-		MetadataFilter: map[string]string{"pool": "mypool"},
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(isRebalance, check.Equals, false)
-}
-
 func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	app1 := NewFakeApp("fairy-tale", "shaman", 1)
 	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
@@ -1226,56 +1006,6 @@ func (s *S) TestGetAppFromUnitIDNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	_, err := p.GetAppFromUnitID("chain-lighting-0")
 	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestFakeNodeHealthChecker(c *check.C) {
-	p := NewFakeProvisioner()
-	p.Reset()
-	err := p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	c.Assert(err, check.IsNil)
-	nodes, err := p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	hcNode, ok := nodes[0].(provision.NodeHealthChecker)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(hcNode.FailureCount(), check.Equals, 0)
-	c.Assert(hcNode.HasSuccess(), check.Equals, false)
-}
-
-func (s *S) TestFakeNodeHealthCheckerSetHealth(c *check.C) {
-	p := NewFakeProvisioner()
-	p.Reset()
-	err := p.AddNode(context.TODO(), provision.AddNodeOptions{Address: "mynode1", Metadata: map[string]string{
-		"pool": "mypool",
-	}})
-	c.Assert(err, check.IsNil)
-	nodes, err := p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	fakeNode, ok := nodes[0].(*FakeNode)
-	c.Assert(ok, check.Equals, true)
-	fakeNode.SetHealth(10, true)
-	c.Assert(fakeNode.FailureCount(), check.Equals, 10)
-	c.Assert(fakeNode.HasSuccess(), check.Equals, true)
-	fakeNode.ResetFailures()
-	c.Assert(fakeNode.FailureCount(), check.Equals, 0)
-}
-
-func (s *S) TestFakeUpgradeNodeContainer(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
-}
-
-func (s *S) TestFakeRemoveNodeContainer(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.UpgradeNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, true)
-	err = p.RemoveNodeContainer(context.TODO(), "c1", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasNodeContainer("c1", "p1"), check.Equals, false)
 }
 
 func (s *S) TestUpdateApp(c *check.C) {

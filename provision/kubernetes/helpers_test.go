@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -36,21 +35,6 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
 		c.Check(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
-func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
-	var tests = []struct {
-		name, expected string
-	}{
-		{"mync", "node-container-mync"},
-		{"MYNC", "node-container-mync"},
-		{"my-nc_nc", "node-container-my-nc-nc"},
-	}
-	for i, tt := range tests {
-		c.Check(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
-			Name: tt.name,
-		}), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -292,7 +276,7 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 
 func (s *S) TestWaitForPod(c *check.C) {
 	srv, wg := s.mock.CreateDeployReadyServer(c)
-	s.mock.MockfakeNodes(c, srv.URL)
+	s.mock.MockfakeNodes(srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)

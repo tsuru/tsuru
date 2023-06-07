@@ -49,7 +49,6 @@ type clusterController struct {
 	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
 	serviceInformer         v1informers.ServiceInformer
-	nodeInformer            v1informers.NodeInformer
 	hpaInformer             autoscalingInformers.HorizontalPodAutoscalerInformer
 	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
 	jobsInformer            jobsInformer.JobInformer
@@ -232,22 +231,6 @@ func (c *clusterController) getServiceInformer() (v1informers.ServiceInformer, e
 	}
 	err := c.waitForSync(c.serviceInformer.Informer())
 	return c.serviceInformer, err
-}
-
-func (c *clusterController) getNodeInformer() (v1informers.NodeInformer, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.nodeInformer == nil {
-		err := c.withInformerFactory(func(factory informers.SharedInformerFactory) {
-			c.nodeInformer = factory.Core().V1().Nodes()
-			c.nodeInformer.Informer()
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	err := c.waitForSync(c.nodeInformer.Informer())
-	return c.nodeInformer, err
 }
 
 func (c *clusterController) getHPAInformer() (autoscalingInformers.HorizontalPodAutoscalerInformer, error) {

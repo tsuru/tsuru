@@ -8,15 +8,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/docker/machine/libmachine/drivers/plugin/localbinary"
 	"github.com/google/gops/agent"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
-	_ "github.com/tsuru/tsuru/builder/docker"
 	_ "github.com/tsuru/tsuru/builder/kubernetes"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/iaas/dockermachine"
-	_ "github.com/tsuru/tsuru/provision/docker"
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 )
@@ -35,26 +31,16 @@ func buildManager() *cmd.Manager {
 	return m
 }
 
-func inDockerMachineDriverMode() bool {
-	return os.Getenv(localbinary.PluginEnvKey) == localbinary.PluginEnvVal
-}
-
 func main() {
 	err := agent.Listen(agent.Options{})
 	if err != nil {
 		log.Fatalf("Unable to start a Gops agent %s", err)
 	}
 	defer agent.Close()
-	if inDockerMachineDriverMode() {
-		err := dockermachine.RunDriver(os.Getenv(localbinary.PluginEnvDriverName))
-		if err != nil {
-			log.Fatalf("Error running driver: %s", err)
-		}
-	} else {
-		localbinary.CurrentBinaryIsDockerMachine = true
-		config.ReadConfigFile(configPath)
-		listenSignals()
-		m := buildManager()
-		m.Run(os.Args[1:])
-	}
+
+	config.ReadConfigFile(configPath)
+	listenSignals()
+	m := buildManager()
+	m.Run(os.Args[1:])
+
 }

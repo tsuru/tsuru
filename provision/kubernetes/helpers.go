@@ -22,7 +22,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -31,7 +30,6 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -63,11 +61,6 @@ var svcIgnoredLabels = []string{
 func serviceAccountNameForApp(a provision.App) string {
 	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
-}
-
-func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
-	name := provision.ValidKubeName(nodeContainer.Name)
-	return fmt.Sprintf("node-container-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string, version int) string {
@@ -903,37 +896,6 @@ func cleanupPod(ctx context.Context, client *ClusterClient, podName, namespace s
 	return nil
 }
 
-func podsFromNode(ctx context.Context, client *ClusterClient, nodeName, labelFilter string) ([]apiv1.Pod, error) {
-	restCli, err := rest.RESTClientFor(client.restConfig)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	opts := metav1.ListOptions{
-		LabelSelector: labelFilter,
-		FieldSelector: fields.SelectorFromSet(fields.Set{
-			"spec.nodeName": nodeName,
-		}).String(),
-	}
-	var podList apiv1.PodList
-	err = restCli.Get().
-		Resource("pods").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Do(ctx).
-		Into(&podList)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return podList.Items, nil
-}
-
-func appPodsFromNode(ctx context.Context, client *ClusterClient, nodeName string) ([]apiv1.Pod, error) {
-	l := provision.LabelSet{Prefix: tsuruLabelPrefix}
-	l.SetIsService()
-	serviceSelector := fields.SelectorFromSet(fields.Set(l.ToIsServiceSelector())).String()
-	labelFilter := fmt.Sprintf("%s,%s%s", serviceSelector, tsuruLabelPrefix, provision.LabelAppPool)
-	return podsFromNode(ctx, client, nodeName, labelFilter)
-}
-
 func labelOnlySetFromMeta(meta *metav1.ObjectMeta) *provision.LabelSet {
 	return labelOnlySetFromMetaPrefix(meta, true)
 }
@@ -1169,43 +1131,6 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
 	defer cancel()
 	return waitForPod(tctx, args.client, pod, ns, false)
-}
-
-func (p *kubernetesProvisioner) getNodeByAddr(ctx context.Context, client *ClusterClient, address string) (*apiv1.Node, error) {
-	address = tsuruNet.URLToHost(address)
-	node, err := client.CoreV1().Nodes().Get(ctx, address, metav1.GetOptions{})
-	if err == nil {
-		return node, nil
-	}
-	if !k8sErrors.IsNotFound(err) {
-		return nil, errors.WithStack(err)
-	}
-	node = nil
-	controller, err := getClusterController(p, client)
-	if err != nil {
-		return nil, err
-	}
-	nodeInformer, err := controller.getNodeInformer()
-	if err != nil {
-		return nil, err
-	}
-	nodeList, err := nodeInformer.Lister().List(labels.Everything())
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-nodesloop:
-	for _, n := range nodeList {
-		for _, addr := range n.Status.Addresses {
-			if addr.Type == apiv1.NodeInternalIP && addr.Address == address {
-				node = n.DeepCopy()
-				break nodesloop
-			}
-		}
-	}
-	if node != nil {
-		return node, nil
-	}
-	return nil, provision.ErrNodeNotFound
 }
 
 func updateAppNamespace(ctx context.Context, client *ClusterClient, appName, namespaceName string) error {
