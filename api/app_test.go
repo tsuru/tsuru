@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ajg/form"
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -33,7 +32,6 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -2628,126 +2626,6 @@ func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Check(e.Code, check.Equals, http.StatusNotFound)
 	c.Check(e.Message, check.Equals, "App not found")
-}
-
-func (s *S) TestSetNodeStatus(c *check.C) {
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
-	c.Assert(err, check.IsNil)
-	status := []string{"started", "error", "stopped"}
-	unitsStatus := []provision.UnitStatusData{
-		{ID: units[0].ID, Status: "started"},
-		{ID: units[1].ID, Status: "error"},
-		{ID: units[2].ID, Status: "stopped"},
-		{ID: "not-found1", Status: "error"},
-		{ID: "not-found2", Status: "started"},
-	}
-	nodeStatus := provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitsStatus}
-	v, err := form.EncodeToValues(&nodeStatus)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", "/node/status", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	for i, unit := range units {
-		c.Check(unit.Status, check.Equals, provision.Status(status[i]))
-	}
-	var got updateList
-	expected := updateList([]app.UpdateUnitsResult{
-		{ID: units[0].ID, Found: true},
-		{ID: units[1].ID, Found: true},
-		{ID: units[2].ID, Found: true},
-		{ID: "not-found1", Found: false},
-		{ID: "not-found2", Found: false},
-	})
-	err = json.NewDecoder(recorder.Body).Decode(&got)
-	c.Assert(err, check.IsNil)
-	sort.Sort(&got)
-	sort.Sort(&expected)
-	c.Assert(got, check.DeepEquals, expected)
-}
-
-func (s *S) TestSetNodeStatusNotFound(c *check.C) {
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(context.TODO(), &a, 3, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
-	c.Assert(err, check.IsNil)
-	unitsStatus := []provision.UnitStatusData{
-		{ID: units[0].ID, Status: "started"},
-		{ID: units[1].ID, Status: "error"},
-		{ID: units[2].ID, Status: "stopped"},
-		{ID: "not-found1", Status: "error"},
-		{ID: "not-found2", Status: "started"},
-	}
-	nodeStatus := provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitsStatus}
-	v, err := form.EncodeToValues(&nodeStatus)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", "/node/status", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var got updateList
-	expected := updateList([]app.UpdateUnitsResult{
-		{ID: units[0].ID, Found: false},
-		{ID: units[1].ID, Found: false},
-		{ID: units[2].ID, Found: false},
-		{ID: "not-found1", Found: false},
-		{ID: "not-found2", Found: false},
-	})
-	err = json.NewDecoder(recorder.Body).Decode(&got)
-	c.Assert(err, check.IsNil)
-	sort.Sort(&got)
-	sort.Sort(&expected)
-	c.Assert(got, check.DeepEquals, expected)
-}
-
-func (s *S) TestSetNodeStatusNonInternalToken(c *check.C) {
-	body := bytes.NewBufferString("{{{-")
-	request, err := http.NewRequest("POST", "/node/status", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-type updateList []app.UpdateUnitsResult
-
-func (list updateList) Len() int {
-	return len(list)
-}
-
-func (list updateList) Less(i, j int) bool {
-	return list[i].ID < list[j].ID
-}
-
-func (list updateList) Swap(i, j int) {
-	list[i], list[j] = list[j], list[i]
 }
 
 func (s *S) TestAddTeamToTheApp(c *check.C) {
@@ -5951,92 +5829,6 @@ func (s *S) TestRestartHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *ch
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSleepHandler(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	a := app.App{
-		Name:      "stress",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	url := fmt.Sprintf("/apps/%s/sleep", a.Name)
-	body := strings.NewReader("proxy=http://example.com")
-	request, err := http.NewRequest("POST", url, body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	c.Assert(recorder.Body.String(), check.Matches,
-		`{"Message":".*\\n.* ---\\u003e Putting the app \\"stress\\" to sleep\\n","Timestamp":".*"}`+"\n",
-	)
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.sleep",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "proxy", "value": "http://example.com"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSleepHandlerReturns400IfTheProxyIsNotSet(c *check.C) {
-	config.Set("docker:router", "fake")
-	defer config.Unset("docker:router")
-	a := app.App{
-		Name:      "stress",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/apps/stress/sleep?:app=stress", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "Empty proxy URL")
-}
-
-func (s *S) TestSleepHandlerReturns404IfTheAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("POST", "/apps/unknown/sleep?:app=unknown", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *S) TestSleepHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C) {
-	a := app.App{Name: "nightmist"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppUpdateSleep,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	url := fmt.Sprintf("/apps/%s/sleep?:app=%s&proxy=http://example.com", a.Name, a.Name)
-	request, err := http.NewRequest("POST", url, nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = sleep(recorder, request, token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-}
-
 type LogList []appTypes.Applog
 
 func (l LogList) Len() int           { return len(l) }
@@ -6563,56 +6355,6 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",
 	})
-}
-
-func (s *S) TestMetricEnvs(c *check.C) {
-	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-		Name: nodecontainer.BsDefaultName,
-		Config: docker.Config{
-			Image: "img1",
-			Env: []string{
-				"OTHER_ENV=asd",
-				"METRICS_BACKEND=fake",
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "{\"METRICS_BACKEND\":\"fake\"}\n")
-}
-
-func (s *S) TestMetricEnvsWhenUserDoesNotHaveAccess(c *check.C) {
-	a := app.App{Name: "myappx", Platform: "zend"}
-	err := s.conn.Apps().Insert(&a)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermAppReadMetric,
-		Context: permission.Context(permTypes.CtxApp, "-invalid-"),
-	})
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestMetricEnvsWhenAppDoesNotExist(c *check.C) {
-	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
 
 func (s *S) TestRebuildRoutes(c *check.C) {

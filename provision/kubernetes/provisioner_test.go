@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -18,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -27,8 +25,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
+	faketsuru "github.com/tsuru/tsuru/provision/kubernetes/pkg/client/clientset/versioned/fake"
 	"github.com/tsuru/tsuru/provision/kubernetes/testing"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
+	kTesting "github.com/tsuru/tsuru/provision/kubernetes/testing"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -41,571 +40,111 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	fakeapiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakevpa "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned/fake"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 	ktesting "k8s.io/client-go/testing"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/remotecommand"
+	fakeBackendConfig "k8s.io/ingress-gce/pkg/backendconfig/client/clientset/versioned/fake"
+	fakemetrics "k8s.io/metrics/pkg/client/clientset/versioned/fake"
 )
 
-func (s *S) TestListNodes(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	nodes, err := s.p.ListNodes(context.TODO(), []string{})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Address() < nodes[j].Address()
-	})
-	c.Assert(nodes[0].Address(), check.Equals, "192.168.99.1")
-	c.Assert(nodes[1].Address(), check.Equals, "192.168.99.2")
-}
-
-func (s *S) TestListNodesWithoutNodes(c *check.C) {
-	nodes, err := s.p.ListNodes(context.TODO(), []string{})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 0)
-}
-
-func (s *S) TestListNodesWithFilter(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.MockfakeNodes(c)
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	filter := &provTypes.NodeFilter{Metadata: map[string]string{"pool": "test-default"}}
-	nodes, err := s.p.ListNodesByFilter(context.TODO(), filter)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 2)
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "test-default",
-	})
-	c.Assert(nodes[1].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "test-default",
-	})
-	filter = &provTypes.NodeFilter{Metadata: map[string]string{"pool": "p1", "m1": "v1"}}
-	nodes, err = s.p.ListNodesByFilter(context.TODO(), filter)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-		"tsuru.io/m1":   "v1",
-	})
-}
-
-func (s *S) TestListNodesFilteringByAddress(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	nodes, err := s.p.ListNodes(context.TODO(), []string{"192.168.99.1"})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-}
-
-func (s *S) TestRemoveNode(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	opts := provision.RemoveNodeOptions{
-		Address: "192.168.99.1",
+func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.ClientWrapper, *kTesting.ClientWrapper) {
+	cluster1 := &provTypes.Cluster{
+		Name:        "c1",
+		Addresses:   []string{"https://clusteraddr1"},
+		Default:     true,
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
 	}
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.RemoveNode(context.TODO(), opts)
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), []string{})
+	clusterClient1, err := NewClusterClient(cluster1)
 	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-}
-
-func (s *S) TestRemoveNodeNotFound(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	opts := provision.RemoveNodeOptions{
-		Address: "192.168.99.99",
+	client1 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient1,
 	}
-	err := s.p.RemoveNode(context.TODO(), opts)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-}
+	clusterClient1.Interface = client1
 
-func (s *S) TestRemoveNodeWithRebalance(c *check.C) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-pool")
-		output := `{"items": [
-			{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}},
-			{"metadata": {"name": "myapp-worker-pod-2-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "worker", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
-		]}`
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(output))
-	}))
-	defer srv.Close()
-	s.mock.MockfakeNodes(c, srv.URL)
-	ns := s.client.PoolNamespace("")
-	_, err := s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "p1", Namespace: ns},
-	}, metav1.CreateOptions{})
+	cluster2 := &provTypes.Cluster{
+		Name:        "c2",
+		Addresses:   []string{"https://clusteraddr2"},
+		Pools:       []string{"pool2"},
+		Provisioner: provisionerName,
+		CustomData:  map[string]string{},
+	}
+	clusterClient2, err := NewClusterClient(cluster2)
 	c.Assert(err, check.IsNil)
-	evictionCalled := false
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		if action.GetSubresource() == "eviction" {
-			evictionCalled = true
-			return true, action.(ktesting.CreateAction).GetObject(), nil
+	client2 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+	clusterClient2.Interface = client2
+
+	cluster3 := &provTypes.Cluster{
+		Name:        "c3",
+		Addresses:   []string{"https://clusteraddr3"},
+		Pools:       []string{"pool3"},
+		Provisioner: provisionerName,
+		CustomData: map[string]string{
+			disableNodeContainers: "true",
+		},
+	}
+	clusterClient3, err := NewClusterClient(cluster2)
+	c.Assert(err, check.IsNil)
+	client3 := &kTesting.ClientWrapper{
+		Clientset:              fake.NewSimpleClientset(),
+		ApiExtensionsClientset: fakeapiextensions.NewSimpleClientset(),
+		TsuruClientset:         faketsuru.NewSimpleClientset(),
+		MetricsClientset:       fakemetrics.NewSimpleClientset(),
+		VPAClientset:           fakevpa.NewSimpleClientset(),
+		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		ClusterInterface:       clusterClient2,
+	}
+	clusterClient3.Interface = client3
+
+	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
+		return []provTypes.Cluster{*cluster1, *cluster2, *cluster3}, nil
+	}
+
+	s.mockService.Cluster.OnFindByPool = func(provName, poolName string) (*provTypes.Cluster, error) {
+		if poolName == "pool2" {
+			return cluster2, nil
 		}
-		return
-	})
-	opts := provision.RemoveNodeOptions{
-		Address:   "192.168.99.1",
-		Rebalance: true,
+		if poolName == "pool3" {
+			return cluster3, nil
+		}
+		return cluster1, nil
 	}
-	s.mock.WaitNodeUpdateCount(c, true, func() {
-		err = s.p.RemoveNode(context.TODO(), opts)
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), []string{})
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(evictionCalled, check.Equals, true)
-}
 
-func (s *S) TestAddNode(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p1")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-		"tsuru.io/m1":   "v1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m1": "v1",
-	})
-}
+	ClientForConfig = func(conf *rest.Config) (kubernetes.Interface, error) {
+		if conf.Host == "https://clusteraddr1" {
+			return client1, nil
+		}
+		if conf.Host == "https://clusteraddr3" {
+			return client3, nil
+		}
+		return client2, nil
+	}
 
-func (s *S) TestAddNodePrefixed(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"tsuru.io/m1":                "v1",
-				"m2":                         "v2",
-				"pool":                       "p2", // ignored
-				"tsuru.io/pool":              "p3", // ignored
-				"tsuru.io/extra-labels":      "k1=v1,k2=v2",
-				"tsuru.io/extra-annotations": "k3=v3,k4=v4",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p1")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool":              "p1",
-		"tsuru.io/m1":                "v1",
-		"tsuru.io/m2":                "v2",
-		"tsuru.io/extra-labels":      "k1=v1,k2=v2",
-		"tsuru.io/extra-annotations": "k3=v3,k4=v4",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-		"k1":            "v1",
-		"k2":            "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m1":                "v1",
-		"tsuru.io/m2":                "v2",
-		"k3":                         "v3",
-		"k4":                         "v4",
-		"tsuru.io/extra-labels":      "k1=v1,k2=v2",
-		"tsuru.io/extra-annotations": "k3=v3,k4=v4",
-	})
-}
-
-func (s *S) TestAddNodeExisting(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.MockfakeNodes(c)
-	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "n1",
-		Pool:    "Pxyz",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	n, err := s.p.GetNode(context.TODO(), "n1")
-	c.Assert(err, check.IsNil)
-	c.Assert(n.Address(), check.Equals, "192.168.99.1")
-	c.Assert(n.Pool(), check.Equals, "Pxyz")
-	c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "Pxyz",
-		"tsuru.io/m1":   "v1",
-	})
-}
-
-func (s *S) TestAddNodeIaaSID(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			IaaSID:  "id-1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p1")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p1",
-		"tsuru.io/iaas-id": "id-1",
-		"tsuru.io/m1":      "v1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p1",
-		"tsuru.io/iaas-id": "id-1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m1": "v1",
-	})
-}
-
-func (s *S) TestAddNodeExistingRegisterDisable(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "n1",
-		Pool:    "Pxyz",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
-	})
-	c.Assert(err, check.IsNil)
-	n, err := s.p.GetNode(context.TODO(), "n1")
-	c.Assert(err, check.IsNil)
-	c.Assert(n.Address(), check.Equals, "192.168.99.1")
-	c.Assert(n.Pool(), check.Equals, "Pxyz")
-	c.Assert(n.Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "Pxyz",
-		"tsuru.io/m1":   "v1",
-	})
-}
-
-func (s *S) TestAddNodeRegisterDisabled(c *check.C) {
-	err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p1",
-		Metadata: map[string]string{
-			"m1": "v1",
-		},
-	})
-	c.Assert(err, check.ErrorMatches, `node not found`)
-}
-
-func (s *S) TestUpdateNode(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	s.waitNodeUpdate(c, func() {
-		err := s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p2",
-			Metadata: map[string]string{
-				"m1": "",
-				"m2": "v2",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p2")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p2",
-		"tsuru.io/m2":   "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m2": "v2",
-	})
-}
-
-func (s *S) TestUpdateNodeWithIaaSID(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.mock.WaitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			IaaSID:  "id-1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	s.waitNodeUpdate(c, func() {
-		err := s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p2",
-			Metadata: map[string]string{
-				"m1": "",
-				"m2": "v2",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].IaaSID(), check.Equals, "id-1")
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p2")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p2",
-		"tsuru.io/iaas-id": "id-1",
-		"tsuru.io/m2":      "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p2",
-		"tsuru.io/iaas-id": "id-1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m2": "v2",
-	})
-	// Try updating by adding the same node with other IaasID, should be ignored.
-	err = s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "my-node-addr",
-		Pool:    "p2",
-		IaaSID:  "bogus",
-	})
-	c.Assert(err, check.IsNil)
-	nodes, err = s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].IaaSID(), check.Equals, "id-1")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p2",
-		"tsuru.io/iaas-id": "id-1",
-		"tsuru.io/m2":      "v2",
-	})
-}
-
-func (s *S) TestUpdateNodeWithIaaSIDPreviousEmpty(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.waitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	s.waitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p2",
-			IaaSID:  "valid-iaas-id",
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].IaaSID(), check.Equals, "valid-iaas-id")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool":    "p2",
-		"tsuru.io/iaas-id": "valid-iaas-id",
-		"tsuru.io/m1":      "v1",
-	})
-}
-
-func (s *S) TestUpdateNodeNoPool(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.waitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	s.waitNodeUpdate(c, func() {
-		err := s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Metadata: map[string]string{
-				"m1": "",
-				"m2": "v2",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p1")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-		"tsuru.io/m2":   "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p1",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m2": "v2",
-	})
-}
-
-func (s *S) TestUpdateNodeRemoveInProgressTaint(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.waitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-			Metadata: map[string]string{
-				"m1": "v1",
-			},
-		})
-		c.Assert(err, check.IsNil)
-	})
-	n1, err := s.client.CoreV1().Nodes().Get(context.TODO(), "my-node-addr", metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	n1.Spec.Taints = append(n1.Spec.Taints, apiv1.Taint{
-		Key:    tsuruInProgressTaint,
-		Value:  "true",
-		Effect: apiv1.TaintEffectNoSchedule,
-	})
-	_, err = s.client.CoreV1().Nodes().Update(context.TODO(), n1, metav1.UpdateOptions{})
-	c.Assert(err, check.IsNil)
-	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p2",
-			Metadata: map[string]string{
-				"m1": "",
-				"m2": "v2",
-			},
-		})
-	})
-	c.Assert(err, check.IsNil)
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].Pool(), check.Equals, "p2")
-	c.Assert(nodes[0].Metadata(), check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p2",
-		"tsuru.io/m2":   "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Labels, check.DeepEquals, map[string]string{
-		"tsuru.io/pool": "p2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Annotations, check.DeepEquals, map[string]string{
-		"tsuru.io/m2": "v2",
-	})
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{})
-}
-
-func (s *S) TestUpdateNodeToggleDisableTaint(c *check.C) {
-	config.Set("kubernetes:register-node", true)
-	defer config.Unset("kubernetes:register-node")
-	s.waitNodeUpdate(c, func() {
-		err := s.p.AddNode(context.TODO(), provision.AddNodeOptions{
-			Address: "my-node-addr",
-			Pool:    "p1",
-		})
-		c.Assert(err, check.IsNil)
-	})
-	s.waitNodeUpdate(c, func() {
-		err := s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Disable: true,
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err := s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{
-		{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
-	})
-	err = s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-		Address: "my-node-addr",
-		Disable: true,
-	})
-	c.Assert(err, check.IsNil)
-	nodes, err = s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{
-		{Key: "tsuru.io/disabled", Effect: apiv1.TaintEffectNoSchedule},
-	})
-	s.waitNodeUpdate(c, func() {
-		err = s.p.UpdateNode(context.TODO(), provision.UpdateNodeOptions{
-			Address: "my-node-addr",
-			Enable:  true,
-		})
-		c.Assert(err, check.IsNil)
-	})
-	nodes, err = s.p.ListNodes(context.TODO(), nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address(), check.Equals, "my-node-addr")
-	c.Assert(nodes[0].(*kubernetesNodeWrapper).node.Spec.Taints, check.DeepEquals, []apiv1.Taint{})
+	return client1, client2, client3
 }
 
 func (s *S) TestUnits(c *check.C) {
@@ -682,7 +221,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 			return
 		}
 	}))
-	s.mock.MockfakeNodes(c, srv.URL)
+	s.mock.MockfakeNodes(srv.URL)
 	t0 := time.Now().UTC()
 	for _, a := range []provision.App{a1, a2} {
 		for i := 1; i <= 2; i++ {
@@ -990,7 +529,6 @@ func (s *S) TestUnitsEmpty(c *check.C) {
 		w.Write([]byte(output))
 	}))
 	defer srv.Close()
-	s.mock.MockfakeNodes(c, srv.URL)
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
@@ -1000,30 +538,9 @@ func (s *S) TestUnitsEmpty(c *check.C) {
 }
 
 func (s *S) TestUnitsNoApps(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	units, err := s.p.Units(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-}
-
-func (s *S) TestGetNode(c *check.C) {
-	s.mock.MockfakeNodes(c)
-	host := "192.168.99.1"
-	node, err := s.p.GetNode(context.TODO(), host)
-	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, host)
-	node, err = s.p.GetNode(context.TODO(), "n1")
-	c.Assert(err, check.IsNil)
-	c.Assert(node.Address(), check.Equals, host)
-	node, err = s.p.GetNode(context.TODO(), "http://doesnotexist.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
-	c.Assert(node, check.IsNil)
-}
-
-func (s *S) TestGetNodeWithoutCluster(c *check.C) {
-	_, err := s.p.GetNode(context.TODO(), "anything")
-	c.Assert(err, check.Equals, provision.ErrNodeNotFound)
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
@@ -1920,7 +1437,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 	srv, wg := s.mock.CreateDeployReadyServer(c)
-	s.mock.MockfakeNodes(c, srv.URL)
+	s.mock.MockfakeNodes(srv.URL)
 	defer srv.Close()
 	defer wg.Wait()
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -2077,97 +1594,6 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
-}
-
-func (s *S) TestUpgradeNodeContainer(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	s.mock.MockfakeNodes(c)
-	c1 := nodecontainer.NodeContainerConfig{
-		Name: "bs",
-		Config: docker.Config{
-			Image: "bsimg",
-		},
-		HostConfig: docker.HostConfig{
-			RestartPolicy: docker.AlwaysRestart(),
-			Privileged:    true,
-			Binds:         []string{"/xyz:/abc:ro"},
-		},
-	}
-	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p1", Provisioner: provisionerName})
-	c.Assert(err, check.IsNil)
-	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p2", Provisioner: provisionerName})
-	c.Assert(err, check.IsNil)
-	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "p-ignored", Provisioner: "docker"})
-	c.Assert(err, check.IsNil)
-
-	err = nodecontainer.AddNewContainer("", &c1)
-	c.Assert(err, check.IsNil)
-	c2 := c1
-	c2.Config.Env = []string{"e1=v1"}
-	err = nodecontainer.AddNewContainer("p1", &c2)
-	c.Assert(err, check.IsNil)
-	c3 := c1
-	err = nodecontainer.AddNewContainer("p2", &c3)
-	c.Assert(err, check.IsNil)
-	c4 := c1
-	err = nodecontainer.AddNewContainer("p-ignored", &c4)
-	c.Assert(err, check.IsNil)
-	buf := &bytes.Buffer{}
-	err = s.p.UpgradeNodeContainer(context.TODO(), "bs", "", buf)
-	c.Assert(err, check.IsNil)
-
-	daemons, err := s.client.AppsV1().DaemonSets(s.client.PoolNamespace("")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p1")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p2")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 1)
-	daemons, err = s.client.AppsV1().DaemonSets(s.client.PoolNamespace("p-ignored")).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 0)
-}
-
-func (s *S) TestRemoveNodeContainer(c *check.C) {
-	config.Set("kubernetes:use-pool-namespaces", true)
-	defer config.Unset("kubernetes:use-pool-namespaces")
-	s.mock.MockfakeNodes(c)
-	ns := s.client.PoolNamespace("p1")
-	ds, err := s.client.AppsV1().DaemonSets(ns).Create(context.TODO(), &appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1",
-			Namespace: ns,
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":            "true",
-				"tsuru.io/is-node-container":   "true",
-				"tsuru.io/provisioner":         provisionerName,
-				"tsuru.io/node-container-name": "bs",
-				"tsuru.io/node-container-pool": "p1",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ds, appsv1.SchemeGroupVersion.WithKind("DaemonSet")),
-			},
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	err = s.p.RemoveNodeContainer(context.TODO(), "bs", "p1", io.Discard)
-	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
 }
 
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
@@ -2462,12 +1888,9 @@ func (s *S) TestExecuteCommandIsolatedWithoutNodeSelector(c *check.C) {
 }
 
 func (s *S) TestStartupMessage(c *check.C) {
-	s.mock.MockfakeNodes(c)
 	msg, err := s.p.StartupMessage()
 	c.Assert(err, check.IsNil)
-	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr:
-    Kubernetes node: 192.168.99.1
-    Kubernetes node: 192.168.99.2
+	c.Assert(msg, check.Equals, `Kubernetes provisioner on cluster "c1" - https://clusteraddr
 `)
 	s.mockService.Cluster.OnFindByProvisioner = func(provName string) ([]provTypes.Cluster, error) {
 		return nil, nil
@@ -2475,40 +1898,6 @@ func (s *S) TestStartupMessage(c *check.C) {
 	msg, err = s.p.StartupMessage()
 	c.Assert(err, check.IsNil)
 	c.Assert(msg, check.Equals, "")
-}
-
-func (s *S) TestSleepStart(c *check.C) {
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
-	wait()
-	err = s.p.Sleep(context.TODO(), a, "", version)
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 0)
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil)
-	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err = s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
 }
 
 func (s *S) TestGetKubeConfig(c *check.C) {

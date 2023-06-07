@@ -303,7 +303,7 @@ func (s *S) TestAddPermissionsToARolePermissionNotAllowed(c *check.C) {
 	_, err := permission.NewRole("test", "team", "")
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
-	b := bytes.NewBufferString(`permission=node.create`)
+	b := bytes.NewBufferString(`permission=pool.create`)
 	req, err := http.NewRequest(http.MethodPost, "/roles/test/permissions", b)
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{

@@ -23,7 +23,6 @@ const (
 
 	labelIsTsuru           = "is-tsuru"
 	labelIsStopped         = "is-stopped"
-	labelIsAsleep          = "is-asleep"
 	labelIsIsolatedRun     = "is-isolated-run"
 	labelIsIsolatedRunNew  = "is-isolated-run-version"
 	labelIsNodeContainer   = "is-node-container"
@@ -310,10 +309,6 @@ func (s *LabelSet) IsStopped() bool {
 	return s.getBoolLabel(labelIsStopped)
 }
 
-func (s *LabelSet) IsAsleep() bool {
-	return s.getBoolLabel(labelIsAsleep)
-}
-
 func (s *LabelSet) IsDeploy() bool {
 	return s.getBoolLabel(LabelIsDeploy)
 }
@@ -344,10 +339,6 @@ func (s *LabelSet) SetRestarts(count int) {
 
 func (s *LabelSet) SetStopped() {
 	s.addLabel(labelIsStopped, strconv.FormatBool(true))
-}
-
-func (s *LabelSet) SetAsleep() {
-	s.addLabel(labelIsAsleep, strconv.FormatBool(true))
 }
 
 func (s *LabelSet) SetIsService() {

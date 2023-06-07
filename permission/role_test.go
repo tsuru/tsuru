@@ -98,8 +98,8 @@ func (s *S) TestRoleAddPermissionsInvalid(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.AddPermissions("app.update.env.set.nih")
 	c.Assert(err, check.ErrorMatches, `permission named "app.update.env.set.nih" not found`)
-	err = r.AddPermissions("node.create")
-	c.Assert(err, check.ErrorMatches, `permission "node.create" not allowed with context of type "team"`)
+	err = r.AddPermissions("pool.create")
+	c.Assert(err, check.ErrorMatches, `permission "pool.create" not allowed with context of type "team"`)
 }
 
 func (s *S) TestRemovePermissions(c *check.C) {

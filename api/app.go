@@ -868,38 +868,6 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
-// title: set node status
-// path: /node/status
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	404: App or unit not found
-func setNodeStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	if t.GetAppName() != app.InternalAppName {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
-	}
-	var hostInput provision.NodeStatusData
-	err := ParseInput(r, &hostInput)
-	if err != nil {
-		return err
-	}
-	result, err := app.UpdateNodeStatus(ctx, hostInput)
-	if err != nil {
-		if err == provision.ErrNodeNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
-		return err
-	}
-	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(result)
-}
-
 // title: grant access to app
 // path: /apps/{app}/teams/{team}
 // method: PUT
@@ -1745,61 +1713,6 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return a.Restart(ctx, process, version, evt)
 }
 
-// title: app sleep
-// path: /apps/{app}/sleep
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/x-json-stream
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	404: App not found
-func sleep(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	version := InputValue(r, "version")
-	process := InputValue(r, "process")
-	appName := r.URL.Query().Get(":app")
-	a, err := getAppFromContext(appName, r)
-	if err != nil {
-		return err
-	}
-	proxy := InputValue(r, "proxy")
-	if proxy == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty proxy URL"}
-	}
-	proxyURL, err := url.Parse(proxy)
-	if err != nil {
-		log.Errorf("Invalid url for proxy param: %v", proxy)
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateSleep,
-		contextsForApp(&a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target:     appTarget(appName),
-		Kind:       permission.PermAppUpdateSleep,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
-	})
-	if err != nil {
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	w.Header().Set("Content-Type", "application/x-json-stream")
-	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
-	defer keepAliveWriter.Stop()
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt.SetLogWriter(writer)
-	return a.Sleep(ctx, evt, process, version, proxyURL)
-}
-
 // title: app log
 // path: /apps/{app}/log
 // method: POST
@@ -2093,34 +2006,6 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	return writeEnvVars(w, a)
-}
-
-// title: metric envs
-// path: /apps/{app}/metric/envs
-// method: GET
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-//	404: App not found
-func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppReadMetric,
-		contextsForApp(&a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	w.Header().Set("Content-Type", "application/json")
-	metricMap, err := a.MetricEnvs()
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(metricMap)
 }
 
 // compatRebuildRoutesResult is a backward compatible rebuild routes struct

@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
@@ -32,11 +31,9 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/router"
@@ -182,18 +179,6 @@ func (app *App) fillInternalAddresses() error {
 	}
 
 	return nil
-}
-
-func (app *App) CleanImage(img string) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	cleanProv, ok := prov.(provision.CleanImageProvisioner)
-	if !ok {
-		return nil
-	}
-	return cleanProv.CleanImage(app.Name, img)
 }
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
@@ -707,28 +692,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		log.Errorf("failed to remove images from registry for app %s: %s", appName, err)
 	}
-	if cleanProv, ok := prov.(provision.CleanImageProvisioner); ok {
-		var versions appTypes.AppVersions
-		versions, err = servicemanager.AppVersion.AppVersions(ctx, app)
-		if err != nil {
-			log.Errorf("failed to list versions for app %s: %s", appName, err)
-		}
-		for _, version := range versions.Versions {
-			var imgs []string
-			if version.BuildImage != "" {
-				imgs = append(imgs, version.BuildImage)
-			}
-			if version.DeployImage != "" {
-				imgs = append(imgs, version.DeployImage)
-			}
-			for _, img := range imgs {
-				err = cleanProv.CleanImage(appName, img)
-				if err != nil {
-					log.Errorf("failed to remove image %q from provisioner %s: %s", img, appName, err)
-				}
-			}
-		}
-	}
+
 	err = servicemanager.AppVersion.DeleteVersions(ctx, appName)
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
@@ -895,8 +859,8 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		return err
 	}
 	for _, u := range units {
-		if (u.Status == provision.StatusAsleep) || (u.Status == provision.StatusStopped) {
-			return errors.New("Cannot add units to an app that has stopped or sleeping units")
+		if u.Status == provision.StatusStopped {
+			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
 	version, err := app.getVersion(app.ctx, versionStr)
@@ -1000,79 +964,6 @@ func (app *App) KillUnit(unitName string, force bool) error {
 type UpdateUnitsResult struct {
 	ID    string
 	Found bool
-}
-
-func findNodeForNodeData(ctx context.Context, nodeData provision.NodeStatusData) (provision.Node, error) {
-	provisioners, err := provision.Registry()
-	if err != nil {
-		return nil, err
-	}
-	provErrors := tsuruErrors.NewMultiError()
-	for _, p := range provisioners {
-		if nodeProv, ok := p.(provision.NodeProvisioner); ok {
-			var node provision.Node
-			if len(nodeData.Addrs) == 1 {
-				node, err = nodeProv.GetNode(ctx, nodeData.Addrs[0])
-			} else {
-				node, err = nodeProv.NodeForNodeData(ctx, nodeData)
-			}
-			if err == nil {
-				return node, nil
-			}
-			if errors.Cause(err) != provision.ErrNodeNotFound {
-				provErrors.Add(err)
-			}
-		}
-	}
-	if err = provErrors.ToError(); err != nil {
-		return nil, err
-	}
-	return nil, provision.ErrNodeNotFound
-}
-
-// UpdateNodeStatus updates the status of the given node and its units,
-// returning a map which units were found during the update.
-func UpdateNodeStatus(ctx context.Context, nodeData provision.NodeStatusData) ([]UpdateUnitsResult, error) {
-	node, findNodeErr := findNodeForNodeData(ctx, nodeData)
-	var nodeAddresses []string
-	if findNodeErr == nil {
-		nodeAddresses = []string{node.Address()}
-	} else {
-		nodeAddresses = nodeData.Addrs
-	}
-	if healer.HealerInstance != nil {
-		err := healer.HealerInstance.UpdateNodeData(nodeAddresses, nodeData.Checks)
-		if err != nil {
-			log.Errorf("[update node status] unable to set node status in healer: %s", err)
-		}
-	}
-	if findNodeErr == provision.ErrNodeNotFound {
-		counterNodesNotFound.Inc()
-		log.Errorf("[update node status] node not found with nodedata: %#v", nodeData)
-		result := make([]UpdateUnitsResult, len(nodeData.Units))
-		for i, unitData := range nodeData.Units {
-			result[i] = UpdateUnitsResult{ID: unitData.ID, Found: false}
-		}
-		return result, nil
-	}
-	if findNodeErr != nil {
-		return nil, findNodeErr
-	}
-	unitProv, ok := node.Provisioner().(provision.UnitStatusProvisioner)
-	if !ok {
-		return []UpdateUnitsResult{}, nil
-	}
-	result := make([]UpdateUnitsResult, len(nodeData.Units))
-	for i, unitData := range nodeData.Units {
-		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
-		err := unitProv.SetUnitStatus(unit, unitData.Status)
-		_, isNotFound := err.(*provision.UnitNotFoundError)
-		if err != nil && !isNotFound {
-			return nil, err
-		}
-		result[i] = UpdateUnitsResult{ID: unitData.ID, Found: !isNotFound}
-	}
-	return result, nil
 }
 
 // available returns true if at least one of N units is started or unreachable.
@@ -1505,64 +1396,6 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 	return nil
 }
 
-func (app *App) Sleep(ctx context.Context, w io.Writer, process, versionStr string, proxyURL *url.URL) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	sleepProv, ok := prov.(provision.SleepableProvisioner)
-	if !ok {
-		return provision.ProvisionerNotSupported{Prov: prov, Action: "sleeping"}
-	}
-	w = app.withLogWriter(w)
-	msg := fmt.Sprintf("\n ---> Putting the process %q to sleep", process)
-	if process == "" {
-		msg = fmt.Sprintf("\n ---> Putting the app %q to sleep", app.Name)
-	}
-	fmt.Fprintf(w, "%s\n", msg)
-	routers := app.GetRouters()
-	for _, appRouter := range routers {
-		var r router.Router
-		r, err = router.Get(ctx, appRouter.Name)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		if _, isRouterV2 := r.(router.RouterV2); isRouterV2 {
-			log.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
-			return fmt.Errorf("Router %s does not support to put app in sleep mode", appRouter.Name)
-		}
-		var oldRoutes []*url.URL
-		oldRoutes, err = r.Routes(app.ctx, app)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		err = r.RemoveRoutes(app.ctx, app, oldRoutes)
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-		err = r.AddRoutes(app.ctx, app, []*url.URL{proxyURL})
-		if err != nil {
-			log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-			return err
-		}
-	}
-	version, err := app.getVersionAllowNil(versionStr)
-	if err != nil {
-		return err
-	}
-	err = sleepProv.Sleep(ctx, app, process, version)
-	if err != nil {
-		log.Errorf("[sleep] error on sleep the app %s - %s", app.Name, err)
-		log.Errorf("[sleep] rolling back the sleep %s", app.Name)
-		rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-		return newErrorWithLog(err, app, "sleep")
-	}
-	return nil
-}
-
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() ([]bind.Unit, error) {
 	provUnits, err := app.Units()
@@ -1678,7 +1511,7 @@ func (app *App) GetQuotaInUse() (int, error) {
 	counter := 0
 	for _, u := range units {
 		switch u.Status {
-		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped, provision.StatusAsleep:
+		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped:
 			counter++
 		}
 	}
@@ -2590,20 +2423,6 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 		routers[i].Type = planRouter.Type
 	}
 	return routers, multi.ToError()
-}
-
-func (app *App) MetricEnvs() (map[string]string, error) {
-	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
-	if err != nil {
-		return nil, err
-	}
-	envs := bsContainer.EnvMap()
-	for envName := range envs {
-		if !strings.HasPrefix(envName, "METRICS_") {
-			delete(envs, envName)
-		}
-	}
-	return envs, nil
 }
 
 func (app *App) Shell(opts provision.ExecOptions) error {

@@ -13,14 +13,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"sort"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/globalsign/mgo/bson"
 	pkgErrors "github.com/pkg/errors"
 	"github.com/tsuru/config"
@@ -28,10 +26,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router"
@@ -880,28 +876,7 @@ func (s *S) TestAddUnitsInStoppedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.AddUnits(1, "web", "", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-}
-
-func (s *S) TestAddUnitsInSleepingApp(c *check.C) {
-	a := App{
-		Name: "sejuani", Platform: "python",
-		TeamOwner: s.team.Name,
-		Quota:     quota.UnlimitedQuota,
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	err = a.AddUnits(1, "web", "", nil)
-	c.Assert(err, check.IsNil)
-	err = a.Sleep(context.TODO(), nil, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, "web", "", nil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped or sleeping units")
+	c.Assert(err.Error(), check.Equals, "Cannot add units to an app that has stopped units")
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -1172,173 +1147,6 @@ func (s *S) TestSetUnitStatusNotFound(c *check.C) {
 	e, ok := err.(*provision.UnitNotFoundError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.ID, check.Equals, "someunit")
-}
-
-func (s *S) TestUpdateNodeStatus(c *check.C) {
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
-	c.Assert(err, check.IsNil)
-	unitStates := []provision.UnitStatusData{
-		{ID: units[0].ID, Status: provision.Status("started")},
-		{ID: units[1].ID, Status: provision.Status("stopped")},
-		{ID: units[2].ID, Status: provision.Status("error")},
-		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
-	}
-	result, err := UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
-	c.Assert(err, check.IsNil)
-	expected := []UpdateUnitsResult{
-		{ID: units[0].ID, Found: true},
-		{ID: units[1].ID, Found: true},
-		{ID: units[2].ID, Found: true},
-		{ID: units[2].ID + "-not-found", Found: false},
-	}
-	c.Assert(result, check.DeepEquals, expected)
-}
-
-func (s *S) TestUpdateNodeStatusProvError(c *check.C) {
-	_, err := healer.Initialize()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		healer.HealerInstance.Shutdown(context.Background())
-		healer.HealerInstance = nil
-	}()
-
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-
-	_, err = UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
-	c.Assert(err, check.IsNil)
-
-	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
-	_, err = UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
-	c.Assert(err, check.ErrorMatches, "myerror")
-
-	node, err := s.provisioner.GetNode(context.TODO(), "addr1")
-	c.Assert(err, check.IsNil)
-	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodeData.Checks, check.HasLen, 2)
-}
-
-func (s *S) TestUpdateNodeStatusProvErrorNotFoundInHealer(c *check.C) {
-	_, err := healer.Initialize()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		healer.HealerInstance.Shutdown(context.Background())
-		healer.HealerInstance = nil
-	}()
-
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-
-	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
-	_, err = UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
-	c.Assert(err, check.ErrorMatches, "myerror")
-
-	node, err := s.provisioner.GetNode(context.TODO(), "addr1")
-	c.Assert(err, check.IsNil)
-	_, err = healer.HealerInstance.GetNodeStatusData(node)
-	c.Assert(err, check.ErrorMatches, "node not found")
-}
-
-func (s *S) TestUpdateNodeStatusProvErrorSingleAddr(c *check.C) {
-	_, err := healer.Initialize()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		healer.HealerInstance.Shutdown(context.Background())
-		healer.HealerInstance = nil
-	}()
-
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-
-	s.provisioner.PrepareFailure("GetNode", stderrors.New("myerror"))
-	_, err = UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1"}})
-	c.Assert(err, check.ErrorMatches, "myerror")
-
-	node, err := s.provisioner.GetNode(context.TODO(), "addr1")
-	c.Assert(err, check.IsNil)
-	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodeData.Checks, check.HasLen, 1)
-}
-
-func (s *S) TestUpdateNodeStatusNotFound(c *check.C) {
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.AddUnitsToNode(&a, 3, "web", nil, "addr1", nil)
-	c.Assert(err, check.IsNil)
-	unitStates := []provision.UnitStatusData{
-		{ID: units[0].ID, Status: provision.Status("started")},
-		{ID: units[1].ID, Status: provision.Status("stopped")},
-		{ID: units[2].ID, Status: provision.Status("error")},
-		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
-	}
-	result, err := UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1"}, Units: unitStates})
-	c.Assert(err, check.IsNil)
-	expected := []UpdateUnitsResult{
-		{ID: units[0].ID, Found: false},
-		{ID: units[1].ID, Found: false},
-		{ID: units[2].ID, Found: false},
-		{ID: units[2].ID + "-not-found", Found: false},
-	}
-	c.Assert(result, check.DeepEquals, expected)
-}
-
-func (s *S) TestUpdateNodeStatusUnrelatedProvError(c *check.C) {
-	p1 := provisiontest.NewFakeProvisioner()
-	p1.Name = "fake1"
-	provision.Register("fake1", func() (provision.Provisioner, error) {
-		return p1, nil
-	})
-	defer provision.Unregister("fake1")
-	s.provisioner.PrepareFailure("NodeForNodeData", stderrors.New("myerror"))
-
-	_, err := healer.Initialize()
-	c.Assert(err, check.IsNil)
-	defer func() {
-		healer.HealerInstance.Shutdown(context.Background())
-		healer.HealerInstance = nil
-	}()
-
-	a := App{Name: "lapname", Platform: "python", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = p1.AddNode(context.TODO(), provision.AddNodeOptions{
-		Address: "addr1",
-	})
-	c.Assert(err, check.IsNil)
-
-	_, err = UpdateNodeStatus(context.TODO(), provision.NodeStatusData{Addrs: []string{"addr1", "addr2"}})
-	c.Check(err, check.IsNil)
-
-	node, err := p1.GetNode(context.TODO(), "addr1")
-	c.Assert(err, check.IsNil)
-	nodeData, err := healer.HealerInstance.GetNodeStatusData(node)
-	c.Assert(err, check.IsNil)
-	c.Assert(nodeData.Checks, check.HasLen, 1)
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
@@ -2654,33 +2462,6 @@ func (s *S) TestStopPastUnits(c *check.C) {
 	pastUnits := updatedVersion.VersionInfo().PastUnits
 	c.Assert(pastUnits, check.HasLen, 1)
 	c.Assert(pastUnits, check.DeepEquals, map[string]int{"web": 2})
-}
-
-func (s *S) TestSleep(c *check.C) {
-	a := App{
-		Name:      "someapp",
-		Platform:  "django",
-		Teams:     []string{s.team.Name},
-		TeamOwner: s.team.Name,
-		Routers:   []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
-	routertest.FakeRouter.AddBackend(context.TODO(), &a)
-	var b bytes.Buffer
-	err = a.Start(context.TODO(), &b, "", "")
-	c.Assert(err, check.IsNil)
-	proxyURL, err := url.Parse("http://example.com")
-	c.Assert(err, check.IsNil)
-	err = a.Sleep(context.TODO(), &b, "", "", proxyURL)
-	c.Assert(err, check.IsNil)
-	sleeps := s.provisioner.Sleeps(&a, "")
-	c.Assert(sleeps, check.Equals, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, proxyURL.String()), check.Equals, true)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
 }
 
 func (s *S) TestLastLogs(c *check.C) {
@@ -4270,15 +4051,10 @@ func (s *S) TestListFilteringByStatuses(c *check.C) {
 	var buf bytes.Buffer
 	err := apps[1].Stop(context.TODO(), &buf, "", "")
 	c.Assert(err, check.IsNil)
-	proxyURL, _ := url.Parse("http://somewhere.com")
-	err = apps[2].Sleep(context.TODO(), &buf, "", "", proxyURL)
+	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped"}})
 	c.Assert(err, check.IsNil)
-	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped", "asleep"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(resultApps, check.HasLen, 2)
-	names := []string{resultApps[0].Name, resultApps[1].Name}
-	sort.Strings(names)
-	c.Assert(names, check.DeepEquals, []string{"ta2", "ta3"})
+	c.Assert(resultApps, check.HasLen, 1)
+	c.Assert([]string{resultApps[0].Name}, check.DeepEquals, []string{"ta2"})
 }
 
 func (s *S) TestListFilteringByTag(c *check.C) {
@@ -4518,50 +4294,6 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	starts := s.provisioner.Starts(&a, "")
 	c.Assert(starts, check.Equals, 1)
-}
-
-func (s *S) TestStartAsleepApp(c *check.C) {
-	a := App{Name: "my-test-app", TeamOwner: s.team.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
-	var b bytes.Buffer
-	err = a.Sleep(context.TODO(), &b, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
-	}
-	err = a.Start(context.TODO(), &b, "web", "")
-	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
-}
-
-func (s *S) TestRestartAsleepApp(c *check.C) {
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
-	var b bytes.Buffer
-	err = a.Sleep(context.TODO(), &b, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
-	}
-	err = a.Restart(context.TODO(), "web", "", &b)
-	c.Assert(err, check.IsNil)
-	routes, err := routertest.FakeRouter.Routes(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.HasLen, 1)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, "http://proxy:1234"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAppSetUpdatePlatform(c *check.C) {
@@ -5068,29 +4800,6 @@ func (s *S) TestGetCertificatesNonTLSRouter(c *check.C) {
 	certs, err := a.GetCertificates()
 	c.Assert(err, check.ErrorMatches, "no router with tls support")
 	c.Assert(certs, check.IsNil)
-}
-
-func (s *S) TestAppMetricEnvs(c *check.C) {
-	err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-		Name: nodecontainer.BsDefaultName,
-		Config: docker.Config{
-			Image: "img1",
-			Env: []string{
-				"OTHER_ENV=asd",
-				"METRICS_BACKEND=LOGSTASH",
-				"METRICS_LOGSTASH_URI=localhost:2222",
-			},
-		},
-	})
-	c.Assert(err, check.IsNil)
-	a := App{Name: "app-name", Platform: "python"}
-	envs, err := a.MetricEnvs()
-	c.Assert(err, check.IsNil)
-	expected := map[string]string{
-		"METRICS_LOGSTASH_URI": "localhost:2222",
-		"METRICS_BACKEND":      "LOGSTASH",
-	}
-	c.Assert(envs, check.DeepEquals, expected)
 }
 
 func (s *S) TestUpdateAppWithInvalidName(c *check.C) {

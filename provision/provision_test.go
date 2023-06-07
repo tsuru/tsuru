@@ -76,7 +76,6 @@ func (ProvisionSuite) TestStatuses(c *check.C) {
 	c.Check(StatusStarted.String(), check.Equals, "started")
 	c.Check(StatusStopped.String(), check.Equals, "stopped")
 	c.Check(StatusStarting.String(), check.Equals, "starting")
-	c.Check(StatusAsleep.String(), check.Equals, "asleep")
 }
 
 func (ProvisionSuite) TestParseStatus(c *check.C) {
@@ -90,7 +89,6 @@ func (ProvisionSuite) TestParseStatus(c *check.C) {
 		{"error", StatusError, nil},
 		{"started", StatusStarted, nil},
 		{"stopped", StatusStopped, nil},
-		{"asleep", StatusAsleep, nil},
 		{"starting", StatusStarting, nil},
 		{"something", Status(""), ErrInvalidStatus},
 		{"otherthing", Status(""), ErrInvalidStatus},
@@ -127,72 +125,6 @@ func (ProvisionSuite) TestUnitGetIp(c *check.C) {
 func (ProvisionSuite) TestUnitNotFoundError(c *check.C) {
 	var err error = &UnitNotFoundError{ID: "some unit"}
 	c.Assert(err.Error(), check.Equals, `unit "some unit" not found`)
-}
-
-type testNode struct{}
-
-func (n *testNode) IaaSID() string {
-	return "1"
-}
-func (n *testNode) Pool() string {
-	return "a"
-}
-func (n *testNode) Address() string {
-	return "b"
-}
-func (n *testNode) Status() string {
-	return "c"
-}
-func (n *testNode) Metadata() map[string]string {
-	return map[string]string{"d": "e"}
-}
-func (n *testNode) MetadataNoPrefix() map[string]string {
-	return n.Metadata()
-}
-func (n *testNode) Units() ([]Unit, error) {
-	return nil, nil
-}
-func (n *testNode) Provisioner() NodeProvisioner {
-	return nil
-}
-
-func (ProvisionSuite) TestNodeToJson(c *check.C) {
-	n := testNode{}
-	data, err := NodeToJSON(&n)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(data), check.Equals, `{"Address":"b","IaaSID":"1","Metadata":{"d":"e"},"Status":"c","Pool":"a","Provisioner":""}`)
-}
-
-func (ProvisionSuite) TestNodeToSpec(c *check.C) {
-	n := testNode{}
-	spec := NodeToSpec(&n)
-	c.Assert(spec, check.DeepEquals, NodeSpec{
-		IaaSID:   "1",
-		Address:  "b",
-		Metadata: map[string]string{"d": "e"},
-		Status:   "c",
-		Pool:     "a",
-	})
-}
-
-type extraNode struct {
-	testNode
-}
-
-func (n *extraNode) ExtraData() map[string]string {
-	return map[string]string{"e1": "v1"}
-}
-
-func (ProvisionSuite) TestNodeToSpecExtraData(c *check.C) {
-	n := extraNode{}
-	spec := NodeToSpec(&n)
-	c.Assert(spec, check.DeepEquals, NodeSpec{
-		IaaSID:   "1",
-		Address:  "b",
-		Metadata: map[string]string{"d": "e", "e1": "v1"},
-		Status:   "c",
-		Pool:     "a",
-	})
 }
 
 func (ProvisionSuite) TestValidate(c *check.C) {

@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"strings"
 	"time"
 
@@ -750,42 +749,6 @@ func (s *S) TestValidateOrigin(c *check.C) {
 	c.Assert(ValidateOrigin("drag-and-drop"), check.Equals, true)
 	c.Assert(ValidateOrigin("image"), check.Equals, true)
 	c.Assert(ValidateOrigin("invalid"), check.Equals, false)
-}
-
-func (s *S) TestDeployAsleepApp(c *check.C) {
-	a := App{
-		Name:      "some-app",
-		Platform:  "django",
-		Teams:     []string{s.team.Name},
-		TeamOwner: s.team.Name,
-		Router:    "fake",
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 1, "web", newSuccessfulAppVersion(c, &a), nil)
-	writer := &bytes.Buffer{}
-	err = a.Sleep(context.TODO(), writer, "web", "", &url.URL{Scheme: "http", Host: "proxy:1234"})
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	for _, u := range units {
-		c.Assert(u.Status, check.Not(check.Equals), provision.StatusStarted)
-	}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	_, err = Deploy(context.TODO(), DeployOptions{
-		App:          &a,
-		Image:        "myimage",
-		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
-		OutputStream: writer,
-		Event:        evt,
-	})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestIncrementDeploy(c *check.C) {

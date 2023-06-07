@@ -40,17 +40,14 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/saml"
-	"github.com/tsuru/tsuru/autoscale"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
 	"github.com/tsuru/tsuru/hc"
-	"github.com/tsuru/tsuru/healer"
 	"github.com/tsuru/tsuru/job"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
@@ -271,7 +268,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/apps/{app}/restart", AuthorizationRequiredHandler(restart))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/start", AuthorizationRequiredHandler(start))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/stop", AuthorizationRequiredHandler(stop))
-	m.Add("1.0", http.MethodPost, "/apps/{app}/sleep", AuthorizationRequiredHandler(sleep))
+	m.Add("1.0", http.MethodPost, "/apps/{app}/sleep", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.10", http.MethodDelete, "/apps/{app}/versions/{version}", AuthorizationRequiredHandler(appVersionDelete))
 	m.Add("1.0", http.MethodGet, "/apps/{app}/quota", AuthorizationRequiredHandler(getAppQuota))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/quota", AuthorizationRequiredHandler(changeAppQuota))
@@ -295,7 +292,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/apps/{app}/deploy/rollback", AuthorizationRequiredHandler(deployRollback))
 	m.Add("1.4", http.MethodPut, "/apps/{app}/deploy/rollback/update", AuthorizationRequiredHandler(deployRollbackUpdate))
 	m.Add("1.3", http.MethodPost, "/apps/{app}/deploy/rebuild", AuthorizationRequiredHandler(deployRebuild))
-	m.Add("1.0", http.MethodGet, "/apps/{app}/metric/envs", AuthorizationRequiredHandler(appMetricEnvs))
+	m.Add("1.0", http.MethodGet, "/apps/{app}/metric/envs", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.0", http.MethodPost, "/apps/{app}/routes", AuthorizationRequiredHandler(appRebuildRoutes))
 	m.Add("1.2", http.MethodGet, "/apps/{app}/certificate", AuthorizationRequiredHandler(listCertificates))
 	m.Add("1.2", http.MethodPut, "/apps/{app}/certificate", AuthorizationRequiredHandler(setCertificate))
@@ -307,7 +304,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.5", http.MethodGet, "/apps/{app}/routers", AuthorizationRequiredHandler(listAppRouters))
 	m.Add("1.8", http.MethodPost, "/apps/{app}/routable", AuthorizationRequiredHandler(appSetRoutable))
 
-	m.Add("1.0", http.MethodPost, "/node/status", AuthorizationRequiredHandler(setNodeStatus))
+	m.Add("1.0", http.MethodPost, "/node/status", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/deploys", AuthorizationRequiredHandler(deploysList))
 	m.Add("1.0", http.MethodGet, "/deploys/{deploy}", AuthorizationRequiredHandler(deployInfo))
@@ -379,12 +376,12 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/healthcheck/", http.HandlerFunc(healthcheck))
 	m.Add("1.0", http.MethodGet, "/healthcheck", http.HandlerFunc(healthcheck))
 
-	m.Add("1.0", http.MethodGet, "/iaas/machines", AuthorizationRequiredHandler(machinesList))
-	m.Add("1.0", http.MethodDelete, "/iaas/machines/{machine_id}", AuthorizationRequiredHandler(machineDestroy))
-	m.Add("1.0", http.MethodGet, "/iaas/templates", AuthorizationRequiredHandler(templatesList))
-	m.Add("1.0", http.MethodPost, "/iaas/templates", AuthorizationRequiredHandler(templateCreate))
-	m.Add("1.0", http.MethodPut, "/iaas/templates/{template_name}", AuthorizationRequiredHandler(templateUpdate))
-	m.Add("1.0", http.MethodDelete, "/iaas/templates/{template_name}", AuthorizationRequiredHandler(templateDestroy))
+	m.Add("1.0", http.MethodGet, "/iaas/machines", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/iaas/machines/{machine_id}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/iaas/templates", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/iaas/templates", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPut, "/iaas/templates/{template_name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/iaas/templates/{template_name}", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/plans", AuthorizationRequiredHandler(listPlans))
 	m.Add("1.0", http.MethodPost, "/plans", AuthorizationRequiredHandler(addPlan))
@@ -431,34 +428,34 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/debug/pprof/trace", AuthorizationRequiredHandler(debugHandler(pprof.Trace)))
 	m.Add("1.9", http.MethodGet, "/debug/fgprof", AuthorizationRequiredHandler(debugHandlerInt(fgprof.Handler())))
 
-	m.Add("1.3", http.MethodGet, "/node/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
-	m.Add("1.3", http.MethodGet, "/node/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
-	m.Add("1.3", http.MethodPost, "/node/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
-	m.Add("1.3", http.MethodGet, "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
-	m.Add("1.3", http.MethodPost, "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
-	m.Add("1.3", http.MethodDelete, "/node/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
-	m.Add("1.3", http.MethodDelete, "/node/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
+	m.Add("1.3", http.MethodGet, "/node/autoscale", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodGet, "/node/autoscale/config", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodPost, "/node/autoscale/run", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodGet, "/node/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodPost, "/node/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodDelete, "/node/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodDelete, "/node/autoscale/rules/{id}", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.2", http.MethodGet, "/node", AuthorizationRequiredHandler(listNodesHandler))
-	m.Add("1.2", http.MethodGet, "/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
-	m.Add("1.2", http.MethodGet, "/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
-	m.Add("1.2", http.MethodPost, "/node", AuthorizationRequiredHandler(addNodeHandler))
-	m.Add("1.2", http.MethodPut, "/node", AuthorizationRequiredHandler(updateNodeHandler))
-	m.Add("1.2", http.MethodDelete, "/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
-	m.Add("1.3", http.MethodPost, "/node/rebalance", AuthorizationRequiredHandler(rebalanceNodesHandler))
-	m.Add("1.6", http.MethodGet, "/node/{address:.*}", AuthorizationRequiredHandler(infoNodeHandler))
+	m.Add("1.2", http.MethodGet, "/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodGet, "/node/apps/{appname}/containers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodGet, "/node/{address:.*}/containers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPut, "/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodDelete, "/node/{address:.*}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodPost, "/node/rebalance", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.6", http.MethodGet, "/node/{address:.*}", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.2", http.MethodGet, "/nodecontainers", AuthorizationRequiredHandler(nodeContainerList))
-	m.Add("1.2", http.MethodPost, "/nodecontainers", AuthorizationRequiredHandler(nodeContainerCreate))
-	m.Add("1.2", http.MethodGet, "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerInfo))
-	m.Add("1.2", http.MethodDelete, "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerDelete))
-	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
-	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
+	m.Add("1.2", http.MethodGet, "/nodecontainers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/nodecontainers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodGet, "/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodDelete, "/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
-	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
-	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
-	m.Add("1.3", http.MethodGet, "/healing", AuthorizationRequiredHandler(healingHistoryHandler))
+	m.Add("1.2", http.MethodGet, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodPost, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.2", http.MethodDelete, "/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.3", http.MethodGet, "/healing", AuthorizationRequiredHandler(deprecatedHandler))
 	m.Add("1.3", http.MethodGet, "/routers", AuthorizationRequiredHandler(listRouters))
 	m.Add("1.8", http.MethodPost, "/routers", AuthorizationRequiredHandler(addRouter))
 	m.Add("1.8", http.MethodPut, "/routers/{name}", AuthorizationRequiredHandler(updateRouter))
@@ -495,33 +492,33 @@ func RunServer(dry bool) http.Handler {
 
 	// Handlers for compatibility reasons, should be removed on tsuru 2.0.
 	m.Add("1.4", http.MethodPost, "/teams/{name}", AuthorizationRequiredHandler(updateTeam))
-	m.Add("1.0", http.MethodGet, "/docker/node", AuthorizationRequiredHandler(listNodesHandler))
-	m.Add("1.0", http.MethodGet, "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(listUnitsByApp))
-	m.Add("1.0", http.MethodGet, "/docker/node/{address:.*}/containers", AuthorizationRequiredHandler(listUnitsByNode))
-	m.Add("1.0", http.MethodPost, "/docker/node", AuthorizationRequiredHandler(addNodeHandler))
-	m.Add("1.0", http.MethodPut, "/docker/node", AuthorizationRequiredHandler(updateNodeHandler))
-	m.Add("1.0", http.MethodDelete, "/docker/node/{address:.*}", AuthorizationRequiredHandler(removeNodeHandler))
-	m.Add("1.0", http.MethodPost, "/docker/containers/rebalance", AuthorizationRequiredHandler(rebalanceNodesHandler))
+	m.Add("1.0", http.MethodGet, "/docker/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/node/apps/{appname}/containers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/node/{address:.*}/containers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPut, "/docker/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/node/{address:.*}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/containers/rebalance", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.0", http.MethodGet, "/docker/nodecontainers", AuthorizationRequiredHandler(nodeContainerList))
-	m.Add("1.0", http.MethodPost, "/docker/nodecontainers", AuthorizationRequiredHandler(nodeContainerCreate))
-	m.Add("1.0", http.MethodGet, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerInfo))
-	m.Add("1.0", http.MethodDelete, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerDelete))
-	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(nodeContainerUpdate))
-	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(nodeContainerUpgrade))
+	m.Add("1.0", http.MethodGet, "/docker/nodecontainers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/nodecontainers", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/nodecontainers/{name}/upgrade", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.0", http.MethodGet, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingRead))
-	m.Add("1.0", http.MethodPost, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingUpdate))
-	m.Add("1.0", http.MethodDelete, "/docker/healing/node", AuthorizationRequiredHandler(nodeHealingDelete))
-	m.Add("1.0", http.MethodGet, "/docker/healing", AuthorizationRequiredHandler(healingHistoryHandler))
+	m.Add("1.0", http.MethodGet, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/healing/node", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/healing", AuthorizationRequiredHandler(deprecatedHandler))
 
-	m.Add("1.0", http.MethodGet, "/docker/autoscale", AuthorizationRequiredHandler(autoScaleHistoryHandler))
-	m.Add("1.0", http.MethodGet, "/docker/autoscale/config", AuthorizationRequiredHandler(autoScaleGetConfig))
-	m.Add("1.0", http.MethodPost, "/docker/autoscale/run", AuthorizationRequiredHandler(autoScaleRunHandler))
-	m.Add("1.0", http.MethodGet, "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleListRules))
-	m.Add("1.0", http.MethodPost, "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleSetRule))
-	m.Add("1.0", http.MethodDelete, "/docker/autoscale/rules", AuthorizationRequiredHandler(autoScaleDeleteRule))
-	m.Add("1.0", http.MethodDelete, "/docker/autoscale/rules/{id}", AuthorizationRequiredHandler(autoScaleDeleteRule))
+	m.Add("1.0", http.MethodGet, "/docker/autoscale", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/autoscale/config", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/autoscale/run", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodGet, "/docker/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodPost, "/docker/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/autoscale/rules", AuthorizationRequiredHandler(deprecatedHandler))
+	m.Add("1.0", http.MethodDelete, "/docker/autoscale/rules/{id}", AuthorizationRequiredHandler(deprecatedHandler))
 
 	m.Add("1.0", http.MethodGet, "/plans/routers", AuthorizationRequiredHandler(listRouters))
 
@@ -670,19 +667,7 @@ func startServer(handler http.Handler) error {
 		return err
 	}
 	fmt.Printf("Using %q auth scheme.\n", scheme)
-	_, err = nodecontainer.InitializeBS(ctx, app.AuthScheme, app.InternalAppName)
-	if err != nil {
-		return err
-	}
 	err = provision.InitializeAll()
-	if err != nil {
-		return err
-	}
-	_, err = healer.Initialize()
-	if err != nil {
-		return err
-	}
-	err = autoscale.Initialize()
 	if err != nil {
 		return err
 	}

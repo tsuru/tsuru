@@ -31,8 +31,8 @@ import (
 )
 
 const (
-	defaultDockerProvisioner = "docker"
-	DefaultHealthcheckScheme = "http"
+	defaultKubernetesProvisioner = "kubernetes"
+	DefaultHealthcheckScheme     = "http"
 
 	PoolMetadataName   = "pool"
 	IaaSIDMetadataName = "iaas-id"
@@ -46,7 +46,7 @@ var (
 	ErrNodeNotFound  = errors.New("node not found")
 
 	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
-	DefaultProvisioner = defaultDockerProvisioner
+	DefaultProvisioner = defaultKubernetesProvisioner
 )
 
 type UnitNotFoundError struct {
@@ -95,8 +95,6 @@ func ParseStatus(status string) (Status, error) {
 		return StatusStarting, nil
 	case "stopped":
 		return StatusStopped, nil
-	case "asleep":
-		return StatusAsleep, nil
 	}
 	return Status(""), ErrInvalidStatus
 }
@@ -137,9 +135,6 @@ const (
 
 	// StatusStopped is for cases where the unit has been stopped.
 	StatusStopped = Status("stopped")
-
-	// StatusAsleep is for cases where the unit has been asleep.
-	StatusAsleep = Status("asleep")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
@@ -266,36 +261,6 @@ type ResourceGetter interface {
 	GetPool() string
 }
 
-type BuilderDockerClient interface {
-	PullAndCreateContainer(opts docker.CreateContainerOptions, w io.Writer) (*docker.Container, string, error)
-	RemoveContainer(opts docker.RemoveContainerOptions) error
-	StartContainer(id string, hostConfig *docker.HostConfig) error
-	StopContainer(id string, timeout uint) error
-	InspectContainer(id string) (*docker.Container, error)
-	CommitContainer(docker.CommitContainerOptions) (*docker.Image, error)
-	DownloadFromContainer(string, docker.DownloadFromContainerOptions) error
-	UploadToContainer(string, docker.UploadToContainerOptions) error
-	AttachToContainerNonBlocking(opts docker.AttachToContainerOptions) (docker.CloseWaiter, error)
-	AttachToContainer(opts docker.AttachToContainerOptions) error
-	WaitContainer(id string) (int, error)
-
-	BuildImage(opts docker.BuildImageOptions) error
-	PushImage(docker.PushImageOptions, docker.AuthConfiguration) error
-	InspectImage(string) (*docker.Image, error)
-	TagImage(string, docker.TagImageOptions) error
-	RemoveImage(name string) error
-	ImageHistory(name string) ([]docker.ImageHistory, error)
-
-	SetTimeout(timeout time.Duration)
-}
-
-type ExecDockerClient interface {
-	CreateExec(opts docker.CreateExecOptions) (*docker.Exec, error)
-	StartExec(execId string, opts docker.StartExecOptions) error
-	ResizeExecTTY(execId string, height, width int) error
-	InspectExec(execId string) (*docker.ExecInspect, error)
-}
-
 type InspectData struct {
 	Image     docker.Image
 	TsuruYaml provTypes.TsuruYamlData
@@ -320,11 +285,6 @@ type DeployArgs struct {
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(context.Context, DeployArgs) (string, error)
-}
-
-type BuilderDeployDockerClient interface {
-	BuilderDeploy
-	GetClient(App) (BuilderDockerClient, error)
 }
 
 type BuilderDeployKubeClient interface {
@@ -431,15 +391,6 @@ type MetricsProvisioner interface {
 	UnitsMetrics(ctx context.Context, a App) ([]UnitMetric, error)
 }
 
-// SleepableProvisioner is a provisioner that allows putting applications to
-// sleep.
-type SleepableProvisioner interface {
-	// Sleep puts the units of the application to sleep, with an optional string
-	// parameter representing the name of the process to sleep. When the
-	// process is empty, Sleep will put all units of the application to sleep.
-	Sleep(context.Context, App, string, appTypes.AppVersion) error
-}
-
 // UpdatableProvisioner is a provisioner that stores data about applications
 // and must be notified when they are updated
 type UpdatableProvisioner interface {
@@ -497,57 +448,6 @@ type HCProvisioner interface {
 	HandlesHC() bool
 }
 
-type AddNodeOptions struct {
-	IaaSID     string
-	Address    string
-	Pool       string
-	Metadata   map[string]string
-	Register   bool
-	CaCert     []byte
-	ClientCert []byte
-	ClientKey  []byte
-	WaitTO     time.Duration
-}
-
-type RemoveNodeOptions struct {
-	Address   string
-	Rebalance bool
-	Writer    io.Writer
-}
-
-type UpdateNodeOptions struct {
-	Address  string
-	Pool     string
-	Metadata map[string]string
-	Enable   bool
-	Disable  bool
-}
-
-type NodeProvisioner interface {
-	Named
-
-	// ListNodes returns a list of all nodes registered in the provisioner.
-	ListNodes(ctx context.Context, addressFilter []string) ([]Node, error)
-
-	// ListNodesByFilters returns a list of filtered nodes by filter.
-	ListNodesByFilter(ctx context.Context, filter *provTypes.NodeFilter) ([]Node, error)
-
-	// GetNode retrieves an existing node by its address.
-	GetNode(ctx context.Context, address string) (Node, error)
-
-	// AddNode adds a new node in the provisioner.
-	AddNode(context.Context, AddNodeOptions) error
-
-	// RemoveNode removes an existing node.
-	RemoveNode(context.Context, RemoveNodeOptions) error
-
-	// UpdateNode can be used to enable/disable a node and update its metadata.
-	UpdateNode(context.Context, UpdateNodeOptions) error
-
-	// NodeForNodeData finds a node matching the received NodeStatusData.
-	NodeForNodeData(context.Context, NodeStatusData) (Node, error)
-}
-
 type RebalanceNodesOptions struct {
 	Event          *event.Event
 	Pool           string
@@ -555,15 +455,6 @@ type RebalanceNodesOptions struct {
 	AppFilter      []string
 	Dry            bool
 	Force          bool
-}
-
-type NodeRebalanceProvisioner interface {
-	RebalanceNodes(context.Context, RebalanceNodesOptions) (bool, error)
-}
-
-type NodeContainerProvisioner interface {
-	UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
-	RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error
 }
 
 // UnitFinderProvisioner is a provisioner that allows finding a specific unit
@@ -585,10 +476,6 @@ type VolumeProvisioner interface {
 	ValidateVolume(context.Context, *volumeTypes.Volume) error
 	IsVolumeProvisioned(ctx context.Context, volumeName, pool string) (bool, error)
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
-}
-
-type CleanImageProvisioner interface {
-	CleanImage(appName string, image string) error
 }
 
 type AutoScaleSpec struct {
@@ -664,80 +551,6 @@ type AutoScaleProvisioner interface {
 	RemoveAutoScale(ctx context.Context, a App, process string) error
 }
 
-type Node interface {
-	Pool() string
-	IaaSID() string
-	Address() string
-	Status() string
-
-	// Metadata returns node metadata exclusively managed by tsuru
-	Metadata() map[string]string
-	Units() ([]Unit, error)
-	Provisioner() NodeProvisioner
-
-	// MetadataNoPrefix returns node metadata managed by tsuru without any
-	// tsuru specific prefix. This can be used with iaas providers.
-	MetadataNoPrefix() map[string]string
-}
-
-type NodeExtraData interface {
-	// ExtraData returns node metadata not managed by tsuru, like metadata
-	// added by external sources.
-	ExtraData() map[string]string
-}
-
-type NodeHealthChecker interface {
-	Node
-	FailureCount() int
-	HasSuccess() bool
-	ResetFailures()
-}
-
-type NodeSpec struct {
-	// BSON tag for bson serialized compatibility with cluster.Node
-	Address     string `bson:"_id"`
-	IaaSID      string
-	Metadata    map[string]string
-	Status      string
-	Pool        string
-	Provisioner string
-}
-
-func NodeToSpec(n Node) NodeSpec {
-	metadata := map[string]string{}
-	if extra, ok := n.(NodeExtraData); ok {
-		for k, v := range extra.ExtraData() {
-			metadata[k] = v
-		}
-	}
-	for k, v := range n.Metadata() {
-		metadata[k] = v
-	}
-	var provName string
-	prov := n.Provisioner()
-	if prov != nil {
-		provName = prov.GetName()
-	}
-	return NodeSpec{
-		Address:     n.Address(),
-		IaaSID:      n.IaaSID(),
-		Metadata:    metadata,
-		Status:      n.Status(),
-		Pool:        n.Pool(),
-		Provisioner: provName,
-	}
-}
-
-func NodeToJSON(n Node) ([]byte, error) {
-	return json.Marshal(NodeToSpec(n))
-}
-
-type NodeStatusData struct {
-	Addrs  []string
-	Units  []UnitStatusData
-	Checks []NodeCheckResult
-}
-
 type UnitStatusData struct {
 	ID     string
 	Name   string
@@ -779,7 +592,7 @@ func Get(name string) (Provisioner, error) {
 
 func GetDefault() (Provisioner, error) {
 	if DefaultProvisioner == "" {
-		DefaultProvisioner = defaultDockerProvisioner
+		DefaultProvisioner = defaultKubernetesProvisioner
 	}
 	return Get(DefaultProvisioner)
 }

@@ -29,7 +29,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.env.set",
 	"app.update.env.unset",
 	"app.update.restart",
-	"app.update.sleep",
 	"app.update.start",
 	"app.update.stop",
 	"app.update.swap",
@@ -68,7 +67,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.read.router",
 	"app.read.env",
 	"app.read.events",
-	"app.read.metric",
 	"app.read.log",
 	"app.read.certificate",
 	"app.read.info",
@@ -78,32 +76,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.admin.routes",
 	"app.admin.quota",
 	"app.build",
-).addWithCtx(
-	"node", []permTypes.ContextType{permTypes.CtxPool},
-).add(
-	"node.create",
-	"node.read",
-	"node.update.move.container",
-	"node.update.move.containers",
-	"node.update.rebalance",
-	"node.delete",
-).addWithCtx(
-	"node.autoscale", []permTypes.ContextType{},
-).add(
-	"node.autoscale.update",
-	"node.autoscale.update.run",
-	"node.autoscale.read",
-	"node.autoscale.delete",
-).addWithCtx(
-	"machine", []permTypes.ContextType{permTypes.CtxIaaS},
-).add(
-	"machine.delete",
-	"machine.read",
-	"machine.read.events",
-	"machine.template.create",
-	"machine.template.delete",
-	"machine.template.update",
-	"machine.template.read",
 ).addWithCtx(
 	"team", []permTypes.ContextType{permTypes.CtxTeam},
 ).addWithCtx(
@@ -198,28 +170,9 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"pool.update.team.remove",
 	"pool.update.constraints.set",
 	"pool.read.constraints",
-	"pool.update.logs",
 	"pool.delete",
 ).add(
 	"debug",
-).add(
-	"healing.read",
-).addWithCtx(
-	"healing", []permTypes.ContextType{permTypes.CtxPool},
-).add(
-	"healing.read",
-	"healing.update",
-	"healing.delete",
-).addWithCtx(
-	"nodecontainer", []permTypes.ContextType{permTypes.CtxPool},
-).add(
-	"nodecontainer.create",
-	"nodecontainer.read",
-	"nodecontainer.update",
-	"nodecontainer.update.upgrade",
-	"nodecontainer.delete",
-).add(
-	"install.manage",
 ).add(
 	"event-block.read",
 	"event-block.read.events",
