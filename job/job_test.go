@@ -52,6 +52,29 @@ func (s *S) TestCreateCronjob(c *check.C) {
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 }
 
+func (s *S) TestCreateManualJob(c *check.C) {
+	newCron := jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Manual: true,
+			Container: jobTypes.ContainerInfo{
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
+			},
+		},
+	}
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user)
+	c.Assert(err, check.IsNil)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(myJob.Spec.Manual, check.Equals, true)
+	c.Assert(myJob.Spec.Schedule, check.DeepEquals, "* * 31 2 *")
+	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
+}
+
 func (s *S) TestGetJobByNameNotFound(c *check.C) {
 	job, err := servicemanager.Job.GetByName(context.TODO(), "404")
 	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
@@ -171,8 +194,8 @@ func (s *S) TestTriggerCronShouldExecuteJob(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
-			Schedule:  "@yearly",
-			Suspended: true,
+			Schedule: "@yearly",
+			Manual:   true,
 			Container: jobTypes.ContainerInfo{
 				Command: []string{"echo", "hello world!"},
 			},

@@ -173,8 +173,8 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
-		Schedule:  "* * * * *",
-		Suspended: true,
+		Schedule: "* * * * *",
+		Manual:   false,
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -236,7 +236,83 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "* * * * *",
-			Suspended:   true,
+			Manual:      false,
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
+		},
+	}
+	c.Assert(gotJob, check.DeepEquals, expectedJob)
+}
+
+func (s *S) TestCreateManualJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := inputJob{
+		Name:      "manual-job",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Plan:      "default-plan",
+		Container: jobTypes.ContainerInfo{
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+		},
+		Manual: true,
+	}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, token.GetUserName())
+		return nil
+	}
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	var obtained map[string]string
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
+	c.Assert(obtained["status"], check.DeepEquals, "success")
+	jobName, ok := obtained["jobName"]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var gotJob jobTypes.Job
+	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
+	c.Assert(err, check.IsNil)
+	expectedJob := jobTypes.Job{
+		Name:      obtained["jobName"],
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Owner:     "majortom@groundcontrol.com",
+		Plan: app.Plan{
+			Name:    "default-plan",
+			Memory:  1024,
+			Default: true,
+		},
+		Pool: "test1",
+		Metadata: app.Metadata{
+			Labels:      []appTypes.MetadataItem{},
+			Annotations: []appTypes.MetadataItem{},
+		},
+		Spec: jobTypes.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Image:   "busybox:1.28",
+				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			},
+			Schedule:    "* * 31 2 *",
+			Manual:      true,
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 		},

@@ -42,8 +42,8 @@ type inputJob struct {
 
 	Container jobTypes.ContainerInfo `json:"container"`
 	Schedule  string                 `json:"schedule"`
-	Suspended bool                   `json:"suspended"`
-	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
+	Manual    bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
+	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
@@ -327,7 +327,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Suspended: ij.Suspended,
+			Manual:    ij.Manual,
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
 		},

@@ -41,6 +41,7 @@ const (
 	LabelJobName      = "job-name"
 	LabelJobPool      = "job-pool"
 	LabelJobTeamOwner = "job-team"
+	LabelJobIsManual  = "job-manual"
 
 	labelNodeContainerName = "node-container-name"
 	labelNodeContainerPool = "node-container-pool"
@@ -469,6 +470,7 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 			LabelJobTeamOwner: job.TeamOwner,
 			LabelJobPool:      job.Pool,
 			LabelIsJob:        strconv.FormatBool(true),
+			LabelJobIsManual:  strconv.FormatBool(job.Spec.Manual),
 			labelIsService:    strconv.FormatBool(true),
 			LabelIsBuild:      strconv.FormatBool(false),
 			LabelIsDeploy:     strconv.FormatBool(false),
