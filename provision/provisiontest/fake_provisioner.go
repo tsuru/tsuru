@@ -395,7 +395,7 @@ type FakeProvisioner struct {
 	outputs     chan []byte
 	failures    chan failure
 	apps        map[string]provisionedApp
-	jobs        map[string]provisionedJob
+	jobs        map[string]*provisionedJob
 	mut         sync.RWMutex
 	execs       map[string][]provision.ExecOptions
 	execsMut    sync.Mutex
