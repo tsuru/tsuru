@@ -4604,6 +4604,10 @@ paths:
             type: string
             minLength: 1
             description: Name of job
+          - name: follow
+            description: attach logs to tty
+            in: query
+            type: boolean
         produces:
           - application/x-json-stream
         responses:
