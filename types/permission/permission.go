@@ -11,14 +11,13 @@ var (
 	CtxTeam            = ContextType("team")
 	CtxUser            = ContextType("user")
 	CtxPool            = ContextType("pool")
-	CtxIaaS            = ContextType("iaas")
 	CtxService         = ContextType("service")
 	CtxServiceInstance = ContextType("service-instance")
 	CtxVolume          = ContextType("volume")
 	CtxRouter          = ContextType("router")
 
 	ContextTypes = []ContextType{
-		CtxGlobal, CtxApp, CtxTeam, CtxUser, CtxPool, CtxIaaS, CtxService, CtxServiceInstance, CtxVolume, CtxRouter, CtxJob,
+		CtxGlobal, CtxApp, CtxTeam, CtxUser, CtxPool, CtxService, CtxServiceInstance, CtxVolume, CtxRouter, CtxJob,
 	}
 )
 
