@@ -111,6 +111,9 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return &jobCreationErr
 	}
 	buildTsuruInfo(ctx, job, user)
+	if job.Spec.Manual == true {
+		buildFakeSchedule(ctx, job)
+	}
 	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
@@ -421,13 +424,10 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 	if err := validatePlan(ctx, j.Pool, j.Plan.Name); err != nil {
 		return err
 	}
-	if j.Spec.Manual {
-		// trick based on fact that crontab syntax is not strictly validated
-		j.Spec.Schedule = "* * 31 2 *"
-		return nil
-	}
-	if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
-		return &tsuruErrors.ValidationError{Message: err.Error()}
+	if !j.Spec.Manual {
+		if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
+			return &tsuruErrors.ValidationError{Message: err.Error()}
+		}
 	}
 	return nil
 }

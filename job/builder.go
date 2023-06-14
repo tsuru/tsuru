@@ -48,3 +48,8 @@ func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *authTypes.User
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
 }
+
+func buildFakeSchedule(ctx context.Context, job *jobTypes.Job) {
+	// trick based on fact that crontab syntax is not strictly validated
+	job.Spec.Schedule = "* * 31 2 *"
+}
