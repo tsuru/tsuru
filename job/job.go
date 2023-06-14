@@ -111,7 +111,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return &jobCreationErr
 	}
 	buildTsuruInfo(ctx, job, user)
-	if job.Spec.Manual == true {
+	if job.Spec.Manual {
 		buildFakeSchedule(ctx, job)
 	}
 	if err := validateJob(ctx, job); err != nil {
