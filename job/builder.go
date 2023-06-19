@@ -6,9 +6,7 @@ package job
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -16,48 +14,13 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-func checkCollision(ctx context.Context, jobName string) bool {
-	_, err := servicemanager.Job.GetByName(ctx, jobName)
-	return err != jobTypes.ErrJobNotFound
-}
-
-func genUniqueName(job *jobTypes.Job) error {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return err
+func validateName(ctx context.Context, job *jobTypes.Job) error {
+	if job.Name == "" {
+		return errors.New("cronjob name can't be empty")
 	}
-	job.Name = fmt.Sprintf("tsuru-%s", id.String())
-	return nil
-}
-
-func oneTimeJobName(ctx context.Context, job *jobTypes.Job) error {
-	collision := true
-	for i := 0; i < jobTypes.MaxAttempts; i++ {
-		if err := genUniqueName(job); err != nil {
-			return err
-		}
-		if collision = checkCollision(ctx, job.Name); !collision {
-			break
-		}
-	}
-	if collision {
-		return jobTypes.ErrMaxAttemptsReached
-	}
-	return nil
-}
-
-func buildName(ctx context.Context, job *jobTypes.Job) error {
-	if job.Name != "" {
-		// check if the given name is already in the database
-		if _, err := servicemanager.Job.GetByName(ctx, job.Name); err == nil {
-			return jobTypes.ErrJobAlreadyExists
-		}
-	} else {
-		if job.IsCron() {
-			return errors.New("cronjob name can't be empty")
-		}
-		// If it's a one-time-job a unique job name is provided
-		return oneTimeJobName(ctx, job)
+	// check if the given name is already in the database
+	if _, err := servicemanager.Job.GetByName(ctx, job.Name); err == nil {
+		return jobTypes.ErrJobAlreadyExists
 	}
 	return nil
 }
@@ -84,4 +47,9 @@ func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *authTypes.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
+}
+
+func buildFakeSchedule(ctx context.Context, job *jobTypes.Job) {
+	// trick based on fact that crontab syntax is not strictly validated
+	job.Spec.Schedule = "* * 31 2 *"
 }

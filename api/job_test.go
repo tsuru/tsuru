@@ -37,40 +37,6 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func (s *S) TestDeleteJobAdminAuthorized(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, true)
-	c.Assert(err, check.IsNil)
-	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
-	c.Assert(err, check.IsNil)
-	ij := inputJob{
-		Name:      myJob.Name,
-		TeamOwner: myJob.TeamOwner,
-		Pool:      "test1",
-	}
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(ij)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
 func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -88,7 +54,7 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -107,86 +73,6 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
-func (s *S) TestDeleteJob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := &jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), j, user, true)
-	c.Assert(err, check.IsNil)
-	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
-	c.Assert(err, check.IsNil)
-	ij := inputJob{
-		Name:      myJob.Name,
-		TeamOwner: myJob.TeamOwner,
-		Pool:      myJob.Pool,
-	}
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(ij)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermJobDelete,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	c.Assert(err, check.IsNil)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(eventtest.EventDesc{
-		Target: jobTarget(myJob.Name),
-		Owner:  token.GetUserName(),
-		Kind:   "job.delete",
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestDeleteJobForbidden(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := &jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), j, user, true)
-	c.Assert(err, check.IsNil)
-	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
-	c.Assert(err, check.IsNil)
-	ij := inputJob{
-		Name:      myJob.Name,
-		TeamOwner: myJob.TeamOwner,
-		Pool:      myJob.Pool,
-	}
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(ij)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
-	c.Assert(err, check.IsNil)
-	token := userWithPermission(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	c.Assert(err, check.IsNil)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestDeleteCronjob(c *check.C) {
@@ -206,7 +92,7 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), j, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), j, user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), j.Name)
 	c.Assert(err, check.IsNil)
@@ -236,24 +122,6 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *S) TestDeleteJobNotFound(c *check.C) {
-	job := inputJob{
-		Name:      "unknown",
-		TeamOwner: "unknown",
-	}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(job)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/jobs/%s", job.Name), &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
-}
-
 func (s *S) TestDeleteCronjobNotFound(c *check.C) {
 	job := inputJob{
 		Name:      "unknown",
@@ -271,149 +139,6 @@ func (s *S) TestDeleteCronjobNotFound(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
-}
-
-func (s *S) TestCreateSimpleJob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := inputJob{TeamOwner: s.team.Name, Pool: "test1"}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(j)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermJobCreate,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
-		c.Assert(item.GetName(), check.Equals, token.GetUserName())
-		return nil
-	}
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var obtained map[string]string
-	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
-	c.Assert(err, check.IsNil)
-	c.Assert(obtained["status"], check.DeepEquals, "success")
-	jobName, ok := obtained["jobName"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotJob jobTypes.Job
-	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Teams, check.DeepEquals, []string{s.team.Name})
-	c.Assert(eventtest.EventDesc{
-		Target: jobTarget(jobName),
-		Owner:  token.GetUserName(),
-		Kind:   "job.create",
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestCreateFullyFeaturedJob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := inputJob{
-		TeamOwner:   s.team.Name,
-		Pool:        "test1",
-		Plan:        "default-plan",
-		Description: "some description",
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
-				{
-					Name:  "label1",
-					Value: "value1",
-				},
-			},
-			Annotations: []app.MetadataItem{
-				{
-					Name:  "annotation1",
-					Value: "value2",
-				},
-			},
-		},
-		Container: jobTypes.ContainerInfo{
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
-		},
-	}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(j)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermJobCreate,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
-		c.Assert(item.GetName(), check.Equals, token.GetUserName())
-		return nil
-	}
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
-	var obtained map[string]string
-	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
-	c.Assert(err, check.IsNil)
-	c.Assert(obtained["status"], check.DeepEquals, "success")
-	jobName, ok := obtained["jobName"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var gotJob jobTypes.Job
-	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
-	c.Assert(err, check.IsNil)
-	expectedJob := jobTypes.Job{
-		Name:      obtained["jobName"],
-		Teams:     []string{s.team.Name},
-		TeamOwner: s.team.Name,
-		Owner:     "majortom@groundcontrol.com",
-		Plan: app.Plan{
-			Name:    "default-plan",
-			Memory:  1024,
-			Default: true,
-		},
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
-				{
-					Name:  "label1",
-					Value: "value1",
-				},
-			},
-			Annotations: []app.MetadataItem{
-				{
-					Name:  "annotation1",
-					Value: "value2",
-				},
-			},
-		},
-		Pool:        "test1",
-		Description: "some description",
-		Spec: jobTypes.JobSpec{
-			Container: jobTypes.ContainerInfo{
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
-			},
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
-		},
-	}
-	c.Assert(gotJob, check.DeepEquals, expectedJob)
 }
 
 func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
@@ -449,6 +174,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "* * * * *",
+		Manual:   false,
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -510,15 +236,15 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "* * * * *",
+			Manual:      false,
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
-	c.Assert(gotJob.IsCron(), check.Equals, true)
 }
 
-func (s *S) TestCreateJobForbidden(c *check.C) {
+func (s *S) TestCreateManualJob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "jobProv"
@@ -526,63 +252,17 @@ func (s *S) TestCreateJobForbidden(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := inputJob{TeamOwner: s.team.Name, Pool: "test1"}
-	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(j)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	token := userWithPermission(c)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestCreateJobAlreadyExists(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	oldJob := jobTypes.Job{
-		Name:      "some-job",
+	j := inputJob{
+		Name:      "manual-job",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
+		Plan:      "default-plan",
+		Container: jobTypes.ContainerInfo{
+			Image:   "busybox:1.28",
+			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+		},
+		Manual: true,
 	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &oldJob, user, true)
-	c.Assert(err, check.IsNil)
-	j := inputJob{Name: "some-job", TeamOwner: s.team.Name, Pool: "test1"}
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(j)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", "/jobs", &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	token := userWithPermission(c, permission.Permission{
-		Scheme:  permission.PermJobCreate,
-		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
-	})
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"some-job\": a job with the same name already exists\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-}
-
-func (s *S) TestCreateJobNoPool(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j := inputJob{Name: "some-job", TeamOwner: s.team.Name}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
 	c.Assert(err, check.IsNil)
@@ -594,10 +274,50 @@ func (s *S) TestCreateJobNoPool(c *check.C) {
 		Scheme:  permission.PermJobCreate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, q int) error {
+		c.Assert(item.GetName(), check.Equals, token.GetUserName())
+		return nil
+	}
 	request.Header.Set("Authorization", "b "+token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Body.String(), check.Equals, "tsuru failed to create job \"some-job\": Pool does not exist.\n")
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	var obtained map[string]string
+	err = json.Unmarshal(recorder.Body.Bytes(), &obtained)
+	c.Assert(err, check.IsNil)
+	c.Assert(obtained["status"], check.DeepEquals, "success")
+	jobName, ok := obtained["jobName"]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var gotJob jobTypes.Job
+	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
+	c.Assert(err, check.IsNil)
+	expectedJob := jobTypes.Job{
+		Name:      obtained["jobName"],
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+		Owner:     "majortom@groundcontrol.com",
+		Plan: app.Plan{
+			Name:    "default-plan",
+			Memory:  1024,
+			Default: true,
+		},
+		Pool: "test1",
+		Metadata: app.Metadata{
+			Labels:      []appTypes.MetadataItem{},
+			Annotations: []appTypes.MetadataItem{},
+		},
+		Spec: jobTypes.JobSpec{
+			Container: jobTypes.ContainerInfo{
+				Image:   "busybox:1.28",
+				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			},
+			Schedule:    "* * 31 2 *",
+			Manual:      true,
+			ServiceEnvs: []bindTypes.ServiceEnvVar{},
+			Envs:        []bindTypes.EnvVar{},
+		},
+	}
+	c.Assert(gotJob, check.DeepEquals, expectedJob)
 }
 
 func (s *S) TestCreateCronjobNoName(c *check.C) {
@@ -626,46 +346,6 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
-func (s *S) TestUpdateJob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, true)
-	c.Assert(err, check.IsNil)
-	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
-	ij := inputJob{
-		Name: j1.Name,
-		Container: jobTypes.ContainerInfo{
-			Image:   "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
-		},
-	}
-	var buffer bytes.Buffer
-	err = json.NewEncoder(&buffer).Encode(ij)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusAccepted)
-	gotJob, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, ij.Container)
-}
-
 func (s *S) TestUpdateCronjob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -683,7 +363,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
@@ -812,7 +492,7 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
@@ -850,7 +530,7 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
@@ -869,36 +549,6 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.DeepEquals, "Job team owner \"invalid\" has no access to pool \"test1\"\n")
-}
-
-func (s *S) TestTriggerManualJob(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-		Name:      "manual-job",
-		Spec: jobTypes.JobSpec{
-			Container: jobTypes.ContainerInfo{
-				Image:   "ubuntu:latest",
-				Command: []string{"echo", "hello world"},
-			},
-		},
-	}
-	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
-	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("POST", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
 func (s *S) TestTriggerCronjob(c *check.C) {
@@ -922,7 +572,7 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", fmt.Sprintf("/jobs/%s/trigger", j1.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -930,22 +580,6 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
-func (s *S) TestTriggerJobNotFound(c *check.C) {
-	oldProvisioner := provision.DefaultProvisioner
-	defer func() { provision.DefaultProvisioner = oldProvisioner }()
-	provision.DefaultProvisioner = "jobProv"
-	provision.Register("jobProv", func() (provision.Provisioner, error) {
-		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
-	})
-	defer provision.Unregister("jobProv")
-	request, err := http.NewRequest("POST", "/jobs/some-name/trigger", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestJobList(c *check.C) {
@@ -957,28 +591,35 @@ func (s *S) TestJobList(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j2 := jobTypes.Job{
-		Name:      "manual",
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j3 := jobTypes.Job{
-		Name:      "cron",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+	}
+	j3 := jobTypes.Job{
+		Name:      "j3",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/3 * * * *",
+		},
+	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs", nil)
 	c.Assert(err, check.IsNil)
@@ -1001,30 +642,37 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j2 := jobTypes.Job{
-		Name:      "manual",
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j3 := jobTypes.Job{
-		Name:      "cron",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+	}
+	j3 := jobTypes.Job{
+		Name:      "j3",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/3 * * * *",
+		},
+	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user)
 	c.Assert(err, check.IsNil)
-	request, err := http.NewRequest("GET", "/jobs?name=manual", nil)
+	request, err := http.NewRequest("GET", "/jobs?name=j3", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
@@ -1034,7 +682,7 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
-	c.Assert(jobs[0].Name, check.Equals, "manual")
+	c.Assert(jobs[0].Name, check.Equals, "j3")
 }
 
 func (s *S) TestJobListFilterByTeamowner(c *check.C) {
@@ -1053,28 +701,35 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j2 := jobTypes.Job{
-		Name:      "manual",
-		TeamOwner: team.Name,
-		Pool:      "test1",
-	}
-	j3 := jobTypes.Job{
-		Name:      "cron",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+	}
+	j3 := jobTypes.Job{
+		Name:      "j3",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/3 * * * *",
+		},
+	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs?teamOwner=angra", nil)
 	c.Assert(err, check.IsNil)
@@ -1086,7 +741,7 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
-	c.Assert(jobs[0].Name, check.Equals, "manual")
+	c.Assert(jobs[0].Name, check.Equals, "j2")
 }
 
 func (s *S) TestJobListFilterByOwner(c *check.C) {
@@ -1103,28 +758,35 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j2 := jobTypes.Job{
-		Name:      "manual",
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j3 := jobTypes.Job{
-		Name:      "cron",
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+	}
+	j3 := jobTypes.Job{
+		Name:      "j3",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/3 * * * *",
+		},
+	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, u, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, u)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs?owner=%s", u.Email), nil)
 	c.Assert(err, check.IsNil)
@@ -1136,7 +798,7 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &jobs)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 1)
-	c.Assert(jobs[0].Name, check.Equals, "cron")
+	c.Assert(jobs[0].Name, check.Equals, "j3")
 }
 
 func (s *S) TestJobListFilterPool(c *check.C) {
@@ -1150,28 +812,35 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
-	}
-	j2 := jobTypes.Job{
-		Name:      "manual",
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
-	}
-	j3 := jobTypes.Job{
-		Name:      "cron",
-		TeamOwner: s.team.Name,
-		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
 	}
+	j2 := jobTypes.Job{
+		Name:      "j2",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/2 * * * *",
+		},
+	}
+	j3 := jobTypes.Job{
+		Name:      "j3",
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "*/3 * * * *",
+		},
+	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j3, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/jobs?pool=pool1", nil)
 	c.Assert(err, check.IsNil)
@@ -1197,11 +866,15 @@ func (s *S) TestJobInfo(c *check.C) {
 	})
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
+		Name:      "j1",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s", j1.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -1223,6 +896,15 @@ func (s *S) TestJobInfo(c *check.C) {
 }
 
 func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1247,9 +929,12 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1274,6 +959,15 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1289,9 +983,12 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C)
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, "fake-mysql", job.Name)
@@ -1307,6 +1004,15 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C)
 }
 
 func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1322,9 +1028,12 @@ func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1347,6 +1056,15 @@ func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check
 }
 
 func (s *S) TestJobServiceInstanceBindWithNonExistentJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -1367,6 +1085,15 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentJob(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1381,9 +1108,12 @@ func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1406,6 +1136,15 @@ func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	s.mockService.Pool.OnServices = func(pool string) ([]string, error) {
 		return []string{}, nil
 	}
@@ -1424,9 +1163,12 @@ func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1442,6 +1184,15 @@ func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1466,9 +1217,12 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1484,6 +1238,15 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 }
 
 func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1504,6 +1267,7 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "my-mysql", ServiceName: "mysql"},
@@ -1512,7 +1276,7 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1576,6 +1340,15 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 }
 
 func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1596,6 +1369,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "my-mysql", ServiceName: "mysql"},
@@ -1604,7 +1378,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1656,6 +1430,15 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1680,6 +1463,7 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "my-mysql", ServiceName: "mysql2"},
@@ -1687,7 +1471,7 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	instances := []service.ServiceInstance{
@@ -1729,6 +1513,15 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceUnbindWithNonExistentJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -1749,6 +1542,15 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentJob(c *check.C) {
 }
 
 func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1764,9 +1566,12 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, "fake-mysql", job.Name)
@@ -1782,6 +1587,15 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.
 }
 
 func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1797,9 +1611,12 @@ func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *che
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1822,6 +1639,15 @@ func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *che
 }
 
 func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1836,9 +1662,12 @@ func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/services/%s/instances/%s/jobs/%s", instance.ServiceName, instance.Name, job.Name)
@@ -1861,6 +1690,15 @@ func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
 }
 
 func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1880,9 +1718,12 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1915,6 +1756,15 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 }
 
 func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)
 
@@ -1931,9 +1781,12 @@ func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1967,9 +1820,9 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1"}
+	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1", Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), j, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), j, user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/jobs/%s/env", j.Name)
 	d := apiTypes.Envs{
@@ -2027,9 +1880,12 @@ func (s *S) TestSetJobEnvPrivateEnvironmentVariableInTheJob(c *check.C) {
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2092,9 +1948,12 @@ func (s *S) TestSetJobEnvSetMultipleEnvironmentVariablesInTheJob(c *check.C) {
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2159,6 +2018,7 @@ func (s *S) TestSetJobEnvNotToChangeValueOfServiceVariables(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_HOST", Value: "envhost", Public: true},
 			},
@@ -2168,7 +2028,7 @@ func (s *S) TestSetJobEnvNotToChangeValueOfServiceVariables(c *check.C) {
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2230,9 +2090,12 @@ func (s *S) TestSetBindEnvMissingFormBody(c *check.C) {
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2308,9 +2171,12 @@ func (s *S) TestSetJobEnvReturnsForbiddenIfTheUserDoesNotHaveAccessToTheJob(c *c
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "@yearly",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	token := userWithPermission(c, permission.Permission{
@@ -2355,9 +2221,12 @@ func (s *S) TestSetJobEnvReturnsBadRequestWhenGivenInvalidEnvName(c *check.C) {
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2397,6 +2266,7 @@ func (s *S) TestUnsetJobEnv(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 				{Name: "DATABASE_USER", Value: "admin", Public: true},
@@ -2406,7 +2276,7 @@ func (s *S) TestUnsetJobEnv(c *check.C) {
 	}
 
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_HOST", job.Name)
@@ -2457,6 +2327,7 @@ func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_HOST", Value: "localhost", Public: true},
 				{Name: "DATABASE_USER", Value: "admin", Public: true},
@@ -2466,7 +2337,7 @@ func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
 	}
 
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_HOST&env=DATABASE_USER", job.Name)
@@ -2516,6 +2387,7 @@ func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 			},
@@ -2523,7 +2395,7 @@ func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
 	}
 
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	url := fmt.Sprintf("/jobs/%s/env?env=DATABASE_PASSWORD", job.Name)
@@ -2605,13 +2477,14 @@ func (s *S) TestUnsetJobEnvReturnsForbiddenWhenUserDoesNotHaveAccessToTheJob(c *
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_HOST", Value: "fakehost", Public: false},
 			},
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &job, user, true)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
 	c.Assert(err, check.IsNil)
 
 	token := userWithPermission(c, permission.Permission{
@@ -2663,9 +2536,9 @@ func (s *S) TestJobLogsList(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name}
+	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/jobs/%s/log?lines=10", j.Name), nil)
 	c.Assert(err, check.IsNil)
@@ -2680,13 +2553,18 @@ func (s *S) TestJobLogsList(c *check.C) {
 }
 
 func (s *S) TestJobLogsWatch(c *check.C) {
-	s.provisioner.LogsEnabled = true
-	defer func() {
-		s.provisioner.LogsEnabled = false
-	}()
-	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name}
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
-	err := servicemanager.Job.CreateJob(context.TODO(), &j, user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
 	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &j, appTypes.ListLogArgs{
 		Name:  j.Name,

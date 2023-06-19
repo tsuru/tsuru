@@ -471,10 +471,6 @@ var reloadJobProvisioner = &action.Action{
 			return nil, errors.New("invalid arguments for pipeline, expected *bindJobPipelineArgs.")
 		}
 
-		if !args.job.IsCron() {
-			return nil, nil
-		}
-
 		job, err := servicemanager.Job.GetByName(ctx.Context, args.job.Name)
 		if err != nil {
 			return nil, err
