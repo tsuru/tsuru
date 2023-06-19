@@ -26,7 +26,7 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-func createJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
+func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
 	jSpec := job.Spec
 	requirements, err := resourceRequirements(job, client, requirementsFactors{})
 	if err != nil {
@@ -75,7 +75,7 @@ func createJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations
 	}, nil
 }
 
-func createCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
+func buildCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
 	namespace := client.PoolNamespace(job.Pool)
 	k8sCronjob, err := client.BatchV1beta1().CronJobs(namespace).Create(ctx, &apiv1beta1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -86,6 +86,7 @@ func createCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		},
 		Spec: apiv1beta1.CronJobSpec{
 			Schedule: job.Spec.Schedule,
+			Suspend:  &job.Spec.Manual,
 			JobTemplate: apiv1beta1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
@@ -97,24 +98,7 @@ func createCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 	return k8sCronjob.Name, nil
 }
 
-func createJob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels map[string]string, annotations map[string]string) (string, error) {
-	namespace := client.PoolNamespace(job.Pool)
-	k8sJob, err := client.BatchV1().Jobs(namespace).Create(ctx, &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.Name,
-			Namespace:   namespace,
-			Labels:      labels,
-			Annotations: annotations,
-		},
-		Spec: jobSpec,
-	}, metav1.CreateOptions{})
-	if err != nil {
-		return "", err
-	}
-	return k8sJob.Name, nil
-}
-
-func genJobMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
+func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
 	jobLabels := provision.JobLabels(ctx, job).ToLabels()
 	customData := job.Metadata
 	for _, label := range customData.Labels {
@@ -136,15 +120,12 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job
 	if err != nil {
 		return "", err
 	}
-	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
-	jobSpec, err := createJobSpec(job, client, jobLabels, jobAnnotations)
+	jobLabels, jobAnnotations := buildMetadata(ctx, job)
+	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
 	if err != nil {
 		return "", err
 	}
-	if job.IsCron() {
-		return createCronjob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
-	}
-	return createJob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
+	return buildCronjob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
 }
 
 func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
@@ -196,8 +177,8 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job
 	if err != nil {
 		return err
 	}
-	jobLabels, jobAnnotations := genJobMetadata(ctx, job)
-	jobSpec, err := createJobSpec(job, client, jobLabels, jobAnnotations)
+	jobLabels, jobAnnotations := buildMetadata(ctx, job)
+	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
 	if err != nil {
 		return err
 	}
@@ -211,6 +192,7 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job
 		},
 		Spec: apiv1beta1.CronJobSpec{
 			Schedule: job.Spec.Schedule,
+			Suspend:  &job.Spec.Manual,
 			JobTemplate: apiv1beta1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
@@ -238,10 +220,7 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 		return err
 	}
 	namespace := client.PoolNamespace(job.Pool)
-	if job.IsCron() {
-		return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
-	}
-	return client.BatchV1().Jobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
+	return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 }
 
 func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []*jobTypes.Job) ([]apiv1.Pod, error) {

@@ -85,6 +85,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						"tsuru.io/job-pool":            "test-default",
 						"tsuru.io/job-team":            "admin",
 						"tsuru.io/is-job":              "true",
+						"tsuru.io/job-manual":          "false",
 						"tsuru.io/is-build":            "false",
 						"tsuru.io/is-deploy":           "false",
 						"label1":                       "value1",
@@ -93,6 +94,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				},
 				Spec: apiv1beta1.CronJobSpec{
 					Schedule: "* * * * *",
+					Suspend:  func() *bool { r := false; return &r }(),
 					JobTemplate: apiv1beta1.JobTemplateSpec{
 						Spec: batchv1.JobSpec{
 							Parallelism:           func() *int32 { r := int32(3); return &r }(),
@@ -112,6 +114,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 										"tsuru.io/job-pool":            "test-default",
 										"tsuru.io/job-team":            "admin",
 										"tsuru.io/is-job":              "true",
+										"tsuru.io/job-manual":          "false",
 										"tsuru.io/is-build":            "false",
 										"tsuru.io/is-deploy":           "false",
 										"label1":                       "value1",
@@ -149,128 +152,6 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
-	}
-}
-
-func (s *S) TestProvisionerCreateJob(c *check.C) {
-	waitCron := s.mock.CronJobReactions(c)
-	defer waitCron()
-
-	tests := []struct {
-		name           string
-		scenario       func()
-		expectedTarget *batchv1.Job
-	}{
-		{
-			name: "simple create job",
-			scenario: func() {
-				j := jobTypes.Job{
-					Name:      "myjob",
-					TeamOwner: s.team.Name,
-					Pool:      "test-default",
-					Metadata: app.Metadata{
-						Labels: []app.MetadataItem{
-							{
-								Name:  "label1",
-								Value: "value1",
-							},
-						},
-						Annotations: []app.MetadataItem{
-							{
-								Name:  "annotation1",
-								Value: "value2",
-							},
-						},
-					},
-					Spec: jobTypes.JobSpec{
-						Parallelism:           func() *int32 { r := int32(3); return &r }(),
-						Completions:           func() *int32 { r := int32(1); return &r }(),
-						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
-						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
-						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
-						},
-					},
-				}
-				_, err := s.p.CreateJob(context.TODO(), &j)
-				waitCron()
-				c.Assert(err, check.IsNil)
-			},
-			expectedTarget: &batchv1.Job{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "myjob",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app.kubernetes.io/component":  "job",
-						"app.kubernetes.io/managed-by": "tsuru",
-						"app.kubernetes.io/name":       "tsuru-job",
-						"app.kubernetes.io/instance":   "myjob",
-						"tsuru.io/is-tsuru":            "true",
-						"tsuru.io/is-service":          "true",
-						"tsuru.io/job-name":            "myjob",
-						"tsuru.io/job-pool":            "test-default",
-						"tsuru.io/job-team":            "admin",
-						"tsuru.io/is-job":              "true",
-						"tsuru.io/is-build":            "false",
-						"tsuru.io/is-deploy":           "false",
-						"label1":                       "value1",
-					},
-					Annotations: map[string]string{"annotation1": "value2"},
-				},
-				Spec: batchv1.JobSpec{
-					Parallelism:           func() *int32 { r := int32(3); return &r }(),
-					Completions:           func() *int32 { r := int32(1); return &r }(),
-					ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
-					BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
-					Template: corev1.PodTemplateSpec{
-						ObjectMeta: v1.ObjectMeta{
-							Labels: map[string]string{
-								"app.kubernetes.io/component":  "job",
-								"app.kubernetes.io/managed-by": "tsuru",
-								"app.kubernetes.io/name":       "tsuru-job",
-								"app.kubernetes.io/instance":   "myjob",
-								"tsuru.io/is-tsuru":            "true",
-								"tsuru.io/is-service":          "true",
-								"tsuru.io/job-name":            "myjob",
-								"tsuru.io/job-pool":            "test-default",
-								"tsuru.io/job-team":            "admin",
-								"tsuru.io/is-job":              "true",
-								"tsuru.io/is-build":            "false",
-								"tsuru.io/is-deploy":           "false",
-								"label1":                       "value1",
-							},
-							Annotations: map[string]string{"annotation1": "value2"},
-						},
-						Spec: corev1.PodSpec{
-							Containers: []corev1.Container{
-								{
-									Name:    "job",
-									Image:   "ubuntu:latest",
-									Command: []string{"echo", "hello world"},
-									Resources: apiv1.ResourceRequirements{
-										Limits: corev1.ResourceList{
-											apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
-										},
-										Requests: corev1.ResourceList{
-											apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-										},
-									},
-									Env: []corev1.EnvVar{},
-								},
-							},
-							RestartPolicy: "OnFailure",
-						},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		tt.scenario()
-		gotJob, err := s.client.BatchV1().Jobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
-		c.Assert(err, check.IsNil)
-		c.Assert(*gotJob, check.DeepEquals, *tt.expectedTarget)
 	}
 }
 
@@ -371,6 +252,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						"tsuru.io/job-pool":            "test-default",
 						"tsuru.io/job-team":            "admin",
 						"tsuru.io/is-job":              "true",
+						"tsuru.io/job-manual":          "false",
 						"tsuru.io/is-build":            "false",
 						"tsuru.io/is-deploy":           "false",
 						"label2":                       "value3",
@@ -379,6 +261,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				},
 				Spec: apiv1beta1.CronJobSpec{
 					Schedule: "* * * * *",
+					Suspend:  func() *bool { r := false; return &r }(),
 					JobTemplate: apiv1beta1.JobTemplateSpec{
 						Spec: batchv1.JobSpec{
 							Parallelism:           func() *int32 { r := int32(2); return &r }(),
@@ -398,6 +281,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 										"tsuru.io/job-pool":            "test-default",
 										"tsuru.io/job-team":            "admin",
 										"tsuru.io/is-job":              "true",
+										"tsuru.io/job-manual":          "false",
 										"tsuru.io/is-build":            "false",
 										"tsuru.io/is-deploy":           "false",
 										"label2":                       "value3",
@@ -439,7 +323,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 	}
 }
 
-func (s *S) TestProvisionerDeleteJob(c *check.C) {
+func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
 	cj := jobTypes.Job{
@@ -448,17 +332,6 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 		Pool:      "test-default",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-			Container: jobTypes.ContainerInfo{
-				Image:   "ubuntu:latest",
-				Command: []string{"echo", "hello world"},
-			},
-		},
-	}
-	j := jobTypes.Job{
-		Name:      "myjob",
-		TeamOwner: s.team.Name,
-		Pool:      "test-default",
-		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				Image:   "ubuntu:latest",
 				Command: []string{"echo", "hello world"},
@@ -485,22 +358,6 @@ func (s *S) TestProvisionerDeleteJob(c *check.C) {
 			},
 			testScenario: func(c *check.C) {
 				_, err := s.client.BatchV1beta1().CronJobs("default").Get(context.TODO(), "mycronjob", v1.GetOptions{})
-				c.Assert(err, check.NotNil)
-				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-			},
-		},
-		{
-			name: "simple delete job",
-			setup: func() {
-				_, err := s.p.CreateJob(context.TODO(), &j)
-				c.Assert(err, check.IsNil)
-			},
-			scenario: func() {
-				err := s.p.DestroyJob(context.TODO(), &j)
-				c.Assert(err, check.IsNil)
-			},
-			testScenario: func(c *check.C) {
-				_, err := s.client.BatchV1beta1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
 				c.Assert(err, check.NotNil)
 				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
@@ -581,6 +438,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 							"tsuru.io/job-pool":            "test-default",
 							"tsuru.io/job-team":            "admin",
 							"tsuru.io/is-job":              "true",
+							"tsuru.io/job-manual":          "false",
 							"tsuru.io/is-build":            "false",
 							"tsuru.io/is-deploy":           "false",
 						},
@@ -608,6 +466,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 									"tsuru.io/job-pool":            "test-default",
 									"tsuru.io/job-team":            "admin",
 									"tsuru.io/is-job":              "true",
+									"tsuru.io/job-manual":          "false",
 									"tsuru.io/is-build":            "false",
 									"tsuru.io/is-deploy":           "false",
 								},

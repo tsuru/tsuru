@@ -19,8 +19,11 @@ func (s *S) TestGetByName(c *check.C) {
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
@@ -41,12 +44,35 @@ func (s *S) TestCreateCronjob(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user)
 	c.Assert(err, check.IsNil)
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
-	c.Assert(s.provisioner.ProvisionedJob(&newCron), check.Equals, true)
+	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
+}
+
+func (s *S) TestCreateManualJob(c *check.C) {
+	newCron := jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Manual: true,
+			Container: jobTypes.ContainerInfo{
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
+			},
+		},
+	}
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user)
+	c.Assert(err, check.IsNil)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(myJob.Spec.Manual, check.Equals, true)
+	c.Assert(myJob.Spec.Schedule, check.DeepEquals, "* * 31 2 *")
+	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 }
 
 func (s *S) TestGetJobByNameNotFound(c *check.C) {
@@ -69,14 +95,14 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, true)
+	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
 	err = servicemanager.Job.DeleteFromProvisioner(context.TODO(), job)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, false)
+	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, false)
 }
 
 func (s *S) TestDeleteJobFromDB(c *check.C) {
@@ -93,11 +119,11 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
 	c.Assert(err, check.IsNil)
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.ProvisionedJob(job), check.Equals, true)
+	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
 	err = servicemanager.Job.RemoveJobFromDb(job.Name)
 	c.Assert(err, check.IsNil)
 	_, err = servicemanager.Job.GetByName(context.TODO(), job.Name)
@@ -148,7 +174,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.Job.UpdateJob(context.TODO(), &j2, &j1, s.user)
 	c.Assert(err, check.IsNil)
@@ -161,24 +187,27 @@ func (s *S) TestUpdateJob(c *check.C) {
 	c.Assert(updatedJob.Spec.Schedule, check.DeepEquals, j2.Spec.Schedule)
 }
 
-func (s *S) TestTriggerJobShouldProvisionNewJob(c *check.C) {
+func (s *S) TestTriggerCronShouldExecuteJob(c *check.C) {
 	j1 := jobTypes.Job{
 		Name:      "some-job",
 		TeamOwner: s.team.Name,
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "@yearly",
+			Manual:   true,
 			Container: jobTypes.ContainerInfo{
 				Command: []string{"echo", "hello world!"},
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.ProvisionedJob(&j1), check.Equals, false)
+	c.Assert(s.provisioner.ProvisionedJob(j1.Name), check.Equals, true)
+	c.Assert(s.provisioner.JobExecutions(j1.Name), check.Equals, 0)
 	err = servicemanager.Job.Trigger(context.TODO(), &j1)
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.ProvisionedJob(&j1), check.Equals, true)
+	c.Assert(s.provisioner.JobExecutions(j1.Name), check.Equals, 1)
 }
 
 func (s *S) TestList(c *check.C) {
@@ -188,6 +217,7 @@ func (s *S) TestList(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -207,9 +237,9 @@ func (s *S) TestList(c *check.C) {
 			},
 		},
 	}
-	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &j2, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &j2, s.user)
 	c.Assert(err, check.IsNil)
 	jobs, err := servicemanager.Job.List(context.TODO(), &jobTypes.Filter{})
 	c.Assert(err, check.IsNil)
@@ -223,6 +253,7 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -243,9 +274,9 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user)
 	c.Assert(err, check.IsNil)
 
 	serviceEnvsToAdd := []bindTypes.ServiceEnvVar{
@@ -277,6 +308,7 @@ func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -284,7 +316,7 @@ func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.AddServiceEnv(context.TODO(), &job1, jobTypes.AddInstanceArgs{
@@ -325,6 +357,7 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -355,9 +388,9 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
-	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user, false)
+	err = servicemanager.Job.CreateJob(context.TODO(), &cronjob1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -386,6 +419,7 @@ func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -398,7 +432,7 @@ func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -423,6 +457,7 @@ func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -435,7 +470,7 @@ func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{
@@ -460,6 +495,7 @@ func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 		Pool:      s.Pool,
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
 				Image:   "alpine:latest",
 				Command: []string{"echo", "hello!"},
@@ -473,7 +509,7 @@ func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 		},
 	}
 
-	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user, false)
+	err := servicemanager.Job.CreateJob(context.TODO(), &job1, s.user)
 	c.Assert(err, check.IsNil)
 
 	err = servicemanager.Job.RemoveServiceEnv(context.TODO(), &job1, jobTypes.RemoveInstanceArgs{

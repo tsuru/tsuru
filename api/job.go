@@ -40,9 +40,10 @@ type inputJob struct {
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
 
-	Schedule  string                 `json:"schedule"`
 	Container jobTypes.ContainerInfo `json:"container"`
-	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job or a cronjob
+	Schedule  string                 `json:"schedule"`
+	Manual    bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
+	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
@@ -326,6 +327,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
+			Manual:    ij.Manual,
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
 		},
@@ -346,7 +348,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	err = servicemanager.Job.CreateJob(ctx, j, u, ij.Trigger)
+	err = servicemanager.Job.CreateJob(ctx, j, u)
 	if err != nil {
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Error()}
