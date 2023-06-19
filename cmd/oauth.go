@@ -119,7 +119,7 @@ func (c *login) oauthLogin(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	redirectURL := fmt.Sprintf("http://127.0.0.1:%s", port)
+	redirectURL := fmt.Sprintf("http://localhost:%s", port)
 	authURL := strings.Replace(schemeData["authorizeUrl"], "__redirect_url__", redirectURL, 1)
 	http.HandleFunc("/", callback(redirectURL, finish))
 	server := &http.Server{}
