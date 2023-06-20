@@ -5643,6 +5643,9 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
+      manual:
+        type: boolean
+        description: create a manual job.
       container:
         type: object
         properties:
