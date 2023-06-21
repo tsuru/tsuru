@@ -1554,7 +1554,7 @@ func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "pwd")
 	defer config.Unset("docker:registry-auth:password")
-	a, _, rollback := s.mock.DefaultReactions(c)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
@@ -1592,6 +1592,7 @@ mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp depl
 	c.Assert(err, check.IsNil)
 	version := newVersion(c, a, nil)
 	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	wait()
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
