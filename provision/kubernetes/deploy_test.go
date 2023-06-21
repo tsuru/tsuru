@@ -3775,7 +3775,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 	defer config.Unset("docker:registry-auth:username")
 	config.Set("docker:registry-auth:password", "pwd")
 	defer config.Unset("docker:registry-auth:password")
-	a, _, rollback := s.mock.DefaultReactions(c)
+	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
@@ -3792,6 +3792,7 @@ func (s *S) TestCreateDeployPodContainersWithRegistryAuth(c *check.C) {
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
+	wait()
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
