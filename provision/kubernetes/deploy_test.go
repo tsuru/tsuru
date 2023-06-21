@@ -3942,6 +3942,7 @@ func (s *S) TestCreateDeployPodContainersOnSinglePool(c *check.C) {
 		inputFile:         "/dev/null",
 		podName:           "myapp-v1-deploy",
 	})
+	wait()
 	s.mock.IgnorePool = false
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
