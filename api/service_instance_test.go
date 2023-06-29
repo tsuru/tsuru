@@ -1854,7 +1854,7 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 	si1 := service.ServiceInstance{
 		Name:        "my_nosql",
 		ServiceName: srv.Name,
-		Apps:        []string{},
+		Jobs:        []string{"test-job"},
 		Teams:       []string{s.team.Name},
 	}
 	err = s.conn.ServiceInstances().Insert(si1)
@@ -1884,12 +1884,14 @@ func (s *ServiceInstanceSuite) TestServiceInfo(c *check.C) {
 			Name:        "my_nosql",
 			ServiceName: srv.Name,
 			Apps:        []string{},
+			Jobs:        []string{"test-job"},
 			Teams:       []string{s.team.Name},
 		},
 		{
 			Name:        "your_nosql",
 			ServiceName: srv.Name,
 			Apps:        []string{"wordpress"},
+			Jobs:        []string{},
 			Teams:       []string{s.team.Name},
 		},
 	}
@@ -1936,6 +1938,7 @@ func (s *ServiceInstanceSuite) TestServiceInfoShouldReturnOnlyInstancesOfTheSame
 			Name:        "my_nosql",
 			ServiceName: srv.Name,
 			Apps:        []string{},
+			Jobs:        []string{},
 			Teams:       []string{s.team.Name},
 		},
 	}
