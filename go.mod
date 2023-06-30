@@ -3,8 +3,8 @@ module github.com/tsuru/tsuru
 go 1.19
 
 require (
-	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
+	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
 	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/docker/cli v20.10.20+incompatible
@@ -15,7 +15,6 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/google/gops v0.0.0-20180311052415-160b358b10d6
-	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-version v0.0.0-20180716215031-270f2f71b1ee
@@ -131,7 +130,4 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
-replace (
-	github.com/ajg/form => github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
-)
+replace github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081

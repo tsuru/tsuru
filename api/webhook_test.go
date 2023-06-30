@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/ajg/form"
+	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	eventTypes "github.com/tsuru/tsuru/types/event"

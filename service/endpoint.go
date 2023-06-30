@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
+	"github.com/cezarsa/form"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
