@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
@@ -1578,7 +1579,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		for k := range envs {
 			fmt.Fprintf(writer, "- %s\n", k)
 		}
-		fmt.Fprintf(writer, "- %s\n", app.TsuruServicesEnvVar)
+		fmt.Fprintf(writer, "- %s\n", tsuruEnvs.TsuruServicesEnvVar)
 	}
 	return nil
 }
