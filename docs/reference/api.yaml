@@ -513,7 +513,8 @@ paths:
         minLength: 1
         description: App name.
     put:
-      operationId: ServiceInstanceBind
+      deprecated: true
+      operationId: ServiceInstanceBind1_0
       description: Bind the service instance to app
       parameters:
         - name: bindData
@@ -535,7 +536,8 @@ paths:
       security:
         - Bearer: []
     delete:
-      operationId: ServiceInstanceUnbind
+      deprecated: true
+      operationId: ServiceInstanceUnbind1_0
       description: Unbind the service instance from app
       parameters:
         - name: unbindData
@@ -644,6 +646,150 @@ paths:
             $ref: "#/definitions/ErrorMessage"
         "404":
           description: Service instance or team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.13/services/{service}/instances/{instance}/apps/{app}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+    put:
+      operationId: ServiceInstanceBind
+      description: Bind the service instance to app
+      parameters:
+        - name: bindData
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/ServiceInstanceBind"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Instance bound to the app.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: ServiceInstanceUnbind
+      description: Unbind the service instance from app
+      parameters:
+        - name: unbindData
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/ServiceInstanceUnbind"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Instance has been unbound from the app.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: App not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+  /1.13/services/{service}/instances/{instance}/jobs/{job}:
+    parameters:
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: job
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Job name.
+    put:
+      operationId: JobServiceInstanceBind
+      description: Bind the service instance to job
+      parameters:
+        - name: bindData
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/JobServiceInstanceBind"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Instance bound to the job.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Job not found.
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - service
+      security:
+        - Bearer: []
+    delete:
+      operationId: JobServiceInstanceUnbind
+      description: Unbind the service instance from job
+      parameters:
+        - name: unbindData
+          required: true
+          in: body
+          schema:
+            $ref: "#/definitions/JobServiceInstanceUnbind"
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Instance has been unbound from the job.
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Job not found.
           schema:
             $ref: "#/definitions/ErrorMessage"
       tags:
@@ -4466,7 +4612,6 @@ paths:
         - job
       security:
         - Bearer: []
-  
   /1.13/jobs/{name}:
     get:
       operationId: GetJob
@@ -4566,7 +4711,6 @@ paths:
         - job
       security:
         - Bearer: []
-
   /1.13/jobs/{name}/trigger:
     post:
       operationId: TriggerJob
@@ -4629,7 +4773,118 @@ paths:
           - job
         security:
           - Bearer: []
-
+  /1.13/jobs/{name}/env:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Job name.
+    post:
+      operationId: JobEnvSet
+      description: Set new environment variable.
+      parameters:
+        - name: envs
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/EnvSetData"
+          description: Environment variables.
+      produces:
+        - application/x-json-stream
+      consumes:
+        - application/json
+      responses:
+        "200":
+          description: Envs updated
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Job not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+    delete:
+      operationId: JobEnvUnset
+      description: Unset job environment variables.
+      parameters:
+        - name: env
+          in: query
+          type: array
+          collectionFormat: multi
+          required: true
+          minItems: 1
+          items:
+            type: string
+      produces:
+        - application/x-json-stream
+      responses:
+        "200":
+          description: Envs deleted
+        "400":
+          description: Invalid data
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Job not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+  /1.16/jobs/{name}/env:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Job name.
+    get:
+      operationId: JobEnvGet
+      description: Get job environment variables.
+      parameters:
+        - name: env
+          description: Environment variable name.
+          type: string
+          in: query
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: Environment variables
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/EnvVar"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Job not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+        - job
+      security:
+        - Bearer: []
+        
 definitions:
   AutoScaleSpec:
     description: Units Auto Scale spec
@@ -4900,6 +5155,18 @@ definitions:
     properties:
       noRestart:
         type: boolean
+      force:
+        type: boolean
+  JobServiceInstanceBind:
+    type: object
+    properties:
+      parameters:
+        type: object
+        additionalProperties:
+          type: string
+  JobServiceInstanceUnbind:
+    type: object
+    properties:
       force:
         type: boolean
   Pool:
