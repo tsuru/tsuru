@@ -1759,6 +1759,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := serviceInstanceInfo{
 		Apps:      si.Apps,
+		Jobs:      []string{},
 		Teams:     si.Teams,
 		TeamOwner: si.TeamOwner,
 		CustomInfo: map[string]string{
@@ -1771,6 +1772,51 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 		Description:     si.Description,
 		Tags:            []string{"tag 1"},
 		Parameters:      map[string]interface{}{"storage-type": "ssd"},
+	}
+	c.Assert(instances, check.DeepEquals, expected)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceInfoForJob(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`[]`))
+	}))
+	defer ts.Close()
+	srv := service.Service{
+		Name:       "mongo",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "admin",
+	}
+	err := service.Create(srv)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{
+		Name:        "mongodb",
+		ServiceName: srv.Name,
+		Jobs:        []string{"job1", "job2"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		Tags:        []string{"tag 1", "tag 2"},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	recorder, request := makeRequestToServiceInstanceInfo("mongo", "mongodb", s.token.GetValue(), c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var instances serviceInstanceInfo
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
+	c.Assert(err, check.IsNil)
+	expected := serviceInstanceInfo{
+		Apps:            []string{},
+		Jobs:            si.Jobs,
+		Teams:           si.Teams,
+		TeamOwner:       si.TeamOwner,
+		CustomInfo:      map[string]string{},
+		PlanName:        "",
+		PlanDescription: "",
+		Description:     si.Description,
+		Tags:            []string{"tag 1", "tag 2"},
+		Parameters:      map[string]interface{}{},
 	}
 	c.Assert(instances, check.DeepEquals, expected)
 }
@@ -1807,6 +1853,7 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfoNoPlanAndNoCustomInfo(c *c
 	c.Assert(err, check.IsNil)
 	expected := serviceInstanceInfo{
 		Apps:            si.Apps,
+		Jobs:            []string{},
 		Teams:           si.Teams,
 		TeamOwner:       si.TeamOwner,
 		CustomInfo:      map[string]string{},

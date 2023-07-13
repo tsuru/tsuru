@@ -5007,6 +5007,10 @@ definitions:
         type: array
         items:
           type: string
+      jobs:
+        type: array
+        items:
+          type: string
       servicename:
         type: string
       info:
@@ -5063,6 +5067,10 @@ definitions:
         type: array
         items:
           type: string
+      jobs:
+        type: array
+        items:
+          type: string
       bound_units:
         type: array
         items:
@@ -5095,6 +5103,10 @@ definitions:
     type: object
     properties:
       apps:
+        type: array
+        items:
+          type: string
+      jobs:
         type: array
         items:
           type: string
