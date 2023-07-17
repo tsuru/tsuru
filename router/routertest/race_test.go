@@ -10,10 +10,10 @@ package routertest
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"runtime"
 	"sync"
 
+	"github.com/tsuru/tsuru/router"
 	check "gopkg.in/check.v1"
 )
 
@@ -24,24 +24,11 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	originalMaxProcs := runtime.GOMAXPROCS(4)
 	defer runtime.GOMAXPROCS(originalMaxProcs)
 	for i := 1; i < 256; i++ {
-		wg.Add(5)
+		wg.Add(2)
 		name := fmt.Sprintf("route-%d", i)
 		app := FakeApp{Name: name}
-		addr, _ := url.Parse(fmt.Sprintf("http://10.10.10.%d", i))
 		go func() {
-			fake.AddBackend(ctx, app)
-			wg.Done()
-		}()
-		go func() {
-			fake.AddRoutes(ctx, app, []*url.URL{addr})
-			wg.Done()
-		}()
-		go func() {
-			fake.RemoveRoutes(ctx, app, []*url.URL{addr})
-			wg.Done()
-		}()
-		go func() {
-			fake.HasRoute(name, addr.String())
+			fake.EnsureBackend(ctx, app, router.EnsureBackendOpts{})
 			wg.Done()
 		}()
 		go func() {

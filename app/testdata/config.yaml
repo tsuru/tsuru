@@ -8,5 +8,5 @@ routers:
   fake:
     type: fake
     default: true
-  fake-hc:
-    type: fake-hc
+  fake-tls:
+    type: fake-tls

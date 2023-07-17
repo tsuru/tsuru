@@ -47,8 +47,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "router_rebuild_tests")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake:default", true)
-	config.Set("routers:fake-hc:type", "fake-hc")
-	config.Set("routers:fake-prefix:type", "fake-prefix")
 	config.Set("docker:router", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	provision.DefaultProvisioner = "fake"
@@ -64,17 +62,16 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
-	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := app.GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
 		return a, err
 	})
-	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
 	provisiontest.ProvisionerInstance.Reset()
-	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.UnlimitedQuota}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})

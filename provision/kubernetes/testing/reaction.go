@@ -148,7 +148,7 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
-	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-default",
@@ -165,7 +165,6 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	return a, func() {
 			rollbackDeployment()
 		}, func() {
-			rebuild.Shutdown(context.Background())
 			rollbackDeployment()
 			if srv == nil {
 				return

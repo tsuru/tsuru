@@ -16,13 +16,7 @@ import (
 )
 
 var capMap = map[string][]string{
-	"v2":          {"router.RouterV2", "apiRouterV2"},
-	"cname":       {"router.CNameRouter", "apiRouterWithCnameSupport"},
-	"tls":         {"router.TLSRouter", "apiRouterWithTLSSupport"},
-	"healthcheck": {"router.CustomHealthcheckRouter", "apiRouterWithHealthcheckSupport"},
-	"info":        {"router.InfoRouter", "apiRouterWithInfo"},
-	"status":      {"router.StatusRouter", "apiRouterWithStatus"},
-	"prefix":      {"router.PrefixRouter", "apiRouterWithPrefix"},
+	"tls": {"router.TLSRouter", "apiRouterWithTLSSupport"},
 }
 
 var fileTpl = `// AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
@@ -55,12 +49,10 @@ func toSupportedInterface(base *apiRouter, supports map[capability]bool) router.
 	{{- end -}} {
 		return &struct {
 			router.Router
-			router.OptsRouter
 		{{ range $element -}}
 			{{ index (index $capMap (index $caps .)) 0 }}
 		{{ end -}}
 		}{
-			base,
 			base,
 			{{ range $element -}}
 				{{ index (index $capMap (index $caps .)) 1 }}Inst,
