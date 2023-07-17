@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
@@ -1278,7 +1279,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 		},
 	}
 	newAppEnvs := newApp.Envs()
-	delete(newAppEnvs, TsuruServicesEnvVar)
+	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 	c.Assert(buf.String(), check.Equals, "---- Setting 2 new environment variables ----\nrestarting app")
@@ -1468,7 +1469,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 		},
 	}
 	newAppEnvs := newApp.Envs()
-	delete(newAppEnvs, TsuruServicesEnvVar)
+	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
@@ -1871,8 +1872,8 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	serviceEnv := allEnvs[TsuruServicesEnvVar]
-	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
@@ -1886,7 +1887,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 			}},
 		},
 	})
-	delete(allEnvs, TsuruServicesEnvVar)
+	delete(allEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	delete(allEnvs, "TSURU_APPDIR")
 	delete(allEnvs, "TSURU_APPNAME")
 	delete(allEnvs, "TSURU_APP_TOKEN")
@@ -1930,8 +1931,8 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	serviceEnv := allEnvs[TsuruServicesEnvVar]
-	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
@@ -1967,8 +1968,8 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	serviceEnv := allEnvs[TsuruServicesEnvVar]
-	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
@@ -2005,8 +2006,8 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	serviceEnv := allEnvs[TsuruServicesEnvVar]
-	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
@@ -2052,8 +2053,8 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	serviceEnv := allEnvs[TsuruServicesEnvVar]
-	c.Assert(serviceEnv.Name, check.Equals, TsuruServicesEnvVar)
+	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
+	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(serviceEnv.Value), &serviceEnvVal)
@@ -2105,7 +2106,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 		Public: false,
 	})
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
 		"mysql": []interface{}{
@@ -2129,7 +2130,7 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 		Value:  "host1",
 		Public: false,
 	})
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
 		"mysql": []interface{}{
@@ -2160,7 +2161,7 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	allEnvs := a.Envs()
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{})
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
@@ -2192,7 +2193,7 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
 		"mysql": []interface{}{
@@ -2235,7 +2236,7 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
 		"mysql": []interface{}{
@@ -2269,7 +2270,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
 		"mysql": []interface{}{
@@ -2306,7 +2307,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
@@ -2335,7 +2336,7 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	var serviceEnvVal map[string]interface{}
-	err = json.Unmarshal([]byte(allEnvs[TsuruServicesEnvVar].Value), &serviceEnvVal)
+	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
@@ -3505,8 +3506,8 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 		},
 	}
 	env := app.Envs()
-	serviceEnvsRaw := env[TsuruServicesEnvVar]
-	delete(env, TsuruServicesEnvVar)
+	serviceEnvsRaw := env[tsuruEnvs.TsuruServicesEnvVar]
+	delete(env, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(env, check.DeepEquals, expected)
 	var serviceEnvVal map[string]interface{}
 	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)

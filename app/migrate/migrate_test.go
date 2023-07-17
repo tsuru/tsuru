@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/router"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -220,18 +221,18 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
 		allEnvs := dbApp.Envs()
 		if tt.expectedServicesEnv == "" {
-			tt.expectedServicesEnv = tt.app.Env[app.TsuruServicesEnvVar].Value
+			tt.expectedServicesEnv = tt.app.Env[tsuruEnvs.TsuruServicesEnvVar].Value
 		}
 		if tt.expectedServicesEnv != "" {
 			var oldServicesEnvVar map[string]interface{}
 			var newServicesEnvVar map[string]interface{}
 			err = json.Unmarshal([]byte(tt.expectedServicesEnv), &oldServicesEnvVar)
 			c.Assert(err, check.IsNil)
-			err = json.Unmarshal([]byte(allEnvs[app.TsuruServicesEnvVar].Value), &newServicesEnvVar)
+			err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &newServicesEnvVar)
 			c.Assert(err, check.IsNil)
 			c.Assert(oldServicesEnvVar, check.DeepEquals, newServicesEnvVar)
 		}
-		delete(allEnvs, app.TsuruServicesEnvVar)
+		delete(allEnvs, tsuruEnvs.TsuruServicesEnvVar)
 		c.Assert(allEnvs, check.DeepEquals, tt.expectedAllEnvs)
 	}
 	// Running again should change nothing

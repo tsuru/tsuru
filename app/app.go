@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/log"
@@ -91,8 +92,7 @@ const (
 	// "tsr" when the name of the daemon changed to "tsurud".
 	InternalAppName = "tsr"
 
-	TsuruServicesEnvVar = "TSURU_SERVICES"
-	defaultAppDir       = "/home/application/current"
+	defaultAppDir = "/home/application/current"
 
 	routerNone = "none"
 )
@@ -1549,20 +1549,6 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-func interpolate(mergedEnvs map[string]bindTypes.EnvVar, toInterpolate map[string]string, envName, varName string) {
-	delete(toInterpolate, envName)
-	if toInterpolate[varName] != "" {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[varName])
-		return
-	}
-	if _, isSet := mergedEnvs[varName]; !isSet {
-		return
-	}
-	env := mergedEnvs[envName]
-	env.Value = mergedEnvs[varName].Value
-	mergedEnvs[envName] = env
-}
-
 // Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bindTypes.EnvVar {
 	mergedEnvs := make(map[string]bindTypes.EnvVar, len(app.Env)+len(app.ServiceEnvs)+1)
@@ -1580,9 +1566,9 @@ func (app *App) Envs() map[string]bindTypes.EnvVar {
 	}
 	sort.Strings(toInterpolateKeys)
 	for _, envName := range toInterpolateKeys {
-		interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
+		tsuruEnvs.Interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
 	}
-	mergedEnvs[TsuruServicesEnvVar] = serviceEnvsFromEnvVars(app.ServiceEnvs)
+	mergedEnvs[tsuruEnvs.TsuruServicesEnvVar] = tsuruEnvs.ServiceEnvsFromEnvVars(app.ServiceEnvs)
 	return mergedEnvs
 }
 
@@ -1714,36 +1700,6 @@ func (app *App) RemoveCName(cnames ...string) error {
 	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
 	rebuild.RoutesRebuildOrEnqueue(app.Name)
 	return err
-}
-
-func serviceEnvsFromEnvVars(vars []bindTypes.ServiceEnvVar) bindTypes.EnvVar {
-	type serviceInstanceEnvs struct {
-		InstanceName string            `json:"instance_name"`
-		Envs         map[string]string `json:"envs"`
-	}
-	result := map[string][]serviceInstanceEnvs{}
-	for _, v := range vars {
-		found := false
-		for i, instanceList := range result[v.ServiceName] {
-			if instanceList.InstanceName == v.InstanceName {
-				result[v.ServiceName][i].Envs[v.Name] = v.Value
-				found = true
-				break
-			}
-		}
-		if !found {
-			result[v.ServiceName] = append(result[v.ServiceName], serviceInstanceEnvs{
-				InstanceName: v.InstanceName,
-				Envs:         map[string]string{v.Name: v.Value},
-			})
-		}
-	}
-	jsonVal, _ := json.Marshal(result)
-	return bindTypes.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  string(jsonVal),
-		Public: false,
-	}
 }
 
 func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {

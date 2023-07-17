@@ -6,7 +6,9 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/servicemanager"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -244,6 +246,156 @@ func (s *S) TestList(c *check.C) {
 	jobs, err := servicemanager.Job.List(context.TODO(), &jobTypes.Filter{})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(jobs), check.Equals, 2)
+}
+
+func (s *S) TestGetEnvs(c *check.C) {
+	job := &jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{
+					Name:   "MY_VAR",
+					Value:  "my-value",
+					Public: true,
+				},
+			},
+		},
+	}
+	expected := map[string]bindTypes.EnvVar{
+		"MY_VAR": {
+			Name:   "MY_VAR",
+			Value:  "my-value",
+			Public: true,
+		},
+		"TSURU_SERVICES": {
+			Name:  "TSURU_SERVICES",
+			Value: "{}",
+		},
+	}
+	env := servicemanager.Job.GetEnvs(context.TODO(), job)
+	c.Assert(env, check.DeepEquals, expected)
+}
+
+func (s *S) TestGetEnvsWithServiceEnvs(c *check.C) {
+	job := &jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{
+					Name:   "MY_VAR",
+					Value:  "my-value",
+					Public: true,
+				},
+			},
+			ServiceEnvs: []bindTypes.ServiceEnvVar{{
+				EnvVar: bindTypes.EnvVar{
+					Name:   "MY_SERVICE_VAR",
+					Value:  "my-service-value",
+					Public: true,
+				},
+				ServiceName:  "my-service",
+				InstanceName: "my-instance",
+			}},
+		},
+	}
+	expected := map[string]bindTypes.EnvVar{
+		"MY_VAR": {
+			Name:   "MY_VAR",
+			Value:  "my-value",
+			Public: true,
+		},
+		"MY_SERVICE_VAR": {
+			Name:   "MY_SERVICE_VAR",
+			Value:  "my-service-value",
+			Public: true,
+		},
+		"TSURU_SERVICES": {
+			Name:  "TSURU_SERVICES",
+			Value: "{\"my-service\":[{\"instance_name\":\"my-instance\",\"envs\":{\"MY_SERVICE_VAR\":\"my-service-value\"}}]}",
+		},
+	}
+	envs := servicemanager.Job.GetEnvs(context.TODO(), job)
+	c.Assert(envs, check.DeepEquals, expected)
+}
+
+func (s *S) TestJobEnvsWithServiceEnvConflict(c *check.C) {
+	job := &jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{
+					Name:   "MY_VAR",
+					Value:  "my-value",
+					Public: true,
+				},
+				{
+					Name:   "DB_HOST",
+					Value:  "fake.host",
+					Public: true,
+				},
+			},
+			ServiceEnvs: []bindTypes.ServiceEnvVar{{
+				EnvVar: bindTypes.EnvVar{
+					Name:   "DB_HOST",
+					Value:  "fake.host1",
+					Public: true,
+				},
+				ServiceName:  "my-service",
+				InstanceName: "my-instance-1",
+			}, {
+				EnvVar: bindTypes.EnvVar{
+					Name:   "DB_HOST",
+					Value:  "fake.host2",
+					Public: false,
+				},
+				ServiceName:  "my-service",
+				InstanceName: "my-instance-2",
+			}},
+		},
+	}
+
+	expected := map[string]bindTypes.EnvVar{
+		"MY_VAR": {
+			Name:   "MY_VAR",
+			Value:  "my-value",
+			Public: true,
+		},
+		"DB_HOST": {
+			Name:   "DB_HOST",
+			Value:  "fake.host2",
+			Public: false,
+		},
+	}
+	env := servicemanager.Job.GetEnvs(context.TODO(), job)
+	serviceEnvsRaw := env[tsuruEnvs.TsuruServicesEnvVar]
+	delete(env, tsuruEnvs.TsuruServicesEnvVar)
+	c.Assert(env, check.DeepEquals, expected)
+
+	var serviceEnvVal map[string]interface{}
+	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)
+	c.Assert(err, check.IsNil)
+	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{
+		"my-service": []interface{}{
+			map[string]interface{}{"instance_name": "my-instance-1", "envs": map[string]interface{}{
+				"DB_HOST": "fake.host1",
+			}},
+			map[string]interface{}{"instance_name": "my-instance-2", "envs": map[string]interface{}{
+				"DB_HOST": "fake.host2",
+			}},
+		},
+	})
 }
 
 func (s *S) TestAddServiceEnvToJobs(c *check.C) {
