@@ -152,6 +152,7 @@ type ServiceInstanceWithInfo struct {
 	Teams       []string
 	PlanName    string
 	Apps        []string
+	Jobs        []string
 	ServiceName string
 	Info        map[string]string
 	TeamOwner   string
@@ -171,6 +172,7 @@ func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
 		Teams:       si.Teams,
 		PlanName:    si.PlanName,
 		Apps:        si.Apps,
+		Jobs:        si.Jobs,
 		ServiceName: si.ServiceName,
 		Info:        info,
 		TeamOwner:   si.TeamOwner,

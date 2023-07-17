@@ -528,6 +528,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.13", http.MethodDelete, "/jobs/{name}", AuthorizationRequiredHandler(deleteJob))
 	m.Add("1.13", http.MethodPut, "/jobs/{name}", AuthorizationRequiredHandler(updateJob))
 	m.Add("1.13", http.MethodGet, "/jobs", AuthorizationRequiredHandler(jobList))
+	m.Add("1.16", http.MethodGet, "/jobs/{name}/env", AuthorizationRequiredHandler(getJobEnv))
 	m.Add("1.13", http.MethodPost, "/jobs/{name}/env", AuthorizationRequiredHandler(setJobEnv))
 	m.Add("1.13", http.MethodDelete, "/jobs/{name}/env", AuthorizationRequiredHandler(unsetJobEnv))
 	m.Add("1.13", http.MethodGet, "/jobs/{name}/log", AuthorizationRequiredHandler(jobLog))

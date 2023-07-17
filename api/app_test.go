@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -3753,7 +3754,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	a, err = app.GetByName(context.TODO(), "losers")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
-	delete(envs, app.TsuruServicesEnvVar)
+	delete(envs, tsuruEnvs.TsuruServicesEnvVar)
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:  "DATABASE_HOST",

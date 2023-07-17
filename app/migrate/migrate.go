@@ -13,6 +13,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/router"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
@@ -68,7 +69,7 @@ func MigrateAppTsuruServicesVarToServiceEnvs() error {
 	iter := conn.Apps().Find(nil).Iter()
 	var a app.App
 	for iter.Next(&a) {
-		serviceEnvVar := a.Env[app.TsuruServicesEnvVar]
+		serviceEnvVar := a.Env[tsuruEnvs.TsuruServicesEnvVar]
 		if serviceEnvVar.Value == "" {
 			continue
 		}

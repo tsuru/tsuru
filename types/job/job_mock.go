@@ -8,6 +8,7 @@ import (
 	"context"
 
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	bindTypes "github.com/tsuru/tsuru/types/bind"
 )
 
 var _ JobService = &MockJobService{}
@@ -23,6 +24,7 @@ type MockJobService struct {
 	OnAddServiceEnv         func(*Job, AddInstanceArgs) error
 	OnRemoveServiceEnv      func(*Job, RemoveInstanceArgs) error
 	OnUpdateJobProv         func(*Job) error
+	OnGetEnvs               func(*Job) map[string]bindTypes.EnvVar
 }
 
 func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User) error {
@@ -93,4 +95,11 @@ func (m *MockJobService) UpdateJobProv(ctx context.Context, job *Job) error {
 		return nil
 	}
 	return m.OnUpdateJobProv(job)
+}
+
+func (m *MockJobService) GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar {
+	if m.OnGetEnvs == nil {
+		return nil
+	}
+	return m.OnGetEnvs(job)
 }

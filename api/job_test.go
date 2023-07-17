@@ -1810,6 +1810,222 @@ func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *
 	c.Check(recorder.Body.String(), check.Equals, "Failed to unbind (\"/resources/my-mysql/binds/jobs/test-job\"): invalid response:  (code: 500)\n")
 }
 
+func (s *S) TestGetEnvsAllJobEnvs(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{Name: "MY_ENV", Value: "my-value", Public: true},
+				{Name: "YOUR_ENV", Value: "your-value", Public: true},
+				{Name: "THEIR_ENV", Value: "their-value", Public: true},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env", job.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	expected := []bindTypes.EnvVar{
+		{Name: "MY_ENV", Value: "my-value", Public: true},
+		{Name: "YOUR_ENV", Value: "your-value", Public: true},
+		{Name: "THEIR_ENV", Value: "their-value", Public: true},
+		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
+	}
+	result := []bindTypes.EnvVar{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, len(expected))
+
+	for _, r := range result {
+		for _, e := range expected {
+			if e.Name == r.Name {
+				c.Check(e.Public, check.Equals, r.Public)
+				c.Check(e.Value, check.Equals, r.Value)
+			}
+		}
+	}
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+}
+
+func (s *S) TestGetOneJobEnv(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{Name: "MY_ENV", Value: "my-value", Public: true},
+				{Name: "YOUR_ENV", Value: "your-value", Public: true},
+				{Name: "THEIR_ENV", Value: "their-value", Public: true},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env?env=MY_ENV", job.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	expected := []map[string]interface{}{{
+		"name":   "MY_ENV",
+		"value":  "my-value",
+		"public": true,
+		"alias":  "",
+	}}
+	result := []map[string]interface{}{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+}
+
+func (s *S) TestGetMultipleJobEnvs(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{Name: "MY_ENV", Value: "my-value", Public: true},
+				{Name: "YOUR_ENV", Value: "your-value", Public: true},
+				{Name: "THEIR_ENV", Value: "their-value", Public: true},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	url := fmt.Sprintf("/jobs/%s/env?env=MY_ENV&env=THEIR_ENV", job.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/json")
+
+	expected := []map[string]interface{}{
+		{"name": "MY_ENV", "value": "my-value", "public": true, "alias": ""},
+		{"name": "THEIR_ENV", "value": "their-value", "public": true, "alias": ""},
+	}
+	var got []map[string]interface{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *S) TestGetEnvJobDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("GET", "/jobs/unknown/env", nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Job unknown not found.\n")
+}
+
+func (s *S) TestGetJobEnvUserDoesNotHaveAccessToTheJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		prov := provisiontest.ProvisionerInstance
+		prov.LogsEnabled = true
+		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
+	})
+	defer provision.Unregister("jobProv")
+	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
+	c.Assert(err, check.IsNil)
+
+	job := jobTypes.Job{
+		Name:      "test-job",
+		Pool:      "pool1",
+		TeamOwner: s.team.Name,
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Envs: []bindTypes.EnvVar{
+				{Name: "MY_ENV", Value: "my-value", Public: true},
+			},
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobRead,
+		Context: permission.Context(permTypes.CtxJob, "-invalid-"),
+	})
+	url := fmt.Sprintf("/jobs/%s/env?envs=MY_ENV", job.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+}
+
 func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 	err := pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool1", Default: false, Public: true})
 	c.Assert(err, check.IsNil)

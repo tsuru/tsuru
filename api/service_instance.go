@@ -432,6 +432,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 
 type serviceInstanceInfo struct {
 	Apps            []string
+	Jobs            []string
 	Teams           []string
 	TeamOwner       string
 	Description     string
@@ -481,6 +482,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	sInfo := serviceInstanceInfo{
 		Apps:            serviceInstance.Apps,
+		Jobs:            serviceInstance.Jobs,
 		Teams:           serviceInstance.Teams,
 		TeamOwner:       serviceInstance.TeamOwner,
 		Description:     serviceInstance.Description,

@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
+	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -267,6 +268,33 @@ func (*jobService) List(ctx context.Context, filter *jobTypes.Filter) ([]jobType
 		return nil, err
 	}
 	return jobs, nil
+}
+
+func (*jobService) GetEnvs(ctx context.Context, job *jobTypes.Job) map[string]bindTypes.EnvVar {
+	mergedEnvs := make(map[string]bindTypes.EnvVar, len(job.Spec.Envs)+len(job.Spec.ServiceEnvs)+1)
+	toInterpolate := make(map[string]string)
+	var toInterpolateKeys []string
+
+	for _, e := range job.Spec.Envs {
+		mergedEnvs[e.Name] = e
+		if e.Alias != "" {
+			toInterpolate[e.Name] = e.Alias
+			toInterpolateKeys = append(toInterpolateKeys, e.Name)
+		}
+	}
+
+	for _, e := range job.Spec.ServiceEnvs {
+		mergedEnvs[e.Name] = e.EnvVar
+	}
+	sort.Strings(toInterpolateKeys)
+
+	for _, envName := range toInterpolateKeys {
+		tsuruEnvs.Interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
+	}
+
+	mergedEnvs[tsuruEnvs.TsuruServicesEnvVar] = tsuruEnvs.ServiceEnvsFromEnvVars(job.Spec.ServiceEnvs)
+
+	return mergedEnvs
 }
 
 func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) error {

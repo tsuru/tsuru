@@ -599,6 +599,62 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	return nil
 }
 
+// title: get envs
+// path: /jobs/{name}/env
+// method: GET
+// produce: application/x-json-stream
+// responses:
+//
+//	200: OK
+//	401: Unauthorized
+//	404: Job not found
+func getJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	var variables []string
+
+	query := r.URL.Query()
+	if envs, ok := query["env"]; ok {
+		variables = envs
+	}
+
+	jobName := query.Get(":name")
+	job, err := getJob(ctx, jobName)
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(t, permission.PermJobRead,
+		contextsForJob(job)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	return filterJobEnvVars(ctx, w, job, variables)
+}
+
+func filterJobEnvVars(ctx stdContext.Context, w http.ResponseWriter, job *jobTypes.Job, variables []string) error {
+	var result []bindTypes.EnvVar
+	w.Header().Set("Content-Type", "application/json")
+
+	envs := servicemanager.Job.GetEnvs(ctx, job)
+
+	if len(variables) == 0 {
+		for _, v := range envs {
+			result = append(result, v)
+		}
+		return json.NewEncoder(w).Encode(result)
+	}
+
+	for _, variable := range variables {
+		if v, ok := envs[variable]; ok {
+			result = append(result, v)
+		}
+	}
+
+	return json.NewEncoder(w).Encode(result)
+}
+
 // title: set envs
 // path: /jobs/{name}/env
 // method: POST

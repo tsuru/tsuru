@@ -100,4 +100,5 @@ type JobService interface {
 	AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
 	RemoveServiceEnv(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
 	UpdateJobProv(ctx context.Context, job *Job) error
+	GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar
 }
