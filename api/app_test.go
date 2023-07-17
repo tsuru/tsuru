@@ -35,7 +35,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -630,7 +630,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddBackend(context.TODO(), &app1)
+	routertest.FakeRouter.EnsureBackend(context.TODO(), &app1, router.EnsureBackendOpts{})
 	request, err := http.NewRequest("GET", "/apps/app1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -5975,43 +5975,6 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(app, check.DeepEquals, *expected)
 }
 
-func (s *S) TestSwap(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
 func (s *S) TestSwapCnameOnly(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app1.io"}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
@@ -6157,6 +6120,24 @@ func (s *S) TestSwapIncompatibleUnits(c *check.C) {
 }
 
 func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
+	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name, CName: []string{"app1.etc.io"}}
+	err := app.CreateApp(context.TODO(), &app1, s.user)
+	c.Assert(err, check.IsNil)
+	app2 := app.App{Name: "app2", Platform: "y", TeamOwner: s.team.Name, CName: []string{"app2.etc.io"}}
+	err = app.CreateApp(context.TODO(), &app2, s.user)
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader("app1=app1&app2=app2&force=true&cnameOnly=true")
+	request, err := http.NewRequest("POST", "/swap", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "")
+}
+
+func (s *S) TestSwapDeprecated(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -6170,8 +6151,8 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Body.String(), check.Equals, "swapping without cnameOnly is deprecated\n")
 }
 
 func (s *S) TestStartHandler(c *check.C) {
@@ -6264,9 +6245,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(context.TODO(), &a)
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), &a, []*url.URL{
-		{Host: "h1"},
-	})
+	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &a, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("dry", "true")
@@ -6279,38 +6258,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	var parsed map[string]rebuild.RebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &parsed)
-	c.Assert(err, check.IsNil)
-	c.Assert(parsed, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
-		"fake": {
-			PrefixResults: []rebuild.RebuildPrefixResult{
-				{
-					Added:   nil,
-					Removed: []string{"http://h1"},
-				},
-			},
-		},
-	})
-
-	var compatResult map[string]compatRebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &compatResult)
-	c.Assert(err, check.IsNil)
-	c.Assert(compatResult, check.DeepEquals, map[string]compatRebuildRoutesResult{
-		"fake": {
-			RebuildRoutesResult: rebuild.RebuildRoutesResult{
-				PrefixResults: []rebuild.RebuildPrefixResult{
-					{
-						Added:   nil,
-						Removed: []string{"http://h1"},
-					},
-				},
-			},
-			Added:   nil,
-			Removed: []string{"http://h1"},
-		},
-	})
-
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -6318,10 +6265,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "dry", "value": "true"},
 			{"name": ":app", "value": a.Name},
-		},
-		EndCustomData: map[string]interface{}{
-			"fake.prefixresults.added":   []string(nil),
-			"fake.prefixresults.removed": []string{"http://h1"},
 		},
 	}, eventtest.HasEvent)
 }

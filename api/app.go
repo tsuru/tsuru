@@ -1820,11 +1820,13 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 				Message: "platforms don't match",
 			}
 		}
-		app1Units, err := app1.Units()
+		var app1Units []provision.Unit
+		app1Units, err = app1.Units()
 		if err != nil {
 			return err
 		}
-		app2Units, err := app2.Units()
+		var app2Units []provision.Unit
+		app2Units, err = app2.Units()
 		if err != nil {
 			return err
 		}
@@ -1835,7 +1837,15 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			}
 		}
 	}
-	return app.Swap(ctx, app1, app2, cnameOnly)
+	err = app.Swap(ctx, app1, app2, cnameOnly)
+	if pkgErrors.Cause(err) == app.ErrSwapDeprecated {
+		return &errors.HTTP{
+			Code:    http.StatusPreconditionFailed,
+			Message: err.Error(),
+		}
+	}
+
+	return err
 }
 
 // title: app start
@@ -1947,18 +1957,9 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
-// compatRebuildRoutesResult is a backward compatible rebuild routes struct
-// used in the handler so that old clients won't break.
-type compatRebuildRoutesResult struct {
-	rebuild.RebuildRoutesResult
-	Added   []string
-	Removed []string
-}
-
 // title: rebuild routes
 // path: /apps/{app}/routes
 // method: POST
-// produce: application/json
 // responses:
 //
 //	200: Ok
@@ -1988,33 +1989,11 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	result := make(map[string]rebuild.RebuildRoutesResult)
-	defer func() { evt.DoneCustomData(err, result) }()
-	w.Header().Set("Content-Type", "application/json")
-	result, err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:  &a,
-		Wait: true,
-		Dry:  dry,
+	defer func() { evt.Done(err) }()
+	return rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
+		App: &a,
+		Dry: dry,
 	})
-	if err != nil {
-		return err
-	}
-
-	compatResult := make(map[string]compatRebuildRoutesResult)
-	for routerName, routerResult := range result {
-		compatRouterResult := compatRebuildRoutesResult{
-			RebuildRoutesResult: routerResult,
-		}
-		for _, prefixResult := range routerResult.PrefixResults {
-			if prefixResult.Prefix == "" {
-				compatRouterResult.Added = prefixResult.Added
-				compatRouterResult.Removed = prefixResult.Removed
-				break
-			}
-		}
-		compatResult[routerName] = compatRouterResult
-	}
-	return json.NewEncoder(w).Encode(&compatResult)
 }
 
 // title: set app certificate

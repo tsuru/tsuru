@@ -345,9 +345,12 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(ctx, &opts, opts.Event)
-	rebuild.RoutesRebuildOrEnqueueWithProgress(opts.App.Name, opts.Event)
 	if err != nil {
 		return "", newErrorWithLog(err, opts.App, "deploy")
+	}
+	err = rebuild.RebuildRoutesWithAppName(opts.App.Name, opts.Event)
+	if err != nil {
+		return "", err
 	}
 	err = incrementDeploy(opts.App)
 	if err != nil {

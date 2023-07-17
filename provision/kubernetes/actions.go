@@ -66,7 +66,7 @@ var rebuildAppRoutes = action.Action{
 	Name: "rebuild-routes-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		params := ctx.Params[0].(updatePipelineParams)
-		rebuild.RoutesRebuildOrEnqueue(params.new.GetName())
+		rebuild.RebuildRoutesWithAppName(params.new.GetName(), nil)
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -75,7 +75,7 @@ var rebuildAppRoutes = action.Action{
 			log.Errorf("BACKWARDS failed to update namespace: %v", err)
 			return
 		}
-		rebuild.RoutesRebuildOrEnqueue(params.old.GetName())
+		rebuild.RebuildRoutesWithAppName(params.old.GetName(), nil)
 	},
 }
 

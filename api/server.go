@@ -562,34 +562,18 @@ func startServer(handler http.Handler) error {
 	defer srvConf.shutdown(srvConf.shutdownTimeout)
 
 	shutdown.Register(&logTracker)
-	var startupMessage string
-	err = router.Initialize()
-	if err != nil {
-		return err
-	}
 	routers, err := router.List(ctx)
 	if err != nil {
 		return err
 	}
 	for _, routerDesc := range routers {
-		var r router.Router
-		r, err = router.Get(ctx, routerDesc.Name)
+		_, err = router.Get(ctx, routerDesc.Name)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Registered router %q", routerDesc.Name)
-		if messageRouter, ok := r.(router.MessageRouter); ok {
-			startupMessage, err = messageRouter.StartupMessage()
-			if err == nil && startupMessage != "" {
-				fmt.Printf(": %s", startupMessage)
-			}
-		}
-		fmt.Println()
 	}
-	err = rebuild.Initialize(appFinder)
-	if err != nil {
-		return err
-	}
+	rebuild.Initialize(appFinder)
 	scheme, err := getAuthScheme()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.")

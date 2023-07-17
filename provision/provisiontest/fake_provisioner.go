@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
@@ -113,7 +114,7 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 		units:           make([]provision.Unit, units),
 		Pool:            pool,
 	}
-	routertest.FakeRouter.AddBackend(context.TODO(), &app)
+	routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
@@ -312,11 +313,7 @@ func (app *FakeApp) GetRouters() []appTypes.AppRouter {
 }
 
 func (app *FakeApp) GetAddresses() ([]string, error) {
-	addr, err := routertest.FakeRouter.Addr(context.TODO(), app)
-	if err != nil {
-		return nil, err
-	}
-	return []string{addr}, nil
+	return routertest.FakeRouter.Addresses(context.TODO(), app)
 }
 
 func (app *FakeApp) GetInternalBindableAddresses() ([]string, error) {
@@ -532,10 +529,6 @@ func (p *FakeProvisioner) Reset() {
 	}
 }
 
-func (p *FakeProvisioner) Swap(ctx context.Context, app1, app2 provision.App, cnameOnly bool) error {
-	return routertest.FakeRouter.Swap(ctx, app1, app2, cnameOnly)
-}
-
 func (p *FakeProvisioner) Deploy(ctx context.Context, args provision.DeployArgs) (string, error) {
 	if err := p.getError("Deploy"); err != nil {
 		return "", err
@@ -659,7 +652,6 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 	name := app.GetName()
 	platform := app.GetPlatform()
 	length := uint(len(pApp.units))
-	var addresses []*url.URL
 
 	var versionNum int
 	if version != nil {
@@ -686,13 +678,8 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 			},
 			Version: versionNum,
 		}
-		addresses = append(addresses, unit.Address)
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
-	}
-	err := routertest.FakeRouter.AddRoutes(context.TODO(), app, addresses)
-	if err != nil {
-		return nil, err
 	}
 	result := make([]provision.Unit, int(n))
 	copy(result, pApp.units[length:])
@@ -718,17 +705,15 @@ func (p *FakeProvisioner) RemoveUnits(ctx context.Context, app provision.App, n 
 	}
 	var newUnits []provision.Unit
 	removedCount := n
-	var addresses []*url.URL
 	for _, u := range pApp.units {
 		if removedCount > 0 && u.ProcessName == process {
 			removedCount--
-			addresses = append(addresses, u.Address)
 			continue
 		}
 		newUnits = append(newUnits, u)
 	}
-	err := routertest.FakeRouter.RemoveRoutes(ctx, app, addresses)
-	if err != nil {
+	err := routertest.FakeRouter.RemoveBackend(ctx, app)
+	if err != router.ErrBackendNotFound && err != nil {
 		return err
 	}
 	if removedCount > 0 {
@@ -809,49 +794,15 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
-	return routertest.FakeRouter.Addr(context.TODO(), app)
-}
 
-func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
-	if err := p.getError("SetCName"); err != nil {
-		return err
+	addrs, err := routertest.FakeRouter.Addresses(context.TODO(), app)
+	if err != nil {
+		return "", err
 	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return errNotProvisioned
+	if len(addrs) > 0 {
+		return addrs[0], nil
 	}
-	pApp.cnames = append(pApp.cnames, cname)
-	p.apps[app.GetName()] = pApp
-	return routertest.FakeRouter.SetCName(context.TODO(), cname, app)
-}
-
-func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
-	if err := p.getError("UnsetCName"); err != nil {
-		return err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp.cnames = []string{}
-	p.apps[app.GetName()] = pApp
-	return routertest.FakeRouter.UnsetCName(context.TODO(), cname, app)
-}
-
-func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
-	p.mut.RLock()
-	pApp, ok := p.apps[app.GetName()]
-	p.mut.RUnlock()
-	for _, cnameApp := range pApp.cnames {
-		if cnameApp == cname {
-			return ok && true
-		}
-	}
-	return false
+	return "", nil
 }
 
 func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process string, version appTypes.AppVersion, w io.Writer) error {
@@ -1058,7 +1009,6 @@ type provisionedApp struct {
 	restarts  map[string]int
 	starts    map[string]int
 	stops     map[string]int
-	cnames    []string
 	unitLen   int
 	lastData  map[string]interface{}
 	image     string
