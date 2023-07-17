@@ -54,6 +54,7 @@ require (
 	k8s.io/code-generator v0.20.6
 	k8s.io/ingress-gce v1.20.1
 	k8s.io/metrics v0.20.6
+	github.com/rs/cors v1.9.0
 )
 
 require gopkg.in/yaml.v2 v2.4.0 // indirect
