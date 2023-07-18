@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
 )
@@ -29,12 +30,16 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 	waitCron := s.mock.CronJobReactions(c)
 	defer waitCron()
 	tests := []struct {
-		name           string
-		scenario       func()
-		expectedTarget *apiv1beta1.CronJob
+		name      string
+		scenario  func()
+		namespace string
+		jobName   string
+		assertion func(c *check.C, gotCron *apiv1beta1.CronJob)
 	}{
 		{
-			name: "simple create cronjob",
+			name:      "simple create cronjob",
+			jobName:   "myjob",
+			namespace: "default",
 			scenario: func() {
 				cj := jobTypes.Job{
 					Name:      "myjob",
@@ -70,88 +75,103 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
-			expectedTarget: &apiv1beta1.CronJob{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "myjob",
-					Namespace: "default",
-					Labels: map[string]string{
-						"app.kubernetes.io/component":  "job",
-						"app.kubernetes.io/managed-by": "tsuru",
-						"app.kubernetes.io/name":       "tsuru-job",
-						"app.kubernetes.io/instance":   "myjob",
-						"tsuru.io/is-tsuru":            "true",
-						"tsuru.io/is-service":          "true",
-						"tsuru.io/job-name":            "myjob",
-						"tsuru.io/job-pool":            "test-default",
-						"tsuru.io/job-team":            "admin",
-						"tsuru.io/is-job":              "true",
-						"tsuru.io/job-manual":          "false",
-						"tsuru.io/is-build":            "false",
-						"tsuru.io/is-deploy":           "false",
-						"label1":                       "value1",
+			assertion: func(c *check.C, gotCron *apiv1beta1.CronJob) {
+				expectedTarget := &apiv1beta1.CronJob{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app.kubernetes.io/component":  "job",
+							"app.kubernetes.io/managed-by": "tsuru",
+							"app.kubernetes.io/name":       "tsuru-job",
+							"app.kubernetes.io/instance":   "myjob",
+							"tsuru.io/is-tsuru":            "true",
+							"tsuru.io/is-service":          "true",
+							"tsuru.io/job-name":            "myjob",
+							"tsuru.io/job-pool":            "test-default",
+							"tsuru.io/job-team":            "admin",
+							"tsuru.io/is-job":              "true",
+							"tsuru.io/job-manual":          "false",
+							"tsuru.io/is-build":            "false",
+							"tsuru.io/is-deploy":           "false",
+							"label1":                       "value1",
+						},
+						Annotations: map[string]string{"annotation1": "value2"},
 					},
-					Annotations: map[string]string{"annotation1": "value2"},
-				},
-				Spec: apiv1beta1.CronJobSpec{
-					Schedule: "* * * * *",
-					Suspend:  func() *bool { r := false; return &r }(),
-					JobTemplate: apiv1beta1.JobTemplateSpec{
-						Spec: batchv1.JobSpec{
-							Parallelism:           func() *int32 { r := int32(3); return &r }(),
-							Completions:           func() *int32 { r := int32(1); return &r }(),
-							ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
-							BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
-							Template: corev1.PodTemplateSpec{
-								ObjectMeta: v1.ObjectMeta{
-									Labels: map[string]string{
-										"app.kubernetes.io/component":  "job",
-										"app.kubernetes.io/managed-by": "tsuru",
-										"app.kubernetes.io/name":       "tsuru-job",
-										"app.kubernetes.io/instance":   "myjob",
-										"tsuru.io/is-tsuru":            "true",
-										"tsuru.io/is-service":          "true",
-										"tsuru.io/job-name":            "myjob",
-										"tsuru.io/job-pool":            "test-default",
-										"tsuru.io/job-team":            "admin",
-										"tsuru.io/is-job":              "true",
-										"tsuru.io/job-manual":          "false",
-										"tsuru.io/is-build":            "false",
-										"tsuru.io/is-deploy":           "false",
-										"label1":                       "value1",
+					Spec: apiv1beta1.CronJobSpec{
+						Schedule: "* * * * *",
+						Suspend:  func() *bool { r := false; return &r }(),
+						JobTemplate: apiv1beta1.JobTemplateSpec{
+							Spec: batchv1.JobSpec{
+								Parallelism:           func() *int32 { r := int32(3); return &r }(),
+								Completions:           func() *int32 { r := int32(1); return &r }(),
+								ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
+								BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
+								Template: corev1.PodTemplateSpec{
+									ObjectMeta: v1.ObjectMeta{
+										Labels: map[string]string{
+											"app.kubernetes.io/component":  "job",
+											"app.kubernetes.io/managed-by": "tsuru",
+											"app.kubernetes.io/name":       "tsuru-job",
+											"app.kubernetes.io/instance":   "myjob",
+											"tsuru.io/is-tsuru":            "true",
+											"tsuru.io/is-service":          "true",
+											"tsuru.io/job-name":            "myjob",
+											"tsuru.io/job-pool":            "test-default",
+											"tsuru.io/job-team":            "admin",
+											"tsuru.io/is-job":              "true",
+											"tsuru.io/job-manual":          "false",
+											"tsuru.io/is-build":            "false",
+											"tsuru.io/is-deploy":           "false",
+											"label1":                       "value1",
+										},
+										Annotations: map[string]string{"annotation1": "value2"},
 									},
-									Annotations: map[string]string{"annotation1": "value2"},
-								},
-								Spec: corev1.PodSpec{
-									Containers: []corev1.Container{
-										{
-											Name:    "job",
-											Image:   "ubuntu:latest",
-											Command: []string{"echo", "hello world"},
-											Env:     []corev1.EnvVar{},
-											Resources: apiv1.ResourceRequirements{
-												Limits: corev1.ResourceList{
-													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
-												},
-												Requests: corev1.ResourceList{
-													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+									Spec: corev1.PodSpec{
+										Containers: []corev1.Container{
+											{
+												Name:    "job",
+												Image:   "ubuntu:latest",
+												Command: []string{"echo", "hello world"},
+												Env:     []corev1.EnvVar{},
+												Resources: apiv1.ResourceRequirements{
+													Limits: corev1.ResourceList{
+														apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+													},
+													Requests: corev1.ResourceList{
+														apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+													},
 												},
 											},
 										},
+										RestartPolicy: "OnFailure",
 									},
-									RestartPolicy: "OnFailure",
 								},
 							},
 						},
 					},
-				},
+				}
+				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), "job-"+expectedTarget.Name, metav1.GetOptions{})
+				c.Assert(err, check.IsNil)
+				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "job-" + expectedTarget.Name,
+						Namespace: expectedTarget.Namespace,
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru":    "true",
+							"tsuru.io/job-name":    expectedTarget.Name,
+							"tsuru.io/provisioner": "kubernetes",
+						},
+					},
+				})
 			},
 		},
 	}
 	for _, tt := range tests {
 		tt.scenario()
-		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
+		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, v1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
+		tt.assertion(c, gotCron)
 	}
 }
 
