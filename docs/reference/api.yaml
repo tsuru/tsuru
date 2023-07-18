@@ -5639,6 +5639,37 @@ definitions:
         type: integer
         format: int64
         description: Number of Deploys
+      unitsMetrics:
+        type: array
+        description: Unit metrics.
+        items:
+          type: object
+          $ref: "#/definitions/UnitMetrics"
+      autoscaleRecommendation:
+        type: array
+        description: Autoscale Recommendations
+        items:
+          type: object
+          $ref: "#/definitions/RecommendedResources"
+      error:
+        type: string
+        description: Errors during AppGet
+      quota:
+        type: object
+        $ref: "#/definitions/Quota"
+      serviceInstanceBinds:
+        type: array
+        description: Service instance binds on the app
+        items:
+          type: object
+          description: Service instance bind
+          properties:
+            service:
+              type: string
+            instance:
+              type: string
+            plan:
+              type: string
       routers:
         type: array
         items:
@@ -5703,6 +5734,9 @@ definitions:
       plan:
         type: object
         $ref: "#/definitions/Plan"
+      lock:
+        type: object
+        $ref: "#/definitions/AppLock"
       pool:
         type: string
         description: App pool.
@@ -5736,6 +5770,44 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSpec"
+  AppLock:
+    type: object
+    description: Stores information about a lock hold on the app
+    properties:
+      locked:
+        type: boolean
+      reason:
+        type: string
+      owner:
+        type: string
+      acquireDate:
+        type: string
+        format: date-time
+  UnitMetrics:
+    type: object
+    properties:
+      id:
+        type: string
+      cpu:
+        type: string
+      memory:
+        type: string
+  RecommendedResources:
+    type: object
+    properties:
+      process:
+        type: string
+      recommendations:
+        type: array
+        items:
+          type: object
+          properties:
+            type:
+              type: string
+            cpu:
+              type: string
+            memory:
+              type: string
   CertificateSetData:
     type: object
     properties:
