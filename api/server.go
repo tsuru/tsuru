@@ -535,6 +535,10 @@ func RunServer(dry bool) http.Handler {
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
+	if c := corsMiddleware(); c != nil {
+		stdLog.Printf("Cors enabled")
+		n.Use(c)
+	}
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
 	n.Use(negroni.HandlerFunc(contextNoCancelMiddleware))
 	if !dry {
@@ -551,10 +555,6 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-
-	if c := corsMiddleware(); c != nil {
-		n.Use(c)
-	}
 
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 

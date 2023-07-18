@@ -5,6 +5,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/rs/cors"
 	"github.com/tsuru/config"
 )
@@ -17,5 +19,7 @@ func corsMiddleware() *cors.Cors {
 	}
 	return cors.New(cors.Options{
 		AllowedOrigins: allowedOrigins,
+		AllowedMethods: []string{http.MethodGet, http.MethodDelete, http.MethodHead, http.MethodOptions, http.MethodPut, http.MethodPost, http.MethodConnect},
+		AllowedHeaders: []string{"*"},
 	})
 }
