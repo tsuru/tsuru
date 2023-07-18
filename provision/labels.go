@@ -535,6 +535,7 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 
 type ServiceAccountLabelsOpts struct {
 	App               App
+	Job               *jobTypes.Job
 	NodeContainerName string
 	Provisioner       string
 	Prefix            string
@@ -545,10 +546,12 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 		labelIsTsuru:     strconv.FormatBool(true),
 		labelProvisioner: opts.Provisioner,
 	}
-	if opts.App == nil {
+	if opts.App == nil && opts.Job == nil {
 		labelMap[labelNodeContainerName] = opts.NodeContainerName
-	} else {
+	} else if opts.App != nil {
 		labelMap[LabelAppName] = opts.App.GetName()
+	} else {
+		labelMap[LabelJobName] = opts.Job.Name
 	}
 	return &LabelSet{
 		Labels: labelMap,

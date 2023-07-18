@@ -120,6 +120,9 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job
 	if err != nil {
 		return "", err
 	}
+	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
+		return "", err
+	}
 	jobLabels, jobAnnotations := buildMetadata(ctx, job)
 	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
 	if err != nil {
@@ -308,4 +311,14 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
 		"cluster-start-time": evt.CreationTimestamp.String(),
 	}
 	e.DoneCustomData(evtErr, customData)
+}
+
+func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job jobTypes.Job) error {
+	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
+		Job:         &job,
+		Provisioner: provisionerName,
+		Prefix:      tsuruLabelPrefix,
+	})
+	ns := client.PoolNamespace(job.Pool)
+	return ensureServiceAccount(ctx, client, serviceAccountNameForJob(job), labels, ns, &job.Metadata)
 }
