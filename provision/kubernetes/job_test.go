@@ -151,6 +151,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 					},
 				}
+				c.Assert(*gotCron, check.DeepEquals, *expectedTarget)
 				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), "job-"+expectedTarget.Name, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{

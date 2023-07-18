@@ -546,9 +546,7 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 		labelIsTsuru:     strconv.FormatBool(true),
 		labelProvisioner: opts.Provisioner,
 	}
-	if opts.App == nil && opts.Job == nil {
-		labelMap[labelNodeContainerName] = opts.NodeContainerName
-	} else if opts.App != nil {
+	if opts.App != nil {
 		labelMap[LabelAppName] = opts.App.GetName()
 	} else {
 		labelMap[LabelJobName] = opts.Job.Name
