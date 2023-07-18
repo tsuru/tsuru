@@ -14,6 +14,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
@@ -187,17 +188,10 @@ func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
-func (s *S) TestOAuthAppLogin(c *check.C) {
-	scheme := oAuthScheme{}
-	token, err := scheme.AppLogin(context.TODO(), "myApp")
-	c.Assert(err, check.IsNil)
-	c.Assert(token.IsAppToken(), check.Equals, true)
-	c.Assert(token.GetAppName(), check.Equals, "myApp")
-}
-
 func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
+	nativeScheme := &native.NativeScheme{}
 	scheme := oAuthScheme{}
-	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
+	appToken, err := nativeScheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)

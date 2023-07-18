@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	samlErrors "github.com/tsuru/tsuru/auth/saml/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -46,10 +45,6 @@ type BaseConfig struct {
 
 func init() {
 	auth.RegisterScheme("saml", &SAMLAuthScheme{})
-}
-
-func (s SAMLAuthScheme) AppLogout(ctx context.Context, token string) error {
-	return s.Logout(ctx, token)
 }
 
 // This method loads basic config and returns a copy of the
@@ -236,11 +231,6 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	req.Email = email
 	req.Update()
 	return nil
-}
-
-func (s *SAMLAuthScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
-	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogin(ctx, appName)
 }
 
 func (s *SAMLAuthScheme) Logout(ctx context.Context, token string) error {

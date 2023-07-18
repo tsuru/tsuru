@@ -37,7 +37,6 @@ import (
 	"github.com/tsuru/tsuru/app/version"
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
-	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/db"

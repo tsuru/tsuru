@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/auth/saml/errors"
 	check "gopkg.in/check.v1"
 )
@@ -460,17 +461,10 @@ func (s *S) TestSamlParseXml(c *check.C) {
 	c.Assert(response, check.NotNil)
 }
 
-func (s *S) TestSamlAppLogin(c *check.C) {
-	scheme := SAMLAuthScheme{}
-	token, err := scheme.AppLogin(context.TODO(), "myApp")
-	c.Assert(err, check.IsNil)
-	c.Assert(token.IsAppToken(), check.Equals, true)
-	c.Assert(token.GetAppName(), check.Equals, "myApp")
-}
-
 func (s *S) TestSamlAuthWithAppToken(c *check.C) {
+	nativeScheme := native.NativeScheme{}
 	scheme := SAMLAuthScheme{}
-	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
+	appToken, err := nativeScheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)

@@ -185,16 +185,6 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 	return &token, nil
 }
 
-func (s *oAuthScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
-	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogin(ctx, appName)
-}
-
-func (s *oAuthScheme) AppLogout(ctx context.Context, token string) error {
-	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogout(ctx, token)
-}
-
 func (s *oAuthScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
 }

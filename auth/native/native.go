@@ -30,6 +30,7 @@ func init() {
 
 var (
 	_ auth.Scheme        = &NativeScheme{}
+	_ auth.AppScheme     = &NativeScheme{}
 	_ auth.ManagedScheme = &NativeScheme{}
 )
 
