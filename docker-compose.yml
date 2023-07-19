@@ -1,14 +1,14 @@
 version: "3"
 services:
-    mongo:
-        image: mongo:4
-        volumes:
-            - ./data/mongo:/data/db
-        ports:
-            - 27017:27017
-    redis:
-        image: redis
-        volumes:
-            - ./data/redis:/data
-        ports:
-            - 6379:6379
+  mongo:
+    image: mongo:4
+    volumes:
+    - ./data/mongo:/data/db
+    ports:
+    - 27017:27017
+  redis:
+    image: redis
+    volumes:
+    - ./data/redis:/data
+    ports:
+    - 6379:6379

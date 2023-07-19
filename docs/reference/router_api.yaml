@@ -16,14 +16,14 @@ paths:
         The backend endpoint returns the address that the
         application is published.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An Address object
@@ -33,20 +33,20 @@ paths:
                 $ref: '#/components/schemas/Address'
         default:
           $ref: '#/components/schemas/Error'
-          
+
     delete:
       summary: Delete application backend
       description: |
         The backend endpoint deletes the backend.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An Address object
@@ -61,14 +61,14 @@ paths:
       description: |
         The backend endpoint the backend.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An Address object
@@ -78,7 +78,7 @@ paths:
           description: Backend already exists
         default:
           $ref: '#/components/schemas/Error'
-  
+
   /backend/{name}/routes:
     get:
       summary: Application backend routes
@@ -86,20 +86,20 @@ paths:
         The backend endpoint returns information about the
         backends routes for a given application.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
-        - name: route
-          in: path
-          description: Route name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
+      - name: route
+        in: path
+        description: Route name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An array of backends
@@ -111,7 +111,7 @@ paths:
                   $ref: '#/components/schemas/Addresses'
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /backend/{name}/routes/{route}:
     post:
       summary: Add application backend routes
@@ -119,20 +119,20 @@ paths:
         The backend endpoint returns information about the
         backends routes for a given application.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
-        - name: route
-          in: path
-          description: Route name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
+      - name: route
+        in: path
+        description: Route name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An array of backends
@@ -140,7 +140,7 @@ paths:
           description: Backend not found
         default:
           $ref: '#/components/schemas/Error'
-    
+
   /backend/{name}/swap:
     post:
       summary: Application backend
@@ -148,12 +148,12 @@ paths:
         The backend endpoint returns information about the
         backends for a given application.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       requestBody:
         description: Swap parameters
         required: true
@@ -162,7 +162,7 @@ paths:
             schema:
               $ref: '#/components/schemas/Swap'
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: Swapped backends
@@ -170,20 +170,20 @@ paths:
           description: Backend not found
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /healthcheck:
     get:
       summary: Application backend
       description: |
         Health check endpoint.
       tags:
-        - Healthcheck
+      - Healthcheck
       responses:
         200:
           description: Return OK
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /support/{type}:
     get:
       summary: CNAME Application backend
@@ -191,14 +191,14 @@ paths:
         The backend endpoint returns information about the
         application cname.
       parameters:
-        - name: type
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: type
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Support
+      - Support
       responses:
         200:
           description: Check if support types.
@@ -207,8 +207,8 @@ paths:
               schema:
                 type: string
         default:
-          $ref: '#/components/schemas/Error'  
-            
+          $ref: '#/components/schemas/Error'
+
   /backend/{name}/cname:
     get:
       summary: Application backend cnames info
@@ -216,14 +216,14 @@ paths:
         The backend endpoint returns information about the
         application cname.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An array of cnames
@@ -235,27 +235,27 @@ paths:
                   type: string
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /backend/{name}/cname/{cnameAddr}:
     post:
       summary: CNAME Application backend
       description: |
         The backend endpoint adds CNAME to application.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
-        - name: cnameAddr
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
+      - name: cnameAddr
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: Cname added ok
@@ -266,29 +266,27 @@ paths:
         409:
           description: CNAME already exists
         default:
-          $ref: '#/components/schemas/Error'  
-      
+          $ref: '#/components/schemas/Error'
+
   /backend/{name}/certificate/{cname}:
     get:
       summary: HTTPS Certificate management endpoint
-      description: |
-        The backend endpoint returns information about the
-        HTTPS certificate. 
+      description: "The backend endpoint returns information about the\nHTTPS certificate. \n"
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
-        - name: cname
-          in: path
-          description: CNAME to get certificate.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
+      - name: cname
+        in: path
+        description: CNAME to get certificate.
+        required: true
+        schema:
+          type: string
       tags:
-        - Certificate
+      - Certificate
       responses:
         200:
           description: Certificate Object
@@ -300,22 +298,20 @@ paths:
           $ref: '#/components/schemas/Error'
     post:
       summary: HTTPS Certificate management endpoint
-      description: |
-        The backend endpoint returns information about the
-        HTTPS certificate. 
+      description: "The backend endpoint returns information about the\nHTTPS certificate. \n"
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
-        - name: cname
-          in: path
-          description: CNAME to get certificate.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
+      - name: cname
+        in: path
+        description: CNAME to get certificate.
+        required: true
+        schema:
+          type: string
       requestBody:
         description: Swap parameters
         required: true
@@ -324,33 +320,33 @@ paths:
             schema:
               $ref: '#/components/schemas/Certificate'
       tags:
-        - Certificate
+      - Certificate
       responses:
         200:
           description: Certificate Object
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /backend/{name}/healthcheck:
     put:
       summary: Application backend healthcheck
       description: |
         The backend endpoint to set healthcheck.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Healthcheck
+      - Healthcheck
       responses:
         200:
           description: Healthcheck setted properly.
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /info:
     get:
       summary: Application backend
@@ -358,7 +354,7 @@ paths:
         The backend endpoint returns information about
         the router.
       tags:
-        - Info
+      - Info
       responses:
         200:
           description: An array of backends
@@ -368,7 +364,7 @@ paths:
                 $ref: '#/components/schemas/Info'
         default:
           $ref: '#/components/schemas/Error'
-            
+
   /backend/{name}/status:
     get:
       summary: Application backend
@@ -376,14 +372,14 @@ paths:
         The backend endpoint returns information about the backends
         for a given application.
       parameters:
-        - name: name
-          in: path
-          description: Application name.
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Application name.
+        required: true
+        schema:
+          type: string
       tags:
-        - Backends
+      - Backends
       responses:
         200:
           description: An array of backends
@@ -395,7 +391,7 @@ paths:
                   $ref: '#/components/schemas/Status'
         default:
           $ref: '#/components/schemas/Error'
-            
+
 # Object definitions          
 components:
   schemas:

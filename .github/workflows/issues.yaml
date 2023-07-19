@@ -1,8 +1,8 @@
 name: Issue cleanup
-on: 
+on:
   workflow_dispatch:
   schedule:
-    - cron: '37 01 5 */2 *'
+  - cron: '37 01 5 */2 *'
 
 jobs:
   triage_issues:

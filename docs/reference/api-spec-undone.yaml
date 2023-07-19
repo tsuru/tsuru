@@ -3,12 +3,12 @@ paths:
     post:
       description: app restart
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -28,12 +28,12 @@ paths:
     post:
       description: set envs
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -57,12 +57,12 @@ paths:
     post:
       description: app log
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -84,12 +84,12 @@ paths:
     post:
       description: set cname
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -111,24 +111,24 @@ paths:
     put:
       description: bind service instance
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
-        - name: instance
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Instance name.
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -152,12 +152,12 @@ paths:
     delete:
       description: unset app certificate
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -207,12 +207,12 @@ paths:
     put:
       description: app update
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -236,18 +236,18 @@ paths:
     put:
       description: grant access to app
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
-        - name: team
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Team name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
       responses:
         '200':
           description: Access granted
@@ -267,12 +267,12 @@ paths:
     post:
       description: app sleep
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -296,12 +296,12 @@ paths:
     post:
       description: app start
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -321,12 +321,12 @@ paths:
     delete:
       description: remove units
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       responses:
@@ -348,18 +348,18 @@ paths:
     post:
       description: set unit status
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
-        - name: unit
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Unit ID.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
+      - name: unit
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Unit ID.
       consumes:
       - application/json
       responses:
@@ -381,12 +381,12 @@ paths:
     post:
       description: register unit
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       consumes:
@@ -406,12 +406,12 @@ paths:
     delete:
       description: app unlock
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       responses:
@@ -429,12 +429,12 @@ paths:
     post:
       description: rebuild routes
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       responses:
@@ -474,12 +474,12 @@ paths:
     post:
       description: app stop
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -499,12 +499,12 @@ paths:
     get:
       description: metric envs
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       responses:
@@ -522,12 +522,12 @@ paths:
     post:
       description: run commands
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -571,12 +571,12 @@ paths:
     delete:
       description: remove key
       parameters:
-        - name: key
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: SSH Key.
+      - name: key
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: SSH Key.
       responses:
         '200':
           description: Ok
@@ -696,12 +696,12 @@ paths:
     post:
       description: reset password
       parameters:
-        - name: email
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: User e-mail.
+      - name: email
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: User e-mail.
       responses:
         '200':
           description: Ok
@@ -779,12 +779,12 @@ paths:
     delete:
       description: delete autoscale rule
       parameters:
-        - name: rule
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Rule ID.
+      - name: rule
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Rule ID.
       responses:
         '200':
           description: Ok
@@ -800,12 +800,12 @@ paths:
     post:
       description: app build
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -843,12 +843,12 @@ paths:
     get:
       description: delete provisioner cluster
       parameters:
-        - name: cluster
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Cluster name.
+      - name: cluster
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Cluster name.
       produces:
       - application/json
       consumes:
@@ -874,12 +874,12 @@ paths:
     get:
       description: deploy info
       parameters:
-        - name: deploy
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Deploy ID.
+      - name: deploy
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Deploy ID.
       produces:
       - application/json
       responses:
@@ -897,12 +897,12 @@ paths:
     post:
       description: rebuild
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -926,12 +926,12 @@ paths:
     put:
       description: rollback update
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -949,12 +949,12 @@ paths:
     post:
       description: app deploy
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -976,12 +976,12 @@ paths:
     post:
       description: deploy diff
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -1003,12 +1003,12 @@ paths:
     post:
       description: rollback
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/x-json-stream
       consumes:
@@ -1058,12 +1058,12 @@ paths:
     delete:
       description: remove event block
       parameters:
-        - name: block
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Event block ID.
+      - name: block
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Event block ID.
       responses:
         '200':
           description: OK
@@ -1103,12 +1103,12 @@ paths:
     get:
       description: event info
       parameters:
-        - name: event
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Event ID.
+      - name: event
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Event ID.
       produces:
       - application/json
       responses:
@@ -1130,12 +1130,12 @@ paths:
     post:
       description: event cancel
       parameters:
-        - name: event
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Event ID.
+      - name: event
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Event ID.
       produces:
       - application/json
       responses:
@@ -1191,12 +1191,12 @@ paths:
     delete:
       description: machine destroy
       parameters:
-        - name: machine
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Machine ID.
+      - name: machine
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Machine ID.
       responses:
         '200':
           description: OK
@@ -1236,12 +1236,12 @@ paths:
     put:
       description: template update
       parameters:
-        - name: template
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Template name.
+      - name: template
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Template name.
       consumes:
       - application/json
       responses:
@@ -1289,12 +1289,12 @@ paths:
     get:
       description: install host info
       parameters:
-        - name: host
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Host name.
+      - name: host
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Host name.
       produces:
       - application/json
       responses:
@@ -1344,12 +1344,12 @@ paths:
     get:
       description: list units by app
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       responses:
@@ -1399,12 +1399,12 @@ paths:
     get:
       description: list units by node
       parameters:
-        - name: address
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Node address.
+      - name: address
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Node address.
       produces:
       - application/json
       responses:
@@ -1440,12 +1440,12 @@ paths:
     delete:
       description: remove node container
       parameters:
-        - name: nodecontainer
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Nodecontainer name.
+      - name: nodecontainer
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Nodecontainer name.
       responses:
         '200':
           description: Ok
@@ -1461,12 +1461,12 @@ paths:
     post:
       description: node container upgrade
       parameters:
-        - name: nodecontainer
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Nodecontainer name.
+      - name: nodecontainer
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Nodecontainer name.
       produces:
       - application/x-json-stream
       consumes:
@@ -1490,12 +1490,12 @@ paths:
     get:
       description: role info
       parameters:
-        - name: role
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Role name.
+      - name: role
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Role name.
       produces:
       - application/json
       responses:
@@ -1527,18 +1527,18 @@ paths:
     delete:
       description: remove permission
       parameters:
-        - name: role
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Role name.
-        - name: permission
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Permission name.
+      - name: role
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Role name.
+      - name: permission
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Permission name.
       responses:
         '200':
           description: Permission removed
@@ -1554,18 +1554,18 @@ paths:
     delete:
       description: dissociate role from user
       parameters:
-        - name: role
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Role name.
-        - name: email
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: User e-mail.
+      - name: role
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Role name.
+      - name: email
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: User e-mail.
       responses:
         '200':
           description: Ok
@@ -1599,12 +1599,12 @@ paths:
     post:
       description: assign role to user
       parameters:
-        - name: role
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Role name.
+      - name: role
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Role name.
       consumes:
       - application/json
       responses:
@@ -1638,12 +1638,12 @@ paths:
     post:
       description: add permissions
       parameters:
-        - name: role
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Role name.
+      - name: role
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Role name.
       consumes:
       - application/json
       responses:
@@ -1685,12 +1685,12 @@ paths:
     delete:
       description: remove plan
       parameters:
-        - name: plan
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Plan name.
+      - name: plan
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Plan name.
       responses:
         '200':
           description: Plan removed
@@ -1706,12 +1706,12 @@ paths:
     post:
       description: add team too pool
       parameters:
-        - name: pool
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Pool name.
+      - name: pool
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Pool name.
       consumes:
       - application/json
       responses:
@@ -1733,12 +1733,12 @@ paths:
     delete:
       description: remove pool
       parameters:
-        - name: pool
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Pool name.
+      - name: pool
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Pool name.
       responses:
         '200':
           description: Pool removed
@@ -1836,12 +1836,12 @@ paths:
     get:
       description: user quota
       parameters:
-        - name: email
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: User e-mail.
+      - name: email
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: User e-mail.
       produces:
       - application/json
       responses:
@@ -1859,12 +1859,12 @@ paths:
     put:
       description: update application quota
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       consumes:
       - application/json
       responses:
@@ -1896,12 +1896,12 @@ paths:
     get:
       description: list app routers
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       produces:
       - application/json
       responses:
@@ -1915,18 +1915,18 @@ paths:
             $ref: '#/definitions/ErrorMessage'
   /app/{app}/routers/{router}:
     parameters:
-      - name: app
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: App name.
-      - name: router
-        in: path
-        required: true
-        type: string
-        minLength: 1
-        description: Router name.
+    - name: app
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: App name.
+    - name: router
+      in: path
+      required: true
+      type: string
+      minLength: 1
+      description: Router name.
     put:
       description: update app router
       produces:
@@ -1981,12 +1981,12 @@ paths:
     get:
       description: service info
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
       produces:
       - application/json
       responses:
@@ -1996,12 +1996,12 @@ paths:
     get:
       description: service proxy
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
       responses:
         '401':
           description: Unauthorized
@@ -2015,18 +2015,18 @@ paths:
     delete:
       description: revoke access to a service
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
-        - name: team
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Team name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
       responses:
         '200':
           description: Access revoked
@@ -2050,12 +2050,12 @@ paths:
     get:
       description: service doc
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
       responses:
         '200':
           description: OK
@@ -2071,12 +2071,12 @@ paths:
     get:
       description: service plans
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
       produces:
       - application/json
       responses:
@@ -2094,18 +2094,18 @@ paths:
     get:
       description: service instance proxy
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
-        - name: instance
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Instance name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
       responses:
         '401':
           description: Unauthorized
@@ -2119,24 +2119,24 @@ paths:
     delete:
       description: revoke access to service instance
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
-        - name: instance
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Instance name.
-        - name: team
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Team name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
+      - name: team
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Team name.
       responses:
         '200':
           description: Access revoked
@@ -2152,12 +2152,12 @@ paths:
     post:
       description: service instance create
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
       consumes:
       - application/json
       responses:
@@ -2179,18 +2179,18 @@ paths:
     get:
       description: service instance status
       parameters:
-        - name: service
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Service name.
-        - name: instance
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Instance name.
+      - name: service
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Service name.
+      - name: instance
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Instance name.
       responses:
         '200':
           description: List services instances
@@ -2206,12 +2206,12 @@ paths:
     get:
       description: app shell
       parameters:
-        - name: app
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: App name.
+      - name: app
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: App name.
       responses:
         '101':
           description: Switch Protocol to websocket
@@ -2219,12 +2219,12 @@ paths:
     post:
       description: move container
       parameters:
-        - name: container
-          in: path
-          required: true
-          type: string
-          minLength: 1
-          description: Container ID.
+      - name: container
+        in: path
+        required: true
+        type: string
+        minLength: 1
+        description: Container ID.
       produces:
       - application/x-json-stream
       consumes:

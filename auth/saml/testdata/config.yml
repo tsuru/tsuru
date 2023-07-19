@@ -13,14 +13,14 @@ xpto: ble
 istrue: false
 fakebool: foo
 names:
-  - Mary
-  - John
-  - Anthony
-  - Gopher
+- Mary
+- John
+- Anthony
+- Gopher
 multiple-types:
-  - Mary
-  - 50
-  - 5.3
-  - true
+- Mary
+- 50
+- 5.3
+- true
 negative: -10
 myfloatvalue: 0.95
