@@ -31,7 +31,7 @@ paths:
       description: |
         The service endpoint creates a new service instance
       tags:
-        - Service Instance
+      - Service Instance
       requestBody:
         required: true
         content:
@@ -45,18 +45,18 @@ paths:
           $ref: '#/components/schemas/Error'
   /resources/{name}:
     parameters:
-      - name: name
-        in: path
-        description: Instance name
-        required: true
-        schema:
-          type: string
+    - name: name
+      in: path
+      description: Instance name
+      required: true
+      schema:
+        type: string
     get:
       summary: Service instance additional information
       description: |
         The service endpoint returns additional information about the instance
       tags:
-        - Service Instance
+      - Service Instance
       responses:
         404:
           description: No additional information available
@@ -64,19 +64,19 @@ paths:
           description: Additional information available
           content:
             application/json:
-                schema:
-                  type: array
-                  items:
-                    type: object
-                    description: Additional service instance information
-                    additionalProperties:
-                      type: string
+              schema:
+                type: array
+                items:
+                  type: object
+                  description: Additional service instance information
+                  additionalProperties:
+                    type: string
     put:
       summary: Update a service instance
       description: |
         The service endpoint updates a service instance
       tags:
-        - Service Instance
+      - Service Instance
       requestBody:
         required: true
         content:
@@ -95,7 +95,7 @@ paths:
       description: |
         The service endpoint removes the service instance
       tags:
-        - Service Instance
+      - Service Instance
       responses:
         200:
           description: Instance removed
@@ -105,18 +105,18 @@ paths:
           $ref: '#/components/schemas/Error'
   /resources/{name}/bind:
     parameters:
-      - name: name
-        in: path
-        description: Instance name
-        required: true
-        schema:
-          type: string
+    - name: name
+      in: path
+      description: Instance name
+      required: true
+      schema:
+        type: string
     post:
       summary: Bind Unit
       description: |
         The service endpoint binds a unit to the service instance
       tags:
-        - Binding
+      - Binding
       requestBody:
         required: true
         content:
@@ -144,7 +144,7 @@ paths:
       description: |
         The service endpoint unbinds the unit from the service instance
       tags:
-        - Binding
+      - Binding
       requestBody:
         required: true
         content:
@@ -160,18 +160,18 @@ paths:
           $ref: '#/components/schemas/Error'
   /resources/{name}/bind-app:
     parameters:
-      - name: name
-        in: path
-        description: Instance name
-        required: true
-        schema:
-          type: string
+    - name: name
+      in: path
+      description: Instance name
+      required: true
+      schema:
+        type: string
     post:
       summary: Bind App
       description: |
         The service endpoint binds the app to the service instance
       tags:
-        - Binding
+      - Binding
       requestBody:
         required: true
         content:
@@ -200,7 +200,7 @@ paths:
       description: |
         The service endpoint unbinds the app from the service instance
       tags:
-        - Binding
+      - Binding
       requestBody:
         required: true
         content:
@@ -220,14 +220,14 @@ paths:
       description: |
         The service endpoint returns the service instance status
       tags:
-        - Service Instance
+      - Service Instance
       parameters:
-        - name: name
-          in: path
-          description: Instance name
-          required: true
-          schema:
-            type: string
+      - name: name
+        in: path
+        description: Instance name
+        required: true
+        schema:
+          type: string
       responses:
         202:
           description: Instance not available yet
@@ -269,10 +269,10 @@ components:
           items:
             type: string
       required:
-        - name
-        - plan
-        - team
-        - user
+      - name
+      - plan
+      - team
+      - user
     BindUnitForm:
       type: object
       properties:
@@ -286,9 +286,9 @@ components:
           type: string
           description: Unit address
       required:
-        - app-host
-        - app-name
-        - unit-host
+      - app-host
+      - app-name
+      - unit-host
     BindAppForm:
       type: object
       properties:
@@ -299,8 +299,8 @@ components:
           type: string
           description: App name
       required:
-        - app-host
-        - app-name
+      - app-host
+      - app-name
     Error:
       type: object
       properties:
