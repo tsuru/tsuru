@@ -101,6 +101,7 @@ var (
 	PermJobReadEvents                    = PermissionRegistry.get("job.read.events")                     // [global team pool job]
 	PermJobReadLogs                      = PermissionRegistry.get("job.read.logs")                       // [global team pool job]
 	PermJobRun                           = PermissionRegistry.get("job.run")                             // [global team pool job]
+	PermJobTrigger                       = PermissionRegistry.get("job.trigger")                         // [global team pool job]
 	PermJobUpdate                        = PermissionRegistry.get("job.update")                          // [global team pool job]
 	PermPlan                             = PermissionRegistry.get("plan")                                // [global]
 	PermPlanCreate                       = PermissionRegistry.get("plan.create")                         // [global]

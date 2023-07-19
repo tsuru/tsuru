@@ -150,7 +150,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(j.Name),
-		Kind:       permission.PermJobRun,
+		Kind:       permission.PermJobTrigger,
 		Owner:      t,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
