@@ -33,13 +33,27 @@ leakdetector:
 	go test -test.v --tags leakdetector ./... | tee /tmp/leaktest.log
 	(cat /tmp/leaktest.log | grep LEAK) && exit 1 || exit 0
 
-lint: metalint
+lint: metalint yamllint
 	misc/check-contributors.sh
 
 metalint:
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.45.2
 	echo "$$(go list ./... | grep -v /vendor/)" | sed 's|github.com/tsuru/tsuru/|./|' | xargs -t -n 4 \
 		time golangci-lint run -c ./.golangci.yml
+
+yamlfmt: ## Format your code with yamlfmt
+ifeq (, $(shell which yamlfmt))
+	go install github.com/google/yamlfmt/cmd/yamlfmt@v0.9.0
+endif
+	yamlfmt .
+
+yamllint: ## Check the yaml is valid and correctly formatted
+ifeq (, $(shell which yamlfmt))
+	go install github.com/google/yamlfmt/cmd/yamlfmt@v0.9.0
+endif
+	@echo "yamlfmt --quiet --lint ."
+	@yamlfmt --quiet --lint . \
+		|| ( echo "Please run 'make yamlfmt' to fix it (if a format error)" && exit 1 )
 
 race:
 	go test -race ./...
