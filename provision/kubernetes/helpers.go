@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -61,6 +62,11 @@ var svcIgnoredLabels = []string{
 func serviceAccountNameForApp(a provision.App) string {
 	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
+}
+
+func serviceAccountNameForJob(j jobTypes.Job) string {
+	name := provision.ValidKubeName(j.Name)
+	return fmt.Sprintf("job-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string, version int) string {
