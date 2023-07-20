@@ -70,6 +70,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 						Env:       envs,
 					},
 				},
+				ServiceAccountName: serviceAccountNameForJob(*job),
 			},
 		},
 	}, nil
@@ -223,6 +224,9 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 		return err
 	}
 	namespace := client.PoolNamespace(job.Pool)
+	if err := client.CoreV1().ServiceAccounts(namespace).Delete(ctx, serviceAccountNameForJob(*job), metav1.DeleteOptions{}); err != nil {
+		return err
+	}
 	return client.BatchV1beta1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 }
 
