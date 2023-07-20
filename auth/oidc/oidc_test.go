@@ -62,7 +62,7 @@ func (s *AuthSuite) TestLoginNoJWSDefined(c *check.C) {
 	scheme.initialized.Do(func() {})
 
 	token, err := scheme.Auth(context.TODO(), "TOKEN")
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "no jwks URLs")
 	c.Assert(token, check.IsNil)
 }
 

@@ -22,8 +22,9 @@ import (
 )
 
 var (
+	errNoJWKSURLS                    = errors.New("no jwks URLs")
 	errMissingEmailClaim             = errors.New("email claim is missing")
-	errNotImplementedYet             = errors.New("not implemented yet")
+	errNotImplemented                = errors.New("not implemented")
 	_                    auth.Scheme = &oidcScheme{}
 )
 
@@ -75,7 +76,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}
 
 	if s.jwksURL == "" {
-		return nil, nil
+		return nil, errNoJWKSURLS
 	}
 
 	identity := &extendedClaims{}
@@ -140,16 +141,16 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 }
 
 func (s *oidcScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
-	return nil, errNotImplementedYet
+	return nil, errNotImplemented
 }
 
 func (s *oidcScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
-	return nil, nil
+	return nil, errNotImplemented
 }
 
 func (s *oidcScheme) Remove(ctx context.Context, user *auth.User) error {
 	// TODO: logic deletion ?
-	return errNotImplementedYet
+	return errNotImplemented
 }
 
 func (s *oidcScheme) lazyInitialize(ctx context.Context) error {
