@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,6 +81,8 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}
 
 	identity := &extendedClaims{}
+
+	token = strings.TrimPrefix(token, "Bearer ")
 
 	parsedJWTToken, err := jwt.ParseWithClaims(token, identity, s.jwtGetKey(ctx))
 	if err != nil {

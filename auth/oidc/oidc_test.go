@@ -89,6 +89,29 @@ func (s *AuthSuite) TestLoginWithRSAKey(c *check.C) {
 	c.Assert(authUser.Email, check.Equals, userEmail)
 }
 
+func (s *AuthSuite) TestLoginWithRSAKeyWithBearer(c *check.C) {
+	kid := "rsa-test-bearer-123"
+	privateRSAKey, err := s.generateNewPrivateRSAKey(kid)
+	c.Assert(err, check.IsNil)
+
+	userEmail := "bar@company.com"
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"email": userEmail,
+	})
+	token.Header["kid"] = kid
+	tokenString, err := token.SignedString(privateRSAKey)
+	c.Assert(err, check.IsNil)
+
+	tsuruToken, err := s.scheme.Auth(context.TODO(), "Bearer "+tokenString)
+	c.Assert(err, check.IsNil)
+	c.Assert(tsuruToken, check.Not(check.IsNil))
+	c.Assert(tsuruToken.GetUserName(), check.Equals, userEmail)
+
+	authUser, err := auth.GetUserByEmail(userEmail)
+	c.Assert(err, check.IsNil)
+	c.Assert(authUser.Email, check.Equals, userEmail)
+}
+
 func (s *AuthSuite) TestLoginWithGroupsRSAKey(c *check.C) {
 	s.scheme.groupsInClaims = true
 	defer func() {
