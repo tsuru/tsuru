@@ -49,12 +49,12 @@ func init() {
 }
 
 type oidcScheme struct {
-	initialized         sync.Once
-	cache               *jwk.Cache
 	jwksURL             string
+	cache               *jwk.Cache
+	validClaims         map[string]interface{}
+	initialized         sync.Once
 	registrationEnabled bool
 	groupsInClaims      bool
-	validClaims         map[string]interface{}
 }
 
 func (s *oidcScheme) Name() string {
