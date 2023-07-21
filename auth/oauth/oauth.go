@@ -205,17 +205,19 @@ func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, erro
 	return token, nil
 }
 
-func (s *oAuthScheme) Name() string {
-	return "oauth"
-}
-
-func (s *oAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (s *oAuthScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	config, err := s.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 	config.RedirectURL = "__redirect_url__"
-	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": strconv.Itoa(s.callbackPort)}, nil
+	return &auth.SchemeInfo{
+		Name: "oauth",
+		Data: map[string]interface{}{
+			"authorizeUrl": config.AuthCodeURL(""),
+			"port":         strconv.Itoa(s.callbackPort),
+		},
+	}, nil
 }
 
 type userData struct {

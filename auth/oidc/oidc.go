@@ -58,10 +58,6 @@ type oidcScheme struct {
 	groupsInClaims      bool
 }
 
-func (s *oidcScheme) Name() string {
-	return "oidc"
-}
-
 func (s *oidcScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	return nil, nil
 }
@@ -143,7 +139,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}, nil
 }
 
-func (s *oidcScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (s *oidcScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	return nil, errNotImplemented
 }
 

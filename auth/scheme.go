@@ -10,15 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-type SchemeInfo map[string]interface{}
+type SchemeInfo struct {
+	Name string                 `json:"name"`
+	Data map[string]interface{} `json:"data"`
+}
 
 type Scheme interface {
-	Name() string
-
 	Login(ctx context.Context, params map[string]string) (Token, error)
 	Logout(ctx context.Context, token string) error
 	Auth(ctx context.Context, token string) (Token, error)
-	Info(ctx context.Context) (SchemeInfo, error)
+	Info(ctx context.Context) (*SchemeInfo, error)
 	Create(ctx context.Context, user *User) (*User, error)
 	Remove(ctx context.Context, user *User) error
 }

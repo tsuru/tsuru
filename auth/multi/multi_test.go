@@ -487,7 +487,7 @@ type fakeScheme struct {
 	login  func(params map[string]string) (auth.Token, error)
 	logout func(token string) error
 	auth   func(token string) (auth.Token, error)
-	info   func() (auth.SchemeInfo, error)
+	info   func() (*auth.SchemeInfo, error)
 	create func(u *auth.User) (*auth.User, error)
 	remove func(u *auth.User) error
 }
@@ -510,7 +510,7 @@ func (t *fakeScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}
 	return nil, nil
 }
-func (t *fakeScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (t *fakeScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	if t.info != nil {
 		return t.info()
 	}

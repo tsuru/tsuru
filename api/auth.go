@@ -610,9 +610,8 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	data := schemeData{Name: app.AuthScheme.Name(), Data: info}
 	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(data)
+	return json.NewEncoder(w).Encode(info)
 }
 
 // title: regenerate token

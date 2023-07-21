@@ -241,10 +241,6 @@ func (s *SAMLAuthScheme) Auth(ctx context.Context, token string) (auth.Token, er
 	return getToken(token)
 }
 
-func (s *SAMLAuthScheme) Name() string {
-	return "saml"
-}
-
 func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
 	sp, err := s.createSP()
 	if err != nil {
@@ -295,7 +291,7 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error) {
 	return &sp, nil
 }
 
-func (s *SAMLAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (s *SAMLAuthScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	authnRequestData, err := s.generateAuthnRequest()
 	if err != nil {
 		return nil, err
@@ -304,11 +300,14 @@ func (s *SAMLAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	if _, err := r.Create(authnRequestData); err != nil {
 		return nil, err
 	}
-	return auth.SchemeInfo{
-		"request_id":      authnRequestData.ID,
-		"saml_request":    authnRequestData.Base64AuthRequest,
-		"url":             authnRequestData.URL,
-		"request_timeout": fmt.Sprintf("%.0f", r.expireTime().Seconds()),
+	return &auth.SchemeInfo{
+		Name: "saml",
+		Data: map[string]interface{}{
+			"request_id":      authnRequestData.ID,
+			"saml_request":    authnRequestData.Base64AuthRequest,
+			"url":             authnRequestData.URL,
+			"request_timeout": fmt.Sprintf("%.0f", r.expireTime().Seconds()),
+		},
 	}, nil
 }
 

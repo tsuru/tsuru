@@ -24,7 +24,7 @@ import (
 //	200: Ok
 //	400: Invalid data
 func samlMetadata(w http.ResponseWriter, r *http.Request) error {
-	if app.AuthScheme.Name() != "saml" {
+	if _, ok := app.AuthScheme.(*saml.SAMLAuthScheme); !ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "This URL is only supported with saml enabled",
@@ -48,7 +48,7 @@ func samlMetadata(w http.ResponseWriter, r *http.Request) error {
 //	400: Invalid data
 func samlCallbackLogin(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	if app.AuthScheme.Name() != "saml" {
+	if _, ok := app.AuthScheme.(*saml.SAMLAuthScheme); !ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: "This URL is only supported with saml enabled",

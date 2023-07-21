@@ -150,10 +150,6 @@ func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
 	return u.Delete()
 }
 
-func (s NativeScheme) Name() string {
-	return "native"
-}
-
-func (s NativeScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
-	return nil, nil
+func (s NativeScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+	return &auth.SchemeInfo{Name: "native"}, nil
 }

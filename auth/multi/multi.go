@@ -111,7 +111,7 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 	return nil, &errNotImplemented{"auth"}
 }
 
-func (s *multiScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	schemes, err := s.schemes()
 	if err != nil {
 		return nil, err

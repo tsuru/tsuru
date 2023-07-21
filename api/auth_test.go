@@ -918,11 +918,8 @@ func (t TestScheme) Logout(ctx context.Context, token string) error {
 func (t TestScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
-	return auth.SchemeInfo{"foo": "bar", "foo2": "bar2"}, nil
-}
-func (t TestScheme) Name() string {
-	return "test"
+func (t TestScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+	return &auth.SchemeInfo{Name: "test", Data: map[string]interface{}{"foo": "bar", "foo2": "bar2"}}, nil
 }
 func (t TestScheme) Create(ctx context.Context, u *auth.User) (*auth.User, error) {
 	return nil, nil
