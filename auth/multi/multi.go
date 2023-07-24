@@ -56,7 +56,7 @@ func (s *multiScheme) Login(ctx context.Context, params map[string]string) (auth
 		return nil, errors.ToError()
 	}
 
-	return nil, &errNotImplemented{"login"}
+	return nil, newErrNotImplemented("login")
 }
 
 func (s *multiScheme) Logout(ctx context.Context, token string) error {
@@ -81,7 +81,7 @@ func (s *multiScheme) Logout(ctx context.Context, token string) error {
 		return errors.ToError()
 	}
 
-	return &errNotImplemented{"logout"}
+	return newErrNotImplemented("logout")
 }
 
 func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
@@ -119,7 +119,7 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 		return nil, errors.ToError()
 	}
 
-	return nil, &errNotImplemented{"auth"}
+	return nil, newErrNotImplemented("auth")
 }
 
 func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
@@ -146,7 +146,7 @@ func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 		return nil, errors.ToError()
 	}
 
-	return nil, &errNotImplemented{"info"}
+	return nil, newErrNotImplemented("info")
 }
 
 func (s *multiScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
@@ -173,7 +173,7 @@ func (s *multiScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 		return nil, errors.ToError()
 	}
 
-	return nil, &errNotImplemented{"create"}
+	return nil, newErrNotImplemented("create")
 }
 
 func (s *multiScheme) Remove(ctx context.Context, user *auth.User) error {
@@ -198,7 +198,7 @@ func (s *multiScheme) Remove(ctx context.Context, user *auth.User) error {
 		return errors.ToError()
 	}
 
-	return &errNotImplemented{"remove"}
+	return newErrNotImplemented("remove")
 }
 
 func (s *multiScheme) schemes() ([]auth.Scheme, error) {
@@ -206,11 +206,14 @@ func (s *multiScheme) schemes() ([]auth.Scheme, error) {
 	if schemes == nil {
 		result := []auth.Scheme{}
 
-		schemeNames, _ := config.GetList("auth:multi:schemes")
+		schemeNames, err := config.GetList("auth:multi:schemes")
+		if err != nil {
+			return nil, err
+		}
 
 		for _, schemeName := range schemeNames {
 			var scheme auth.Scheme
-			scheme, err := auth.GetScheme(schemeName)
+			scheme, err = auth.GetScheme(schemeName)
 			if err != nil {
 				return nil, err
 			}
@@ -232,4 +235,8 @@ type errNotImplemented struct {
 
 func (e *errNotImplemented) Error() string {
 	return fmt.Sprintf("%s is not implemented by any schemes", e.method)
+}
+
+func newErrNotImplemented(method string) error {
+	return &errNotImplemented{method: method}
 }

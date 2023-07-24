@@ -78,7 +78,9 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 
 	identity := &extendedClaims{}
 
-	token = strings.TrimPrefix(token, "Bearer ")
+	if strings.HasPrefix(token, "Bearer ") || strings.HasPrefix(token, "bearer ") {
+		token = token[len("Bearer "):]
+	}
 
 	parsedJWTToken, err := jwt.ParseWithClaims(token, identity, s.jwtGetKey(ctx))
 	if err != nil {
@@ -169,7 +171,12 @@ func (s *oidcScheme) lazyInitialize(ctx context.Context) error {
 		s.validClaims = map[string]interface{}{}
 		internalConfig.UnmarshalConfig("auth:oidc:valid-claims", &s.validClaims)
 
-		err = s.cache.Register(s.jwksURL, jwk.WithMinRefreshInterval(15*time.Minute))
+		refreshInterval, _ := config.GetDuration("auth:oidc:jwks-refresh-internal")
+		if refreshInterval == 0 {
+			refreshInterval = 15 * time.Minute
+		}
+
+		err = s.cache.Register(s.jwksURL, jwk.WithMinRefreshInterval(refreshInterval))
 		if err != nil {
 			return
 		}

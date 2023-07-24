@@ -53,7 +53,7 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 	config.Unset("auth:oidc:jwks-url")
 }
 
-func (s *AuthSuite) TestLoginNoJWSDefined(c *check.C) {
+func (s *AuthSuite) TestLoginNoJWKSURLDefined(c *check.C) {
 	scheme := oidcScheme{
 		jwksURL:     "",
 		initialized: sync.Once{},
