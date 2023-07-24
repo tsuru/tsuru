@@ -295,6 +295,22 @@ error #1: failed to auth on scheme02
 `,
 		},
 		{
+			desc: "fail by invalid token on all schemes",
+			schemes: []auth.Scheme{
+				&fakeScheme{
+					auth: func(token string) (auth.Token, error) {
+						return nil, auth.ErrInvalidToken
+					},
+				},
+				&fakeScheme{
+					auth: func(token string) (auth.Token, error) {
+						return nil, auth.ErrInvalidToken
+					},
+				},
+			},
+			expectedError: auth.ErrInvalidToken.Error(),
+		},
+		{
 			desc: "pass on first scheme",
 			schemes: []auth.Scheme{
 				&fakeScheme{

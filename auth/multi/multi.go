@@ -90,9 +90,16 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 		return nil, err
 	}
 
+	var tokenInvalidCount int
+
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
 		authToken, err := scheme.Auth(ctx, token)
+
+		if err == auth.ErrInvalidToken {
+			tokenInvalidCount++
+			continue
+		}
 
 		if err != nil {
 			errors.Add(err)
@@ -102,6 +109,10 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 		if authToken != nil {
 			return authToken, nil
 		}
+	}
+
+	if tokenInvalidCount > 0 && errors.Len() == 0 {
+		return nil, auth.ErrInvalidToken
 	}
 
 	if errors.Len() > 0 {
