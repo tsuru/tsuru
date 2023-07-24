@@ -116,7 +116,9 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 		return nil, err
 	}
 
-	// TODO: how to disable user
+	if user.Disabled {
+		return nil, auth.ErrUserDisabled
+	}
 
 	if s.groupsInClaims {
 		dbGroups := set.FromSlice(user.Groups)
@@ -148,8 +150,8 @@ func (s *oidcScheme) Create(ctx context.Context, user *auth.User) (*auth.User, e
 }
 
 func (s *oidcScheme) Remove(ctx context.Context, user *auth.User) error {
-	// TODO: logic deletion ?
-	return errNotImplemented
+	user.Disabled = true
+	return user.Update()
 }
 
 func (s *oidcScheme) lazyInitialize(ctx context.Context) error {

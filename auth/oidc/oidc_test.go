@@ -192,6 +192,32 @@ func (s *AuthSuite) TestLoginWithClaimValidation(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *AuthSuite) TestLoginWithDisabledUser(c *check.C) {
+	kid := "rsa-disabled-user"
+	privateRSAKey, err := s.generateNewPrivateRSAKey(kid)
+	c.Assert(err, check.IsNil)
+
+	userEmail := "disabled-user-test@company.com"
+
+	user := &auth.User{Email: userEmail, Disabled: true}
+	user.Delete() // remove from previous crashed tests
+	err = user.Create()
+	c.Assert(err, check.IsNil)
+
+	defer user.Delete()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"email": userEmail,
+	})
+	token.Header["kid"] = kid
+	tokenString, err := token.SignedString(privateRSAKey)
+	c.Assert(err, check.IsNil)
+
+	tsuruToken, err := s.scheme.Auth(context.TODO(), tokenString)
+	c.Assert(err, check.Equals, auth.ErrUserDisabled)
+	c.Assert(tsuruToken, check.IsNil)
+}
+
 func (s *AuthSuite) generateNewPrivateRSAKey(kid string) (*rsa.PrivateKey, error) {
 	sharedKey := make([]byte, 2048)
 	_, err := io.ReadFull(rand.Reader, sharedKey)
