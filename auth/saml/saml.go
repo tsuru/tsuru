@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	samlErrors "github.com/tsuru/tsuru/auth/saml/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -46,10 +45,6 @@ type BaseConfig struct {
 
 func init() {
 	auth.RegisterScheme("saml", &SAMLAuthScheme{})
-}
-
-func (s SAMLAuthScheme) AppLogout(ctx context.Context, token string) error {
-	return s.Logout(ctx, token)
 }
 
 // This method loads basic config and returns a copy of the
@@ -238,21 +233,12 @@ func (s *SAMLAuthScheme) callback(params map[string]string) error {
 	return nil
 }
 
-func (s *SAMLAuthScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
-	nativeScheme := native.NativeScheme{}
-	return nativeScheme.AppLogin(ctx, appName)
-}
-
 func (s *SAMLAuthScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
 }
 
 func (s *SAMLAuthScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return getToken(token)
-}
-
-func (s *SAMLAuthScheme) Name() string {
-	return "saml"
 }
 
 func (s *SAMLAuthScheme) generateAuthnRequest() (*AuthnRequestData, error) {
@@ -305,7 +291,7 @@ func (s *SAMLAuthScheme) createSP() (*saml.ServiceProviderSettings, error) {
 	return &sp, nil
 }
 
-func (s *SAMLAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
+func (s *SAMLAuthScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	authnRequestData, err := s.generateAuthnRequest()
 	if err != nil {
 		return nil, err
@@ -314,11 +300,14 @@ func (s *SAMLAuthScheme) Info(ctx context.Context) (auth.SchemeInfo, error) {
 	if _, err := r.Create(authnRequestData); err != nil {
 		return nil, err
 	}
-	return auth.SchemeInfo{
-		"request_id":      authnRequestData.ID,
-		"saml_request":    authnRequestData.Base64AuthRequest,
-		"url":             authnRequestData.URL,
-		"request_timeout": fmt.Sprintf("%.0f", r.expireTime().Seconds()),
+	return &auth.SchemeInfo{
+		Name: "saml",
+		Data: map[string]interface{}{
+			"request_id":      authnRequestData.ID,
+			"saml_request":    authnRequestData.Base64AuthRequest,
+			"url":             authnRequestData.URL,
+			"request_timeout": fmt.Sprintf("%.0f", r.expireTime().Seconds()),
+		},
 	}, nil
 }
 

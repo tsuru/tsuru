@@ -98,7 +98,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 }
 
-var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
+var nativeScheme = native.NativeScheme{}
 
 func (s *S) SetUpSuite(c *check.C) {
 	form.DefaultEncoder = form.DefaultEncoder.UseJSONTags(false)

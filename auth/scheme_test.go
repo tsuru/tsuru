@@ -29,7 +29,7 @@ func (t TestScheme) Logout(ctx context.Context, token string) error {
 func (t TestScheme) Auth(ctx context.Context, token string) (Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info(ctx context.Context) (SchemeInfo, error) {
+func (t TestScheme) Info(ctx context.Context) (*SchemeInfo, error) {
 	return nil, nil
 }
 func (t TestScheme) Name() string {

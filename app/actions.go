@@ -189,7 +189,7 @@ var createAppToken = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t, err := AuthScheme.AppLogin(ctx.Context, app.Name)
+		t, err := auth.GetAppScheme().AppLogin(ctx.Context, app.Name)
 		if err != nil {
 			return nil, err
 		}

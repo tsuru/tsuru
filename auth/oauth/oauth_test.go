@@ -14,6 +14,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	"golang.org/x/oauth2"
@@ -101,20 +102,15 @@ func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
 }
 
-func (s *S) TestOAuthName(c *check.C) {
-	scheme := oAuthScheme{}
-	name := scheme.Name()
-	c.Assert(name, check.Equals, "oauth")
-}
-
 func (s *S) TestOAuthInfo(c *check.C) {
 	scheme := oAuthScheme{}
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(info["authorizeUrl"], check.Matches, s.server.URL+"/auth.*")
-	c.Assert(info["authorizeUrl"], check.Matches, ".*client_id=clientid.*")
-	c.Assert(info["authorizeUrl"], check.Matches, ".*redirect_uri=__redirect_url__.*")
-	c.Assert(info["port"], check.Equals, "0")
+	c.Assert(info.Name, check.Equals, "oauth")
+	c.Assert(info.Data["authorizeUrl"], check.Matches, s.server.URL+"/auth.*")
+	c.Assert(info.Data["authorizeUrl"], check.Matches, ".*client_id=clientid.*")
+	c.Assert(info.Data["authorizeUrl"], check.Matches, ".*redirect_uri=__redirect_url__.*")
+	c.Assert(info.Data["port"], check.Equals, "0")
 }
 
 func (s *S) TestOAuthInfoWithPort(c *check.C) {
@@ -123,7 +119,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 	scheme := oAuthScheme{}
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(info["port"], check.Equals, "9009")
+	c.Assert(info.Data["port"], check.Equals, "9009")
 }
 
 func (s *S) TestOAuthParse(c *check.C) {
@@ -187,17 +183,10 @@ func (s *S) TestOAuthAuth_WhenTokenHasExpired(c *check.C) {
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
-func (s *S) TestOAuthAppLogin(c *check.C) {
-	scheme := oAuthScheme{}
-	token, err := scheme.AppLogin(context.TODO(), "myApp")
-	c.Assert(err, check.IsNil)
-	c.Assert(token.IsAppToken(), check.Equals, true)
-	c.Assert(token.GetAppName(), check.Equals, "myApp")
-}
-
 func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
+	nativeScheme := &native.NativeScheme{}
 	scheme := oAuthScheme{}
-	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
+	appToken, err := nativeScheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)

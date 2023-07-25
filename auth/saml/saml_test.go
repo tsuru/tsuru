@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/auth/saml/errors"
 	check "gopkg.in/check.v1"
 )
@@ -396,7 +397,7 @@ func (s *S) TestSamlAuthLoginValidRequestIdUserNotAuthed(c *check.C) {
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	params := make(map[string]string)
-	params["request_id"] = info["request_id"].(string)
+	params["request_id"] = info.Data["request_id"].(string)
 	_, err = scheme.Login(context.TODO(), params)
 	c.Assert(err, check.Equals, errors.ErrRequestWaitingForCredentials)
 }
@@ -427,20 +428,15 @@ func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "^User is nil$")
 }
 
-func (s *S) TestSamlAuthName(c *check.C) {
-	scheme := SAMLAuthScheme{}
-	name := scheme.Name()
-	c.Assert(name, check.Equals, "saml")
-}
-
 func (s *S) TestSamlAuthInfo(c *check.C) {
 	scheme := SAMLAuthScheme{}
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(info["request_id"], check.NotNil)
-	c.Assert(info["saml_request"], check.NotNil)
-	c.Assert(info["url"], check.NotNil)
-	c.Assert(info["request_timeout"], check.Equals, "60")
+	c.Assert(info.Name, check.Equals, "saml")
+	c.Assert(info.Data["request_id"], check.NotNil)
+	c.Assert(info.Data["saml_request"], check.NotNil)
+	c.Assert(info.Data["url"], check.NotNil)
+	c.Assert(info.Data["request_timeout"], check.Equals, "60")
 }
 
 func (s *S) TestSamlAuth(c *check.C) {
@@ -460,17 +456,10 @@ func (s *S) TestSamlParseXml(c *check.C) {
 	c.Assert(response, check.NotNil)
 }
 
-func (s *S) TestSamlAppLogin(c *check.C) {
-	scheme := SAMLAuthScheme{}
-	token, err := scheme.AppLogin(context.TODO(), "myApp")
-	c.Assert(err, check.IsNil)
-	c.Assert(token.IsAppToken(), check.Equals, true)
-	c.Assert(token.GetAppName(), check.Equals, "myApp")
-}
-
 func (s *S) TestSamlAuthWithAppToken(c *check.C) {
+	nativeScheme := native.NativeScheme{}
 	scheme := SAMLAuthScheme{}
-	appToken, err := scheme.AppLogin(context.TODO(), "myApp")
+	appToken, err := nativeScheme.AppLogin(context.TODO(), "myApp")
 	c.Assert(err, check.IsNil)
 	token, err := scheme.Auth(context.TODO(), "bearer "+appToken.GetValue())
 	c.Assert(err, check.IsNil)

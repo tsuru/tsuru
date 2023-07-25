@@ -262,3 +262,11 @@ func (s *S) TestNativeRemove(c *check.C) {
 	_, err = auth.GetUserByEmail("timeredbull@globo.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
 }
+
+func (s *S) TestAppLogin(c *check.C) {
+	scheme := NativeScheme{}
+	token, err := scheme.AppLogin(context.TODO(), "myApp")
+	c.Assert(err, check.IsNil)
+	c.Assert(token.IsAppToken(), check.Equals, true)
+	c.Assert(token.GetAppName(), check.Equals, "myApp")
+}

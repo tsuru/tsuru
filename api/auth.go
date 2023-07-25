@@ -593,11 +593,6 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	return app.AuthScheme.Remove(ctx, u)
 }
 
-type schemeData struct {
-	Name string          `json:"name"`
-	Data auth.SchemeInfo `json:"data"`
-}
-
 // title: get auth scheme
 // path: /auth/scheme
 // method: GET
@@ -610,9 +605,8 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	data := schemeData{Name: app.AuthScheme.Name(), Data: info}
 	w.Header().Add("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(data)
+	return json.NewEncoder(w).Encode(info)
 }
 
 // title: regenerate token

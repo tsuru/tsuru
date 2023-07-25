@@ -55,7 +55,9 @@ import (
 	"github.com/tsuru/tsuru/validation"
 )
 
-var AuthScheme auth.Scheme
+var (
+	AuthScheme auth.Scheme
+)
 
 var (
 	ErrAlreadyHaveAccess = errors.New("team already have access to this app")
@@ -721,7 +723,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		logErr("Unable to unbind volumes", err)
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = AuthScheme.AppLogout(ctx, token)
+	err = auth.GetAppScheme().AppLogout(ctx, token)
 	if err != nil {
 		logErr("Unable to remove app token in destroy", err)
 	}
