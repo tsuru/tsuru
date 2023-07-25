@@ -371,7 +371,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomServiceAccountAnnotations(c
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name, Metadata: appTypes.Metadata{
 		Annotations: []appTypes.MetadataItem{
 			{
-				Name:  AnnotationServiceAccountAnnotations,
+				Name:  AnnotationServiceAccountAppAnnotations,
 				Value: `{"a1": "v1", "a2": "v2"}`,
 			},
 		},

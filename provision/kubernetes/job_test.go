@@ -35,11 +35,20 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		namespace string
 		jobName   string
 		assertion func(c *check.C, gotCron *apiv1beta1.CronJob)
+		teardown  func()
 	}{
 		{
 			name:      "simple create cronjob",
 			jobName:   "myjob",
 			namespace: "default",
+			teardown: func() {
+				j := jobTypes.Job{
+					Name: "myjob",
+					Pool: "test-default",
+				}
+				err := s.p.DestroyJob(context.TODO(), &j)
+				c.Assert(err, check.IsNil)
+			},
 			scenario: func() {
 				cj := jobTypes.Job{
 					Name:      "myjob",
@@ -128,6 +137,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 										Annotations: map[string]string{"annotation1": "value2"},
 									},
 									Spec: corev1.PodSpec{
+										ServiceAccountName: "job-myjob",
 										Containers: []corev1.Container{
 											{
 												Name:    "job",
@@ -167,12 +177,68 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				})
 			},
 		},
+		{
+			name:      "create cronjob with service account annotation",
+			jobName:   "myjob",
+			namespace: "default",
+			scenario: func() {
+				cj := jobTypes.Job{
+					Name:      "myjob",
+					TeamOwner: s.team.Name,
+					Pool:      "test-default",
+					Metadata: app.Metadata{
+						Annotations: []app.MetadataItem{
+							{
+								Name:  AnnotationServiceAccountJobAnnotations,
+								Value: `{"iam.gke.io/gcp-service-account":"test@test.com"}`,
+							},
+						},
+					},
+					Spec: jobTypes.JobSpec{
+						Schedule: "* * * * *",
+						Container: jobTypes.ContainerInfo{
+							Image:   "ubuntu:latest",
+							Command: []string{"echo", "hello world"},
+						},
+					},
+				}
+				_, err := s.p.CreateJob(context.TODO(), &cj)
+				waitCron()
+				c.Assert(err, check.IsNil)
+			},
+			assertion: func(c *check.C, gotCron *apiv1beta1.CronJob) {
+				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), "job-"+gotCron.Name, metav1.GetOptions{})
+				c.Assert(err, check.IsNil)
+				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "job-" + gotCron.Name,
+						Namespace: gotCron.Namespace,
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru":    "true",
+							"tsuru.io/job-name":    gotCron.Name,
+							"tsuru.io/provisioner": "kubernetes",
+						},
+						Annotations: map[string]string{
+							"iam.gke.io/gcp-service-account": "test@test.com",
+						},
+					},
+				})
+			},
+			teardown: func() {
+				err := s.p.DestroyJob(context.TODO(), &jobTypes.Job{
+					Name: "myjob",
+					Pool: "test-default",
+				})
+				c.Assert(err, check.IsNil)
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt.scenario()
 		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, v1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		tt.assertion(c, gotCron)
+		tt.teardown()
 	}
 }
 
@@ -310,6 +376,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 									Annotations: map[string]string{"annotation2": "value4"},
 								},
 								Spec: corev1.PodSpec{
+									ServiceAccountName: "job-myjob",
 									Containers: []corev1.Container{
 										{
 											Name:    "job",
@@ -494,6 +561,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 								Annotations: make(map[string]string),
 							},
 							Spec: corev1.PodSpec{
+								ServiceAccountName: "job-myjob",
 								Containers: []corev1.Container{
 									{
 										Name:    "job",

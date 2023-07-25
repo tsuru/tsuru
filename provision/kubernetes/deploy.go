@@ -519,11 +519,12 @@ func ensureNamespace(ctx context.Context, client *ClusterClient, namespace strin
 func ensureServiceAccount(ctx context.Context, client *ClusterClient, name string, labels *provision.LabelSet, namespace string, metadata *appTypes.Metadata) error {
 	var annotations map[string]string
 	if metadata != nil {
-		saAnnotationsRaw, ok := metadata.Annotation(AnnotationServiceAccountAnnotations)
-		if ok {
-			json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
+		if saAppAnnotationsRaw, ok := metadata.Annotation(AnnotationServiceAccountAppAnnotations); ok {
+			json.Unmarshal([]byte(saAppAnnotationsRaw), &annotations)
+		} else if saJobAnnotationsRaw, ok := metadata.Annotation(AnnotationServiceAccountJobAnnotations); ok {
+			json.Unmarshal([]byte(saJobAnnotationsRaw), &annotations)
 		} else {
-			saAnnotationsRaw, ok = metadata.Annotation(ResourceMetadataPrefix + "service-account")
+			saAnnotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service-account")
 			if ok {
 				json.Unmarshal([]byte(saAnnotationsRaw), &annotations)
 			}
