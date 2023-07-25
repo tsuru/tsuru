@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	internalConfig "github.com/tsuru/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/set"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 )
@@ -171,7 +172,12 @@ func (s *oidcScheme) lazyInitialize(ctx context.Context) error {
 		s.validClaims = map[string]interface{}{}
 		internalConfig.UnmarshalConfig("auth:oidc:valid-claims", &s.validClaims)
 
-		refreshInterval, _ := config.GetDuration("auth:oidc:jwks-refresh-internal")
+		var refreshIntervalErr error
+		var refreshInterval time.Duration
+		refreshInterval, refreshIntervalErr = config.GetDuration("auth:oidc:jwks-refresh-interval")
+		if refreshIntervalErr != nil {
+			log.Errorf(`Failed to fetch "auth:oidc:jwks-refresh-interval", falling on default setting (15m), error: %s`, refreshIntervalErr.Error())
+		}
 		if refreshInterval == 0 {
 			refreshInterval = 15 * time.Minute
 		}
