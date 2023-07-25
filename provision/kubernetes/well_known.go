@@ -1,10 +1,15 @@
 package kubernetes
 
 const (
-	// AnnotationServiceAccountAnnotations can be used to add custom
+	// AnnotationServiceAccountAppAnnotations can be used to add custom
 	// annotations to an app service account, its value must be a serialized
 	// json object that can be parsed as a map[string]string.
-	AnnotationServiceAccountAnnotations = "app.tsuru.io/service-account-annotations"
+	AnnotationServiceAccountAppAnnotations = "app.tsuru.io/service-account-annotations"
+
+	// AnnotationServiceAccountJobAnnotations can be used to add custom
+	// annotations to a job service account, its value must be a serialized
+	// json object that can be parsed as a map[string]string.
+	AnnotationServiceAccountJobAnnotations = "job.tsuru.io/service-account-annotations"
 
 	// ResourceMetadaPrefix is used to define an annotation or label for a subresource of the deployment
 	// i.e: "app.tsuru.io/k8s-<resource-type>"
