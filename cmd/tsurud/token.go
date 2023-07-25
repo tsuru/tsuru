@@ -111,7 +111,7 @@ func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	t, err := app.AuthScheme.AppLogin(stdContext.TODO(), app.InternalAppName)
+	t, err := auth.GetAppScheme().AppLogin(stdContext.TODO(), app.InternalAppName)
 	if err != nil {
 		return err
 	}

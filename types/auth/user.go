@@ -22,6 +22,7 @@ type User struct {
 	// FromToken denotes whether the user was generated from team token.
 	// In other words, it does not exist in the storage.
 	FromToken bool
+	Disabled  bool
 }
 
 type RoleInstance struct {

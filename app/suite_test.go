@@ -94,7 +94,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 	}
 }
 
-var nativeScheme = auth.Scheme(native.NativeScheme{})
+var nativeScheme = native.NativeScheme{}
 
 func (s *S) SetUpSuite(c *check.C) {
 	TestLogWriterWaitOnClose = true

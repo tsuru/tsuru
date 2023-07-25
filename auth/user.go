@@ -33,6 +33,7 @@ type User struct {
 	Roles     []authTypes.RoleInstance `bson:",omitempty"`
 	Groups    []string                 `bson:",omitempty"`
 	FromToken bool                     `bson:",omitempty"`
+	Disabled  bool                     `bson:",omitempty"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {

@@ -34,7 +34,10 @@ func ConvertNewUser(u *authTypes.User, err error) (*User, error) {
 	return nil, err
 }
 
-var ErrInvalidToken = errors.New("Invalid token")
+var (
+	ErrInvalidToken = errors.New("Invalid token")
+	ErrUserDisabled = errors.New("Disabled user")
+)
 
 // ParseToken extracts token from a header:
 // 'type token' or 'token'
