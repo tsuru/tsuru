@@ -427,6 +427,7 @@ func (s *S) TestServiceManagerDeployMultipleFlows(c *check.C) {
 						waitDep()
 					}
 				}
+				waitDep()
 				step.check()
 			}
 		}()
