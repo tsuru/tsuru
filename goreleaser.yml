@@ -1,24 +1,17 @@
+---
 # goreleaser.yml
 # Build customization
 builds:
-- main: ./cmd/tsurud
-  binary: tsurud
-  flags:
-  - -trimpath
-  ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}} -X github.com/tsuru/tsuru/api.Version={{ .Version }}
-  env:
-  - CGO_ENABLED=0
-  goos:
-  - linux
-  goarch:
-  - amd64
-
+  - main: ./cmd/tsurud
+    binary: tsurud
+    flags: [-trimpath]
+    ldflags: -s -w -X github.com/tsuru/tsuru/cmd.GitHash={{.Commit}} -X github.com/tsuru/tsuru/api.Version={{ .Version }}
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch:
+      - amd64
 # Archive customization
 archives:
-- name_template: "tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}"
-  format: tar.gz
-  replacements:
-    amd64: amd64
-    linux: linux
-  files:
-  - etc/tsuru.conf
+  - name_template: tsuru-server_{{.Version}}_{{.Os}}_{{.Arch}}
+    format: tar.gz
+    files: [etc/tsuru.conf]
