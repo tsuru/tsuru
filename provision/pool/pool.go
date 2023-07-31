@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
@@ -26,6 +25,7 @@ import (
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/validation"
 	apiv1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 var (

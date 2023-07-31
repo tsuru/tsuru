@@ -910,7 +910,7 @@ func (s *S) TestGetAffinity(c *check.C) {
 			pool:     Pool{Name: "pool1", Labels: map[string]string{affinityKey: `invalid affinity`}},
 			assertion: func(testName string, c *check.C, affinity *apiv1.Affinity, err error) {
 				c.Assert(affinity, check.IsNil)
-				c.Assert(err, check.ErrorMatches, "error unmarshaling JSON: json: cannot unmarshal string into Go value of type v1.Affinity")
+				c.Assert(err, check.ErrorMatches, "error unmarshaling JSON: while decoding JSON: json: cannot unmarshal string into Go value of type v1.Affinity")
 			},
 		},
 		{
