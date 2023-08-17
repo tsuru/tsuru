@@ -882,3 +882,66 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(userData)
 }
+
+// title: team users
+// path: /teams/{name}/users
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: team users
+//	404: Not found
+//	401: Unauthorized
+func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	teamName := r.URL.Query().Get(":name")
+	_, err := servicemanager.Team.FindByName(ctx, teamName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+
+	allowed := permission.Check(t, permission.PermTeamRead,
+		permission.Context(permTypes.CtxTeam, teamName),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	allRoles, err := permission.ListRoles()
+	if err != nil {
+		return err
+	}
+
+	teamRoles := []string{}
+	roleMap := map[string]bool{}
+	for _, role := range allRoles {
+		if role.ContextType == permTypes.CtxTeam {
+			teamRoles = append(teamRoles, role.Name)
+			roleMap[role.Name] = true
+		}
+	}
+
+	users, err := auth.ListUsersWithRolesAndContext(teamRoles, teamName)
+	if err != nil {
+		return err
+	}
+
+	result := []teamUserItem{}
+	for _, user := range users {
+		userContextRoles := []string{}
+		for _, role := range user.Roles {
+			if roleMap[role.Name] {
+				userContextRoles = append(userContextRoles, role.Name)
+			}
+		}
+
+		result = append(result, teamUserItem{Email: user.Email, Roles: userContextRoles})
+	}
+
+	return json.NewEncoder(w).Encode(result)
+}
+
+type teamUserItem struct {
+	Email string   `json:"email"`
+	Roles []string `json:"roles"`
+}

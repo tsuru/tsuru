@@ -371,6 +371,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.4", http.MethodGet, "/teams/{name}", AuthorizationRequiredHandler(teamInfo))
 	m.Add("1.12", http.MethodGet, "/teams/{name}/quota", AuthorizationRequiredHandler(getTeamQuota))
 	m.Add("1.12", http.MethodPut, "/teams/{name}/quota", AuthorizationRequiredHandler(changeTeamQuota))
+	m.Add("1.16", http.MethodGet, "/teams/{name}/users", AuthorizationRequiredHandler(teamUserList))
 
 	m.Add("1.0", http.MethodPost, "/swap", AuthorizationRequiredHandler(swap))
 
