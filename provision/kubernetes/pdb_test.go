@@ -9,7 +9,7 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	check "gopkg.in/check.v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -20,10 +20,10 @@ func (s *S) TestNewPDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	tests := map[string]struct {
 		setup    func() (teardown func())
-		expected *policyv1beta1.PodDisruptionBudget
+		expected *policyv1.PodDisruptionBudget
 	}{
 		"with default values": {
-			expected: &policyv1beta1.PodDisruptionBudget{
+			expected: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myapp-p1",
 					Namespace: "default",
@@ -35,7 +35,7 @@ func (s *S) TestNewPDB(c *check.C) {
 						"tsuru.io/provisioner": "kubernetes",
 					},
 				},
-				Spec: policyv1beta1.PodDisruptionBudgetSpec{
+				Spec: policyv1.PodDisruptionBudgetSpec{
 					MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
@@ -54,7 +54,6 @@ func (s *S) TestNewPDB(c *check.C) {
 					delete(s.clusterClient.CustomData, "test-default:disable-pdb")
 				}
 			},
-			expected: nil,
 		},
 	}
 	for _, tt := range tests {
