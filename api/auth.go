@@ -929,9 +929,11 @@ func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	result := []teamUserItem{}
 	for _, user := range users {
 		userContextRoles := []string{}
+		alreadyPushedRoles := map[string]bool{}
 		for _, role := range user.Roles {
-			if roleMap[role.Name] {
+			if roleMap[role.Name] && role.ContextValue == teamName && !alreadyPushedRoles[role.Name] {
 				userContextRoles = append(userContextRoles, role.Name)
+				alreadyPushedRoles[role.Name] = true
 			}
 		}
 
@@ -941,7 +943,73 @@ func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(result)
 }
 
+// title: team groups
+// path: /teams/{name}/groups
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: team groups
+//	404: Not found
+//	401: Unauthorized
+func teamGroupList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	teamName := r.URL.Query().Get(":name")
+	_, err := servicemanager.Team.FindByName(ctx, teamName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+
+	allowed := permission.Check(t, permission.PermTeamRead,
+		permission.Context(permTypes.CtxTeam, teamName),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	allRoles, err := permission.ListRoles()
+	if err != nil {
+		return err
+	}
+
+	roleMap := map[string]bool{}
+	for _, role := range allRoles {
+		if role.ContextType == permTypes.CtxTeam {
+			roleMap[role.Name] = true
+		}
+	}
+
+	allGroups, err := servicemanager.AuthGroup.List(nil)
+	if err != nil {
+		return err
+	}
+
+	result := []teamGroupItem{}
+	for _, group := range allGroups {
+		groupContextRoles := []string{}
+		alreadyPushedRoles := map[string]bool{}
+
+		for _, role := range group.Roles {
+			if roleMap[role.Name] && role.ContextValue == teamName && !alreadyPushedRoles[role.Name] {
+				groupContextRoles = append(groupContextRoles, role.Name)
+				alreadyPushedRoles[role.Name] = true
+			}
+		}
+
+		if len(groupContextRoles) > 0 {
+			result = append(result, teamGroupItem{Group: group.Name, Roles: groupContextRoles})
+		}
+	}
+
+	return json.NewEncoder(w).Encode(result)
+}
+
 type teamUserItem struct {
 	Email string   `json:"email"`
+	Roles []string `json:"roles"`
+}
+
+type teamGroupItem struct {
+	Group string   `json:"group"`
 	Roles []string `json:"roles"`
 }

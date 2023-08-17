@@ -1620,3 +1620,76 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 	})
 	c.Assert(buf.String(), check.Matches, "(?s).*error rolling back team name change in.*TestUpdateTeamErrorInRollback.*from \"team1\" to \"team9000\".*")
 }
+
+func (s *AuthSuite) TestTeamUsersList(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	u1 := auth.User{Email: "myuser1@example.com", Roles: []authTypes.RoleInstance{{Name: "team-member", ContextValue: teamName}}}
+	err := u1.Create()
+	c.Assert(err, check.IsNil)
+
+	u2 := auth.User{Email: "myuser2@example.com", Roles: []authTypes.RoleInstance{{Name: "god"}, {Name: "team-member", ContextValue: "other-team"}}}
+	err = u2.Create()
+	c.Assert(err, check.IsNil)
+
+	role1, err := permission.NewRole("team-member", "team", "")
+	c.Assert(err, check.IsNil)
+
+	err = role1.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	role2, err := permission.NewRole("god", "global", "")
+	c.Assert(err, check.IsNil)
+
+	err = role2.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/users", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	r := []teamUserItem{}
+	json.NewDecoder(recorder.Body).Decode(&r)
+	c.Assert(r, check.HasLen, 1)
+	c.Assert(r[0].Email, check.Equals, u1.Email)
+	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
+}
+
+func (s *AuthSuite) TestTeamGroupsList(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	role1, err := permission.NewRole("team-member", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role1.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.AuthGroup.AddRole("group1", "team-member", teamName)
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.AuthGroup.AddRole("group2", "team-member", "other-team")
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/groups", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	r := []teamGroupItem{}
+	json.NewDecoder(recorder.Body).Decode(&r)
+	c.Assert(r, check.HasLen, 1)
+	c.Assert(r[0].Group, check.Equals, "group1")
+	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
+}
