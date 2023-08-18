@@ -946,8 +946,15 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
-	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.update")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -967,7 +974,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(u.Email),
 		Owner:  u.Email,
-		Kind:   "user.update.token",
+		Kind:   "apikey.update",
 	}, eventtest.HasEvent)
 }
 
@@ -991,7 +998,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget("leto@arrakis.com"),
 		Owner:  token.GetUserName(),
-		Kind:   "user.update.token",
+		Kind:   "apikey.update",
 		StartCustomData: []map[string]interface{}{
 			{"name": "user", "value": "leto@arrakis.com"},
 		},
@@ -1012,9 +1019,29 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *che
 	c.Assert(err.(*errors.HTTP).Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
+func (s *AuthSuite) TestShowAPITokenForUserWithNoPermission(c *check.C) {
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest(http.MethodGet, "/users/api-key", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.read")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1032,8 +1059,16 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 }
 
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
-	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.read")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
