@@ -41,7 +41,7 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -5413,9 +5413,9 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.client.Clientset.AppsV1().Deployments(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	pdb, err := s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	pdb, err := s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(pdb, check.DeepEquals, &policyv1beta1.PodDisruptionBudget{
+	c.Assert(pdb, check.DeepEquals, &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p1",
 			Namespace: nsName,
@@ -5427,7 +5427,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 				"tsuru.io/app-team":    "admin",
 			},
 		},
-		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "10%"},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -5438,9 +5438,9 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 			},
 		},
 	})
-	pdb, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	pdb, err = s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	c.Assert(pdb, check.DeepEquals, &policyv1beta1.PodDisruptionBudget{
+	c.Assert(pdb, check.DeepEquals, &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-p2",
 			Namespace: nsName,
@@ -5452,7 +5452,7 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 				"tsuru.io/app-team":    "admin",
 			},
 		},
-		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &intstr.IntOrString{Type: intstr.String, StrVal: "10%"},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -5468,7 +5468,6 @@ func (s *S) TestServiceManagerDeployServiceWithMinAvailablePDB(c *check.C) {
 func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
 	defer waitDep()
-	m := serviceManager{client: s.clusterClient}
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
@@ -5479,6 +5478,7 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 			"p2": "cmd2",
 		},
 	})
+	m := serviceManager{client: s.clusterClient}
 	err = servicecommon.RunServicePipeline(context.TODO(), &m, 0, provision.DeployArgs{
 		App:     a,
 		Version: version,
@@ -5491,9 +5491,9 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 
 	nsName, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	_, err = s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	_, err = s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 
 	var buffer bytes.Buffer
@@ -5513,9 +5513,9 @@ func (s *S) TestServiceManagerDeployServiceRemovePDBFromRemovedProcess(c *check.
 	c.Assert(err, check.IsNil)
 	waitDep()
 
-	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
+	_, err = s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	_, err = s.client.PolicyV1beta1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
+	_, err = s.client.PolicyV1().PodDisruptionBudgets(nsName).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	c.Assert(strings.Contains(buffer.String(), "Cleaning up PodDisruptionBudget myapp-p2"), check.Equals, true)
 }

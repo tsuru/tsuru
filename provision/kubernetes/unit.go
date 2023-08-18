@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/provision"
-	policyV1Beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,7 +43,7 @@ func (p *kubernetesProvisioner) KillUnit(ctx context.Context, app provision.App,
 		return nil
 	}
 
-	err = clusterClient.CoreV1().Pods(ns).Evict(ctx, &policyV1Beta1.Eviction{
+	err = clusterClient.CoreV1().Pods(ns).EvictV1(ctx, &policyv1.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pod.Name,
 			Namespace: pod.Namespace,
