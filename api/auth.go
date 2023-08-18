@@ -623,7 +623,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if email == "" {
 		email = t.GetUserName()
 	}
-	allowed := permission.Check(t, permission.PermUserUpdateToken,
+	allowed := permission.Check(t, permission.PermApikeyUpdate,
 		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
@@ -631,7 +631,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     userTarget(email),
-		Kind:       permission.PermUserUpdateToken,
+		Kind:       permission.PermApikeyUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
@@ -667,11 +667,19 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+
 	email := r.URL.Query().Get("user")
+
+	emailToCheckPerm := email
+	if emailToCheckPerm == "" {
+		emailToCheckPerm = u.Email
+	}
+
+	if !permission.Check(t, permission.PermApikeyRead, permission.Context(permTypes.CtxUser, emailToCheckPerm)) {
+		return permission.ErrUnauthorized
+	}
+
 	if email != "" {
-		if !permission.Check(t, permission.PermUserUpdateToken) {
-			return permission.ErrUnauthorized
-		}
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
