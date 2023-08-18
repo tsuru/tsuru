@@ -945,7 +945,7 @@ func (m *serviceManager) CleanupServices(ctx context.Context, a provision.App, d
 		}
 
 		fmt.Fprintf(m.writer, " ---> Cleaning up PodDisruptionBudget %s\n", pdb.Name)
-		err = m.client.PolicyV1beta1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{})
+		err = m.client.PolicyV1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{})
 		if err != nil {
 			multiErrors.Add(err)
 		}

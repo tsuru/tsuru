@@ -18,7 +18,7 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -352,9 +352,9 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	existingPDB, err := s.client.PolicyV1beta1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
+	existingPDB, err := s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	pdb_expected := &policyv1beta1.PodDisruptionBudget{
+	pdb_expected := &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(a, "web"),
 			Namespace: ns,
@@ -366,7 +366,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 				"tsuru.io/provisioner": "kubernetes",
 			},
 		},
-		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: &intstr.IntOrString{Type: 1, StrVal: "10%"},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -382,9 +382,9 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	existingPDB, err = s.client.PolicyV1beta1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
+	existingPDB, err = s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	pdb_expected = &policyv1beta1.PodDisruptionBudget{
+	pdb_expected = &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pdbNameForApp(a, "web"),
 			Namespace: ns,
@@ -396,7 +396,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 				"tsuru.io/provisioner": "kubernetes",
 			},
 		},
-		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+		Spec: policyv1.PodDisruptionBudgetSpec{
 			MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
