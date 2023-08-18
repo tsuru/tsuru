@@ -469,17 +469,17 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, por
 		FailureThreshold: int32(hc.AllowedFailures),
 		PeriodSeconds:    int32(hc.IntervalSeconds),
 		TimeoutSeconds:   int32(hc.TimeoutSeconds),
-		Handler:          apiv1.Handler{},
+		ProbeHandler:     apiv1.ProbeHandler{},
 	}
 	if hc.Path != "" {
-		probe.Handler.HTTPGet = &apiv1.HTTPGetAction{
+		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
 			Path:        hc.Path,
 			Port:        intstr.FromInt(port),
 			Scheme:      apiv1.URIScheme(hc.Scheme),
 			HTTPHeaders: headers,
 		}
 	} else {
-		probe.Handler.Exec = &apiv1.ExecAction{
+		probe.ProbeHandler.Exec = &apiv1.ExecAction{
 			Command: hc.Command,
 		}
 	}
@@ -662,7 +662,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 
 	var lifecycle apiv1.Lifecycle
 	if sleepSec > 0 {
-		lifecycle.PreStop = &apiv1.Handler{
+		lifecycle.PreStop = &apiv1.LifecycleHandler{
 			Exec: &apiv1.ExecAction{
 				// Allow some time for endpoints controller and kube-proxy to
 				// remove the endpoints for the pods before sending SIGTERM to
@@ -678,7 +678,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 			"sh", "-c",
 			strings.Join(yamlData.Hooks.Restart.After, " && "),
 		}
-		lifecycle.PostStart = &apiv1.Handler{
+		lifecycle.PostStart = &apiv1.LifecycleHandler{
 			Exec: &apiv1.ExecAction{
 				Command: hookCmds,
 			},
