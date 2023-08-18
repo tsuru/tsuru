@@ -16,7 +16,7 @@ import (
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
-	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -32,7 +32,7 @@ func toInt32Ptr(i int32) *int32 {
 }
 
 func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalPodAutoscaler {
-	policyMin := autoscalingv2.MinPolicySelect
+	policyMin := autoscalingv2.MinChangePolicySelect
 	return &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myapp-web",
@@ -211,7 +211,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
-		hpa, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		hpa, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		expected := testHPAWithTarget(tt.expectedTarget)
 		c.Assert(hpa, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(hpa, expected)))
@@ -317,7 +317,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		c.Logf("test %d", i)
 		tt.scenario()
 
-		hpas, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
+		hpas, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
 		c.Assert(err, check.IsNil)
 		for _, hpa := range hpas.Items {
 			dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), hpa.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
@@ -350,7 +350,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	existingPDB, err := s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -380,7 +380,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 	existingPDB, err = s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
@@ -661,13 +661,13 @@ func (s *S) TestEnsureHPA(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
 	c.Assert(err, check.IsNil)
 
-	newHPA, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	newHPA, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(newHPA, check.DeepEquals, initialHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, initialHPA)))
 }
@@ -695,7 +695,7 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
@@ -706,14 +706,14 @@ func (s *S) TestEnsureHPAWithCPUPlan(c *check.C) {
 		AverageUtilization: toInt32Ptr(80),
 	})
 
-	newHPA, err := s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	newHPA, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
 	c.Assert(err, check.IsNil)
 
-	newHPA, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	newHPA, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(newHPA, check.DeepEquals, expectedHPA, check.Commentf("diff: %v", pretty.Diff(newHPA, expectedHPA)))
 }
@@ -741,7 +741,7 @@ func (s *S) TestEnsureHPAWithCPUPlanInvalid(c *check.C) {
 
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), initialHPA, metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	err = ensureHPA(context.TODO(), s.clusterClient, a, "web")
