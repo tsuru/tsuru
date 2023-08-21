@@ -1454,7 +1454,7 @@ func (s *S) TestDeployBuilderImageCancel(c *check.C) {
 		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
 		c.Assert(ok, check.Equals, true)
 		pod.Status.Phase = apiv1.PodRunning
-		testing.UpdatePodContainerStatus(pod, true)
+		testing.SetPodContainerReady(pod)
 		return false, nil, nil
 	})
 	evt, err := event.New(&event.Opts{
