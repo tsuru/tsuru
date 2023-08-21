@@ -2498,7 +2498,7 @@ paths:
       - team
       security:
       - Bearer: []
-  /1.16/teams/{team}/users:
+  /1.17/teams/{team}/users:
     parameters:
     - name: team
       in: path
@@ -2529,7 +2529,7 @@ paths:
       - team
       security:
       - Bearer: []
-  /1.16/teams/{team}/groups:
+  /1.17/teams/{team}/groups:
     parameters:
     - name: team
       in: path
