@@ -3,7 +3,6 @@ module github.com/tsuru/tsuru
 go 1.19
 
 require (
-	github.com/adhocore/gronx v1.1.2
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
@@ -30,6 +29,7 @@ require (
 	github.com/pmorie/go-open-service-broker-client v0.0.0-20180330214919-dca737037ce6
 	github.com/prometheus/client_golang v1.11.1
 	github.com/prometheus/common v0.30.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.9.0
 	github.com/sajari/fuzzy v1.0.0
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
@@ -40,6 +40,7 @@ require (
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/ugorji/go/codec v1.1.7
+	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.9.0
 	golang.org/x/net v0.10.0
 	golang.org/x/oauth2 v0.1.0

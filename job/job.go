@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/adhocore/gronx"
 	"github.com/globalsign/mgo"
 	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
+	"github.com/robfig/cron/v3"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
@@ -135,6 +135,11 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 //  1. Patch the job using the provisioner
 //  2. Update the job in the database
 func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, user *authTypes.User) error {
+	if err := newJob.Metadata.Validate(); err != nil {
+		return err
+	}
+	oldJob.Metadata.Update(newJob.Metadata)
+	newJob.Metadata = oldJob.Metadata
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
@@ -393,14 +398,6 @@ func indexEnvInSet(envName string, envs []bindTypes.EnvVar) int {
 	return -1
 }
 
-func validateSchedule(jobName, schedule string) error {
-	gronx := gronx.New()
-	if !gronx.IsValid(schedule) {
-		return jobTypes.ErrInvalidSchedule
-	}
-	return nil
-}
-
 func validatePool(ctx context.Context, job *jobTypes.Job) error {
 	p, err := pool.GetPoolByName(ctx, job.Pool)
 	if err != nil {
@@ -453,8 +450,9 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 		return err
 	}
 	if !j.Spec.Manual {
-		if err := validateSchedule(j.Name, j.Spec.Schedule); err != nil {
-			return &tsuruErrors.ValidationError{Message: err.Error()}
+		c := cron.New()
+		if _, err := c.AddFunc(j.Spec.Schedule, func() {}); err != nil {
+			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidSchedule.Error()}
 		}
 	}
 	return nil

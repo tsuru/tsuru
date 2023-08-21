@@ -2206,7 +2206,7 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 	client1, client2, _ := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.p, s.factory)
 	a, wait, rollback := s.mock.NoNodeReactions(c)
 	defer rollback()
@@ -2409,7 +2409,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	client1, client2, _ := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.p, s.factory)
 	_, _, rollback1 := s.mock.NoNodeReactions(c)
 	defer rollback1()
@@ -2421,7 +2421,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeOtherCluster(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	s.client = client2
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.p, s.factory)
 	s.mock.IgnorePool = true
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
@@ -2493,7 +2493,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	client1, client2, _ := s.prepareMultiCluster(c)
 	s.client = client1
 	s.client.ApiExtensionsClientset.PrependReactor("create", "customresourcedefinitions", s.mock.CRDReaction(c))
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.p, s.factory)
 	_, _, rollback1 := s.mock.NoNodeReactions(c)
 	defer rollback1()
@@ -2505,7 +2505,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeWithTwoBindsOtherCluster(c *check.
 	})
 	c.Assert(err, check.IsNil)
 	s.client = client2
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
 	s.mock = testing.NewKubeMock(s.client, s.p, s.p, s.factory)
 	s.mock.IgnorePool = true
 	s.mock.IgnoreAppName = true
