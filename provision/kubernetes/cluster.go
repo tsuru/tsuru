@@ -177,7 +177,7 @@ func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	}, nil
 }
 
-var randomGenerator = rand.New(rand.NewSource(3))
+var randomGenerator *rand.Rand = nil
 
 func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 	cfg, err := getRestBaseConfig(c)
@@ -188,7 +188,14 @@ func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
 		return nil, errors.New("no addresses for cluster")
 	}
 
-	addr := c.Addresses[randomGenerator.Intn(len(c.Addresses))]
+	var randPos int
+	if randomGenerator == nil {
+		randPos = rand.Intn(len(c.Addresses))
+	} else {
+		randPos = randomGenerator.Intn(len(c.Addresses))
+	}
+
+	addr := c.Addresses[randPos]
 	token, user, password := "", "", ""
 	if c.CustomData != nil {
 		token = c.CustomData[tokenClusterKey]

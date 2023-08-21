@@ -229,6 +229,9 @@ func (s *S) TestClusterGetRestConfigMultipleAddrsRandom(c *check.C) {
 	}
 	// reinitialize rand seed
 	randomGenerator = rand.New(rand.NewSource(3))
+	defer func() {
+		randomGenerator = nil
+	}()
 
 	cfg, err := getRestConfig(&c1)
 	c.Assert(err, check.IsNil)
