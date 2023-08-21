@@ -162,17 +162,15 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
-	srv, wg := s.CreateDeployReadyServer(c)
+	srv := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(srv.URL)
 	return a, func() {
 			rollbackDeployment()
 			deployPodReady.Wait()
-			wg.Wait()
 		}, func() {
 			rebuild.Shutdown(context.Background())
 			rollbackDeployment()
 			deployPodReady.Wait()
-			wg.Wait()
 			if srv == nil {
 				return
 			}
@@ -207,16 +205,14 @@ func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
 	rollbackDeployment := s.DeploymentReactions(c)
 	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
-	srv, wg := s.CreateDeployReadyServer(c)
+	srv := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(srv.URL)
 	return func() {
 			rollbackDeployment()
 			podReady.Wait()
-			wg.Wait()
 		}, func() {
 			rollbackDeployment()
 			podReady.Wait()
-			wg.Wait()
 			if srv == nil {
 				return
 			}
@@ -225,7 +221,7 @@ func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
 		}
 }
 
-func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.WaitGroup) {
+func (s *KubeMock) CreateDeployReadyServer(c *check.C) *httptest.Server {
 	mu := sync.Mutex{}
 	attachFn := func(w http.ResponseWriter, r *http.Request, cont string) {
 		tty := r.FormValue("tty") == trueStr
@@ -317,10 +313,7 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			stdout.Write([]byte("stdout data"))
 		}
 	}
-	wg := sync.WaitGroup{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wg.Add(1)
-		defer wg.Done()
 		cont := r.FormValue("container")
 		mu.Lock()
 		res := s.Stream[cont]
@@ -342,7 +335,7 @@ func (s *KubeMock) CreateDeployReadyServer(c *check.C) (*httptest.Server, *sync.
 			s.ListPodsHandler(c)(w, r)
 		}
 	}))
-	return srv, &wg
+	return srv
 }
 
 func (s *KubeMock) ListPodsHandler(c *check.C, funcs ...func(r *http.Request)) func(w http.ResponseWriter, r *http.Request) {

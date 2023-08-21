@@ -1436,10 +1436,9 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 }
 
 func (s *S) TestDeployBuilderImageCancel(c *check.C) {
-	srv, wg := s.mock.CreateDeployReadyServer(c)
+	srv := s.mock.CreateDeployReadyServer(c)
 	s.mock.MockfakeNodes(srv.URL)
 	defer srv.Close()
-	defer wg.Wait()
 	a := provisiontest.NewFakeApp("myapp", "python", 0)
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
