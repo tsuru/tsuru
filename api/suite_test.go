@@ -6,11 +6,9 @@ package api
 
 import (
 	stdcontext "context"
-	"math/rand"
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/ajg/form"
 	"github.com/tsuru/config"
@@ -103,7 +101,6 @@ var nativeScheme = native.NativeScheme{}
 func (s *S) SetUpSuite(c *check.C) {
 	form.DefaultEncoder = form.DefaultEncoder.UseJSONTags(false)
 	app.TestLogWriterWaitOnClose = true
-	rand.Seed(time.Now().UnixNano())
 	s.testServer = RunServer(true)
 	testCertData, err := os.ReadFile("./testdata/cert.pem")
 	c.Assert(err, check.IsNil)
