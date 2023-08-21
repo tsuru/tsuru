@@ -55,18 +55,19 @@ import (
 )
 
 type S struct {
-	p             *kubernetesProvisioner
-	conn          *db.Storage
-	user          *auth.User
-	team          *authTypes.Team
-	token         auth.Token
-	client        *kTesting.ClientWrapper
-	clusterClient *ClusterClient
-	t             *testing.T
-	mock          *kTesting.KubeMock
-	mockService   servicemock.MockService
-	factory       informers.SharedInformerFactory
-	vpaFactory    vpaInformers.SharedInformerFactory
+	p                             *kubernetesProvisioner
+	conn                          *db.Storage
+	user                          *auth.User
+	team                          *authTypes.Team
+	token                         auth.Token
+	client                        *kTesting.ClientWrapper
+	clusterClient                 *ClusterClient
+	t                             *testing.T
+	mock                          *kTesting.KubeMock
+	mockService                   servicemock.MockService
+	factory                       informers.SharedInformerFactory
+	vpaFactory                    vpaInformers.SharedInformerFactory
+	defaultSharedInformerDuration time.Duration
 
 	builders map[string]builder.Builder
 }
@@ -156,8 +157,10 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	s.factory = informers.NewSharedInformerFactory(s.client, 1)
-	s.vpaFactory = vpaInformers.NewSharedInformerFactory(s.client.VPAClientset, 1)
+	s.defaultSharedInformerDuration, err = time.ParseDuration("1s")
+	c.Assert(err, check.IsNil)
+	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
+	s.vpaFactory = vpaInformers.NewSharedInformerFactory(s.client.VPAClientset, s.defaultSharedInformerDuration)
 	InformerFactory = func(client *ClusterClient, tweak internalinterfaces.TweakListOptionsFunc) (informers.SharedInformerFactory, error) {
 		return s.factory, nil
 	}
