@@ -59,27 +59,8 @@ func ListUsersWithRole(role string) ([]User, error) {
 	return listUsers(bson.M{"roles.name": role})
 }
 
-func ListUsersWithPermissions(wantedPerms ...permission.Permission) ([]User, error) {
-	allUsers, err := ListUsers()
-	if err != nil {
-		return nil, err
-	}
-	var filteredUsers []User
-	// TODO(cezarsa): Too slow! Think about faster implementation in the future.
-usersLoop:
-	for _, u := range allUsers {
-		perms, err := u.Permissions()
-		if err != nil {
-			return nil, err
-		}
-		for _, p := range wantedPerms {
-			if permission.CheckFromPermList(perms, p.Scheme, p.Context) {
-				filteredUsers = append(filteredUsers, u)
-				continue usersLoop
-			}
-		}
-	}
-	return filteredUsers, nil
+func ListUsersWithRolesAndContext(roles []string, context string) ([]User, error) {
+	return listUsers(bson.M{"roles": bson.M{"$elemMatch": bson.M{"contextvalue": context, "name": bson.M{"$in": roles}}}})
 }
 
 func GetUserByEmail(email string) (*User, error) {

@@ -946,8 +946,15 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
-	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.update")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -967,7 +974,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget(u.Email),
 		Owner:  u.Email,
-		Kind:   "user.update.token",
+		Kind:   "apikey.update",
 	}, eventtest.HasEvent)
 }
 
@@ -991,7 +998,7 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndIsAdminUser(c *chec
 	c.Assert(eventtest.EventDesc{
 		Target: userTarget("leto@arrakis.com"),
 		Owner:  token.GetUserName(),
-		Kind:   "user.update.token",
+		Kind:   "apikey.update",
 		StartCustomData: []map[string]interface{}{
 			{"name": "user", "value": "leto@arrakis.com"},
 		},
@@ -1012,9 +1019,29 @@ func (s *AuthSuite) TestRegenerateAPITokenHandlerOtherUserAndNotAdminUser(c *che
 	c.Assert(err.(*errors.HTTP).Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
+func (s *AuthSuite) TestShowAPITokenForUserWithNoPermission(c *check.C) {
 	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
 	_, err := nativeScheme.Create(context.TODO(), &u)
+	c.Assert(err, check.IsNil)
+	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest(http.MethodGet, "/users/api-key", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.read")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1032,8 +1059,16 @@ func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *check.C) {
 }
 
 func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *check.C) {
-	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
-	_, err := nativeScheme.Create(context.TODO(), &u)
+	r, err := permission.NewRole("myrole", "global", "")
+	c.Assert(err, check.IsNil)
+	err = r.AddPermissions("apikey.read")
+	c.Assert(err, check.IsNil)
+
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde", Roles: []authTypes.RoleInstance{
+		{Name: r.Name},
+	}}
+
+	_, err = nativeScheme.Create(context.TODO(), &u)
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(context.TODO(), map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
@@ -1619,4 +1654,139 @@ func (s *AuthSuite) TestUpdateTeamErrorInRollback(c *check.C) {
 		{"team1", "team9000"},
 	})
 	c.Assert(buf.String(), check.Matches, "(?s).*error rolling back team name change in.*TestUpdateTeamErrorInRollback.*from \"team1\" to \"team9000\".*")
+}
+
+func (s *AuthSuite) TestTeamUsersList(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	u1 := auth.User{Email: "myuser1@example.com", Roles: []authTypes.RoleInstance{{Name: "team-member", ContextValue: teamName}}}
+	err := u1.Create()
+	c.Assert(err, check.IsNil)
+
+	u2 := auth.User{Email: "myuser2@example.com", Roles: []authTypes.RoleInstance{{Name: "god"}, {Name: "team-member", ContextValue: "other-team"}}}
+	err = u2.Create()
+	c.Assert(err, check.IsNil)
+
+	role1, err := permission.NewRole("team-member", "team", "")
+	c.Assert(err, check.IsNil)
+
+	err = role1.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	role2, err := permission.NewRole("god", "global", "")
+	c.Assert(err, check.IsNil)
+
+	err = role2.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/users", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	r := []teamUserItem{}
+	json.NewDecoder(recorder.Body).Decode(&r)
+	c.Assert(r, check.HasLen, 1)
+	c.Assert(r[0].Email, check.Equals, u1.Email)
+	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
+}
+
+func (s *AuthSuite) TestTeamUsersListNoPerm(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamUserList(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestTeamUsersListNoTeam(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamUserList(recorder, request, token)
+	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: http.StatusNotFound, Message: "team not found"})
+}
+
+func (s *AuthSuite) TestTeamGroupsList(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	role1, err := permission.NewRole("team-member", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role1.AddPermissions("app")
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.AuthGroup.AddRole("group1", "team-member", teamName)
+	c.Assert(err, check.IsNil)
+
+	err = servicemanager.AuthGroup.AddRole("group2", "team-member", "other-team")
+	c.Assert(err, check.IsNil)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%v/groups", teamName), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+
+	r := []teamGroupItem{}
+	json.NewDecoder(recorder.Body).Decode(&r)
+	c.Assert(r, check.HasLen, 1)
+	c.Assert(r[0].Group, check.Equals, "group1")
+	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
+}
+
+func (s *AuthSuite) TestTeamGroupsListNoPerm(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/groups?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamGroupList(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestTeamGroupsListNoTeam(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamGroupList(recorder, request, token)
+	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: http.StatusNotFound, Message: "team not found"})
 }

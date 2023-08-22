@@ -623,7 +623,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if email == "" {
 		email = t.GetUserName()
 	}
-	allowed := permission.Check(t, permission.PermUserUpdateToken,
+	allowed := permission.Check(t, permission.PermApikeyUpdate,
 		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
@@ -631,7 +631,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     userTarget(email),
-		Kind:       permission.PermUserUpdateToken,
+		Kind:       permission.PermApikeyUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
@@ -667,11 +667,19 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+
 	email := r.URL.Query().Get("user")
+
+	emailToCheckPerm := email
+	if emailToCheckPerm == "" {
+		emailToCheckPerm = u.Email
+	}
+
+	if !permission.Check(t, permission.PermApikeyRead, permission.Context(permTypes.CtxUser, emailToCheckPerm)) {
+		return permission.ErrUnauthorized
+	}
+
 	if email != "" {
-		if !permission.Check(t, permission.PermUserUpdateToken) {
-			return permission.ErrUnauthorized
-		}
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -881,4 +889,141 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(userData)
+}
+
+// title: team users
+// path: /teams/{name}/users
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: team users
+//	404: Not found
+//	401: Unauthorized
+func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	teamName := r.URL.Query().Get(":name")
+	_, err := servicemanager.Team.FindByName(ctx, teamName)
+	if err == authTypes.ErrTeamNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(t, permission.PermTeamRead,
+		permission.Context(permTypes.CtxTeam, teamName),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	allRoles, err := permission.ListRoles()
+	if err != nil {
+		return err
+	}
+
+	teamRoles := []string{}
+	roleMap := map[string]bool{}
+	for _, role := range allRoles {
+		if role.ContextType == permTypes.CtxTeam {
+			teamRoles = append(teamRoles, role.Name)
+			roleMap[role.Name] = true
+		}
+	}
+
+	users, err := auth.ListUsersWithRolesAndContext(teamRoles, teamName)
+	if err != nil {
+		return err
+	}
+
+	result := []teamUserItem{}
+	for _, user := range users {
+		userContextRoles := []string{}
+		alreadyPushedRoles := map[string]bool{}
+		for _, role := range user.Roles {
+			if roleMap[role.Name] && role.ContextValue == teamName && !alreadyPushedRoles[role.Name] {
+				userContextRoles = append(userContextRoles, role.Name)
+				alreadyPushedRoles[role.Name] = true
+			}
+		}
+
+		result = append(result, teamUserItem{Email: user.Email, Roles: userContextRoles})
+	}
+
+	return json.NewEncoder(w).Encode(result)
+}
+
+// title: team groups
+// path: /teams/{name}/groups
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: team groups
+//	404: Not found
+//	401: Unauthorized
+func teamGroupList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	teamName := r.URL.Query().Get(":name")
+	_, err := servicemanager.Team.FindByName(ctx, teamName)
+	if err == authTypes.ErrTeamNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
+	}
+
+	allowed := permission.Check(t, permission.PermTeamRead,
+		permission.Context(permTypes.CtxTeam, teamName),
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	allRoles, err := permission.ListRoles()
+	if err != nil {
+		return err
+	}
+
+	roleMap := map[string]bool{}
+	for _, role := range allRoles {
+		if role.ContextType == permTypes.CtxTeam {
+			roleMap[role.Name] = true
+		}
+	}
+
+	allGroups, err := servicemanager.AuthGroup.List(nil)
+	if err != nil {
+		return err
+	}
+
+	result := []teamGroupItem{}
+	for _, group := range allGroups {
+		groupContextRoles := []string{}
+		alreadyPushedRoles := map[string]bool{}
+
+		for _, role := range group.Roles {
+			if roleMap[role.Name] && role.ContextValue == teamName && !alreadyPushedRoles[role.Name] {
+				groupContextRoles = append(groupContextRoles, role.Name)
+				alreadyPushedRoles[role.Name] = true
+			}
+		}
+
+		if len(groupContextRoles) > 0 {
+			result = append(result, teamGroupItem{Group: group.Name, Roles: groupContextRoles})
+		}
+	}
+
+	return json.NewEncoder(w).Encode(result)
+}
+
+type teamUserItem struct {
+	Email string   `json:"email"`
+	Roles []string `json:"roles"`
+}
+
+type teamGroupItem struct {
+	Group string   `json:"group"`
+	Roles []string `json:"roles"`
 }

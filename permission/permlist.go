@@ -98,10 +98,14 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"user.delete",
 	"user.read.events",
 	"user.read.quota",
-	"user.update.token",
 	"user.update.quota",
 	"user.update.password",
 	"user.update.reset",
+).addWithCtx(
+	"apikey", []permTypes.ContextType{permTypes.CtxUser},
+).add(
+	"apikey.read",
+	"apikey.update",
 ).addWithCtx(
 	"service", []permTypes.ContextType{permTypes.CtxService, permTypes.CtxTeam},
 ).addWithCtx(
