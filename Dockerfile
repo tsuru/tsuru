@@ -1,5 +1,5 @@
 ARG alpine_version=3.17
-ARG golang_version=1.19
+ARG golang_version=1.20
 
 FROM --platform=${BUILDPLATFORM} golang:${golang_version}-alpine${alpine_version} AS builder
 COPY . /go/src/github.com/tsuru/tsuru

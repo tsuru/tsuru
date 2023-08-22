@@ -36,7 +36,6 @@ func (s *S) TestShouldSetCloseToTrue(c *check.C) {
 		`(?s)`+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\n.*`+
-			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
 			`HTTP/0.0 200 OK.*`)
@@ -67,7 +66,6 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *check.C) {
 		`(?s)`+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\n.*`+
-			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
 			`HTTP/0.0 403 Forbidden.*`+
@@ -104,7 +102,6 @@ func (s *S) TestShouldReturnStatusMessageOnErrorWhenBodyIsEmpty(c *check.C) {
 		`(?s)`+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\n.*`+
-			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
 			`HTTP/0.0 503 Service Unavailable\r\n`+
@@ -151,7 +148,6 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
 		``+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\\n.*`+
-			`Connection: close.*`+
 			`Authorization: bearer.*`)
 }
 
@@ -178,8 +174,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), check.Matches,
 		``+
 			`.*<Request uri="/">.*`+
-			`GET / HTTP/1.1\r\\n.*`+
-			`Connection: close.*`)
+			`GET / HTTP/1.1\r\\n.*`)
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *check.C) {
@@ -205,7 +200,6 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *c
 		``+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\\n.*`+
-			`Connection: close.*`+
 			`Authorization: bearer.*`)
 }
 
