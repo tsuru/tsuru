@@ -26,7 +26,6 @@ func (s *S) TestVerboseRoundTripperDumpRequest(c *check.C) {
 	c.Assert(out.String(), check.DeepEquals, "*************************** <Request uri=\"/users\"> **********************************\n"+
 		"GET /users HTTP/1.1\r\n"+
 		"Host: localhost\r\n"+
-		"Connection: close\r\n"+
 		"X-Tsuru-Verbosity: 1\r\n"+
 		"\r\n"+
 		"*************************** </Request uri=\"/users\"> **********************************\n")
@@ -50,7 +49,6 @@ func (s *S) TestVerboseRoundTripperDumpRequestResponse(c *check.C) {
 	c.Assert(out.String(), check.DeepEquals, "*************************** <Request uri=\"/users\"> **********************************\n"+
 		"GET /users HTTP/1.1\r\n"+
 		"Host: localhost\r\n"+
-		"Connection: close\r\n"+
 		"X-Tsuru-Verbosity: 2\r\n"+
 		"\r\n"+
 		"*************************** </Request uri=\"/users\"> **********************************\n"+

@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"math/rand"
 	"reflect"
 	"sort"
 	"testing"
@@ -150,7 +149,6 @@ func (s *S) SetUpTest(c *check.C) {
 		return s.client.BackendClientset, nil
 	}
 	routertest.FakeRouter.Reset()
-	rand.Seed(0)
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
 		Name:        "test-default",
 		Default:     true,

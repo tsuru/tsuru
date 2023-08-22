@@ -275,10 +275,9 @@ func (s *S) TestWaitForPodContainersRunning(c *check.C) {
 }
 
 func (s *S) TestWaitForPod(c *check.C) {
-	srv, wg := s.mock.CreateDeployReadyServer(c)
+	srv := s.mock.CreateDeployReadyServer(c)
 	s.mock.MockfakeNodes(srv.URL)
 	defer srv.Close()
-	defer wg.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	ns := "default"
 	err := waitForPod(ctx, s.clusterClient, &apiv1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod1"}}, ns, false)
