@@ -333,14 +333,14 @@ func probeMsg(pod apiv1.Pod) string {
 	if probe == nil {
 		return ""
 	}
-	if probe.Handler.HTTPGet != nil {
-		return fmt.Sprintf("HTTP GET to %s on port %s", probe.Handler.HTTPGet.Path, probe.Handler.HTTPGet.Port.String())
+	if probe.ProbeHandler.HTTPGet != nil {
+		return fmt.Sprintf("HTTP GET to %s on port %s", probe.ProbeHandler.HTTPGet.Path, probe.ProbeHandler.HTTPGet.Port.String())
 	}
-	if probe.Handler.TCPSocket != nil {
-		return fmt.Sprintf("TCP connect on port %s", probe.Handler.TCPSocket.Port.String())
+	if probe.ProbeHandler.TCPSocket != nil {
+		return fmt.Sprintf("TCP connect on port %s", probe.ProbeHandler.TCPSocket.Port.String())
 	}
-	if probe.Handler.Exec != nil {
-		return fmt.Sprintf("Command exec %q", probe.Handler.Exec.Command)
+	if probe.ProbeHandler.Exec != nil {
+		return fmt.Sprintf("Command exec %q", probe.ProbeHandler.Exec.Command)
 	}
 	return ""
 }

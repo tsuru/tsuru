@@ -18,7 +18,7 @@ import (
 	vpaV1Informers "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/autoscaling.k8s.io/v1"
 	vpaInternalInterfaces "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/informers/externalversions/internalinterfaces"
 	"k8s.io/client-go/informers"
-	autoscalingInformers "k8s.io/client-go/informers/autoscaling/v2beta2"
+	autoscalingv2informers "k8s.io/client-go/informers/autoscaling/v2"
 	jobsInformer "k8s.io/client-go/informers/batch/v1"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
@@ -49,7 +49,7 @@ type clusterController struct {
 	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
 	serviceInformer         v1informers.ServiceInformer
-	hpaInformer             autoscalingInformers.HorizontalPodAutoscalerInformer
+	hpaInformer             autoscalingv2informers.HorizontalPodAutoscalerInformer
 	vpaInformer             vpaV1Informers.VerticalPodAutoscalerInformer
 	jobsInformer            jobsInformer.JobInformer
 	eventsInformer          v1informers.EventInformer
@@ -236,12 +236,12 @@ func (c *clusterController) getServiceInformer() (v1informers.ServiceInformer, e
 	return c.serviceInformer, err
 }
 
-func (c *clusterController) getHPAInformer() (autoscalingInformers.HorizontalPodAutoscalerInformer, error) {
+func (c *clusterController) getHPAInformer() (autoscalingv2informers.HorizontalPodAutoscalerInformer, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.hpaInformer == nil {
 		err := c.withFilteredInformerFactory(func(factory informers.SharedInformerFactory) {
-			c.hpaInformer = factory.Autoscaling().V2beta2().HorizontalPodAutoscalers()
+			c.hpaInformer = factory.Autoscaling().V2().HorizontalPodAutoscalers()
 			c.hpaInformer.Informer()
 		})
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
-	autoscalingv2 "k8s.io/api/autoscaling/v2beta2"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -227,7 +227,7 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil {
 		return err
 	}
-	err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
+	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -283,7 +283,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		_ = target.AverageValue.String()
 	}
 
-	policyMin := autoscalingv2.MinPolicySelect
+	policyMin := autoscalingv2.MinChangePolicySelect
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   hpaName,
@@ -335,7 +335,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return err
 	}
 
-	existingHPA, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
+	existingHPA, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
 		existingHPA = nil
 	} else if err != nil {
@@ -343,9 +343,9 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	}
 	if existingHPA != nil {
 		hpa.ResourceVersion = existingHPA.ResourceVersion
-		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
+		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
 	} else {
-		_, err = client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
+		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(ctx, hpa, metav1.CreateOptions{})
 	}
 	if err != nil {
 		return errors.WithStack(err)
@@ -556,7 +556,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		return nil, errors.WithStack(err)
 	}
 
-	hpas, err := client.AutoscalingV2beta2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
+	hpas, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToHPASelector())).String(),
 	})
 	if err != nil {
