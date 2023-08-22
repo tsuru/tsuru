@@ -203,7 +203,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								{ContainerPort: 8888},
 							},
 							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
+								PreStop: &apiv1.LifecycleHandler{
 									Exec: &apiv1.ExecAction{
 										Command: []string{"sh", "-c", "sleep 10 || true"},
 									},
@@ -1092,7 +1092,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    10,
 				FailureThreshold: 3,
 				TimeoutSeconds:   60,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1115,7 +1115,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    10,
 				FailureThreshold: 3,
 				TimeoutSeconds:   60,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1136,7 +1136,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    10,
 				FailureThreshold: 3,
 				TimeoutSeconds:   60,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					Exec: &apiv1.ExecAction{
 						Command: []string{
 							"cat",
@@ -1158,7 +1158,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    9,
 				FailureThreshold: 4,
 				TimeoutSeconds:   2,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1181,7 +1181,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    9,
 				FailureThreshold: 4,
 				TimeoutSeconds:   2,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1194,7 +1194,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    9,
 				FailureThreshold: 4,
 				TimeoutSeconds:   2,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1221,7 +1221,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    9,
 				FailureThreshold: 4,
 				TimeoutSeconds:   2,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1234,7 +1234,7 @@ func (s *S) TestServiceManagerDeployServiceWithHC(c *check.C) {
 				PeriodSeconds:    9,
 				FailureThreshold: 4,
 				TimeoutSeconds:   2,
-				Handler: apiv1.Handler{
+				ProbeHandler: apiv1.ProbeHandler{
 					HTTPGet: &apiv1.HTTPGetAction{
 						Path:        "/hc",
 						Port:        intstr.FromInt(8888),
@@ -1292,7 +1292,7 @@ func (s *S) TestEnsureBackendConfigIfEnabled(c *check.C) {
 		PeriodSeconds:    9,
 		FailureThreshold: 4,
 		TimeoutSeconds:   10,
-		Handler: apiv1.Handler{
+		ProbeHandler: apiv1.ProbeHandler{
 			HTTPGet: &apiv1.HTTPGetAction{
 				Path:        "/hc",
 				Port:        intstr.FromInt(8888),
@@ -1377,7 +1377,7 @@ func (s *S) TestEnsureBackendConfigIfEnabledWithDefaults(c *check.C) {
 		PeriodSeconds:    9,
 		FailureThreshold: 4,
 		TimeoutSeconds:   60,
-		Handler: apiv1.Handler{
+		ProbeHandler: apiv1.ProbeHandler{
 			HTTPGet: &apiv1.HTTPGetAction{
 				Path:        "/hc",
 				Port:        intstr.FromInt(8888),
@@ -1603,12 +1603,12 @@ func (s *S) TestServiceManagerDeployServiceWithRestartHooks(c *check.C) {
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	expectedLifecycle := &apiv1.Lifecycle{
-		PostStart: &apiv1.Handler{
+		PostStart: &apiv1.LifecycleHandler{
 			Exec: &apiv1.ExecAction{
 				Command: []string{"sh", "-c", "after cmd1 && after cmd2"},
 			},
 		},
-		PreStop: &apiv1.Handler{
+		PreStop: &apiv1.LifecycleHandler{
 			Exec: &apiv1.ExecAction{
 				Command: []string{"sh", "-c", "sleep 10 || true"},
 			},
@@ -1636,7 +1636,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 			value:         "",
 			expectedGrace: 40,
 			expectedLife: &apiv1.Lifecycle{
-				PreStop: &apiv1.Handler{
+				PreStop: &apiv1.LifecycleHandler{
 					Exec: &apiv1.ExecAction{
 						Command: []string{"sh", "-c", "sleep 10 || true"},
 					},
@@ -1647,7 +1647,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 			value:         "invalid",
 			expectedGrace: 40,
 			expectedLife: &apiv1.Lifecycle{
-				PreStop: &apiv1.Handler{
+				PreStop: &apiv1.LifecycleHandler{
 					Exec: &apiv1.ExecAction{
 						Command: []string{"sh", "-c", "sleep 10 || true"},
 					},
@@ -1658,7 +1658,7 @@ func (s *S) TestServiceManagerDeployServiceWithCustomSleep(c *check.C) {
 			value:         "7",
 			expectedGrace: 37,
 			expectedLife: &apiv1.Lifecycle{
-				PreStop: &apiv1.Handler{
+				PreStop: &apiv1.LifecycleHandler{
 					Exec: &apiv1.ExecAction{
 						Command: []string{"sh", "-c", "sleep 7 || true"},
 					},
@@ -2776,7 +2776,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 								{ContainerPort: 8888},
 							},
 							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
+								PreStop: &apiv1.LifecycleHandler{
 									Exec: &apiv1.ExecAction{
 										Command: []string{"sh", "-c", "sleep 10 || true"},
 									},
@@ -5227,7 +5227,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 								{ContainerPort: 8888},
 							},
 							Lifecycle: &apiv1.Lifecycle{
-								PreStop: &apiv1.Handler{
+								PreStop: &apiv1.LifecycleHandler{
 									Exec: &apiv1.ExecAction{
 										Command: []string{"sh", "-c", "sleep 10 || true"},
 									},
