@@ -30,7 +30,6 @@ import (
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 
 	_ "github.com/tsuru/tsuru/router/api"
-	_ "go.uber.org/automaxprocs"
 )
 
 const (

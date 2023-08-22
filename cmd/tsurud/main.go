@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	_ "go.uber.org/automaxprocs"
 )
 
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"
