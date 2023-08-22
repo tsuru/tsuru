@@ -904,8 +904,11 @@ func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
 	_, err := servicemanager.Team.FindByName(ctx, teamName)
-	if err != nil {
+	if err == authTypes.ErrTeamNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
 	}
 
 	allowed := permission.Check(t, permission.PermTeamRead,
@@ -964,8 +967,11 @@ func teamGroupList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
 	_, err := servicemanager.Team.FindByName(ctx, teamName)
-	if err != nil {
+	if err == authTypes.ErrTeamNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	if err != nil {
+		return err
 	}
 
 	allowed := permission.Check(t, permission.PermTeamRead,

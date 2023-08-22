@@ -1697,6 +1697,37 @@ func (s *AuthSuite) TestTeamUsersList(c *check.C) {
 	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
 }
 
+func (s *AuthSuite) TestTeamUsersListNoPerm(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamUserList(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestTeamUsersListNoTeam(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamUserList(recorder, request, token)
+	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: http.StatusNotFound, Message: "team not found"})
+}
+
 func (s *AuthSuite) TestTeamGroupsList(c *check.C) {
 	teamName := "team-test"
 	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
@@ -1727,4 +1758,35 @@ func (s *AuthSuite) TestTeamGroupsList(c *check.C) {
 	c.Assert(r, check.HasLen, 1)
 	c.Assert(r[0].Group, check.Equals, "group1")
 	c.Assert(r[0].Roles, check.DeepEquals, []string{role1.Name})
+}
+
+func (s *AuthSuite) TestTeamGroupsListNoPerm(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		c.Assert(name, check.Equals, teamName)
+		return &authTypes.Team{Name: name}, nil
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/groups?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamGroupList(recorder, request, token)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *AuthSuite) TestTeamGroupsListNoTeam(c *check.C) {
+	teamName := "team-test"
+	s.mockTeamService.OnFindByName = func(name string) (*authTypes.Team, error) {
+		return nil, authTypes.ErrTeamNotFound
+	}
+
+	token := userWithPermission(c)
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/teams/%s/users?:name=%s", teamName, teamName), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = teamGroupList(recorder, request, token)
+	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: http.StatusNotFound, Message: "team not found"})
 }
