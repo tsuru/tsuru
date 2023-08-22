@@ -334,37 +334,6 @@ func (s *S) TestUserPermissionsWithRemovedRole(c *check.C) {
 	})
 }
 
-func (s *S) TestListUsersWithPermissions(c *check.C) {
-	u1 := User{Email: "me1@tsuru.com", Password: "123"}
-	err := u1.Create()
-	c.Assert(err, check.IsNil)
-	u2 := User{Email: "me2@tsuru.com", Password: "123"}
-	err = u2.Create()
-	c.Assert(err, check.IsNil)
-	r1, err := permission.NewRole("r1", "app", "")
-	c.Assert(err, check.IsNil)
-	err = r1.AddPermissions("app.update.env", "app.deploy")
-	c.Assert(err, check.IsNil)
-	err = u1.AddRole("r1", "myapp1")
-	c.Assert(err, check.IsNil)
-	err = u2.AddRole("r1", "myapp2")
-	c.Assert(err, check.IsNil)
-	users, err := ListUsersWithPermissions(permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxApp, "myapp1"),
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(users, check.HasLen, 1)
-	c.Assert(users[0].Email, check.Equals, u1.Email)
-	users, err = ListUsersWithPermissions(permission.Permission{
-		Scheme:  permission.PermAppDeploy,
-		Context: permission.Context(permTypes.CtxApp, "myapp2"),
-	})
-	c.Assert(err, check.IsNil)
-	c.Assert(users, check.HasLen, 1)
-	c.Assert(users[0].Email, check.Equals, u2.Email)
-}
-
 func (s *S) TestAddRolesForEvent(c *check.C) {
 	r1, err := permission.NewRole("r1", "team", "")
 	c.Assert(err, check.IsNil)

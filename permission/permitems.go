@@ -9,6 +9,9 @@ package permission
 
 var (
 	PermAll                              = PermissionRegistry.get("")                                    // [global]
+	PermApikey                           = PermissionRegistry.get("apikey")                              // [global user]
+	PermApikeyRead                       = PermissionRegistry.get("apikey.read")                         // [global user]
+	PermApikeyUpdate                     = PermissionRegistry.get("apikey.update")                       // [global user]
 	PermApp                              = PermissionRegistry.get("app")                                 // [global app team pool]
 	PermAppAdmin                         = PermissionRegistry.get("app.admin")                           // [global app team pool]
 	PermAppAdminQuota                    = PermissionRegistry.get("app.admin.quota")                     // [global app team pool]
@@ -209,7 +212,6 @@ var (
 	PermUserUpdatePassword               = PermissionRegistry.get("user.update.password")                // [global user]
 	PermUserUpdateQuota                  = PermissionRegistry.get("user.update.quota")                   // [global user]
 	PermUserUpdateReset                  = PermissionRegistry.get("user.update.reset")                   // [global user]
-	PermUserUpdateToken                  = PermissionRegistry.get("user.update.token")                   // [global user]
 	PermVolume                           = PermissionRegistry.get("volume")                              // [global volume team pool]
 	PermVolumeCreate                     = PermissionRegistry.get("volume.create")                       // [global team pool]
 	PermVolumeDelete                     = PermissionRegistry.get("volume.delete")                       // [global volume team pool]

@@ -2498,6 +2498,68 @@ paths:
       - team
       security:
       - Bearer: []
+  /1.17/teams/{team}/users:
+    parameters:
+    - name: team
+      in: path
+      required: true
+      type: string
+      description: Team name.
+    get:
+      operationId: TeamUserList
+      description: Get users of a team
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User list
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/TeamUser"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - team
+      security:
+      - Bearer: []
+  /1.17/teams/{team}/groups:
+    parameters:
+    - name: team
+      in: path
+      required: true
+      type: string
+      description: Team name.
+    get:
+      operationId: TeamGroupList
+      description: Get groups of a team
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Group list
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/TeamGroup"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+        "404":
+          description: Team not found
+          schema:
+            $ref: "#/definitions/ErrorMessage"
+      tags:
+      - team
+      security:
+      - Bearer: []
   /1.6/teams/{team}:
     parameters:
     - name: team
@@ -6301,6 +6363,24 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/App"
+  TeamUser:
+    type: object
+    properties:
+      email:
+        type: string
+      roles:
+        type: array
+        items:
+          type: string
+  TeamGroup:
+    type: object
+    properties:
+      group:
+        type: string
+      roles:
+        type: array
+        items:
+          type: string
   TeamTokenUpdateArgs:
     description: Arguments for updating an existing team token.
     properties:
