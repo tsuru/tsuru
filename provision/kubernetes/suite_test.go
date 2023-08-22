@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/volume"
+	_ "go.uber.org/automaxprocs"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
