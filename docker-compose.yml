@@ -1,14 +1,59 @@
-version: "3"
+version: "2.4"
+
 services:
   mongo:
+    container_name: mongo
     image: mongo:4
-    volumes:
-    - ./data/mongo:/data/db
     ports:
     - 27017:27017
-  redis:
-    image: redis
     volumes:
-    - ./data/redis:/data
+    - /data/db
+    restart: unless-stopped
+
+  registry:
+    container_name: registry
+    image: registry:2
     ports:
-    - 6379:6379
+    - 5000:5000
+    volumes:
+    - /var/lib/registry
+    restart: unless-stopped
+
+  deploy-agent:
+    container_name: deploy-agent
+    image: tsuru/deploy-agent:v2.3.2
+    command:
+    - -port=8000
+    - -buildkit-addr=tcp://buildkit:8001
+    ports:
+    - 8000:8000
+    restart: unless-stopped
+    depends_on:
+    - registry
+    - buildkit
+
+  buildkit:
+    container_name: buildkit
+    image: moby/buildkit:v0.12.1
+    privileged: true
+    volumes:
+    - ./etc/buildkitd.toml:/etc/buildkit/buildkitd.toml:ro
+    restart: unless-stopped
+    depends_on:
+    - registry
+
+  tsuru-api:
+    container_name: tsuru-api
+    build: ./
+    image: tsuru/api:dev
+    command:
+    - api
+    ports:
+    - 8080:8080
+    volumes:
+    - ./etc/tsurud.conf:/etc/tsuru/tsuru.conf:ro
+    restart: unless-stopped
+    depends_on:
+    - mongo
+    - registry
+    - deploy-agent

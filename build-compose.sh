@@ -1,36 +1,71 @@
 #!/bin/bash
 
-# This script builds tsurud inside container and call compose to build and run a new api image.
+# This script adds a fake IP used as the IP of Tsuru API while running it on Docker Compose.
 
-set -e
+set -eu -o pipefail
 
-IP="10.200.10.1"
-if ! `ping -c 1 -t 1 "$IP" > /dev/null`
-then
-  CURRENT_OS="$(uname)"
-  if [[ "$CURRENT_OS" == "Linux" ]]; then
-    sudo ip addr add dev docker0 $IP/24 || true
-  elif [[ "$CURRENT_OS" == "Darwin" ]]; then
-    sudo ifconfig lo0 alias $IP/24 || true
-  else
-    echo "Unsupported OS"
-    exit 1
+readonly FAKE_HOST_IP=${FAKE_HOST_IP:-100.64.100.100}
+readonly INTERFACE_NAME=${INTERFACE_NAME:-auto-detect} # the interface to assign the fake host IP (defaults to loopback interface)
+readonly TEMPLATES_DIR=./etc
+
+readonly DEBUG=${DEBUG:-}
+
+[[ -n ${DEBUG} ]] && set -x
+
+function get_loopback_interface_name() {
+  local os_name=${1}
+
+  case ${os_name} in
+    Darwin)
+      echo lo0;;
+
+    *)
+      echo lo;;
+  esac
+}
+
+function set_ip_on_interface() {
+  local os_name=${1}
+  local interface_name=${2}
+  local ip=${3}
+
+  if [[ $(command -v ifconfig) ]]; then
+    sudo ifconfig "${interface_name}" alias "${FAKE_HOST_IP}/32"
+    return $?
   fi
-fi
 
-context=$(mktemp -d)
-docker build -t tsuru-build -f Dockerfile.build $context
-rmdir $context
+  echo "ifconfig not found" >&2
+  exit 2
+}
 
-BUILD_IMAGE='tsuru-build'
+function replace_ip_on_templates() {
+  local src=${1}
+  local dst=${2}
 
-LOCAL_PKG=`go env GOPATH`'/pkg/linux_amd64'
-CONTAINER_PKG='/go/pkg/linux_amd64'
-CONTAINER_PROJECT_PATH='/go/src/github.com/tsuru/tsuru'
-BUILD_CMD="go build -i -v --ldflags '-linkmode external -extldflags \"-static\"' -o build/tsurud ./cmd/tsurud"
+  {
+    HOST_IP=${FAKE_HOST_IP} \
+    TSURU_HOST_IP=${FAKE_HOST_IP} \
+      envsubst < ${src} > ${dst};
+  }
+}
 
-set -x
+function main() {
+  local os_name=$(uname)
 
-docker run --rm -v ${LOCAL_PKG}:${CONTAINER_PKG} -v ${PWD}:${CONTAINER_PROJECT_PATH} -w ${CONTAINER_PROJECT_PATH} -e CC=/usr/bin/gcc -e GOPATH=/go ${BUILD_IMAGE} sh -c "${BUILD_CMD}"
-docker-compose -f ${1:-"docker-compose.yml"} build api
-docker-compose -f ${1:-"docker-compose.yml"} up -d
+  local interface_name=${INTERFACE_NAME}
+  if [[ ${INTERFACE_NAME} == "auto-detect" ]]; then
+    interface_name=$(get_loopback_interface_name ${os_name})
+  fi
+
+  echo "Assigning the ${FAKE_HOST_IP} IP on ${interface_name} interface"
+  set_ip_on_interface ${os_name} ${interface_name} ${FAKE_HOST_IP}
+
+  for template_path in $(find ${TEMPLATES_DIR}/*.template); do
+    local destination_path=${template_path%.template}
+
+    echo "Redering template file ${template_path} at ${destination_path}..."
+    replace_ip_on_templates ${template_path} ${destination_path}
+  done
+}
+
+main $@

@@ -10,8 +10,8 @@ RUN set -x && \
 
 FROM alpine:${alpine_version}
 COPY --from=builder /go/src/github.com/tsuru/tsuru/build/tsurud /usr/local/bin/tsurud
-COPY /etc/tsuru-custom.conf /etc/tsuru/tsuru.conf
 RUN set -x && \
     apk add --no-cache ca-certificates
 EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/tsurud", "api"]
+ENTRYPOINT ["/usr/local/bin/tsurud"]
+CMD ["api"]
