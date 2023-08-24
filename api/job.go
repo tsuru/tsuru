@@ -203,12 +203,29 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
+
+	sis, err := service.GetServiceInstancesBoundToJob(j.Name)
+	if err != nil {
+		return err
+	}
+
+	binds := []bindTypes.ServiceInstanceBind{}
+	for _, si := range sis {
+		binds = append(binds, bindTypes.ServiceInstanceBind{
+			Service:  si.ServiceName,
+			Instance: si.Name,
+			Plan:     si.PlanName,
+		})
+	}
+
 	result := struct {
-		Job   *jobTypes.Job    `json:"job,omitempty"`
-		Units []provision.Unit `json:"units,omitempty"`
+		Job                  *jobTypes.Job                   `json:"job,omitempty"`
+		Units                []provision.Unit                `json:"units,omitempty"`
+		ServiceInstanceBinds []bindTypes.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
 	}{
-		Job:   j,
-		Units: units,
+		Job:                  j,
+		Units:                units,
+		ServiceInstanceBinds: binds,
 	}
 	jsonMsg, err := json.Marshal(&result)
 	if err != nil {
