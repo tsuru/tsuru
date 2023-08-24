@@ -218,11 +218,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		})
 	}
 
-	result := struct {
-		Job                  *jobTypes.Job                   `json:"job,omitempty"`
-		Units                []provision.Unit                `json:"units,omitempty"`
-		ServiceInstanceBinds []bindTypes.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
-	}{
+	result := jobInfoResult{
 		Job:                  j,
 		Units:                units,
 		ServiceInstanceBinds: binds,
@@ -235,6 +231,13 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonMsg)
 	return nil
+}
+
+// TODO: after move of provision.Unit to types, leave this structure to types/job
+type jobInfoResult struct {
+	Job                  *jobTypes.Job                   `json:"job,omitempty"`
+	Units                []provision.Unit                `json:"units,omitempty"`
+	ServiceInstanceBinds []bindTypes.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
 }
 
 // title: job update

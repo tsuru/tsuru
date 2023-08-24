@@ -864,6 +864,17 @@ func (s *S) TestJobInfo(c *check.C) {
 	provision.Register("jobProv", func() (provision.Provisioner, error) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
+
+	sInstance := service.ServiceInstance{
+		Name:        "j1sql",
+		ServiceName: "mysql",
+		Tags:        []string{},
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{"j1"},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+
 	defer provision.Unregister("jobProv")
 	j1 := jobTypes.Job{
 		Name:      "j1",
@@ -882,10 +893,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result struct {
-		Job   jobTypes.Job     `json:"job,omitempty"`
-		Units []provision.Unit `json:"units,omitempty"`
-	}
+	var result jobInfoResult
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.team.Name, check.DeepEquals, result.Job.TeamOwner)
@@ -893,6 +901,9 @@ func (s *S) TestJobInfo(c *check.C) {
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
 	c.Assert([]string{s.team.Name}, check.DeepEquals, result.Job.Teams)
 	c.Assert(s.user.Email, check.DeepEquals, result.Job.Owner)
+	c.Assert([]bindTypes.ServiceInstanceBind{
+		{Service: "mysql", Instance: "j1sql", Plan: ""},
+	}, check.DeepEquals, result.ServiceInstanceBinds)
 }
 
 func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {

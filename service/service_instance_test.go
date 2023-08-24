@@ -244,6 +244,44 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 	c.Assert(sInstances, check.DeepEquals, expected)
 }
 
+func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
+	srvc := Service{Name: "mysql"}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	sInstance := ServiceInstance{
+		Name:        "j3sql",
+		ServiceName: "mysql",
+		Tags:        []string{},
+		Teams:       []string{s.team.Name},
+		Jobs:        []string{"job1", "job2"},
+		Apps:        []string{},
+		BoundUnits:  []Unit{},
+		Parameters:  map[string]interface{}{},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+	sInstance2 := ServiceInstance{
+		Name:        "j9sql",
+		ServiceName: "mysql",
+		Tags:        []string{},
+		Jobs:        []string{"job1"},
+		BoundUnits:  []Unit{},
+		Apps:        []string{},
+		Teams:       []string{},
+		Parameters:  map[string]interface{}{},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
+	c.Assert(err, check.IsNil)
+	sInstances, err := GetServiceInstancesBoundToJob("job2")
+	c.Assert(err, check.IsNil)
+	expected := []ServiceInstance{sInstance}
+	c.Assert(sInstances, check.DeepEquals, expected)
+	sInstances, err = GetServiceInstancesBoundToJob("job1")
+	c.Assert(err, check.IsNil)
+	expected = []ServiceInstance{sInstance, sInstance2}
+	c.Assert(sInstances, check.DeepEquals, expected)
+}
+
 func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
