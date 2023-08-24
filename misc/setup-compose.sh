@@ -25,9 +25,8 @@ function get_loopback_interface_name() {
 }
 
 function set_ip_on_interface() {
-  local os_name=${1}
+  local ip=${1}
   local interface_name=${2}
-  local ip=${3}
 
   if [[ $(command -v ifconfig) ]]; then
     sudo ifconfig "${interface_name}" alias "${FAKE_HOST_IP}/32"
@@ -38,7 +37,7 @@ function set_ip_on_interface() {
   exit 2
 }
 
-function replace_ip_on_templates() {
+function render_config_template() {
   local src=${1}
   local dst=${2}
 
@@ -58,13 +57,13 @@ function main() {
   fi
 
   echo "Assigning the ${FAKE_HOST_IP} IP on ${interface_name} interface"
-  set_ip_on_interface ${os_name} ${interface_name} ${FAKE_HOST_IP}
+  set_ip_on_interface ${FAKE_HOST_IP} ${interface_name}
 
   for template_path in $(find ${TEMPLATES_DIR}/*.template); do
     local destination_path=${template_path%.template}
 
     echo "Redering template file ${template_path} at ${destination_path}..."
-    replace_ip_on_templates ${template_path} ${destination_path}
+    render_config_template ${template_path} ${destination_path}
   done
 }
 
