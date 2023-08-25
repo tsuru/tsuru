@@ -6010,6 +6010,8 @@ definitions:
         properties:
           schedule:
             type: string
+          manual:
+            type: boolean
           container:
             type: object
             properties:
