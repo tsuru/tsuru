@@ -5969,7 +5969,19 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/Unit"
-
+      serviceInstanceBinds:
+        type: array
+        description: Service instance binds on the job
+        items:
+          type: object
+          description: Service instance bind
+          properties:
+            service:
+              type: string
+            instance:
+              type: string
+            plan:
+              type: string
   JobList:
     type: array
     items:
