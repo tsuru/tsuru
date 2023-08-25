@@ -627,6 +627,21 @@ func GetServiceInstancesBoundToApp(appName string) ([]ServiceInstance, error) {
 	return instances, nil
 }
 
+func GetServiceInstancesBoundToJob(jobName string) ([]ServiceInstance, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var instances []ServiceInstance
+	q := bson.M{"jobs": bson.M{"$in": []string{jobName}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
+	if err != nil {
+		return nil, err
+	}
+	return instances, nil
+}
+
 func processTags(tags []string) []string {
 	if tags == nil {
 		return nil

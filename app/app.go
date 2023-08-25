@@ -312,14 +312,15 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get service instance bound to app: %+v", err))
 	}
-	result["serviceInstanceBinds"] = make([]interface{}, 0)
+	binds := make([]bindTypes.ServiceInstanceBind, 0)
 	for _, si := range sis {
-		result["serviceInstanceBinds"] = append(result["serviceInstanceBinds"].([]interface{}), map[string]interface{}{
-			"service":  si.ServiceName,
-			"instance": si.Name,
-			"plan":     si.PlanName,
+		binds = append(binds, bindTypes.ServiceInstanceBind{
+			Service:  si.ServiceName,
+			Instance: si.Name,
+			Plan:     si.PlanName,
 		})
 	}
+	result["serviceInstanceBinds"] = binds
 	if len(errMsgs) > 0 {
 		result["error"] = strings.Join(errMsgs, "\n")
 	}

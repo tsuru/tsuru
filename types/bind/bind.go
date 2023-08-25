@@ -17,3 +17,9 @@ type ServiceEnvVar struct {
 	ServiceName  string `json:"-"`
 	InstanceName string `json:"-"`
 }
+
+type ServiceInstanceBind struct {
+	Service  string `json:"service"`
+	Instance string `json:"instance"`
+	Plan     string `json:"plan"`
+}
