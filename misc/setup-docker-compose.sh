@@ -48,6 +48,15 @@ function render_config_template() {
   }
 }
 
+function generate_dotenv_file() {
+  local dst=${1}
+
+  cat > ${dst} <<-EOF
+TSURU_HOST_IP=${FAKE_HOST_IP}
+EOF
+
+}
+
 function main() {
   local os_name=$(uname)
 
@@ -65,6 +74,9 @@ function main() {
     echo "Redering template file ${template_path} at ${destination_path}..."
     render_config_template ${template_path} ${destination_path}
   done
+
+  echo "Creating .env file at project root..."
+  generate_dotenv_file ./.env
 }
 
 main $@

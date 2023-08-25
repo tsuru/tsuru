@@ -55,3 +55,6 @@ services:
     - mongo
     - registry
     - deploy-agent
+
+x-custom:
+  tsuru-host-ip: ${TSURU_HOST_IP:?You must execute "./misc/setup-docker-compose.sh" before running Docker Compose}
