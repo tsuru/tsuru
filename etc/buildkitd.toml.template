@@ -1,0 +1,25 @@
+# Buildkitd config file
+# https://github.com/moby/buildkit/blob/master/docs/buildkitd.toml.md
+
+[grpc]
+  address = [
+    "tcp://0.0.0.0:8001",
+    "unix:///run/buildkit/buildkitd.sock",
+  ]
+
+[worker.containerd]
+  enabled = false
+
+[worker.oci]
+  enabled = true
+  gc = false
+
+  # NOTE: Force x86_64 arch as Tsuru doesn't support different ones yet.
+  platforms = [
+    "linux/amd64"
+  ]
+
+[registry."${TSURU_HOST_IP}:5000"]
+  http = true
+
+# vim: ft=toml

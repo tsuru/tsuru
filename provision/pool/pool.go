@@ -222,6 +222,10 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 }
 
 func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
+	if len(routers) == 0 {
+		return nil
+	}
+
 	availableRouters, err := p.GetRouters()
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
