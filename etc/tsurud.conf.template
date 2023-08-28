@@ -1,0 +1,24 @@
+listen: 0.0.0.0:8080
+host: http://${TSURU_HOST_IP}:8080
+
+database:
+  driver: mongodb
+  url: ${TSURU_HOST_IP}:27017
+  name: tsuru
+
+provisioner: kubernetes
+
+docker:
+  repository: ${TSURU_HOST_IP}:5000
+  repository-namespace: tsuru
+
+  gc:
+    dry-run: true
+
+debug: true
+
+log:
+  disable-syslog: true
+  use-stderr: true
+
+# vim: ft=yaml
