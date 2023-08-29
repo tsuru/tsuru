@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	stdContext "context"
 	"encoding/json"
 	"fmt"
 	stdIO "io"
@@ -19,6 +20,8 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -39,19 +42,38 @@ const (
 	tsuruAdminMin = "1.0.0"
 
 	defaultMaxMemory = 32 << 20 // 32 MB
+
+	promNamespace = "tsuru"
+	promSubsystem = "api"
 )
+
+var (
+	tokenValidateTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "token_valid_total",
+		Help:      "The number of successful validation of tokens",
+	}, []string{"engine"})
+
+	tokenInvalidTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "token_invalid_total",
+		Help:      "The number of unsuccessful validation of tokens",
+	})
+)
+
+func init() {
+	tokenValidateTotal.WithLabelValues("auth-provider")
+	tokenValidateTotal.WithLabelValues("apikey")
+	tokenValidateTotal.WithLabelValues("teamtoken")
+}
 
 func validate(token string, r *http.Request) (auth.Token, error) {
 	var t auth.Token
-	t, err := app.AuthScheme.Auth(r.Context(), token)
+	t, err := tokenByAllAuthEngines(r.Context(), token)
 	if err != nil {
-		t, err = auth.APIAuth(token)
-		if err != nil {
-			t, err = servicemanager.TeamToken.Authenticate(r.Context(), token)
-			if err != nil {
-				return nil, err
-			}
-		}
+		return nil, err
 	}
 	span := opentracing.SpanFromContext(r.Context())
 
@@ -78,6 +100,30 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 		}
 	}
 	return t, nil
+}
+
+func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, error) {
+	t, err := app.AuthScheme.Auth(ctx, token)
+	if err == nil {
+		tokenValidateTotal.WithLabelValues("auth-provider").Inc()
+		return t, nil
+	}
+
+	t, err = auth.APIAuth(token)
+	if err == nil {
+		tokenValidateTotal.WithLabelValues("apikey").Inc()
+		return t, nil
+	}
+
+	t, err = servicemanager.TeamToken.Authenticate(ctx, token)
+	if err == nil {
+		tokenValidateTotal.WithLabelValues("team-token").Inc()
+		return t, nil
+	}
+
+	tokenInvalidTotal.Inc()
+
+	return nil, err
 }
 
 func contextClearerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
