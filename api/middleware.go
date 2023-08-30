@@ -67,6 +67,7 @@ func init() {
 	tokenValidateTotal.WithLabelValues("auth-provider")
 	tokenValidateTotal.WithLabelValues("apikey")
 	tokenValidateTotal.WithLabelValues("team-token")
+	tokenValidateTotal.WithLabelValues("app-token")
 }
 
 func validate(token string, r *http.Request) (auth.Token, error) {
