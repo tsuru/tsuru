@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -101,9 +100,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
 	config.Set("log:disable-syslog", true)
-	config.Set("queue:mongo-url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("queue:mongo-database", "queue_app_pkg_tests")
-	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("routers:fake-tls:type", "fake-tls")
 	config.Set("routers:fake-v2:type", "fake-v2")
@@ -132,7 +128,6 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
 	routertest.OptsRouter.Reset()
-	queue.ResetQueue()
 	rebuild.Shutdown(context.Background())
 	routertest.FakeRouter.Reset()
 	routertest.HCRouter.Reset()
