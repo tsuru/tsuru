@@ -16,7 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -192,11 +191,6 @@ func (s *oAuthScheme) Logout(ctx context.Context, token string) error {
 func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, error) {
 	token, err := getToken(header)
 	if err != nil {
-		nativeScheme := native.NativeScheme{}
-		token, nativeErr := nativeScheme.Auth(ctx, header)
-		if nativeErr == nil && token.IsAppToken() {
-			return token, nil
-		}
 		return nil, err
 	}
 	if !token.Token.Valid() {

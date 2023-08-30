@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/applog"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/multi"
+	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/oidc"
 	_ "github.com/tsuru/tsuru/auth/saml"

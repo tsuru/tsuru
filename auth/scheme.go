@@ -25,6 +25,7 @@ type Scheme interface {
 }
 
 type AppScheme interface {
+	Scheme
 	AppLogin(ctx context.Context, appName string) (Token, error)
 	AppLogout(ctx context.Context, token string) error
 }

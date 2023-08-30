@@ -34,6 +34,8 @@ type User struct {
 	Groups    []string                 `bson:",omitempty"`
 	FromToken bool                     `bson:",omitempty"`
 	Disabled  bool                     `bson:",omitempty"`
+
+	APIKeyLastAccess time.Time `bson:"apikey_last_access"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {

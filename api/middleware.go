@@ -121,6 +121,13 @@ func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, er
 		return t, nil
 	}
 
+	appScheme := auth.GetAppScheme()
+	t, appAuthErr := appScheme.Auth(ctx, token)
+	if appAuthErr == nil && t.IsAppToken() {
+		tokenValidateTotal.WithLabelValues("app-token").Inc()
+		return t, nil
+	}
+
 	tokenInvalidTotal.Inc()
 
 	return nil, err

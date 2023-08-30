@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"time"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
@@ -41,7 +43,7 @@ func (t *APIToken) Permissions() ([]permission.Permission, error) {
 	return BaseTokenPermission(t)
 }
 
-func getAPIToken(header string) (*APIToken, error) {
+func APIAuth(header string) (*APIToken, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -59,9 +61,16 @@ func getAPIToken(header string) (*APIToken, error) {
 		}
 		return nil, err
 	}
-	return &t, nil
-}
 
-func APIAuth(token string) (*APIToken, error) {
-	return getAPIToken(token)
+	err = conn.Users().Update(bson.M{
+		"apikey": token,
+	}, bson.M{
+		"$set": bson.M{"apikey_last_access": time.Now().UTC()},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &t, nil
 }
