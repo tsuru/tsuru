@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -196,7 +195,6 @@ func (s *S) TearDownTest(c *check.C) {
 	app.GetAppRouterUpdater().Shutdown(stdcontext.Background())
 	s.provisioner.Reset()
 	s.conn.Close()
-	queue.ResetQueue()
 	config.Unset("listen")
 	config.Unset("tls:listen")
 }
