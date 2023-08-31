@@ -181,6 +181,9 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job
 	if err != nil {
 		return err
 	}
+	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
+		return err
+	}
 	jobLabels, jobAnnotations := buildMetadata(ctx, job)
 	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
 	if err != nil {
