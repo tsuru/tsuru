@@ -5,6 +5,7 @@
 package observability
 
 import (
+	"encoding/json"
 	"fmt"
 	stdLog "log"
 	"net/http"
@@ -55,6 +56,7 @@ var (
 
 type middleware struct {
 	logger *stdLog.Logger
+	json   bool
 }
 
 func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -95,8 +97,66 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 	httpRequests.WithLabelValues(status, r.Method, path).Inc()
 	httpDuration.WithLabelValues(r.Method, path).Observe(duration.Seconds())
 
-	// finish logs
-	l.logger.Printf("%s %s %s %s %d %q in %0.6fms%s", nowFormatted, scheme, r.Method, r.URL.Path, statusCode, r.UserAgent(), float64(duration)/float64(time.Millisecond), requestID)
+	durationMS := float64(duration) / float64(time.Millisecond)
+
+	if !l.json {
+		// finish logs
+		l.logger.Printf("%s %s %s %s %d %q in %0.6fms%s", nowFormatted, scheme, r.Method, r.URL.Path, statusCode, r.UserAgent(), durationMS, requestID)
+		return
+	}
+
+	line := &logLine{
+		Time: nowFormatted,
+		Request: logLineRequest{
+			Scheme: scheme,
+			Method: r.Method,
+			Path:   r.URL.Path,
+		},
+		Response: logLineResponse{
+			StatusCode: statusCode,
+			DurationMS: fmt.Sprintf("%0.6f", durationMS),
+		},
+	}
+
+	if token := context.GetAuthToken(r); token != nil {
+		line.Auth = &logLineAuth{
+			Username: token.GetUserName(),
+			Engine:   token.Engine(),
+		}
+	}
+
+	data, err := json.Marshal(line)
+	if err == nil {
+		l.logger.Print(string(data))
+	} else {
+		l.logger.Printf("could not marshal json: %s", err.Error())
+	}
+
+}
+
+type logLine struct {
+	Time     string          `json:"time"`
+	Request  logLineRequest  `json:"request"`
+	Response logLineResponse `json:"response"`
+	Auth     *logLineAuth    `json:"auth,omitempty"`
+}
+
+type logLineRequest struct {
+	Scheme    string `json:"scheme"`
+	Method    string `json:"method"`
+	Path      string `json:"path"`
+	UserAgent string `json:"userAgent,omitempty"`
+	RequestID string `json:"requestID,omitempty"`
+}
+
+type logLineResponse struct {
+	StatusCode int    `json:"statusCode"`
+	DurationMS string `json:"durationMS"`
+}
+
+type logLineAuth struct {
+	Username string `json:"username"`
+	Engine   string `json:"engine"`
 }
 
 func normalizeHTTPStatus(status int) string {
@@ -113,8 +173,11 @@ func normalizeHTTPStatus(status int) string {
 }
 
 func NewMiddleware() *middleware {
+	logFormat, _ := config.GetString("log:format")
+
 	return &middleware{
 		logger: stdLog.New(os.Stdout, "", 0),
+		json:   logFormat == "json",
 	}
 }
 

@@ -39,6 +39,10 @@ func (t *APIToken) GetAppName() string {
 	return ""
 }
 
+func (t *APIToken) Engine() string {
+	return "apikey"
+}
+
 func (t *APIToken) Permissions() ([]permission.Permission, error) {
 	return BaseTokenPermission(t)
 }
@@ -66,6 +70,7 @@ func APIAuth(header string) (*APIToken, error) {
 		"apikey": token,
 	}, bson.M{
 		"$set": bson.M{"apikey_last_access": time.Now().UTC()},
+		"$inc": bson.M{"apikey_usage_counter": 1},
 	})
 
 	if err != nil {

@@ -64,20 +64,15 @@ var (
 	})
 )
 
-func init() {
-	tokenValidateTotal.WithLabelValues("auth-provider")
-	tokenValidateTotal.WithLabelValues("apikey")
-	tokenValidateTotal.WithLabelValues("team-token")
-	tokenValidateTotal.WithLabelValues("app-token")
-	tokenValidateTotal.WithLabelValues("peer-token")
-}
-
 func validate(token string, r *http.Request) (auth.Token, error) {
 	var t auth.Token
 	t, err := tokenByAllAuthEngines(r.Context(), token)
 	if err != nil {
 		return nil, err
 	}
+
+	tokenValidateTotal.WithLabelValues(t.Engine()).Inc()
+
 	span := opentracing.SpanFromContext(r.Context())
 
 	if t.IsAppToken() {
@@ -108,32 +103,27 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, error) {
 	t, err := app.AuthScheme.Auth(ctx, token)
 	if err == nil {
-		tokenValidateTotal.WithLabelValues("auth-provider").Inc()
 		return t, nil
 	}
 
 	t, err = auth.APIAuth(token)
 	if err == nil {
-		tokenValidateTotal.WithLabelValues("apikey").Inc()
 		return t, nil
 	}
 
 	t, err = servicemanager.TeamToken.Authenticate(ctx, token)
 	if err == nil {
-		tokenValidateTotal.WithLabelValues("team-token").Inc()
 		return t, nil
 	}
 
 	t, err = peer.Auth(ctx, token)
 	if err == nil {
-		tokenValidateTotal.WithLabelValues("peer-token").Inc()
 		return t, nil
 	}
 
 	appScheme := auth.GetAppScheme()
 	t, appAuthErr := appScheme.Auth(ctx, token)
 	if appAuthErr == nil && t.IsAppToken() {
-		tokenValidateTotal.WithLabelValues("app-token").Inc()
 		return t, nil
 	}
 

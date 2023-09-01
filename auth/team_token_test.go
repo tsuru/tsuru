@@ -34,6 +34,11 @@ func (t *userToken) GetAppName() string {
 func (t *userToken) GetUserName() string {
 	return ""
 }
+
+func (t *userToken) Engine() string {
+	return "user"
+}
+
 func (t *userToken) IsAppToken() bool {
 	return false
 }

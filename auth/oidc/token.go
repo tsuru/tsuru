@@ -75,6 +75,10 @@ func (t *jwtToken) GetAppName() string {
 	return ""
 }
 
+func (t *jwtToken) Engine() string {
+	return "oidc"
+}
+
 func (t *jwtToken) Permissions() ([]permission.Permission, error) {
 	return auth.BaseTokenPermission(t)
 }

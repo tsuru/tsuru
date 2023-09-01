@@ -25,7 +25,8 @@ type User struct {
 	FromToken bool
 	Disabled  bool
 
-	APIKeyLastAccess time.Time
+	APIKeyLastAccess   time.Time
+	APIKeyUsageCounter int64
 }
 
 type RoleInstance struct {

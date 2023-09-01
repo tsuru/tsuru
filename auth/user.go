@@ -35,7 +35,8 @@ type User struct {
 	FromToken bool                     `bson:",omitempty"`
 	Disabled  bool                     `bson:",omitempty"`
 
-	APIKeyLastAccess time.Time `bson:"apikey_last_access"`
+	APIKeyLastAccess   time.Time `bson:"apikey_last_access"`
+	APIKeyUsageCounter int64     `bson:"apikey_usage_counter"`
 }
 
 func listUsers(filter bson.M) ([]User, error) {

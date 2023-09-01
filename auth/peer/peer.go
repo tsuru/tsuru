@@ -15,6 +15,8 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
+var defaultToken = "97ef27b972cb168a9875a32cba96010e1eb6a6065e9f4cc5928a7cb66d2a6b86" // sha256 of "tsuru"
+
 func Auth(ctx context.Context, token string) (auth.Token, error) {
 	expectedToken := TokenValue()
 	parsedToken, err := auth.ParseToken(token)
@@ -46,11 +48,15 @@ func (t *Token) IsAppToken() bool {
 }
 
 func (t *Token) GetUserName() string {
-	return "peer@tsuru-api"
+	return "peer"
 }
 
 func (t *Token) GetAppName() string {
 	return ""
+}
+
+func (t *Token) Engine() string {
+	return "peer"
 }
 
 func (t *Token) Permissions() ([]permission.Permission, error) {
@@ -70,7 +76,7 @@ func TokenValue() string {
 	token, _ := config.GetString("auth:peer:token")
 
 	if token == "" {
-		return "peer-token"
+		return defaultToken
 	}
 
 	return token
