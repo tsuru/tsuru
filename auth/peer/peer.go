@@ -15,7 +15,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-var defaultToken = "97ef27b972cb168a9875a32cba96010e1eb6a6065e9f4cc5928a7cb66d2a6b86" // sha256 of "tsuru"
+var DefaultToken = "97ef27b972cb168a9875a32cba96010e1eb6a6065e9f4cc5928a7cb66d2a6b86" // sha256 of "tsuru"
 
 func Auth(ctx context.Context, token string) (auth.Token, error) {
 	expectedToken := TokenValue()
@@ -76,7 +76,7 @@ func TokenValue() string {
 	token, _ := config.GetString("auth:peer:token")
 
 	if token == "" {
-		return defaultToken
+		return DefaultToken
 	}
 
 	return token

@@ -6,6 +6,7 @@ package observability
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -71,6 +72,36 @@ func (s *S) TestMiddleware(c *check.C) {
 	if !c.Check(strings.Contains(buf.String(), `tsuru_http_request_duration_seconds_bucket{method="PUT",path="",le="+Inf"} 1`), check.Equals, true) {
 		fmt.Println("Found prometheus metrics:", buf.String())
 	}
+}
+
+func (s *S) TestMiddlewareJSON(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/my/path", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("User-Agent", "ardata 1.1")
+
+	h, handlerLog := doHandler()
+	handlerLog.sleep = 100 * time.Millisecond
+	handlerLog.response = http.StatusOK
+	var out bytes.Buffer
+	middle := middleware{
+		logger: log.New(&out, "", 0),
+		json:   true,
+	}
+	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
+	c.Assert(handlerLog.called, check.Equals, true)
+
+	m := map[string]interface{}{}
+	err = json.NewDecoder(&out).Decode(&m)
+	c.Assert(err, check.IsNil)
+
+	timePart := time.Now().Format(time.RFC3339Nano)[:16]
+	c.Assert(m["time"], check.Matches, timePart+".*")
+	c.Assert(m["request"], check.DeepEquals, map[string]interface{}{"method": "PUT", "path": "/my/path", "scheme": "http"})
+
+	response := m["response"].(map[string]interface{})
+	c.Assert(response["statusCode"], check.Equals, float64(200))
+	c.Assert(response["durationMS"], check.Matches, `1\d{2}\.\d+`)
 }
 
 func (s *S) TestMiddlewareWithoutStatusCode(c *check.C) {

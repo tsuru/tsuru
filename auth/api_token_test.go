@@ -17,10 +17,14 @@ func (s *S) TestAPIAuth(c *check.C) {
 	c.Assert(t.Token, check.Equals, APIKey)
 	c.Assert(t.UserEmail, check.Equals, user.Email)
 
+	c.Assert(user.APIKeyUsageCounter, check.Equals, 0)
+
 	err = user.Reload()
 	c.Assert(err, check.IsNil)
 
 	c.Assert(user.APIKeyLastAccess.IsZero(), check.Equals, false)
+	c.Assert(user.APIKeyUsageCounter, check.Equals, 1)
+
 }
 
 func (s *S) TestAPIAuthNotFound(c *check.C) {
