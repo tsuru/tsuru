@@ -68,13 +68,10 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 		statusCode = 200
 	}
 	nowFormatted := time.Now().Format(time.RFC3339Nano)
-	requestIDHeader, _ := config.GetString("request-id-header")
+
 	var requestID string
-	if requestIDHeader != "" {
-		requestID = context.GetRequestID(r, requestIDHeader)
-		if requestID != "" {
-			requestID = fmt.Sprintf(" [%s: %s]", requestIDHeader, requestID)
-		}
+	if header := requestIDHeader(); header != "" {
+		requestID = context.GetRequestID(r, header)
 	}
 	scheme := "http"
 	if r.TLS != nil {
@@ -100,6 +97,10 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 	durationMS := float64(duration) / float64(time.Millisecond)
 
 	if !l.json {
+		if requestID != "" {
+			requestID = fmt.Sprintf(" [Request-ID: %s]", requestID)
+		}
+
 		// finish logs
 		l.logger.Printf("%s %s %s %s %d %q in %0.6fms%s", nowFormatted, scheme, r.Method, r.URL.Path, statusCode, r.UserAgent(), durationMS, requestID)
 		return
@@ -108,9 +109,11 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 	line := &logLine{
 		Time: nowFormatted,
 		Request: logLineRequest{
-			Scheme: scheme,
-			Method: r.Method,
-			Path:   r.URL.Path,
+			Scheme:    scheme,
+			Method:    r.Method,
+			Path:      r.URL.Path,
+			RequestID: requestID,
+			UserAgent: r.UserAgent(),
 		},
 		Response: logLineResponse{
 			StatusCode: statusCode,
@@ -234,4 +237,9 @@ func sanitizeURL(u *url.URL) *url.URL {
 	}
 	destURL.RawQuery = values.Encode()
 	return &destURL
+}
+
+func requestIDHeader() string {
+	requestIDHeader, _ := config.GetString("request-id-header")
+	return requestIDHeader
 }
