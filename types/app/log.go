@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/types/auth"
 	logTypes "github.com/tsuru/tsuru/types/log"
 )
 
@@ -37,7 +36,6 @@ type ListLogArgs struct {
 	Units        []string
 	Limit        int
 	InvertSource bool
-	Token        auth.Token
 }
 
 // Applog represents a log entry.

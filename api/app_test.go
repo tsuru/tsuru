@@ -5882,7 +5882,6 @@ func (s *S) TestAddLog(c *check.C) {
 	}
 	logs, err := a.LastLogs(context.TODO(), servicemanager.LogService, appTypes.ListLogArgs{
 		Limit: 5,
-		Token: token,
 	})
 	c.Assert(err, check.IsNil)
 	got := make([]string, len(logs))
@@ -6609,9 +6608,8 @@ func (s *S) TestFollowLogs(c *check.C) {
 		done: make(chan struct{}),
 	}
 	l, err := servicemanager.LogService.Watch(context.TODO(), appTypes.ListLogArgs{
-		Name:  a.Name,
-		Type:  logTypes.LogTypeApp,
-		Token: s.token,
+		Name: a.Name,
+		Type: logTypes.LogTypeApp,
 	})
 	c.Assert(err, check.IsNil)
 	go func() {

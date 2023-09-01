@@ -16,7 +16,6 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
@@ -295,15 +294,10 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 			return logErr
 		}
 
-		tokenValue := app.Env["TSURU_APP_TOKEN"].Value
-
-		token, _ := auth.GetAppScheme().Auth(app.ctx, tokenValue)
-
 		logErr.logs, _ = app.LastLogs(app.ctx, servicemanager.LogService, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
 			Units:        startupErr.CrashedUnits,
-			Token:        token,
 			Limit:        10,
 		})
 	}

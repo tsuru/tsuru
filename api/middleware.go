@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/peer"
 	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
@@ -68,6 +69,7 @@ func init() {
 	tokenValidateTotal.WithLabelValues("apikey")
 	tokenValidateTotal.WithLabelValues("team-token")
 	tokenValidateTotal.WithLabelValues("app-token")
+	tokenValidateTotal.WithLabelValues("peer-token")
 }
 
 func validate(token string, r *http.Request) (auth.Token, error) {
@@ -119,6 +121,12 @@ func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, er
 	t, err = servicemanager.TeamToken.Authenticate(ctx, token)
 	if err == nil {
 		tokenValidateTotal.WithLabelValues("team-token").Inc()
+		return t, nil
+	}
+
+	t, err = peer.Auth(ctx, token)
+	if err == nil {
+		tokenValidateTotal.WithLabelValues("peer-token").Inc()
 		return t, nil
 	}
 

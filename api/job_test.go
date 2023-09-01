@@ -2794,9 +2794,8 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
 	logWatcher, err := s.provisioner.WatchLogs(context.TODO(), &j, appTypes.ListLogArgs{
-		Name:  j.Name,
-		Type:  logTypes.LogTypeJob,
-		Token: s.token,
+		Name: j.Name,
+		Type: logTypes.LogTypeJob,
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(<-logWatcher.Chan(), check.DeepEquals, appTypes.Applog{
