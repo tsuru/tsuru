@@ -6,20 +6,29 @@ package auth
 
 import check "gopkg.in/check.v1"
 
-func (s *S) TestGetAPIToken(c *check.C) {
+func (s *S) TestAPIAuth(c *check.C) {
 	user := User{Email: "para@xmen.com", APIKey: "Quenço"}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
 	APIKey, err := user.RegenerateAPIKey()
 	c.Assert(err, check.IsNil)
-	t, err := getAPIToken("bearer " + APIKey)
+	t, err := APIAuth("bearer " + APIKey)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Token, check.Equals, APIKey)
 	c.Assert(t.UserEmail, check.Equals, user.Email)
+
+	c.Assert(user.APIKeyUsageCounter, check.Equals, int64(0))
+
+	err = user.Reload()
+	c.Assert(err, check.IsNil)
+
+	c.Assert(user.APIKeyLastAccess.IsZero(), check.Equals, false)
+	c.Assert(user.APIKeyUsageCounter, check.Equals, int64(1))
+
 }
 
-func (s *S) TestGetAPITokenNotFound(c *check.C) {
-	t, err := getAPIToken("bearer invalid")
+func (s *S) TestAPIAuthNotFound(c *check.C) {
+	t, err := APIAuth("bearer invalid")
 	c.Assert(t, check.IsNil)
 	c.Assert(err, check.Equals, ErrInvalidToken)
 }

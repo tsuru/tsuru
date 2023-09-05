@@ -1417,7 +1417,6 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Source:       source,
 		InvertSource: invert,
 		Units:        units,
-		Token:        t,
 	}
 	logs, err := a.LastLogs(ctx, logService, listArgs)
 	if err != nil {

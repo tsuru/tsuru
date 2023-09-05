@@ -375,10 +375,13 @@ func (s *S) TestTokenIsAppToken(c *check.C) {
 	t := Token{AppName: "myapp"}
 	isAppToken := t.IsAppToken()
 	c.Assert(isAppToken, check.Equals, true)
+	c.Assert(t.Engine(), check.Equals, "app")
 
 	t = Token{UserEmail: "something@something.com"}
 	isAppToken = t.IsAppToken()
 	c.Assert(isAppToken, check.Equals, false)
+	c.Assert(t.Engine(), check.Equals, "native")
+
 }
 
 func (s *S) TestUserCheckPasswordUsesBcrypt(c *check.C) {

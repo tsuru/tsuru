@@ -570,6 +570,10 @@ func (t fakeToken) GetAppName() string {
 	return ""
 }
 
+func (t fakeToken) Engine() string {
+	return "fake"
+}
+
 func (t fakeToken) Permissions() ([]permission.Permission, error) {
 	return []permission.Permission{}, nil
 }

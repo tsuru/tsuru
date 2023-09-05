@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/auth/peer"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -230,9 +231,7 @@ func buildInstanceRequests(ctx context.Context, args appTypes.ListLogArgs, follo
 		if err != nil {
 			return nil, err
 		}
-		if args.Token != nil {
-			req.Header.Set("Authorization", "Bearer "+args.Token.GetValue())
-		}
+		req.Header.Set("Authorization", "Bearer "+peer.TokenValue())
 		requests = append(requests, req.WithContext(ctx))
 	}
 	return requests, nil

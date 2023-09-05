@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/tsuru/auth/peer"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/tracker"
@@ -66,6 +67,7 @@ func mockServers(count int, hook func(i int, w http.ResponseWriter, r *http.Requ
 
 func (s *S) Test_Aggregator_List(c *check.C) {
 	rollback := mockServers(5, func(i int, w http.ResponseWriter, r *http.Request) bool {
+		c.Assert(r.Header.Get("Authorization"), check.Equals, "Bearer "+peer.DefaultToken)
 		c.Assert(r.URL.Path, check.Equals, "/apps/myapp/log-instance")
 		c.Assert(r.URL.Query().Get("lines"), check.Equals, "0")
 		c.Assert(r.URL.Query().Get("source"), check.Equals, "")

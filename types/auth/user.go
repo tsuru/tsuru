@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/types/quota"
 )
@@ -23,6 +24,9 @@ type User struct {
 	// In other words, it does not exist in the storage.
 	FromToken bool
 	Disabled  bool
+
+	APIKeyLastAccess   time.Time
+	APIKeyUsageCounter int64
 }
 
 type RoleInstance struct {
