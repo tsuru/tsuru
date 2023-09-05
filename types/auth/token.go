@@ -12,6 +12,7 @@ type Token interface {
 	GetUserName() string
 	IsAppToken() bool
 	User() (*User, error)
+	Engine() string
 	Permissions() ([]permission.Permission, error)
 }
 

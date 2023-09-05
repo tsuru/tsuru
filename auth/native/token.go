@@ -64,6 +64,12 @@ func (t *Token) GetAppName() string {
 	return t.AppName
 }
 
+func (t *Token) Engine() string {
+	if t.IsAppToken() {
+		return "app"
+	}
+	return "native"
+}
 func (t *Token) Permissions() ([]permission.Permission, error) {
 	return auth.BaseTokenPermission(t)
 }

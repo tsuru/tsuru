@@ -67,6 +67,10 @@ func (t *teamToken) GetAppName() string {
 	return ""
 }
 
+func (t *teamToken) Engine() string {
+	return "team"
+}
+
 func (t *teamToken) Permissions() ([]permission.Permission, error) {
 	return expandRolePermissions(t.Roles)
 }

@@ -871,7 +871,6 @@ func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Name:  j.Name,
 		Type:  log.LogTypeJob,
 		Limit: lines,
-		Token: t,
 	}
 	logService := servicemanager.LogService
 	logs, err := logService.List(ctx, listArgs)

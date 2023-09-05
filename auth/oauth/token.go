@@ -44,6 +44,10 @@ func (t *tokenWrapper) GetAppName() string {
 	return ""
 }
 
+func (t *tokenWrapper) Engine() string {
+	return "oauth"
+}
+
 func (t *tokenWrapper) Permissions() ([]permission.Permission, error) {
 	return auth.BaseTokenPermission(t)
 }
