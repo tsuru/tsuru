@@ -788,6 +788,10 @@ func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatu
 		}
 
 		if containerStatus.State.Waiting != nil {
+			if containerStatus.State.Waiting.Reason == "CrashLoopBackOff" && containerStatus.LastTerminationState.Terminated != nil {
+				return provision.StatusError, containerStatus.LastTerminationState.Terminated.Reason
+			}
+
 			return provision.StatusError, containerStatus.State.Waiting.Reason
 		}
 
