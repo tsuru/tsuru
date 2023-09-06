@@ -787,21 +787,29 @@ func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatu
 			continue
 		}
 
-		if containerStatus.State.Waiting != nil {
-			if containerStatus.State.Waiting.Reason == "CrashLoopBackOff" && containerStatus.LastTerminationState.Terminated != nil {
-				return provision.StatusError, containerStatus.LastTerminationState.Terminated.Reason
-			}
+		return extractStatusAndReasonFromContainerStatus(containerStatus.State, containerStatus.LastTerminationState)
 
-			return provision.StatusError, containerStatus.State.Waiting.Reason
-		}
-
-		if containerStatus.LastTerminationState.Terminated != nil {
-			return provision.StatusError, containerStatus.LastTerminationState.Terminated.Reason
-		}
-
-		return provision.StatusStarting, ""
 	}
 	return provision.StatusStarted, ""
+}
+
+func extractStatusAndReasonFromContainerStatus(state apiv1.ContainerState, lastTerminationState apiv1.ContainerState) (provision.Status, string) {
+	if state.Waiting != nil {
+		if state.Waiting.Reason == "CrashLoopBackOff" && lastTerminationState.Terminated != nil {
+			if lastTerminationState.Terminated.Reason == "Error" && lastTerminationState.Terminated.ExitCode > 0 {
+				return provision.StatusError, fmt.Sprintf("exitCode: %d", lastTerminationState.Terminated.ExitCode)
+			}
+			return provision.StatusError, lastTerminationState.Terminated.Reason
+		}
+
+		return provision.StatusError, state.Waiting.Reason
+	}
+
+	if lastTerminationState.Terminated != nil {
+		return provision.StatusError, lastTerminationState.Terminated.Reason
+	}
+
+	return provision.StatusStarting, ""
 }
 
 // merged from https://github.com/kubernetes/kubernetes/blob/1f69c34478800e150acd022f6313a15e1cb7a97c/pkg/quota/evaluator/core/pods.go#L333
