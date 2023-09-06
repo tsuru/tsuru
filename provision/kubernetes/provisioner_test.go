@@ -578,6 +578,64 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 
 }
 
+func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	evt, err := event.New(&event.Opts{
+		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Kind:    permission.PermAppDeploy,
+		Owner:   s.token,
+		Allowed: event.Allowed(permission.PermAppDeploy),
+	})
+	c.Assert(err, check.IsNil)
+	_, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
+	c.Assert(err, check.IsNil)
+	err = s.p.Start(context.TODO(), a, "", version, &bytes.Buffer{})
+	c.Assert(err, check.IsNil)
+	wait()
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	podlist, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(podlist.Items), check.Equals, 1)
+	s.waitPodUpdate(c, func() {
+		for _, p := range podlist.Items {
+			if p.Labels["tsuru.io/app-process"] == "web" {
+				p.Status.Phase = apiv1.PodRunning
+				p.Status.ContainerStatuses = []apiv1.ContainerStatus{
+					{
+						Ready: false,
+						LastTerminationState: apiv1.ContainerState{
+							Terminated: &apiv1.ContainerStateTerminated{
+								Reason:   "Error",
+								ExitCode: 1,
+							},
+						},
+						State: apiv1.ContainerState{
+							Waiting: &apiv1.ContainerStateWaiting{
+								Reason: "CrashLoopBackOff",
+							},
+						},
+					},
+				}
+				_, err = s.client.CoreV1().Pods("default").Update(context.TODO(), &p, metav1.UpdateOptions{})
+				c.Assert(err, check.IsNil)
+			}
+		}
+	})
+	units, err := s.p.Units(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(units), check.Equals, 1)
+	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+	c.Assert(units[0].StatusReason, check.DeepEquals, "exitCode: 1")
+
+}
+
 func (s *S) TestUnitsEmpty(c *check.C) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
