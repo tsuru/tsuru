@@ -80,13 +80,13 @@ const (
 	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	disablePDBKey                 = "disable-pdb"
-	versionedServices             = "enable-versioned-services"
+	versionedServicesKey          = "enable-versioned-services"
 	dockerConfigJSONKey           = "docker-config-json"
 	dnsConfigNdotsKey             = "dns-config-ndots"
 	buildServiceAddressKey        = "build-service-address"
 	buildServiceTLSKey            = "build-service-tls"
 	buildServiceTLSSkipVerify     = "build-service-tls-skip-verify"
-	jobEventCreation              = "job-event-creation"
+	jobEventCreationKey           = "job-event-creation"
 	topologySpreadConstraintsKey  = "topology-spread-constraints"
 
 	dialTimeout  = 30 * time.Second
@@ -118,14 +118,14 @@ var (
 		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
 		sidecarImageKey:               "Override for deploy sidecar image.",
-		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
+		versionedServicesKey:          "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
 		dnsConfigNdotsKey:             "Number of dots in the domain name to be used in the search list for DNS lookups. Default to uses kubernetes default value (5).",
 		buildServiceAddressKey:        "Address of build service (deploy-agent v2)",
 		buildServiceTLSKey:            "Whether should access Build service through TLS",
 		buildServiceTLSSkipVerify:     "Whether should skip certificate chain validation",
-		jobEventCreation:              "Enable k8s event data tracking cross-referencing with Jobs and send them to tsuru database",
+		jobEventCreationKey:           "Enable k8s event data tracking cross-referencing with Jobs and send them to tsuru database",
 		topologySpreadConstraintsKey:  "Enable topology spread constraints for apps",
 	}
 )
@@ -369,16 +369,14 @@ func (c *ClusterClient) PoolNamespace(pool string) string {
 
 // Namespace returns the namespace to be used by Custom Resources
 func (c *ClusterClient) Namespace() string {
-	if c.CustomData != nil && c.CustomData[namespaceClusterKey] != "" {
-		return c.CustomData[namespaceClusterKey]
+	namespace := c.configForContext("", namespaceClusterKey)
+	if namespace != "" {
+		return namespace
 	}
 	return "tsuru"
 }
 
 func (c *ClusterClient) preStopSleepSeconds(pool string) int {
-	if c.CustomData == nil {
-		return defaultPreStopSleepSeconds
-	}
 	sleepRaw := c.configForContext(pool, preStopSleepKey)
 	if sleepRaw == "" {
 		return defaultPreStopSleepSeconds
@@ -391,9 +389,6 @@ func (c *ClusterClient) preStopSleepSeconds(pool string) int {
 }
 
 func (c *ClusterClient) ephemeralStorage(pool string) (resource.Quantity, error) {
-	if c.CustomData == nil {
-		return defaultEphemeralStorageLimit, nil
-	}
 	ephemeralRaw := c.configForContext(pool, ephemeralStorageKey)
 	if ephemeralRaw == "" {
 		return defaultEphemeralStorageLimit, nil
@@ -406,9 +401,6 @@ func (c *ClusterClient) ephemeralStorage(pool string) (resource.Quantity, error)
 }
 
 func (c *ClusterClient) OvercommitFactor(pool string) (float64, error) {
-	if c.CustomData == nil {
-		return 1, nil
-	}
 	overcommitConf := c.configForContext(pool, overcommitClusterKey)
 	if overcommitConf == "" {
 		return 1, nil
@@ -424,9 +416,6 @@ func (c *ClusterClient) OvercommitFactor(pool string) (float64, error) {
 }
 
 func (c *ClusterClient) CPUOvercommitFactor(pool string) (float64, error) {
-	if c.CustomData == nil {
-		return 0, nil // 0 means no factor defined, defaulting to OvercommitFactor
-	}
 	overcommitConf := c.configForContext(pool, cpuOvercommitClusterKey)
 	if overcommitConf == "" {
 		return 0, nil // 0 means no factor defined
@@ -436,9 +425,6 @@ func (c *ClusterClient) CPUOvercommitFactor(pool string) (float64, error) {
 }
 
 func (c *ClusterClient) MemoryOvercommitFactor(pool string) (float64, error) {
-	if c.CustomData == nil {
-		return 0, nil // 0 means no factor defined
-	}
 	overcommitConf := c.configForContext(pool, memoryOvercommitClusterKey)
 	if overcommitConf == "" {
 		return 0, nil // 0 means no factor defined
@@ -448,9 +434,6 @@ func (c *ClusterClient) MemoryOvercommitFactor(pool string) (float64, error) {
 }
 
 func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
-	if c.CustomData == nil {
-		return 0, nil // 0 means no factor defined
-	}
 	burstConf := c.configForContext(pool, cpuBurstKey)
 	if burstConf == "" {
 		return 0, nil // 0 means no factor defined
@@ -467,19 +450,13 @@ func (c *ClusterClient) CPUBurstFactor(pool string) (float64, error) {
 }
 
 func (c *ClusterClient) TopologySpreadConstraints(pool string) string {
-	if c.CustomData == nil {
-		return ""
-	}
 	return c.configForContext(pool, topologySpreadConstraintsKey)
 }
 
 func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error) {
 	annotations := map[string]string{}
-	if c.CustomData == nil {
-		return nil, nil
-	}
 
-	annotationsRaw := c.CustomData[key]
+	annotationsRaw := c.configForContext("", key)
 	if annotationsRaw == "" {
 		return nil, nil
 	}
@@ -495,9 +472,6 @@ func (c *ClusterClient) ServiceAnnotations(key string) (map[string]string, error
 func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 	labels := map[string]string{
 		"name": ns,
-	}
-	if c.CustomData == nil {
-		return labels, nil
 	}
 	nsLabelsConf := c.configForContext(ns, namespaceLabelsKey)
 	if nsLabelsConf == "" {
@@ -515,10 +489,7 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 }
 
 func (c *ClusterClient) unitRegisterCmdEnabled() bool {
-	if c.CustomData == nil {
-		return true
-	}
-	config := c.CustomData[disableUnitRegisterCmdKey]
+	config := c.configForContext("", disableUnitRegisterCmdKey)
 	if config == "" {
 		return true
 	}
@@ -527,9 +498,6 @@ func (c *ClusterClient) unitRegisterCmdEnabled() bool {
 }
 
 func (c *ClusterClient) headlessEnabled(pool string) (bool, error) {
-	if c.CustomData == nil {
-		return true, nil
-	}
 	config := c.configForContext(pool, disableHeadlessKey)
 	if config == "" {
 		return true, nil
@@ -540,9 +508,6 @@ func (c *ClusterClient) headlessEnabled(pool string) (bool, error) {
 
 func (c *ClusterClient) maxSurge(pool string) intstr.IntOrString {
 	defaultSurge := intstr.FromString("100%")
-	if c.CustomData == nil {
-		return defaultSurge
-	}
 	maxSurge := c.configForContext(pool, maxSurgeKey)
 	if maxSurge == "" {
 		return defaultSurge
@@ -552,9 +517,6 @@ func (c *ClusterClient) maxSurge(pool string) intstr.IntOrString {
 
 func (c *ClusterClient) maxUnavailable(pool string) intstr.IntOrString {
 	defaultUnvailable := intstr.FromInt(0)
-	if c.CustomData == nil {
-		return defaultUnvailable
-	}
 	maxUnavailable := c.configForContext(pool, maxUnavailableKey)
 	if maxUnavailable == "" {
 		return defaultUnvailable
@@ -571,79 +533,66 @@ func (c *ClusterClient) dnsConfigNdots(pool string) intstr.IntOrString {
 }
 
 func (c *ClusterClient) SinglePool() (bool, error) {
-	if c.CustomData == nil {
-		return false, nil
-	}
-	singlePool, ok := c.CustomData[singlePoolKey]
-	if singlePool == "" || !ok {
+	singlePool := c.configForContext("", singlePoolKey)
+	if singlePool == "" {
 		return false, nil
 	}
 	return strconv.ParseBool(singlePool)
 }
 
 func (c *ClusterClient) EnableVersionedServices() (bool, error) {
-	if c.CustomData == nil {
+	versionedServices := c.configForContext("", versionedServicesKey)
+	if versionedServices == "" {
 		return false, nil
 	}
-	enable, ok := c.CustomData[versionedServices]
-	if enable == "" || !ok {
-		return false, nil
-	}
-	return strconv.ParseBool(enable)
+	return strconv.ParseBool(versionedServices)
 }
 
 func (c *ClusterClient) EnableJobEventCreation() (bool, error) {
-	if c.CustomData == nil {
+	jobEventCreation := c.configForContext("", jobEventCreationKey)
+	if jobEventCreation == "" {
 		return false, nil
 	}
-	enable, ok := c.CustomData[jobEventCreation]
-	if enable == "" || !ok {
-		return false, nil
-	}
-	return strconv.ParseBool(enable)
+	return strconv.ParseBool(jobEventCreation)
 }
 
 func (c *ClusterClient) Registry() imgTypes.ImageRegistry {
-	return imgTypes.ImageRegistry(c.CustomData[registryKey])
+	registry := c.configForContext("", registryKey)
+	return imgTypes.ImageRegistry(registry)
 }
 
 func (c *ClusterClient) InsecureRegistry() bool {
-	insecure, _ := strconv.ParseBool(c.CustomData[registryInsecureKey])
+	registryInsecure := c.configForContext("", registryInsecureKey)
+	if registryInsecure == "" {
+		return false
+	}
+	insecure, _ := strconv.ParseBool(registryInsecure)
 	return insecure
 }
 
 func (c *ClusterClient) buildServiceAccount(a provision.App) string {
-	if c.CustomData == nil && a != nil {
-		return serviceAccountNameForApp(a)
-	}
-	sa, ok := c.CustomData[buildServiceAccountKey]
-	if !ok && a != nil {
+	sa := c.configForContext("", buildServiceAccountKey)
+	if sa == "" && a != nil {
 		return serviceAccountNameForApp(a)
 	}
 	return sa
 }
 
 func (c *ClusterClient) DisablePlatformBuild() bool {
-	if c.CustomData == nil {
+	disablePlatformBuild := c.configForContext("", disablePlatformBuildKey)
+	if disablePlatformBuild == "" {
 		return false
 	}
-	disable, ok := c.CustomData[disablePlatformBuildKey]
-	if !ok {
-		return false
-	}
-	d, _ := strconv.ParseBool(disable)
+	d, _ := strconv.ParseBool(disablePlatformBuild)
 	return d
 }
 
 func (c *ClusterClient) sideCarImage(imgName string) string {
-	if c.CustomData == nil {
+	sidecarImage := c.configForContext("", sidecarImageKey)
+	if sidecarImage == "" {
 		return imgName
 	}
-	newImage, ok := c.CustomData[sidecarImageKey]
-	if !ok {
-		return imgName
-	}
-	return newImage
+	return sidecarImage
 }
 
 func (c *ClusterClient) deploySidecarImage() string {
@@ -660,7 +609,14 @@ func (c *ClusterClient) configForContext(context, key string) string {
 	if v, ok := c.CustomData[context+":"+key]; ok {
 		return v
 	}
-	return c.CustomData[key]
+	if v, ok := c.CustomData[key]; ok {
+		return v
+	}
+	data, err := config.GetString("clusters:defaults:" + key)
+	if err != nil {
+		return ""
+	}
+	return data
 }
 
 func (c *ClusterClient) RestConfig() *rest.Config {
@@ -672,20 +628,16 @@ func (c *ClusterClient) GetCluster() *provTypes.Cluster {
 }
 
 func (c *ClusterClient) disablePDB(pool string) bool {
-	if disable := c.configForContext(pool, disablePDBKey); disable != "" {
-		d, _ := strconv.ParseBool(disable)
-		return d
-	}
-	disable, ok := c.CustomData[disablePDBKey]
-	if !ok {
+	disablePDB := c.configForContext(pool, disablePDBKey)
+	if disablePDB == "" {
 		return false
 	}
-	d, _ := strconv.ParseBool(disable)
+	d, _ := strconv.ParseBool(disablePDB)
 	return d
 }
 
 func (c *ClusterClient) dockerConfigJSON() string {
-	return c.CustomData[dockerConfigJSONKey]
+	return c.configForContext("", dockerConfigJSONKey)
 }
 
 func (c *ClusterClient) BuildServiceClient(pool string) (pb.BuildClient, *grpc.ClientConn, error) {
