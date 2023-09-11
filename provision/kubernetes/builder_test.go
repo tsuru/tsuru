@@ -7,9 +7,6 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/tsuru/tsuru/event"
-	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -46,15 +43,4 @@ func newSuccessfulVersion(c *check.C, app appTypes.App, customData map[string]in
 	err := version.CommitSuccessful()
 	c.Assert(err, check.IsNil)
 	return version
-}
-
-func (s *S) newTestEvent(c *check.C, a provision.App) *event.Event {
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	return evt
 }

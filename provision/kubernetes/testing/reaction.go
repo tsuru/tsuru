@@ -156,21 +156,17 @@ func (s *KubeMock) DefaultReactions(c *check.C) (*provisiontest.FakeApp, func(),
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
-	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
 	srv := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(srv.URL)
 	return a, func() {
 			rollbackDeployment()
-			deployPodReady.Wait()
 		}, func() {
 			rebuild.Shutdown(context.Background())
 			rollbackDeployment()
-			deployPodReady.Wait()
 			if srv == nil {
 				return
 			}
@@ -184,35 +180,27 @@ func (s *KubeMock) NoNodeReactions(c *check.C) (*provisiontest.FakeApp, func(), 
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	a.Deploys = 1
-	podReaction, deployPodReady := s.deployPodReaction(a, c)
 	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
-	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	s.client.TsuruClientset.PrependReactor("create", "apps", s.AppReaction(a, c))
 	return a, func() {
 			rollbackDeployment()
-			deployPodReady.Wait()
 		}, func() {
 			rollbackDeployment()
-			deployPodReady.Wait()
 		}
 }
 
 func (s *KubeMock) NoAppReactions(c *check.C) (func(), func()) {
-	podReaction, podReady := s.buildPodReaction(c)
 	servReaction := s.ServiceWithPortReaction(c, nil)
 	rollbackDeployment := s.DeploymentReactions(c)
-	s.client.PrependReactor("create", "pods", podReaction)
 	s.client.PrependReactor("create", "services", servReaction)
 	srv := s.CreateDeployReadyServer(c)
 	s.MockfakeNodes(srv.URL)
 	return func() {
 			rollbackDeployment()
-			podReady.Wait()
 		}, func() {
 			rollbackDeployment()
-			podReady.Wait()
 			if srv == nil {
 				return
 			}
@@ -420,66 +408,6 @@ func SetPodContainerReady(pod *apiv1.Pod) {
 		contStatus.State.Running = &apiv1.ContainerStateRunning{}
 		pod.Status.ContainerStatuses = append(pod.Status.ContainerStatuses, contStatus)
 	}
-}
-
-func (s *KubeMock) deployPodReaction(a provision.App, c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
-	wg := sync.WaitGroup{}
-	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		defer func() {
-			err := s.factory.Core().V1().Pods().Informer().GetStore().Add(pod)
-			c.Assert(err, check.IsNil)
-		}()
-		if !s.IgnorePool {
-			c.Assert(pod.Spec.NodeSelector, check.DeepEquals, map[string]string{
-				"tsuru.io/pool": a.GetPool(),
-			})
-		}
-		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-name"], check.Equals, a.GetName())
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-platform"], check.Equals, a.GetPlatform())
-		if !s.IgnorePool {
-			c.Assert(pod.ObjectMeta.Labels["tsuru.io/app-pool"], check.Equals, a.GetPool())
-		}
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
-		if !strings.HasSuffix(pod.Name, "-deploy") {
-			return false, nil, nil
-		}
-		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
-		pod.Status.Phase = apiv1.PodSucceeded
-		pod.Status.HostIP = "192.168.99.1"
-		pod.Spec.NodeName = "n1"
-		toRegister := false
-		for _, cont := range pod.Spec.Containers {
-			if strings.Contains(strings.Join(cont.Command, " "), "unit_agent") {
-				toRegister = true
-			}
-		}
-		if toRegister {
-			SetPodContainerReady(pod)
-			pod.Status.Phase = apiv1.PodRunning
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := s.p.RegisterUnit(context.TODO(), a, pod.Name, map[string]interface{}{
-					"processes": map[string]interface{}{
-						"web":    "python myapp.py",
-						"worker": "python myworker.py",
-					},
-				})
-				c.Assert(err, check.IsNil)
-				pod.Status.Phase = apiv1.PodSucceeded
-				ns, err := s.client.AppNamespace(context.TODO(), a)
-				c.Assert(err, check.IsNil)
-				_, err = s.client.CoreV1().Pods(ns).Update(context.TODO(), pod, metav1.UpdateOptions{})
-				c.Assert(err, check.IsNil)
-				err = s.factory.Core().V1().Pods().Informer().GetStore().Update(pod)
-				c.Assert(err, check.IsNil)
-			}()
-		}
-		return false, nil, nil
-	}, &wg
 }
 
 func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {

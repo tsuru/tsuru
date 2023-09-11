@@ -21,10 +21,6 @@ func callPlatformWithError(appTypes.PlatformOptions) ([]string, error) {
 	return nil, errors.New("something is wrong")
 }
 
-func callPlatformRemoveWithError(string) error {
-	return errors.New("something is wrong")
-}
-
 func Test(t *testing.T) {
 	check.TestingT(t)
 }

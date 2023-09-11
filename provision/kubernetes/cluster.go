@@ -651,11 +651,6 @@ func (c *ClusterClient) deploySidecarImage() string {
 	return c.sideCarImage(conf.deploySidecarImage)
 }
 
-func (c *ClusterClient) deployInspectImage() string {
-	conf := getKubeConfig()
-	return c.sideCarImage(conf.deployInspectImage)
-}
-
 func (c *ClusterClient) configForContext(context, key string) string {
 	if v, ok := c.CustomData[context+":"+key]; ok {
 		return v

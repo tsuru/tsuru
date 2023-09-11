@@ -94,11 +94,6 @@ func deployPodNameForApp(a provision.App, version appTypes.AppVersion) string {
 	return fmt.Sprintf("%s-v%d-deploy", name, version.Version())
 }
 
-func buildPodNameForApp(a provision.App, version appTypes.AppVersion) string {
-	name := provision.ValidKubeName(a.GetName())
-	return fmt.Sprintf("%s-v%d-build", name, version.Version())
-}
-
 func hpaNameForApp(a provision.App, process string) string {
 	return provision.AppProcessName(a, process, 0, "")
 }
@@ -250,14 +245,6 @@ func notReadyPodEvents(ctx context.Context, client *ClusterClient, ns string, se
 		return nil, err
 	}
 	return notReadyPodEventsForPods(ctx, client, pods.Items)
-}
-
-func notReadyPodEventsForPod(ctx context.Context, client *ClusterClient, podName, ns string) ([]podErrorMessage, error) {
-	pod, err := client.CoreV1().Pods(ns).Get(ctx, podName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return notReadyPodEventsForPods(ctx, client, []apiv1.Pod{*pod})
 }
 
 func notReadyPodEventsForPods(ctx context.Context, client *ClusterClient, pods []apiv1.Pod) ([]podErrorMessage, error) {

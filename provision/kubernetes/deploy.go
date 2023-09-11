@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -27,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -196,23 +194,6 @@ func createDeployPod(ctx context.Context, params createPodParams) error {
 	if tag != "latest" {
 		params.destinationImages = append(params.destinationImages, fmt.Sprintf("%s:latest", repository))
 	}
-	return createPod(ctx, params)
-}
-
-func createImageBuildPod(ctx context.Context, params createPodParams) error {
-	params.mainContainer = "build-cont"
-	pod, err := newDeployAgentImageBuildPod(ctx, params.client, params.sourceImage, params.podName, deployAgentConfig{
-		name:              params.mainContainer,
-		image:             params.client.deploySidecarImage(),
-		cmd:               fmt.Sprintf("mkdir -p $(dirname %[1]s) && cat >%[1]s && tsuru_unit_agent", params.inputFile),
-		destinationImages: params.destinationImages,
-		inputFile:         params.inputFile,
-		dockerfileBuild:   true,
-	})
-	if err != nil {
-		return err
-	}
-	params.pod = &pod
 	return createPod(ctx, params)
 }
 
@@ -1845,91 +1826,6 @@ func defaultKubernetesPodPortConfig() provTypes.TsuruYamlKubernetesProcessPortCo
 		Port:       defaultPort,
 		TargetPort: defaultPort,
 	}
-}
-
-type inspectParams struct {
-	sourceImage       string
-	podName           string
-	destinationImages []string
-	stdout            io.Writer
-	stderr            io.Writer
-	eventsOutput      io.Writer
-	client            *ClusterClient
-	labels            *provision.LabelSet
-	app               provision.App
-}
-
-func runInspectSidecar(ctx context.Context, params inspectParams) error {
-	inspectContainer := "inspect-cont"
-	kubeConf := getKubeConfig()
-	// params.client, params.sourceImage, params.app, params.podName
-	pod, err := newDeployAgentPod(ctx, createPodParams{
-		client:      params.client,
-		sourceImage: params.sourceImage,
-		app:         params.app,
-		podName:     params.podName,
-	}, deployAgentConfig{
-		name:              inspectContainer,
-		image:             params.client.deployInspectImage(),
-		cmd:               "cat >/dev/null && /bin/deploy-agent",
-		destinationImages: params.destinationImages,
-		sourceImage:       params.sourceImage,
-	})
-	applyAppMetadata(&pod, params.app)
-	if err != nil {
-		return err
-	}
-	for i, c := range pod.Spec.Containers {
-		if c.Name != inspectContainer {
-			pod.Spec.Containers[i].ImagePullPolicy = apiv1.PullAlways
-		}
-	}
-
-	ns, err := params.client.AppNamespace(ctx, params.app)
-	if err != nil {
-		return err
-	}
-
-	events, err := params.client.CoreV1().Events(ns).List(ctx, listOptsForResourceEvent("Pod", params.podName))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	_, err = params.client.CoreV1().Pods(ns).Create(ctx, &pod, metav1.CreateOptions{})
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer cleanupPod(tsuruNet.WithoutCancel(ctx), params.client, pod.Name, ns)
-
-	closeFn, err := logPodEvents(ctx, params.client, events.ResourceVersion, params.podName, ns, params.eventsOutput)
-	if err != nil {
-		return err
-	}
-	defer closeFn()
-
-	tctx, cancel := context.WithTimeout(ctx, kubeConf.PodRunningTimeout)
-	err = waitForPodContainersRunning(tctx, params.client, &pod, ns)
-	cancel()
-	if err != nil {
-		messages, msgErr := notReadyPodEventsForPod(ctx, params.client, params.podName, ns)
-		if msgErr != nil {
-			return err
-		}
-		var msgsStr []string
-		for _, m := range messages {
-			msgsStr = append(msgsStr, fmt.Sprintf(" ---> %s", m.message))
-		}
-		return errors.New(strings.Join(msgsStr, "\n"))
-	}
-
-	err = doAttach(ctx, params.client, bytes.NewBufferString("."), params.stdout, params.stderr, pod.Name, inspectContainer, false, nil, ns)
-	if err != nil {
-		return err
-	}
-
-	tctx, cancel = context.WithTimeout(ctx, kubeConf.PodReadyTimeout)
-	defer cancel()
-	return waitForPod(tctx, params.client, &pod, ns, false)
 }
 
 type deployAgentConfig struct {
