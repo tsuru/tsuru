@@ -410,26 +410,6 @@ func SetPodContainerReady(pod *apiv1.Pod) {
 	}
 }
 
-func (s *KubeMock) buildPodReaction(c *check.C) (ktesting.ReactionFunc, *sync.WaitGroup) {
-	wg := sync.WaitGroup{}
-	return func(action ktesting.Action) (bool, runtime.Object, error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(pod.Spec.Affinity, check.NotNil)
-		c.Assert(pod.ObjectMeta.Labels, check.NotNil)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/is-tsuru"], check.Equals, trueStr)
-		c.Assert(pod.ObjectMeta.Labels["tsuru.io/provisioner"], check.Equals, "kubernetes")
-		c.Assert(pod.ObjectMeta.Annotations, check.NotNil)
-		if !strings.HasSuffix(pod.Name, "-image-build") {
-			return false, nil, nil
-		}
-		pod.Status.StartTime = &metav1.Time{Time: time.Now()}
-		pod.Status.Phase = apiv1.PodSucceeded
-		pod.Status.HostIP = "192.168.99.1"
-		pod.Spec.NodeName = "n1"
-		return false, nil, nil
-	}, &wg
-}
-
 func (s *KubeMock) ServiceWithPortReaction(c *check.C, ports []apiv1.ServicePort) ktesting.ReactionFunc {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		srv := action.(ktesting.CreateAction).GetObject().(*apiv1.Service)
