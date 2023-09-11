@@ -684,34 +684,6 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
-func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newVersion(c, a, nil)
-	testBaseImage, err := version.BaseImageName()
-	c.Assert(err, check.IsNil)
-	testBuildImage, err := version.BuildImageName()
-	c.Assert(err, check.IsNil)
-	err = createDeployPod(context.Background(), createPodParams{
-		client:            s.clusterClient,
-		app:               a,
-		sourceImage:       testBuildImage,
-		destinationImages: []string{testBaseImage},
-		podName:           "myapp-v1-deploy",
-	})
-	c.Assert(err, check.IsNil)
-	version, err = servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, testBaseImage)
-	c.Assert(err, check.IsNil)
-	procs, err := version.Processes()
-	c.Assert(err, check.IsNil)
-	c.Assert(procs, check.DeepEquals, map[string][]string{
-		// Processes from RegisterUnit call in suite_test.go as deploy pod
-		// reaction.
-		"web":    {"python myapp.py"},
-		"worker": {"python myworker.py"},
-	})
-}
-
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()

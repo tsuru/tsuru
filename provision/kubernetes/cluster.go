@@ -70,14 +70,10 @@ const (
 	disableDefaultNodeSelectorKey = "disable-default-node-selector"
 	disableNodeContainers         = "disable-node-containers"
 	disableUnitRegisterCmdKey     = "disable-unit-register"
-	buildPlanKey                  = "build-plan"
-	buildPlanSideCarKey           = "build-plan-sidecar"
 	baseServicesAnnotations       = "base-services-annotations"
 	allServicesAnnotations        = "all-services-annotations"
 	registryKey                   = "registry"
 	registryInsecureKey           = "registry-insecure"
-	sidecarImageKey               = "sidecar-image"
-	buildServiceAccountKey        = "build-service-account"
 	disablePlatformBuildKey       = "disable-platform-build"
 	disablePDBKey                 = "disable-pdb"
 	versionedServices             = "enable-versioned-services"
@@ -111,13 +107,9 @@ var (
 		ephemeralStorageKey:           fmt.Sprintf("Sets limit for ephemeral storage for created pods. This config may be prefixed with `<pool-name>:`. Defaults to %s.", defaultEphemeralStorageLimit.String()),
 		preStopSleepKey:               fmt.Sprintf("Number of seconds to sleep in the preStop lifecycle hook. This config may be prefixed with `<pool-name>:`. Defaults to %d.", defaultPreStopSleepSeconds),
 		disableDefaultNodeSelectorKey: "Disables the use of node selector in the cluster if enabled",
-		buildPlanKey:                  "Name of the plan to be used during pod build, this is required if the pool namespace has ResourceQuota set",
-		buildPlanSideCarKey:           "Name of sidecar plan to be used during pod build. Defaults same as build-plan if omitted",
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
 		registryInsecureKey:           "Pull and push container images to insecure registry (over plain HTTP)",
-		buildServiceAccountKey:        "Custom service account used in build containers.",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
-		sidecarImageKey:               "Override for deploy sidecar image.",
 		versionedServices:             "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
@@ -612,17 +604,6 @@ func (c *ClusterClient) InsecureRegistry() bool {
 	return insecure
 }
 
-func (c *ClusterClient) buildServiceAccount(a provision.App) string {
-	if c.CustomData == nil && a != nil {
-		return serviceAccountNameForApp(a)
-	}
-	sa, ok := c.CustomData[buildServiceAccountKey]
-	if !ok && a != nil {
-		return serviceAccountNameForApp(a)
-	}
-	return sa
-}
-
 func (c *ClusterClient) DisablePlatformBuild() bool {
 	if c.CustomData == nil {
 		return false
@@ -633,22 +614,6 @@ func (c *ClusterClient) DisablePlatformBuild() bool {
 	}
 	d, _ := strconv.ParseBool(disable)
 	return d
-}
-
-func (c *ClusterClient) sideCarImage(imgName string) string {
-	if c.CustomData == nil {
-		return imgName
-	}
-	newImage, ok := c.CustomData[sidecarImageKey]
-	if !ok {
-		return imgName
-	}
-	return newImage
-}
-
-func (c *ClusterClient) deploySidecarImage() string {
-	conf := getKubeConfig()
-	return c.sideCarImage(conf.deploySidecarImage)
 }
 
 func (c *ClusterClient) configForContext(context, key string) string {

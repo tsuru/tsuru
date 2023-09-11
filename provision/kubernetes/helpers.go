@@ -22,8 +22,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
@@ -1187,43 +1185,6 @@ func isPodReady(pod *apiv1.Pod) bool {
 		}
 	}
 	return true
-}
-
-func getPoolBuildPlan(ctx context.Context, poolName string) (map[string]*appTypes.Plan, error) {
-	plans := make(map[string]*appTypes.Plan)
-	pool, err := pool.GetPoolByName(ctx, poolName)
-	if err != nil {
-		return nil, err
-	}
-	poolBuildPlan := pool.GetBuildPlan()
-	if _, ok := poolBuildPlan[buildPlanKey]; !ok {
-		return nil, nil
-	}
-	for planKey, planName := range poolBuildPlan {
-		plan, err := servicemanager.Plan.FindByName(ctx, planName)
-		if err != nil {
-			return nil, err
-		}
-		plans[planKey] = plan
-	}
-	return plans, nil
-}
-
-func getClusterBuildPlan(ctx context.Context, cluster *ClusterClient) (map[string]*appTypes.Plan, error) {
-	if _, ok := cluster.CustomData[buildPlanKey]; !ok {
-		return nil, nil
-	}
-	plans := make(map[string]*appTypes.Plan)
-	for _, buildPlanItem := range []string{buildPlanKey, buildPlanSideCarKey} {
-		if planName, ok := cluster.CustomData[buildPlanItem]; ok {
-			plan, err := servicemanager.Plan.FindByName(ctx, planName)
-			if err != nil {
-				return nil, err
-			}
-			plans[buildPlanItem] = plan
-		}
-	}
-	return plans, nil
 }
 
 func crdExists(ctx context.Context, client *ClusterClient, crdName string) (bool, error) {

@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -1128,34 +1127,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 		return "", err
 	}
 	if args.Version.VersionInfo().DeployImage == "" {
-		deployPodName := deployPodNameForApp(args.App, args.Version)
-		ns, nsErr := client.AppNamespace(ctx, args.App)
-		if nsErr != nil {
-			return "", nsErr
-		}
-		defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, deployPodName, ns)
-		baseImage, biErr := args.Version.BaseImageName()
-		if biErr != nil {
-			return "", biErr
-		}
-		params := createPodParams{
-			app:               args.App,
-			client:            client,
-			podName:           deployPodName,
-			sourceImage:       args.Version.VersionInfo().BuildImage,
-			destinationImages: []string{baseImage},
-			attachOutput:      args.Event,
-			attachInput:       strings.NewReader("."),
-			inputFile:         "/dev/null",
-		}
-		err = createDeployPod(ctx, params)
-		if err != nil {
-			return "", err
-		}
-		err = args.Version.CommitBaseImage()
-		if err != nil {
-			return "", err
-		}
+		return "", errors.New("no build image found")
 	}
 	manager := &serviceManager{
 		client: client,
