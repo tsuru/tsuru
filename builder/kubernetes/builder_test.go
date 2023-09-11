@@ -35,7 +35,7 @@ func (s *S) TestArchiveFile(c *check.C) {
 		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBuildImage, err := img.BuildImageName()
 	c.Assert(err, check.IsNil)
@@ -59,7 +59,7 @@ func (s *S) TestArchiveFileWithTag(c *check.C) {
 		ArchiveSize: int64(buf.Len()),
 		Tag:         "mytag",
 	}
-	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBuildImage, err := img.BuildImageName()
 	c.Assert(err, check.IsNil)
@@ -84,7 +84,7 @@ func (s *S) TestArchiveURL(c *check.C) {
 	bopts := builder.BuildOpts{
 		ArchiveURL: ts.URL + "/myfile.tgz",
 	}
-	img, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	img, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `build image from ArchiveURL is not yet supported by kubernetes builder`)
 	c.Assert(img, check.IsNil)
@@ -111,7 +111,7 @@ func (s *S) TestImageID(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
@@ -141,7 +141,7 @@ func (s *S) TestImageIDWithExposedPorts(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
@@ -173,7 +173,7 @@ func (s *S) TestImageIDWithProcfile(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
@@ -239,7 +239,7 @@ func (s *S) TestImageIDWithTsuruYaml(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
@@ -314,7 +314,7 @@ func (s *S) TestImageIDWithTsuruYamlNoHealthcheck(c *check.C) {
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBaseImage, err := version.BaseImageName()
 	c.Assert(err, check.IsNil)
@@ -353,7 +353,7 @@ ignored docker push output
 	bopts := builder.BuildOpts{
 		ImageID: "test/customimage",
 	}
-	_, err = s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	_, err = s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "invalid image inspect response: \"x\\nignored docker tag output\\nignored docker push output\\n\": invalid character 'x' looking for beginning of value")
 }
@@ -373,7 +373,7 @@ func (s *S) TestRebuild(c *check.C) {
 		ArchiveFile: io.NopCloser(buf),
 		ArchiveSize: int64(buf.Len()),
 	}
-	version, err := s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err := s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	testBuildImage, err := version.BuildImageName()
 	c.Assert(err, check.IsNil)
@@ -386,7 +386,7 @@ func (s *S) TestRebuild(c *check.C) {
 	bopts = builder.BuildOpts{
 		Rebuild: true,
 	}
-	version, err = s.b.Build(context.TODO(), s.p, a, evt, &bopts)
+	version, err = s.b.Build(context.TODO(), a, evt, bopts)
 	c.Assert(err, check.IsNil)
 	testBuildImage2, err := version.BuildImageName()
 	c.Assert(err, check.IsNil)
@@ -403,7 +403,7 @@ func (s *S) TestBuildWithDockerfile(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppDeploy),
 	})
 	c.Assert(err, check.IsNil)
-	_, err = s.b.Build(context.TODO(), s.p, a, evt, &builder.BuildOpts{
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		Dockerfile: "FROM busybox:latest",
 	})
 	c.Assert(err, check.ErrorMatches, "build image from Dockerfile is not yet supported")

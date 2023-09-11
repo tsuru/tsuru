@@ -85,7 +85,6 @@ var (
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
 	_ provision.HCProvisioner            = &kubernetesProvisioner{}
