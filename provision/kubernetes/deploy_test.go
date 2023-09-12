@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,18 +42,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
-
-func cleanCmds(cmds string) string {
-	result := []string{}
-	trimpattern := regexp.MustCompile("^[\t ]*(.*?)[\t ]*$")
-	for _, cmd := range strings.Split(cmds, "\n") {
-		cleanCmd := trimpattern.ReplaceAllString(cmd, "$1")
-		if len(cleanCmd) > 0 {
-			result = append(result, cleanCmd)
-		}
-	}
-	return strings.Join(result, "\n")
-}
 
 func (s *S) TestServiceManagerDeployService(c *check.C) {
 	waitDep := s.mock.DeploymentReactions(c)
