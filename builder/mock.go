@@ -28,13 +28,6 @@ func (b *MockBuilder) Build(ctx context.Context, app provision.App, evt *event.E
 	return b.OnBuild(app, evt, opts)
 }
 
-func (b *MockBuilder) BuildV1(ctx context.Context, p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error) {
-	if b.OnBuild == nil {
-		return nil, nil
-	}
-	return b.OnBuild(app, evt, *opts)
-}
-
 func (b *MockBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	if b.OnPlatformBuild == nil {
 		return nil, nil

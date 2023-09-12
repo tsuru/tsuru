@@ -40,18 +40,12 @@ type BuildOpts struct {
 	Dockerfile          string
 }
 
-type BuilderV2 interface {
-}
-
 // Builder is the basic interface of this package.
 type Builder interface {
 	Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
 }
 
 var builders = make(map[string]Builder)
-
-type PlatformBuilderV2 interface {
-}
 
 // PlatformBuilder is a builder where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
