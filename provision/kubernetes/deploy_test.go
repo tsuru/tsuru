@@ -171,7 +171,7 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								"[ -d /home/application/current ] && cd /home/application/current; exec cm1",
 							},
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_SERVICES", Value: "{}"},
@@ -2744,7 +2744,7 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								"[ -d /home/application/current ] && cd /home/application/current; exec cm1",
 							},
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_SERVICES", Value: "{}"},
@@ -4345,7 +4345,7 @@ func (s *S) createLegacyDeployment(c *check.C, a provision.App, version appTypes
 							Command: []string{
 								"/bin/sh",
 								"-lc",
-								"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec cm1",
+								"[ -d /home/application/current ] && cd /home/application/current; exec cm1",
 							},
 							Env: []apiv1.EnvVar{
 								{Name: "TSURU_SERVICES", Value: "{}"},

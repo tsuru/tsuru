@@ -100,10 +100,6 @@ func ProcessCmdForVersion(processName string, cmdData ContainerCmdsData) ([]stri
 }
 
 func LeanContainerCmds(processName string, cmdData ContainerCmdsData, app provision.App) ([]string, string, error) {
-	return LeanContainerCmdsWithExtra(processName, cmdData, app, nil)
-}
-
-func LeanContainerCmdsWithExtra(processName string, cmdData ContainerCmdsData, app provision.App, extraCmds []string) ([]string, string, error) {
 	processCmd, processName, err := ProcessCmdForVersion(processName, cmdData)
 	if err != nil {
 		return nil, "", err
@@ -115,6 +111,7 @@ func LeanContainerCmdsWithExtra(processName string, cmdData ContainerCmdsData, a
 		cmds, err = runWithAgentCmds(app)
 		return cmds, "", err
 	}
+	var extraCmds []string
 	if cmdData.yamlData.Hooks != nil {
 		extraCmds = append(extraCmds, cmdData.yamlData.Hooks.Restart.Before...)
 	}

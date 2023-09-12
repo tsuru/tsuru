@@ -68,8 +68,6 @@ const (
 	ephemeralStorageKey           = "ephemeral-storage"
 	preStopSleepKey               = "pre-stop-sleep"
 	disableDefaultNodeSelectorKey = "disable-default-node-selector"
-	disableNodeContainers         = "disable-node-containers"
-	disableUnitRegisterCmdKey     = "disable-unit-register"
 	baseServicesAnnotations       = "base-services-annotations"
 	allServicesAnnotations        = "all-services-annotations"
 	registryKey                   = "registry"
@@ -504,18 +502,6 @@ func (c *ClusterClient) namespaceLabels(ns string) (map[string]string, error) {
 		labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 	return labels, nil
-}
-
-func (c *ClusterClient) unitRegisterCmdEnabled() bool {
-	if c.CustomData == nil {
-		return true
-	}
-	config := c.CustomData[disableUnitRegisterCmdKey]
-	if config == "" {
-		return true
-	}
-	disableUnitRegister, _ := strconv.ParseBool(config)
-	return !disableUnitRegister
 }
 
 func (c *ClusterClient) headlessEnabled(pool string) (bool, error) {

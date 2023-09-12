@@ -60,7 +60,6 @@ const (
 	defaultPodRunningTimeout                   = 10 * time.Minute
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
-	defaultSidecarImageName                    = "tsuru/deploy-agent:0.10.2"
 	defaultPreStopSleepSeconds                 = 10
 )
 
@@ -115,10 +114,8 @@ func GetProvisioner() *kubernetesProvisioner {
 }
 
 type kubernetesConfig struct {
-	LogLevel           int
-	deploySidecarImage string
-	deployInspectImage string
-	APITimeout         time.Duration
+	LogLevel   int
+	APITimeout time.Duration
 	// PodReadyTimeout is the timeout for a pod to become ready after already
 	// running.
 	PodReadyTimeout time.Duration
@@ -142,14 +139,6 @@ type kubernetesConfig struct {
 func getKubeConfig() kubernetesConfig {
 	conf := kubernetesConfig{}
 	conf.LogLevel, _ = config.GetInt("kubernetes:log-level")
-	conf.deploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
-	if conf.deploySidecarImage == "" {
-		conf.deploySidecarImage = defaultSidecarImageName
-	}
-	conf.deployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
-	if conf.deployInspectImage == "" {
-		conf.deployInspectImage = defaultSidecarImageName
-	}
 	apiTimeout, _ := config.GetFloat("kubernetes:api-timeout")
 	if apiTimeout != 0 {
 		conf.APITimeout = time.Duration(apiTimeout * float64(time.Second))
@@ -233,8 +222,6 @@ func initLocalCluster() {
 		Provisioner: provisionerName,
 		CustomData: map[string]string{
 			disableDefaultNodeSelectorKey: "true",
-			disableUnitRegisterCmdKey:     "true",
-			disableNodeContainers:         "true",
 		},
 	})
 

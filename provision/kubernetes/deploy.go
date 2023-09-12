@@ -277,11 +277,6 @@ func tsuruHostToken(a provision.App) (string, string) {
 	return host, token
 }
 
-func extraRegisterCmds(a provision.App) string {
-	host, token := tsuruHostToken(a)
-	return fmt.Sprintf(`curl -sSL -m15 -XPOST -d"hostname=$(hostname)" -o/dev/null -H"Content-Type:application/x-www-form-urlencoded" -H"Authorization:bearer %s" %sapps/%s/units/register || true`, token, host, a.GetName())
-}
-
 func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVersion, podName, namespace string, output io.Writer) (func(), error) {
 	watch, err := filteredResourceEvents(ctx, client, initialResourceVersion, "Pod", podName, namespace)
 	if err != nil {
@@ -504,17 +499,11 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 
 func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string, w io.Writer) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
-	extra := []string{}
-
-	if client.unitRegisterCmdEnabled() {
-		extra = []string{extraRegisterCmds(a)}
-	}
-
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
-	cmds, _, err := dockercommon.LeanContainerCmdsWithExtra(process, cmdData, a, extra)
+	cmds, _, err := dockercommon.LeanContainerCmds(process, cmdData, a)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
