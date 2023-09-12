@@ -265,18 +265,6 @@ func registryAuth(img string) registryAuthConfig {
 	}
 }
 
-func tsuruHostToken(a provision.App) (string, string) {
-	host, _ := config.GetString("host")
-	if !strings.HasPrefix(host, "http") {
-		host = "http://" + host
-	}
-	if !strings.HasSuffix(host, "/") {
-		host += "/"
-	}
-	token := a.Envs()["TSURU_APP_TOKEN"].Value
-	return host, token
-}
-
 func logPodEvents(ctx context.Context, client *ClusterClient, initialResourceVersion, podName, namespace string, output io.Writer) (func(), error) {
 	watch, err := filteredResourceEvents(ctx, client, initialResourceVersion, "Pod", podName, namespace)
 	if err != nil {

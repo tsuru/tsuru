@@ -1531,56 +1531,6 @@ func (s *S) TestDeployRollback(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 }
 
-func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
-	config.Set("docker:registry", "registry.example.com")
-	defer config.Unset("docker:registry")
-	config.Set("docker:registry-auth:username", "user")
-	defer config.Unset("docker:registry-auth:username")
-	config.Set("docker:registry-auth:password", "pwd")
-	defer config.Unset("docker:registry-auth:password")
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		containers := pod.Spec.Containers
-		if containers[0].Name == "myapp-v1-deploy" {
-			c.Assert(containers, check.HasLen, 2)
-			sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
-			cmds := cleanCmds(containers[0].Command[2])
-			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
-trap end EXIT
-mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
-			c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
-				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:v1,registry.example.com/tsuru/app-myapp:latest"},
-				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
-				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
-				{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
-				{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
-				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
-			})
-		}
-		return false, nil, nil
-	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	version := newVersion(c, a, nil)
-	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	wait()
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
-}
-
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
