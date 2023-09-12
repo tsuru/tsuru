@@ -6,7 +6,6 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -96,7 +95,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.builders = builder.List()
-	fmt.Println("**** LAST")
 }
 
 func (s *S) TearDownSuite(c *check.C) {
