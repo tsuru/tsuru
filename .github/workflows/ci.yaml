@@ -184,7 +184,7 @@ jobs:
         tags: ${{ steps.smarttag.outputs.tag }}
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
-        platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+        platforms: linux/amd64,linux/arm64
   publish-release:
     needs: [docker-image]
     runs-on: ubuntu-latest
