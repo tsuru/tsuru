@@ -14,44 +14,24 @@ import (
 
 var _ Builder = &MockBuilder{}
 var _ PlatformBuilder = &MockBuilder{}
-var _ PlatformBuilderV2 = &MockPlatformBuilderV2{}
 
 type MockBuilder struct {
-	OnBuild          func(provision.BuilderDeploy, provision.App, *event.Event, *BuildOpts) (appTypes.AppVersion, error)
+	OnBuild          func(provision.App, *event.Event, BuildOpts) (appTypes.AppVersion, error)
 	OnPlatformBuild  func(appTypes.PlatformOptions) ([]string, error)
 	OnPlatformRemove func(string) error
 }
 
-func (b *MockBuilder) Build(ctx context.Context, p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error) {
+func (b *MockBuilder) Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error) {
 	if b.OnBuild == nil {
 		return nil, nil
 	}
-	return b.OnBuild(p, app, evt, opts)
+	return b.OnBuild(app, evt, opts)
 }
 
 func (b *MockBuilder) PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
 	if b.OnPlatformBuild == nil {
 		return nil, nil
 	}
+
 	return b.OnPlatformBuild(opts)
-}
-
-func (b *MockBuilder) PlatformRemove(ctx context.Context, name string) error {
-	if b.OnPlatformRemove == nil {
-		return nil
-	}
-	return b.OnPlatformRemove(name)
-}
-
-type MockPlatformBuilderV2 struct {
-	*MockBuilder
-	OnPlatformBuildV2 func(context.Context, appTypes.PlatformOptions) ([]string, error)
-}
-
-func (b *MockPlatformBuilderV2) PlatformBuildV2(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error) {
-	if b.OnPlatformBuildV2 == nil {
-		return nil, nil
-	}
-
-	return b.OnPlatformBuildV2(ctx, opts)
 }

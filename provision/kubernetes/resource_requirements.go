@@ -1,10 +1,6 @@
 package kubernetes
 
 import (
-	"context"
-	"fmt"
-	"strconv"
-
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -88,45 +84,4 @@ func resourceRequirements(object provision.ResourceGetter, client *ClusterClient
 	}
 
 	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
-}
-
-func resourceRequirementsForBuildPod(ctx context.Context, app provision.App, cluster *ClusterClient) (map[string]apiv1.ResourceRequirements, error) {
-	k8sBuildPlans := make(map[string]apiv1.ResourceRequirements)
-	// first, try to get the build plan from apps pool
-	plans, err := getPoolBuildPlan(ctx, app.GetPool())
-	if err != nil {
-		return nil, err
-	}
-	// if pools build plan is nil, try to get it from the cluster
-	if plans == nil {
-		plans, err = getClusterBuildPlan(ctx, cluster)
-		if err != nil {
-			return nil, err
-		}
-		// if neither pool build plan or cluster build plan are set, return no error and nil
-		if plans == nil {
-			return nil, nil
-		}
-	}
-	for planKey, planName := range plans {
-		cpu, err := resource.ParseQuantity(fmt.Sprintf("%sm", strconv.Itoa(planName.CPUMilli)))
-		if err != nil {
-			return nil, err
-		}
-		memoryBytes, err := resource.ParseQuantity(strconv.FormatInt(planName.Memory, 10))
-		if err != nil {
-			return nil, err
-		}
-		k8sBuildPlans[planKey] = apiv1.ResourceRequirements{
-			Limits: apiv1.ResourceList{
-				"cpu":    cpu,
-				"memory": memoryBytes,
-			},
-			Requests: apiv1.ResourceList{
-				"cpu":    cpu,
-				"memory": memoryBytes,
-			},
-		}
-	}
-	return k8sBuildPlans, nil
 }

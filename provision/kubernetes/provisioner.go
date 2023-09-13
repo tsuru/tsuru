@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/dockercommon"
@@ -61,7 +60,6 @@ const (
 	defaultPodRunningTimeout                   = 10 * time.Minute
 	defaultDeploymentProgressTimeout           = 10 * time.Minute
 	defaultAttachTimeoutAfterContainerFinished = time.Minute
-	defaultSidecarImageName                    = "tsuru/deploy-agent:0.10.2"
 	defaultPreStopSleepSeconds                 = 10
 )
 
@@ -85,7 +83,6 @@ var (
 	_ provision.MessageProvisioner       = &kubernetesProvisioner{}
 	_ provision.VolumeProvisioner        = &kubernetesProvisioner{}
 	_ provision.BuilderDeploy            = &kubernetesProvisioner{}
-	_ provision.BuilderDeployKubeClient  = &kubernetesProvisioner{}
 	_ provision.InitializableProvisioner = &kubernetesProvisioner{}
 	_ provision.InterAppProvisioner      = &kubernetesProvisioner{}
 	_ provision.HCProvisioner            = &kubernetesProvisioner{}
@@ -117,10 +114,8 @@ func GetProvisioner() *kubernetesProvisioner {
 }
 
 type kubernetesConfig struct {
-	LogLevel           int
-	deploySidecarImage string
-	deployInspectImage string
-	APITimeout         time.Duration
+	LogLevel   int
+	APITimeout time.Duration
 	// PodReadyTimeout is the timeout for a pod to become ready after already
 	// running.
 	PodReadyTimeout time.Duration
@@ -144,14 +139,6 @@ type kubernetesConfig struct {
 func getKubeConfig() kubernetesConfig {
 	conf := kubernetesConfig{}
 	conf.LogLevel, _ = config.GetInt("kubernetes:log-level")
-	conf.deploySidecarImage, _ = config.GetString("kubernetes:deploy-sidecar-image")
-	if conf.deploySidecarImage == "" {
-		conf.deploySidecarImage = defaultSidecarImageName
-	}
-	conf.deployInspectImage, _ = config.GetString("kubernetes:deploy-inspect-image")
-	if conf.deployInspectImage == "" {
-		conf.deployInspectImage = defaultSidecarImageName
-	}
 	apiTimeout, _ := config.GetFloat("kubernetes:api-timeout")
 	if apiTimeout != 0 {
 		conf.APITimeout = time.Duration(apiTimeout * float64(time.Second))
@@ -235,8 +222,6 @@ func initLocalCluster() {
 		Provisioner: provisionerName,
 		CustomData: map[string]string{
 			disableDefaultNodeSelectorKey: "true",
-			disableUnitRegisterCmdKey:     "true",
-			disableNodeContainers:         "true",
 		},
 	})
 
@@ -1129,34 +1114,7 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 		return "", err
 	}
 	if args.Version.VersionInfo().DeployImage == "" {
-		deployPodName := deployPodNameForApp(args.App, args.Version)
-		ns, nsErr := client.AppNamespace(ctx, args.App)
-		if nsErr != nil {
-			return "", nsErr
-		}
-		defer cleanupPod(tsuruNet.WithoutCancel(ctx), client, deployPodName, ns)
-		baseImage, biErr := args.Version.BaseImageName()
-		if biErr != nil {
-			return "", biErr
-		}
-		params := createPodParams{
-			app:               args.App,
-			client:            client,
-			podName:           deployPodName,
-			sourceImage:       args.Version.VersionInfo().BuildImage,
-			destinationImages: []string{baseImage},
-			attachOutput:      args.Event,
-			attachInput:       strings.NewReader("."),
-			inputFile:         "/dev/null",
-		}
-		err = createDeployPod(ctx, params)
-		if err != nil {
-			return "", err
-		}
-		err = args.Version.CommitBaseImage()
-		if err != nil {
-			return "", err
-		}
+		return "", errors.New("no build image found")
 	}
 	manager := &serviceManager{
 		client: client,
