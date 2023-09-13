@@ -108,7 +108,6 @@ var (
 		registryKey:                   "Allow a custom registry to be used on this cluster.",
 		registryInsecureKey:           "Pull and push container images to insecure registry (over plain HTTP)",
 		disablePlatformBuildKey:       "Disable platform image build in cluster.",
-		sidecarImageKey:               "Override for deploy sidecar image.",
 		versionedServicesKey:          "Allow the creation of multiple services for each pair of {process, version} from the app. The default behavior creates versioned services only in a multi versioned deploy scenario.",
 		dockerConfigJSONKey:           "Custom Docker config (~/.docker/config.json) to be mounted on deploy-agent container",
 		disablePDBKey:                 "Disable PodDisruptionBudget for entire pool.",
