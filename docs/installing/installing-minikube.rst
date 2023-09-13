@@ -10,7 +10,7 @@ Installing Tsuru in a local Kubernetes cluster with Helm
 ========================================================
 
 This post will show how to install and configure Tsuru in a local Kubernetes with Helm.
-All steps in this guide were done in Kubernetes v1.20.0. While it might work for almost all Kubernetes versions, some versions may break something. Feel free to report us in that case.
+All steps in this guide were done in Kubernetes v1.24.0. While it might work for almost all Kubernetes versions, some versions may break something. Feel free to report us in that case.
 You need to have both minikube and kubectl previously installed on your machine, if you don't have it yet, you can install it `here <https://minikube.sigs.k8s.io/docs/start/>`_, with minikube and `kubectl <https://kubernetes.io/docs/tasks/tools/>`_ properly installed, let's get started.
 To create a local Kubernetes cluster using minikube, run the command:
 
@@ -18,7 +18,7 @@ To create a local Kubernetes cluster using minikube, run the command:
 
 ::
 
-    $ minikube start —-kubernetes-version=v1.20.0
+    $ minikube start —-kubernetes-version=v1.24.0
 
 This example we use the docker driver to create a vm. If you want to use another driver see `minikube supported drivers <https://minikube.sigs.k8s.io/docs/drivers/>`_. In relation to the --kubernetes-version in the future we will have other versions available.
 
