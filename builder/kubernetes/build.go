@@ -29,11 +29,17 @@ import (
 )
 
 var (
-	_ builder.BuilderV2         = (*kubernetesBuilder)(nil)
-	_ builder.PlatformBuilderV2 = (*kubernetesBuilder)(nil)
+	_ builder.Builder         = &kubernetesBuilder{}
+	_ builder.PlatformBuilder = &kubernetesBuilder{}
 )
 
-func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
+type kubernetesBuilder struct{}
+
+func init() {
+	builder.Register("kubernetes", &kubernetesBuilder{})
+}
+
+func (b *kubernetesBuilder) Build(ctx context.Context, app provision.App, evt *event.Event, opts builder.BuildOpts) (apptypes.AppVersion, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
 		return nil, err
 	}
@@ -64,7 +70,7 @@ func (b *kubernetesBuilder) BuildV2(ctx context.Context, app provision.App, evt 
 	return b.buildContainerImage(ctx, app, evt, opts)
 }
 
-func (b *kubernetesBuilder) PlatformBuildV2(ctx context.Context, opts apptypes.PlatformOptions) ([]string, error) {
+func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts apptypes.PlatformOptions) ([]string, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
 		return nil, err
 	}

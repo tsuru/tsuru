@@ -242,42 +242,6 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 	return result, nil
 }
 
-func (c *endpointClient) BindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	log.Debugf("Calling bind of instance %q and %q unit at %q API", instance.Name, unit.GetIp(), instance.ServiceName)
-	appAddrs, err := app.GetAddresses()
-	if err != nil {
-		return err
-	}
-	params := map[string][]string{
-		"app-name":  {app.GetName()},
-		"app-hosts": appAddrs,
-		"unit-host": {unit.GetIp()},
-	}
-	if len(appAddrs) > 0 {
-		params["app-host"] = []string{appAddrs[0]}
-	}
-	header, err := baseHeader(ctx, nil, instance, "")
-	if err != nil {
-		return err
-	}
-	resp, err := c.issueRequest(ctx, "/resources/"+instance.GetIdentifier()+"/bind", "POST", params, header)
-	if err != nil {
-		return log.WrapError(errors.Wrapf(err, `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp()))
-	}
-	defer resp.Body.Close()
-	switch resp.StatusCode {
-	case http.StatusPreconditionFailed:
-		return ErrInstanceNotReady
-	case http.StatusNotFound:
-		return ErrInstanceNotFoundInAPI
-	}
-	if resp.StatusCode > 299 {
-		err = errors.Wrapf(c.buildErrorMessage(err, resp), `Failed to bind the instance "%s/%s" to the unit %q`, instance.ServiceName, instance.Name, unit.GetIp())
-		return log.WrapError(err)
-	}
-	return nil
-}
-
 func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
 	appAddrs, err := app.GetAddresses()
@@ -338,38 +302,6 @@ func (c *endpointClient) UnbindJob(ctx context.Context, instance *ServiceInstanc
 	}
 
 	return nil
-}
-
-func (c *endpointClient) UnbindUnit(ctx context.Context, instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
-	appAddrs, err := app.GetAddresses()
-	if err != nil {
-		return err
-	}
-	url := "/resources/" + instance.GetIdentifier() + "/bind"
-	params := map[string][]string{
-		"app-hosts": appAddrs,
-		"unit-host": {unit.GetIp()},
-	}
-	if len(appAddrs) > 0 {
-		params["app-host"] = []string{appAddrs[0]}
-	}
-	header, err := baseHeader(ctx, nil, instance, "")
-	if err != nil {
-		return err
-	}
-	resp, err := c.issueRequest(ctx, url, "DELETE", params, header)
-	if err == nil {
-		defer resp.Body.Close()
-		if resp.StatusCode > 299 {
-			if resp.StatusCode == http.StatusNotFound {
-				return ErrInstanceNotFoundInAPI
-			}
-			err = errors.Wrapf(c.buildErrorMessage(err, resp), "Failed to unbind (%q)", url)
-			return log.WrapError(err)
-		}
-	}
-	return err
 }
 
 func (c *endpointClient) Status(ctx context.Context, instance *ServiceInstance, requestID string) (string, error) {

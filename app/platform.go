@@ -184,10 +184,6 @@ func (s *platformService) Remove(ctx context.Context, name string) error {
 	if apps > 0 {
 		return appTypes.ErrDeletePlatformWithApps
 	}
-	err = builder.PlatformRemove(ctx, name)
-	if err != nil {
-		log.Errorf("Failed to remove platform from builder: %s", err)
-	}
 	images, err := servicemanager.PlatformImage.ListImagesOrDefault(ctx, name)
 	if err == nil {
 		for _, img := range images {

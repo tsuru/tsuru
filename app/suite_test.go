@@ -226,7 +226,7 @@ func setupMocks(s *S) {
 			"healthcheck",
 		}, nil
 	}
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 			App: app,
 		})

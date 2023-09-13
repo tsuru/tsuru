@@ -2865,7 +2865,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	units, err := a.GetUnits()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	allExecs := s.provisioner.AllExecs()
@@ -2902,7 +2902,7 @@ func (s *S) TestRun(c *check.C) {
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
 	expected += " ls"
-	units, err := a.GetUnits()
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	allExecs := s.provisioner.AllExecs()
@@ -5217,9 +5217,8 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
-			atomic.StoreInt32(&called, 1)
-		}
+		atomic.StoreInt32(&called, 1)
+
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
@@ -5235,14 +5234,11 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	newSuccessfulAppVersion(c, &a)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -5316,9 +5312,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
-			atomic.StoreInt32(&called, 1)
-		}
+		atomic.StoreInt32(&called, 1)
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
@@ -5333,14 +5327,11 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -5431,14 +5422,11 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	newSuccessfulAppVersion(c, &a)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -5520,14 +5508,11 @@ func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 	}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
@@ -5573,22 +5558,18 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.provisioner.Units(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
 	instances := []service.ServiceInstance{
 		{
 			Name:        "my-mysql",
 			ServiceName: "mysql",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"painkiller"},
-			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 		{
 			Name:        "my-mysql",
 			ServiceName: "mysql2",
 			Teams:       []string{s.team.Name},
 			Apps:        []string{"painkiller"},
-			BoundUnits:  []service.Unit{{ID: units[0].ID, IP: units[0].IP}},
 		},
 	}
 	for _, instance := range instances {

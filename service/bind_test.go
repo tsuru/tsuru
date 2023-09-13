@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
@@ -28,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
-	"github.com/tsuru/tsuru/tsurutest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -100,31 +98,6 @@ func (s *BindSuite) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
-func (s *BindSuite) TestBindUnit(c *check.C) {
-	var called bool
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err = s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, &s.user)
-	c.Assert(err, check.IsNil)
-	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
-	c.Assert(err, check.IsNil)
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = instance.BindUnit(a, units[0])
-	c.Assert(err, check.IsNil)
-	c.Assert(called, check.Equals, true)
-}
-
 func createEvt(c *check.C) *event.Event {
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: event.TargetTypeServiceInstance, Value: "x"},
@@ -176,38 +149,6 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.GetName()})
-}
-
-func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
-	var calls int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-		atomic.AddInt32(&calls, 1)
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-	}
-	err = s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, &s.user)
-	c.Assert(err, check.IsNil)
-	newVersionForApp(c, a)
-	err = a.AddUnits(2, "", "", nil)
-	c.Assert(err, check.IsNil)
-	evt := createEvt(c)
-	err = instance.BindApp(a, nil, true, nil, evt, "")
-	c.Assert(err, check.IsNil)
-	err = tsurutest.WaitCondition(2*time.Second, func() bool {
-		return atomic.LoadInt32(&calls) == 3
-	})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
@@ -332,92 +273,6 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	})
 }
 
-func (s *BindSuite) TestUnbindUnit(c *check.C) {
-	called := false
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, &s.user)
-	c.Assert(err, check.IsNil)
-	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
-	c.Assert(err, check.IsNil)
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{a.GetName()},
-		BoundUnits:  []service.Unit{{AppName: a.Name, ID: units[0].GetID(), IP: units[0].GetIp()}},
-	}
-	err = s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-	units, err = a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = instance.UnbindUnit(a, units[0])
-	c.Assert(err, check.IsNil)
-	c.Assert(called, check.Equals, true)
-	err = s.conn.ServiceInstances().Find(bson.M{"name": "my-mysql"}).One(&instance)
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.BoundUnits, check.HasLen, 0)
-}
-
-func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
-	var calls int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, &s.user)
-	c.Assert(err, check.IsNil)
-	newVersionForApp(c, a)
-	err = a.AddUnits(2, "", "", nil)
-	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{a.GetName()},
-		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}, {ID: units[1].GetID(), IP: units[1].GetIp()}},
-	}
-	err = s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-	evt := createEvt(c)
-	err = instance.UnbindApp(service.UnbindAppArgs{
-		App:     a,
-		Restart: true,
-		Event:   evt,
-	})
-	c.Assert(err, check.IsNil)
-	err = tsurutest.WaitCondition(1e9, func() bool {
-		return atomic.LoadInt32(&calls) > 1
-	})
-	c.Assert(err, check.IsNil)
-	envs := a.Envs()
-	c.Assert(envs, check.DeepEquals, map[string]bindTypes.EnvVar{"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{}"}})
-}
-
 func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -453,54 +308,6 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
-}
-
-func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
-	var called int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
-			atomic.StoreInt32(&called, 1)
-		}
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
-	c.Assert(err, check.IsNil)
-	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), a, &s.user)
-	c.Assert(err, check.IsNil)
-	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
-	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
-		Envs: []bindTypes.ServiceEnvVar{
-			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
-		},
-		ShouldRestart: true,
-	})
-	c.Assert(err, check.IsNil)
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{a.GetName()},
-		BoundUnits:  []service.Unit{{ID: units[0].GetID(), IP: units[0].GetIp()}},
-	}
-	err = s.conn.ServiceInstances().Insert(instance)
-	c.Assert(err, check.IsNil)
-	evt := createEvt(c)
-	err = instance.UnbindApp(service.UnbindAppArgs{
-		App:     a,
-		Restart: true,
-		Event:   evt,
-	})
-	c.Assert(err, check.IsNil)
-	err = tsurutest.WaitCondition(1e9, func() bool {
-		return atomic.LoadInt32(&called) > 0
-	})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheInstance(c *check.C) {

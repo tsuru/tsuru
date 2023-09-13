@@ -649,74 +649,6 @@ func (s *S) TestBindJobInstanceNotFound(c *check.C) {
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 
-func (s *S) TestBindUnit(c *check.C) {
-	h := TestHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.BindUnit(context.TODO(), &instance, a, units[0])
-	c.Assert(err, check.IsNil)
-	h.Lock()
-	defer h.Unlock()
-	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind")
-	c.Assert(h.method, check.Equals, http.MethodPost)
-	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
-	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, check.IsNil)
-	units, err = a.GetUnits()
-	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-name": {"her-app"}, "app-host": {"her-app.fakerouter.com"}, "app-hosts": {"her-app.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
-	c.Assert(map[string][]string(v), check.DeepEquals, expected)
-}
-
-func (s *S) TestBindUnitRequestFailure(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(failHandler))
-	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.BindUnit(context.TODO(), &instance, a, units[0])
-	c.Assert(err, check.NotNil)
-	expectedMsg := `^Failed to bind the instance "redis/her-redis" to the unit "10.10.10.\d+": invalid response: Server failed to do its job. \(code: 500\)$`
-	c.Assert(err, check.ErrorMatches, expectedMsg)
-}
-
-func (s *S) TestBindUnitInstanceNotReady(c *check.C) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusPreconditionFailed)
-	})
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.BindUnit(context.TODO(), &instance, a, units[0])
-	c.Assert(err, check.Equals, ErrInstanceNotReady)
-}
-
-func (s *S) TestBindUnitInstanceNotFound(c *check.C) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	})
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := provisiontest.NewFakeApp("her-app", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.BindUnit(context.TODO(), &instance, a, units[0])
-	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
-}
-
 func (s *S) TestUnbindApp(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
@@ -814,58 +746,6 @@ func (s *S) TestUnbindJobInstanceNotFound(c *check.C) {
 	evt := createEvt(c)
 	err := client.UnbindJob(context.TODO(), &instance, job, evt, "")
 
-	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
-}
-
-func (s *S) TestUnbindUnit(c *check.C) {
-	h := TestHandler{}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(context.TODO(), &instance, a, units[0])
-	h.Lock()
-	defer h.Unlock()
-	c.Assert(err, check.IsNil)
-	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind")
-	c.Assert(h.method, check.Equals, http.MethodDelete)
-	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
-	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, check.IsNil)
-	units, err = a.GetUnits()
-	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {"arch-enemy.fakerouter.com"}, "app-hosts": {"arch-enemy.fakerouter.com"}, "unit-host": {units[0].GetIp()}}
-	c.Assert(map[string][]string(v), check.DeepEquals, expected)
-}
-
-func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(failHandler))
-	defer ts.Close()
-	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(context.TODO(), &instance, a, units[0])
-	c.Assert(err, check.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): invalid response: Server failed to do its job. (code: 500)`
-	c.Assert(err.Error(), check.Equals, expected)
-}
-
-func (s *S) TestUnbindUnitInstanceNotFound(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
-	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
-	client := &endpointClient{endpoint: ts.URL, username: "user", password: "abcde"}
-	units, err := a.GetUnits()
-	c.Assert(err, check.IsNil)
-	err = client.UnbindUnit(context.TODO(), &instance, a, units[0])
 	c.Assert(err, check.Equals, ErrInstanceNotFoundInAPI)
 }
 

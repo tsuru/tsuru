@@ -38,31 +38,31 @@ const (
 	disablePlatformBuildKey = "disable-platform-build"
 )
 
-func (s *S) TestBuildV2_ContextCanceled(c *check.C) {
+func (s *S) TestBuild_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := s.b.BuildV2(ctx, nil, nil, builder.BuildOpts{})
+	_, err := s.b.Build(ctx, nil, nil, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "context canceled")
 }
 
-func (s *S) TestBuildV2_MissingApp(c *check.C) {
-	_, err := s.b.BuildV2(context.TODO(), nil, nil, builder.BuildOpts{})
+func (s *S) TestBuild_MissingApp(c *check.C) {
+	_, err := s.b.Build(context.TODO(), nil, nil, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "app not provided")
 }
 
-func (s *S) TestBuildV2_MissingEvent(c *check.C) {
+func (s *S) TestBuild_MissingEvent(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	_, err := s.b.BuildV2(context.TODO(), a, nil, builder.BuildOpts{})
+	_, err := s.b.Build(context.TODO(), a, nil, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event not provided")
 }
 
-func (s *S) TestBuildV2_BuildFromRebuild(c *check.C) {
+func (s *S) TestBuild_BuildFromRebuild(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -74,12 +74,12 @@ func (s *S) TestBuildV2_BuildFromRebuild(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{Rebuild: true})
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{Rebuild: true})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "app rebuild is deprecated")
 }
 
-func (s *S) TestBuildV2_MissingBuildServiceAddress(c *check.C) {
+func (s *S) TestBuild_MissingBuildServiceAddress(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -91,13 +91,13 @@ func (s *S) TestBuildV2_MissingBuildServiceAddress(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
 	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
 }
 
-func (s *S) TestBuildV2_BuildServiceReturnsError(c *check.C) {
+func (s *S) TestBuild_BuildServiceReturnsError(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -116,12 +116,12 @@ func (s *S) TestBuildV2_BuildServiceReturnsError(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error has been occurred").Error())
 }
 
-func (s *S) TestBuildV2_BuildServiceShouldRespectContextCancelation(c *check.C) {
+func (s *S) TestBuild_BuildServiceShouldRespectContextCancelation(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -153,12 +153,12 @@ func (s *S) TestBuildV2_BuildServiceShouldRespectContextCancelation(c *check.C) 
 		cancel()
 	}()
 
-	_, err = s.b.BuildV2(ctx, a, evt, builder.BuildOpts{})
+	_, err = s.b.Build(ctx, a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Canceled, "context canceled").Error())
 }
 
-func (s *S) TestBuildV2_BuildWithSourceCode(c *check.C) {
+func (s *S) TestBuild_BuildWithSourceCode(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -242,7 +242,7 @@ kubernetes:
 
 	var output bytes.Buffer
 
-	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		Message:     "Add my awesome feature :P",
 		ArchiveFile: data,
 		ArchiveSize: int64(data.Len()),
@@ -290,7 +290,7 @@ kubernetes:
 	})
 }
 
-func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
+func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -328,7 +328,7 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 
 	var output bytes.Buffer
 
-	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		Message: "New container image xD",
 		ImageID: "registry.example/my-repository/my-app:v42",
 		Output:  &output,
@@ -352,7 +352,7 @@ func (s *S) TestBuildV2_BuildWithContainerImage(c *check.C) {
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
 }
 
-func (s *S) TestBuildV2_DeployWithContainerImage_NoImageConfigReturned(c *check.C) {
+func (s *S) TestBuild_DeployWithContainerImage_NoImageConfigReturned(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -373,12 +373,12 @@ func (s *S) TestBuildV2_DeployWithContainerImage_NoImageConfigReturned(c *check.
 	})
 	c.Assert(err, check.IsNil)
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{})
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "neither Procfile nor entrypoint and cmd set")
 }
 
-func (s *S) TestBuildV2_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) {
+func (s *S) TestBuild_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -401,7 +401,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) 
 
 	var output bytes.Buffer
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
 		Output:     &output,
 	})
@@ -409,7 +409,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) 
 	c.Assert(err, check.ErrorMatches, "could not download the archive: unexpected status code")
 }
 
-func (s *S) TestBuildV2_BuildWithArchiveURL_MissingArchive(c *check.C) {
+func (s *S) TestBuild_BuildWithArchiveURL_MissingArchive(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -431,7 +431,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL_MissingArchive(c *check.C) {
 
 	var output bytes.Buffer
 
-	_, err = s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
 		Output:     &output,
 	})
@@ -439,7 +439,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL_MissingArchive(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "archive file is empty")
 }
 
-func (s *S) TestBuildV2_BuildWithArchiveURL(c *check.C) {
+func (s *S) TestBuild_BuildWithArchiveURL(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -480,7 +480,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL(c *check.C) {
 
 	var output bytes.Buffer
 
-	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		Message:    "My deploy with archive URL",
 		ArchiveURL: srv.URL + "/my-app/code.tar.gz",
 		Output:     &output,
@@ -502,7 +502,7 @@ func (s *S) TestBuildV2_BuildWithArchiveURL(c *check.C) {
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
 }
 
-func (s *S) TestBuildV2_BuildWithDockerfile(c *check.C) {
+func (s *S) TestBuild_BuildWithDockerfile(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
@@ -548,7 +548,7 @@ CMD ["--port", "8888"]
 	})
 	c.Assert(err, check.IsNil)
 
-	appVersion, err := s.b.BuildV2(context.TODO(), a, evt, builder.BuildOpts{
+	appVersion, err := s.b.Build(context.TODO(), a, evt, builder.BuildOpts{
 		Message:     "My deploy w/ Dockerfile",
 		ArchiveFile: strings.NewReader("some context files"),
 		ArchiveSize: 18,
@@ -584,29 +584,29 @@ CMD ["--port", "8888"]
 	})
 }
 
-func (s *S) TestPlatformBuildV2_ContextCanceled(c *check.C) {
+func (s *S) TestPlatformBuild_ContextCanceled(c *check.C) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := s.b.PlatformBuildV2(ctx, appTypes.PlatformOptions{})
+	_, err := s.b.PlatformBuild(ctx, appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "context canceled")
 }
 
-func (s *S) TestPlatformBuildV2_MissingBuildServiceAddress(c *check.C) {
-	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{})
+func (s *S) TestPlatformBuild_MissingBuildServiceAddress(c *check.C) {
+	_, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
 	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
 }
 
-func (s *S) TestPlatformBuildV2_ClusterWithPlatformBuildDisabled(c *check.C) {
+func (s *S) TestPlatformBuild_ClusterWithPlatformBuildDisabled(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 	s.clusterClient.CustomData[disablePlatformBuildKey] = "true"
 
 	var output bytes.Buffer
-	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
+	_, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{
 		Output: &output,
 	})
 	c.Assert(err, check.NotNil)
@@ -614,12 +614,12 @@ func (s *S) TestPlatformBuildV2_ClusterWithPlatformBuildDisabled(c *check.C) {
 	c.Assert(output.String(), check.Matches, "(?s).*Skipping platform build on c1 cluster: disabled to platform builds.*")
 }
 
-func (s *S) TestPlatformBuildV2_ClusterWithoutRegistry(c *check.C) {
+func (s *S) TestPlatformBuild_ClusterWithoutRegistry(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
 	var output bytes.Buffer
-	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
+	_, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{
 		Output: &output,
 	})
 	c.Assert(err, check.NotNil)
@@ -627,17 +627,17 @@ func (s *S) TestPlatformBuildV2_ClusterWithoutRegistry(c *check.C) {
 	c.Assert(output.String(), check.Matches, "(?s).*Skipping platform build on c1 cluster: no registry found in cluster configs.*")
 }
 
-func (s *S) TestPlatformBuildV2_RollbackVersion(c *check.C) {
+func (s *S) TestPlatformBuild_RollbackVersion(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
-	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{RollbackVersion: 42})
+	_, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{RollbackVersion: 42})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "rollback not implemented")
 }
 
-func (s *S) TestPlatformBuildV2_BuildServiceReturnsError(c *check.C) {
+func (s *S) TestPlatformBuild_BuildServiceReturnsError(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			return errors.New("something went wrong")
@@ -646,12 +646,12 @@ func (s *S) TestPlatformBuildV2_BuildServiceReturnsError(c *check.C) {
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
-	_, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{})
+	_, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "something went wrong").Error())
 }
 
-func (s *S) TestPlatformBuildV2_SuccesfulPlatformBuild(c *check.C) {
+func (s *S) TestPlatformBuild_SuccesfulPlatformBuild(c *check.C) {
 	s.mockService.PlatformImage.OnNewImage = func(reg imagetypes.ImageRegistry, platform string, version int) (string, error) {
 		c.Check(reg, check.DeepEquals, imagetypes.ImageRegistry("registry.example.com/tsuru"))
 		c.Check(platform, check.DeepEquals, "my-platform")
@@ -684,7 +684,7 @@ func (s *S) TestPlatformBuildV2_SuccesfulPlatformBuild(c *check.C) {
 	s.clusterClient.CustomData[registryKey] = "registry.example.com/tsuru"
 
 	var output bytes.Buffer
-	images, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
+	images, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{
 		Name:      "my-platform",
 		Version:   42,
 		ExtraTags: []string{"latest"},
@@ -702,7 +702,7 @@ func (s *S) TestPlatformBuildV2_SuccesfulPlatformBuild(c *check.C) {
 	c.Assert(output.String(), check.Matches, "(?s).*--> Container image build finished.*")
 }
 
-func (s *S) TestPlatformBuildV2_InsecureRegistry_SuccessfulPlatformBuild(c *check.C) {
+func (s *S) TestPlatformBuild_InsecureRegistry_SuccessfulPlatformBuild(c *check.C) {
 	s.mockService.PlatformImage.OnNewImage = func(reg imagetypes.ImageRegistry, platform string, version int) (string, error) {
 		c.Check(reg, check.DeepEquals, imagetypes.ImageRegistry("registry.example.com/tsuru"))
 		c.Check(platform, check.DeepEquals, "my-platform")
@@ -726,7 +726,7 @@ func (s *S) TestPlatformBuildV2_InsecureRegistry_SuccessfulPlatformBuild(c *chec
 	s.clusterClient.CustomData[registryInsecureKey] = "true"
 
 	var output bytes.Buffer
-	images, err := s.b.PlatformBuildV2(context.TODO(), appTypes.PlatformOptions{
+	images, err := s.b.PlatformBuild(context.TODO(), appTypes.PlatformOptions{
 		Name:      "my-platform",
 		Version:   42,
 		ExtraTags: []string{"latest"},

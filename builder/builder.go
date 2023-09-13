@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"sort"
 
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
@@ -41,26 +40,17 @@ type BuildOpts struct {
 	Dockerfile          string
 }
 
-type BuilderV2 interface {
-	BuildV2(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
-}
-
 // Builder is the basic interface of this package.
 type Builder interface {
-	Build(ctx context.Context, p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *BuildOpts) (appTypes.AppVersion, error)
+	Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
 }
 
 var builders = make(map[string]Builder)
-
-type PlatformBuilderV2 interface {
-	PlatformBuildV2(context.Context, appTypes.PlatformOptions) ([]string, error)
-}
 
 // PlatformBuilder is a builder where administrators can manage
 // platforms (automatically adding, removing and updating platforms).
 type PlatformBuilder interface {
 	PlatformBuild(context.Context, appTypes.PlatformOptions) ([]string, error)
-	PlatformRemove(ctx context.Context, name string) error
 }
 
 // Register registers a new builder in the Builder registry.
@@ -81,7 +71,7 @@ func List() map[string]Builder {
 func GetForProvisioner(p provision.Provisioner) (Builder, error) {
 	builder, err := get(p.GetName())
 	if err != nil {
-		if _, ok := p.(provision.BuilderDeployKubeClient); ok {
+		if _, ok := p.(provision.BuilderDeploy); ok {
 			return get("kubernetes")
 		}
 	}
@@ -123,46 +113,17 @@ func PlatformBuild(ctx context.Context, opts appTypes.PlatformOptions) ([]string
 	opts.ExtraTags = []string{"latest"}
 
 	for _, b := range builders {
-		if pbv2, ok := b.(PlatformBuilderV2); ok {
-			images, err := pbv2.PlatformBuildV2(ctx, opts)
+		if pb, ok := b.(PlatformBuilder); ok {
+			images, err := pb.PlatformBuild(ctx, opts)
 			if err == nil {
 				return images, nil
 			}
 
-			if !errors.Is(err, ErrBuildV2NotSupported) {
-				return nil, err
-			}
-
-			// otherwise fallback to legacy platform build method
-		}
-
-		if pb, ok := b.(PlatformBuilder); ok {
-			return pb.PlatformBuild(ctx, opts)
+			return nil, err
 		}
 	}
 
 	return nil, errors.New("No builder available")
-}
-
-func PlatformRemove(ctx context.Context, name string) error {
-	builders, err := Registry()
-	if err != nil {
-		return err
-	}
-	multiErr := tsuruErrors.NewMultiError()
-	for _, b := range builders {
-		if platformBuilder, ok := b.(PlatformBuilder); ok {
-			err = platformBuilder.PlatformRemove(ctx, name)
-			if err == nil {
-				return nil
-			}
-			multiErr.Add(err)
-		}
-	}
-	if multiErr.Len() > 0 {
-		return multiErr
-	}
-	return errors.New("No builder available")
 }
 
 func CompressDockerFile(data []byte) io.Reader {

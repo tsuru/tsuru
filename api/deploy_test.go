@@ -161,7 +161,7 @@ func newSuccessfulAppVersion(c *check.C, app provision.App) appTypes.AppVersion 
 
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	var builderCalled bool
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		builderCalled = true
 		c.Assert(opts.ArchiveURL, check.Equals, "http://something.tar.gz")
 		return newAppVersion(c, app), nil
@@ -206,7 +206,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginDragAndDrop(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.ArchiveFile, check.NotNil)
 		return newAppVersion(c, app), nil
 	}
@@ -270,7 +270,7 @@ func (s *DeploySuite) TestDeployInvalidOrigin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
@@ -310,7 +310,7 @@ func (s *DeploySuite) TestDeployOriginImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{
@@ -356,7 +356,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{
@@ -410,7 +410,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{
@@ -466,7 +466,7 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
@@ -516,7 +516,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{
@@ -563,7 +563,7 @@ func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
@@ -612,7 +612,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
@@ -637,7 +637,7 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "myapp", Platform: "python", TeamOwner: s.team.Name}
@@ -677,7 +677,7 @@ func (s *DeploySuite) TestDeployDockerImage(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
@@ -752,7 +752,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 }
 
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
 	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
@@ -1358,7 +1358,7 @@ func (s *DeploySuite) TestDiffDeployWhenUserDoesNotHaveAccessToApp(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRebuildHandler(c *check.C) {
-	s.builder.OnBuild = func(p provision.BuilderDeploy, app provision.App, evt *event.Event, opts *builder.BuildOpts) (appTypes.AppVersion, error) {
+	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		c.Assert(opts.Rebuild, check.Equals, true)
 		return newAppVersion(c, app), nil
 	}
