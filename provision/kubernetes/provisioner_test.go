@@ -103,9 +103,7 @@ func (s *S) prepareMultiCluster(c *check.C) (*kTesting.ClientWrapper, *kTesting.
 		Addresses:   []string{"https://clusteraddr3"},
 		Pools:       []string{"pool3"},
 		Provisioner: provisionerName,
-		CustomData: map[string]string{
-			disableNodeContainers: "true",
-		},
+		CustomData:  map[string]string{},
 	}
 	clusterClient3, err := NewClusterClient(cluster2)
 	c.Assert(err, check.IsNil)
@@ -684,34 +682,6 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 }
 
-func (s *S) TestRegisterUnitDeployUnit(c *check.C) {
-	a, _, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newVersion(c, a, nil)
-	testBaseImage, err := version.BaseImageName()
-	c.Assert(err, check.IsNil)
-	testBuildImage, err := version.BuildImageName()
-	c.Assert(err, check.IsNil)
-	err = createDeployPod(context.Background(), createPodParams{
-		client:            s.clusterClient,
-		app:               a,
-		sourceImage:       testBuildImage,
-		destinationImages: []string{testBaseImage},
-		podName:           "myapp-v1-deploy",
-	})
-	c.Assert(err, check.IsNil)
-	version, err = servicemanager.AppVersion.VersionByPendingImage(context.TODO(), a, testBaseImage)
-	c.Assert(err, check.IsNil)
-	procs, err := version.Processes()
-	c.Assert(err, check.IsNil)
-	c.Assert(procs, check.DeepEquals, map[string][]string{
-		// Processes from RegisterUnit call in suite_test.go as deploy pod
-		// reaction.
-		"web":    {"python myapp.py"},
-		"worker": {"python myworker.py"},
-	})
-}
-
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -1214,56 +1184,6 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
-	})
-	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(units, check.HasLen, 1)
-	appList, err := s.client.TsuruV1().Apps("tsuru").List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(len(appList.Items), check.Equals, 1)
-	c.Assert(appList.Items[0].Spec, check.DeepEquals, tsuruv1.AppSpec{
-		NamespaceName:        "default",
-		ServiceAccountName:   "app-myapp",
-		Deployments:          map[string][]string{"web": {"myapp-web"}},
-		Services:             map[string][]string{"web": {"myapp-web", "myapp-web-units"}},
-		PodDisruptionBudgets: map[string][]string{"web": {"myapp-web"}},
-	})
-}
-
-func (s *S) TestDeployWithDisabledUnitRegister(c *check.C) {
-	s.clusterClient.CustomData[disableUnitRegisterCmdKey] = "true"
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "run mycmd arg1",
-		},
-	}
-	version := newCommittedVersion(c, a, customData)
-	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "tsuru/app-myapp:v1")
-	wait()
-	ns, err := s.client.AppNamespace(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-
-	deps, err := s.client.AppsV1().Deployments(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(deps.Items, check.HasLen, 1)
-	c.Assert(deps.Items[0].Name, check.Equals, "myapp-web")
-	containers := deps.Items[0].Spec.Template.Spec.Containers
-	c.Assert(containers, check.HasLen, 1)
-	c.Check(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
-		"/bin/sh",
-		"-lc",
 		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
 	})
 	units, err := s.p.Units(context.TODO(), a)
@@ -1508,7 +1428,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
+		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
 	})
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
@@ -1548,56 +1468,6 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 		},
 	}
 	c.Assert(appList.Items[0].Spec, check.DeepEquals, expected, check.Commentf("diff:\n%s", strings.Join(pretty.Diff(appList.Items[0].Spec, expected), "\n")))
-}
-
-func (s *S) TestDeployBuilderImageCancel(c *check.C) {
-	srv := s.mock.CreateDeployReadyServer(c)
-	s.mock.MockfakeNodes(srv.URL)
-	defer srv.Close()
-	a := provisiontest.NewFakeApp("myapp", "python", 0)
-	err := s.p.Provision(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	deploy := make(chan struct{})
-	attach := make(chan struct{})
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		deploy <- struct{}{}
-		<-attach
-		return false, nil, nil
-	})
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod, ok := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		c.Assert(ok, check.Equals, true)
-		pod.Status.Phase = apiv1.PodRunning
-		testing.SetPodContainerReady(pod)
-		return false, nil, nil
-	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	ctx, cancel := context.WithCancel(context.TODO())
-	version := newVersion(c, a, nil)
-	go func(evt *event.Event) {
-		img, errDeploy := s.p.Deploy(ctx, provision.DeployArgs{App: a, Version: version, Event: evt})
-		c.Check(errDeploy, check.ErrorMatches, `.*context canceled`)
-		c.Check(img, check.Equals, "")
-		deploy <- struct{}{}
-	}(evt)
-	select {
-	case <-deploy:
-	case <-time.After(time.Second * 15):
-		c.Fatal("timeout waiting for deploy to start")
-	}
-	cancel()
-	attach <- struct{}{}
-	select {
-	case <-deploy:
-	case <-time.After(time.Second * 15):
-		c.Fatal("timeout waiting for cancelation")
-	}
 }
 
 func (s *S) TestDeployRollback(c *check.C) {
@@ -1654,61 +1524,11 @@ func (s *S) TestDeployRollback(c *check.C) {
 	c.Assert(containers[0].Command[len(containers[0].Command)-3:], check.DeepEquals, []string{
 		"/bin/sh",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; curl -sSL -m15 -XPOST -d\"hostname=$(hostname)\" -o/dev/null -H\"Content-Type:application/x-www-form-urlencoded\" -H\"Authorization:bearer \" http://apps/myapp/units/register || true && exec run mycmd arg1",
+		"[ -d /home/application/current ] && cd /home/application/current; exec run mycmd arg1",
 	})
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
 	c.Assert(units, check.HasLen, 1)
-}
-
-func (s *S) TestDeployBuilderImageWithRegistryAuth(c *check.C) {
-	config.Set("docker:registry", "registry.example.com")
-	defer config.Unset("docker:registry")
-	config.Set("docker:registry-auth:username", "user")
-	defer config.Unset("docker:registry-auth:username")
-	config.Set("docker:registry-auth:password", "pwd")
-	defer config.Unset("docker:registry-auth:password")
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	s.client.PrependReactor("create", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		pod := action.(ktesting.CreateAction).GetObject().(*apiv1.Pod)
-		containers := pod.Spec.Containers
-		if containers[0].Name == "myapp-v1-deploy" {
-			c.Assert(containers, check.HasLen, 2)
-			sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
-			cmds := cleanCmds(containers[0].Command[2])
-			c.Assert(cmds, check.Equals, `end() { touch /tmp/intercontainer/done; }
-trap end EXIT
-mkdir -p $(dirname /dev/null) && cat >/dev/null && tsuru_unit_agent   myapp deploy-only`)
-			c.Assert(containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
-				{Name: "DEPLOYAGENT_RUN_AS_SIDECAR", Value: "true"},
-				{Name: "DEPLOYAGENT_DESTINATION_IMAGES", Value: "registry.example.com/tsuru/app-myapp:v1,registry.example.com/tsuru/app-myapp:latest"},
-				{Name: "DEPLOYAGENT_SOURCE_IMAGE", Value: ""},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_USER", Value: "user"},
-				{Name: "DEPLOYAGENT_REGISTRY_AUTH_PASS", Value: "pwd"},
-				{Name: "DEPLOYAGENT_REGISTRY_ADDRESS", Value: "registry.example.com"},
-				{Name: "DEPLOYAGENT_INPUT_FILE", Value: "/dev/null"},
-				{Name: "DEPLOYAGENT_RUN_AS_USER", Value: "1000"},
-				{Name: "DEPLOYAGENT_DOCKERFILE_BUILD", Value: "false"},
-				{Name: "DEPLOYAGENT_INSECURE_REGISTRY", Value: "false"},
-				{Name: "BUILDKITD_FLAGS", Value: "--oci-worker-no-process-sandbox"},
-				{Name: "BUILDCTL_CONNECT_RETRIES_MAX", Value: "50"},
-			})
-		}
-		return false, nil, nil
-	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
-		Kind:    permission.PermAppDeploy,
-		Owner:   s.token,
-		Allowed: event.Allowed(permission.PermAppDeploy),
-	})
-	c.Assert(err, check.IsNil)
-	version := newVersion(c, a, nil)
-	img, err := s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version, Event: evt})
-	wait()
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-	c.Assert(img, check.Equals, "registry.example.com/tsuru/app-myapp:v1")
 }
 
 func (s *S) TestExecuteCommandWithStdin(c *check.C) {
@@ -2016,8 +1836,6 @@ func (s *S) TestStartupMessage(c *check.C) {
 }
 
 func (s *S) TestGetKubeConfig(c *check.C) {
-	config.Set("kubernetes:deploy-sidecar-image", "img1")
-	config.Set("kubernetes:deploy-inspect-image", "img2")
 	config.Set("kubernetes:api-timeout", 10)
 	config.Set("kubernetes:pod-ready-timeout", 6)
 	config.Set("kubernetes:pod-running-timeout", 2*60)
@@ -2027,8 +1845,6 @@ func (s *S) TestGetKubeConfig(c *check.C) {
 	defer config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		deploySidecarImage:                  "img1",
-		deployInspectImage:                  "img2",
 		APITimeout:                          10 * time.Second,
 		PodReadyTimeout:                     6 * time.Second,
 		PodRunningTimeout:                   2 * time.Minute,
@@ -2042,8 +1858,6 @@ func (s *S) TestGetKubeConfigDefaults(c *check.C) {
 	config.Unset("kubernetes")
 	kubeConf := getKubeConfig()
 	c.Assert(kubeConf, check.DeepEquals, kubernetesConfig{
-		deploySidecarImage:                  "tsuru/deploy-agent:0.10.2",
-		deployInspectImage:                  "tsuru/deploy-agent:0.10.2",
 		APITimeout:                          60 * time.Second,
 		PodReadyTimeout:                     time.Minute,
 		PodRunningTimeout:                   10 * time.Minute,

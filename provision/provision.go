@@ -269,13 +269,6 @@ type InspectData struct {
 	Procfile  string
 }
 
-type BuilderKubeClient interface {
-	BuildPod(context.Context, App, *event.Event, io.Reader, appTypes.AppVersion) error
-	BuildPlatformImages(ctx context.Context, opts appTypes.PlatformOptions) ([]string, error)
-	ImageTagPushAndInspect(context.Context, App, *event.Event, string, appTypes.AppVersion) (InspectData, error)
-	DownloadFromContainer(context.Context, App, *event.Event, string) (io.ReadCloser, error)
-}
-
 type DeployArgs struct {
 	App              App
 	Version          appTypes.AppVersion
@@ -287,11 +280,6 @@ type DeployArgs struct {
 // BuilderDeploy is a provisioner that allows deploy builded image.
 type BuilderDeploy interface {
 	Deploy(context.Context, DeployArgs) (string, error)
-}
-
-type BuilderDeployKubeClient interface {
-	BuilderDeploy
-	GetClient(App) (BuilderKubeClient, error)
 }
 
 type VersionsProvisioner interface {

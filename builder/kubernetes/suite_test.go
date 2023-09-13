@@ -46,7 +46,6 @@ import (
 type testProv interface {
 	provision.Provisioner
 	provision.JobProvisioner
-	provision.BuilderDeployKubeClient
 	shutdown.Shutdownable
 }
 

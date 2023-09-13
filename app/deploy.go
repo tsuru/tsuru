@@ -448,24 +448,14 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 		return nil, err
 	}
 
-	if bv2, ok := b.(builder.BuilderV2); ok {
-		var version appTypes.AppVersion
-		version, err = bv2.BuildV2(ctx, opts.App, evt, buildOpts)
-		if err != nil && !errors.Is(err, builder.ErrBuildV2NotSupported) {
-			return nil, err
-		}
-
-		if err == nil { // app build successfully using build v2
-			return version, nil
-		}
+	var version appTypes.AppVersion
+	version, err = b.Build(ctx, opts.App, evt, buildOpts)
+	if err != nil {
+		return nil, err
 	}
 
-	version, err := b.Build(ctx, prov, opts.App, evt, &buildOpts)
-	if buildOpts.IsTsuruBuilderImage {
-		opts.Kind = DeployBuildedImage
-	}
+	return version, nil
 
-	return version, err
 }
 
 func ValidateOrigin(origin string) bool {
