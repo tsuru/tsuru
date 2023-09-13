@@ -21,6 +21,7 @@ import (
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -252,6 +253,21 @@ func (s *S) TestClusterClientSetTimeout(c *check.C) {
 	c.Assert(err, check.IsNil)
 	client.SetTimeout(time.Hour)
 	c.Assert(client.restConfig.Timeout, check.Equals, time.Hour)
+}
+
+func (s *S) TestClusterClientConfigPrecedenceMaxSurge(c *check.C) {
+	client, err := NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("100%"))
+	config.Set("clusters:defaults:max-surge", "1%")
+	defer config.Unset("clusters:defaults:max-surge")
+	client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("1%"))
+	client, err = NewClusterClient(&provTypes.Cluster{Addresses: []string{"addr1"}, CustomData: map[string]string{"max-surge": "20%", "mypool2:max-surge": "30%"}})
+	c.Assert(err, check.IsNil)
+	c.Assert(client.maxSurge("mypool"), check.Equals, intstr.FromString("20%"))
+	c.Assert(client.maxSurge("mypool2"), check.Equals, intstr.FromString("30%"))
 }
 
 func (s *S) TestClusterAppNamespace(c *check.C) {
