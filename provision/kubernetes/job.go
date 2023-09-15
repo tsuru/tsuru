@@ -18,7 +18,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,17 +32,17 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		return batchv1.JobSpec{}, err
 	}
 
-	envs := []v1.EnvVar{}
+	envs := []apiv1.EnvVar{}
 
 	for _, env := range jSpec.Envs {
-		envs = append(envs, v1.EnvVar{
+		envs = append(envs, apiv1.EnvVar{
 			Name:  env.Name,
 			Value: strings.ReplaceAll(env.Value, "$", "$$"),
 		})
 	}
 
 	for _, env := range jSpec.ServiceEnvs {
-		envs = append(envs, v1.EnvVar{
+		envs = append(envs, apiv1.EnvVar{
 			Name:  env.Name,
 			Value: strings.ReplaceAll(env.Value, "$", "$$"),
 		})
@@ -54,14 +53,14 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		BackoffLimit:          jSpec.BackoffLimit,
 		Completions:           jSpec.Completions,
 		ActiveDeadlineSeconds: jSpec.ActiveDeadlineSeconds,
-		Template: v1.PodTemplateSpec{
+		Template: apiv1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      labels,
 				Annotations: annotations,
 			},
-			Spec: v1.PodSpec{
+			Spec: apiv1.PodSpec{
 				RestartPolicy: "OnFailure",
-				Containers: []v1.Container{
+				Containers: []apiv1.Container{
 					{
 						Name:      "job",
 						Image:     jSpec.Container.Image,

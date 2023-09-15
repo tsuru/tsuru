@@ -12,7 +12,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
-	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/check.v1"
@@ -202,7 +201,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
@@ -240,7 +239,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
 			},
@@ -278,7 +277,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ServiceEnvs: []bindTypes.ServiceEnvVar{}, Envs: []bindTypes.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
 			},
