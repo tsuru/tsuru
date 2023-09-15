@@ -450,6 +450,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			}
 		}
 	}
+
+	err = a.SetPool()
+	if err != nil {
+		return err
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
