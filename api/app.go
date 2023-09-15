@@ -406,6 +406,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	a := app.App{
 		TeamOwner:   ia.TeamOwner,
+		Teams:       []string{ia.TeamOwner},
 		Platform:    ia.Platform,
 		Plan:        appTypes.Plan{Name: ia.Plan},
 		Name:        ia.Name,
