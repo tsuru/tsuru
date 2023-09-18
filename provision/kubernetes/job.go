@@ -50,10 +50,11 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	}
 
 	return batchv1.JobSpec{
-		Parallelism:           jSpec.Parallelism,
-		BackoffLimit:          jSpec.BackoffLimit,
-		Completions:           jSpec.Completions,
-		ActiveDeadlineSeconds: jSpec.ActiveDeadlineSeconds,
+		Parallelism:             jSpec.Parallelism,
+		BackoffLimit:            jSpec.BackoffLimit,
+		Completions:             jSpec.Completions,
+		ActiveDeadlineSeconds:   jSpec.ActiveDeadlineSeconds,
+		TTLSecondsAfterFinished: func() *int32 { ttlSecondsAfterFinished := int32(86400); return &ttlSecondsAfterFinished }(), // hardcoded to a day, since we keep logs stored elsewhere on the cloud
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      labels,
