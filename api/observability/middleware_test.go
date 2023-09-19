@@ -77,6 +77,7 @@ func (s *S) TestMiddleware(c *check.C) {
 func (s *S) TestMiddlewareJSON(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("PUT", "/my/path", nil)
+	request.RemoteAddr = "10.1.1.1:60000"
 	c.Assert(err, check.IsNil)
 	request.Header.Set("User-Agent", "ardata 1.1")
 
@@ -97,7 +98,7 @@ func (s *S) TestMiddlewareJSON(c *check.C) {
 
 	timePart := time.Now().Format(time.RFC3339Nano)[:16]
 	c.Assert(m["time"], check.Matches, timePart+".*")
-	c.Assert(m["request"], check.DeepEquals, map[string]interface{}{"method": "PUT", "path": "/my/path", "scheme": "http", "userAgent": "ardata 1.1"})
+	c.Assert(m["request"], check.DeepEquals, map[string]interface{}{"method": "PUT", "path": "/my/path", "scheme": "http", "userAgent": "ardata 1.1", "sourceIP": "10.1.1.1"})
 
 	response := m["response"].(map[string]interface{})
 	c.Assert(response["statusCode"], check.Equals, float64(200))
