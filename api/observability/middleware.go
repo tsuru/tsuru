@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	stdLog "log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -121,6 +122,10 @@ func (l *middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 		},
 	}
 
+	if r.RemoteAddr != "" {
+		line.Request.SourceIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
 	if token := context.GetAuthToken(r); token != nil {
 		line.Auth = &logLineAuth{
 			Username: token.GetUserName(),
@@ -150,6 +155,7 @@ type logLineRequest struct {
 	Path      string `json:"path"`
 	UserAgent string `json:"userAgent,omitempty"`
 	RequestID string `json:"requestID,omitempty"`
+	SourceIP  string `json:"sourceIP,omitempty"`
 }
 
 type logLineResponse struct {
