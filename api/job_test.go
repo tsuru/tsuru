@@ -204,6 +204,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 	var gotJob jobTypes.Job
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
+	defaultActiveDeadline := int64(86400)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
 		Teams:     []string{s.team.Name},
@@ -235,10 +236,11 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule:    "* * * * *",
-			Manual:      false,
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
+			Schedule:              "* * * * *",
+			Manual:                false,
+			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
+			Envs:                  []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: &defaultActiveDeadline,
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -291,6 +293,7 @@ func (s *S) TestCreateManualJob(c *check.C) {
 	var gotJob jobTypes.Job
 	err = s.conn.Jobs().Find(bson.M{"name": jobName, "teamowner": s.team.Name}).One(&gotJob)
 	c.Assert(err, check.IsNil)
+	defaultActiveDeadline := int64(86400)
 	expectedJob := jobTypes.Job{
 		Name:      obtained["jobName"],
 		Teams:     []string{s.team.Name},
@@ -311,10 +314,11 @@ func (s *S) TestCreateManualJob(c *check.C) {
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule:    "* * 31 2 *",
-			Manual:      true,
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
+			Schedule:              "* * 31 2 *",
+			Manual:                true,
+			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
+			Envs:                  []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: &defaultActiveDeadline,
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -434,6 +438,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Pool:        "test1",
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
+			ActiveDeadlineSeconds: func() *int64 { defaultActiveDeadline := int64(86400); return &defaultActiveDeadline }(),
 			Container: jobTypes.ContainerInfo{
 				Image:   "busybox:1.28",
 				Command: []string{"/bin/sh", "-c", "echo Hello!"},

@@ -72,7 +72,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						Schedule:              "* * * * *",
 						Parallelism:           func() *int32 { r := int32(3); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
-						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
+						ActiveDeadlineSeconds: func() *int64 { r := int64(60 * 60 * 24); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
 							Image:   "ubuntu:latest",
@@ -112,10 +112,11 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						Suspend:  func() *bool { r := false; return &r }(),
 						JobTemplate: apiv1beta1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
-								Parallelism:           func() *int32 { r := int32(3); return &r }(),
-								Completions:           func() *int32 { r := int32(1); return &r }(),
-								ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
-								BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
+								TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
+								Parallelism:             func() *int32 { r := int32(3); return &r }(),
+								Completions:             func() *int32 { r := int32(1); return &r }(),
+								ActiveDeadlineSeconds:   func() *int64 { r := int64(60 * 60 * 24); return &r }(),
+								BackoffLimit:            func() *int32 { r := int32(7); return &r }(),
 								Template: corev1.PodTemplateSpec{
 									ObjectMeta: v1.ObjectMeta{
 										Labels: map[string]string{
@@ -351,10 +352,11 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					Suspend:  func() *bool { r := false; return &r }(),
 					JobTemplate: apiv1beta1.JobTemplateSpec{
 						Spec: batchv1.JobSpec{
-							Parallelism:           func() *int32 { r := int32(2); return &r }(),
-							Completions:           func() *int32 { r := int32(1); return &r }(),
-							ActiveDeadlineSeconds: func() *int64 { r := int64(4 * 60); return &r }(),
-							BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
+							TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
+							Parallelism:             func() *int32 { r := int32(2); return &r }(),
+							Completions:             func() *int32 { r := int32(1); return &r }(),
+							ActiveDeadlineSeconds:   func() *int64 { r := int64(4 * 60); return &r }(),
+							BackoffLimit:            func() *int32 { r := int32(6); return &r }(),
 							Template: corev1.PodTemplateSpec{
 								ObjectMeta: v1.ObjectMeta{
 									Labels: map[string]string{
@@ -541,6 +543,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						},
 					},
 					Spec: batchv1.JobSpec{
+						TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: v1.ObjectMeta{
 								Labels: map[string]string{

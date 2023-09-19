@@ -44,7 +44,7 @@ type inputJob struct {
 	Schedule              string                 `json:"schedule"`
 	Manual                bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
 	Trigger               bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
-	ActiveDeadlineSeconds *int64                 `json:"activeDeadlineSeconds,omitempty"`
+	ActiveDeadlineSeconds int64                  `json:"activeDeadlineSeconds,omitempty"`
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
@@ -283,7 +283,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Spec: jobTypes.JobSpec{
 			Schedule:              ij.Schedule,
 			Container:             ij.Container,
-			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
+			ActiveDeadlineSeconds: &ij.ActiveDeadlineSeconds,
 		},
 	}
 	if newJob.TeamOwner == "" {
@@ -352,7 +352,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Manual:                ij.Manual,
 			Schedule:              ij.Schedule,
 			Container:             ij.Container,
-			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
+			ActiveDeadlineSeconds: &ij.ActiveDeadlineSeconds,
 		},
 	}
 	if j.TeamOwner == "" {
