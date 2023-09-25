@@ -53,7 +53,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		Parallelism:             jSpec.Parallelism,
 		BackoffLimit:            jSpec.BackoffLimit,
 		Completions:             jSpec.Completions,
-		ActiveDeadlineSeconds:   jSpec.ActiveDeadlineSeconds,
+		ActiveDeadlineSeconds:   buildActiveDeadline(jSpec.ActiveDeadlineSeconds),
 		TTLSecondsAfterFinished: func() *int32 { ttlSecondsAfterFinished := int32(86400); return &ttlSecondsAfterFinished }(), // hardcoded to a day, since we keep logs stored elsewhere on the cloud
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -75,6 +75,15 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 			},
 		},
 	}, nil
+}
+
+func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
+	defaultActiveDeadline := int64(86400)
+	if activeDeadlineSeconds == nil || *activeDeadlineSeconds < defaultActiveDeadline {
+		return &defaultActiveDeadline
+	}
+
+	return activeDeadlineSeconds
 }
 
 func buildCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {

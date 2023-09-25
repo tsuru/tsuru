@@ -118,7 +118,6 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
-	buildActiveDeadline(ctx, job)
 
 	actions := []*action.Action{
 		&reserveTeamCronjob,
@@ -152,7 +151,6 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := validateJob(ctx, newJob); err != nil {
 		return err
 	}
-	buildActiveDeadline(ctx, newJob)
 	actions := []*action.Action{
 		&jobUpdateDB,
 		&updateJobProv,
@@ -443,13 +441,6 @@ func validateTeamOwner(ctx context.Context, job *jobTypes.Job, p *pool.Pool) err
 	}
 	msg := fmt.Sprintf("Job team owner %q has no access to pool %q", job.TeamOwner, p.Name)
 	return &tsuruErrors.ValidationError{Message: msg}
-}
-
-func buildActiveDeadline(ctx context.Context, j *jobTypes.Job) {
-	defaultActiveDeadline := int64(86400)
-	if j.Spec.ActiveDeadlineSeconds == nil || *j.Spec.ActiveDeadlineSeconds < defaultActiveDeadline {
-		j.Spec.ActiveDeadlineSeconds = &defaultActiveDeadline
-	}
 }
 
 func validateJob(ctx context.Context, j *jobTypes.Job) error {
