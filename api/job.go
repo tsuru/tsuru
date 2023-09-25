@@ -281,10 +281,12 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Schedule:              ij.Schedule,
-			Container:             ij.Container,
-			ActiveDeadlineSeconds: &ij.ActiveDeadlineSeconds,
+			Schedule:  ij.Schedule,
+			Container: ij.Container,
 		},
+	}
+	if ij.ActiveDeadlineSeconds > 0 {
+		newJob.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
 	}
 	if newJob.TeamOwner == "" {
 		oldJob.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -349,11 +351,13 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Manual:                ij.Manual,
-			Schedule:              ij.Schedule,
-			Container:             ij.Container,
-			ActiveDeadlineSeconds: &ij.ActiveDeadlineSeconds,
+			Manual:    ij.Manual,
+			Schedule:  ij.Schedule,
+			Container: ij.Container,
 		},
+	}
+	if ij.ActiveDeadlineSeconds > 0 {
+		j.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
@@ -420,11 +424,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	var ij inputJob
-	err = ParseInput(r, &ij)
-	if err != nil {
-		return err
-	}
 	j, err := getJob(ctx, name)
 	if err != nil {
 		return err

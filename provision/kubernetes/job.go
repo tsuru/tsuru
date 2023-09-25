@@ -79,7 +79,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 
 func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
 	defaultActiveDeadline := int64(86400)
-	if activeDeadlineSeconds == nil || *activeDeadlineSeconds < defaultActiveDeadline {
+	if activeDeadlineSeconds == nil {
 		return &defaultActiveDeadline
 	}
 

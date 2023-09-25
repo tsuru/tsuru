@@ -197,8 +197,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
-					Schedule:              "0 0 * * *",
-					ActiveDeadlineSeconds: func() *int64 { activeDeadline := int64(86400); return &activeDeadline }(),
+					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
@@ -236,8 +235,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
-					ActiveDeadlineSeconds: func() *int64 { defaultActiveDeadline := int64(86400); return &defaultActiveDeadline }(),
-					Schedule:              "*/5 * * * *",
+					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
@@ -281,7 +279,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command: []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
-					ActiveDeadlineSeconds: func() *int64 { defaultActiveDeadline := int64(86400); return &defaultActiveDeadline }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
 			},
