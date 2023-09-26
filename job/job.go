@@ -118,6 +118,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
+
 	actions := []*action.Action{
 		&reserveTeamCronjob,
 		&reserveUserCronjob,
