@@ -48,10 +48,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
-	err = migration.Register("migrate-service-proxy-actions", migrateServiceProxyActions)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
 	err = migration.Register("migrate-events-deploy", app.MigrateDeploysToEvents)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
@@ -235,19 +231,6 @@ func setPoolToApps() error {
 		}
 	}
 	return nil
-}
-
-func migrateServiceProxyActions() error {
-	db, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	_, err = db.UserActions().UpdateAll(
-		bson.M{"action": "service-proxy-status"},
-		bson.M{"$set": bson.M{"action": "service-instance-proxy"}},
-	)
-	return err
 }
 
 func createRole(name, contextType string) (permission.Role, error) {

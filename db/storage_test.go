@@ -98,15 +98,6 @@ func (s *S) TestPasswordTokens(c *check.C) {
 	c.Assert(tokens, check.DeepEquals, tokensc)
 }
 
-func (s *S) TestUserActions(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	actions := strg.UserActions()
-	actionsc := strg.Collection("user_actions")
-	c.Assert(actions, check.DeepEquals, actionsc)
-}
-
 func (s *S) TestApps(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
@@ -151,13 +142,4 @@ func (s *S) TestRoles(c *check.C) {
 	roles := strg.Roles()
 	rolesc := strg.Collection("roles")
 	c.Assert(roles, check.DeepEquals, rolesc)
-}
-
-func (s *S) TestInstallHosts(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	defer strg.Close()
-	hosts := strg.InstallHosts()
-	hostsc := strg.Collection("install_hosts")
-	c.Assert(hosts, check.DeepEquals, hostsc)
 }

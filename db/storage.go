@@ -133,10 +133,6 @@ func (s *Storage) PasswordTokens() *storage.Collection {
 	return s.Collection("password_tokens")
 }
 
-func (s *Storage) UserActions() *storage.Collection {
-	return s.Collection("user_actions")
-}
-
 // SAMLRequests returns the saml_requests from MongoDB.
 func (s *Storage) SAMLRequests() *storage.Collection {
 	id := mgo.Index{Key: []string{"id"}}
@@ -147,10 +143,6 @@ func (s *Storage) SAMLRequests() *storage.Collection {
 
 func (s *Storage) Roles() *storage.Collection {
 	return s.Collection("roles")
-}
-
-func (s *Storage) Limiter() *storage.Collection {
-	return s.Collection("limiter")
 }
 
 func (s *Storage) Events() *storage.Collection {
@@ -191,13 +183,6 @@ func (s *Storage) EventBlocks() *storage.Collection {
 	c.EnsureIndex(startTimeIndex)
 	c.EnsureIndex(activeIndex)
 
-	return c
-}
-
-func (s *Storage) InstallHosts() *storage.Collection {
-	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.Collection("install_hosts")
-	c.EnsureIndex(nameIndex)
 	return c
 }
 
