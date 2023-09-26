@@ -40,10 +40,11 @@ type inputJob struct {
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
 
-	Container jobTypes.ContainerInfo `json:"container"`
-	Schedule  string                 `json:"schedule"`
-	Manual    bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
-	Trigger   bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
+	Container             jobTypes.ContainerInfo `json:"container"`
+	Schedule              string                 `json:"schedule"`
+	Manual                bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
+	Trigger               bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
+	ActiveDeadlineSeconds int64                  `json:"activeDeadlineSeconds,omitempty"`
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
@@ -284,6 +285,9 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Container: ij.Container,
 		},
 	}
+	if ij.ActiveDeadlineSeconds > 0 {
+		newJob.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
+	}
 	if newJob.TeamOwner == "" {
 		oldJob.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
 		if err != nil {
@@ -352,6 +356,9 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			Container: ij.Container,
 		},
 	}
+	if ij.ActiveDeadlineSeconds > 0 {
+		j.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
+	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
 		if err != nil {
@@ -417,11 +424,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	var ij inputJob
-	err = ParseInput(r, &ij)
-	if err != nil {
-		return err
-	}
 	j, err := getJob(ctx, name)
 	if err != nil {
 		return err
