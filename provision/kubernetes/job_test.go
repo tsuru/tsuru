@@ -16,7 +16,6 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 	batchv1 "k8s.io/api/batch/v1"
-	apiv1beta1 "k8s.io/api/batch/v1beta1"
 	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -34,7 +33,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		scenario  func()
 		namespace string
 		jobName   string
-		assertion func(c *check.C, gotCron *apiv1beta1.CronJob)
+		assertion func(c *check.C, gotCron *batchv1.CronJob)
 		teardown  func()
 	}{
 		{
@@ -84,8 +83,8 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
-			assertion: func(c *check.C, gotCron *apiv1beta1.CronJob) {
-				expectedTarget := &apiv1beta1.CronJob{
+			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
+				expectedTarget := &batchv1.CronJob{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
@@ -107,10 +106,10 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 						Annotations: map[string]string{"annotation1": "value2"},
 					},
-					Spec: apiv1beta1.CronJobSpec{
+					Spec: batchv1.CronJobSpec{
 						Schedule: "* * * * *",
 						Suspend:  func() *bool { r := false; return &r }(),
-						JobTemplate: apiv1beta1.JobTemplateSpec{
+						JobTemplate: batchv1.JobTemplateSpec{
 							Spec: batchv1.JobSpec{
 								TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 								Parallelism:             func() *int32 { r := int32(3); return &r }(),
@@ -207,7 +206,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
-			assertion: func(c *check.C, gotCron *apiv1beta1.CronJob) {
+			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
 				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), "job-"+gotCron.Name, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
@@ -236,7 +235,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 	}
 	for _, tt := range tests {
 		tt.scenario()
-		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, v1.GetOptions{})
+		gotCron, err := s.client.BatchV1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, v1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		tt.assertion(c, gotCron)
 		tt.teardown()
@@ -251,7 +250,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 		name           string
 		setup          func()
 		scenario       func()
-		expectedTarget *apiv1beta1.CronJob
+		expectedTarget *batchv1.CronJob
 	}{
 		{
 			name: "simple update cronjob",
@@ -325,7 +324,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
-			expectedTarget: &apiv1beta1.CronJob{
+			expectedTarget: &batchv1.CronJob{
 				ObjectMeta: v1.ObjectMeta{
 					Name:      "myjob",
 					Namespace: "default",
@@ -347,10 +346,10 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					},
 					Annotations: map[string]string{"annotation2": "value4"},
 				},
-				Spec: apiv1beta1.CronJobSpec{
+				Spec: batchv1.CronJobSpec{
 					Schedule: "* * * * *",
 					Suspend:  func() *bool { r := false; return &r }(),
-					JobTemplate: apiv1beta1.JobTemplateSpec{
+					JobTemplate: batchv1.JobTemplateSpec{
 						Spec: batchv1.JobSpec{
 							TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 							Parallelism:             func() *int32 { r := int32(2); return &r }(),
@@ -407,7 +406,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 	for _, tt := range tests {
 		tt.setup()
 		tt.scenario()
-		gotCron, err := s.client.BatchV1beta1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
+		gotCron, err := s.client.BatchV1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
 	}
@@ -447,7 +446,7 @@ func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 				waitCron()
 			},
 			testScenario: func(c *check.C) {
-				_, err := s.client.BatchV1beta1().CronJobs("default").Get(context.TODO(), "mycronjob", v1.GetOptions{})
+				_, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "mycronjob", v1.GetOptions{})
 				c.Assert(err, check.NotNil)
 				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
@@ -511,7 +510,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				waitCron()
 			},
 			testScenario: func(c *check.C) {
-				cronParent, err := s.client.BatchV1beta1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
+				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				expected := &batchv1.Job{
 					ObjectMeta: v1.ObjectMeta{
@@ -603,7 +602,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(gotJob, check.DeepEquals, expected)
 				// cleanup
-				err = s.client.BatchV1beta1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", v1.DeleteOptions{})
+				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", v1.DeleteOptions{})
 				c.Assert(err, check.IsNil)
 			},
 		},
@@ -725,7 +724,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 						},
 						OwnerReferences: []v1.OwnerReference{
 							{
-								APIVersion:         "batch/v1beta1",
+								APIVersion:         "batch/v1",
 								Controller:         &boolTrue,
 								BlockOwnerDeletion: &boolTrue,
 								Kind:               "CronJob",
