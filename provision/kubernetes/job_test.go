@@ -543,7 +543,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						},
 					},
 					Spec: batchv1.JobSpec{
-						ActiveDeadlineSeconds:   func() *int64 { defaultTTL := int64(86400); return &defaultTTL }(),
+						ActiveDeadlineSeconds:   func() *int64 { defaultTTL := int64(3600); return &defaultTTL }(),
 						TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: v1.ObjectMeta{
