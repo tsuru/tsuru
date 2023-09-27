@@ -156,6 +156,13 @@ func (s *S) SetUpTest(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
+	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{
+		Name:        "pool1",
+		Provisioner: "kubernetes",
+	})
+	c.Assert(err, check.IsNil)
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypePlan, Values: []string{"c2m1"}})
+	c.Assert(err, check.IsNil)
 	s.defaultSharedInformerDuration, err = time.ParseDuration("1s")
 	c.Assert(err, check.IsNil)
 	s.factory = informers.NewSharedInformerFactory(s.client, s.defaultSharedInformerDuration)
@@ -189,19 +196,36 @@ func (s *S) SetUpTest(c *check.C) {
 	s.mockService.Team.OnFindByNames = func(_ []string) ([]authTypes.Team, error) {
 		return []authTypes.Team{{Name: s.team.Name}}, nil
 	}
-	plan := appTypes.Plan{
-		Name:    "default",
-		Default: true,
+	plans := []appTypes.Plan{
+		{
+			Name:     "c2m1",
+			Memory:   1 * 1024 * 1024 * 1024,
+			CPUMilli: 2000,
+		},
+		{
+			Name:     "c4m2",
+			Memory:   2 * 1024 * 1024 * 1024,
+			CPUMilli: 4000,
+		},
+		{
+			Name:     "default",
+			Memory:   1 * 1024 * 1024 * 1024,
+			CPUMilli: 1000,
+			Default:  true,
+		},
 	}
+
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		return []appTypes.Plan{plan}, nil
+		return plans, nil
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
-		return &plan, nil
+		return s.mockService.Plan.OnFindByName("default")
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		if name == plan.Name {
-			return &plan, nil
+		for _, p := range plans {
+			if p.Name == name {
+				return &p, nil
+			}
 		}
 		return nil, appTypes.ErrPlanNotFound
 	}
