@@ -34,7 +34,7 @@ import (
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
-	apiv1beta1 "k8s.io/api/batch/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	extensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -500,8 +500,8 @@ func (s *KubeMock) CronJobReactions(c *check.C) func() {
 		patchAction := action.(ktesting.PatchAction)
 		go func() {
 			defer cronPodReady.Done()
-			cron, _ := s.client.BatchV1beta1().CronJobs(patchAction.GetNamespace()).Get(context.TODO(), patchAction.GetName(), metav1.GetOptions{})
-			s.client.BatchV1beta1().CronJobs(patchAction.GetNamespace()).Update(context.TODO(), cron, metav1.UpdateOptions{})
+			cron, _ := s.client.BatchV1().CronJobs(patchAction.GetNamespace()).Get(context.TODO(), patchAction.GetName(), metav1.GetOptions{})
+			s.client.BatchV1().CronJobs(patchAction.GetNamespace()).Update(context.TODO(), cron, metav1.UpdateOptions{})
 		}()
 		return true, ret, nil
 	})
@@ -517,7 +517,7 @@ func (s *KubeMock) cronWithPodReactions(c *check.C) (ktesting.ReactionFunc, *syn
 		if action.GetSubresource() != "" {
 			return false, nil, nil
 		}
-		job := action.(ktesting.CreateAction).GetObject().(*apiv1beta1.CronJob)
+		job := action.(ktesting.CreateAction).GetObject().(*batchv1.CronJob)
 		if job.Annotations == nil {
 			job.Annotations = make(map[string]string)
 		}
@@ -534,7 +534,7 @@ func (s *KubeMock) cronWithPodReactions(c *check.C) (ktesting.ReactionFunc, *syn
 	}, &wg
 }
 
-func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *apiv1beta1.CronJob, specJobs int32, counter *int32) {
+func (s *KubeMock) jobWithPodReactionFromCron(c *check.C, cron *batchv1.CronJob, specJobs int32, counter *int32) {
 	pod := &apiv1.Pod{
 		ObjectMeta: cron.ObjectMeta,
 		Spec:       cron.Spec.JobTemplate.Spec.Template.Spec,
