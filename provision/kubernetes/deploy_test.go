@@ -172,9 +172,13 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+									apiv1.ResourceCPU:              resource.MustParse("1000m"),
+									apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 								},
 								Requests: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+									apiv1.ResourceCPU:              resource.MustParse("1000m"),
+									apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 								},
 							},
 							Ports: []apiv1.ContainerPort{
@@ -2368,9 +2372,13 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 			expected: apiv1.ResourceRequirements{
 				Limits: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 			},
 		},
@@ -2380,9 +2388,13 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 			expected: apiv1.ResourceRequirements{
 				Limits: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: resource.MustParse("9Mi"),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 			},
 		},
@@ -2392,9 +2404,13 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 			expected: apiv1.ResourceRequirements{
 				Limits: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: resource.MustParse("1Mi"),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 			},
 		},
@@ -2404,9 +2420,13 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 			expected: apiv1.ResourceRequirements{
 				Limits: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 				Requests: apiv1.ResourceList{
 					apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+					apiv1.ResourceCPU:              resource.MustParse("1000m"),
+					apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 				},
 			},
 		},
@@ -2414,8 +2434,14 @@ func (s *S) TestServiceManagerDeployServiceWithCustomEphemeralStorageLimit(c *ch
 			key:   ephemeralStorageKey,
 			value: "0",
 			expected: apiv1.ResourceRequirements{
-				Limits:   apiv1.ResourceList{},
-				Requests: apiv1.ResourceList{},
+				Limits: apiv1.ResourceList{
+					apiv1.ResourceCPU:    resource.MustParse("1000m"),
+					apiv1.ResourceMemory: *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+				},
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceCPU:    resource.MustParse("1000m"),
+					apiv1.ResourceMemory: *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+				},
 			},
 		},
 	}
@@ -2745,9 +2771,13 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+									apiv1.ResourceCPU:              resource.MustParse("1000m"),
+									apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 								},
 								Requests: apiv1.ResourceList{
 									apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+									apiv1.ResourceCPU:              resource.MustParse("1000m"),
+									apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 								},
 							},
 							Ports: []apiv1.ContainerPort{
@@ -2888,6 +2918,18 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
 	}
+	expectedDep.Spec.Template.Spec.Containers[0].Resources = apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+			apiv1.ResourceCPU:              resource.MustParse("1000m"),
+			apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+		},
+		Requests: apiv1.ResourceList{
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+			apiv1.ResourceCPU:              resource.MustParse("1000m"),
+			apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+		},
+	}
 	expectedDep.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 
 	expectedSvc := legacySvc.DeepCopy()
@@ -2990,6 +3032,18 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 		{Name: "port", Value: "8888"},
 		{Name: "PORT", Value: "8888"},
 		{Name: "PORT_p1", Value: "8888"},
+	}
+	expectedDepV2.Spec.Template.Spec.Containers[0].Resources = apiv1.ResourceRequirements{
+		Limits: apiv1.ResourceList{
+			apiv1.ResourceEphemeralStorage: defaultEphemeralStorageLimit,
+			apiv1.ResourceCPU:              resource.MustParse("1000m"),
+			apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+		},
+		Requests: apiv1.ResourceList{
+			apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+			apiv1.ResourceCPU:              resource.MustParse("1000m"),
+			apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
+		},
 	}
 	expectedDepV2.Spec.Template.ObjectMeta.Annotations = map[string]string{}
 

@@ -14,6 +14,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/pool"
+	"github.com/tsuru/tsuru/servicemanager"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1beta1 "k8s.io/api/batch/v1beta1"
@@ -23,11 +25,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	appTypes "github.com/tsuru/tsuru/types/app"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
-func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
+func buildJobSpec(ctx context.Context, job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
 	jSpec := job.Spec
+	var plan *appTypes.Plan
+	jobPool, err := pool.GetPoolByName(ctx, job.Pool)
+	if err != nil {
+		return batchv1.JobSpec{}, err
+	}
+	if job.Plan.Name == "" {
+		plan, err = jobPool.GetDefaultPlan()
+	} else {
+		plan, err = servicemanager.Plan.FindByName(ctx, job.Plan.Name)
+	}
+	if err != nil {
+		return batchv1.JobSpec{}, err
+	}
+	job.Plan = *plan
 	requirements, err := resourceRequirements(job, client, requirementsFactors{})
 	if err != nil {
 		return batchv1.JobSpec{}, err
@@ -135,7 +152,7 @@ func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job
 		return "", err
 	}
 	jobLabels, jobAnnotations := buildMetadata(ctx, job)
-	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
+	jobSpec, err := buildJobSpec(ctx, job, client, jobLabels, jobAnnotations)
 	if err != nil {
 		return "", err
 	}
@@ -195,7 +212,7 @@ func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job
 		return err
 	}
 	jobLabels, jobAnnotations := buildMetadata(ctx, job)
-	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
+	jobSpec, err := buildJobSpec(ctx, job, client, jobLabels, jobAnnotations)
 	if err != nil {
 		return err
 	}
