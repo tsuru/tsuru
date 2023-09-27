@@ -30,6 +30,7 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 type inputJob struct {
@@ -224,18 +225,23 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		Units:                units,
 		ServiceInstanceBinds: binds,
 	}
-	jsonMsg, err := json.Marshal(&result)
-	if err != nil {
+
+	cluster, err := servicemanager.Cluster.FindByPool(ctx, provision.DefaultProvisioner, j.Pool)
+	if err != nil && err != provisionTypes.ErrNoCluster {
 		return err
 	}
+	if cluster != nil {
+		result.Cluster = cluster.Name
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonMsg)
-	return nil
+	return json.NewEncoder(w).Encode(&result)
 }
 
 // TODO: after move of provision.Unit to types, leave this structure to types/job
 type jobInfoResult struct {
+	Cluster              string                          `json:"cluster,omitempty"`
 	Job                  *jobTypes.Job                   `json:"job,omitempty"`
 	Units                []provision.Unit                `json:"units,omitempty"`
 	ServiceInstanceBinds []bindTypes.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
