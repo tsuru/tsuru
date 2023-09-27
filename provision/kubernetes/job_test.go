@@ -37,7 +37,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 		teardown  func()
 	}{
 		{
-			name:      "simple create cronjob",
+			name:      "simple create cronjob with default plan",
 			jobName:   "myjob",
 			namespace: "default",
 			teardown: func() {
@@ -147,9 +147,13 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 												Resources: apiv1.ResourceRequirements{
 													Limits: corev1.ResourceList{
 														apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+														apiv1.ResourceCPU:              resource.MustParse("1000m"),
+														apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 													},
 													Requests: corev1.ResourceList{
 														apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+														apiv1.ResourceCPU:              resource.MustParse("1000m"),
+														apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 													},
 												},
 											},
@@ -294,6 +298,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
 					Pool:      "test-default",
+					Plan:      app.Plan{Name: "c4m2"},
 					Metadata: app.Metadata{
 						Labels: []app.MetadataItem{
 							{
@@ -387,9 +392,13 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 											Resources: apiv1.ResourceRequirements{
 												Limits: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+													apiv1.ResourceCPU:              resource.MustParse("4000m"),
+													apiv1.ResourceMemory:           *resource.NewQuantity(2*1024*1024*1024, resource.BinarySI),
 												},
 												Requests: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+													apiv1.ResourceCPU:              resource.MustParse("4000m"),
+													apiv1.ResourceMemory:           *resource.NewQuantity(2*1024*1024*1024, resource.BinarySI),
 												},
 											},
 										},
@@ -475,7 +484,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				cj := jobTypes.Job{
 					Name:      "myjob",
 					TeamOwner: s.team.Name,
-					Pool:      "test-default",
+					Pool:      "pool1",
 					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
 						Container: jobTypes.ContainerInfo{
@@ -524,7 +533,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 							"tsuru.io/is-tsuru":            "true",
 							"tsuru.io/is-service":          "true",
 							"tsuru.io/job-name":            "myjob",
-							"tsuru.io/job-pool":            "test-default",
+							"tsuru.io/job-pool":            "pool1",
 							"tsuru.io/job-team":            "admin",
 							"tsuru.io/is-job":              "true",
 							"tsuru.io/job-manual":          "false",
@@ -554,7 +563,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 									"tsuru.io/is-tsuru":            "true",
 									"tsuru.io/is-service":          "true",
 									"tsuru.io/job-name":            "myjob",
-									"tsuru.io/job-pool":            "test-default",
+									"tsuru.io/job-pool":            "pool1",
 									"tsuru.io/job-team":            "admin",
 									"tsuru.io/is-job":              "true",
 									"tsuru.io/job-manual":          "false",
@@ -583,9 +592,13 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 										Resources: apiv1.ResourceRequirements{
 											Limits: corev1.ResourceList{
 												apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+												apiv1.ResourceCPU:              resource.MustParse("2000m"),
+												apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 											},
 											Requests: corev1.ResourceList{
 												apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+												apiv1.ResourceCPU:              resource.MustParse("2000m"),
+												apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 											},
 										},
 									},
