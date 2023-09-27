@@ -33,6 +33,7 @@ import (
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -865,6 +866,23 @@ func (s *S) TestJobInfo(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 
+	prevClusterService := servicemanager.Cluster
+	servicemanager.Cluster = &provTypes.MockClusterService{
+		OnFindByPool: func(provisioner, pool string) (*provTypes.Cluster, error) {
+
+			c.Assert(provisioner, check.Equals, "jobProv")
+			c.Assert(pool, check.Equals, "pool1")
+
+			return &provTypes.Cluster{
+				Name: "cluster1",
+			}, nil
+		},
+	}
+
+	defer func() {
+		servicemanager.Cluster = prevClusterService
+	}()
+
 	sInstance := service.ServiceInstance{
 		Name:        "j1sql",
 		ServiceName: "mysql",
@@ -896,6 +914,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	var result jobInfoResult
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
+	c.Assert(result.Cluster, check.Equals, "cluster1")
 	c.Assert(s.team.Name, check.DeepEquals, result.Job.TeamOwner)
 	c.Assert(j1.Pool, check.DeepEquals, result.Job.Pool)
 	c.Assert("default-plan", check.DeepEquals, result.Job.Plan.Name)
