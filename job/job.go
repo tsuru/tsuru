@@ -141,11 +141,23 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	oldJob.Metadata.Update(newJob.Metadata)
 	newJob.Metadata = oldJob.Metadata
+	manualJob := oldJob.Spec.Manual
+	if newJob.Spec.Schedule != "" {
+		manualJob = false
+	}
+	if newJob.Spec.Manual {
+		manualJob = true
+		buildFakeSchedule(ctx, newJob)
+	}
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
 	// in which case we would switch oldJob to be dst and newJob to be src
 	if err := mergo.Merge(newJob, oldJob); err != nil {
+		return err
+	}
+	newJob.Spec.Manual = manualJob
+	if err := buildPlan(ctx, newJob); err != nil {
 		return err
 	}
 	if err := validateJob(ctx, newJob); err != nil {

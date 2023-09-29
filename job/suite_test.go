@@ -34,8 +34,9 @@ type S struct {
 	conn        *db.Storage
 	team        authTypes.Team
 	user        *authTypes.User
-	plan        appTypes.Plan
-	defaultPlan appTypes.Plan
+	plan        *appTypes.Plan
+	plans       []appTypes.Plan
+	defaultPlan *appTypes.Plan
 	provisioner *provisiontest.JobProvisioner
 	Pool        string
 	zeroLock    map[string]interface{}
@@ -79,23 +80,18 @@ func setupMocks(s *S) {
 	}
 
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
-		if s.plan.Name != "" {
-			return []appTypes.Plan{s.defaultPlan, s.plan}, nil
-		}
-		return []appTypes.Plan{s.defaultPlan}, nil
+		return s.plans, nil
 	}
 	s.mockService.Plan.OnDefaultPlan = func() (*appTypes.Plan, error) {
-		return &s.defaultPlan, nil
+		return s.mockService.Plan.OnFindByName("default-plan")
 	}
 	s.mockService.Plan.OnFindByName = func(name string) (*appTypes.Plan, error) {
-		switch name {
-		case s.defaultPlan.Name:
-			return &s.defaultPlan, nil
-		case s.plan.Name:
-			return &s.plan, nil
-		default:
-			return nil, appTypes.ErrPlanNotFound
+		for _, p := range s.plans {
+			if p.Name == name {
+				return &p, nil
+			}
 		}
+		return nil, appTypes.ErrPlanNotFound
 	}
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.UnlimitedQuota, nil
@@ -140,18 +136,28 @@ func (s *S) SetUpTest(c *check.C) {
 	s.provisioner.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
-	s.defaultPlan = appTypes.Plan{
-		Name:    "default-plan",
-		Memory:  1024,
-		Default: true,
+	s.plans = []appTypes.Plan{
+		{
+			Name:     "c2m1",
+			Memory:   1024,
+			CPUMilli: 2000,
+		},
+		{
+			Name:     "c4m2",
+			Memory:   2048,
+			CPUMilli: 4000,
+		},
+		{
+			Name:     "default-plan",
+			Memory:   1024,
+			CPUMilli: 1000,
+			Default:  true,
+		},
 	}
-	s.plan = appTypes.Plan{
-		Name:   "another-plan",
-		Memory: 256,
-	}
+	var err error
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
-	err := pool.AddPool(context.TODO(), opts)
+	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
@@ -165,11 +171,15 @@ func (s *S) SetUpTest(c *check.C) {
 	err = pool.AppendPoolConstraint(&pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
-		Values:   []string{"default-plan"},
+		Values:   []string{"default-plan", "c2m1"},
 	})
 	c.Assert(err, check.IsNil)
 	builder.DefaultBuilder = "fake"
 	setupMocks(s)
+	s.defaultPlan, err = s.mockService.Plan.OnDefaultPlan()
+	c.Assert(err, check.IsNil)
+	s.plan, err = s.mockService.Plan.OnFindByName("c4m2")
+	c.Assert(err, check.IsNil)
 	servicemanager.Job, err = JobService()
 	c.Assert(err, check.IsNil)
 }
