@@ -147,13 +147,9 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 												Resources: apiv1.ResourceRequirements{
 													Limits: corev1.ResourceList{
 														apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
-														apiv1.ResourceCPU:              resource.MustParse("1000m"),
-														apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 													},
 													Requests: corev1.ResourceList{
 														apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-														apiv1.ResourceCPU:              resource.MustParse("1000m"),
-														apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 													},
 												},
 											},
@@ -392,13 +388,9 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 											Resources: apiv1.ResourceRequirements{
 												Limits: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
-													apiv1.ResourceCPU:              resource.MustParse("4000m"),
-													apiv1.ResourceMemory:           *resource.NewQuantity(2*1024*1024*1024, resource.BinarySI),
 												},
 												Requests: corev1.ResourceList{
 													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-													apiv1.ResourceCPU:              resource.MustParse("4000m"),
-													apiv1.ResourceMemory:           *resource.NewQuantity(2*1024*1024*1024, resource.BinarySI),
 												},
 											},
 										},
@@ -592,13 +584,9 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 										Resources: apiv1.ResourceRequirements{
 											Limits: corev1.ResourceList{
 												apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
-												apiv1.ResourceCPU:              resource.MustParse("2000m"),
-												apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 											},
 											Requests: corev1.ResourceList{
 												apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
-												apiv1.ResourceCPU:              resource.MustParse("2000m"),
-												apiv1.ResourceMemory:           *resource.NewQuantity(1024*1024*1024, resource.BinarySI),
 											},
 										},
 									},

@@ -10,6 +10,7 @@ import (
 
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/types/bind"
@@ -192,12 +193,137 @@ func (s *S) TestUpdateJob(c *check.C) {
 			expectedJob: jobTypes.Job{
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
-				Plan:      s.defaultPlan,
+				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+				},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+			},
+		},
+		{
+			name: "update job with new plan",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Plan: app.Plan{Name: "c2m1"},
+				Spec: jobTypes.JobSpec{
+					Schedule: "0 0 * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      app.Plan{Name: "c2m1", Memory: 1024, CPUMilli: 2000},
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "0 0 * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+				},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+			},
+		},
+		{
+			name: "change scheduled job to manual",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					Manual: true,
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * 31 2 *",
+					Manual:   true,
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+				},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+			},
+		},
+		{
+			name: "change manual job to scheduled",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * 31 2 *",
+					Manual:   true,
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					Schedule: "*/5 * * * *",
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "*/5 * * * *",
+					Manual:   false,
 					Container: jobTypes.ContainerInfo{
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
@@ -230,7 +356,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			expectedJob: jobTypes.Job{
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
-				Plan:      s.defaultPlan,
+				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
@@ -268,7 +394,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			expectedJob: jobTypes.Job{
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
-				Plan:      s.defaultPlan,
+				Plan:      *s.defaultPlan,
 				Owner:     s.user.Email,
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
@@ -323,7 +449,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Name: "some-job",
 				Pool: "some-other-pool",
 			},
-			expectedErr: &tsuruErrors.ValidationError{Message: "Pool does not exist."},
+			expectedErr: pool.ErrPoolNotFound,
 		},
 		{
 			name: "update job to invalid pool",
@@ -363,9 +489,9 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 			newJob: jobTypes.Job{
 				Name: "some-job",
-				Plan: s.plan,
+				Plan: *s.plan,
 			},
-			expectedErr: &tsuruErrors.ValidationError{Message: "Job plan \"another-plan\" is not allowed on pool \"pool1\""},
+			expectedErr: &tsuruErrors.ValidationError{Message: "Job plan \"c4m2\" is not allowed on pool \"pool1\""},
 		},
 		{
 			name: "update job to invalid cronjob",

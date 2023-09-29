@@ -347,6 +347,32 @@ func (s *S) TestCreateCronjobNoName(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
 
+func (s *S) TestCreateCronjobAndManualReturnConflict(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j := inputJob{Name: "manualAndCronjob", TeamOwner: s.team.Name, Schedule: "* * * * *", Manual: true}
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(j)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("POST", "/jobs", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermJobCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Body.String(), check.Equals, "you can't set schedule and manual job at the same time\n")
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+}
+
 func (s *S) TestUpdateCronjob(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
@@ -550,6 +576,45 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.DeepEquals, "Job team owner \"invalid\" has no access to pool \"test1\"\n")
+}
+
+func (s *S) TestUpdateCronjobAndManualReturnConflict(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := jobTypes.Job{
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "cron",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Name:     "cron",
+		Manual:   true,
+		Schedule: "*/5 * * * *",
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", ij.Name), &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "you can't set schedule and manual job at the same time\n")
 }
 
 func (s *S) TestTriggerCronjob(c *check.C) {
