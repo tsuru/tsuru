@@ -257,11 +257,15 @@ type jobInfoResult struct {
 //	201: Job updated
 //	400: Invalid data
 //	401: Unauthorized
+//	409: Mixed manual and schedule job type
 func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
 	var ij inputJob
 	err = ParseInput(r, &ij)
+	if ij.Manual && ij.Schedule != "" {
+		return &errors.HTTP{Code: http.StatusConflict, Message: "you can't set schedule and manual job at the same time"}
+	}
 	if err != nil {
 		return err
 	}
@@ -289,6 +293,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Spec: jobTypes.JobSpec{
 			Schedule:  ij.Schedule,
 			Container: ij.Container,
+			Manual:    ij.Manual,
 		},
 	}
 	if ij.ActiveDeadlineSeconds > 0 {
@@ -341,13 +346,16 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //	400: Invalid data
 //	401: Unauthorized
 //	403: Quota exceeded
-//	409: Job already exists
+//	409: Job already exists or mixed manual and schedule job type
 func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	var ij inputJob
 	err = ParseInput(r, &ij)
 	if err != nil {
 		return err
+	}
+	if ij.Manual && ij.Schedule != "" {
+		return &errors.HTTP{Code: http.StatusConflict, Message: "you can't set schedule and manual job at the same time"}
 	}
 	j := &jobTypes.Job{
 		TeamOwner:   ij.TeamOwner,
