@@ -162,6 +162,22 @@ func (s *S) Test_TeamTokenService_AddRole(c *check.C) {
 	})
 }
 
+func (s *S) Test_TeamTokenService_AddRoleTwice(c *check.C) {
+	_, err := permission.NewRole("app-deployer", "app", "")
+	c.Assert(err, check.IsNil)
+	token, err := servicemanager.TeamToken.Create(context.TODO(), authTypes.TeamTokenCreateArgs{Team: s.team.Name}, &userToken{user: s.user})
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(context.TODO(), token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	err = servicemanager.TeamToken.AddRole(context.TODO(), token.TokenID, "app-deployer", "myapp")
+	c.Assert(err, check.IsNil)
+	dbToken, err := servicemanager.TeamToken.FindByTokenID(context.TODO(), token.TokenID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.Roles, check.DeepEquals, []authTypes.RoleInstance{
+		{Name: "app-deployer", ContextValue: "myapp"},
+	})
+}
+
 func (s *S) Test_TeamTokenService_AddRole_TokenNotFound(c *check.C) {
 	_, err := permission.NewRole("app-deployer", "app", "")
 	c.Assert(err, check.IsNil)
