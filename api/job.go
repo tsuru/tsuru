@@ -273,7 +273,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	canUpdate := permission.Check(t, permission.PermAppUpdate,
+	canUpdate := permission.Check(t, permission.PermJobUpdate,
 		permission.Context(permTypes.CtxTeam, oldJob.TeamOwner),
 	)
 	if !canUpdate {
@@ -298,12 +298,6 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if ij.ActiveDeadlineSeconds > 0 {
 		newJob.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
-	}
-	if newJob.TeamOwner == "" {
-		oldJob.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
-		if err != nil {
-			return err
-		}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
@@ -374,7 +368,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		j.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
 	}
 	if j.TeamOwner == "" {
-		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermAppCreate)
+		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermJobCreate)
 		if err != nil {
 			return err
 		}
@@ -483,7 +477,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 //	200: Ok
 //	400: Invalid data
 //	401: Unauthorized
-//	404: App not found
+//	404: Job not found
 func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	instanceName := r.URL.Query().Get(":instance")
@@ -749,7 +743,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, toExclude...)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
@@ -819,7 +813,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateEnvUnset,
+	allowed := permission.Check(t, permission.PermJobUpdate,
 		contextsForJob(j)...,
 	)
 	if !allowed {
@@ -831,7 +825,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForJob(j)...),
+		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
 	})
 	if err != nil {
 		return err
