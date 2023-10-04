@@ -6026,6 +6026,7 @@ definitions:
             type: boolean
           activeDeadlineSeconds:
             type: integer
+            format: int64
             description: job active deadline seconds.
           container:
             type: object
@@ -6078,6 +6079,7 @@ definitions:
         description: create a manual job.
       activeDeadlineSeconds:
         type: integer
+        format: int64
         description: job active deadline seconds.
       container:
         type: object
