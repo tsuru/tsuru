@@ -6024,6 +6024,9 @@ definitions:
             type: string
           manual:
             type: boolean
+          activeDeadlineSeconds:
+            type: integer
+            description: job active deadline seconds.
           container:
             type: object
             properties:
@@ -6073,6 +6076,9 @@ definitions:
       manual:
         type: boolean
         description: create a manual job.
+      activeDeadlineSeconds:
+        type: integer
+        description: job active deadline seconds.
       container:
         type: object
         properties:
