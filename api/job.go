@@ -45,7 +45,7 @@ type inputJob struct {
 	Schedule              string                 `json:"schedule"`
 	Manual                bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
 	Trigger               bool                   `json:"trigger"` // Trigger means the client wants to forcefully run a job
-	ActiveDeadlineSeconds int64                  `json:"activeDeadlineSeconds,omitempty"`
+	ActiveDeadlineSeconds *int64                 `json:"activeDeadlineSeconds,omitempty"`
 }
 
 func getJob(ctx stdContext.Context, name string) (*jobTypes.Job, error) {
@@ -291,13 +291,11 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Schedule:  ij.Schedule,
-			Container: ij.Container,
-			Manual:    ij.Manual,
+			Schedule:              ij.Schedule,
+			Container:             ij.Container,
+			Manual:                ij.Manual,
+			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
 		},
-	}
-	if ij.ActiveDeadlineSeconds > 0 {
-		newJob.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
@@ -359,13 +357,11 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Manual:    ij.Manual,
-			Schedule:  ij.Schedule,
-			Container: ij.Container,
+			Manual:                ij.Manual,
+			Schedule:              ij.Schedule,
+			Container:             ij.Container,
+			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
 		},
-	}
-	if ij.ActiveDeadlineSeconds > 0 {
-		j.Spec.ActiveDeadlineSeconds = &ij.ActiveDeadlineSeconds
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermJobCreate)

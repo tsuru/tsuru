@@ -240,6 +240,10 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			Manual:      false,
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: func() *int64 {
+				v := int64(3600)
+				return &v
+			}(),
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -316,6 +320,10 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			Manual:      true,
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: func() *int64 {
+				v := int64(3600)
+				return &v
+			}(),
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
@@ -387,6 +395,10 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Name:      "cron",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 {
+				v := int64(300)
+				return &v
+			}(),
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -421,6 +433,10 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "*/15 * * * *",
+		ActiveDeadlineSeconds: func() *int64 {
+			v := int64(500)
+			return &v
+		}(),
 	}
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(ij)
@@ -468,6 +484,10 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Schedule:    "*/15 * * * *",
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: func() *int64 {
+				v := int64(500)
+				return &v
+			}(),
 		},
 	}
 	c.Assert(*gotJob, check.DeepEquals, expectedJob)
