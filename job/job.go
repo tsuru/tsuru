@@ -121,6 +121,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	if job.Spec.Manual {
 		buildFakeSchedule(ctx, job)
 	}
+	job.Spec.ActiveDeadlineSeconds = buildActiveDeadline(job.Spec.ActiveDeadlineSeconds)
 	if err := validateJob(ctx, job); err != nil {
 		return err
 	}
@@ -162,6 +163,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
 	}
+	newJob.Spec.ActiveDeadlineSeconds = buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 	newJob.Spec.Manual = manualJob
 	if err := buildPlan(ctx, newJob); err != nil {
 		return err
