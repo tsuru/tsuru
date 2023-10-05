@@ -6080,6 +6080,7 @@ definitions:
       activeDeadlineSeconds:
         type: integer
         format: int64
+        x-omitempty: false
         description: job active deadline seconds.
       container:
         type: object
