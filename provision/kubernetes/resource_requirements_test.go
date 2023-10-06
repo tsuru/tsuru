@@ -105,3 +105,27 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 		c.Assert(cpuRequests.String(), check.Equals, testCase.expectedRequestsCPU)
 	}
 }
+
+func (s *S) TestGetCPULimits(c *check.C) {
+	// empty
+	rf := &requirementsFactors{}
+	result := rf.cpuLimits(0, 1000)
+
+	c.Check(result.String(), check.Equals, "1")
+
+	// when we have a burst per pool
+	rf = &requirementsFactors{poolCPUBurst: 1.2}
+	result = rf.cpuLimits(0, 1000)
+	c.Check(result.String(), check.Equals, "1200m")
+
+	// when we have a burst per resource
+	rf = &requirementsFactors{poolCPUBurst: 1.2}
+	result = rf.cpuLimits(1.3, 1000)
+	c.Check(result.String(), check.Equals, "1300m")
+
+	// when we have a burst per resource without pool default
+	rf = &requirementsFactors{}
+	result = rf.cpuLimits(1.3, 1000)
+	c.Check(result.String(), check.Equals, "1300m")
+
+}

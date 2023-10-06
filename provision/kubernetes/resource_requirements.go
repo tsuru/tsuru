@@ -29,8 +29,13 @@ func (f *requirementsFactors) memoryRequests(memory int64) resource.Quantity {
 	return *resource.NewQuantity(overcommitedValue(memory, memoryOvercommit), resource.BinarySI)
 }
 
-func (f *requirementsFactors) cpuLimits(cpuMilli int64) resource.Quantity {
+func (f *requirementsFactors) cpuLimits(resourceCPUBurst float64, cpuMilli int64) resource.Quantity {
 	cpuBurst := f.poolCPUBurst
+
+	if resourceCPUBurst > 1 {
+		cpuBurst = resourceCPUBurst
+	}
+
 	if cpuBurst < 1 {
 		cpuBurst = 1.0 // cpu cannot be less than 1
 	}
@@ -71,8 +76,9 @@ func resourceRequirements(object provisionTypes.ResourceGetter, client *ClusterC
 		resourceRequests[apiv1.ResourceMemory] = factors.memoryRequests(memory)
 	}
 	cpuMilli := int64(object.GetMilliCPU())
+	cpuBurst := object.GetCPUBurst()
 	if cpuMilli != 0 {
-		resourceLimits[apiv1.ResourceCPU] = factors.cpuLimits(cpuMilli)
+		resourceLimits[apiv1.ResourceCPU] = factors.cpuLimits(cpuBurst, cpuMilli)
 		resourceRequests[apiv1.ResourceCPU] = factors.cpuRequests(cpuMilli)
 	}
 	ephemeral, err := client.ephemeralStorage(object.GetPool())
