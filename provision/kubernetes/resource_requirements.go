@@ -1,16 +1,17 @@
 package kubernetes
 
 import (
-	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 type requirementsFactors struct {
 	overCommit       float64
 	cpuOverCommit    float64
 	memoryOverCommit float64
-	cpuBurst         float64
+	poolCPUBurst     float64
 }
 
 func (f *requirementsFactors) memoryLimits(memory int64) resource.Quantity {
@@ -29,7 +30,7 @@ func (f *requirementsFactors) memoryRequests(memory int64) resource.Quantity {
 }
 
 func (f *requirementsFactors) cpuLimits(cpuMilli int64) resource.Quantity {
-	cpuBurst := f.cpuBurst
+	cpuBurst := f.poolCPUBurst
 	if cpuBurst < 1 {
 		cpuBurst = 1.0 // cpu cannot be less than 1
 	}
@@ -61,7 +62,7 @@ func burstValue(v int64, burst float64) int64 {
 	return int64(float64(v) * burst)
 }
 
-func resourceRequirements(object provision.ResourceGetter, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
+func resourceRequirements(object provisionTypes.ResourceGetter, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
 	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
 	memory := object.GetMemory()

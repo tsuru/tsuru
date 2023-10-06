@@ -11,7 +11,10 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
+
+var _ provisionTypes.ResourceGetter = &Job{}
 
 // Job is another main type in tsuru as of version 1.13
 // a job currently represents a Kubernetes Job object or a Cronjob object
@@ -46,6 +49,13 @@ func (job *Job) GetMilliCPU() int {
 		return *job.Plan.Override.CPUMilli
 	}
 	return job.Plan.CPUMilli
+}
+
+func (job *Job) GetCPUBurst() float64 {
+	if job.Plan.Override.CPUBurst != nil {
+		return *job.Plan.Override.CPUBurst
+	}
+	return job.Plan.CPUBurst.Default
 }
 
 func (job *Job) GetPool() string {

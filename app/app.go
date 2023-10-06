@@ -99,6 +99,8 @@ const (
 	routerNone = "none"
 )
 
+var _ provisionTypes.ResourceGetter = &App{}
+
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -1415,6 +1417,13 @@ func (app *App) GetMilliCPU() int {
 		return *app.Plan.Override.CPUMilli
 	}
 	return app.Plan.CPUMilli
+}
+
+func (app *App) GetCPUBurst() float64 {
+	if app.Plan.Override.CPUBurst != nil {
+		return *app.Plan.Override.CPUBurst
+	}
+	return app.Plan.CPUBurst.Default
 }
 
 func (app *App) GetAddresses() ([]string, error) {

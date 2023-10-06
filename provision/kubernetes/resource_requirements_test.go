@@ -56,8 +56,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   1.1,
-				overCommit: 1,
+				poolCPUBurst: 1.1,
+				overCommit:   1,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "10Ki",
@@ -67,8 +67,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   2,
-				overCommit: 1,
+				poolCPUBurst: 2,
+				overCommit:   1,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "10Ki",
@@ -78,8 +78,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   2,
-				overCommit: 2,
+				poolCPUBurst: 2,
+				overCommit:   2,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "5Ki",
