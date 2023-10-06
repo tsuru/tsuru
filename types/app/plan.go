@@ -10,13 +10,20 @@ type Plan struct {
 	Name     string       `json:"name"`
 	Memory   int64        `json:"memory"`
 	CPUMilli int          `json:"cpumilli"`
+	CPUBurst CPUBurst     `json:"cpuBurst,omitempty"`
 	Default  bool         `json:"default,omitempty"`
 	Override PlanOverride `json:"override,omitempty"`
 }
 
 type PlanOverride struct {
-	Memory   *int64 `json:"memory"`
-	CPUMilli *int   `json:"cpumilli"`
+	Memory   *int64   `json:"memory"`
+	CPUMilli *int     `json:"cpumilli"`
+	CPUBurst *float64 `json:"cpuBurst"`
+}
+
+type CPUBurst struct {
+	Default    float64 `json:"default"`
+	MaxAllowed float64 `json:"maxAllowed"`
 }
 
 func (p *Plan) MergeOverride(po PlanOverride) {
