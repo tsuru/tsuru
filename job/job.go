@@ -121,6 +121,9 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	if job.Spec.Manual {
 		buildFakeSchedule(ctx, job)
 	}
+	if job.Spec.ActiveDeadlineSeconds == nil {
+		job.Spec.ActiveDeadlineSeconds = func(i int64) *int64 { return &i }(0)
+	}
 	job.Spec.ActiveDeadlineSeconds = buildActiveDeadline(job.Spec.ActiveDeadlineSeconds)
 	if err := validateJob(ctx, job); err != nil {
 		return err
@@ -156,6 +159,9 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 		manualJob = true
 		buildFakeSchedule(ctx, newJob)
 	}
+	if newJob.Spec.ActiveDeadlineSeconds != nil {
+		newJob.Spec.ActiveDeadlineSeconds = buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
+	}
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
@@ -163,7 +169,6 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
 	}
-	newJob.Spec.ActiveDeadlineSeconds = buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 	newJob.Spec.Manual = manualJob
 	if err := buildPlan(ctx, newJob); err != nil {
 		return err

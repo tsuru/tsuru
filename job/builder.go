@@ -56,7 +56,7 @@ func buildFakeSchedule(ctx context.Context, job *jobTypes.Job) {
 
 func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
 	defaultActiveDeadline := int64(60 * 60)
-	if activeDeadlineSeconds == nil || *activeDeadlineSeconds == int64(0) {
+	if *activeDeadlineSeconds == int64(0) {
 		return &defaultActiveDeadline
 	}
 	return activeDeadlineSeconds

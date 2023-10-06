@@ -394,11 +394,8 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Pool:      "test1",
 		Name:      "cron",
 		Spec: jobTypes.JobSpec{
-			Schedule: "* * * * *",
-			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(300)
-				return &v
-			}(),
+			Schedule:              "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -434,7 +431,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		},
 		Schedule: "*/15 * * * *",
 		ActiveDeadlineSeconds: func() *int64 {
-			v := int64(500)
+			v := int64(0)
 			return &v
 		}(),
 	}
@@ -485,7 +482,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(500)
+				v := int64(3600)
 				return &v
 			}(),
 		},
