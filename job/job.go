@@ -86,7 +86,8 @@ func (*jobService) RemoveJobFromDb(ctx context.Context, job *jobTypes.Job) error
 		return jobTypes.ErrJobNotFound
 	}
 	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
-	if user, err := auth.GetUserByEmail(job.Owner); err == nil {
+	var user *auth.User
+	if user, err = auth.GetUserByEmail(job.Owner); err == nil {
 		servicemanager.UserQuota.Inc(ctx, user, -1)
 	}
 	return err
