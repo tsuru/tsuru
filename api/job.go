@@ -453,7 +453,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = servicemanager.Job.RemoveJobFromDb(j.Name); err != nil {
+	if err = servicemanager.Job.RemoveJobFromDb(ctx, j); err != nil {
 		if err == jobTypes.ErrJobNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}

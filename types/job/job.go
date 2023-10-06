@@ -94,7 +94,7 @@ type JobService interface {
 	DeleteFromProvisioner(ctx context.Context, job *Job) error
 	GetByName(ctx context.Context, name string) (*Job, error)
 	List(ctx context.Context, filter *Filter) ([]Job, error)
-	RemoveJobFromDb(jobName string) error
+	RemoveJobFromDb(ctx context.Context, job *Job) error
 	Trigger(ctx context.Context, job *Job) error
 	UpdateJob(ctx context.Context, newJob, oldJob *Job, user *authTypes.User) error
 	AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error

@@ -128,7 +128,7 @@ var insertJob = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		job := ctx.FWResult.(*jobTypes.Job)
-		servicemanager.Job.RemoveJobFromDb(job.Name)
+		servicemanager.Job.RemoveJobFromDb(ctx.Context, job)
 	},
 	MinParams: 1,
 }

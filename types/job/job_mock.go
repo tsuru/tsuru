@@ -18,7 +18,7 @@ type MockJobService struct {
 	OnDeleteFromProvisioner func(*Job) error
 	OnGetByName             func(string) (*Job, error)
 	OnList                  func(*Filter) ([]Job, error)
-	OnRemoveJobFromDb       func(string) error
+	OnRemoveJobFromDb       func(*Job) error
 	OnTrigger               func(*Job) error
 	OnUpdateJob             func(*Job, *Job, *authTypes.User) error
 	OnAddServiceEnv         func(*Job, AddInstanceArgs) error
@@ -55,11 +55,11 @@ func (m *MockJobService) List(ctx context.Context, filter *Filter) ([]Job, error
 	return m.OnList(filter)
 }
 
-func (m *MockJobService) RemoveJobFromDb(jobName string) error {
+func (m *MockJobService) RemoveJobFromDb(ctx context.Context, job *Job) error {
 	if m.OnRemoveJobFromDb == nil {
 		return nil
 	}
-	return m.OnRemoveJobFromDb(jobName)
+	return m.OnRemoveJobFromDb(job)
 }
 
 func (m *MockJobService) Trigger(ctx context.Context, job *Job) error {
