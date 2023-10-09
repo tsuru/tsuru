@@ -28,6 +28,10 @@ func (s *S) TestGetByName(c *check.C) {
 		Teams:     []string{s.team.Name},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 {
+				i := int64(300)
+				return &i
+			}(),
 		},
 	}
 	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
@@ -35,6 +39,7 @@ func (s *S) TestGetByName(c *check.C) {
 	myJob, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newJob.Name, check.DeepEquals, myJob.Name)
+	c.Assert(*myJob.Spec.ActiveDeadlineSeconds, check.Equals, int64(300))
 }
 
 func (s *S) TestCreateCronjob(c *check.C) {
@@ -57,6 +62,7 @@ func (s *S) TestCreateCronjob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
+	c.Assert(*myJob.Spec.ActiveDeadlineSeconds, check.Equals, int64(0))
 }
 
 func (s *S) TestCreateManualJob(c *check.C) {
@@ -216,6 +222,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
 				},
 			},
 			newJob: jobTypes.Job{
@@ -241,7 +248,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
+					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
@@ -286,6 +294,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command: []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
@@ -326,6 +335,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command: []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
@@ -367,6 +377,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command: []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
@@ -405,6 +416,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Command: []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
 			},
@@ -442,9 +454,48 @@ func (s *S) TestUpdateJob(c *check.C) {
 						Image:   "alpine:latest",
 						Command: []string{"echo", "hello!"},
 					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
+					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
+			},
+		},
+		{
+			name: "update active deadline to 0 should set to default value as 0",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }()},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						Image:   "alpine:latest",
+						Command: []string{"echo", "hello!"},
+					},
+					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
+				},
+				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
 			},
 		},
 		{
