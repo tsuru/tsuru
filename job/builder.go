@@ -53,3 +53,11 @@ func buildFakeSchedule(ctx context.Context, job *jobTypes.Job) {
 	// trick based on fact that crontab syntax is not strictly validated
 	job.Spec.Schedule = "* * 31 2 *"
 }
+
+func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
+	defaultActiveDeadline := func() *int64 { i := int64(0); return &i }()
+	if activeDeadlineSeconds != nil && *activeDeadlineSeconds == int64(0) {
+		return defaultActiveDeadline
+	}
+	return activeDeadlineSeconds
+}

@@ -77,15 +77,6 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	}, nil
 }
 
-func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
-	defaultActiveDeadline := int64(60 * 60)
-	if activeDeadlineSeconds == nil {
-		return &defaultActiveDeadline
-	}
-
-	return activeDeadlineSeconds
-}
-
 func buildCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
 	namespace := client.PoolNamespace(job.Pool)
 	k8sCronjob, err := client.BatchV1().CronJobs(namespace).Create(ctx, &batchv1.CronJob{
@@ -338,4 +329,12 @@ func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job 
 	})
 	ns := client.PoolNamespace(job.Pool)
 	return ensureServiceAccount(ctx, client, serviceAccountNameForJob(job), labels, ns, &job.Metadata)
+}
+
+func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
+	defaultActiveDeadline := int64(60 * 60)
+	if activeDeadlineSeconds == nil || *activeDeadlineSeconds == int64(0) {
+		return &defaultActiveDeadline
+	}
+	return activeDeadlineSeconds
 }
