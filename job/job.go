@@ -15,6 +15,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -74,20 +75,25 @@ func (*jobService) GetByName(ctx context.Context, name string) (*jobTypes.Job, e
 	return &job, err
 }
 
-func (*jobService) RemoveJobFromDb(jobName string) error {
+func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Jobs().Remove(bson.M{"name": jobName})
+	err = conn.Jobs().Remove(bson.M{"name": job.Name})
 	if err == mgo.ErrNotFound {
 		return jobTypes.ErrJobNotFound
+	}
+	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
+	var user *auth.User
+	if user, err = auth.GetUserByEmail(job.Owner); err == nil {
+		servicemanager.UserQuota.Inc(ctx, user, -1)
 	}
 	return err
 }
 
-func (*jobService) DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
+func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err

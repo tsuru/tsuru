@@ -14,17 +14,17 @@ import (
 var _ JobService = &MockJobService{}
 
 type MockJobService struct {
-	OnCreateJob             func(*Job, *authTypes.User) error
-	OnDeleteFromProvisioner func(*Job) error
-	OnGetByName             func(string) (*Job, error)
-	OnList                  func(*Filter) ([]Job, error)
-	OnRemoveJobFromDb       func(string) error
-	OnTrigger               func(*Job) error
-	OnUpdateJob             func(*Job, *Job, *authTypes.User) error
-	OnAddServiceEnv         func(*Job, AddInstanceArgs) error
-	OnRemoveServiceEnv      func(*Job, RemoveInstanceArgs) error
-	OnUpdateJobProv         func(*Job) error
-	OnGetEnvs               func(*Job) map[string]bindTypes.EnvVar
+	OnCreateJob        func(*Job, *authTypes.User) error
+	OnGetByName        func(string) (*Job, error)
+	OnList             func(*Filter) ([]Job, error)
+	OnRemoveJob        func(*Job) error
+	OnRemoveJobProv    func(*Job) error
+	OnTrigger          func(*Job) error
+	OnAddServiceEnv    func(*Job, AddInstanceArgs) error
+	OnRemoveServiceEnv func(*Job, RemoveInstanceArgs) error
+	OnUpdateJob        func(*Job, *Job, *authTypes.User) error
+	OnUpdateJobProv    func(*Job) error
+	OnGetEnvs          func(*Job) map[string]bindTypes.EnvVar
 }
 
 func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User) error {
@@ -34,11 +34,11 @@ func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authType
 	return m.OnCreateJob(job, user)
 }
 
-func (m *MockJobService) DeleteFromProvisioner(ctx context.Context, job *Job) error {
-	if m.OnDeleteFromProvisioner == nil {
+func (m *MockJobService) RemoveJobProv(ctx context.Context, job *Job) error {
+	if m.OnRemoveJobProv == nil {
 		return nil
 	}
-	return m.OnDeleteFromProvisioner(job)
+	return m.OnRemoveJobProv(job)
 }
 
 func (m *MockJobService) GetByName(ctx context.Context, name string) (*Job, error) {
@@ -55,11 +55,11 @@ func (m *MockJobService) List(ctx context.Context, filter *Filter) ([]Job, error
 	return m.OnList(filter)
 }
 
-func (m *MockJobService) RemoveJobFromDb(jobName string) error {
-	if m.OnRemoveJobFromDb == nil {
+func (m *MockJobService) RemoveJob(ctx context.Context, job *Job) error {
+	if m.OnRemoveJob == nil {
 		return nil
 	}
-	return m.OnRemoveJobFromDb(jobName)
+	return m.OnRemoveJob(job)
 }
 
 func (m *MockJobService) Trigger(ctx context.Context, job *Job) error {

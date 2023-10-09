@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -44,8 +45,14 @@ type S struct {
 }
 
 func (s *S) createUserAndTeam(c *check.C) {
-	s.user = &authTypes.User{
+	user := &auth.User{
 		Email: "august@tswift.com",
+		Quota: quota.UnlimitedQuota,
+	}
+	err := user.Create()
+	c.Assert(err, check.IsNil)
+	s.user = &authTypes.User{
+		Email: user.Email,
 		Quota: quota.UnlimitedQuota,
 	}
 	s.team = authTypes.Team{

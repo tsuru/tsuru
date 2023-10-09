@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
 
@@ -106,7 +107,7 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
-	err = servicemanager.Job.DeleteFromProvisioner(context.TODO(), job)
+	err = servicemanager.Job.RemoveJobProv(context.TODO(), job)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, false)
 }
@@ -130,10 +131,47 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
-	err = servicemanager.Job.RemoveJobFromDb(job.Name)
+	err = servicemanager.Job.RemoveJob(context.TODO(), job)
 	c.Assert(err, check.IsNil)
 	_, err = servicemanager.Job.GetByName(context.TODO(), job.Name)
 	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
+}
+
+func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
+	var userinUseNow *int
+	var teaminUseNow *int
+	userinUseNow = new(int)
+	teaminUseNow = new(int)
+	s.mockService.UserQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		*userinUseNow += quantity
+		c.Assert(item.GetName(), check.Equals, s.user.Email)
+		return nil
+	}
+	s.mockService.TeamQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
+		*teaminUseNow += quantity
+		c.Assert(item.GetName(), check.Equals, s.team.Name)
+		return nil
+	}
+	newJob := jobTypes.Job{
+		Name:      "some-job",
+		Pool:      s.Pool,
+		TeamOwner: s.team.Name,
+		Owner:     s.user.Email,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	c.Assert(*teaminUseNow, check.Equals, 0)
+	c.Assert(*userinUseNow, check.Equals, 0)
+	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(*userinUseNow, check.Equals, 1)
+	c.Assert(*teaminUseNow, check.Equals, 1)
+	err = servicemanager.Job.RemoveJob(context.TODO(), &newJob)
+	c.Assert(err, check.IsNil)
+	c.Assert(*teaminUseNow, check.Equals, 0)
+	c.Assert(*userinUseNow, check.Equals, 0)
 }
 
 func (s *S) TestJobUnits(c *check.C) {
@@ -528,14 +566,14 @@ func (s *S) TestUpdateJob(c *check.C) {
 		err = servicemanager.Job.UpdateJob(context.TODO(), &t.newJob, &t.oldJob, s.user)
 		if t.expectedErr != nil {
 			c.Assert(err, check.DeepEquals, t.expectedErr)
-			servicemanager.Job.RemoveJobFromDb(t.newJob.Name)
+			servicemanager.Job.RemoveJob(context.TODO(), &t.newJob)
 			continue
 		}
 		c.Assert(err, check.IsNil)
 		updatedJob, err := servicemanager.Job.GetByName(context.TODO(), t.newJob.Name)
 		c.Assert(err, check.IsNil)
 		c.Assert(updatedJob, check.DeepEquals, &t.expectedJob)
-		servicemanager.Job.RemoveJobFromDb(t.newJob.Name)
+		servicemanager.Job.RemoveJob(context.TODO(), &t.newJob)
 	}
 }
 
