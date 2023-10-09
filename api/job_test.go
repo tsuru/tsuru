@@ -241,7 +241,7 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(3600)
+				v := int64(0)
 				return &v
 			}(),
 		},
@@ -321,7 +321,7 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(3600)
+				v := int64(0)
 				return &v
 			}(),
 		},
@@ -482,7 +482,7 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
 			Envs:        []bindTypes.EnvVar{},
 			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(3600)
+				v := int64(0)
 				return &v
 			}(),
 		},

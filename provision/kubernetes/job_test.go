@@ -313,7 +313,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						Schedule:              "* * * * *",
 						Parallelism:           func() *int32 { r := int32(2); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
-						ActiveDeadlineSeconds: func() *int64 { r := int64(4 * 60); return &r }(),
+						ActiveDeadlineSeconds: func() *int64 { r := int64(0); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
 						Container: jobTypes.ContainerInfo{
 							Image:   "ubuntu:latest",
@@ -355,7 +355,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 							TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 							Parallelism:             func() *int32 { r := int32(2); return &r }(),
 							Completions:             func() *int32 { r := int32(1); return &r }(),
-							ActiveDeadlineSeconds:   func() *int64 { r := int64(4 * 60); return &r }(),
+							ActiveDeadlineSeconds:   func() *int64 { r := int64(60 * 60); return &r }(),
 							BackoffLimit:            func() *int32 { r := int32(6); return &r }(),
 							Template: corev1.PodTemplateSpec{
 								ObjectMeta: v1.ObjectMeta{

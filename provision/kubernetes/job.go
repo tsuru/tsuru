@@ -53,7 +53,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		Parallelism:             jSpec.Parallelism,
 		BackoffLimit:            jSpec.BackoffLimit,
 		Completions:             jSpec.Completions,
-		ActiveDeadlineSeconds:   jSpec.ActiveDeadlineSeconds,
+		ActiveDeadlineSeconds:   buildActiveDeadline(jSpec.ActiveDeadlineSeconds),
 		TTLSecondsAfterFinished: func() *int32 { ttlSecondsAfterFinished := int32(86400); return &ttlSecondsAfterFinished }(), // hardcoded to a day, since we keep logs stored elsewhere on the cloud
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -329,4 +329,12 @@ func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job 
 	})
 	ns := client.PoolNamespace(job.Pool)
 	return ensureServiceAccount(ctx, client, serviceAccountNameForJob(job), labels, ns, &job.Metadata)
+}
+
+func buildActiveDeadline(activeDeadlineSeconds *int64) *int64 {
+	defaultActiveDeadline := int64(60 * 60)
+	if activeDeadlineSeconds == nil || *activeDeadlineSeconds == int64(0) {
+		return &defaultActiveDeadline
+	}
+	return activeDeadlineSeconds
 }
