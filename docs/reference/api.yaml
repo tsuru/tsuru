@@ -6167,6 +6167,15 @@ definitions:
       cpumilli:
         type: integer
         minimum: 0
+      cpuBurst:
+        type: object
+        properties:
+          default:
+            type: number
+            x-go-custom-type: "float64"
+          maxAllowed:
+            type: number
+            x-go-custom-type: "float64"
       default:
         type: boolean
       override:
@@ -6183,6 +6192,9 @@ definitions:
       cpumilli:
         type: integer
         x-go-custom-type: "*int"
+      cpuBurst:
+        type: number
+        x-go-custom-type: "*float64"
   Metadata:
     description: App metadata such as custom labels and annotations.
     type: object
