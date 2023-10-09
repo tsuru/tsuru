@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	_ "github.com/tsuru/tsuru/router/routertest"
@@ -42,6 +43,39 @@ func (s *S) TestPlanAdd(c *check.C) {
 			{"name": "name", "value": "xyz"},
 			{"name": "memory", "value": "9223372036854775807"},
 			{"name": "cpumilli", "value": "2000"},
+		},
+	}, eventtest.HasEvent)
+
+	fill := map[string]interface{}{}
+	c.Assert(json.NewDecoder(recorder.Body).Decode(&fill), check.IsNil)
+}
+
+func (s *S) TestPlanAddJSON(c *check.C) {
+	s.mockService.Plan.OnCreate = func(plan appTypes.Plan) error {
+		c.Assert(plan, check.DeepEquals, appTypes.Plan{
+			Name:     "xyz",
+			Memory:   9223372036854775807,
+			CPUMilli: 2000,
+		})
+		return nil
+	}
+	recorder := httptest.NewRecorder()
+	body := strings.NewReader(`{"name": "xyz", "memory": 9223372036854775807, "cpumilli": 2000}`)
+	request, err := http.NewRequest("POST", "/plans", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Owner:  s.token.GetUserName(),
+		Kind:   "plan.create",
+		StartCustomData: []interface{}{
+			bson.M{"name": ":mux-path-template", "value": "/plans"},
+			bson.M{"name": "memory", "value": "9.223372036854776e+18"},
+			bson.M{"name": "cpumilli", "value": "2000"},
+			bson.M{"name": "name", "value": "xyz"},
 		},
 	}, eventtest.HasEvent)
 
