@@ -31,16 +31,29 @@ import (
 //	409: Plan already exists
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	cpuMilli, _ := strconv.Atoi(InputValue(r, "cpumilli"))
+	isJSON := r.Header.Get("Content-Type") == "application/json"
 
-	isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
-	memory := getSize(InputValue(r, "memory"))
-	plan := appTypes.Plan{
-		Name:     InputValue(r, "name"),
-		Memory:   memory,
-		CPUMilli: cpuMilli,
-		Default:  isDefault,
+	plan := appTypes.Plan{}
+
+	if isJSON {
+		err = ParseInput(r, &plan)
+		if err != nil {
+			return err
+		}
+	} else {
+		cpuMilli, _ := strconv.Atoi(InputValue(r, "cpumilli"))
+
+		isDefault, _ := strconv.ParseBool(InputValue(r, "default"))
+		memory := getSize(InputValue(r, "memory"))
+
+		plan = appTypes.Plan{
+			Name:     InputValue(r, "name"),
+			Memory:   memory,
+			CPUMilli: cpuMilli,
+			Default:  isDefault,
+		}
 	}
+
 	allowed := permission.Check(t, permission.PermPlanCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
