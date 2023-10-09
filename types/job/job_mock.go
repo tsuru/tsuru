@@ -34,7 +34,7 @@ func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authType
 	return m.OnCreateJob(job, user)
 }
 
-func (m *MockJobService) DeleteFromProvisioner(ctx context.Context, job *Job) error {
+func (m *MockJobService) RemoveJobProv(ctx context.Context, job *Job) error {
 	if m.OnDeleteFromProvisioner == nil {
 		return nil
 	}
@@ -55,7 +55,7 @@ func (m *MockJobService) List(ctx context.Context, filter *Filter) ([]Job, error
 	return m.OnList(filter)
 }
 
-func (m *MockJobService) RemoveJobFromDb(ctx context.Context, job *Job) error {
+func (m *MockJobService) RemoveJob(ctx context.Context, job *Job) error {
 	if m.OnRemoveJobFromDb == nil {
 		return nil
 	}

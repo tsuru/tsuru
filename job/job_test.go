@@ -107,7 +107,7 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
-	err = servicemanager.Job.DeleteFromProvisioner(context.TODO(), job)
+	err = servicemanager.Job.RemoveJobProv(context.TODO(), job)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, false)
 }
@@ -131,7 +131,7 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 	job, err := servicemanager.Job.GetByName(context.TODO(), newJob.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.ProvisionedJob(job.Name), check.Equals, true)
-	err = servicemanager.Job.RemoveJobFromDb(context.TODO(), job)
+	err = servicemanager.Job.RemoveJob(context.TODO(), job)
 	c.Assert(err, check.IsNil)
 	_, err = servicemanager.Job.GetByName(context.TODO(), job.Name)
 	c.Assert(err, check.Equals, jobTypes.ErrJobNotFound)
@@ -168,7 +168,7 @@ func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(*userinUseNow, check.Equals, 1)
 	c.Assert(*teaminUseNow, check.Equals, 1)
-	err = servicemanager.Job.RemoveJobFromDb(context.TODO(), &newJob)
+	err = servicemanager.Job.RemoveJob(context.TODO(), &newJob)
 	c.Assert(err, check.IsNil)
 	c.Assert(*teaminUseNow, check.Equals, 0)
 	c.Assert(*userinUseNow, check.Equals, 0)
@@ -566,14 +566,14 @@ func (s *S) TestUpdateJob(c *check.C) {
 		err = servicemanager.Job.UpdateJob(context.TODO(), &t.newJob, &t.oldJob, s.user)
 		if t.expectedErr != nil {
 			c.Assert(err, check.DeepEquals, t.expectedErr)
-			servicemanager.Job.RemoveJobFromDb(context.TODO(), &t.newJob)
+			servicemanager.Job.RemoveJob(context.TODO(), &t.newJob)
 			continue
 		}
 		c.Assert(err, check.IsNil)
 		updatedJob, err := servicemanager.Job.GetByName(context.TODO(), t.newJob.Name)
 		c.Assert(err, check.IsNil)
 		c.Assert(updatedJob, check.DeepEquals, &t.expectedJob)
-		servicemanager.Job.RemoveJobFromDb(context.TODO(), &t.newJob)
+		servicemanager.Job.RemoveJob(context.TODO(), &t.newJob)
 	}
 }
 

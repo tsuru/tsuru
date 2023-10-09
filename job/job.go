@@ -75,7 +75,7 @@ func (*jobService) GetByName(ctx context.Context, name string) (*jobTypes.Job, e
 	return &job, err
 }
 
-func (*jobService) RemoveJobFromDb(ctx context.Context, job *jobTypes.Job) error {
+func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (*jobService) RemoveJobFromDb(ctx context.Context, job *jobTypes.Job) error
 	return err
 }
 
-func (*jobService) DeleteFromProvisioner(ctx context.Context, job *jobTypes.Job) error {
+func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
 		return err

@@ -91,10 +91,10 @@ type RemoveInstanceArgs struct {
 
 type JobService interface {
 	CreateJob(ctx context.Context, job *Job, user *authTypes.User) error
-	DeleteFromProvisioner(ctx context.Context, job *Job) error
+	RemoveJobProv(ctx context.Context, job *Job) error
 	GetByName(ctx context.Context, name string) (*Job, error)
 	List(ctx context.Context, filter *Filter) ([]Job, error)
-	RemoveJobFromDb(ctx context.Context, job *Job) error
+	RemoveJob(ctx context.Context, job *Job) error
 	Trigger(ctx context.Context, job *Job) error
 	UpdateJob(ctx context.Context, newJob, oldJob *Job, user *authTypes.User) error
 	AddServiceEnv(ctx context.Context, job *Job, addArgs AddInstanceArgs) error
