@@ -245,6 +245,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		"cpumilli": app.Plan.CPUMilli,
 		"override": app.Plan.Override,
 	}
+
+	if (app.Plan.CPUBurst != appTypes.CPUBurst{}) {
+		plan["cpuBurst"] = app.Plan.CPUBurst
+	}
+
 	routers, err := app.GetRoutersWithAddr()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
@@ -1101,6 +1106,14 @@ func (app *App) validate() error {
 }
 
 func (app *App) validatePlan() error {
+	if (app.Plan.CPUBurst.MaxAllowed != 0) &&
+		(app.Plan.Override.CPUBurst != nil) &&
+		(*app.Plan.Override.CPUBurst > app.Plan.CPUBurst.MaxAllowed) {
+
+		msg := fmt.Sprintf("CPU burst exceeds the maximum allowed by plan %q", app.Plan.Name)
+		return &tsuruErrors.ValidationError{Message: msg}
+	}
+
 	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
 	if err != nil {
 		return err

@@ -41,6 +41,14 @@ func (p *Plan) MergeOverride(po PlanOverride) {
 			p.Override.CPUMilli = po.CPUMilli
 		}
 	}
+
+	if po.CPUBurst != nil {
+		if *po.CPUBurst == 0 {
+			p.Override.CPUBurst = nil
+		} else {
+			p.Override.CPUBurst = po.CPUBurst
+		}
+	}
 }
 
 type PlanService interface {
