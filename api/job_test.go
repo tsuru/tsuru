@@ -266,7 +266,8 @@ func (s *S) TestCreateManualJob(c *check.C) {
 			Image:   "busybox:1.28",
 			Command: []string{"/bin/sh", "-c", "echo Hello!"},
 		},
-		Manual: true,
+		ActiveDeadlineSeconds: func() *int64 { i := int64(-1); return &i }(),
+		Manual:                true,
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
