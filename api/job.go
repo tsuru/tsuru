@@ -297,6 +297,9 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
 		},
 	}
+	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
+		newJob.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
+	}
 	evt, err := event.New(&event.Opts{
 		Target:     jobTarget(newJob.Name),
 		Kind:       permission.PermJobUpdate,
@@ -357,11 +360,13 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
-			Manual:                ij.Manual,
-			Schedule:              ij.Schedule,
-			Container:             ij.Container,
-			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
+			Manual:    ij.Manual,
+			Schedule:  ij.Schedule,
+			Container: ij.Container,
 		},
+	}
+	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
+		j.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
 	}
 	if j.TeamOwner == "" {
 		j.TeamOwner, err = autoTeamOwner(ctx, t, permission.PermJobCreate)
