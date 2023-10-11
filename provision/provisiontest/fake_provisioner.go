@@ -27,6 +27,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
@@ -46,6 +47,7 @@ var (
 	_ provision.ExecutableProvisioner = &FakeProvisioner{}
 	_ provision.App                   = &FakeApp{}
 	_ bind.App                        = &FakeApp{}
+	_ provisionTypes.ResourceGetter   = &FakeApp{}
 )
 
 func init() {
@@ -132,6 +134,10 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 
 func (a *FakeApp) GetMilliCPU() int {
 	return a.MilliCPU
+}
+
+func (a *FakeApp) GetCPUBurst() float64 {
+	return 0
 }
 
 func (a *FakeApp) GetMemory() int64 {

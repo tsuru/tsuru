@@ -2573,6 +2573,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"router":     "fake",
@@ -2683,6 +2684,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"metadata": map[string]interface{}{
@@ -2763,6 +2765,7 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"metadata": map[string]interface{}{
@@ -2857,6 +2860,7 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"metadata": map[string]interface{}{
@@ -2954,6 +2958,7 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"metadata": map[string]interface{}{
@@ -3082,6 +3087,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			"override": map[string]interface{}{
 				"cpumilli": nil,
 				"memory":   nil,
+				"cpuBurst": nil,
 			},
 		},
 		"metadata": map[string]interface{}{
@@ -4947,6 +4953,28 @@ func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
 	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
 	c.Assert(err, check.ErrorMatches, `App plan "something" is not allowed on pool "pool1"`)
+}
+
+func (s *S) TestUpdatePlanWithCPUBurstExceeds(c *check.C) {
+	s.plan = appTypes.Plan{
+		Name:     "something",
+		Memory:   268435456,
+		CPUBurst: appTypes.CPUBurst{MaxAllowed: 1.8},
+		Override: appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
+	}
+	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+		PoolExpr:  "pool1",
+		Field:     pool.ConstraintTypePlan,
+		Values:    []string{s.plan.Name},
+		Blacklist: true,
+	})
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
+	err = CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
+	err = a.Update(UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer)})
+	c.Assert(err, check.ErrorMatches, `CPU burst exceeds the maximum allowed by plan \"something\"`)
 }
 
 func (s *S) TestUpdatePlanNoRouteChange(c *check.C) {
