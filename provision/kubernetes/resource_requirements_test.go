@@ -56,8 +56,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   1.1,
-				overCommit: 1,
+				poolCPUBurst: 1.1,
+				overCommit:   1,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "10Ki",
@@ -67,8 +67,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   2,
-				overCommit: 1,
+				poolCPUBurst: 2,
+				overCommit:   1,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "10Ki",
@@ -78,8 +78,8 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 
 		{
 			factors: requirementsFactors{
-				cpuBurst:   2,
-				overCommit: 2,
+				poolCPUBurst: 2,
+				overCommit:   2,
 			},
 			expectedLimitMemory:    "10Ki",
 			expectedRequestsMemory: "5Ki",
@@ -104,4 +104,28 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 		cpuRequests := requirements.Requests["cpu"]
 		c.Assert(cpuRequests.String(), check.Equals, testCase.expectedRequestsCPU)
 	}
+}
+
+func (s *S) TestGetCPULimits(c *check.C) {
+	// empty
+	rf := &requirementsFactors{}
+	result := rf.cpuLimits(0, 1000)
+
+	c.Check(result.String(), check.Equals, "1")
+
+	// when we have a burst per pool
+	rf = &requirementsFactors{poolCPUBurst: 1.2}
+	result = rf.cpuLimits(0, 1000)
+	c.Check(result.String(), check.Equals, "1200m")
+
+	// when we have a burst per resource
+	rf = &requirementsFactors{poolCPUBurst: 1.2}
+	result = rf.cpuLimits(1.3, 1000)
+	c.Check(result.String(), check.Equals, "1300m")
+
+	// when we have a burst per resource without pool default
+	rf = &requirementsFactors{}
+	result = rf.cpuLimits(1.3, 1000)
+	c.Check(result.String(), check.Equals, "1300m")
+
 }
