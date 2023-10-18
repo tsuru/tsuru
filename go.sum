@@ -886,6 +886,8 @@ github.com/tsuru/deploy-agent v0.0.0-20221212211719-2bb1afb965c5 h1:K/6qy4xNJUcM
 github.com/tsuru/deploy-agent v0.0.0-20221212211719-2bb1afb965c5/go.mod h1:N4oSdUSUY2fpM1Ztba1ryWST6g6H0Xk7tdlF7TJMrqc=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa h1:JlLQP1xa13a994p/Aau2e3K9xXYaHNoNvTDVIMHSUa4=
 github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa/go.mod h1:UibOSvkMFKRe/eiwktAPAvQG8L+p8nYsECJvu3Dgw7I=
+github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3 h1:+aJngj5cQjYyx/qSjffQceop25t97hLS0+t8bvx9hg4=
+github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3/go.mod h1:3KR1vkjfm5b7Lhu5OXuO0NMIyZNG0d0d9xh6ufWYVxg=
 github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6 h1:1XDdWFAjIbCSG1OjN9v9KdWhuM8UtYlFcfHe/Ldkchk=
 github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6/go.mod h1:ztYpOhW+u1k21FEqp7nZNgpWbr0dUKok5lgGCZi+1AQ=
 github.com/uber/jaeger-client-go v2.25.0+incompatible h1:IxcNZ7WRY1Y3G4poYlx24szfsn/3LvK9QHCq9oQw8+U=

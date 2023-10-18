@@ -36,6 +36,7 @@ require (
 	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
 	github.com/tsuru/deploy-agent v0.0.0-20221212211719-2bb1afb965c5
 	github.com/tsuru/gnuflag v0.0.0-20151217162021-86b8c1b864aa
+	github.com/tsuru/monsterqueue v0.0.0-20160909010522-70e946ec66c3
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/ugorji/go/codec v1.1.7
