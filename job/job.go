@@ -7,6 +7,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/globalsign/mgo"
@@ -16,15 +17,18 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	deployOpts "github.com/tsuru/tsuru/types/deploy/options"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -102,6 +106,57 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	return prov.DestroyJob(ctx, job)
+}
+
+type DeployOptions struct {
+	Dockerfile   string
+	OutputStream io.Writer `bson:"-"`
+	User         string
+	Image        string
+	Origin       string
+	Event        *event.Event `bson:"-"`
+	Kind         deployOpts.DeployKind
+	Message      string
+	Build        bool
+}
+
+func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
+	if o.Kind != "" {
+		return o.Kind
+	}
+
+	defer func() { o.Kind = kind }()
+
+	if o.Dockerfile != "" {
+		return deployOpts.DeployDockerfile
+	}
+
+	if o.Image != "" {
+		return deployOpts.DeployImage
+	}
+
+	return deployOpts.DeployKind("")
+}
+
+func (*jobService) builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) error {
+	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return err
+	}
+
+	if job == nil {
+		return errors.New("job not provided")
+	}
+
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+	builder, err := builder.GetForProvisioner(prov.(provision.Provisioner))
+	err = builder.BuildJob(ctx, job, opts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CreateJob creates a new job or cronjob.

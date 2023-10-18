@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
 var (
@@ -43,6 +44,7 @@ type BuildOpts struct {
 // Builder is the basic interface of this package.
 type Builder interface {
 	Build(ctx context.Context, app provision.App, evt *event.Event, opts BuildOpts) (appTypes.AppVersion, error)
+	BuildJob(ctx context.Context, job *jobTypes.Job, opts BuildOpts) error
 }
 
 var builders = make(map[string]Builder)
