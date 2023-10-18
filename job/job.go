@@ -34,7 +34,6 @@ type jobService struct{}
 var _ jobTypes.JobService = &jobService{}
 
 func getProvisioner(ctx context.Context, job *jobTypes.Job) (provision.JobProvisioner, error) {
-
 	prov, err := pool.GetProvisionerForPool(ctx, job.Pool)
 	if err != nil {
 		return nil, err
@@ -139,6 +138,14 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(ctx, job, user)
+}
+
+func (*jobService) deployToProvisioner(ctx context.Context, job *jobTypes.Job, opts DeployOptions) (string, error) {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return "", err
+	}
+
 }
 
 // UpdateJob updates an existing cronjob.

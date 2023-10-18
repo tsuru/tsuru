@@ -27,21 +27,8 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	deployOpts "github.com/tsuru/tsuru/types/deploy"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-)
-
-type DeployKind string
-
-const (
-	DeployArchiveURL   DeployKind = "archive-url"
-	DeployGit          DeployKind = "git"
-	DeployImage        DeployKind = "image"
-	DeployBuildedImage DeployKind = "imagebuild"
-	DeployRollback     DeployKind = "rollback"
-	DeployUpload       DeployKind = "upload"
-	DeployUploadBuild  DeployKind = "uploadbuild"
-	DeployRebuild      DeployKind = "rebuild"
-	DeployDockerfile   DeployKind = "dockerfile"
 )
 
 var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
@@ -146,7 +133,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 		User:      evt.Owner.Name,
 	}
 	var err error
-	var deployOptions DeployOptions
+	var deployOptions deployOpts.DeployOptions
 	if err = evt.StartData(&deployOptions); err == nil {
 		data.Commit = deployOptions.Commit
 		data.Origin = deployOptions.GetOrigin()
@@ -179,75 +166,7 @@ func eventToDeployData(evt *event.Event, validImages set.Set, full bool) *Deploy
 	return data
 }
 
-type DeployOptions struct {
-	App              *App
-	Commit           string
-	BuildTag         string
-	ArchiveURL       string
-	Dockerfile       string
-	FileSize         int64
-	File             io.ReadCloser `bson:"-"`
-	OutputStream     io.Writer     `bson:"-"`
-	User             string
-	Image            string
-	Origin           string
-	Event            *event.Event `bson:"-"`
-	Kind             DeployKind
-	Message          string
-	Rollback         bool
-	Build            bool
-	NewVersion       bool
-	OverrideVersions bool
-}
-
-func (o *DeployOptions) GetOrigin() string {
-	if o.Origin != "" {
-		return o.Origin
-	}
-	if o.Commit != "" {
-		return "git"
-	}
-	return ""
-}
-
-func (o *DeployOptions) GetKind() (kind DeployKind) {
-	if o.Kind != "" {
-		return o.Kind
-	}
-
-	defer func() { o.Kind = kind }()
-
-	if o.Dockerfile != "" {
-		return DeployDockerfile
-	}
-
-	if o.Rollback {
-		return DeployRollback
-	}
-
-	if o.Image != "" {
-		return DeployImage
-	}
-
-	if o.File != nil {
-		if o.Build {
-			return DeployUploadBuild
-		}
-		return DeployUpload
-	}
-
-	if o.Commit != "" {
-		return DeployGit
-	}
-
-	if o.ArchiveURL != "" {
-		return DeployArchiveURL
-	}
-
-	return DeployKind("")
-}
-
-func Build(ctx context.Context, opts DeployOptions) (string, error) {
+func Build(ctx context.Context, opts deployOpts.DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in build opts")
 	}
@@ -325,7 +244,7 @@ func (e *errorWithLog) Error() string {
 	return fmt.Sprintf("\n---- ERROR during %s: ----\n%v\n%s", e.action, e.err, logPart)
 }
 
-func validateVersions(ctx context.Context, opts DeployOptions) error {
+func validateVersions(ctx context.Context, opts deployOpts.DeployOptions) error {
 	if opts.NewVersion && opts.OverrideVersions {
 		return errors.New("conflicting deploy flags, new-version and override-old-versions")
 	}
@@ -345,7 +264,7 @@ func validateVersions(ctx context.Context, opts DeployOptions) error {
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
-func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
+func Deploy(ctx context.Context, opts deployOpts.DeployOptions) (string, error) {
 	if opts.Event == nil {
 		return "", errors.Errorf("missing event in deploy opts")
 	}
@@ -384,7 +303,7 @@ func RollbackUpdate(ctx context.Context, app *App, imageID, reason string, disab
 	return version.ToggleEnabled(!disableRollback, reason)
 }
 
-func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Event) (string, error) {
+func deployToProvisioner(ctx context.Context, opts *deployOpts.DeployOptions, evt *event.Event) (string, error) {
 	prov, err := opts.App.getProvisioner()
 	if err != nil {
 		return "", err
@@ -430,7 +349,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	})
 }
 
-func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
+func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *deployOpts.DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	buildOpts := builder.BuildOpts{
 		Rebuild:     opts.GetKind() == DeployRebuild,
 		ArchiveURL:  opts.ArchiveURL,
@@ -505,7 +424,7 @@ func deployDataToEvent(data *DeployData) error {
 	} else {
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents)
 	}
-	startOpts := DeployOptions{
+	startOpts := deployOpts.DeployOptions{
 		Commit: data.Commit,
 		Origin: data.Origin,
 	}
