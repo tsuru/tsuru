@@ -104,7 +104,7 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 	dstImages = append(dstImages, dstImage)
 
 	req := &buildpb.BuildRequest{
-		Kind: buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE,
+		Kind: buildpb.BuildKind_BUILD_KIND_JOB_CREATE_WITH_CONTAINER_IMAGE,
 		Job: &buildpb.TsuruJob{
 			Name: job.GetName(),
 		},
