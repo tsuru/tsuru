@@ -68,6 +68,14 @@ func AppBasicImageName(reg imgTypes.ImageRegistry, appName string) (string, erro
 	return fmt.Sprintf("%s/app-%s", imageName, appName), nil
 }
 
+func JobBasicImageName(reg imgTypes.ImageRegistry, jobName string) (string, error) {
+	imageName, err := basicImageName(reg, "tsuru")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/job-%s", imageName, jobName), nil
+}
+
 func AppBuildImageName(reg imgTypes.ImageRegistry, appName, tag, team string, version int) (string, error) {
 	if tag == "" {
 		tag = fmt.Sprintf("v%d-builder", version)

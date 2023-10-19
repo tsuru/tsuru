@@ -111,4 +111,5 @@ type JobService interface {
 	RemoveServiceEnv(ctx context.Context, job *Job, removeArgs RemoveInstanceArgs) error
 	UpdateJobProv(ctx context.Context, job *Job) error
 	GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar
+	BaseImageName(ctx context.Context, job *Job) (string, error)
 }

@@ -541,7 +541,7 @@ type NodeCheckResult struct {
 }
 
 type MultiRegistryProvisioner interface {
-	RegistryForApp(ctx context.Context, a App) (imgTypes.ImageRegistry, error)
+	RegistryForObject(ctx context.Context, obj provTypes.ResourceGetter) (imgTypes.ImageRegistry, error)
 }
 
 type provisionerFactory func() (Provisioner, error)

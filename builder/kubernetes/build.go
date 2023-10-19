@@ -71,7 +71,7 @@ func (b *kubernetesBuilder) Build(ctx context.Context, app provision.App, evt *e
 	return b.buildContainerImage(ctx, app, evt, opts)
 }
 
-func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) error {
+func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
 	w := opts.Output
 	if w == nil {
 		w = io.Discard
@@ -79,26 +79,26 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 	pool := job.GetPool()
 	c, err := servicemanager.Cluster.FindByPool(ctx, "kubernetes", pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	cc, err := provisionk8s.NewClusterClient(c)
 	if err != nil {
-		return err
+		return "", err
 	}
 	bs, conn, err := cc.BuildServiceClient(pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer conn.Close()
 
 	if opts.ImageID == "" {
-		return errors.New("image id not provided")
+		return "", errors.New("image id not provided")
 	}
 
 	baseImage := opts.ImageID
 	dstImage, err := servicemanager.Job.BaseImageName(ctx, job)
 	if err != nil {
-		return err
+		return "", err
 	}
 	dstImages := make([]string, 0, 2)
 	dstImages = append(dstImages, dstImage)
@@ -114,9 +114,9 @@ func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opt
 
 	_, err = callBuildService(ctx, bs, req, w)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return dstImage, nil
 }
 
 func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts apptypes.PlatformOptions) ([]string, error) {

@@ -16,6 +16,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
@@ -26,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	deployOpts "github.com/tsuru/tsuru/types/deploy/options"
@@ -138,25 +140,48 @@ func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
 	return deployOpts.DeployKind("")
 }
 
-func (*jobService) builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) error {
+func builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
-		return err
+		return "", err
 	}
 
 	if job == nil {
-		return errors.New("job not provided")
+		return "", errors.New("job not provided")
 	}
 
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
-		return err
+		return "", err
 	}
 	builder, err := builder.GetForProvisioner(prov.(provision.Provisioner))
-	err = builder.BuildJob(ctx, job, opts)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return builder.BuildJob(ctx, job, opts)
+}
+
+func getRegistry(ctx context.Context, job *jobTypes.Job) (imgTypes.ImageRegistry, error) {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	registryProv, ok := prov.(provision.MultiRegistryProvisioner)
+	if !ok {
+		return "", nil
+	}
+	return registryProv.RegistryForObject(ctx, job)
+}
+
+func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string, error) {
+	reg, err := getRegistry(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	newImage, err := image.JobBasicImageName(reg, job.Name)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:latest", newImage), nil
 }
 
 // CreateJob creates a new job or cronjob.
@@ -184,6 +209,18 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	}
 	if err := validateJob(ctx, job); err != nil {
 		return err
+	}
+
+	// use deploy-agent to push the image to tsuru's registry
+	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
+		ImageID: job.Spec.Container.Image,
+	})
+	// we don't want to fail the job creation if the image push fails
+	if err == nil {
+		// deploy the job using the new pushed image
+		job.Spec.Container.Image = newImageDst
+	} else {
+		fmt.Printf("failed to push image %q: %s\n", job.Spec.Container.Image, err.Error())
 	}
 
 	actions := []*action.Action{
