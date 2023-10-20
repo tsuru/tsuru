@@ -72,6 +72,12 @@ func (b *kubernetesBuilder) Build(ctx context.Context, app provision.App, evt *e
 }
 
 func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
+	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return "", err
+	}
+	if job == nil {
+		return "", errors.New("job not provided")
+	}
 	w := opts.Output
 	if w == nil {
 		w = io.Discard

@@ -22,12 +22,14 @@ import (
 	"google.golang.org/grpc/status"
 	check "gopkg.in/check.v1"
 
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/job"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -51,6 +53,12 @@ func (s *S) TestBuild_MissingApp(c *check.C) {
 	_, err := s.b.Build(context.TODO(), nil, nil, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "app not provided")
+}
+
+func (s *S) TestBuildJob_MissingJob(c *check.C) {
+	_, err := s.b.BuildJob(context.TODO(), nil, builder.BuildOpts{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "job not provided")
 }
 
 func (s *S) TestBuild_MissingEvent(c *check.C) {
@@ -79,6 +87,16 @@ func (s *S) TestBuild_BuildFromRebuild(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "app rebuild is deprecated")
 }
 
+func (s *S) TestBuildJob_MissingBuildServiceAddress(c *check.C) {
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	_, err := s.b.BuildJob(context.TODO(), &job.Job{Name: "test"}, builder.BuildOpts{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "build service address not provided: build v2 not supported")
+	c.Assert(errors.Is(err, builder.ErrBuildV2NotSupported), check.Equals, true)
+}
+
 func (s *S) TestBuild_MissingBuildServiceAddress(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -103,7 +121,7 @@ func (s *S) TestBuild_BuildServiceReturnsError(c *check.C) {
 
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
-			return fmt.Errorf("some error has been occurred")
+			return fmt.Errorf("some error occurred")
 		},
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
@@ -118,7 +136,23 @@ func (s *S) TestBuild_BuildServiceReturnsError(c *check.C) {
 
 	_, err = s.b.Build(context.TODO(), a, evt, builder.BuildOpts{})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error has been occurred").Error())
+	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error occurred").Error())
+}
+
+func (s *S) TestBuildJob_BuildServiceReturnsError(c *check.C) {
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			return fmt.Errorf("some error occurred")
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	_, err := s.b.BuildJob(context.TODO(), &job.Job{}, builder.BuildOpts{ImageID: "my-image"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Unknown, "some error occurred").Error())
 }
 
 func (s *S) TestBuild_BuildServiceShouldRespectContextCancelation(c *check.C) {
@@ -154,6 +188,34 @@ func (s *S) TestBuild_BuildServiceShouldRespectContextCancelation(c *check.C) {
 	}()
 
 	_, err = s.b.Build(ctx, a, evt, builder.BuildOpts{})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Canceled, "context canceled").Error())
+}
+
+func (s *S) TestBuildJob_BuildServiceShouldRespectContextCancelation(c *check.C) {
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	ch := make(chan struct{})
+	defer close(ch)
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			ch <- struct{}{}
+			time.Sleep(time.Second)
+			return fmt.Errorf("should not pass here")
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		<-ch
+		cancel()
+	}()
+
+	_, err := s.b.BuildJob(ctx, &job.Job{}, builder.BuildOpts{ImageID: "my-image"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, status.Errorf(codes.Canceled, "context canceled").Error())
 }
@@ -350,6 +412,53 @@ func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 	tsuruYaml, err := appVersion.TsuruYamlData()
 	c.Assert(err, check.IsNil)
 	c.Assert(tsuruYaml, check.DeepEquals, provisiontypes.TsuruYamlData{})
+}
+
+func (s *S) TestBuildJob_BuildWithContainerImage(c *check.C) {
+	s.mockService.JobService.OnBaseImageName = func(ctx context.Context, j *job.Job) (string, error) {
+		reg := imagetypes.ImageRegistry("tsuru.io")
+		newImage, err := image.JobBasicImageName(reg, j.Name)
+		c.Assert(err, check.IsNil)
+		return fmt.Sprintf("%s:latest", newImage), nil
+	}
+	_, _, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
+		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
+			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
+			// provoke an deadlock on RPC client and server.
+			c.Check(req.GetJob(), check.DeepEquals, &buildpb.TsuruJob{Name: "myjob"})
+			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_JOB_CREATE_WITH_CONTAINER_IMAGE)
+			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru.io/job-myjob:latest"})
+			c.Check(req.GetData(), check.IsNil)
+
+			err := stream.Send(&buildpb.BuildResponse{Data: &buildpb.BuildResponse_TsuruConfig{TsuruConfig: &buildpb.TsuruConfig{}}})
+			c.Check(err, check.IsNil)
+
+			return nil
+		},
+	})
+	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
+
+	var output bytes.Buffer
+
+	buildJob := &job.Job{
+		Name: "myjob",
+		Spec: job.JobSpec{
+			Container: job.ContainerInfo{
+				Image:   "my-job:v1",
+				Command: []string{"echo", "hello world"},
+			},
+		},
+	}
+	newImageDst, err := s.b.BuildJob(context.TODO(), buildJob, builder.BuildOpts{
+		Message: "New container image xD",
+		ImageID: "my-job:v1",
+		Output:  &output,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(newImageDst, check.Equals, "tsuru.io/job-myjob:latest")
 }
 
 func (s *S) TestBuild_DeployWithContainerImage_NoImageConfigReturned(c *check.C) {
