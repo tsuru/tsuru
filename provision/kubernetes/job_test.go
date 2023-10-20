@@ -6,6 +6,8 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/event"
@@ -467,8 +469,8 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 	tests := []struct {
 		name         string
 		setup        func()
-		scenario     func()
-		testScenario func(c *check.C)
+		scenario     func(t *time.Time)
+		testScenario func(c *check.C, t *time.Time)
 	}{
 		{
 			name: "simple trigger cronjob",
@@ -505,17 +507,18 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
-			scenario: func() {
+			scenario: func(t *time.Time) {
+				*t = time.Now()
 				err := s.p.TriggerCron(context.TODO(), "myjob", "test-default")
 				c.Assert(err, check.IsNil)
 				waitCron()
 			},
-			testScenario: func(c *check.C) {
+			testScenario: func(c *check.C, t *time.Time) {
 				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				expected := &batchv1.Job{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "myjob-manual-trigger",
+						Name:      fmt.Sprintf("myjob-manual-job-%d", t.Unix()/60),
 						Namespace: "default",
 						Labels: map[string]string{
 							"app.kubernetes.io/component":  "job",
@@ -609,9 +612,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 		},
 	}
 	for _, tt := range tests {
+		var t time.Time
 		tt.setup()
-		tt.scenario()
-		tt.testScenario(c)
+		tt.scenario(&t)
+		tt.testScenario(c, &t)
 	}
 }
 

@@ -97,6 +97,8 @@ func ParseStatus(status string) (Status, error) {
 		return StatusStarting, nil
 	case "stopped":
 		return StatusStopped, nil
+	case "success":
+		return StatusSucceeded, nil
 	}
 	return Status(""), ErrInvalidStatus
 }
@@ -137,6 +139,10 @@ const (
 
 	// StatusStopped is for cases where the unit has been stopped.
 	StatusStopped = Status("stopped")
+
+	// StatusSucceeded is for alternete cases where the unit has been
+	// stopped with succeeded end.
+	StatusSucceeded = Status("succeeded")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
