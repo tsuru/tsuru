@@ -216,11 +216,11 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		ImageID: job.Spec.Container.Image,
 	})
 	// we don't want to fail the job creation if the image push fails
-	if err == nil {
+	if err == nil && newImageDst != "" {
 		// deploy the job using the new pushed image
 		job.Spec.Container.Image = newImageDst
 	} else {
-		fmt.Printf("failed to push image %q: %s\n", job.Spec.Container.Image, err.Error())
+		fmt.Printf("deploy-agent: failed to push image %q: %v\n", job.Spec.Container.Image, err)
 	}
 
 	actions := []*action.Action{

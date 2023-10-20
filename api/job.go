@@ -384,6 +384,19 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
+	evt, err := event.New(&event.Opts{
+		Target:        jobTarget(j.Name),
+		Kind:          permission.PermJobCreate,
+		Owner:         t,
+		CustomData:    event.FormToCustomData(InputFields(r)),
+		RemoteAddr:    r.RemoteAddr,
+		Allowed:       event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
+		AllowedCancel: event.Allowed(permission.PermJobUpdateEvents, contextsForJob(j)...),
+		Cancelable:    true,
+	})
+	defer func() {
+		evt.Done(err)
+	}()
 	err = servicemanager.Job.CreateJob(ctx, j, u)
 	if err != nil {
 		if e, ok := err.(*jobTypes.JobCreationError); ok {
@@ -394,16 +407,6 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     jobTarget(j.Name),
-		Kind:       permission.PermJobCreate,
-		Owner:      t,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
-	})
-	defer func() {
-		evt.Done(err)
-	}()
 	if err != nil {
 		return err
 	}
