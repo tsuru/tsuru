@@ -318,6 +318,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		},
 		SourceImage:       baseImage,
 		DestinationImages: dstImages,
+		PushOptions:       &buildpb.PushOptions{InsecureRegistry: cc.InsecureRegistry()},
 		Data:              data,
 		Containerfile:     opts.Dockerfile,
 	}
