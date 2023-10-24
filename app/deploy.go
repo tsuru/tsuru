@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	deployOpts "github.com/tsuru/tsuru/types/provision"
 )
 
 var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
@@ -196,7 +197,7 @@ func (o *DeployOptions) GetOrigin() string {
 	return ""
 }
 
-func (o *DeployOptions) GetKind() (kind provision.DeployKind) {
+func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
 	if o.Kind != "" {
 		return o.Kind
 	}
@@ -204,33 +205,33 @@ func (o *DeployOptions) GetKind() (kind provision.DeployKind) {
 	defer func() { o.Kind = kind }()
 
 	if o.Dockerfile != "" {
-		return provision.DeployDockerfile
+		return deployOpts.DeployDockerfile
 	}
 
 	if o.Rollback {
-		return provision.DeployRollback
+		return deployOpts.DeployRollback
 	}
 
 	if o.Image != "" {
-		return provision.DeployImage
+		return deployOpts.DeployImage
 	}
 
 	if o.File != nil {
 		if o.Build {
-			return provision.DeployUploadBuild
+			return deployOpts.DeployUploadBuild
 		}
-		return provision.DeployUpload
+		return deployOpts.DeployUpload
 	}
 
 	if o.Commit != "" {
-		return provision.DeployGit
+		return deployOpts.DeployGit
 	}
 
 	if o.ArchiveURL != "" {
-		return provision.DeployArchiveURL
+		return deployOpts.DeployArchiveURL
 	}
 
-	return provision.DeployKind("")
+	return deployOpts.DeployKind("")
 }
 
 func Build(ctx context.Context, opts DeployOptions) (string, error) {
@@ -352,7 +353,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	if err != nil {
 		log.Errorf("WARNING: couldn't increment deploy count, deploy opts: %#v", opts)
 	}
-	if opts.Kind == provision.DeployImage || opts.Kind == provision.DeployRollback {
+	if opts.Kind == deployOpts.DeployImage || opts.Kind == deployOpts.DeployRollback {
 		if !opts.App.UpdatePlatform {
 			opts.App.SetUpdatePlatform(true)
 		}
@@ -379,7 +380,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 		opts.GetKind()
 	}
 
-	if opts.App.GetPlatform() == "" && opts.Kind != provision.DeployImage && opts.Kind != provision.DeployRollback {
+	if opts.App.GetPlatform() == "" && opts.Kind != deployOpts.DeployImage && opts.Kind != deployOpts.DeployRollback {
 		return "", errors.Errorf("can't deploy app without platform, if it's not an image or rollback")
 	}
 
@@ -389,7 +390,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	}
 
 	var version appTypes.AppVersion
-	if opts.Kind == provision.DeployRollback {
+	if opts.Kind == deployOpts.DeployRollback {
 		version, err = servicemanager.AppVersion.VersionByImageOrVersion(ctx, opts.App, opts.Image)
 		if err != nil {
 			return "", err
@@ -418,7 +419,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 
 func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	buildOpts := builder.BuildOpts{
-		Rebuild:     opts.GetKind() == provision.DeployRebuild,
+		Rebuild:     opts.GetKind() == deployOpts.DeployRebuild,
 		ArchiveURL:  opts.ArchiveURL,
 		ArchiveFile: opts.File,
 		ArchiveSize: opts.FileSize,
