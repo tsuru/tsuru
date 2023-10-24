@@ -359,7 +359,7 @@ func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
-			// provoke an deadlock on RPC client and server.
+			// provoke a deadlock on RPC client and server.
 			c.Check(req.GetApp(), check.DeepEquals, &buildpb.TsuruApp{Name: "myapp"})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_APP_BUILD_WITH_CONTAINER_IMAGE)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:latest"})
@@ -427,7 +427,7 @@ func (s *S) TestBuildJob_BuildWithContainerImage(c *check.C) {
 	buildServiceAddress := setupBuildServer(s.t, &fakeBuildServer{
 		OnBuild: func(req *buildpb.BuildRequest, stream buildpb.Build_BuildServer) error {
 			// NOTE(nettoclaudio): cannot call c.Assert here since it might call runtime.Goexit and
-			// provoke an deadlock on RPC client and server.
+			// provoke a deadlock on RPC client and server.
 			c.Check(req.GetJob(), check.DeepEquals, &buildpb.TsuruJob{Name: "myjob"})
 			c.Check(req.GetKind(), check.DeepEquals, buildpb.BuildKind_BUILD_KIND_JOB_CREATE_WITH_CONTAINER_IMAGE)
 			c.Check(req.GetDestinationImages(), check.DeepEquals, []string{"tsuru.io/job-myjob:latest"})
@@ -442,7 +442,6 @@ func (s *S) TestBuildJob_BuildWithContainerImage(c *check.C) {
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
 	var output bytes.Buffer
-
 	buildJob := &job.Job{
 		Name: "myjob",
 		Spec: job.JobSpec{

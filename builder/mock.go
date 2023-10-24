@@ -31,7 +31,7 @@ func (b *MockBuilder) Build(ctx context.Context, app provision.App, evt *event.E
 }
 
 func (b *MockBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opts BuildOpts) (string, error) {
-	if b.OnBuild == nil {
+	if b.OnBuildJob == nil {
 		return "", nil
 	}
 	return b.OnBuildJob(job, opts)

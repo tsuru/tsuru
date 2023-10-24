@@ -7,14 +7,19 @@ package job
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
+	"github.com/tsuru/tsuru/app/image"
+	"github.com/tsuru/tsuru/builder"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/types/app"
+	imagetypes "github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/job"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
@@ -63,6 +68,39 @@ func (s *S) TestCreateCronjob(c *check.C) {
 	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 	c.Assert(*myJob.Spec.ActiveDeadlineSeconds, check.Equals, int64(0))
+}
+
+func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
+	s.mockService.JobService.OnBaseImageName = func(ctx context.Context, j *job.Job) (string, error) {
+		reg := imagetypes.ImageRegistry("tsuru.io")
+		newImage, err := image.JobBasicImageName(reg, j.Name)
+		c.Assert(err, check.IsNil)
+		return fmt.Sprintf("%s:latest", newImage), nil
+	}
+	s.builder.OnBuildJob = func(job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
+		return fmt.Sprintf("fake.registry.io/job-%s:latest", job.Name), nil
+	}
+	newCron := jobTypes.Job{
+		Name:      "some-job",
+		TeamOwner: s.team.Name,
+		Pool:      s.Pool,
+		Teams:     []string{s.team.Name},
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				Image:   "alpine:latest",
+				Command: []string{"echo", "hello!"},
+			},
+		},
+	}
+	err := servicemanager.Job.CreateJob(context.TODO(), &newCron, s.user)
+	c.Assert(err, check.IsNil)
+	myJob, err := servicemanager.Job.GetByName(context.TODO(), newCron.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
+	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
+
+	c.Assert(myJob.Spec.Container.Image, check.Equals, "fake.registry.io/job-some-job:latest")
 }
 
 func (s *S) TestCreateManualJob(c *check.C) {

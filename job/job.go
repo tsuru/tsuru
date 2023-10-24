@@ -7,7 +7,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"io"
 	"sort"
 
 	"github.com/globalsign/mgo"
@@ -22,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -111,15 +109,8 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 }
 
 type DeployOptions struct {
-	Dockerfile   string
-	OutputStream io.Writer `bson:"-"`
-	User         string
-	Image        string
-	Origin       string
-	Event        *event.Event `bson:"-"`
-	Kind         deployOpts.DeployKind
-	Message      string
-	Build        bool
+	Image string
+	Kind  deployOpts.DeployKind
 }
 
 func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
@@ -128,11 +119,6 @@ func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
 	}
 
 	defer func() { o.Kind = kind }()
-
-	if o.Dockerfile != "" {
-		return deployOpts.DeployDockerfile
-	}
-
 	if o.Image != "" {
 		return deployOpts.DeployImage
 	}
@@ -215,7 +201,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
 		ImageID: job.Spec.Container.Image,
 	})
-	// we don't want to fail the job creation if the image push fails
+	// we don't want to fail the job creation if the image push fails, yet
 	if err == nil && newImageDst != "" {
 		// deploy the job using the new pushed image
 		job.Spec.Container.Image = newImageDst
