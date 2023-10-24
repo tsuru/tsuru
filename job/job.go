@@ -28,7 +28,6 @@ import (
 	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
-	deployOpts "github.com/tsuru/tsuru/types/deploy/options"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -110,20 +109,20 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 
 type DeployOptions struct {
 	Image string
-	Kind  deployOpts.DeployKind
+	Kind  provision.DeployKind
 }
 
-func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
+func (o *DeployOptions) GetKind() (kind provision.DeployKind) {
 	if o.Kind != "" {
 		return o.Kind
 	}
 
 	defer func() { o.Kind = kind }()
 	if o.Image != "" {
-		return deployOpts.DeployImage
+		return provision.DeployImage
 	}
 
-	return deployOpts.DeployKind("")
+	return provision.DeployKind("")
 }
 
 func builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {

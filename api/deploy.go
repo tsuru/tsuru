@@ -18,7 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
-	deployOpts "github.com/tsuru/tsuru/types/deploy/options"
+	"github.com/tsuru/tsuru/types/provision"
 )
 
 const eventIDHeader = "X-Tsuru-Eventid"
@@ -162,19 +162,19 @@ func deployStatus(evt *event.Event) string {
 
 func permSchemeForDeploy(opts app.DeployOptions) *permission.PermissionScheme {
 	switch opts.GetKind() {
-	case deployOpts.DeployGit:
+	case provision.DeployGit:
 		return permission.PermAppDeployGit
-	case deployOpts.DeployImage:
+	case provision.DeployImage:
 		return permission.PermAppDeployImage
-	case deployOpts.DeployUpload:
+	case provision.DeployUpload:
 		return permission.PermAppDeployUpload
-	case deployOpts.DeployUploadBuild:
+	case provision.DeployUploadBuild:
 		return permission.PermAppDeployBuild
-	case deployOpts.DeployArchiveURL:
+	case provision.DeployArchiveURL:
 		return permission.PermAppDeployArchiveUrl
-	case deployOpts.DeployRollback:
+	case provision.DeployRollback:
 		return permission.PermAppDeployRollback
-	case deployOpts.DeployDockerfile:
+	case provision.DeployDockerfile:
 		return permission.PermAppDeployDockerfile
 	default:
 		return permission.PermAppDeploy
@@ -369,7 +369,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		OutputStream: writer,
 		User:         t.GetUserName(),
 		Origin:       origin,
-		Kind:         deployOpts.DeployRebuild,
+		Kind:         provision.DeployRebuild,
 	}
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
