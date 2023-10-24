@@ -29,7 +29,7 @@ type Job struct {
 	Metadata         appTypes.Metadata `json:"metadata"`
 	Pool             string            `json:"pool"`
 	Description      string            `json:"description"`
-	OriginalIMageURL string            `json:"originalImageURL"`
+	OriginalImageURL string            `json:"originalImageURL"`
 
 	Spec JobSpec `json:"spec"`
 }

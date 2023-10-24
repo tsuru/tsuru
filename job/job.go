@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -171,6 +172,21 @@ func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string
 	return fmt.Sprintf("%s:latest", newImage), nil
 }
 
+func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
+	// use deploy-agent to push the image to tsuru's registry
+	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
+		ImageID: job.Spec.Container.Image,
+	})
+	// we don't want to fail the job creation if the image push fails, yet
+	if err == nil && newImageDst != "" {
+		// deploy the job using the new pushed image
+		job.OriginalImageURL = job.Spec.Container.Image
+		job.Spec.Container.Image = newImageDst
+		return nil
+	}
+	return errors.Wrap(err, fmt.Sprintf("deploy-agent: failed to push image %s", job.Spec.Container.Image))
+}
+
 // CreateJob creates a new job or cronjob.
 //
 // Creating a new job is a process composed of the following steps:
@@ -198,17 +214,10 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return err
 	}
 
-	// use deploy-agent to push the image to tsuru's registry
-	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
-		ImageID: job.Spec.Container.Image,
-	})
-	// we don't want to fail the job creation if the image push fails, yet
-	if err == nil && newImageDst != "" {
-		// deploy the job using the new pushed image
-		job.OriginalIMageURL = job.Spec.Container.Image
-		job.Spec.Container.Image = newImageDst
-	} else {
-		fmt.Printf("deploy-agent: failed to push image %q: %v\n", job.Spec.Container.Image, err)
+	err := buildWithDeployAgent(ctx, job)
+	// log the error but don't fail the job creation, for compability reasons, later we should fail the job creation
+	if err != nil {
+		log.Errorf(err.Error())
 	}
 
 	actions := []*action.Action{
@@ -259,6 +268,15 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := validateJob(ctx, newJob); err != nil {
 		return err
 	}
+
+	if oldJob.Spec.Container.Image != newJob.Spec.Container.Image {
+		err := buildWithDeployAgent(ctx, newJob)
+		// log the error but don't fail the job creation, for compability reasons, later we should fail the job creation
+		if err != nil {
+			log.Errorf(err.Error())
+		}
+	}
+
 	actions := []*action.Action{
 		&jobUpdateDB,
 		&updateJobProv,
