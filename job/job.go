@@ -215,7 +215,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	}
 
 	err := buildWithDeployAgent(ctx, job)
-	// log the error but don't fail the job creation, for compability reasons, later we should fail the job creation
+	// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
 	if err != nil {
 		log.Errorf(err.Error())
 	}
@@ -271,7 +271,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 
 	if oldJob.Spec.Container.Image != newJob.Spec.Container.Image {
 		err := buildWithDeployAgent(ctx, newJob)
-		// log the error but don't fail the job creation, for compability reasons, later we should fail the job creation
+		// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
 		if err != nil {
 			log.Errorf(err.Error())
 		}
