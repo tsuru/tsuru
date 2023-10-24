@@ -126,6 +126,7 @@ func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
 	return deployOpts.DeployKind("")
 }
 
+// builderDeploy uses deploy-agent to push the image to tsuru's registry and deploy the job using the new pushed image
 func builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
 		return "", err
@@ -204,6 +205,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	// we don't want to fail the job creation if the image push fails, yet
 	if err == nil && newImageDst != "" {
 		// deploy the job using the new pushed image
+		job.OriginalIMageURL = job.Spec.Container.Image
 		job.Spec.Container.Image = newImageDst
 	} else {
 		fmt.Printf("deploy-agent: failed to push image %q: %v\n", job.Spec.Container.Image, err)

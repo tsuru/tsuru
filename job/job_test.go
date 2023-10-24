@@ -101,6 +101,7 @@ func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 
 	c.Assert(myJob.Spec.Container.Image, check.Equals, "fake.registry.io/job-some-job:latest")
+	c.Assert(myJob.OriginalIMageURL, check.Equals, "alpine:latest")
 }
 
 func (s *S) TestCreateManualJob(c *check.C) {
