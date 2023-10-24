@@ -217,7 +217,7 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	err := buildWithDeployAgent(ctx, job)
 	// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Error(err)
 	}
 
 	actions := []*action.Action{
