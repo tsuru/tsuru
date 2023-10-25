@@ -96,7 +96,7 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	if enableJobEvents, _ := c.cluster.EnableJobEventCreation(); enableJobEvents {
+	if enableJobEvents, _ := c.cluster.EnableJobEventCreation(); enableJobEvents && c.isLeader() {
 		err = c.startJobInformer()
 		if err != nil {
 			c.stop(ctx)
