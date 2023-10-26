@@ -1243,3 +1243,10 @@ func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job *jobTypes.Job)
 	}
 	return name, nil
 }
+
+func (*JobProvisioner) KillJobUnit(ctx context.Context, job *jobTypes.Job, unit string, force bool) error {
+	if job.Name == "job1" && unit == "unit2" {
+		return nil
+	}
+	return &provision.UnitNotFoundError{ID: unit}
+}

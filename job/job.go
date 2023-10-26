@@ -64,6 +64,14 @@ func JobService() (jobTypes.JobService, error) {
 	return &jobService{}, nil
 }
 
+func (*jobService) KillUnit(ctx context.Context, job *jobTypes.Job, unit string, force bool) error {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return err
+	}
+	return prov.KillJobUnit(ctx, job, unit, force)
+}
+
 // GetByName queries the database to find a job identified by the given
 // name.
 func (*jobService) GetByName(ctx context.Context, name string) (*jobTypes.Job, error) {

@@ -26,6 +26,7 @@ type MockJobService struct {
 	OnUpdateJobProv    func(*Job) error
 	OnGetEnvs          func(*Job) map[string]bindTypes.EnvVar
 	OnBaseImageName    func(context.Context, *Job) (string, error)
+	OnKillUnit         func(*Job, string) error
 }
 
 func (m *MockJobService) CreateJob(ctx context.Context, job *Job, user *authTypes.User) error {
@@ -110,4 +111,11 @@ func (m *MockJobService) BaseImageName(ctx context.Context, job *Job) (string, e
 		return "", nil
 	}
 	return m.OnBaseImageName(ctx, job)
+}
+
+func (m *MockJobService) KillUnit(ctx context.Context, job *Job, unit string, force bool) error {
+	if m.OnKillUnit == nil {
+		return nil
+	}
+	return m.OnKillUnit(job, unit)
 }

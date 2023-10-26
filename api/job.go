@@ -239,6 +239,64 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return json.NewEncoder(w).Encode(&result)
 }
 
+// title: kill a running job unit
+// path: /jobs/{name}/units/{unit}
+// method: DELETE
+// consume: application/x-www-form-urlencoded
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Job or unit not found
+func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
+	unitName := r.URL.Query().Get(":unit")
+	if unitName == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "missing unit",
+		}
+	}
+	name := r.URL.Query().Get(":name")
+	j, err := getJob(ctx, name)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	force, _ := strconv.ParseBool(InputValue(r, "force"))
+	allowed := permission.Check(t, permission.PermJobUnitKill,
+		contextsForJob(j)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	evt, err := event.New(&event.Opts{
+		Target:     jobTarget(j.Name),
+		Kind:       permission.PermJobUnitKill,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: []map[string]interface{}{
+			{
+				"unit":  unitName,
+				"force": force,
+			},
+		},
+		Allowed: event.Allowed(permission.PermJobReadEvents, contextsForJob(j)...),
+	})
+	if err != nil {
+		return err
+	}
+
+	defer func() { evt.Done(err) }()
+
+	err = servicemanager.Job.KillUnit(ctx, j, unitName, force)
+	if _, ok := err.(*provision.UnitNotFoundError); ok {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
+}
+
 // TODO: after move of provision.Unit to types, leave this structure to types/job
 type jobInfoResult struct {
 	Cluster              string                          `json:"cluster,omitempty"`

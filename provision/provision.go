@@ -344,6 +344,8 @@ type JobProvisioner interface {
 	UpdateJob(context.Context, *jobTypes.Job) error
 
 	TriggerCron(ctx context.Context, name, pool string) error
+
+	KillJobUnit(ctx context.Context, job *jobTypes.Job, unitName string, force bool) error
 }
 
 type ExecOptions struct {

@@ -113,4 +113,5 @@ type JobService interface {
 	UpdateJobProv(ctx context.Context, job *Job) error
 	GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar
 	BaseImageName(ctx context.Context, job *Job) (string, error)
+	KillUnit(ctx context.Context, job *Job, unitName string, force bool) error
 }
