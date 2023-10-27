@@ -4246,6 +4246,27 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestAppValidateProcessesTweaks(c *check.C) {
+	a := App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{Name: "web"},
+		},
+	}
+	err := a.validateProcessesTweak()
+	c.Assert(err, check.IsNil)
+
+	a = App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{Name: "web"},
+			{Name: "web"},
+		},
+	}
+	err = a.validateProcessesTweak()
+	c.Assert(err.Error(), check.Equals, "process \"web\" is duplicated")
+}
+
 func (s *S) TestValidateAppService(c *check.C) {
 	app := App{Name: "fyrone-flats", Platform: "python", TeamOwner: s.team.Name, Pool: s.Pool}
 	err := CreateApp(context.TODO(), &app, s.user)

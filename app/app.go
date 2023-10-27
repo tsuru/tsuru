@@ -126,6 +126,7 @@ type App struct {
 	Error           string
 	Routers         []appTypes.AppRouter
 	Metadata        appTypes.Metadata
+	ProcessesTweak  []appTypes.ProcessTweak
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -271,6 +272,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["tags"] = app.Tags
 	result["routers"] = routers
 	result["metadata"] = app.Metadata
+
+	if len(app.ProcessesTweak) > 0 {
+		result["processesTweak"] = app.ProcessesTweak
+	}
+
 	q, err := app.GetQuota()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
@@ -1102,6 +1108,12 @@ func (app *App) validate() error {
 	if err != nil {
 		return err
 	}
+
+	err = app.validateProcessesTweak()
+	if err != nil {
+		return err
+	}
+
 	return app.validatePlan()
 }
 
@@ -1155,6 +1167,21 @@ func (app *App) validatePool() error {
 	}
 
 	return pool.ValidateRouters(app.GetRouters())
+}
+
+func (app *App) validateProcessesTweak() error {
+	namesUsed := map[string]bool{}
+
+	for _, p := range app.ProcessesTweak {
+		if namesUsed[p.Name] {
+			msg := fmt.Sprintf("process %q is duplicated", p.Name)
+			return &tsuruErrors.ValidationError{Message: msg}
+		}
+
+		namesUsed[p.Name] = true
+	}
+
+	return nil
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {

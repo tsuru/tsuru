@@ -365,6 +365,8 @@ type inputApp struct {
 	Tags         []string
 	PlanOverride appTypes.PlanOverride
 	Metadata     appTypes.Metadata
+
+	ProcessesTweak []appTypes.ProcessTweak
 }
 
 func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
@@ -416,6 +418,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Tags:        ia.Tags,
 		Metadata:    ia.Metadata,
 		Quota:       quota.UnlimitedQuota,
+
+		ProcessesTweak: ia.ProcessesTweak,
 	}
 	tags, _ := InputValues(r, "tag")
 	a.Tags = append(a.Tags, tags...) // for compatibility
