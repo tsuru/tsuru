@@ -96,12 +96,10 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	if enableJobEvents, _ := c.cluster.EnableJobEventCreation(); enableJobEvents && c.isLeader() {
-		err = c.startJobInformer()
-		if err != nil {
-			c.stop(ctx)
-			return nil, err
-		}
+	err = c.startJobInformer()
+	if err != nil {
+		// log but don't stop the controller
+		log.Errorf("error while starting job informer: %v", err)
 	}
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
@@ -138,12 +136,19 @@ func (c *clusterController) isLeader() bool {
 }
 
 func (c *clusterController) startJobInformer() error {
+	if enable, _ := c.cluster.EnableJobEventCreation(); !enable {
+		return errors.New("job event creation is not enabled")
+	}
 	eventsInformer, err := c.getEventInformerWait(false)
 	if err != nil {
 		return err
 	}
 	eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			// if not leader, do nothing
+			if !c.isLeader() {
+				return
+			}
 			evt, ok := obj.(*apiv1.Event)
 			if !ok {
 				return
