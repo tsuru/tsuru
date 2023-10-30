@@ -434,7 +434,7 @@ func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a pr
 	if err != nil {
 		return err
 	}
-	appMeta := a.GetMetadata()
+	appMeta := a.GetMetadata("")
 	return ensureServiceAccount(ctx, client, serviceAccountNameForApp(a), labels, ns, &appMeta)
 }
 
@@ -592,7 +592,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 		return nil, nil, err
 	}
 
-	metadata := a.GetMetadata()
+	metadata := a.GetMetadata(process)
 	for _, l := range metadata.Labels {
 		labels.RawLabels[l.Name] = l.Value
 	}
@@ -1314,7 +1314,7 @@ func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
 }
 
 func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
-	metadata := app.GetMetadata()
+	metadata := app.GetMetadata("")
 	annotationsToAdd := make(map[string]string)
 	annotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service")
 	if ok {

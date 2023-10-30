@@ -2680,7 +2680,7 @@ func (app *App) ListTags() []string {
 	return app.Tags
 }
 
-func (app *App) GetMetadata() appTypes.Metadata {
+func (app *App) GetMetadata(process string) appTypes.Metadata {
 	return app.Metadata
 }
 

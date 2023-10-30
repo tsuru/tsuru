@@ -1138,16 +1138,6 @@ func (p *kubernetesProvisioner) Deploy(ctx context.Context, args provision.Deplo
 	return args.Version.VersionInfo().DeployImage, nil
 }
 
-func (p *kubernetesProvisioner) RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
-	err := forEachCluster(ctx, func(cluster *ClusterClient) error {
-		return cleanupDaemonSet(ctx, cluster, name, pool)
-	})
-	if err == provTypes.ErrNoCluster {
-		return nil
-	}
-	return err
-}
-
 func (p *kubernetesProvisioner) ExecuteCommand(ctx context.Context, opts provision.ExecOptions) error {
 	client, err := clusterForPool(ctx, opts.App.GetPool())
 	if err != nil {

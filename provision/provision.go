@@ -245,7 +245,7 @@ type App interface {
 
 	ListTags() []string
 
-	GetMetadata() appTypes.Metadata
+	GetMetadata(process string) appTypes.Metadata
 
 	GetRegistry() (imgTypes.ImageRegistry, error)
 }

@@ -557,28 +557,6 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 	}
 }
 
-type NodeContainerLabelsOpts struct {
-	Name         string
-	CustomLabels map[string]string
-	Pool         string
-	Provisioner  string
-	Prefix       string
-}
-
-func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
-	labels := map[string]string{
-		labelIsTsuru:           strconv.FormatBool(true),
-		labelIsNodeContainer:   strconv.FormatBool(true),
-		labelProvisioner:       opts.Provisioner,
-		labelNodeContainerName: opts.Name,
-		labelNodeContainerPool: opts.Pool,
-	}
-	for k, v := range opts.CustomLabels {
-		labels[k] = v
-	}
-	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
-}
-
 type NodeLabelsOpts struct {
 	IaaSID       string
 	Addr         string
