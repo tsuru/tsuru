@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/tsuru/tsuru/app"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,21 +16,20 @@ import (
 )
 
 func (s *S) TestNewPDB(c *check.C) {
-	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), a, s.user)
-	c.Assert(err, check.IsNil)
 	tests := map[string]struct {
+		app      *app.App
 		setup    func() (teardown func())
 		expected *policyv1.PodDisruptionBudget
 	}{
 		"with default values": {
+			app: &app.App{Name: "myapp-01", TeamOwner: s.team.Name},
 			expected: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "myapp-p1",
+					Name:      "myapp-01-p1",
 					Namespace: "default",
 					Labels: map[string]string{
 						"tsuru.io/is-tsuru":    "true",
-						"tsuru.io/app-name":    "myapp",
+						"tsuru.io/app-name":    "myapp-01",
 						"tsuru.io/app-process": "p1",
 						"tsuru.io/app-team":    "admin",
 						"tsuru.io/provisioner": "kubernetes",
@@ -39,7 +39,44 @@ func (s *S) TestNewPDB(c *check.C) {
 					MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							"tsuru.io/app-name":    "myapp",
+							"tsuru.io/app-name":    "myapp-01",
+							"tsuru.io/app-process": "p1",
+							"tsuru.io/is-routable": "true",
+						},
+					},
+				},
+			},
+		},
+		"with custom maxUnavailable": {
+			app: &app.App{
+				Name:      "myapp-02",
+				TeamOwner: s.team.Name,
+				Metadata: appTypes.Metadata{
+					Annotations: []appTypes.MetadataItem{
+						{
+							Name:  ResourceMetadataPrefix + "pdb-max-unavailable",
+							Value: "30%",
+						},
+					},
+				},
+			},
+			expected: &policyv1.PodDisruptionBudget{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "myapp-02-p1",
+					Namespace: "default",
+					Labels: map[string]string{
+						"tsuru.io/is-tsuru":    "true",
+						"tsuru.io/app-name":    "myapp-02",
+						"tsuru.io/app-process": "p1",
+						"tsuru.io/app-team":    "admin",
+						"tsuru.io/provisioner": "kubernetes",
+					},
+				},
+				Spec: policyv1.PodDisruptionBudgetSpec{
+					MaxUnavailable: intOrStringPtr(intstr.FromString("30%")),
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"tsuru.io/app-name":    "myapp-02",
 							"tsuru.io/app-process": "p1",
 							"tsuru.io/is-routable": "true",
 						},
@@ -48,6 +85,7 @@ func (s *S) TestNewPDB(c *check.C) {
 			},
 		},
 		"when disable PDB for cluster/pool": {
+			app: &app.App{Name: "myapp-03", TeamOwner: s.team.Name},
 			setup: func() (teardown func()) {
 				s.clusterClient.CustomData["test-default:disable-pdb"] = "true"
 				return func() {
@@ -61,7 +99,11 @@ func (s *S) TestNewPDB(c *check.C) {
 		if tt.setup != nil {
 			teardown = tt.setup()
 		}
-		pdb, err := newPDB(context.TODO(), s.clusterClient, a, "p1")
+
+		err := app.CreateApp(context.TODO(), tt.app, s.user)
+		c.Assert(err, check.IsNil)
+
+		pdb, err := newPDB(context.TODO(), s.clusterClient, tt.app, "p1")
 		c.Assert(err, check.IsNil)
 		c.Assert(pdb, check.DeepEquals, tt.expected)
 		if teardown != nil {
