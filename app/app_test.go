@@ -4063,6 +4063,93 @@ func (s *S) TestGetMemory(c *check.C) {
 	c.Assert(a.GetMemory(), check.Equals, a.Plan.Memory)
 }
 
+func (s *S) TestGetMetadata(c *check.C) {
+	a := App{}
+	c.Assert(a.GetMetadata(""), check.DeepEquals, appTypes.Metadata{})
+
+	a = App{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
+				{
+					Name:  "abc",
+					Value: "123",
+				},
+			},
+			Annotations: []appTypes.MetadataItem{
+				{
+					Name:  "tsuru",
+					Value: "io",
+				},
+			},
+		},
+	}
+	c.Assert(a.GetMetadata(""), check.DeepEquals, appTypes.Metadata{
+		Labels: []appTypes.MetadataItem{
+			{
+				Name:  "abc",
+				Value: "123",
+			},
+		},
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  "tsuru",
+				Value: "io",
+			},
+		},
+	})
+
+	a = App{
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "abc",
+							Value: "321",
+						},
+					},
+					Annotations: []appTypes.MetadataItem{
+						{
+							Name:  "tsuru",
+							Value: "PAAS",
+						},
+					},
+				},
+			},
+		},
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
+				{
+					Name:  "abc",
+					Value: "123",
+				},
+			},
+			Annotations: []appTypes.MetadataItem{
+				{
+					Name:  "tsuru",
+					Value: "io",
+				},
+			},
+		},
+	}
+
+	c.Assert(a.GetMetadata("web"), check.DeepEquals, appTypes.Metadata{
+		Labels: []appTypes.MetadataItem{
+			{
+				Name:  "abc",
+				Value: "321",
+			},
+		},
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  "tsuru",
+				Value: "PAAS",
+			},
+		},
+	})
+}
+
 func (s *S) TestAppUnits(c *check.C) {
 	a := App{Name: "anycolor", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)

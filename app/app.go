@@ -2681,7 +2681,51 @@ func (app *App) ListTags() []string {
 }
 
 func (app *App) GetMetadata(process string) appTypes.Metadata {
-	return app.Metadata
+	labels := map[string]string{}
+	annotations := map[string]string{}
+
+	for _, labelItem := range app.Metadata.Labels {
+		labels[labelItem.Name] = labelItem.Value
+	}
+	for _, annotationItem := range app.Metadata.Annotations {
+		annotations[annotationItem.Name] = annotationItem.Value
+	}
+
+	if process == "" {
+		goto buildResult
+	}
+
+	for _, processTweak := range app.ProcessesTweak {
+		if processTweak.Name != process {
+			continue
+		}
+
+		for _, labelItem := range processTweak.Metadata.Labels {
+			labels[labelItem.Name] = labelItem.Value
+		}
+		for _, annotationItem := range processTweak.Metadata.Annotations {
+			annotations[annotationItem.Name] = annotationItem.Value
+		}
+	}
+
+buildResult:
+	result := appTypes.Metadata{}
+
+	for name, value := range labels {
+		result.Labels = append(result.Labels, appTypes.MetadataItem{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	for name, value := range annotations {
+		result.Annotations = append(result.Annotations, appTypes.MetadataItem{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	return result
 }
 
 func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {

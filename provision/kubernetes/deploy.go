@@ -1301,6 +1301,7 @@ func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App
 
 type svcCreateData struct {
 	name        string
+	process     string
 	labels      map[string]string
 	annotations map[string]string
 	selector    map[string]string
@@ -1314,7 +1315,7 @@ func syncAnnotationMap(toAdd map[string]string, metadata map[string]string) {
 }
 
 func syncServiceAnnotations(app provision.App, svcData *svcCreateData) {
-	metadata := app.GetMetadata("")
+	metadata := app.GetMetadata(svcData.process)
 	annotationsToAdd := make(map[string]string)
 	annotationsRaw, ok := metadata.Annotation(ResourceMetadataPrefix + "service")
 	if ok {
@@ -1441,6 +1442,7 @@ func (m *serviceManager) ensureServices(ctx context.Context, a provision.App, pr
 
 		svcsToCreate = append(svcsToCreate, svcCreateData{
 			name:        serviceNameForAppBase(a, process),
+			process:     process,
 			labels:      routableLabels.ToLabels(),
 			annotations: annotations,
 			selector:    routableLabels.ToRoutableSelector(),
