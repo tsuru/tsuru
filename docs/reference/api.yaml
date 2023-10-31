@@ -5789,7 +5789,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: "#/definitions/AppProcess"  
+          $ref: "#/definitions/AppProcess"
       router:
         type: string
         description: App router.
