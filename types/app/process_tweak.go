@@ -5,7 +5,11 @@
 package app
 
 type Process struct {
-	Name     string   `json:"name"` // name of process
+	Name     string   `json:"name"` // name of process, it is like a merge key
 	Plan     string   `json:"plan,omitempty"`
 	Metadata Metadata `json:"metadata"`
+}
+
+func (p *Process) Empty() bool {
+	return p.Plan == "" && p.Metadata.Empty()
 }

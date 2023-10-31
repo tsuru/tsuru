@@ -580,14 +580,9 @@ func (app *App) updateProcesses(new []appTypes.Process) {
 	for _, p := range new {
 		pos := positionByName[p.Name]
 		if pos == nil {
-			if p.Plan == "$default" {
-				p.Plan = ""
-			}
 			app.Processes = append(app.Processes, p)
 		} else {
-			if p.Plan == "$default" {
-				app.Processes[*pos].Plan = ""
-			} else if p.Plan != "" {
+			if p.Plan != "" {
 				app.Processes[*pos].Plan = p.Plan
 			}
 			app.Processes[*pos].Metadata.Update(p.Metadata)
@@ -604,7 +599,7 @@ func (app *App) pruneProcesses() {
 			process.Plan = ""
 		}
 
-		if !process.Metadata.Empty() || process.Plan != "" {
+		if !process.Empty() {
 			updated = append(updated, process)
 		}
 	}
