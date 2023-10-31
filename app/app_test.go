@@ -4100,7 +4100,7 @@ func (s *S) TestGetMetadata(c *check.C) {
 	})
 
 	a = App{
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{
 				Name: "web",
 				Metadata: appTypes.Metadata{
@@ -4334,35 +4334,44 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestAppValidateProcessesTweaks(c *check.C) {
+func (s *S) TestAppValidateProcesses(c *check.C) {
 	a := App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{Name: "web"},
 		},
 	}
-	err := a.validateProcessesTweak()
+	err := a.validateProcesses()
 	c.Assert(err, check.IsNil)
 
 	a = App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{Name: "web"},
 			{Name: "web"},
 		},
 	}
-	err = a.validateProcessesTweak()
+	err = a.validateProcesses()
 	c.Assert(err.Error(), check.Equals, "process \"web\" is duplicated")
+
+	a = App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{},
+		},
+	}
+	err = a.validateProcesses()
+	c.Assert(err.Error(), check.Equals, "empty process name is not allowed")
 }
 
-func (s *S) TestAppUpdateProcessesTweaksAppend(c *check.C) {
+func (s *S) TestAppUpdateProcessesWhenAppend(c *check.C) {
 	a := App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{Name: "web"},
 		},
 	}
-	a.updateProcessesTweak([]appTypes.ProcessTweak{
+	a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4376,7 +4385,7 @@ func (s *S) TestAppUpdateProcessesTweaksAppend(c *check.C) {
 		},
 	})
 
-	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4391,12 +4400,12 @@ func (s *S) TestAppUpdateProcessesTweaksAppend(c *check.C) {
 	})
 }
 
-func (s *S) TestAppUpdateProcessesTweaksAppendEmpty(c *check.C) {
+func (s *S) TestAppUpdateProcessesWhenAppendEmpty(c *check.C) {
 	a := App{
-		Name:           "test",
-		ProcessesTweak: []appTypes.ProcessTweak{},
+		Name:      "test",
+		Processes: []appTypes.Process{},
 	}
-	a.updateProcessesTweak([]appTypes.ProcessTweak{
+	a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4410,7 +4419,7 @@ func (s *S) TestAppUpdateProcessesTweaksAppendEmpty(c *check.C) {
 		},
 	})
 
-	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4425,10 +4434,10 @@ func (s *S) TestAppUpdateProcessesTweaksAppendEmpty(c *check.C) {
 	})
 }
 
-func (s *S) TestAppUpdateProcessesTweaksOverride(c *check.C) {
+func (s *S) TestAppUpdateProcessesWhenOverride(c *check.C) {
 	a := App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{
 				Name: "web",
 				Metadata: appTypes.Metadata{
@@ -4442,7 +4451,7 @@ func (s *S) TestAppUpdateProcessesTweaksOverride(c *check.C) {
 			},
 		},
 	}
-	a.updateProcessesTweak([]appTypes.ProcessTweak{
+	a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4455,7 +4464,7 @@ func (s *S) TestAppUpdateProcessesTweaksOverride(c *check.C) {
 			},
 		},
 	})
-	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4470,10 +4479,10 @@ func (s *S) TestAppUpdateProcessesTweaksOverride(c *check.C) {
 	})
 }
 
-func (s *S) TestAppUpdateProcessesTweaksDelete(c *check.C) {
+func (s *S) TestAppUpdateProcessesWhenDelete(c *check.C) {
 	a := App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{
 				Name: "web",
 				Metadata: appTypes.Metadata{
@@ -4487,7 +4496,7 @@ func (s *S) TestAppUpdateProcessesTweaksDelete(c *check.C) {
 			},
 		},
 	}
-	a.updateProcessesTweak([]appTypes.ProcessTweak{
+	a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4500,13 +4509,13 @@ func (s *S) TestAppUpdateProcessesTweaksDelete(c *check.C) {
 			},
 		},
 	})
-	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{})
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{})
 }
 
-func (s *S) TestAppUpdateProcessesTweaksPlan(c *check.C) {
+func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 	a := App{
 		Name: "test",
-		ProcessesTweak: []appTypes.ProcessTweak{
+		Processes: []appTypes.Process{
 			{
 				Name: "web",
 			},
@@ -4525,7 +4534,7 @@ func (s *S) TestAppUpdateProcessesTweaksPlan(c *check.C) {
 			},
 		},
 	}
-	a.updateProcessesTweak([]appTypes.ProcessTweak{
+	a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Plan: "c1m1",
@@ -4547,7 +4556,7 @@ func (s *S) TestAppUpdateProcessesTweaksPlan(c *check.C) {
 			Plan: "$default",
 		},
 	})
-	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
 		{
 			Name: "web",
 			Plan: "c1m1",

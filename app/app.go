@@ -126,7 +126,7 @@ type App struct {
 	Error           string
 	Routers         []appTypes.AppRouter
 	Metadata        appTypes.Metadata
-	ProcessesTweak  []appTypes.ProcessTweak
+	Processes       []appTypes.Process
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -273,8 +273,8 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["routers"] = routers
 	result["metadata"] = app.Metadata
 
-	if len(app.ProcessesTweak) > 0 {
-		result["processesTweak"] = app.ProcessesTweak
+	if len(app.Processes) > 0 {
+		result["processes"] = app.Processes
 	}
 
 	q, err := app.GetQuota()
@@ -406,7 +406,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 			return err
 		}
 	}
-	app.pruneProcessesTweak()
+	app.pruneProcesses()
 	err = app.validateNew(ctx)
 	if err != nil {
 		return err
@@ -522,7 +522,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		return err
 	}
 
-	app.updateProcessesTweak(args.UpdateData.ProcessesTweak)
+	app.updateProcesses(args.UpdateData.Processes)
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
@@ -571,9 +571,9 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }
 
-func (app *App) updateProcessesTweak(new []appTypes.ProcessTweak) {
+func (app *App) updateProcesses(new []appTypes.Process) {
 	positionByName := map[string]*int{}
-	for i, p := range app.ProcessesTweak {
+	for i, p := range app.Processes {
 		positionByName[p.Name] = func(n int) *int { return &n }(i)
 	}
 
@@ -583,29 +583,29 @@ func (app *App) updateProcessesTweak(new []appTypes.ProcessTweak) {
 			if p.Plan == "$default" {
 				p.Plan = ""
 			}
-			app.ProcessesTweak = append(app.ProcessesTweak, p)
+			app.Processes = append(app.Processes, p)
 		} else {
 			if p.Plan == "$default" {
-				app.ProcessesTweak[*pos].Plan = ""
+				app.Processes[*pos].Plan = ""
 			} else if p.Plan != "" {
-				app.ProcessesTweak[*pos].Plan = p.Plan
+				app.Processes[*pos].Plan = p.Plan
 			}
-			app.ProcessesTweak[*pos].Metadata.Update(p.Metadata)
+			app.Processes[*pos].Metadata.Update(p.Metadata)
 		}
 	}
 
-	app.pruneProcessesTweak()
+	app.pruneProcesses()
 }
 
-func (app *App) pruneProcessesTweak() {
-	updated := []appTypes.ProcessTweak{}
-	for _, proccessTweak := range app.ProcessesTweak {
-		if proccessTweak.Plan == "$default" {
-			proccessTweak.Plan = ""
+func (app *App) pruneProcesses() {
+	updated := []appTypes.Process{}
+	for _, process := range app.Processes {
+		if process.Plan == "$default" {
+			process.Plan = ""
 		}
 
-		if !proccessTweak.Metadata.Empty() || proccessTweak.Plan != "" {
-			updated = append(updated, proccessTweak)
+		if !process.Metadata.Empty() || process.Plan != "" {
+			updated = append(updated, process)
 		}
 	}
 
@@ -613,7 +613,7 @@ func (app *App) pruneProcessesTweak() {
 		return updated[i].Name < updated[j].Name
 	})
 
-	app.ProcessesTweak = updated
+	app.Processes = updated
 
 }
 
@@ -1158,7 +1158,7 @@ func (app *App) validate() error {
 		return err
 	}
 
-	err = app.validateProcessesTweak()
+	err = app.validateProcesses()
 	if err != nil {
 		return err
 	}
@@ -1218,10 +1218,13 @@ func (app *App) validatePool() error {
 	return pool.ValidateRouters(app.GetRouters())
 }
 
-func (app *App) validateProcessesTweak() error {
+func (app *App) validateProcesses() error {
 	namesUsed := map[string]bool{}
 
-	for _, p := range app.ProcessesTweak {
+	for _, p := range app.Processes {
+		if p.Name == "" {
+			return &tsuruErrors.ValidationError{Message: "empty process name is not allowed"}
+		}
 		if namesUsed[p.Name] {
 			msg := fmt.Sprintf("process %q is duplicated", p.Name)
 			return &tsuruErrors.ValidationError{Message: msg}
@@ -2744,15 +2747,15 @@ func (app *App) GetMetadata(process string) appTypes.Metadata {
 		goto buildResult
 	}
 
-	for _, processTweak := range app.ProcessesTweak {
-		if processTweak.Name != process {
+	for _, p := range app.Processes {
+		if p.Name != process {
 			continue
 		}
 
-		for _, labelItem := range processTweak.Metadata.Labels {
+		for _, labelItem := range p.Metadata.Labels {
 			labels[labelItem.Name] = labelItem.Value
 		}
-		for _, annotationItem := range processTweak.Metadata.Annotations {
+		for _, annotationItem := range p.Metadata.Annotations {
 			annotations[annotationItem.Name] = annotationItem.Value
 		}
 	}

@@ -5785,16 +5785,11 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
-      processesTweak:
+      processes:
         type: array
         items:
           type: object
-          properties:
-            name:
-              type: string
-            metadata:
-              type: object
-              $ref: "#/definitions/Metadata"
+          $ref: "#/definitions/AppProcess"  
       router:
         type: string
         description: App router.
@@ -5928,6 +5923,11 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
+      processes:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AppProcess"
   InputApp:
     type: object
     required:
@@ -5967,7 +5967,11 @@ definitions:
       metadata:
         type: object
         $ref: "#/definitions/Metadata"
-
+      processes:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AppProcess"
   JobInfo:
     type: object
     properties:
@@ -6219,6 +6223,16 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/MetadataItem"
+  AppProcess:
+    type: object
+    properties:
+      name:
+        type: string
+      plan:
+        type: string
+      metadata:
+        type: object
+        $ref: "#/definitions/Metadata"
   MetadataItem:
     description: Metadata items
     type: object
