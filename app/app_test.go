@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	tsuruTest "github.com/tsuru/tsuru/test"
 	"github.com/tsuru/tsuru/tsurutest"
+	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -4352,6 +4353,218 @@ func (s *S) TestAppValidateProcessesTweaks(c *check.C) {
 	}
 	err = a.validateProcessesTweak()
 	c.Assert(err.Error(), check.Equals, "process \"web\" is duplicated")
+}
+
+func (s *S) TestAppUpdateProcessesTweaksAppend(c *check.C) {
+	a := App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{Name: "web"},
+		},
+	}
+	a.updateProcessesTweak([]appTypes.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+
+	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesTweaksAppendEmpty(c *check.C) {
+	a := App{
+		Name:           "test",
+		ProcessesTweak: []appTypes.ProcessTweak{},
+	}
+	a.updateProcessesTweak([]appTypes.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+
+	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesTweaksOverride(c *check.C) {
+	a := App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "ABC",
+							Value: "123",
+						},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcessesTweak([]appTypes.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "321",
+					},
+				},
+			},
+		},
+	})
+	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "321",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesTweaksDelete(c *check.C) {
+	a := App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "ABC",
+							Value: "123",
+						},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcessesTweak([]appTypes.ProcessTweak{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:   "ABC",
+						Delete: true,
+					},
+				},
+			},
+		},
+	})
+	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{})
+}
+
+func (s *S) TestAppUpdateProcessesTweaksPlan(c *check.C) {
+	a := App{
+		Name: "test",
+		ProcessesTweak: []appTypes.ProcessTweak{
+			{
+				Name: "web",
+			},
+			{
+				Name: "priority-worker",
+				Plan: "c4m4",
+			},
+			{
+				Name: "worker-metadata",
+				Plan: "c4m4",
+				Metadata: appTypes.Metadata{
+					Labels: []app.MetadataItem{
+						{Name: "abc", Value: "123"},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcessesTweak([]appTypes.ProcessTweak{
+		{
+			Name: "web",
+			Plan: "c1m1",
+		},
+		{
+			Name: "worker",
+			Plan: "c2m2",
+		},
+		{
+			Name: "stale-worker",
+			Plan: "$default",
+		},
+		{
+			Name: "priority-worker",
+			Plan: "$default",
+		},
+		{
+			Name: "worker-metadata",
+			Plan: "$default",
+		},
+	})
+	c.Assert(a.ProcessesTweak, check.DeepEquals, []app.ProcessTweak{
+		{
+			Name: "web",
+			Plan: "c1m1",
+		},
+		{
+			Name: "worker",
+			Plan: "c2m2",
+		},
+		{
+			Name: "worker-metadata",
+			Metadata: appTypes.Metadata{
+				Labels: []app.MetadataItem{
+					{Name: "abc", Value: "123"},
+				},
+			},
+		},
+	})
 }
 
 func (s *S) TestValidateAppService(c *check.C) {

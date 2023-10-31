@@ -42,6 +42,10 @@ func (m *Metadata) Validate() error {
 	return nil
 }
 
+func (m *Metadata) Empty() bool {
+	return len(m.Annotations) == 0 && len(m.Labels) == 0
+}
+
 func (m Metadata) Annotation(v string) (string, bool) {
 	return getItem(m.Annotations, v)
 }

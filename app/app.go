@@ -406,6 +406,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 			return err
 		}
 	}
+	app.pruneProcessesTweak()
 	err = app.validateNew(ctx)
 	if err != nil {
 		return err
@@ -520,6 +521,8 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if err != nil {
 		return err
 	}
+
+	app.updateProcessesTweak(args.UpdateData.ProcessesTweak)
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
@@ -566,6 +569,52 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
+}
+
+func (app *App) updateProcessesTweak(new []appTypes.ProcessTweak) {
+	positionByName := map[string]*int{}
+	for i, p := range app.ProcessesTweak {
+		positionByName[p.Name] = func(n int) *int { return &n }(i)
+	}
+
+	for _, p := range new {
+		pos := positionByName[p.Name]
+		if pos == nil {
+			if p.Plan == "$default" {
+				p.Plan = ""
+			}
+			app.ProcessesTweak = append(app.ProcessesTweak, p)
+		} else {
+			if p.Plan == "$default" {
+				app.ProcessesTweak[*pos].Plan = ""
+			} else if p.Plan != "" {
+				app.ProcessesTweak[*pos].Plan = p.Plan
+			}
+			app.ProcessesTweak[*pos].Metadata.Update(p.Metadata)
+		}
+	}
+
+	app.pruneProcessesTweak()
+}
+
+func (app *App) pruneProcessesTweak() {
+	updated := []appTypes.ProcessTweak{}
+	for _, proccessTweak := range app.ProcessesTweak {
+		if proccessTweak.Plan == "$default" {
+			proccessTweak.Plan = ""
+		}
+
+		if !proccessTweak.Metadata.Empty() || proccessTweak.Plan != "" {
+			updated = append(updated, proccessTweak)
+		}
+	}
+
+	sort.Slice(updated, func(i, j int) bool {
+		return updated[i].Name < updated[j].Name
+	})
+
+	app.ProcessesTweak = updated
+
 }
 
 func validateVolumes(ctx context.Context, app *App) error {

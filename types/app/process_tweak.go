@@ -5,6 +5,7 @@
 package app
 
 type ProcessTweak struct {
-	Name     string // name of process
-	Metadata Metadata
+	Name     string   `json:"name"` // name of process
+	Plan     string   `json:"plan,omitempty"`
+	Metadata Metadata `json:"metadata"`
 }
