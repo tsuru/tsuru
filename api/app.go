@@ -596,6 +596,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if len(updateData.Metadata.Annotations) > 0 || len(updateData.Metadata.Labels) > 0 {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateMetadata)
 	}
+	if len(updateData.Processes) > 0 {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateProcesses)
+	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, tags, plan, pool, team owner or platform were set. You must define at least one."
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}

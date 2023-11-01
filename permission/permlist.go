@@ -44,6 +44,7 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.bind-volume",
 	"app.update.image-reset",
 	"app.update.events",
+	"app.update.processes",
 	"app.update.unbind",
 	"app.update.unbind-volume",
 	"app.update.certificate.set",
