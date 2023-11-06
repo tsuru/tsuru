@@ -16,12 +16,10 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 	batchv1 "k8s.io/api/batch/v1"
-	apiv1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sTypes "k8s.io/apimachinery/pkg/types"
 )
 
@@ -85,7 +83,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 			},
 			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
 				expectedTarget := &batchv1.CronJob{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -117,7 +115,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 								ActiveDeadlineSeconds:   func() *int64 { r := int64(60 * 60 * 24); return &r }(),
 								BackoffLimit:            func() *int32 { r := int32(7); return &r }(),
 								Template: corev1.PodTemplateSpec{
-									ObjectMeta: v1.ObjectMeta{
+									ObjectMeta: metav1.ObjectMeta{
 										Labels: map[string]string{
 											"app.kubernetes.io/component":  "job",
 											"app.kubernetes.io/managed-by": "tsuru",
@@ -144,12 +142,12 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 												Image:   "ubuntu:latest",
 												Command: []string{"echo", "hello world"},
 												Env:     []corev1.EnvVar{},
-												Resources: apiv1.ResourceRequirements{
+												Resources: corev1.ResourceRequirements{
 													Limits: corev1.ResourceList{
-														apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+														corev1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
 													},
 													Requests: corev1.ResourceList{
-														apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+														corev1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 													},
 												},
 											},
@@ -164,7 +162,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				c.Assert(*gotCron, check.DeepEquals, *expectedTarget)
 				account, err := s.client.CoreV1().ServiceAccounts(expectedTarget.Namespace).Get(context.TODO(), "job-"+expectedTarget.Name, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
-				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "job-" + expectedTarget.Name,
 						Namespace: expectedTarget.Namespace,
@@ -209,7 +207,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
 				account, err := s.client.CoreV1().ServiceAccounts(gotCron.Namespace).Get(context.TODO(), "job-"+gotCron.Name, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
-				c.Assert(account, check.DeepEquals, &apiv1.ServiceAccount{
+				c.Assert(account, check.DeepEquals, &corev1.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "job-" + gotCron.Name,
 						Namespace: gotCron.Namespace,
@@ -235,7 +233,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 	}
 	for _, tt := range tests {
 		tt.scenario()
-		gotCron, err := s.client.BatchV1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, v1.GetOptions{})
+		gotCron, err := s.client.BatchV1().CronJobs(tt.namespace).Get(context.TODO(), tt.jobName, metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		tt.assertion(c, gotCron)
 		tt.teardown()
@@ -326,7 +324,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 				c.Assert(err, check.IsNil)
 			},
 			expectedTarget: &batchv1.CronJob{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "myjob",
 					Namespace: "default",
 					Labels: map[string]string{
@@ -358,7 +356,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 							ActiveDeadlineSeconds:   func() *int64 { r := int64(60 * 60); return &r }(),
 							BackoffLimit:            func() *int32 { r := int32(6); return &r }(),
 							Template: corev1.PodTemplateSpec{
-								ObjectMeta: v1.ObjectMeta{
+								ObjectMeta: metav1.ObjectMeta{
 									Labels: map[string]string{
 										"app.kubernetes.io/component":  "job",
 										"app.kubernetes.io/managed-by": "tsuru",
@@ -385,12 +383,12 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 											Image:   "ubuntu:latest",
 											Command: []string{"echo", "hello world"},
 											Env:     []corev1.EnvVar{},
-											Resources: apiv1.ResourceRequirements{
+											Resources: corev1.ResourceRequirements{
 												Limits: corev1.ResourceList{
-													apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+													corev1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
 												},
 												Requests: corev1.ResourceList{
-													apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+													corev1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 												},
 											},
 										},
@@ -407,7 +405,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 	for _, tt := range tests {
 		tt.setup()
 		tt.scenario()
-		gotCron, err := s.client.BatchV1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, v1.GetOptions{})
+		gotCron, err := s.client.BatchV1().CronJobs(tt.expectedTarget.Namespace).Get(context.TODO(), tt.expectedTarget.Name, metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
 		c.Assert(*gotCron, check.DeepEquals, *tt.expectedTarget)
 	}
@@ -447,7 +445,7 @@ func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 				waitCron()
 			},
 			testScenario: func(c *check.C) {
-				_, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "mycronjob", v1.GetOptions{})
+				_, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "mycronjob", metav1.GetOptions{})
 				c.Assert(err, check.NotNil)
 				c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
 			},
@@ -511,10 +509,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				waitCron()
 			},
 			testScenario: func(c *check.C) {
-				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
+				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				expected := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-manual-trigger",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -533,7 +531,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 							"tsuru.io/is-deploy":           "false",
 						},
 						Annotations: map[string]string{"cronjob.kubernetes.io/instantiate": "manual"},
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								Name:       cronParent.Name,
 								Kind:       "CronJob",
@@ -546,7 +544,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
 						ActiveDeadlineSeconds:   func() *int64 { r := int64(60 * 60); return &r }(),
 						Template: corev1.PodTemplateSpec{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"app.kubernetes.io/component":  "job",
 									"app.kubernetes.io/managed-by": "tsuru",
@@ -581,12 +579,12 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 												Value: "localhost",
 											},
 										},
-										Resources: apiv1.ResourceRequirements{
+										Resources: corev1.ResourceRequirements{
 											Limits: corev1.ResourceList{
-												apiv1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
+												corev1.ResourceEphemeralStorage: resource.MustParse("100Mi"),
 											},
 											Requests: corev1.ResourceList{
-												apiv1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
+												corev1.ResourceEphemeralStorage: *resource.NewQuantity(0, resource.DecimalSI),
 											},
 										},
 									},
@@ -596,14 +594,14 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						},
 					},
 				}
-				listJobs, err := s.client.BatchV1().Jobs(expected.Namespace).List(context.TODO(), v1.ListOptions{})
+				listJobs, err := s.client.BatchV1().Jobs(expected.Namespace).List(context.TODO(), metav1.ListOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(listJobs.Items), check.Equals, 1)
-				gotJob, err := s.client.BatchV1().Jobs(expected.Namespace).Get(context.TODO(), expected.Name, v1.GetOptions{})
+				gotJob, err := s.client.BatchV1().Jobs(expected.Namespace).Get(context.TODO(), expected.Name, metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				c.Assert(gotJob, check.DeepEquals, expected)
 				// cleanup
-				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", v1.DeleteOptions{})
+				err = s.client.BatchV1().CronJobs(expected.Namespace).Delete(context.TODO(), "myjob", metav1.DeleteOptions{})
 				c.Assert(err, check.IsNil)
 			},
 		},
@@ -630,7 +628,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			name: "when job and evt (jobcreate) are valid",
 			scenario: func() {
 				j := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -643,7 +641,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 					Spec: batchv1.JobSpec{
 						Template: corev1.PodTemplateSpec{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"tsuru.io/is-tsuru": "true",
 									"tsuru.io/job-name": "myjob",
@@ -665,8 +663,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 						},
 					},
 				}
-				evt := &apiv1.Event{
-					ObjectMeta: v1.ObjectMeta{
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-somehash",
 						Namespace: j.Namespace,
 					},
@@ -700,7 +698,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					"event-type":         "Normal",
 					"event-reason":       "SuccessfulCreate",
 					"message":            "Created pod: myjob-somehash",
-					"cluster-start-time": v1.Time{}.String(),
+					"cluster-start-time": metav1.Time{}.String(),
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
@@ -713,7 +711,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			name: "when job and evt (jobrun) are valid and job has cronjob owner reference",
 			scenario: func() {
 				j := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -723,7 +721,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 							"tsuru.io/job-team": "admin",
 							"tsuru.io/is-job":   "true",
 						},
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         "batch/v1",
 								Controller:         &boolTrue,
@@ -736,7 +734,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 					Spec: batchv1.JobSpec{
 						Template: corev1.PodTemplateSpec{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"tsuru.io/is-tsuru": "true",
 									"tsuru.io/job-name": "myjob",
@@ -758,8 +756,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 						},
 					},
 				}
-				evt := &apiv1.Event{
-					ObjectMeta: v1.ObjectMeta{
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-somehash",
 						Namespace: j.Namespace,
 					},
@@ -793,7 +791,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					"event-type":         "Normal",
 					"event-reason":       "Completed",
 					"message":            "Job completed",
-					"cluster-start-time": v1.Time{}.String(),
+					"cluster-start-time": metav1.Time{}.String(),
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
@@ -806,7 +804,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			name: "when job and evt (backofflimitexceeded) are valid",
 			scenario: func() {
 				j := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -819,7 +817,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 					Spec: batchv1.JobSpec{
 						Template: corev1.PodTemplateSpec{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"tsuru.io/is-tsuru": "true",
 									"tsuru.io/job-name": "myjob",
@@ -841,8 +839,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 						},
 					},
 				}
-				evt := &apiv1.Event{
-					ObjectMeta: v1.ObjectMeta{
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-somehash",
 						Namespace: j.Namespace,
 					},
@@ -876,7 +874,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					"event-type":         "Warning",
 					"event-reason":       "BackoffLimitExceeded",
 					"message":            "Job has reached the specified backoff limit",
-					"cluster-start-time": v1.Time{}.String(),
+					"cluster-start-time": metav1.Time{}.String(),
 				}
 				gotCustomData := map[string]string{}
 				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
@@ -888,7 +886,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 			name: "when evt reason does not apply",
 			scenario: func() {
 				j := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob",
 						Namespace: "default",
 						Labels: map[string]string{
@@ -901,7 +899,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					},
 					Spec: batchv1.JobSpec{
 						Template: corev1.PodTemplateSpec{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"tsuru.io/is-tsuru": "true",
 									"tsuru.io/job-name": "myjob",
@@ -923,8 +921,8 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 						},
 					},
 				}
-				evt := &apiv1.Event{
-					ObjectMeta: v1.ObjectMeta{
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "myjob-somehash",
 						Namespace: j.Namespace,
 					},
