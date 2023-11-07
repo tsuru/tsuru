@@ -64,7 +64,7 @@ func (job *Job) GetPool() string {
 
 type ContainerInfo struct {
 	InternalRegistryImage string   `json:"internalRegistryImage"`
-	OriginalImageSrc      string   `json:"OriginalImageSource"`
+	OriginalImageSrc      string   `json:"image"`
 	Command               []string `json:"command"`
 }
 
