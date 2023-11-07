@@ -419,7 +419,7 @@ func (c *clusterController) createElector(hostID string) (*leaderelection.Leader
 		Component: leaderElectionName,
 	})
 	lock, err := resourcelock.New(
-		resourcelock.EndpointsResourceLock,
+		resourcelock.EndpointsLeasesResourceLock,
 		c.cluster.Namespace(),
 		leaderElectionName,
 		c.cluster.CoreV1(),

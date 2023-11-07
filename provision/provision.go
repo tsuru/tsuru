@@ -462,11 +462,19 @@ type VolumeProvisioner interface {
 }
 
 type AutoScaleSpec struct {
-	Process    string `json:"process"`
-	MinUnits   uint   `json:"minUnits"`
-	MaxUnits   uint   `json:"maxUnits"`
-	AverageCPU string `json:"averageCPU"`
-	Version    int    `json:"version"`
+	Process    string              `json:"process"`
+	MinUnits   uint                `json:"minUnits"`
+	MaxUnits   uint                `json:"maxUnits"`
+	AverageCPU string              `json:"averageCPU"`
+	Schedules  []AutoScaleSchedule `json:"schedules,omitempty"`
+	Version    int                 `json:"version"`
+}
+
+type AutoScaleSchedule struct {
+	MinReplicas int    `json:"minReplicas"`
+	Start       string `json:"start"`
+	End         string `json:"end"`
+	Timezone    string `json:"timezone,omitempty"`
 }
 
 type RecommendedResources struct {
@@ -511,9 +519,6 @@ func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
 }
 
 func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
-	if s.MinUnits == 0 {
-		return errors.New("minimum units must be greater than 0")
-	}
 	if s.MaxUnits <= s.MinUnits {
 		return errors.New("maximum units must be greater than minimum units")
 	}

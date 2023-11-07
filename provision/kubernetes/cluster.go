@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	kedav1alpha1clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/builder"
@@ -142,6 +143,10 @@ var BackendConfigClientForConfig = func(conf *rest.Config) (backendConfigClientS
 
 var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface, error) {
 	return metricsclientset.NewForConfig(conf)
+}
+
+var KEDAClientForConfig = func(conf *rest.Config) (*kedav1alpha1clientset.KedaV1alpha1Client, error) {
+	return kedav1alpha1clientset.NewForConfig(conf)
 }
 
 type ClusterClient struct {
