@@ -179,7 +179,7 @@ func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
 	})
 	// we don't want to fail the job creation if the image push fails, yet
 	if err == nil && newImageDst != "" {
-		// deploy the job using the new pushed image
+		// if job.Spec.Container.InternaRegistryImage is populated, provisioner will try to pull the image from there
 		job.Spec.Container.InternalRegistryImage = newImageDst
 		return nil
 	}

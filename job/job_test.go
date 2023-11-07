@@ -660,7 +660,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc: "alpine:latest",
+						OriginalImageSrc: "alpine:v1",
 						Command:          []string{"echo", "hello!"},
 					},
 				},
@@ -675,7 +675,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
+						OriginalImageSrc:      "alpine:v1",
 						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 						Command:               []string{"echo", "hello!"},
 					},
