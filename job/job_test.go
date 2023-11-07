@@ -92,7 +92,7 @@ func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 
 	c.Assert(myJob.Spec.Container.OriginalImageSrc, check.Equals, "alpine:latest")
-	c.Assert(myJob.InternalRegistryImage, check.Equals, "fake.registry.io/job-some-job:latest")
+	c.Assert(myJob.Spec.Container.InternalRegistryImage, check.Equals, "fake.registry.io/job-some-job:latest")
 }
 
 func (s *S) TestCreateManualJob(c *check.C) {
@@ -666,18 +666,18 @@ func (s *S) TestUpdateJob(c *check.C) {
 				},
 			},
 			expectedJob: jobTypes.Job{
-				Name:                  "some-job",
-				TeamOwner:             s.team.Name,
-				Plan:                  *s.defaultPlan,
-				Owner:                 s.user.Email,
-				Pool:                  s.Pool,
-				Teams:                 []string{s.team.Name},
-				InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc: "alpine:latest",
-						Command:          []string{"echo", "hello!"},
+						OriginalImageSrc:      "alpine:latest",
+						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						Command:               []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
