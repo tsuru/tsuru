@@ -660,7 +660,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc: "alpine:v1",
+						OriginalImageSrc: "alpine:latest",
 						Command:          []string{"echo", "hello!"},
 					},
 				},
