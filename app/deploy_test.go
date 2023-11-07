@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -1003,35 +1004,35 @@ func (s *S) TestRollbackWithVersionMarkedToRemoved(c *check.C) {
 func (s *S) TestDeployKind(c *check.C) {
 	var tests = []struct {
 		input    DeployOptions
-		expected DeployKind
+		expected provisionTypes.DeployKind
 	}{
 		{
 			DeployOptions{},
-			DeployKind(""), // unknown kind
+			provisionTypes.DeployKind(""), // unknown kind
 		},
 		{
 			DeployOptions{Rollback: true},
-			DeployRollback,
+			provisionTypes.DeployRollback,
 		},
 		{
 			DeployOptions{Image: "quay.io/tsuru/python"},
-			DeployImage,
+			provisionTypes.DeployImage,
 		},
 		{
 			DeployOptions{File: io.NopCloser(bytes.NewBuffer(nil))},
-			DeployUpload,
+			provisionTypes.DeployUpload,
 		},
 		{
 			DeployOptions{File: io.NopCloser(bytes.NewBuffer(nil)), Build: true},
-			DeployUploadBuild,
+			provisionTypes.DeployUploadBuild,
 		},
 		{
 			DeployOptions{Commit: "abcef48439"},
-			DeployGit,
+			provisionTypes.DeployGit,
 		},
 		{
 			DeployOptions{ArchiveURL: "https://example.com/my-app/v123.tgz"},
-			DeployArchiveURL,
+			provisionTypes.DeployArchiveURL,
 		},
 	}
 	for _, t := range tests {
@@ -1114,7 +1115,7 @@ func (s *S) TestRebuild(c *check.C) {
 	imgID, err := Deploy(context.TODO(), DeployOptions{
 		App:          &a,
 		OutputStream: writer,
-		Kind:         DeployRebuild,
+		Kind:         provisionTypes.DeployRebuild,
 		Event:        evt,
 	})
 	c.Assert(err, check.IsNil)

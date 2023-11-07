@@ -27,9 +27,11 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { check.TestingT(t) }
-
 var _ = check.Suite(&S{})
+
+func Test(t *testing.T) {
+	check.TestingT(t)
+}
 
 type S struct {
 	conn        *db.Storage
@@ -42,6 +44,7 @@ type S struct {
 	Pool        string
 	zeroLock    map[string]interface{}
 	mockService servicemock.MockService
+	builder     *builder.MockBuilder
 }
 
 func (s *S) createUserAndTeam(c *check.C) {
@@ -189,4 +192,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.Job, err = JobService()
 	c.Assert(err, check.IsNil)
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	apptypes "github.com/tsuru/tsuru/types/app"
 	imagetypes "github.com/tsuru/tsuru/types/app/image"
+	jobTypes "github.com/tsuru/tsuru/types/job"
 	provisiontypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -68,6 +69,60 @@ func (b *kubernetesBuilder) Build(ctx context.Context, app provision.App, evt *e
 	}
 
 	return b.buildContainerImage(ctx, app, evt, opts)
+}
+
+func (b *kubernetesBuilder) BuildJob(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
+	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return "", err
+	}
+	if job == nil {
+		return "", errors.New("job not provided")
+	}
+	w := opts.Output
+	if w == nil {
+		w = io.Discard
+	}
+	pool := job.GetPool()
+	c, err := servicemanager.Cluster.FindByPool(ctx, "kubernetes", pool)
+	if err != nil {
+		return "", err
+	}
+	cc, err := provisionk8s.NewClusterClient(c)
+	if err != nil {
+		return "", err
+	}
+	bs, conn, err := cc.BuildServiceClient(pool)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	if opts.ImageID == "" {
+		return "", errors.New("image id not provided")
+	}
+
+	baseImage := opts.ImageID
+	dstImage, err := servicemanager.Job.BaseImageName(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	dstImages := make([]string, 0, 2)
+	dstImages = append(dstImages, dstImage)
+
+	req := &buildpb.BuildRequest{
+		Kind: buildpb.BuildKind_BUILD_KIND_JOB_CREATE_WITH_CONTAINER_IMAGE,
+		Job: &buildpb.TsuruJob{
+			Name: job.GetName(),
+		},
+		SourceImage:       baseImage,
+		DestinationImages: dstImages,
+	}
+
+	_, err = callBuildService(ctx, bs, req, w)
+	if err != nil {
+		return "", err
+	}
+	return dstImage, nil
 }
 
 func (b *kubernetesBuilder) PlatformBuild(ctx context.Context, opts apptypes.PlatformOptions) ([]string, error) {
@@ -234,7 +289,7 @@ func (b *kubernetesBuilder) buildContainerImage(ctx context.Context, app provisi
 		return nil, err
 	}
 
-	// FIXME: we should only use this arg iff deploy kind is from image
+	// FIXME: we should only use this arg if deploy kind is from image
 	if opts.ImageID != "" {
 		baseImage = opts.ImageID
 	}

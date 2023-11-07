@@ -171,8 +171,8 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			},
 		},
 		Container: jobTypes.ContainerInfo{
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			OriginalImageSrc: "busybox:1.28",
+			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "* * * * *",
 		Manual:   false,
@@ -233,8 +233,8 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+				OriginalImageSrc: "busybox:1.28",
+				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "* * * * *",
 			Manual:      false,
@@ -263,8 +263,8 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		Pool:      "test1",
 		Plan:      "default-plan",
 		Container: jobTypes.ContainerInfo{
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			OriginalImageSrc: "busybox:1.28",
+			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		ActiveDeadlineSeconds: func() *int64 { i := int64(-1); return &i }(),
 		Manual:                true,
@@ -314,8 +314,8 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+				OriginalImageSrc: "busybox:1.28",
+				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "* * 31 2 *",
 			Manual:      true,
@@ -427,8 +427,8 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			},
 		},
 		Container: jobTypes.ContainerInfo{
-			Image:   "busybox:1.28",
-			Command: []string{"/bin/sh", "-c", "echo Hello!"},
+			OriginalImageSrc: "busybox:1.28",
+			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
 		Schedule: "*/15 * * * *",
 		ActiveDeadlineSeconds: func() *int64 {
@@ -476,8 +476,8 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Description: "some description",
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
-				Image:   "busybox:1.28",
-				Command: []string{"/bin/sh", "-c", "echo Hello!"},
+				OriginalImageSrc: "busybox:1.28",
+				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
 			Schedule:    "*/15 * * * *",
 			ServiceEnvs: []bindTypes.ServiceEnvVar{},
@@ -502,8 +502,8 @@ func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	ij := inputJob{
 		Name: "i-dont-exist",
 		Container: jobTypes.ContainerInfo{
-			Image:   "ubuntu:latest",
-			Command: []string{"echo", "hello world"},
+			OriginalImageSrc: "ubuntu:latest",
+			Command:          []string{"echo", "hello world"},
 		},
 		Schedule: "* * * */15 *",
 	}
@@ -650,8 +650,8 @@ func (s *S) TestTriggerCronjob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */15 * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "ubuntu:latest",
-				Command: []string{"echo", "hello world"},
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "hello world"},
 			},
 		},
 	}

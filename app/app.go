@@ -2735,5 +2735,5 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	if !ok {
 		return "", nil
 	}
-	return registryProv.RegistryForApp(app.ctx, app)
+	return registryProv.RegistryForObject(app.ctx, app)
 }

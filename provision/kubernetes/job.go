@@ -48,6 +48,11 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		})
 	}
 
+	imageURL := jSpec.Container.InternalRegistryImage
+	if imageURL == "" {
+		imageURL = jSpec.Container.OriginalImageSrc
+	}
+
 	return batchv1.JobSpec{
 		Parallelism:             jSpec.Parallelism,
 		BackoffLimit:            jSpec.BackoffLimit,
@@ -64,7 +69,7 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 				Containers: []apiv1.Container{
 					{
 						Name:      "job",
-						Image:     jSpec.Container.Image,
+						Image:     imageURL,
 						Command:   jSpec.Container.Command,
 						Resources: requirements,
 						Env:       envs,

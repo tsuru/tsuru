@@ -1760,8 +1760,8 @@ func (p *kubernetesProvisioner) DeployedVersions(ctx context.Context, a provisio
 	return versions, nil
 }
 
-func (p *kubernetesProvisioner) RegistryForApp(ctx context.Context, a provision.App) (imgTypes.ImageRegistry, error) {
-	client, err := clusterForPool(ctx, a.GetPool())
+func (p *kubernetesProvisioner) RegistryForObject(ctx context.Context, obj provTypes.ResourceGetter) (imgTypes.ImageRegistry, error) {
+	client, err := clusterForPool(ctx, obj.GetPool())
 	if err != nil {
 		return "", err
 	}
