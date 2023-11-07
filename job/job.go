@@ -30,7 +30,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	deployOpts "github.com/tsuru/tsuru/types/provision"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -111,20 +111,20 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 
 type DeployOptions struct {
 	Image string
-	Kind  deployOpts.DeployKind
+	Kind  provisionTypes.DeployKind
 }
 
-func (o *DeployOptions) GetKind() (kind deployOpts.DeployKind) {
+func (o *DeployOptions) GetKind() (kind provisionTypes.DeployKind) {
 	if o.Kind != "" {
 		return o.Kind
 	}
 
 	defer func() { o.Kind = kind }()
 	if o.Image != "" {
-		return deployOpts.DeployImage
+		return provisionTypes.DeployImage
 	}
 
-	return deployOpts.DeployKind("")
+	return provisionTypes.DeployKind("")
 }
 
 // builderDeploy uses deploy-agent to push the image to tsuru's registry and deploy the job using the new pushed image
