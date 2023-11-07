@@ -49,7 +49,6 @@ const (
 	labelNodeInternalPrefix = "internal-"
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
 	LabelNodePool           = PoolMetadataName
-	labelNodeIaaSID         = IaaSIDMetadataName
 
 	labelVolumeName = "volume-name"
 	labelVolumePool = "volume-pool"
@@ -195,10 +194,6 @@ func (s *LabelSet) NodeAddr() string {
 
 func (s *LabelSet) NodePool() string {
 	return s.getLabel(LabelNodePool)
-}
-
-func (s *LabelSet) NodeIaaSID() string {
-	return s.getLabel(labelNodeIaaSID)
 }
 
 func (s *LabelSet) AppVersion() int {
@@ -558,7 +553,6 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 }
 
 type NodeLabelsOpts struct {
-	IaaSID       string
 	Addr         string
 	Pool         string
 	Prefix       string
@@ -570,16 +564,13 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
 	}
-	for _, r := range []string{LabelNodePool, labelNodeAddr, labelNodeIaaSID} {
+	for _, r := range []string{LabelNodePool, labelNodeAddr} {
 		delete(labels, r)
 		delete(labels, opts.Prefix+r)
 	}
 	labels[LabelNodePool] = opts.Pool
 	if opts.Addr != "" {
 		labels[labelNodeAddr] = opts.Addr
-	}
-	if opts.IaaSID != "" {
-		labels[labelNodeIaaSID] = opts.IaaSID
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }

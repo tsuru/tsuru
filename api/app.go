@@ -540,6 +540,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		UpdatePlatform: imageReset,
 		RouterOpts:     ia.RouterOpts,
 		Metadata:       ia.Metadata,
+		Processes:      ia.Processes,
 	}
 	tags, _ := InputValues(r, "tag")
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))

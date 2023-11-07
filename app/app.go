@@ -567,6 +567,10 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
+	} else if !reflect.DeepEqual(app.Processes, oldApp.Processes) && args.ShouldRestart {
+		actions = append(actions, &restartApp)
+	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
+		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }

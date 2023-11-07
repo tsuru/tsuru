@@ -36,10 +36,8 @@ const (
 	defaultKubernetesProvisioner = "kubernetes"
 	DefaultHealthcheckScheme     = "http"
 
-	PoolMetadataName   = "pool"
-	IaaSIDMetadataName = "iaas-id"
-	IaaSMetadataName   = "iaas"
-	WebProcessName     = "web"
+	PoolMetadataName = "pool"
+	WebProcessName   = "web"
 )
 
 var (
