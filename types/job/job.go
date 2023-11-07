@@ -21,15 +21,14 @@ var _ provisionTypes.ResourceGetter = &Job{}
 // this struct carries some tsuru metadata as is the case with the app object
 // it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
-	Name             string            `json:"name"`
-	Teams            []string          `json:"teams"`
-	TeamOwner        string            `json:"teamOwner"`
-	Owner            string            `json:"owner"`
-	Plan             appTypes.Plan     `json:"plan"`
-	Metadata         appTypes.Metadata `json:"metadata"`
-	Pool             string            `json:"pool"`
-	Description      string            `json:"description"`
-	OriginalImageURL string            `json:"originalImageURL"`
+	Name        string            `json:"name"`
+	Teams       []string          `json:"teams"`
+	TeamOwner   string            `json:"teamOwner"`
+	Owner       string            `json:"owner"`
+	Plan        appTypes.Plan     `json:"plan"`
+	Metadata    appTypes.Metadata `json:"metadata"`
+	Pool        string            `json:"pool"`
+	Description string            `json:"description"`
 
 	Spec JobSpec `json:"spec"`
 }
@@ -64,8 +63,9 @@ func (job *Job) GetPool() string {
 }
 
 type ContainerInfo struct {
-	Image   string   `json:"image"`
-	Command []string `json:"command"`
+	InternalRegistryImage string   `json:"internalRegistryImage"`
+	OriginalImageSrc      string   `json:"OriginalImageSource"`
+	Command               []string `json:"command"`
 }
 
 type JobSpec struct {

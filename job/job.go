@@ -175,16 +175,15 @@ func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string
 func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
 	// use deploy-agent to push the image to tsuru's registry
 	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
-		ImageID: job.Spec.Container.Image,
+		ImageID: job.Spec.Container.OriginalImageSrc,
 	})
 	// we don't want to fail the job creation if the image push fails, yet
 	if err == nil && newImageDst != "" {
 		// deploy the job using the new pushed image
-		job.OriginalImageURL = job.Spec.Container.Image
-		job.Spec.Container.Image = newImageDst
+		job.Spec.Container.InternalRegistryImage = newImageDst
 		return nil
 	}
-	return errors.Wrap(err, fmt.Sprintf("deploy-agent: failed to push image %s", job.Spec.Container.Image))
+	return errors.Wrap(err, fmt.Sprintf("deploy-agent: failed to push image %s", job.Spec.Container.OriginalImageSrc))
 }
 
 // CreateJob creates a new job or cronjob.
@@ -269,7 +268,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 		return err
 	}
 
-	if oldJob.Spec.Container.Image != newJob.Spec.Container.Image {
+	if oldJob.Spec.Container.OriginalImageSrc != newJob.Spec.Container.OriginalImageSrc {
 		err := buildWithDeployAgent(ctx, newJob)
 		// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
 		if err != nil {

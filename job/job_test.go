@@ -53,8 +53,8 @@ func (s *S) TestCreateCronjob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -79,8 +79,8 @@ func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -91,8 +91,8 @@ func (s *S) TestCreateCronjobWithK8sBuilder(c *check.C) {
 	c.Assert(newCron.Name, check.DeepEquals, myJob.Name)
 	c.Assert(s.provisioner.ProvisionedJob(newCron.Name), check.Equals, true)
 
-	c.Assert(myJob.Spec.Container.Image, check.Equals, "fake.registry.io/job-some-job:latest")
-	c.Assert(myJob.OriginalImageURL, check.Equals, "alpine:latest")
+	c.Assert(myJob.Spec.Container.OriginalImageSrc, check.Equals, "alpine:latest")
+	c.Assert(myJob.InternalRegistryImage, check.Equals, "fake.registry.io/job-some-job:latest")
 }
 
 func (s *S) TestCreateManualJob(c *check.C) {
@@ -104,8 +104,8 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Manual: true,
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -133,8 +133,8 @@ func (s *S) TestDeleteJobFromProvisioner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -157,8 +157,8 @@ func (s *S) TestDeleteJobFromDB(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -219,8 +219,8 @@ func (s *S) TestJobUnits(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -250,8 +250,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
 				},
@@ -261,8 +261,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -276,8 +276,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
 					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
@@ -295,8 +295,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -306,8 +306,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -321,8 +321,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -340,8 +340,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -362,8 +362,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Schedule: "* * 31 2 *",
 					Manual:   true,
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -382,8 +382,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Schedule: "* * 31 2 *",
 					Manual:   true,
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -404,8 +404,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Schedule: "*/5 * * * *",
 					Manual:   false,
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -423,8 +423,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}}},
@@ -443,8 +443,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -462,8 +462,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}},
@@ -482,8 +482,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
@@ -501,8 +501,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -520,8 +520,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -539,8 +539,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -560,8 +560,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -581,8 +581,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -602,8 +602,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -623,8 +623,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -633,8 +633,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "120 30 * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -650,8 +650,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -660,24 +660,24 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "alpine:v1",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:v1",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
 			expectedJob: jobTypes.Job{
-				Name:             "some-job",
-				TeamOwner:        s.team.Name,
-				Plan:             *s.defaultPlan,
-				Owner:            s.user.Email,
-				Pool:             s.Pool,
-				Teams:            []string{s.team.Name},
-				OriginalImageURL: "alpine:v1",
+				Name:                  "some-job",
+				TeamOwner:             s.team.Name,
+				Plan:                  *s.defaultPlan,
+				Owner:                 s.user.Email,
+				Pool:                  s.Pool,
+				Teams:                 []string{s.team.Name},
+				InternalRegistryImage: "fake.registry.io/job-some-job:latest",
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						Image:   "fake.registry.io/job-some-job:latest",
-						Command: []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
@@ -745,8 +745,8 @@ func (s *S) TestList(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -758,8 +758,8 @@ func (s *S) TestList(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* */2 * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello world!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello world!"},
 			},
 		},
 	}
@@ -931,8 +931,8 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -944,8 +944,8 @@ func (s *S) TestAddServiceEnvToJobs(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -986,8 +986,8 @@ func (s *S) TestAddMultipleServiceInstancesEnvsToJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 		},
 	}
@@ -1035,8 +1035,8 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1053,8 +1053,8 @@ func (s *S) TestRemoveServiceInstanceEnvsFromJobs(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1097,8 +1097,8 @@ func (s *S) TestRemoveServiceInstanceEnvsNotFound(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1135,8 +1135,8 @@ func (s *S) TestRemoveServiceEnvsNotFound(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1173,8 +1173,8 @@ func (s *S) TestRemoveInstanceMultipleServicesEnvs(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "alpine:latest",
-				Command: []string{"echo", "hello!"},
+				OriginalImageSrc: "alpine:latest",
+				Command:          []string{"echo", "hello!"},
 			},
 			ServiceEnvs: []bindTypes.ServiceEnvVar{
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance1", ServiceName: "myservice"},

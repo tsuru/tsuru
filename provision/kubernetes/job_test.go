@@ -72,8 +72,8 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(60 * 60 * 24); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
 						},
 					},
 				}
@@ -195,8 +195,8 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
 						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
 						},
 					},
 				}
@@ -278,8 +278,8 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(5 * 60); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(7); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
 						},
 					},
 				}
@@ -314,8 +314,8 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						ActiveDeadlineSeconds: func() *int64 { r := int64(0); return &r }(),
 						BackoffLimit:          func() *int32 { r := int32(6); return &r }(),
 						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
 						},
 					},
 				}
@@ -421,8 +421,8 @@ func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Container: jobTypes.ContainerInfo{
-				Image:   "ubuntu:latest",
-				Command: []string{"echo", "hello world"},
+				OriginalImageSrc: "ubuntu:latest",
+				Command:          []string{"echo", "hello world"},
 			},
 		},
 	}
@@ -478,8 +478,8 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 					Spec: jobTypes.JobSpec{
 						Schedule: "* * * * *",
 						Container: jobTypes.ContainerInfo{
-							Image:   "ubuntu:latest",
-							Command: []string{"echo", "hello world"},
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
 						},
 						Envs: []bindTypes.EnvVar{
 							{

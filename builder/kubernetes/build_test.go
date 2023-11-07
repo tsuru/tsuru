@@ -446,8 +446,8 @@ func (s *S) TestBuildJob_BuildWithContainerImage(c *check.C) {
 		Name: "myjob",
 		Spec: job.JobSpec{
 			Container: job.ContainerInfo{
-				Image:   "my-job:v1",
-				Command: []string{"echo", "hello world"},
+				OriginalImageSrc: "my-job:v1",
+				Command:          []string{"echo", "hello world"},
 			},
 		},
 	}
