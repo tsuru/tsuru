@@ -85,12 +85,15 @@ func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
 	if err == mgo.ErrNotFound {
 		return jobTypes.ErrJobNotFound
 	}
+	if err != nil {
+		return err
+	}
 	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
 	var user *auth.User
 	if user, err = auth.GetUserByEmail(job.Owner); err == nil {
 		servicemanager.UserQuota.Inc(ctx, user, -1)
 	}
-	return err
+	return nil
 }
 
 func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
