@@ -216,7 +216,8 @@ func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job)
 	if err != nil {
 		return nil, err
 	}
-	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{tsuruLabelJobName: job.Name}}
+	jobLabels := provision.JobLabels(ctx, job).ToLabels()
+	labelSelector := metav1.LabelSelector{MatchLabels: jobLabels}
 	listOptions := metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
@@ -258,16 +259,13 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 	var units []provision.Unit
 	for _, k8sJob := range k8sJobs {
 		var status provision.Status
-		var restarts *int32
+		var restarts int32
 		pods, err := p.getPodsForJob(ctx, client, &k8sJob)
 		if err != nil {
 			return nil, err
 		}
 		for _, pod := range pods {
-			restarts = containersRestarts(pod.Status.ContainerStatuses)
-			if *restarts > 0 {
-				break
-			}
+			restarts += *containersRestarts(pod.Status.ContainerStatuses)
 		}
 		switch {
 		case k8sJob.Status.Failed > 0:
@@ -283,7 +281,7 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 			ID:        k8sJob.Name,
 			Name:      k8sJob.Name,
 			Status:    status,
-			Restarts:  restarts,
+			Restarts:  &restarts,
 			CreatedAt: &createdAt,
 		})
 	}
