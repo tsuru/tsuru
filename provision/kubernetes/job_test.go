@@ -982,7 +982,7 @@ func (s *S) TestKillJobUnit(c *check.C) {
 	waitCron()
 	c.Assert(err, check.IsNil)
 	job := &batchv1.Job{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob-unit1",
 			Namespace: "default",
 			Labels: map[string]string{
@@ -1024,7 +1024,7 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 	waitCron()
 	c.Assert(err, check.IsNil)
 	job := &batchv1.Job{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "myjob-unit1",
 			Namespace: "default",
 			Labels: map[string]string{
