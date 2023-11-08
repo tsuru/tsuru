@@ -17,7 +17,6 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,20 +32,25 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		return batchv1.JobSpec{}, err
 	}
 
-	envs := []v1.EnvVar{}
+	envs := []apiv1.EnvVar{}
 
 	for _, env := range jSpec.Envs {
-		envs = append(envs, v1.EnvVar{
+		envs = append(envs, apiv1.EnvVar{
 			Name:  env.Name,
 			Value: strings.ReplaceAll(env.Value, "$", "$$"),
 		})
 	}
 
 	for _, env := range jSpec.ServiceEnvs {
-		envs = append(envs, v1.EnvVar{
+		envs = append(envs, apiv1.EnvVar{
 			Name:  env.Name,
 			Value: strings.ReplaceAll(env.Value, "$", "$$"),
 		})
+	}
+
+	imageURL := jSpec.Container.InternalRegistryImage
+	if imageURL == "" {
+		imageURL = jSpec.Container.OriginalImageSrc
 	}
 
 	return batchv1.JobSpec{
@@ -55,17 +59,17 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 		Completions:             jSpec.Completions,
 		ActiveDeadlineSeconds:   buildActiveDeadline(jSpec.ActiveDeadlineSeconds),
 		TTLSecondsAfterFinished: func() *int32 { ttlSecondsAfterFinished := int32(86400); return &ttlSecondsAfterFinished }(), // hardcoded to a day, since we keep logs stored elsewhere on the cloud
-		Template: v1.PodTemplateSpec{
+		Template: apiv1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      labels,
 				Annotations: annotations,
 			},
-			Spec: v1.PodSpec{
+			Spec: apiv1.PodSpec{
 				RestartPolicy: "OnFailure",
-				Containers: []v1.Container{
+				Containers: []apiv1.Container{
 					{
 						Name:      "job",
-						Image:     jSpec.Container.Image,
+						Image:     imageURL,
 						Command:   jSpec.Container.Command,
 						Resources: requirements,
 						Env:       envs,

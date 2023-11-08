@@ -228,6 +228,7 @@ type RunArgs struct {
 // It contains only relevant information for provisioning.
 type App interface {
 	Named
+	provTypes.ResourceGetter
 
 	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.
@@ -241,14 +242,9 @@ type App interface {
 
 	Envs() map[string]bindTypes.EnvVar
 
-	GetMemory() int64
-	GetMilliCPU() int
-
 	GetUpdatePlatform() bool
 
 	GetRouters() []appTypes.AppRouter
-
-	GetPool() string
 
 	GetTeamOwner() string
 	GetTeamsName() []string
@@ -258,12 +254,6 @@ type App interface {
 	GetMetadata() appTypes.Metadata
 
 	GetRegistry() (imgTypes.ImageRegistry, error)
-}
-
-type ResourceGetter interface {
-	GetMemory() int64
-	GetMilliCPU() int
-	GetPool() string
 }
 
 type InspectData struct {
@@ -557,7 +547,7 @@ type NodeCheckResult struct {
 }
 
 type MultiRegistryProvisioner interface {
-	RegistryForApp(ctx context.Context, a App) (imgTypes.ImageRegistry, error)
+	RegistryForObject(ctx context.Context, obj provTypes.ResourceGetter) (imgTypes.ImageRegistry, error)
 }
 
 type provisionerFactory func() (Provisioner, error)

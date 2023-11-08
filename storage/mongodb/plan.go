@@ -20,10 +20,11 @@ var _ app.PlanStorage = &PlanStorage{}
 
 type PlanStorage struct{}
 
-type plan struct {
+type planOnMongoDB struct {
 	Name     string `bson:"_id"`
 	Memory   int64
 	CPUMilli int
+	CPUBurst app.CPUBurst
 	Default  bool
 	Override app.PlanOverride `bson:"-"`
 }
@@ -54,7 +55,7 @@ func (s *PlanStorage) Insert(ctx context.Context, p app.Plan) error {
 	span := newMongoDBSpan(ctx, mongoSpanInsert, plansCollectionName)
 	defer span.Finish()
 
-	err = plansCollection(conn).Insert(plan(p))
+	err = plansCollection(conn).Insert(planOnMongoDB(p))
 	if err != nil && mgo.IsDup(err) {
 		return app.ErrPlanAlreadyExists
 	}
@@ -91,7 +92,7 @@ func (s *PlanStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Plan
 		return nil, err
 	}
 	defer conn.Close()
-	var plans []plan
+	var plans []planOnMongoDB
 	err = plansCollection(conn).Find(query).Sort("_id").All(&plans)
 	if err != nil {
 		span.SetError(err)
@@ -109,7 +110,7 @@ func (s *PlanStorage) FindByName(ctx context.Context, name string) (*app.Plan, e
 	span.SetMongoID(name)
 	defer span.Finish()
 
-	var p plan
+	var p planOnMongoDB
 	conn, err := db.Conn()
 	if err != nil {
 		span.SetError(err)

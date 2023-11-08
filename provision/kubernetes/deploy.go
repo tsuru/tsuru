@@ -561,7 +561,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu overcommit factor")
 	}
-	cpuBurst, err := client.CPUBurstFactor(a.GetPool())
+	poolCPUBurst, err := client.CPUBurstFactor(a.GetPool())
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "misconfigured cluster cpu burst factor")
 	}
@@ -572,7 +572,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	resourceRequirements, err := resourceRequirements(a, client, requirementsFactors{
 		overCommit:       overCommit,
 		cpuOverCommit:    cpuOverCommit,
-		cpuBurst:         cpuBurst,
+		poolCPUBurst:     poolCPUBurst,
 		memoryOverCommit: memoryOverCommit,
 	})
 	if err != nil {

@@ -6,10 +6,13 @@ package kubernetes
 
 import (
 	"context"
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,12 +25,18 @@ import (
 	jobsInformer "k8s.io/client-go/informers/batch/v1"
 	v1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/informers/internalinterfaces"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
 	informerSyncTimeout = 10 * time.Second
+
+	leaderElectionName = "tsuru-controller"
 )
 
 type podListener interface {
@@ -53,6 +62,7 @@ type clusterController struct {
 	podListeners            map[string]podListener
 	podListenersMu          sync.RWMutex
 	wg                      sync.WaitGroup
+	leader                  int32
 }
 
 func initAllControllers(p *kubernetesProvisioner) error {
@@ -86,12 +96,10 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	if enableJobEvents, _ := c.cluster.EnableJobEventCreation(); enableJobEvents {
-		err = c.startJobInformer()
-		if err != nil {
-			c.stop(ctx)
-			return nil, err
-		}
+	err = c.startJobInformer()
+	if err != nil {
+		// log but don't stop the controller
+		log.Errorf("error while starting job informer: %v", err)
 	}
 	p.clusterControllers[cluster.Name] = c
 	return c, nil
@@ -123,13 +131,24 @@ func (c *clusterController) stop(ctx context.Context) {
 	c.wg.Wait()
 }
 
+func (c *clusterController) isLeader() bool {
+	return atomic.LoadInt32(&c.leader) == 1
+}
+
 func (c *clusterController) startJobInformer() error {
+	if enable, _ := c.cluster.EnableJobEventCreation(); !enable {
+		return errors.New("job event creation is not enabled")
+	}
 	eventsInformer, err := c.getEventInformerWait(false)
 	if err != nil {
 		return err
 	}
 	eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
+			// if not leader, do nothing
+			if !c.isLeader() {
+				return
+			}
 			evt, ok := obj.(*apiv1.Event)
 			if !ok {
 				return
@@ -394,12 +413,71 @@ func (c *clusterController) waitForSync(informer cache.SharedInformer) error {
 	return errors.Wrap(ctx.Err(), "error waiting for informer sync")
 }
 
+func (c *clusterController) createElector(hostID string) (*leaderelection.LeaderElector, error) {
+	broadcaster := record.NewBroadcaster()
+	recorder := broadcaster.NewRecorder(scheme.Scheme, apiv1.EventSource{
+		Component: leaderElectionName,
+	})
+	lock, err := resourcelock.New(
+		resourcelock.EndpointsResourceLock,
+		c.cluster.Namespace(),
+		leaderElectionName,
+		c.cluster.CoreV1(),
+		c.cluster.CoordinationV1(),
+		resourcelock.ResourceLockConfig{
+			Identity:      hostID,
+			EventRecorder: recorder,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	le, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 10 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				atomic.StoreInt32(&c.leader, 1)
+			},
+			OnStoppedLeading: func() {
+				atomic.StoreInt32(&c.leader, 0)
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return le, nil
+}
+
 func (c *clusterController) initLeaderElection(ctx context.Context) error {
-	err := ensureNamespace(ctx, c.cluster, c.cluster.Namespace())
+	id, err := os.Hostname()
 	if err != nil {
 		return err
 	}
-
+	err = ensureNamespace(ctx, c.cluster, c.cluster.Namespace())
+	if err != nil {
+		return err
+	}
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		for {
+			le, err := c.createElector(id)
+			if err != nil {
+				log.Errorf("unable to create leader elector: %v", err)
+				continue
+			}
+			le.Run(ctx)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(500 * time.Millisecond):
+			}
+		}
+	}()
 	return nil
 }
 

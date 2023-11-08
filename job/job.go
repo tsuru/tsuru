@@ -15,17 +15,22 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
+	imgTypes "github.com/tsuru/tsuru/types/app/image"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -85,12 +90,15 @@ func (*jobService) RemoveJob(ctx context.Context, job *jobTypes.Job) error {
 	if err == mgo.ErrNotFound {
 		return jobTypes.ErrJobNotFound
 	}
+	if err != nil {
+		return err
+	}
 	servicemanager.TeamQuota.Inc(ctx, &authTypes.Team{Name: job.TeamOwner}, -1)
 	var user *auth.User
 	if user, err = auth.GetUserByEmail(job.Owner); err == nil {
 		servicemanager.UserQuota.Inc(ctx, user, -1)
 	}
-	return err
+	return nil
 }
 
 func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
@@ -99,6 +107,83 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 	return prov.DestroyJob(ctx, job)
+}
+
+type DeployOptions struct {
+	Image string
+	Kind  provisionTypes.DeployKind
+}
+
+func (o *DeployOptions) GetKind() (kind provisionTypes.DeployKind) {
+	if o.Kind != "" {
+		return o.Kind
+	}
+
+	defer func() { o.Kind = kind }()
+	if o.Image != "" {
+		return provisionTypes.DeployImage
+	}
+
+	return provisionTypes.DeployKind("")
+}
+
+// builderDeploy uses deploy-agent to push the image to tsuru's registry and deploy the job using the new pushed image
+func builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
+	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
+		return "", err
+	}
+
+	if job == nil {
+		return "", errors.New("job not provided")
+	}
+
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	builder, err := builder.GetForProvisioner(prov.(provision.Provisioner))
+	if err != nil {
+		return "", err
+	}
+	return builder.BuildJob(ctx, job, opts)
+}
+
+func getRegistry(ctx context.Context, job *jobTypes.Job) (imgTypes.ImageRegistry, error) {
+	prov, err := getProvisioner(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	registryProv, ok := prov.(provision.MultiRegistryProvisioner)
+	if !ok {
+		return "", nil
+	}
+	return registryProv.RegistryForObject(ctx, job)
+}
+
+func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string, error) {
+	reg, err := getRegistry(ctx, job)
+	if err != nil {
+		return "", err
+	}
+	newImage, err := image.JobBasicImageName(reg, job.Name)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:latest", newImage), nil
+}
+
+func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
+	// use deploy-agent to push the image to tsuru's registry
+	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
+		ImageID: job.Spec.Container.OriginalImageSrc,
+	})
+	// we don't want to fail the job creation if the image push fails, yet
+	if err == nil && newImageDst != "" {
+		// if job.Spec.Container.InternaRegistryImage is populated, provisioner will try to pull the image from there
+		job.Spec.Container.InternalRegistryImage = newImageDst
+		return nil
+	}
+	return errors.Wrap(err, fmt.Sprintf("deploy-agent: failed to push image %s", job.Spec.Container.OriginalImageSrc))
 }
 
 // CreateJob creates a new job or cronjob.
@@ -126,6 +211,12 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	}
 	if err := validateJob(ctx, job); err != nil {
 		return err
+	}
+
+	err := buildWithDeployAgent(ctx, job)
+	// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
+	if err != nil {
+		log.Error(err)
 	}
 
 	actions := []*action.Action{
@@ -176,6 +267,15 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := validateJob(ctx, newJob); err != nil {
 		return err
 	}
+
+	if oldJob.Spec.Container.OriginalImageSrc != newJob.Spec.Container.OriginalImageSrc {
+		err := buildWithDeployAgent(ctx, newJob)
+		// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
+		if err != nil {
+			log.Errorf(err.Error())
+		}
+	}
+
 	actions := []*action.Action{
 		&jobUpdateDB,
 		&updateJobProv,
