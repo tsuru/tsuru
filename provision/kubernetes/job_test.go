@@ -976,7 +976,7 @@ func (s *S) TestKillJobUnit(c *check.C) {
 			Name: "myjob",
 			Pool: "pool1",
 		}
-		err := s.p.DestroyJob(context.TODO(), &j)
+		err = s.p.DestroyJob(context.TODO(), &j)
 		c.Assert(err, check.IsNil)
 	}()
 	waitCron()
@@ -1018,7 +1018,7 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 			Name: "myjob",
 			Pool: "pool1",
 		}
-		err := s.p.DestroyJob(context.TODO(), &j)
+		err = s.p.DestroyJob(context.TODO(), &j)
 		c.Assert(err, check.IsNil)
 	}()
 	waitCron()
