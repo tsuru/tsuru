@@ -512,10 +512,10 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 				waitCron()
 			},
 			testScenario: func(c *check.C, t *time.Time) {
-				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", v1.GetOptions{})
+				cronParent, err := s.client.BatchV1().CronJobs("default").Get(context.TODO(), "myjob", metav1.GetOptions{})
 				c.Assert(err, check.IsNil)
 				expected := &batchv1.Job{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      fmt.Sprintf("myjob-manual-job-%d", t.Unix()/60),
 						Namespace: "default",
 						Labels: map[string]string{
