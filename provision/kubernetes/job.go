@@ -163,22 +163,19 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool stri
 			APIVersion: "batch/v1",
 		},
 	}
-	cronChild.Name = fmt.Sprintf("%s-manual-trigger", cron.Name)
+	cronChild.Name = getManualJobName(cron.Name)
 	if cronChild.Annotations == nil {
 		cronChild.Annotations = map[string]string{"cronjob.kubernetes.io/instantiate": "manual"}
 	} else {
 		cronChild.Annotations["cronjob.kubernetes.io/instantiate"] = "manual"
 	}
-	_, err = client.BatchV1().Jobs(cron.Namespace).Get(ctx, cronChild.Name, metav1.GetOptions{})
-	if err == nil {
-		if err = client.BatchV1().Jobs(cron.Namespace).Delete(ctx, cronChild.Name, metav1.DeleteOptions{}); err != nil {
-			return err
-		}
-	} else if !k8sErrors.IsNotFound(err) {
-		return err
-	}
 	_, err = client.BatchV1().Jobs(cron.Namespace).Create(ctx, &cronChild, metav1.CreateOptions{})
 	return err
+}
+
+func getManualJobName(job string) string {
+	scheduledTime := time.Now()
+	return fmt.Sprintf("%s-manual-job-%d", job, scheduledTime.Unix()/60)
 }
 
 func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job) error {
@@ -219,11 +216,16 @@ func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job)
 	if err != nil {
 		return nil, err
 	}
-	pods, err := p.podsForJobs(ctx, client, []*jobTypes.Job{job})
+	jobLabels := provision.JobLabels(ctx, job).ToLabels()
+	labelSelector := metav1.LabelSelector{MatchLabels: jobLabels}
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+	}
+	k8sJobs, err := client.BatchV1().Jobs(client.PoolNamespace(job.Pool)).List(ctx, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return p.podsToJobUnits(ctx, client, pods, job)
+	return p.jobsToJobUnits(ctx, client, k8sJobs.Items, job)
 }
 
 func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
@@ -238,44 +240,48 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 	return client.BatchV1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 }
 
-func (p *kubernetesProvisioner) podsForJobs(ctx context.Context, client *ClusterClient, jobs []*jobTypes.Job) ([]apiv1.Pod, error) {
-	podList := []apiv1.Pod{}
-	for _, j := range jobs {
-		labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{tsuruLabelJobName: j.Name}}
-		listOptions := metav1.ListOptions{
-			LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
-		}
-		namespace := client.PoolNamespace(j.Pool)
-
-		pods, err := client.CoreV1().Pods(namespace).List(ctx, listOptions)
-		if err != nil {
-			return podList, err
-		}
-		podList = append(podList, pods.Items...)
+func (p *kubernetesProvisioner) getPodsForJob(ctx context.Context, client *ClusterClient, job *batchv1.Job) ([]apiv1.Pod, error) {
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"job-name": job.Name}}
+	listOptions := metav1.ListOptions{
+		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
-	return podList, nil
+	pods, err := client.CoreV1().Pods(job.Namespace).List(ctx, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
 }
 
-func (p *kubernetesProvisioner) podsToJobUnits(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, job *jobTypes.Job) ([]provision.Unit, error) {
-	if len(pods) == 0 {
+func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *ClusterClient, k8sJobs []batchv1.Job, job *jobTypes.Job) ([]provision.Unit, error) {
+	if len(k8sJobs) == 0 {
 		return nil, nil
 	}
 	var units []provision.Unit
-	for _, pod := range pods {
+	for _, k8sJob := range k8sJobs {
 		var status provision.Status
-		if pod.Status.Phase == apiv1.PodRunning {
-			status, _ = extractStatusAndReasonFromContainerStatuses(pod.Status.ContainerStatuses)
-		} else {
-			status = stateMap[pod.Status.Phase]
+		var restarts int32
+		pods, err := p.getPodsForJob(ctx, client, &k8sJob)
+		if err != nil {
+			return nil, err
+		}
+		for _, pod := range pods {
+			restarts += *containersRestarts(pod.Status.ContainerStatuses)
+		}
+		switch {
+		case k8sJob.Status.Failed > 0:
+			status = provision.StatusError
+		case k8sJob.Status.Succeeded > 0:
+			status = provision.StatusSucceeded
+		default:
+			status = provision.StatusStarted
 		}
 
-		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
+		createdAt := k8sJob.CreationTimestamp.Time.In(time.UTC)
 		units = append(units, provision.Unit{
-			ID:        pod.Name,
-			Name:      pod.Name,
-			IP:        pod.Status.HostIP,
+			ID:        k8sJob.Name,
+			Name:      k8sJob.Name,
 			Status:    status,
-			Restarts:  containersRestarts(pod.Status.ContainerStatuses),
+			Restarts:  &restarts,
 			CreatedAt: &createdAt,
 		})
 	}
