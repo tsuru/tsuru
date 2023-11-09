@@ -958,3 +958,87 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 		cleanup()
 	}
 }
+
+func (s *S) TestKillJobUnit(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	_, err := s.p.CreateJob(context.TODO(), &cj)
+	defer func() {
+		j := jobTypes.Job{
+			Name: "myjob",
+			Pool: "pool1",
+		}
+		err = s.p.DestroyJob(context.TODO(), &j)
+		c.Assert(err, check.IsNil)
+	}()
+	waitCron()
+	c.Assert(err, check.IsNil)
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "myjob",
+			},
+		},
+	}
+	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(k8sJob, check.NotNil)
+	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
+	c.Assert(err, check.NotNil)
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
+func (s *S) TestKillJobUnitUnknow(c *check.C) {
+	waitCron := s.mock.CronJobReactions(c)
+	defer waitCron()
+	cj := jobTypes.Job{
+		Name:      "myjob",
+		TeamOwner: s.team.Name,
+		Pool:      "pool1",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	_, err := s.p.CreateJob(context.TODO(), &cj)
+	defer func() {
+		j := jobTypes.Job{
+			Name: "myjob",
+			Pool: "pool1",
+		}
+		err = s.p.DestroyJob(context.TODO(), &j)
+		c.Assert(err, check.IsNil)
+	}()
+	waitCron()
+	c.Assert(err, check.IsNil)
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myjob-unit1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"tsuru.io/job-name": "myotherjob",
+			},
+		},
+	}
+	k8sJob, err := s.client.BatchV1().Jobs("default").Create(context.TODO(), job, metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+	c.Assert(k8sJob, check.NotNil)
+	c.Assert(k8sJob.Name, check.Equals, "myjob-unit1")
+	err = s.p.KillJobUnit(context.TODO(), &jobTypes.Job{Name: "myjob", Pool: "pool1"}, "myjob-unit1", false)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `unit "myjob-unit1" not found`)
+	_, err = s.client.BatchV1().Jobs("default").Get(context.TODO(), "myjob-unit1", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+}

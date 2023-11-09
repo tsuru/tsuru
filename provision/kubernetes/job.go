@@ -240,6 +240,28 @@ func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Jo
 	return client.BatchV1().CronJobs(namespace).Delete(ctx, job.Name, metav1.DeleteOptions{})
 }
 
+func (p *kubernetesProvisioner) KillJobUnit(ctx context.Context, job *jobTypes.Job, unit string, force bool) error {
+	client, err := clusterForPool(ctx, job.Pool)
+	if err != nil {
+		return err
+	}
+	namespace := client.PoolNamespace(job.Pool)
+	k8sJob, err := client.BatchV1().Jobs(namespace).Get(ctx, unit, metav1.GetOptions{})
+	if err != nil {
+		if k8sErrors.IsNotFound(err) {
+			return &provision.UnitNotFoundError{ID: unit}
+		}
+		return errors.WithStack(err)
+	}
+	if jobName, ok := k8sJob.Labels[tsuruLabelJobName]; !ok || jobName != job.Name {
+		return &provision.UnitNotFoundError{ID: unit}
+	}
+	if force {
+		return client.BatchV1().Jobs(namespace).Delete(ctx, unit, metav1.DeleteOptions{GracePeriodSeconds: func() *int64 { i := int64(0); return &i }()})
+	}
+	return client.BatchV1().Jobs(namespace).Delete(ctx, unit, metav1.DeleteOptions{})
+}
+
 func (p *kubernetesProvisioner) getPodsForJob(ctx context.Context, client *ClusterClient, job *batchv1.Job) ([]apiv1.Pod, error) {
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"job-name": job.Name}}
 	listOptions := metav1.ListOptions{

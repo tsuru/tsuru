@@ -232,4 +232,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"job.read.logs",
 ).add(
 	"job.trigger",
+).add(
+	"job.unit.kill",
 )

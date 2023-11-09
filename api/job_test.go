@@ -491,6 +491,72 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 	c.Assert(*gotJob, check.DeepEquals, expectedJob)
 }
 
+func (s *S) TestKillJob(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := jobTypes.Job{
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "job1",
+		Spec: jobTypes.JobSpec{
+			Schedule:              "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
+	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
+	var buffer bytes.Buffer
+	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit2", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestKillJobUnitNotFound(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := jobTypes.Job{
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "job1",
+		Spec: jobTypes.JobSpec{
+			Schedule:              "* * * * *",
+			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
+	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
+	var buffer bytes.Buffer
+	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit1", &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
 func (s *S) TestUpdateCronjobNotFound(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
