@@ -38,6 +38,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	tsuruTest "github.com/tsuru/tsuru/test"
 	"github.com/tsuru/tsuru/tsurutest"
+	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -4063,6 +4064,93 @@ func (s *S) TestGetMemory(c *check.C) {
 	c.Assert(a.GetMemory(), check.Equals, a.Plan.Memory)
 }
 
+func (s *S) TestGetMetadata(c *check.C) {
+	a := App{}
+	c.Assert(a.GetMetadata(""), check.DeepEquals, appTypes.Metadata{})
+
+	a = App{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
+				{
+					Name:  "abc",
+					Value: "123",
+				},
+			},
+			Annotations: []appTypes.MetadataItem{
+				{
+					Name:  "tsuru",
+					Value: "io",
+				},
+			},
+		},
+	}
+	c.Assert(a.GetMetadata(""), check.DeepEquals, appTypes.Metadata{
+		Labels: []appTypes.MetadataItem{
+			{
+				Name:  "abc",
+				Value: "123",
+			},
+		},
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  "tsuru",
+				Value: "io",
+			},
+		},
+	})
+
+	a = App{
+		Processes: []appTypes.Process{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "abc",
+							Value: "321",
+						},
+					},
+					Annotations: []appTypes.MetadataItem{
+						{
+							Name:  "tsuru",
+							Value: "PAAS",
+						},
+					},
+				},
+			},
+		},
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
+				{
+					Name:  "abc",
+					Value: "123",
+				},
+			},
+			Annotations: []appTypes.MetadataItem{
+				{
+					Name:  "tsuru",
+					Value: "io",
+				},
+			},
+		},
+	}
+
+	c.Assert(a.GetMetadata("web"), check.DeepEquals, appTypes.Metadata{
+		Labels: []appTypes.MetadataItem{
+			{
+				Name:  "abc",
+				Value: "321",
+			},
+		},
+		Annotations: []appTypes.MetadataItem{
+			{
+				Name:  "tsuru",
+				Value: "PAAS",
+			},
+		},
+	})
+}
+
 func (s *S) TestAppUnits(c *check.C) {
 	a := App{Name: "anycolor", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
@@ -4244,6 +4332,248 @@ func (s *S) TestCreateAppValidateTeamOwner(c *check.C) {
 	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestAppValidateProcesses(c *check.C) {
+	a := App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{Name: "web"},
+		},
+	}
+	err := a.validateProcesses()
+	c.Assert(err, check.IsNil)
+
+	a = App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{Name: "web"},
+			{Name: "web"},
+		},
+	}
+	err = a.validateProcesses()
+	c.Assert(err.Error(), check.Equals, "process \"web\" is duplicated")
+
+	a = App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{},
+		},
+	}
+	err = a.validateProcesses()
+	c.Assert(err.Error(), check.Equals, "empty process name is not allowed")
+}
+
+func (s *S) TestAppUpdateProcessesWhenAppend(c *check.C) {
+	a := App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{Name: "web"},
+		},
+	}
+	a.updateProcesses([]appTypes.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesWhenAppendEmpty(c *check.C) {
+	a := App{
+		Name:      "test",
+		Processes: []appTypes.Process{},
+	}
+	a.updateProcesses([]appTypes.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "123",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesWhenOverride(c *check.C) {
+	a := App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "ABC",
+							Value: "123",
+						},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcesses([]appTypes.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "321",
+					},
+				},
+			},
+		},
+	})
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:  "ABC",
+						Value: "321",
+					},
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestAppUpdateProcessesWhenDelete(c *check.C) {
+	a := App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{
+				Name: "web",
+				Metadata: appTypes.Metadata{
+					Labels: []appTypes.MetadataItem{
+						{
+							Name:  "ABC",
+							Value: "123",
+						},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcesses([]appTypes.Process{
+		{
+			Name: "web",
+			Metadata: appTypes.Metadata{
+				Labels: []appTypes.MetadataItem{
+					{
+						Name:   "ABC",
+						Delete: true,
+					},
+				},
+			},
+		},
+	})
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{})
+}
+
+func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
+	a := App{
+		Name: "test",
+		Processes: []appTypes.Process{
+			{
+				Name: "web",
+			},
+			{
+				Name: "priority-worker",
+				Plan: "c4m4",
+			},
+			{
+				Name: "worker-metadata",
+				Plan: "c4m4",
+				Metadata: appTypes.Metadata{
+					Labels: []app.MetadataItem{
+						{Name: "abc", Value: "123"},
+					},
+				},
+			},
+		},
+	}
+	a.updateProcesses([]appTypes.Process{
+		{
+			Name: "web",
+			Plan: "c1m1",
+		},
+		{
+			Name: "worker",
+			Plan: "c2m2",
+		},
+		{
+			Name: "stale-worker",
+			Plan: "$default",
+		},
+		{
+			Name: "priority-worker",
+			Plan: "$default",
+		},
+		{
+			Name: "worker-metadata",
+			Plan: "$default",
+		},
+	})
+	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+		{
+			Name: "web",
+			Plan: "c1m1",
+		},
+		{
+			Name: "worker",
+			Plan: "c2m2",
+		},
+		{
+			Name: "worker-metadata",
+			Metadata: appTypes.Metadata{
+				Labels: []app.MetadataItem{
+					{Name: "abc", Value: "123"},
+				},
+			},
+		},
+	})
 }
 
 func (s *S) TestValidateAppService(c *check.C) {

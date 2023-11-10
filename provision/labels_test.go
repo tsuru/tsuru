@@ -129,33 +129,8 @@ func (s *S) TestServiceLabels(c *check.C) {
 	})
 }
 
-func (s *S) TestNodeContainerLabels(c *check.C) {
-	opts := provision.NodeContainerLabelsOpts{Name: "name", Pool: "pool", Provisioner: "provisioner"}
-	c.Assert(provision.NodeContainerLabels(opts), check.DeepEquals, &provision.LabelSet{
-		Labels: map[string]string{
-			"is-tsuru":            "true",
-			"is-node-container":   "true",
-			"provisioner":         "provisioner",
-			"node-container-name": "name",
-			"node-container-pool": "pool",
-		},
-	})
-	opts.CustomLabels = map[string]string{"a": "1"}
-	c.Assert(provision.NodeContainerLabels(opts), check.DeepEquals, &provision.LabelSet{
-		Labels: map[string]string{
-			"is-tsuru":            "true",
-			"is-node-container":   "true",
-			"provisioner":         "provisioner",
-			"node-container-name": "name",
-			"node-container-pool": "pool",
-			"a":                   "1",
-		},
-	})
-}
-
 func (s *S) TestNodeLabels(c *check.C) {
 	opts := provision.NodeLabelsOpts{
-		IaaSID:       "vm-1234",
 		Addr:         "localhost:80",
 		Pool:         "mypool",
 		CustomLabels: map[string]string{"data": "1"},
@@ -166,7 +141,6 @@ func (s *S) TestNodeLabels(c *check.C) {
 			"internal-node-addr": "localhost:80",
 			"pool":               "mypool",
 			"data":               "1",
-			"iaas-id":            "vm-1234",
 		},
 		Prefix: "myprefix",
 	})

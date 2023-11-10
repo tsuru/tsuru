@@ -1832,7 +1832,7 @@ func (s *S) TestUpdateAppWithAnnotations(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
-	b := strings.NewReader("description1=s&metadata.annotations.0.name=a&metadata.annotations.0.value=b&metadata.annotations.1.delete=true&metadata.annotations.1.name=c")
+	b := strings.NewReader("description1=s&metadata.annotations.0.name=a&metadata.annotations.0.value=b&metadata.annotations.1.delete=true&metadata.annotations.1.name=c&noRestart=true")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
 
@@ -1874,7 +1874,7 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxApp, a.Name),
 	})
-	b := strings.NewReader("description1=s&metadata.labels.0.name=a&metadata.labels.0.value=b&metadata.labels.1.delete=true&metadata.labels.1.name=c")
+	b := strings.NewReader("description1=s&metadata.labels.0.name=a&metadata.labels.0.value=b&metadata.labels.1.delete=true&metadata.labels.1.name=c&noRestart=true")
 	request, err := http.NewRequest("PUT", "/apps/myapp", b)
 	c.Assert(err, check.IsNil)
 

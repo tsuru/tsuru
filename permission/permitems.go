@@ -61,6 +61,7 @@ var (
 	PermAppUpdatePlanoverride            = PermissionRegistry.get("app.update.planoverride")             // [global app team pool]
 	PermAppUpdatePlatform                = PermissionRegistry.get("app.update.platform")                 // [global app team pool]
 	PermAppUpdatePool                    = PermissionRegistry.get("app.update.pool")                     // [global app team pool]
+	PermAppUpdateProcesses               = PermissionRegistry.get("app.update.processes")                // [global app team pool]
 	PermAppUpdateRestart                 = PermissionRegistry.get("app.update.restart")                  // [global app team pool]
 	PermAppUpdateRevoke                  = PermissionRegistry.get("app.update.revoke")                   // [global app team pool]
 	PermAppUpdateRoutable                = PermissionRegistry.get("app.update.routable")                 // [global app team pool]

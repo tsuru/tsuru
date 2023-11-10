@@ -126,6 +126,7 @@ type App struct {
 	Error           string
 	Routers         []appTypes.AppRouter
 	Metadata        appTypes.Metadata
+	Processes       []appTypes.Process
 
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
@@ -271,6 +272,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["tags"] = app.Tags
 	result["routers"] = routers
 	result["metadata"] = app.Metadata
+
+	if len(app.Processes) > 0 {
+		result["processes"] = app.Processes
+	}
+
 	q, err := app.GetQuota()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
@@ -400,6 +406,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 			return err
 		}
 	}
+	app.pruneProcesses()
 	err = app.validateNew(ctx)
 	if err != nil {
 		return err
@@ -514,6 +521,8 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if err != nil {
 		return err
 	}
+
+	app.updateProcesses(args.UpdateData.Processes)
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
@@ -558,8 +567,53 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
+	} else if !reflect.DeepEqual(app.Processes, oldApp.Processes) && args.ShouldRestart {
+		actions = append(actions, &restartApp)
+	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
+		actions = append(actions, &restartApp)
 	}
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
+}
+
+func (app *App) updateProcesses(new []appTypes.Process) {
+	positionByName := map[string]*int{}
+	for i, p := range app.Processes {
+		positionByName[p.Name] = func(n int) *int { return &n }(i)
+	}
+
+	for _, p := range new {
+		pos := positionByName[p.Name]
+		if pos == nil {
+			app.Processes = append(app.Processes, p)
+		} else {
+			if p.Plan != "" {
+				app.Processes[*pos].Plan = p.Plan
+			}
+			app.Processes[*pos].Metadata.Update(p.Metadata)
+		}
+	}
+
+	app.pruneProcesses()
+}
+
+func (app *App) pruneProcesses() {
+	updated := []appTypes.Process{}
+	for _, process := range app.Processes {
+		if process.Plan == "$default" {
+			process.Plan = ""
+		}
+
+		if !process.Empty() {
+			updated = append(updated, process)
+		}
+	}
+
+	sort.Slice(updated, func(i, j int) bool {
+		return updated[i].Name < updated[j].Name
+	})
+
+	app.Processes = updated
+
 }
 
 func validateVolumes(ctx context.Context, app *App) error {
@@ -1102,6 +1156,12 @@ func (app *App) validate() error {
 	if err != nil {
 		return err
 	}
+
+	err = app.validateProcesses()
+	if err != nil {
+		return err
+	}
+
 	return app.validatePlan()
 }
 
@@ -1155,6 +1215,24 @@ func (app *App) validatePool() error {
 	}
 
 	return pool.ValidateRouters(app.GetRouters())
+}
+
+func (app *App) validateProcesses() error {
+	namesUsed := map[string]bool{}
+
+	for _, p := range app.Processes {
+		if p.Name == "" {
+			return &tsuruErrors.ValidationError{Message: "empty process name is not allowed"}
+		}
+		if namesUsed[p.Name] {
+			msg := fmt.Sprintf("process %q is duplicated", p.Name)
+			return &tsuruErrors.ValidationError{Message: msg}
+		}
+
+		namesUsed[p.Name] = true
+	}
+
+	return nil
 }
 
 func (app *App) validateTeamOwner(p *pool.Pool) error {
@@ -2653,8 +2731,52 @@ func (app *App) ListTags() []string {
 	return app.Tags
 }
 
-func (app *App) GetMetadata() appTypes.Metadata {
-	return app.Metadata
+func (app *App) GetMetadata(process string) appTypes.Metadata {
+	labels := map[string]string{}
+	annotations := map[string]string{}
+
+	for _, labelItem := range app.Metadata.Labels {
+		labels[labelItem.Name] = labelItem.Value
+	}
+	for _, annotationItem := range app.Metadata.Annotations {
+		annotations[annotationItem.Name] = annotationItem.Value
+	}
+
+	if process == "" {
+		goto buildResult
+	}
+
+	for _, p := range app.Processes {
+		if p.Name != process {
+			continue
+		}
+
+		for _, labelItem := range p.Metadata.Labels {
+			labels[labelItem.Name] = labelItem.Value
+		}
+		for _, annotationItem := range p.Metadata.Annotations {
+			annotations[annotationItem.Name] = annotationItem.Value
+		}
+	}
+
+buildResult:
+	result := appTypes.Metadata{}
+
+	for name, value := range labels {
+		result.Labels = append(result.Labels, appTypes.MetadataItem{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	for name, value := range annotations {
+		result.Annotations = append(result.Annotations, appTypes.MetadataItem{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	return result
 }
 
 func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {

@@ -36,10 +36,8 @@ const (
 	defaultKubernetesProvisioner = "kubernetes"
 	DefaultHealthcheckScheme     = "http"
 
-	PoolMetadataName   = "pool"
-	IaaSIDMetadataName = "iaas-id"
-	IaaSMetadataName   = "iaas"
-	WebProcessName     = "web"
+	PoolMetadataName = "pool"
+	WebProcessName   = "web"
 )
 
 var (
@@ -251,7 +249,7 @@ type App interface {
 
 	ListTags() []string
 
-	GetMetadata() appTypes.Metadata
+	GetMetadata(process string) appTypes.Metadata
 
 	GetRegistry() (imgTypes.ImageRegistry, error)
 }

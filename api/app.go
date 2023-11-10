@@ -365,6 +365,8 @@ type inputApp struct {
 	Tags         []string
 	PlanOverride appTypes.PlanOverride
 	Metadata     appTypes.Metadata
+
+	Processes []appTypes.Process
 }
 
 func autoTeamOwner(ctx stdContext.Context, t auth.Token, perm *permission.PermissionScheme) (string, error) {
@@ -416,6 +418,8 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Tags:        ia.Tags,
 		Metadata:    ia.Metadata,
 		Quota:       quota.UnlimitedQuota,
+
+		Processes: ia.Processes,
 	}
 	tags, _ := InputValues(r, "tag")
 	a.Tags = append(a.Tags, tags...) // for compatibility
@@ -536,6 +540,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		UpdatePlatform: imageReset,
 		RouterOpts:     ia.RouterOpts,
 		Metadata:       ia.Metadata,
+		Processes:      ia.Processes,
 	}
 	tags, _ := InputValues(r, "tag")
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
@@ -591,6 +596,9 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 	if len(updateData.Metadata.Annotations) > 0 || len(updateData.Metadata.Labels) > 0 {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdateMetadata)
+	}
+	if len(updateData.Processes) > 0 {
+		wantedPerms = append(wantedPerms, permission.PermAppUpdateProcesses)
 	}
 	if len(wantedPerms) == 0 {
 		msg := "Neither the description, tags, plan, pool, team owner or platform were set. You must define at least one."

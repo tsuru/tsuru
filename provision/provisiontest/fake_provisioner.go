@@ -328,7 +328,7 @@ func (app *FakeApp) ListTags() []string {
 	return app.Tags
 }
 
-func (app *FakeApp) GetMetadata() appTypes.Metadata {
+func (app *FakeApp) GetMetadata(process string) appTypes.Metadata {
 	return app.Metadata
 }
 

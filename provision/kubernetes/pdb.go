@@ -80,7 +80,12 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 	if client.disablePDB(app.GetPool()) {
 		return nil, nil
 	}
-	maxUnavailableByProcess := intstr.FromString("10%")
+
+	maxUnavailable := "10%"
+	if value, ok := app.GetMetadata(process).Annotation("app.tsuru.io/k8s-pdb-max-unavailable"); ok {
+		maxUnavailable = value
+	}
+	maxUnavailableByProcess := intstr.FromString(maxUnavailable)
 
 	ns, err := client.AppNamespace(ctx, app)
 	if err != nil {

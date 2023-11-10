@@ -191,7 +191,7 @@ func labelsForService(ctx context.Context, args *pipelineArgs, oldLabels labelRe
 		restartCount++
 		labels.SetRestarts(restartCount)
 	}
-	appMetadata := args.app.GetMetadata()
+	appMetadata := args.app.GetMetadata(processName)
 	for _, l := range appMetadata.Labels {
 		labels.RawLabels[l.Name] = l.Value
 	}
