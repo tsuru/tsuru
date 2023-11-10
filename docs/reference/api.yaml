@@ -4715,8 +4715,25 @@ definitions:
         type: integer
       averageCPU:
         type: string
+      schedules:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AutoScaleSchedule"
       version:
         type: integer
+  AutoScaleSchedule:
+    description: Auto Scale schedules struct
+    type: object
+    properties:
+      minReplicas:
+        type: integer
+      start:
+        type: string
+      end:
+        type: string
+      timezone:
+        type: string
   AppCName:
     description: Application CNames
     type: object
