@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	kedav1alpha1clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
+	fakekedaclientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/version"
@@ -128,6 +130,7 @@ func (s *S) SetUpTest(c *check.C) {
 		MetricsClientset:       fakemetrics.NewSimpleClientset(),
 		VPAClientset:           fakevpa.NewSimpleClientset(),
 		BackendClientset:       fakeBackendConfig.NewSimpleClientset(),
+		KEDAClientForConfig:    fakekedaclientset.NewSimpleClientset(),
 		ClusterInterface:       s.clusterClient,
 	}
 	s.clusterClient.Interface = s.client
@@ -148,6 +151,9 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	BackendConfigClientForConfig = func(conf *rest.Config) (backendConfigClientSet.Interface, error) {
 		return s.client.BackendClientset, nil
+	}
+	KEDAClientForConfig = func(conf *rest.Config) (kedav1alpha1clientset.Interface, error) {
+		return s.client.KEDAClientForConfig, nil
 	}
 	routertest.FakeRouter.Reset()
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{

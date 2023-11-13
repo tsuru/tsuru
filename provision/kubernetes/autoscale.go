@@ -163,7 +163,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	for _, hpa := range hpas {
 		scaledObjectName := KEDAScaledObjectName(*hpa)
 		if scaledObjectName != "" {
-			observedKEDAScaledObject, err := kedaClient.ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
+			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
@@ -200,7 +200,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 			})
 		}
 		if metric.Type == "cpu" {
-			spec.AverageCPU = fmt.Sprintf("%s0m", metric.Metadata["value"])
+			spec.AverageCPU = fmt.Sprintf("%sm", metric.Metadata["value"])
 		}
 	}
 
@@ -302,7 +302,7 @@ func RemoveKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string
 		return err
 	}
 
-	err = kedaClient.ScaledObjects(ns).Delete(ctx, scaledObjectName, metav1.DeleteOptions{})
+	err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Delete(ctx, scaledObjectName, metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -466,10 +466,10 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision
 		return err
 	}
 
-	observedKEDAScaledObject, err := kedaClient.ScaledObjects(ns).Get(ctx, hpaName, metav1.GetOptions{})
+	observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
 		//create
-		_, err = kedaClient.ScaledObjects(ns).Create(ctx, expectedKEDAScaledObject, metav1.CreateOptions{})
+		_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(ctx, expectedKEDAScaledObject, metav1.CreateOptions{})
 		return err
 	}
 	if err != nil {
@@ -477,7 +477,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision
 	}
 
 	expectedKEDAScaledObject.ResourceVersion = observedKEDAScaledObject.ResourceVersion
-	_, err = kedaClient.ScaledObjects(ns).Update(ctx, expectedKEDAScaledObject, metav1.UpdateOptions{})
+	_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Update(ctx, expectedKEDAScaledObject, metav1.UpdateOptions{})
 	return err
 }
 
@@ -748,7 +748,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
-			observedKEDAScaledObject, err := kedaClient.ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
+			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	kedav1alpha1clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	kedav1alpha1clientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/builder"
@@ -145,7 +145,7 @@ var MetricsClientForConfig = func(conf *rest.Config) (metricsclientset.Interface
 	return metricsclientset.NewForConfig(conf)
 }
 
-var KEDAClientForConfig = func(conf *rest.Config) (*kedav1alpha1clientset.KedaV1alpha1Client, error) {
+var KEDAClientForConfig = func(conf *rest.Config) (kedav1alpha1clientset.Interface, error) {
 	return kedav1alpha1clientset.NewForConfig(conf)
 }
 

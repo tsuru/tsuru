@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kr/pretty"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -98,41 +99,33 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 	}
 }
 
-func testKEDAHPA(cpuTarget autoscalingv2.MetricTarget, scheduleMetrics []string) *autoscalingv2.HorizontalPodAutoscaler {
-	metrics := []autoscalingv2.MetricSpec{
-		{
-			Type: autoscalingv2.ResourceMetricSourceType,
-			Resource: &autoscalingv2.ResourceMetricSource{
-				Name:   "cpu",
-				Target: cpuTarget,
-			},
-		},
-	}
+func testKEDAScaledObject(cpuTarget int, scheduleSpecs []provision.AutoScaleSchedule) *kedav1alpha1.ScaledObject {
+	triggers := []kedav1alpha1.ScaleTriggers{}
 
-	for _, schedule := range scheduleMetrics {
-		scheduleMetric := autoscalingv2.MetricSpec{
-			Type: autoscalingv2.ExternalMetricSourceType,
-			External: &autoscalingv2.ExternalMetricSource{
-				Metric: autoscalingv2.MetricIdentifier{
-					Name: schedule,
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"scaledobject.keda.sh/name": "my-app-web",
-						},
-					},
-				},
-				Target: autoscalingv2.MetricTarget{
-					AverageValue: resource.NewQuantity(1, resource.DecimalSI),
-					Type:         autoscalingv2.AverageValueMetricType,
-				},
+	triggers = append(triggers, kedav1alpha1.ScaleTriggers{
+		Type:       "cpu",
+		MetricType: autoscalingv2.UtilizationMetricType,
+		Metadata: map[string]string{
+			"value": strconv.Itoa(cpuTarget),
+		},
+	})
+
+	for _, schedule := range scheduleSpecs {
+		scheduleTrigger := kedav1alpha1.ScaleTriggers{
+			Type: "cron",
+			Metadata: map[string]string{
+				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
+				"start":           schedule.Start,
+				"end":             schedule.End,
+				"timezone":        "UTC",
 			},
 		}
-		metrics = append(metrics, scheduleMetric)
+		triggers = append(triggers, scheduleTrigger)
 	}
 
-	return &autoscalingv2.HorizontalPodAutoscaler{
+	return &kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "keda-hpa-myapp-web",
+			Name:      "myapp-web",
 			Namespace: "default",
 			Labels: map[string]string{
 				"app":                          "myapp-web",
@@ -157,16 +150,49 @@ func testKEDAHPA(cpuTarget autoscalingv2.MetricTarget, scheduleMetrics []string)
 				"version":                      "v1",
 			},
 		},
-		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
-			MinReplicas: toInt32Ptr(1),
-			MaxReplicas: int32(2),
-			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			MinReplicaCount: toInt32Ptr(1),
+			MaxReplicaCount: toInt32Ptr(2),
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
 				APIVersion: "apps/v1",
 				Kind:       "Deployment",
 				Name:       "myapp-web",
 			},
-			Metrics: metrics,
+			Triggers: triggers,
 		},
+	}
+}
+
+func testKEDAHPA(scaledObjectName string) *autoscalingv2.HorizontalPodAutoscaler {
+	return &autoscalingv2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keda-hpa" + scaledObjectName,
+			Namespace: "default",
+			Labels: map[string]string{
+				"app":                          "myapp-web",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/version":    "v1",
+				"app.kubernetes.io/instance":   "myapp-web",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-platform":        "python",
+				"tsuru.io/app-team":            "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/app-process":         "web",
+				"tsuru.io/app-version":         "1",
+				"tsuru.io/builder":             "",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/provisioner":         "kubernetes",
+				"version":                      "v1",
+				"scaledobject.keda.sh/name":    scaledObjectName,
+			},
+		},
+		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{},
 	}
 }
 
@@ -302,11 +328,31 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	cpu := resource.MustParse("500m")
+	schedulesList := []provision.AutoScaleSchedule{
+		{
+			MinReplicas: 2,
+			Start:       "0 6 * * *",
+			End:         "0 18 * * *",
+			Timezone:    "UTC",
+		},
+		{
+			MinReplicas: 1,
+			Start:       "0 18 * * *",
+			End:         "0 0 * * *",
+			Timezone:    "UTC",
+		},
+		{
+			MinReplicas: 2,
+			Start:       "0 0 * * *",
+			End:         "0 6 * * *",
+			Timezone:    "UTC",
+		},
+	}
+
 	tests := []struct {
-		scenario        func()
-		cpuTarget       autoscalingv2.MetricTarget
-		scheduleMetrics []string
+		scenario      func()
+		cpuTarget     int
+		scheduleSpecs []provision.AutoScaleSchedule
 	}{
 		{
 			scenario: func() {
@@ -314,24 +360,12 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
-					Schedules: []provision.AutoScaleSchedule{
-						{
-							MinReplicas: 2,
-							Start:       "0 6 * * *",
-							End:         "0 18 * * *",
-							Timezone:    "UTC",
-						},
-					},
+					Schedules:  schedulesList[:1],
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget: autoscalingv2.MetricTarget{
-				Type:         autoscalingv2.AverageValueMetricType,
-				AverageValue: &cpu,
-			},
-			scheduleMetrics: []string{
-				"s1-cron-UTC-06xxx-018xxx",
-			},
+			cpuTarget:     500,
+			scheduleSpecs: schedulesList[:1],
 		},
 		{
 			scenario: func() {
@@ -339,31 +373,12 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50%",
-					Schedules: []provision.AutoScaleSchedule{
-						{
-							MinReplicas: 2,
-							Start:       "0 6 * * *",
-							End:         "0 18 * * *",
-							Timezone:    "UTC",
-						},
-						{
-							MinReplicas: 1,
-							Start:       "0 18 * * *",
-							End:         "0 0 * * *",
-							Timezone:    "UTC",
-						},
-					},
+					Schedules:  schedulesList[:2],
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget: autoscalingv2.MetricTarget{
-				Type:         autoscalingv2.AverageValueMetricType,
-				AverageValue: &cpu,
-			},
-			scheduleMetrics: []string{
-				"s1-cron-UTC-06xxx-018xxx",
-				"s2-cron-UTC-018xxx-00xxx",
-			},
+			cpuTarget:     500,
+			scheduleSpecs: schedulesList[:2],
 		},
 		{
 			scenario: func() {
@@ -371,38 +386,12 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50",
-					Schedules: []provision.AutoScaleSchedule{
-						{
-							MinReplicas: 2,
-							Start:       "0 6 * * *",
-							End:         "0 18 * * *",
-							Timezone:    "UTC",
-						},
-						{
-							MinReplicas: 1,
-							Start:       "0 18 * * *",
-							End:         "0 0 * * *",
-							Timezone:    "UTC",
-						},
-						{
-							MinReplicas: 2,
-							Start:       "0 0 * * *",
-							End:         "0 6 * * *",
-							Timezone:    "UTC",
-						},
-					},
+					Schedules:  schedulesList[:3],
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget: autoscalingv2.MetricTarget{
-				Type:         autoscalingv2.AverageValueMetricType,
-				AverageValue: &cpu,
-			},
-			scheduleMetrics: []string{
-				"s1-cron-UTC-06xxx-018xxx",
-				"s2-cron-UTC-018xxx-00xxx",
-				"s3-cron-UTC-00xxx-06xxx",
-			},
+			cpuTarget:     500,
+			scheduleSpecs: schedulesList[:3],
 		},
 	}
 	for _, tt := range tests {
@@ -410,17 +399,11 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 
 		ns, err := s.client.AppNamespace(context.TODO(), a)
 		c.Assert(err, check.IsNil)
-		hpa, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "keda-hpa-myapp-web", metav1.GetOptions{})
+		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAHPA(tt.cpuTarget, tt.scheduleMetrics)
-		c.Assert(hpa, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(hpa, expected)))
+		expected := testKEDAScaledObject(tt.cpuTarget, tt.scheduleSpecs)
+		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 	}
-}
-
-func (s *S) TestProvisionerSetKEDAAutoScaleFromTsuruAutoScale(c *check.C) {
-}
-
-func (s *S) TestProvisionerSetTsuruAutoScaleFromKEDAAutoScale(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
@@ -759,66 +742,16 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
+
 	ns, err := s.client.AppNamespace(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "keda-hpa-myapp-web", metav1.GetOptions{})
+	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
-	existingPDB, err := s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	pdb_expected := &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pdbNameForApp(a, "web"),
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/app-name":    "myapp",
-				"tsuru.io/app-process": "web",
-				"tsuru.io/app-team":    "",
-				"tsuru.io/provisioner": "kubernetes",
-			},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MaxUnavailable: &intstr.IntOrString{Type: 1, StrVal: "10%"},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"tsuru.io/app-name":    "myapp",
-					"tsuru.io/app-process": "web",
-					"tsuru.io/is-routable": "true",
-				},
-			},
-		},
-	}
-	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
+
 	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
 	c.Assert(err, check.IsNil)
-	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(context.TODO(), "keda-hpa-myapp-web", metav1.GetOptions{})
+	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
-	existingPDB, err = s.client.PolicyV1().PodDisruptionBudgets(ns).Get(context.TODO(), pdbNameForApp(a, "web"), metav1.GetOptions{})
-	c.Assert(err, check.IsNil)
-	pdb_expected = &policyv1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pdbNameForApp(a, "web"),
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/app-name":    "myapp",
-				"tsuru.io/app-team":    "",
-				"tsuru.io/app-process": "web",
-				"tsuru.io/provisioner": "kubernetes",
-			},
-		},
-		Spec: policyv1.PodDisruptionBudgetSpec{
-			MaxUnavailable: intOrStringPtr(intstr.FromString("10%")),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"tsuru.io/app-name":    "myapp",
-					"tsuru.io/app-process": "web",
-					"tsuru.io/is-routable": "true",
-				},
-			},
-		},
-	}
-	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
 }
 
 func (s *S) TestProvisionerGetAutoScale(c *check.C) {
@@ -922,6 +855,15 @@ func (s *S) TestProvisionerGetKEDAAutoScale(c *check.C) {
 			},
 		},
 	})
+	c.Assert(err, check.IsNil)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-web"), metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-worker"), metav1.CreateOptions{})
 	c.Assert(err, check.IsNil)
 
 	scales, err := s.p.GetAutoScale(context.TODO(), a)
