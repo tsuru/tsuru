@@ -89,7 +89,7 @@ func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (re
 func doAttach(ctx context.Context, client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
 	errCh := make(chan error, 2)
 	go func() {
-		errCh <- doUnsafeAttach(client, stdin, stdout, stderr, podName, container, tty, size, namespace)
+		errCh <- doUnsafeAttach(ctx, client, stdin, stdout, stderr, podName, container, tty, size, namespace)
 	}()
 	finishedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -120,7 +120,7 @@ func doAttach(ctx context.Context, client *ClusterClient, stdin io.Reader, stdou
 	}
 }
 
-func doUnsafeAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
+func doUnsafeAttach(ctx context.Context, client *ClusterClient, stdin io.Reader, stdout, stderr io.Writer, podName, container string, tty bool, size *remotecommand.TerminalSize, namespace string) error {
 	cli, err := rest.RESTClientFor(client.restConfig)
 	if err != nil {
 		return errors.WithStack(err)
@@ -156,7 +156,7 @@ func doUnsafeAttach(client *ClusterClient, stdin io.Reader, stdout, stderr io.Wr
 		}
 	}
 
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:             stdin,
 		Stdout:            stdout,
 		Stderr:            stderr,

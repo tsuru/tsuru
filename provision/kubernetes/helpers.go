@@ -963,7 +963,7 @@ func execCommand(ctx context.Context, opts execOpts) error {
 			sz: opts.termSize,
 		}
 	}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:             opts.stdin,
 		Stdout:            opts.stdout,
 		Stderr:            opts.stderr,
