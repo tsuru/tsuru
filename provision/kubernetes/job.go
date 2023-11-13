@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -22,6 +24,34 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	jobTypes "github.com/tsuru/tsuru/types/job"
+)
+
+const (
+	promNamespace = "tsuru"
+	promSubsystem = "job"
+)
+
+var (
+	jobCompleted = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "completed_total",
+		Help:      "The total number of completed jobs",
+	}, []string{"job_name", "namespace"})
+
+	jobFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "failed_total",
+		Help:      "The total number of failed jobs",
+	}, []string{"job_name", "namespace"})
+
+	jobStarted = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Subsystem: promSubsystem,
+		Name:      "started_total",
+		Help:      "The total number of started jobs",
+	}, []string{"job_name", "namespace"})
 )
 
 func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
@@ -310,17 +340,20 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 	return units, nil
 }
 
-func createJobEvent(job *batchv1.Job, evt *apiv1.Event) {
+func createJobEventAndMetrics(job *batchv1.Job, evt *apiv1.Event) {
 	var evtErr error
 	var kind *permission.PermissionScheme
 	switch evt.Reason {
 	case "Completed":
 		kind = permission.PermJobRun
+		jobCompleted.WithLabelValues(job.Name, job.Namespace).Inc()
 	case "BackoffLimitExceeded":
 		kind = permission.PermJobRun
 		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
+		jobFailed.WithLabelValues(job.Name, job.Namespace).Inc()
 	case "SuccessfulCreate":
 		kind = permission.PermJobCreate
+		jobStarted.WithLabelValues(job.Name, job.Namespace).Inc()
 	default:
 		return
 	}
