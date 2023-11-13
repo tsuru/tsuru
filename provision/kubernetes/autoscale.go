@@ -161,7 +161,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	}
 
 	for _, hpa := range hpas {
-		scaledObjectName := KEDAScaledObjectName(*hpa)
+		scaledObjectName := kedaScaledObjectName(*hpa)
 		if scaledObjectName != "" {
 			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
 			if err != nil {
@@ -175,7 +175,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	return specs, nil
 }
 
-func KEDAScaledObjectName(hpa autoscalingv2.HorizontalPodAutoscaler) string {
+func kedaScaledObjectName(hpa autoscalingv2.HorizontalPodAutoscaler) string {
 	return hpa.Labels["scaledobject.keda.sh/name"]
 }
 
@@ -283,7 +283,7 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 
 	hpaName := hpaNameForApp(a, depInfo.process)
 
-	err = RemoveKEDAScaleObject(ctx, client, ns, hpaName)
+	err = removeKEDAScaleObject(ctx, client, ns, hpaName)
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -296,7 +296,7 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	return nil
 }
 
-func RemoveKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
+func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -367,7 +367,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		_ = target.AverageValue.String()
 	}
 
-	policyMin := autoscalingv2.MinChangePolicySelect
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   hpaName,
@@ -385,23 +384,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 			// customize the behavior directly. Meanwhile, we'll use a safer
 			// default to prevent the autoscaler from scaling down too fast
 			// poossibly disrupting the app.
-			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
-				ScaleDown: &autoscalingv2.HPAScalingRules{
-					SelectPolicy: &policyMin,
-					Policies: []autoscalingv2.HPAScalingPolicy{
-						{
-							Type:          autoscalingv2.PercentScalingPolicy,
-							Value:         10,
-							PeriodSeconds: 60,
-						},
-						{
-							Type:          autoscalingv2.PodsScalingPolicy,
-							Value:         3,
-							PeriodSeconds: 60,
-						},
-					},
-				},
-			},
+			Behavior: buildHPABehavior(),
 			Metrics: []autoscalingv2.MetricSpec{
 				{
 					Type: autoscalingv2.ResourceMetricSourceType,
@@ -423,7 +406,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	if k8sErrors.IsNotFound(err) {
 		existingHPA = nil
 
-		err = RemoveKEDAScaleObject(ctx, client, ns, hpaName)
+		err = removeKEDAScaleObject(ctx, client, ns, hpaName)
 		if err != nil {
 			return err
 		}
@@ -468,7 +451,6 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision
 
 	observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
-		//create
 		_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(ctx, expectedKEDAScaledObject, metav1.CreateOptions{})
 		return err
 	}
@@ -526,8 +508,37 @@ func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a pr
 			MinReplicaCount: k8sutilsptr.To(int32(spec.MinUnits)),
 			MaxReplicaCount: k8sutilsptr.To(int32(spec.MaxUnits)),
 			Triggers:        kedaTriggers,
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+					Behavior: buildHPABehavior(),
+				},
+			},
 		},
 	}, nil
+}
+
+func buildHPABehavior() *autoscalingv2.HorizontalPodAutoscalerBehavior {
+	// setting ground to allow user customization regarding Up/Down scale behavior
+	// should be a feature in the future
+	policyMin := autoscalingv2.MinChangePolicySelect
+
+	return &autoscalingv2.HorizontalPodAutoscalerBehavior{
+		ScaleDown: &autoscalingv2.HPAScalingRules{
+			SelectPolicy: &policyMin,
+			Policies: []autoscalingv2.HPAScalingPolicy{
+				{
+					Type:          autoscalingv2.PercentScalingPolicy,
+					Value:         10,
+					PeriodSeconds: 60,
+				},
+				{
+					Type:          autoscalingv2.PodsScalingPolicy,
+					Value:         3,
+					PeriodSeconds: 60,
+				},
+			},
+		},
+	}
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, process string) (*deploymentInfo, error) {
@@ -742,7 +753,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 
 	var specs []provision.AutoScaleSpec
 	for _, hpa := range hpas.Items {
-		scaledObjectName := KEDAScaledObjectName(hpa)
+		scaledObjectName := kedaScaledObjectName(hpa)
 		if scaledObjectName != "" {
 			kedaClient, err := KEDAClientForConfig(client.restConfig)
 			if err != nil {

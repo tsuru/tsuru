@@ -122,6 +122,7 @@ func testKEDAScaledObject(cpuTarget int, scheduleSpecs []provision.AutoScaleSche
 		}
 		triggers = append(triggers, scheduleTrigger)
 	}
+	policyMin := autoscalingv2.MinChangePolicySelect
 
 	return &kedav1alpha1.ScaledObject{
 		ObjectMeta: metav1.ObjectMeta{
@@ -159,6 +160,27 @@ func testKEDAScaledObject(cpuTarget int, scheduleSpecs []provision.AutoScaleSche
 				Name:       "myapp-web",
 			},
 			Triggers: triggers,
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+					Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+						ScaleDown: &autoscalingv2.HPAScalingRules{
+							SelectPolicy: &policyMin,
+							Policies: []autoscalingv2.HPAScalingPolicy{
+								{
+									Type:          autoscalingv2.PercentScalingPolicy,
+									Value:         10,
+									PeriodSeconds: 60,
+								},
+								{
+									Type:          autoscalingv2.PodsScalingPolicy,
+									Value:         3,
+									PeriodSeconds: 60,
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 }
