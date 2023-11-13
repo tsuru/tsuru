@@ -684,7 +684,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "SuccessfulCreate",
 					Type:    "Normal",
 				}
-				createJobEvent(j, evt)
+				createJobEventAndMetrics(j, evt)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -777,7 +777,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "Completed",
 					Type:    "Normal",
 				}
-				createJobEvent(j, evt)
+				createJobEventAndMetrics(j, evt)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -860,7 +860,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "BackoffLimitExceeded",
 					Type:    "Warning",
 				}
-				createJobEvent(j, evt)
+				createJobEventAndMetrics(j, evt)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -942,7 +942,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "SomeOtherReason",
 					Type:    "Warning",
 				}
-				createJobEvent(j, evt)
+				createJobEventAndMetrics(j, evt)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
