@@ -165,7 +165,7 @@ func getRegistry(ctx context.Context, job *jobTypes.Job) (imgTypes.ImageRegistry
 	if !ok {
 		return "", nil
 	}
-	return registryProv.RegistryForObject(ctx, job)
+	return registryProv.RegistryForPool(ctx, job.Pool)
 }
 
 func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string, error) {

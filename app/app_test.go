@@ -4059,11 +4059,6 @@ func (s *S) TestGetDeploys(c *check.C) {
 	c.Assert(a.GetDeploys(), check.Equals, a.Deploys)
 }
 
-func (s *S) TestGetMemory(c *check.C) {
-	a := App{Plan: appTypes.Plan{Memory: 10}}
-	c.Assert(a.GetMemory(), check.Equals, a.Plan.Memory)
-}
-
 func (s *S) TestGetMetadata(c *check.C) {
 	a := App{}
 	c.Assert(a.GetMetadata(""), check.DeepEquals, appTypes.Metadata{})

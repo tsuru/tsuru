@@ -2175,8 +2175,8 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %v", recorder.Body.String()))
 		dbApp, err := app.GetByName(context.TODO(), a.Name)
 		c.Assert(err, check.IsNil)
-		c.Assert(dbApp.GetMemory(), check.Equals, tt.memory)
-		c.Assert(dbApp.GetMilliCPU(), check.Equals, tt.cpuMilli)
+		c.Assert(dbApp.Plan.GetMemory(), check.Equals, tt.memory)
+		c.Assert(dbApp.Plan.GetMilliCPU(), check.Equals, tt.cpuMilli)
 		c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, i+1)
 	}
 }

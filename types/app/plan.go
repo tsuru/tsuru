@@ -51,6 +51,27 @@ func (p *Plan) MergeOverride(po PlanOverride) {
 	}
 }
 
+func (p Plan) GetMemory() int64 {
+	if p.Override.Memory != nil {
+		return *p.Override.Memory
+	}
+	return p.Memory
+}
+
+func (p Plan) GetMilliCPU() int {
+	if p.Override.CPUMilli != nil {
+		return *p.Override.CPUMilli
+	}
+	return p.CPUMilli
+}
+
+func (p Plan) GetCPUBurst() float64 {
+	if p.Override.CPUBurst != nil {
+		return *p.Override.CPUBurst
+	}
+	return p.CPUBurst.Default
+}
+
 type PlanService interface {
 	Create(ctx context.Context, plan Plan) error
 	List(context.Context) ([]Plan, error)

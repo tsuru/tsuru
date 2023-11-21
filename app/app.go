@@ -99,8 +99,6 @@ const (
 	routerNone = "none"
 )
 
-var _ provisionTypes.ResourceGetter = &App{}
-
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -1495,26 +1493,8 @@ func (app *App) GetTeamsName() []string {
 	return app.Teams
 }
 
-// GetMemory returns the memory limit (in bytes) for the app.
-func (app *App) GetMemory() int64 {
-	if app.Plan.Override.Memory != nil {
-		return *app.Plan.Override.Memory
-	}
-	return app.Plan.Memory
-}
-
-func (app *App) GetMilliCPU() int {
-	if app.Plan.Override.CPUMilli != nil {
-		return *app.Plan.Override.CPUMilli
-	}
-	return app.Plan.CPUMilli
-}
-
-func (app *App) GetCPUBurst() float64 {
-	if app.Plan.Override.CPUBurst != nil {
-		return *app.Plan.Override.CPUBurst
-	}
-	return app.Plan.CPUBurst.Default
+func (app *App) GetPlan() appTypes.Plan {
+	return app.Plan
 }
 
 func (app *App) GetAddresses() ([]string, error) {
@@ -2731,6 +2711,15 @@ func (app *App) ListTags() []string {
 	return app.Tags
 }
 
+func (app *App) GetProcess(process string) *appTypes.Process {
+	for _, p := range app.Processes {
+		if p.Name == process {
+			return &p
+		}
+	}
+	return nil
+}
+
 func (app *App) GetMetadata(process string) appTypes.Metadata {
 	labels := map[string]string{}
 	annotations := map[string]string{}
@@ -2857,5 +2846,5 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	if !ok {
 		return "", nil
 	}
-	return registryProv.RegistryForObject(app.ctx, app)
+	return registryProv.RegistryForPool(app.ctx, app.Pool)
 }

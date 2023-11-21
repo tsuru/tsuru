@@ -1,15 +1,12 @@
 package kubernetes
 
 import (
-	"github.com/tsuru/tsuru/provision/provisiontest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestGetresourceRequirements(c *check.C) {
-	a := provisiontest.NewFakeApp("myapp", "plat", 1)
-	a.Memory = 10 * 1024
-	a.MilliCPU = 1000
 	clusterClient := &ClusterClient{
 		Cluster: &provTypes.Cluster{},
 	}
@@ -89,7 +86,10 @@ func (s *S) TestGetresourceRequirements(c *check.C) {
 	}
 
 	for _, testCase := range testsCases {
-		requirements, err := resourceRequirements(a, clusterClient, testCase.factors)
+		requirements, err := resourceRequirements(&appTypes.Plan{
+			Memory:   10 * 1024,
+			CPUMilli: 1000,
+		}, "", clusterClient, testCase.factors)
 		c.Assert(err, check.IsNil)
 
 		memoryLimits := requirements.Limits["memory"]

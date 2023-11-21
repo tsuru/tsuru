@@ -1205,7 +1205,9 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
 	}
 
-	requirements, err := resourceRequirements(opts.app, client, requirementsFactors{
+	plan := opts.app.GetPlan()
+	pool := opts.app.GetPool()
+	requirements, err := resourceRequirements(&plan, pool, client, requirementsFactors{
 		overCommit: 1,
 	})
 	if err != nil {
@@ -1750,8 +1752,8 @@ func (p *kubernetesProvisioner) DeployedVersions(ctx context.Context, a provisio
 	return versions, nil
 }
 
-func (p *kubernetesProvisioner) RegistryForObject(ctx context.Context, obj provTypes.ResourceGetter) (imgTypes.ImageRegistry, error) {
-	client, err := clusterForPool(ctx, obj.GetPool())
+func (p *kubernetesProvisioner) RegistryForPool(ctx context.Context, pool string) (imgTypes.ImageRegistry, error) {
+	client, err := clusterForPool(ctx, pool)
 	if err != nil {
 		return "", err
 	}

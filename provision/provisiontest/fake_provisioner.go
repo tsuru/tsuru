@@ -27,7 +27,6 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
@@ -47,7 +46,6 @@ var (
 	_ provision.ExecutableProvisioner = &FakeProvisioner{}
 	_ provision.App                   = &FakeApp{}
 	_ bind.App                        = &FakeApp{}
-	_ provisionTypes.ResourceGetter   = &FakeApp{}
 )
 
 func init() {
@@ -138,6 +136,14 @@ func (a *FakeApp) GetMilliCPU() int {
 
 func (a *FakeApp) GetCPUBurst() float64 {
 	return 0
+}
+
+func (a *FakeApp) GetPlan() appTypes.Plan {
+	return appTypes.Plan{
+		Name:     "c1m1",
+		CPUMilli: a.MilliCPU,
+		Memory:   a.Memory,
+	}
 }
 
 func (a *FakeApp) GetMemory() int64 {
@@ -326,6 +332,10 @@ func (app *FakeApp) GetInternalBindableAddresses() ([]string, error) {
 
 func (app *FakeApp) ListTags() []string {
 	return app.Tags
+}
+
+func (app *FakeApp) GetProcess(process string) *appTypes.Process {
+	return nil
 }
 
 func (app *FakeApp) GetMetadata(process string) appTypes.Metadata {
