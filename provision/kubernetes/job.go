@@ -37,21 +37,21 @@ var (
 		Subsystem: promSubsystem,
 		Name:      "completed_total",
 		Help:      "The total number of completed jobs",
-	}, []string{"job_name", "namespace"})
+	}, []string{"job_name"})
 
 	jobFailed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Subsystem: promSubsystem,
 		Name:      "failed_total",
 		Help:      "The total number of failed jobs",
-	}, []string{"job_name", "namespace"})
+	}, []string{"job_name", "reason"})
 
 	jobStarted = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: promNamespace,
 		Subsystem: promSubsystem,
 		Name:      "started_total",
 		Help:      "The total number of started jobs",
-	}, []string{"job_name", "namespace"})
+	}, []string{"job_name"})
 )
 
 func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
@@ -343,17 +343,18 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 func createJobEventAndMetrics(job *batchv1.Job, evt *apiv1.Event) {
 	var evtErr error
 	var kind *permission.PermissionScheme
+	jobName := job.Labels[tsuruLabelJobName]
 	switch evt.Reason {
 	case "Completed":
 		kind = permission.PermJobRun
-		jobCompleted.WithLabelValues(job.Name, job.Namespace).Inc()
+		jobCompleted.WithLabelValues(jobName).Inc()
 	case "BackoffLimitExceeded":
 		kind = permission.PermJobRun
 		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
-		jobFailed.WithLabelValues(job.Name, job.Namespace).Inc()
+		jobFailed.WithLabelValues(jobName, evt.Reason).Inc()
 	case "SuccessfulCreate":
 		kind = permission.PermJobCreate
-		jobStarted.WithLabelValues(job.Name, job.Namespace).Inc()
+		jobStarted.WithLabelValues(jobName).Inc()
 	default:
 		return
 	}
