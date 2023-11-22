@@ -200,7 +200,13 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 			})
 		}
 		if metric.Type == "cpu" {
-			spec.AverageCPU = fmt.Sprintf("%sm", metric.Metadata["value"])
+			cpuValue := metric.Metadata["value"]
+			if metric.MetricType == autoscalingv2.UtilizationMetricType {
+				//percentage based, so multiple by 10
+				spec.AverageCPU = fmt.Sprintf("%s0m", cpuValue)
+			} else if metric.MetricType == autoscalingv2.AverageValueMetricType {
+				spec.AverageCPU = fmt.Sprintf("%sm", cpuValue)
+			}
 		}
 	}
 
@@ -466,29 +472,40 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision
 func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
 	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
 
-	cpu, err := spec.ToCPUValue(a)
-	if err != nil {
-		return nil, err
-	}
+	if spec.AverageCPU != "" {
+		cpu, err := spec.ToCPUValue(a)
+		if err != nil {
+			return nil, err
+		}
 
-	if cpu > 0 {
-		kedaTriggers = append(kedaTriggers, kedav1alpha1.ScaleTriggers{
-			Type:       "cpu",
-			MetricType: autoscalingv2.UtilizationMetricType,
-			Metadata: map[string]string{
-				"value": strconv.Itoa(cpu),
-			},
-		})
+		cpuTrigger := kedav1alpha1.ScaleTriggers{
+			Type: "cpu",
+		}
+
+		if a.GetMilliCPU() > 0 {
+			cpuTrigger.MetricType = autoscalingv2.UtilizationMetricType
+		} else {
+			cpuTrigger.MetricType = autoscalingv2.AverageValueMetricType
+		}
+
+		cpuTrigger.Metadata = map[string]string{
+			"value": strconv.Itoa(cpu),
+		}
+		kedaTriggers = append(kedaTriggers, cpuTrigger)
 	}
 
 	for _, schedule := range spec.Schedules {
+		timezone := schedule.Timezone
+		if timezone == "" {
+			timezone = "UTC"
+		}
 		kedaTriggers = append(kedaTriggers, kedav1alpha1.ScaleTriggers{
 			Type: "cron",
 			Metadata: map[string]string{
 				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
 				"start":           schedule.Start,
 				"end":             schedule.End,
-				"timezone":        "UTC",
+				"timezone":        timezone,
 			},
 		})
 	}

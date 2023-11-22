@@ -465,7 +465,7 @@ type AutoScaleSpec struct {
 	Process    string              `json:"process"`
 	MinUnits   uint                `json:"minUnits"`
 	MaxUnits   uint                `json:"maxUnits"`
-	AverageCPU string              `json:"averageCPU"`
+	AverageCPU string              `json:"averageCPU,omitempty"`
 	Schedules  []AutoScaleSchedule `json:"schedules,omitempty"`
 	Version    int                 `json:"version"`
 }
@@ -525,9 +525,14 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
 		return errors.New("maximum units cannot be greater than quota limit")
 	}
-	_, err := s.ToCPUValue(a)
-	if err != nil {
-		return err
+	if s.AverageCPU == "" && len(s.Schedules) == 0 {
+		return errors.New("you have to configure at least one trigger between cpu and schedule")
+	}
+	if s.AverageCPU != "" {
+		_, err := s.ToCPUValue(a)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

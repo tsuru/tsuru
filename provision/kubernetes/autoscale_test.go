@@ -99,16 +99,12 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 	}
 }
 
-func testKEDAScaledObject(cpuTarget int, scheduleSpecs []provision.AutoScaleSchedule) *kedav1alpha1.ScaledObject {
+func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provision.AutoScaleSchedule) *kedav1alpha1.ScaledObject {
 	triggers := []kedav1alpha1.ScaleTriggers{}
 
-	triggers = append(triggers, kedav1alpha1.ScaleTriggers{
-		Type:       "cpu",
-		MetricType: autoscalingv2.UtilizationMetricType,
-		Metadata: map[string]string{
-			"value": strconv.Itoa(cpuTarget),
-		},
-	})
+	if cpuTrigger != nil {
+		triggers = append(triggers, *cpuTrigger)
+	}
 
 	for _, schedule := range scheduleSpecs {
 		scheduleTrigger := kedav1alpha1.ScaleTriggers{
@@ -373,7 +369,7 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 
 	tests := []struct {
 		scenario      func()
-		cpuTarget     int
+		cpuTrigger    *kedav1alpha1.ScaleTriggers
 		scheduleSpecs []provision.AutoScaleSchedule
 	}{
 		{
@@ -386,7 +382,13 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget:     500,
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
 			scheduleSpecs: schedulesList[:1],
 		},
 		{
@@ -399,7 +401,13 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget:     500,
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
 			scheduleSpecs: schedulesList[:2],
 		},
 		{
@@ -412,8 +420,46 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 				})
 				c.Assert(err, check.IsNil)
 			},
-			cpuTarget:     500,
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
 			scheduleSpecs: schedulesList[:3],
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+					Schedules:  schedulesList[:3],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.UtilizationMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(50),
+				},
+			},
+			scheduleSpecs: schedulesList[:3],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:  1,
+					MaxUnits:  2,
+					Schedules: schedulesList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger:    nil,
+			scheduleSpecs: schedulesList[:1],
 		},
 	}
 	for _, tt := range tests {
@@ -423,7 +469,7 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAScaledObject(tt.cpuTarget, tt.scheduleSpecs)
+		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs)
 		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 	}
 }
