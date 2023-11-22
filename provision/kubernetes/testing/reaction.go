@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	fakekedaclientset "github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/fake"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
@@ -101,6 +102,7 @@ type ClientWrapper struct {
 	MetricsClientset       *fakemetrics.Clientset
 	VPAClientset           *fakevpa.Clientset
 	BackendClientset       *fakeBackendConfig.Clientset
+	KEDAClientForConfig    *fakekedaclientset.Clientset
 	ClusterInterface
 }
 

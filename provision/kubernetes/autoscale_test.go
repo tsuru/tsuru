@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kr/pretty"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -95,6 +96,121 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 				},
 			},
 		},
+	}
+}
+
+func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provision.AutoScaleSchedule) *kedav1alpha1.ScaledObject {
+	triggers := []kedav1alpha1.ScaleTriggers{}
+
+	if cpuTrigger != nil {
+		triggers = append(triggers, *cpuTrigger)
+	}
+
+	for _, schedule := range scheduleSpecs {
+		scheduleTrigger := kedav1alpha1.ScaleTriggers{
+			Type: "cron",
+			Metadata: map[string]string{
+				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
+				"start":           schedule.Start,
+				"end":             schedule.End,
+				"timezone":        "UTC",
+			},
+		}
+		triggers = append(triggers, scheduleTrigger)
+	}
+	policyMin := autoscalingv2.MinChangePolicySelect
+
+	return &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "myapp-web",
+			Namespace: "default",
+			Labels: map[string]string{
+				"app":                          "myapp-web",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/version":    "v1",
+				"app.kubernetes.io/instance":   "myapp-web",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-platform":        "python",
+				"tsuru.io/app-team":            "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/app-process":         "web",
+				"tsuru.io/app-version":         "1",
+				"tsuru.io/builder":             "",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/provisioner":         "kubernetes",
+				"version":                      "v1",
+			},
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			MinReplicaCount: toInt32Ptr(1),
+			MaxReplicaCount: toInt32Ptr(2),
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				Name:       "myapp-web",
+			},
+			Triggers: triggers,
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+					Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+						ScaleDown: &autoscalingv2.HPAScalingRules{
+							SelectPolicy: &policyMin,
+							Policies: []autoscalingv2.HPAScalingPolicy{
+								{
+									Type:          autoscalingv2.PercentScalingPolicy,
+									Value:         10,
+									PeriodSeconds: 60,
+								},
+								{
+									Type:          autoscalingv2.PodsScalingPolicy,
+									Value:         3,
+									PeriodSeconds: 60,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func testKEDAHPA(scaledObjectName string) *autoscalingv2.HorizontalPodAutoscaler {
+	return &autoscalingv2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keda-hpa" + scaledObjectName,
+			Namespace: "default",
+			Labels: map[string]string{
+				"app":                          "myapp-web",
+				"app.kubernetes.io/component":  "tsuru-app",
+				"app.kubernetes.io/managed-by": "tsuru",
+				"app.kubernetes.io/name":       "myapp",
+				"app.kubernetes.io/version":    "v1",
+				"app.kubernetes.io/instance":   "myapp-web",
+				"tsuru.io/app-name":            "myapp",
+				"tsuru.io/app-platform":        "python",
+				"tsuru.io/app-team":            "",
+				"tsuru.io/app-pool":            "test-default",
+				"tsuru.io/app-process":         "web",
+				"tsuru.io/app-version":         "1",
+				"tsuru.io/builder":             "",
+				"tsuru.io/is-build":            "false",
+				"tsuru.io/is-deploy":           "false",
+				"tsuru.io/is-service":          "true",
+				"tsuru.io/is-stopped":          "false",
+				"tsuru.io/is-tsuru":            "true",
+				"tsuru.io/provisioner":         "kubernetes",
+				"version":                      "v1",
+				"scaledobject.keda.sh/name":    scaledObjectName,
+			},
+		},
+		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{},
 	}
 }
 
@@ -216,7 +332,146 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		expected := testHPAWithTarget(tt.expectedTarget)
 		c.Assert(hpa, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(hpa, expected)))
 	}
+}
 
+func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	schedulesList := []provision.AutoScaleSchedule{
+		{
+			MinReplicas: 2,
+			Start:       "0 6 * * *",
+			End:         "0 18 * * *",
+			Timezone:    "UTC",
+		},
+		{
+			MinReplicas: 1,
+			Start:       "0 18 * * *",
+			End:         "0 0 * * *",
+			Timezone:    "UTC",
+		},
+		{
+			MinReplicas: 2,
+			Start:       "0 0 * * *",
+			End:         "0 6 * * *",
+			Timezone:    "UTC",
+		},
+	}
+
+	tests := []struct {
+		scenario      func()
+		cpuTrigger    *kedav1alpha1.ScaleTriggers
+		scheduleSpecs []provision.AutoScaleSchedule
+	}{
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+					Schedules:  schedulesList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			scheduleSpecs: schedulesList[:1],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50%",
+					Schedules:  schedulesList[:2],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			scheduleSpecs: schedulesList[:2],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50",
+					Schedules:  schedulesList[:3],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			scheduleSpecs: schedulesList[:3],
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+					Schedules:  schedulesList[:3],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.UtilizationMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(50),
+				},
+			},
+			scheduleSpecs: schedulesList[:3],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:  1,
+					MaxUnits:  2,
+					Schedules: schedulesList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger:    nil,
+			scheduleSpecs: schedulesList[:1],
+		},
+	}
+	for _, tt := range tests {
+		tt.scenario()
+
+		ns, err := s.client.AppNamespace(context.TODO(), a)
+		c.Assert(err, check.IsNil)
+		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs)
+		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+	}
 }
 
 func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
@@ -239,6 +494,125 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
+	})
+	c.Assert(err, check.IsNil)
+
+	tests := []struct {
+		scenario           func()
+		expectedDeployment string
+		expectedVersion    int
+	}{
+		{
+			scenario:           func() {},
+			expectedDeployment: "myapp-web",
+			expectedVersion:    1,
+		},
+		{
+			scenario: func() {
+				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[1], nil)
+				c.Assert(err, check.IsNil)
+				wait()
+			},
+			expectedDeployment: "myapp-web",
+			expectedVersion:    1,
+		},
+		{
+			scenario: func() {
+				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[2], nil)
+				c.Assert(err, check.IsNil)
+				wait()
+				err = s.p.ToggleRoutable(context.TODO(), a, versions[2], true)
+				c.Assert(err, check.IsNil)
+			},
+			expectedDeployment: "myapp-web",
+			expectedVersion:    1,
+		},
+		{
+			scenario: func() {
+				err = s.p.AddUnits(context.TODO(), a, 1, "web", versions[3], nil)
+				c.Assert(err, check.IsNil)
+				wait()
+			},
+			expectedDeployment: "myapp-web",
+			expectedVersion:    1,
+		},
+		{
+			scenario: func() {
+				err = s.p.Stop(context.TODO(), a, "web", versions[0], &bytes.Buffer{})
+				c.Assert(err, check.IsNil)
+				wait()
+			},
+			expectedDeployment: "myapp-web-v3",
+			expectedVersion:    3,
+		},
+		{
+			scenario: func() {
+				err = s.p.Stop(context.TODO(), a, "web", versions[2], &bytes.Buffer{})
+				c.Assert(err, check.IsNil)
+				wait()
+			},
+			expectedDeployment: "myapp-web-v2",
+			expectedVersion:    2,
+		},
+		{
+			scenario: func() {
+				err = s.p.Stop(context.TODO(), a, "web", versions[1], &bytes.Buffer{})
+				c.Assert(err, check.IsNil)
+				wait()
+			},
+			expectedDeployment: "myapp-web-v4",
+			expectedVersion:    4,
+		},
+	}
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	for i, tt := range tests {
+		c.Logf("test %d", i)
+		tt.scenario()
+
+		hpas, err := s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).List(context.TODO(), metav1.ListOptions{})
+		c.Assert(err, check.IsNil)
+		for _, hpa := range hpas.Items {
+			dep, err := s.client.AppsV1().Deployments(ns).Get(context.TODO(), hpa.Spec.ScaleTargetRef.Name, metav1.GetOptions{})
+			c.Assert(err, check.IsNil)
+			if dep.Spec.Replicas != nil && *dep.Spec.Replicas > 0 {
+				c.Assert(hpa.Spec.ScaleTargetRef.Name, check.Equals, tt.expectedDeployment)
+				c.Assert(hpa.Labels["tsuru.io/app-version"], check.Equals, strconv.Itoa(tt.expectedVersion))
+			}
+		}
+	}
+}
+
+func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	versions := make([]appTypes.AppVersion, 4)
+	for i := range versions {
+		versions[i] = newSuccessfulVersion(c, a, map[string]interface{}{
+			"processes": map[string]interface{}{
+				"web": "python myapp.py",
+			},
+		})
+	}
+
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+		Schedules: []provision.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
 	})
 	c.Assert(err, check.IsNil)
 
@@ -410,6 +784,44 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(existingPDB, check.DeepEquals, pdb_expected)
 }
 
+func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   5,
+		MaxUnits:   20,
+		AverageCPU: "500m",
+		Schedules: []provision.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = s.p.RemoveAutoScale(context.TODO(), a, "web")
+	c.Assert(err, check.IsNil)
+	_, err = s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(k8sErrors.IsNotFound(err), check.Equals, true)
+}
+
 func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -461,6 +873,102 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
+		},
+	})
+}
+
+func (s *S) TestProvisionerGetKEDAAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python worker.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+		Process:    "web",
+		Schedules: []provision.AutoScaleSchedule{
+			{
+				MinReplicas: 2,
+				Start:       "0 6 * * *",
+				End:         "0 18 * * *",
+				Timezone:    "UTC",
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   2,
+		MaxUnits:   4,
+		AverageCPU: "200m",
+		Process:    "worker",
+		Schedules: []provision.AutoScaleSchedule{
+			{
+				MinReplicas: 4,
+				Start:       "0 12 * * *",
+				End:         "0 15 * * *",
+				Timezone:    "UTC",
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-web"), metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-worker"), metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	scales, err := s.p.GetAutoScale(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	sort.Slice(scales, func(i, j int) bool {
+		return scales[i].Process < scales[j].Process
+	})
+	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+		{
+			MinUnits:   1,
+			MaxUnits:   2,
+			AverageCPU: "500m",
+			Version:    1,
+			Process:    "web",
+			Schedules: []provision.AutoScaleSchedule{
+				{
+					MinReplicas: 2,
+					Start:       "0 6 * * *",
+					End:         "0 18 * * *",
+					Timezone:    "UTC",
+				},
+			},
+		},
+		{
+			MinUnits:   2,
+			MaxUnits:   4,
+			AverageCPU: "200m",
+			Version:    1,
+			Process:    "worker",
+			Schedules: []provision.AutoScaleSchedule{
+				{
+					MinReplicas: 4,
+					Start:       "0 12 * * *",
+					End:         "0 15 * * *",
+					Timezone:    "UTC",
+				},
+			},
 		},
 	})
 }

@@ -134,13 +134,6 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 	}{
 		{
 			AutoScaleSpec{
-				MinUnits: 0,
-				MaxUnits: 10,
-			},
-			"minimum units must be greater than 0",
-		},
-		{
-			AutoScaleSpec{
 				MinUnits: 11,
 				MaxUnits: 10,
 			},

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/pkg/errors"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -22,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	vpav1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
+	k8sutilsptr "k8s.io/utils/ptr"
 )
 
 const (
@@ -120,6 +122,12 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	if err != nil {
 		return nil, err
 	}
+
+	kedaClient, err := KEDAClientForConfig(client.restConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	controller, err := getClusterController(p, client)
 	if err != nil {
 		return nil, err
@@ -144,16 +152,65 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	if err != nil {
 		return nil, err
 	}
+
+	var specs []provision.AutoScaleSpec
+
 	hpas, err := hpaInformer.Lister().HorizontalPodAutoscalers(ns).List(labels.SelectorFromSet(labels.Set(ls.ToHPASelector())))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	var specs []provision.AutoScaleSpec
 	for _, hpa := range hpas {
-		specs = append(specs, hpaToSpec(*hpa))
+		scaledObjectName := kedaScaledObjectName(*hpa)
+		if scaledObjectName != "" {
+			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			specs = append(specs, scaledObjectToSpec(*observedKEDAScaledObject))
+		} else {
+			specs = append(specs, hpaToSpec(*hpa))
+		}
 	}
 	return specs, nil
+}
+
+func kedaScaledObjectName(hpa autoscalingv2.HorizontalPodAutoscaler) string {
+	return hpa.Labels["scaledobject.keda.sh/name"]
+}
+
+func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoScaleSpec {
+	ls := labelSetFromMeta(&scaledObject.ObjectMeta)
+	spec := provision.AutoScaleSpec{
+		MaxUnits: uint(*scaledObject.Spec.MaxReplicaCount),
+		MinUnits: uint(*scaledObject.Spec.MinReplicaCount),
+		Process:  ls.AppProcess(),
+		Version:  ls.AppVersion(),
+	}
+
+	for _, metric := range scaledObject.Spec.Triggers {
+		if metric.Type == "cron" {
+			minReplicas, _ := strconv.Atoi(metric.Metadata["desiredReplicas"])
+
+			spec.Schedules = append(spec.Schedules, provision.AutoScaleSchedule{
+				MinReplicas: minReplicas,
+				Start:       metric.Metadata["start"],
+				End:         metric.Metadata["end"],
+				Timezone:    metric.Metadata["timezone"],
+			})
+		}
+		if metric.Type == "cpu" {
+			cpuValue := metric.Metadata["value"]
+			if metric.MetricType == autoscalingv2.UtilizationMetricType {
+				//percentage based, so multiple by 10
+				spec.AverageCPU = fmt.Sprintf("%s0m", cpuValue)
+			} else if metric.MetricType == autoscalingv2.AverageValueMetricType {
+				spec.AverageCPU = fmt.Sprintf("%sm", cpuValue)
+			}
+		}
+	}
+
+	return spec
 }
 
 func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpec {
@@ -219,15 +276,39 @@ func (p *kubernetesProvisioner) RemoveAutoScale(ctx context.Context, a provision
 	if err != nil {
 		return err
 	}
+
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return err
 	}
+
 	depInfo, err := minimumAutoScaleVersion(ctx, client, a, process)
 	if err != nil {
 		return err
 	}
-	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
+
+	hpaName := hpaNameForApp(a, depInfo.process)
+
+	err = removeKEDAScaleObject(ctx, client, ns, hpaName)
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+
+	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaName, metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string, scaledObjectName string) error {
+	kedaClient, err := KEDAClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+
+	err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Delete(ctx, scaledObjectName, metav1.DeleteOptions{})
 	if err != nil && !k8sErrors.IsNotFound(err) {
 		return errors.WithStack(err)
 	}
@@ -262,9 +343,18 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		return errors.WithStack(err)
 	}
 	labels = labels.WithoutIsolated().WithoutRoutable()
-	minUnits := int32(spec.MinUnits)
-
 	hpaName := hpaNameForApp(a, depInfo.process)
+
+	if len(spec.Schedules) > 0 {
+		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		return nil
+	}
+
+	minUnits := int32(spec.MinUnits)
 
 	cpuValue, err := spec.ToCPUValue(a)
 	if err != nil {
@@ -283,7 +373,6 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		_ = target.AverageValue.String()
 	}
 
-	policyMin := autoscalingv2.MinChangePolicySelect
 	hpa := &autoscalingv2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   hpaName,
@@ -301,23 +390,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 			// customize the behavior directly. Meanwhile, we'll use a safer
 			// default to prevent the autoscaler from scaling down too fast
 			// poossibly disrupting the app.
-			Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
-				ScaleDown: &autoscalingv2.HPAScalingRules{
-					SelectPolicy: &policyMin,
-					Policies: []autoscalingv2.HPAScalingPolicy{
-						{
-							Type:          autoscalingv2.PercentScalingPolicy,
-							Value:         10,
-							PeriodSeconds: 60,
-						},
-						{
-							Type:          autoscalingv2.PodsScalingPolicy,
-							Value:         3,
-							PeriodSeconds: 60,
-						},
-					},
-				},
-			},
+			Behavior: buildHPABehavior(),
 			Metrics: []autoscalingv2.MetricSpec{
 				{
 					Type: autoscalingv2.ResourceMetricSourceType,
@@ -338,9 +411,15 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	existingHPA, err := client.AutoscalingV2().HorizontalPodAutoscalers(ns).Get(ctx, hpaName, metav1.GetOptions{})
 	if k8sErrors.IsNotFound(err) {
 		existingHPA = nil
+
+		err = removeKEDAScaleObject(ctx, client, ns, hpaName)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return errors.WithStack(err)
 	}
+
 	if existingHPA != nil {
 		hpa.ResourceVersion = existingHPA.ResourceVersion
 		_, err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Update(ctx, hpa, metav1.UpdateOptions{})
@@ -350,7 +429,133 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
 	return nil
+}
+
+func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
+	kedaClient, err := KEDAClientForConfig(client.restConfig)
+	if err != nil {
+		return err
+	}
+
+	ns, err := client.AppNamespace(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	//remove HPA managed by tsuru so KEDA can takeover AutoScaling
+	err = client.AutoscalingV2().HorizontalPodAutoscalers(ns).Delete(ctx, hpaNameForApp(a, depInfo.process), metav1.DeleteOptions{})
+	if err != nil && !k8sErrors.IsNotFound(err) {
+		return errors.WithStack(err)
+	}
+
+	expectedKEDAScaledObject, err := newKEDAScaledObject(ctx, spec, a, depInfo, ns, hpaName, labels)
+	if err != nil {
+		return err
+	}
+
+	observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, hpaName, metav1.GetOptions{})
+	if k8sErrors.IsNotFound(err) {
+		_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Create(ctx, expectedKEDAScaledObject, metav1.CreateOptions{})
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	expectedKEDAScaledObject.ResourceVersion = observedKEDAScaledObject.ResourceVersion
+	_, err = kedaClient.KedaV1alpha1().ScaledObjects(ns).Update(ctx, expectedKEDAScaledObject, metav1.UpdateOptions{})
+	return err
+}
+
+func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
+	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
+
+	if spec.AverageCPU != "" {
+		cpu, err := spec.ToCPUValue(a)
+		if err != nil {
+			return nil, err
+		}
+
+		cpuTrigger := kedav1alpha1.ScaleTriggers{
+			Type: "cpu",
+		}
+
+		if a.GetMilliCPU() > 0 {
+			cpuTrigger.MetricType = autoscalingv2.UtilizationMetricType
+		} else {
+			cpuTrigger.MetricType = autoscalingv2.AverageValueMetricType
+		}
+
+		cpuTrigger.Metadata = map[string]string{
+			"value": strconv.Itoa(cpu),
+		}
+		kedaTriggers = append(kedaTriggers, cpuTrigger)
+	}
+
+	for _, schedule := range spec.Schedules {
+		timezone := schedule.Timezone
+		if timezone == "" {
+			timezone = "UTC"
+		}
+		kedaTriggers = append(kedaTriggers, kedav1alpha1.ScaleTriggers{
+			Type: "cron",
+			Metadata: map[string]string{
+				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
+				"start":           schedule.Start,
+				"end":             schedule.End,
+				"timezone":        timezone,
+			},
+		})
+	}
+
+	return &kedav1alpha1.ScaledObject{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hpaName,
+			Namespace: ns,
+			Labels:    labels.ToLabels(),
+		},
+		Spec: kedav1alpha1.ScaledObjectSpec{
+			ScaleTargetRef: &kedav1alpha1.ScaleTarget{
+				Name:       depInfo.dep.Name,
+				Kind:       "Deployment",
+				APIVersion: appsv1.SchemeGroupVersion.String(),
+			},
+			MinReplicaCount: k8sutilsptr.To(int32(spec.MinUnits)),
+			MaxReplicaCount: k8sutilsptr.To(int32(spec.MaxUnits)),
+			Triggers:        kedaTriggers,
+			Advanced: &kedav1alpha1.AdvancedConfig{
+				HorizontalPodAutoscalerConfig: &kedav1alpha1.HorizontalPodAutoscalerConfig{
+					Behavior: buildHPABehavior(),
+				},
+			},
+		},
+	}, nil
+}
+
+func buildHPABehavior() *autoscalingv2.HorizontalPodAutoscalerBehavior {
+	// setting ground to allow user customization regarding Up/Down scale behavior
+	// should be a feature in the future
+	policyMin := autoscalingv2.MinChangePolicySelect
+
+	return &autoscalingv2.HorizontalPodAutoscalerBehavior{
+		ScaleDown: &autoscalingv2.HPAScalingRules{
+			SelectPolicy: &policyMin,
+			Policies: []autoscalingv2.HPAScalingPolicy{
+				{
+					Type:          autoscalingv2.PercentScalingPolicy,
+					Value:         10,
+					PeriodSeconds: 60,
+				},
+				{
+					Type:          autoscalingv2.PodsScalingPolicy,
+					Value:         3,
+					PeriodSeconds: 60,
+				},
+			},
+		},
+	}
 }
 
 func minimumAutoScaleVersion(ctx context.Context, client *ClusterClient, a provision.App, process string) (*deploymentInfo, error) {
@@ -565,7 +770,20 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 
 	var specs []provision.AutoScaleSpec
 	for _, hpa := range hpas.Items {
-		specs = append(specs, hpaToSpec(hpa))
+		scaledObjectName := kedaScaledObjectName(hpa)
+		if scaledObjectName != "" {
+			kedaClient, err := KEDAClientForConfig(client.restConfig)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			observedKEDAScaledObject, err := kedaClient.KedaV1alpha1().ScaledObjects(ns).Get(ctx, scaledObjectName, metav1.GetOptions{})
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			specs = append(specs, scaledObjectToSpec(*observedKEDAScaledObject))
+		} else {
+			specs = append(specs, hpaToSpec(hpa))
+		}
 	}
 	return specs, nil
 }

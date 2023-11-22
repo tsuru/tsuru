@@ -21,7 +21,7 @@ services:
 
   deploy-agent:
     container_name: deploy-agent
-    image: tsuru/deploy-agent:v2.3.2
+    image: tsuru/deploy-agent:v2.3.3
     command:
     - -port=8000
     - -buildkit-addr=tcp://buildkit:8001
@@ -37,7 +37,7 @@ services:
     image: moby/buildkit:v0.12.1
     privileged: true
     volumes:
-    - ./etc/buildkitd.toml:/etc/buildkit/buildkitd.toml:ro
+    - ./etc/buildkitd.toml:/etc/buildkit/buildkitd.toml
     restart: unless-stopped
     depends_on:
     - registry
