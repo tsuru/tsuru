@@ -55,6 +55,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/storage"
+	"github.com/tsuru/tsuru/tag"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	"github.com/tsuru/tsuru/volume"
 	"golang.org/x/net/websocket"
@@ -190,6 +191,10 @@ func setupServices() error {
 	servicemanager.Job, err = job.JobService()
 	if err != nil {
 		return errors.Wrapf(err, "could not initialize job service")
+	}
+	servicemanager.Tag, err = tag.TagService()
+	if err != nil {
+		return errors.Wrapf(err, "could not initialize tag service")
 	}
 	return nil
 }
