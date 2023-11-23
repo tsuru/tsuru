@@ -627,7 +627,8 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 
 	if len(updateData.Tags) > 0 {
-		tagResponse, err := servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+		var tagResponse *tagTypes.ValidationResponse
+		tagResponse, err = servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
 			Operation: tagTypes.OperationKind_OPERATION_KIND_UPDATE,
 			Tags:      updateData.Tags,
 		})
