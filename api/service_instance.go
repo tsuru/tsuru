@@ -25,7 +25,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
 func serviceInstanceTarget(name, instance string) event.Target {
@@ -86,6 +88,17 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if !allowed {
 			return permission.ErrUnauthorized
 		}
+	}
+
+	tagResponse, err := servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+		Operation: tagTypes.OperationKind_OPERATION_KIND_CREATE,
+		Tags:      instance.Tags,
+	})
+	if err != nil {
+		return err
+	}
+	if !tagResponse.Valid {
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
 
 	evt, err := event.New(&event.Opts{
@@ -196,6 +209,16 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		if !allowed {
 			return permission.ErrUnauthorized
 		}
+	}
+	tagResponse, err := servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+		Operation: tagTypes.OperationKind_OPERATION_KIND_UPDATE,
+		Tags:      si.Tags,
+	})
+	if err != nil {
+		return err
+	}
+	if !tagResponse.Valid {
+		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
