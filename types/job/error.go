@@ -16,6 +16,7 @@ var (
 	ErrMaxAttemptsReached = fmt.Errorf("Unable to generate unique job name: max attempts reached (%d)", MaxAttempts)
 	ErrJobAlreadyExists   = errors.New("a job with the same name already exists")
 	ErrInvalidSchedule    = errors.New("invalid schedule")
+	ErrInvalidDeployKind  = errors.New("invalid deploy kind")
 )
 
 type JobCreationError struct {

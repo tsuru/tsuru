@@ -7,6 +7,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/globalsign/mgo"
@@ -21,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -117,24 +117,6 @@ func (*jobService) RemoveJobProv(ctx context.Context, job *jobTypes.Job) error {
 	return prov.DestroyJob(ctx, job)
 }
 
-type DeployOptions struct {
-	Image string
-	Kind  provisionTypes.DeployKind
-}
-
-func (o *DeployOptions) GetKind() (kind provisionTypes.DeployKind) {
-	if o.Kind != "" {
-		return o.Kind
-	}
-
-	defer func() { o.Kind = kind }()
-	if o.Image != "" {
-		return provisionTypes.DeployImage
-	}
-
-	return provisionTypes.DeployKind("")
-}
-
 // builderDeploy uses deploy-agent to push the image to tsuru's registry and deploy the job using the new pushed image
 func builderDeploy(ctx context.Context, job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
 	if err := ctx.Err(); err != nil { // e.g. context deadline exceeded
@@ -180,18 +162,53 @@ func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string
 	return fmt.Sprintf("%s:latest", newImage), nil
 }
 
+func imageID(ctx context.Context, job *jobTypes.Job) (string, error) {
+	var imageID string
+	if job.DeployOptions != nil && job.DeployOptions.Image != "" {
+		imageID = job.DeployOptions.Image
+	}
+	if imageID == "" {
+		imageID = job.Spec.Container.OriginalImageSrc
+	}
+	if imageID == "" {
+		return "", errors.New("no image provided")
+	}
+	return imageID, nil
+}
+
 func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
-	// use deploy-agent to push the image to tsuru's registry
+	imageID, err := imageID(ctx, job)
+	if err != nil {
+		return err
+	}
 	newImageDst, err := builderDeploy(ctx, job, builder.BuildOpts{
-		ImageID: job.Spec.Container.OriginalImageSrc,
+		ImageID: imageID,
 	})
-	// we don't want to fail the job creation if the image push fails, yet
-	if err == nil && newImageDst != "" {
-		// if job.Spec.Container.InternaRegistryImage is populated, provisioner will try to pull the image from there
+	defer func() {
 		job.Spec.Container.InternalRegistryImage = newImageDst
+	}()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ensureDeployOptions(j *jobTypes.Job) error {
+	if j.DeployOptions != nil {
+		// TODO: remove this when we remove the old deploy kind from the client side
+		// this makes sure OriginalImageSrc is always populated
+		j.Spec.Container.OriginalImageSrc = j.DeployOptions.Image
 		return nil
 	}
-	return errors.Wrap(err, fmt.Sprintf("deploy-agent: failed to push image %s", job.Spec.Container.OriginalImageSrc))
+	// TODO: remove this when we remove the old deploy kind from the client side
+	if j.Spec.Container.OriginalImageSrc != "" {
+		j.DeployOptions = &jobTypes.DeployOptions{
+			Kind:  provisionTypes.DeployImage,
+			Image: j.Spec.Container.OriginalImageSrc,
+		}
+		return nil
+	}
+	return jobTypes.ErrInvalidDeployKind
 }
 
 // CreateJob creates a new job or cronjob.
@@ -221,10 +238,11 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return err
 	}
 
+	ensureDeployOptions(job)
+
 	err := buildWithDeployAgent(ctx, job)
-	// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
 	if err != nil {
-		log.Error(err)
+		return &jobTypes.JobCreationError{Job: job.Name, Err: err}
 	}
 
 	actions := []*action.Action{
@@ -258,6 +276,24 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 		buildFakeSchedule(ctx, newJob)
 	}
 	newJobActiveDeadlineSeconds := buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
+
+	// we have to ensure oldJob has deployOptions, for compatibility with legacy way of creating jobs
+	if err := ensureDeployOptions(oldJob); err != nil {
+		return err
+	}
+	// if newJob doesn't have any info about deployOptions, it means client did not pass job.Spec.Conatainer.Image nor job.DeployOptions
+	// so it doesnt want to change the deployOptions
+	// we use the oldJob's deployOptions forcing reflect to pass the validation and skip buildWithDeployAgent
+	if err := ensureDeployOptions(newJob); err != nil {
+		newJob.DeployOptions = oldJob.DeployOptions
+	}
+	if !reflect.DeepEqual(newJob.DeployOptions, oldJob.DeployOptions) {
+		err := buildWithDeployAgent(ctx, newJob)
+		if err != nil {
+			return err
+		}
+	}
+
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
 	// in other words: we merge the non-empty values of oldJob and add to the empty values of newJob
 	// TODO: add an option to erase old values, it can be easily done with mergo.Merge(dst, src, mergo.WithOverwriteWithEmptyValue),
@@ -274,14 +310,6 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	if err := validateJob(ctx, newJob); err != nil {
 		return err
-	}
-
-	if oldJob.Spec.Container.OriginalImageSrc != newJob.Spec.Container.OriginalImageSrc {
-		err := buildWithDeployAgent(ctx, newJob)
-		// log the error but don't fail the job creation, for compatibility reasons, later we should fail the job creation
-		if err != nil {
-			log.Errorf(err.Error())
-		}
 	}
 
 	actions := []*action.Action{
