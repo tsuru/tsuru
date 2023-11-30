@@ -171,6 +171,7 @@ func (c *clusterController) startJobInformer() error {
 			wg.Add(2)
 			go createJobEvent(job, evt, wg)
 			go incrementJobMetrics(job, evt, wg)
+			wg.Wait()
 		},
 	})
 
