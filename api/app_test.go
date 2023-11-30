@@ -987,7 +987,7 @@ func (s *S) TestCreateAppRemoveRole(c *check.C) {
 func (s *S) TestCreateApp(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
 	a := app.App{Name: "someapp"}
-	data := "name=someapp&platform=zend"
+	data := "name=someapp&platform=zend&teamOwner=" + s.team.Name
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -1025,6 +1025,22 @@ func (s *S) TestCreateApp(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "name", "value": a.Name},
 			{"name": "platform", "value": "zend"},
+		},
+		Allowed: &event.AllowedPermission{
+			Contexts: []permTypes.PermissionContext{
+				{
+					CtxType: permTypes.CtxApp,
+					Value:   "someapp",
+				},
+				{
+					CtxType: permTypes.CtxPool,
+					Value:   "test1",
+				},
+				{
+					CtxType: permTypes.CtxTeam,
+					Value:   s.team.Name,
+				},
+			},
 		},
 	}, eventtest.HasEvent)
 }

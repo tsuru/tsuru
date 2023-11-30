@@ -26,6 +26,7 @@ type EventDesc struct {
 	LogMatches      []string
 	ErrorMatches    string
 	IsEmpty         bool
+	Allowed         *event.AllowedPermission
 }
 
 type hasEventChecker struct{}
@@ -95,6 +96,17 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 		}
 		addAndBlock(query, andBlock)
 	}
+	if evt.Allowed != nil {
+		var andBlock []bson.M
+		for _, ctx := range evt.Allowed.Contexts {
+			andBlock = append(andBlock, bson.M{
+				"allowed.contexts": ctx,
+			})
+		}
+
+		addAndBlock(query, andBlock)
+	}
+
 	queryPartCustom(query, "startcustomdata", evt.StartCustomData)
 	queryPartCustom(query, "endcustomdata", evt.EndCustomData)
 	queryPartCustom(query, "othercustomdata", evt.OtherCustomData)
