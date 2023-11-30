@@ -6326,6 +6326,8 @@ definitions:
                     type: array
                     items:
                       type: string
+                  interactiveMode:
+                    type: string
                   env:
                     type: array
                     items:
