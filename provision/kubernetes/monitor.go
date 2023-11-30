@@ -167,7 +167,10 @@ func (c *clusterController) startJobInformer() error {
 			if job.Labels["tsuru.io/is-tsuru"] != "true" {
 				return
 			}
-			createJobEventAndMetrics(job, evt)
+			wg := &sync.WaitGroup{}
+			wg.Add(2)
+			go createJobEvent(job, evt, wg)
+			go incrementJobMetrics(job, evt, wg)
 		},
 	})
 

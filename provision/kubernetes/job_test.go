@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -684,7 +685,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "SuccessfulCreate",
 					Type:    "Normal",
 				}
-				createJobEventAndMetrics(j, evt)
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -777,7 +780,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "Completed",
 					Type:    "Normal",
 				}
-				createJobEventAndMetrics(j, evt)
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -860,7 +865,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "BackoffLimitExceeded",
 					Type:    "Warning",
 				}
-				createJobEventAndMetrics(j, evt)
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -942,7 +949,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 					Reason:  "SomeOtherReason",
 					Type:    "Warning",
 				}
-				createJobEventAndMetrics(j, evt)
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})

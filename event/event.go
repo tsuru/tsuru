@@ -202,6 +202,7 @@ type eventData struct {
 	UniqueID        bson.ObjectId
 	StartTime       time.Time
 	EndTime         time.Time     `bson:",omitempty"`
+	ExpireTime      time.Time     `bson:",omitempty"`
 	Target          Target        `bson:",omitempty"`
 	ExtraTargets    []ExtraTarget `bson:",omitempty"`
 	StartCustomData bson.Raw      `bson:",omitempty"`
@@ -405,6 +406,7 @@ type Opts struct {
 	Allowed       AllowedPermission
 	AllowedCancel AllowedPermission
 	RetryTimeout  time.Duration
+	ExpireAt      *time.Time
 }
 
 func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) AllowedPermission {
@@ -970,6 +972,9 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 		AllowedCancel:   opts.AllowedCancel,
 		Instance:        instance,
 	}}
+	if opts.ExpireAt != nil {
+		evt.eventData.ExpireTime = *opts.ExpireAt
+	}
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
 		err = coll.Insert(evt.eventData)

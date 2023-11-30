@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -29,6 +30,7 @@ import (
 const (
 	promNamespace = "tsuru"
 	promSubsystem = "job"
+	expireTTL     = time.Hour
 )
 
 var (
@@ -340,37 +342,53 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 	return units, nil
 }
 
-func createJobEventAndMetrics(job *batchv1.Job, evt *apiv1.Event) {
-	var evtErr error
-	var kind *permission.PermissionScheme
+func incrementJobMetrics(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	defer wg.Done()
 	jobName := job.Labels[tsuruLabelJobName]
 	switch evt.Reason {
 	case "Completed":
-		kind = permission.PermJobRun
 		jobCompleted.WithLabelValues(jobName).Inc()
 	case "BackoffLimitExceeded":
-		kind = permission.PermJobRun
-		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
-		jobFailed.WithLabelValues(jobName, evt.Reason).Inc()
+		jobFailed.WithLabelValues(jobName, evt.Message).Inc()
 	case "SuccessfulCreate":
-		kind = permission.PermJobCreate
 		jobStarted.WithLabelValues(jobName).Inc()
 	default:
 		return
 	}
+}
 
+func createJobEvent(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var evtErr error
+	var kind *permission.PermissionScheme
+	var expire time.Time
+	switch evt.Reason {
+	case "Completed":
+		kind = permission.PermJobRun
+		expire = time.Now().UTC().Add(expireTTL)
+	case "BackoffLimitExceeded":
+		kind = permission.PermJobRun
+		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
+	case "SuccessfulCreate":
+		kind = permission.PermJobCreate
+		expire = time.Now().UTC().Add(expireTTL)
+	default:
+		return
+	}
 	realJobOwner := job.Name
 	for _, owner := range job.OwnerReferences {
 		if owner.Kind == "CronJob" {
 			realJobOwner = owner.Name
 		}
 	}
+
 	opts := event.Opts{
 		Kind:       kind,
 		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},
 		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
 		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
 		Cancelable: false,
+		ExpireAt:   &expire,
 	}
 	e, err := event.New(&opts)
 	if err != nil {
