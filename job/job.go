@@ -238,7 +238,9 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		return err
 	}
 
-	ensureDeployOptions(job)
+	if err := ensureDeployOptions(job); err != nil {
+		return err
+	}
 
 	err := buildWithDeployAgent(ctx, job)
 	if err != nil {
@@ -253,6 +255,31 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(ctx, job, user)
+}
+
+// updateDeployOptions updates the job's deployOptions if the job's image has changed
+func updateDeployOptions(ctx context.Context, oldJob, newJob *jobTypes.Job) error {
+	// we have to ensure oldJob has deployOptions, for compatibility with legacy way of creating jobs
+	if err := ensureDeployOptions(oldJob); err != nil {
+		return err
+	}
+	// if newJob doesn't have any info about deployOptions, it means client did not pass job.Spec.Container.Image nor job.DeployOptions
+	// so it doesnt want to change the deployOptions
+	// we use the oldJob's deployOptions forcing reflect to pass the validation and skip buildWithDeployAgent
+	if err := ensureDeployOptions(newJob); err != nil {
+		if err == jobTypes.ErrInvalidDeployKind {
+			newJob.DeployOptions = oldJob.DeployOptions
+		} else {
+			return err
+		}
+	}
+	if !reflect.DeepEqual(newJob.DeployOptions, oldJob.DeployOptions) {
+		err := buildWithDeployAgent(ctx, newJob)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // UpdateJob updates an existing cronjob.
@@ -277,21 +304,8 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	newJobActiveDeadlineSeconds := buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 
-	// we have to ensure oldJob has deployOptions, for compatibility with legacy way of creating jobs
-	if err := ensureDeployOptions(oldJob); err != nil {
+	if err := updateDeployOptions(ctx, oldJob, newJob); err != nil {
 		return err
-	}
-	// if newJob doesn't have any info about deployOptions, it means client did not pass job.Spec.Conatainer.Image nor job.DeployOptions
-	// so it doesnt want to change the deployOptions
-	// we use the oldJob's deployOptions forcing reflect to pass the validation and skip buildWithDeployAgent
-	if err := ensureDeployOptions(newJob); err != nil {
-		newJob.DeployOptions = oldJob.DeployOptions
-	}
-	if !reflect.DeepEqual(newJob.DeployOptions, oldJob.DeployOptions) {
-		err := buildWithDeployAgent(ctx, newJob)
-		if err != nil {
-			return err
-		}
 	}
 
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
