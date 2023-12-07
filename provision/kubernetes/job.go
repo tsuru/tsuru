@@ -369,9 +369,6 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
 	case "BackoffLimitExceeded":
 		kind = permission.PermJobRun
 		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
-	case "SuccessfulCreate":
-		kind = permission.PermJobCreate
-		expire = time.Now().UTC().Add(expireTTL)
 	default:
 		return
 	}
