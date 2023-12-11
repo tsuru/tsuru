@@ -19,7 +19,7 @@ message TagValidationRequest {
 }
 
 enum OperationKind {
-  BUILD_KIND_UNSPECIFIED                     = 0;
+  BUILD_KIND_UNSPECIFIED   = 0;
   OPERATION_KIND_CREATE    = 1;
   OPERATION_KIND_UPDATE    = 2;
 }

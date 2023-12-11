@@ -34,6 +34,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	tsuruTest "github.com/tsuru/tsuru/test"
@@ -42,6 +43,7 @@ import (
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	serviceTypes "github.com/tsuru/tsuru/types/service"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -559,6 +561,36 @@ func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTags(c *check.C) {
 	})
 }
 
+func (s *ServiceInstanceSuite) TestCreateServiceInstanceWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_CREATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"tag a", "tag b"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag"}, nil
+		},
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	params := map[string]interface{}{
+		"name":         "brainsql",
+		"service_name": "mysql",
+		"plan":         "small",
+		"owner":        s.team.Name,
+		"tag":          []string{"tag a", "tag b"},
+	}
+	recorder, request := makeRequestToCreateServiceInstance(params, c)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
+}
+
 func makeRequestToUpdateServiceInstance(params map[string]interface{}, serviceName, instanceName, token string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	var body bytes.Buffer
 	err := json.NewEncoder(&body).Encode(params)
@@ -712,6 +744,45 @@ func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTags(c *check.C) {
 			{"name": "tag", "value": []string{"tag b", "tag c"}},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_UPDATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"tag b", "tag c"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag"}, nil
+		},
+	}
+	si := service.ServiceInstance{
+		Name:        "brainsql",
+		ServiceName: "mysql",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+		Tags:        []string{"tag a"},
+		TeamOwner:   s.team.Name,
+	}
+	err := s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	params := map[string]interface{}{
+		"description": "",
+		"plan":        "",
+		"teamowner":   s.team.Name,
+		"tag":         []string{"tag b", "tag c"},
+		"parameters":  map[string]interface{}{},
+	}
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "myuser", permission.Permission{
+		Scheme:  permission.PermServiceInstanceUpdateTags,
+		Context: permission.Context(permTypes.CtxServiceInstance, serviceIntancePermName("mysql", si.Name)),
+	})
+	recorder, request := makeRequestToUpdateServiceInstance(params, "mysql", "brainsql", token.GetValue(), c)
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
 }
 
 func (s *ServiceInstanceSuite) TestUpdateServiceInstanceWithEmptyTagRemovesTags(c *check.C) {

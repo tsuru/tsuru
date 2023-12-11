@@ -48,6 +48,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 	check "gopkg.in/check.v1"
 )
 
@@ -1296,6 +1297,37 @@ func (s *S) TestCreateAppWithTags(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestCreateAppWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_CREATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag"}, nil
+		},
+	}
+
+	s.setupMockForCreateApp(c, "zend")
+	data, err := url.QueryUnescape("name=someapp&platform=zend&tag=tag1&tag=tag2&tags.0=tag0")
+	c.Assert(err, check.IsNil)
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
+	})
+	request.Header.Set("Authorization", "b "+token.GetValue())
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
+}
+
 func (s *S) TestCreateAppWithMetadata(c *check.C) {
 	s.setupMockForCreateApp(c, "zend")
 	data, err := url.QueryUnescape("name=someapp&platform=zend&metadata.annotations.0.name=a&metadata.annotations.0.value=b")
@@ -1796,6 +1828,39 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 			{"name": "tags.0", "value": "tag0"},
 		},
 	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppWithTagsAndTagValidator(c *check.C) {
+	previousTagService := servicemanager.Tag
+	defer func() {
+		servicemanager.Tag = previousTagService
+	}()
+	servicemanager.Tag = &tagTypes.MockServiceTagServiceClient{
+		OnValidate: func(in *tagTypes.TagValidationRequest) (*tagTypes.ValidationResponse, error) {
+			c.Assert(in.Operation, check.Equals, tagTypes.OperationKind_OPERATION_KIND_UPDATE)
+			c.Assert(in.Tags, check.DeepEquals, []string{"tag0", "tag1", "tag2", "tag3"})
+			return &tagTypes.ValidationResponse{Valid: false, Error: "invalid tag"}, nil
+		},
+	}
+	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("description1=s&tag=tag1&tag=tag2&tag=tag3&tags.0=tag0")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid tag\n")
 }
 
 func (s *S) TestUpdateAppWithTagsWithoutPermission(c *check.C) {
