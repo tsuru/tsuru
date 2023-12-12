@@ -991,9 +991,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
 				c.Assert(gotEvt.Error, check.Equals, "")
-				c.Assert(gotEvt.ExpireTime, check.NotNil)
-				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(61*time.Minute)), check.Equals, false)
-				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(59*time.Minute)), check.Equals, true)
+				c.Assert(gotEvt.ExpireAt, check.NotNil)
+				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(61*time.Minute)), check.Equals, false)
+				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(59*time.Minute)), check.Equals, true)
 			},
 		},
 		{
@@ -1113,9 +1113,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(err, check.IsNil)
 				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
 				c.Assert(gotEvt.Error, check.Equals, "")
-				c.Assert(gotEvt.ExpireTime, check.NotNil)
-				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(25*time.Hour)), check.Equals, false)
-				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(23*time.Hour)), check.Equals, true)
+				c.Assert(gotEvt.ExpireAt, check.NotNil)
+				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(25*time.Hour)), check.Equals, false)
+				c.Assert(gotEvt.ExpireAt.After(time.Now().Add(23*time.Hour)), check.Equals, true)
 			},
 		},
 	}

@@ -126,12 +126,12 @@ func (s *S) TestNewExpirable(c *check.C) {
 		ExpireAt: &expireAt,
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.ExpireTime, check.NotNil)
-	c.Assert(evt.ExpireTime.IsZero(), check.Equals, false)
+	c.Assert(evt.ExpireAt, check.NotNil)
+	c.Assert(evt.ExpireAt.IsZero(), check.Equals, false)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].ExpireTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, false)
 }
 
 func (s *S) TestNewExpirableMissingShouldNotCreateTimestampInDB(c *check.C) {
@@ -142,11 +142,11 @@ func (s *S) TestNewExpirableMissingShouldNotCreateTimestampInDB(c *check.C) {
 		Allowed: Allowed(permission.PermJobRun),
 	})
 	c.Assert(err, check.IsNil)
-	c.Assert(evt.ExpireTime.IsZero(), check.Equals, true)
+	c.Assert(evt.ExpireAt.IsZero(), check.Equals, true)
 	evts, err := All()
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Assert(evts[0].ExpireTime.IsZero(), check.Equals, true)
+	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, true)
 }
 
 func (s *S) TestNewCustomDataDone(c *check.C) {
