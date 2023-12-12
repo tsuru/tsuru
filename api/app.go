@@ -42,6 +42,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
+	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
 var (
@@ -453,6 +454,18 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			}
 		}
 	}
+
+	tagResponse, err := servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+		Operation: tagTypes.OperationKind_OPERATION_KIND_CREATE,
+		Tags:      a.Tags,
+	})
+	if err != nil {
+		return err
+	}
+	if !tagResponse.Valid {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
@@ -612,6 +625,21 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return permission.ErrUnauthorized
 		}
 	}
+
+	if len(updateData.Tags) > 0 {
+		var tagResponse *tagTypes.ValidationResponse
+		tagResponse, err = servicemanager.Tag.Validate(ctx, &tagTypes.TagValidationRequest{
+			Operation: tagTypes.OperationKind_OPERATION_KIND_UPDATE,
+			Tags:      updateData.Tags,
+		})
+		if err != nil {
+			return err
+		}
+		if !tagResponse.Valid {
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
+		}
+	}
+
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdate,

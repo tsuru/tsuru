@@ -1,0 +1,30 @@
+// Copyright 2023 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package tag_v1;
+
+option go_package = "github.com/tsuru/tsuru/types/tag";
+
+service TagService {
+    // Validate tags
+    rpc Validate(TagValidationRequest) returns (ValidationResponse) {};
+}
+
+message TagValidationRequest {
+  OperationKind operation = 1;
+  repeated string tags = 2;
+}
+
+enum OperationKind {
+  BUILD_KIND_UNSPECIFIED   = 0;
+  OPERATION_KIND_CREATE    = 1;
+  OPERATION_KIND_UPDATE    = 2;
+}
+
+message ValidationResponse {
+  bool valid = 1;
+  string error = 2;
+}

@@ -30,6 +30,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
+	"github.com/tsuru/tsuru/tag"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -139,6 +140,8 @@ func (s *S) SetUpTest(c *check.C) {
 	servicemanager.AuthGroup, err = auth.GroupService()
 	c.Assert(err, check.IsNil)
 	servicemanager.Job, err = job.JobService()
+	c.Assert(err, check.IsNil)
+	servicemanager.Tag, err = tag.TagService()
 	c.Assert(err, check.IsNil)
 }
 

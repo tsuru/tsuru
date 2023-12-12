@@ -164,3 +164,11 @@ SWAGGER=$(GOBIN)/swagger
 else
 SWAGGER=$(shell command -v swagger)
 endif
+
+
+PROTOC ?= protoc
+.PHONY: generate
+generate-grpc:
+	$(PROTOC) --go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		types/tag/service.proto

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/service"
+	"github.com/tsuru/tsuru/types/tag"
 	"github.com/tsuru/tsuru/types/tracker"
 	"github.com/tsuru/tsuru/types/volume"
 )
@@ -42,4 +43,5 @@ var (
 	AuthGroup                 auth.GroupService
 	Pool                      provision.PoolService
 	Volume                    volume.VolumeService
+	Tag                       tag.TagServiceClient
 )
