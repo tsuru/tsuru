@@ -96,7 +96,7 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 		c.stop(ctx)
 		return nil, err
 	}
-	err = c.startJobInformer()
+	err = c.startJobInformer(cluster)
 	if err != nil {
 		// log but don't stop the controller
 		log.Errorf("error while starting job informer: %v", err)
@@ -135,7 +135,7 @@ func (c *clusterController) isLeader() bool {
 	return atomic.LoadInt32(&c.leader) == 1
 }
 
-func (c *clusterController) startJobInformer() error {
+func (c *clusterController) startJobInformer(client *ClusterClient) error {
 	if enable, _ := c.cluster.EnableJobEventCreation(); !enable {
 		return errors.New("job event creation is not enabled")
 	}
@@ -169,7 +169,7 @@ func (c *clusterController) startJobInformer() error {
 			}
 			wg := &sync.WaitGroup{}
 			wg.Add(2)
-			go createJobEvent(job, evt, wg)
+			go createJobEvent(client, job, evt, wg)
 			go incrementJobMetrics(job, evt, wg)
 			wg.Wait()
 		},

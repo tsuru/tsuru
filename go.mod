@@ -3,6 +3,7 @@ module github.com/tsuru/tsuru
 go 1.20
 
 require (
+	github.com/adhocore/gronx v1.6.6
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
@@ -48,6 +49,7 @@ require (
 	golang.org/x/term v0.8.0
 	golang.org/x/text v0.9.0
 	google.golang.org/grpc v1.53.0
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 	k8s.io/api v0.26.2
@@ -134,7 +136,6 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230227214838-9b19f0bdc514 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

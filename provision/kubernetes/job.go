@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/adhocore/gronx"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -30,7 +31,7 @@ import (
 const (
 	promNamespace = "tsuru"
 	promSubsystem = "job"
-	expireTTL     = time.Hour
+	expireTTL     = time.Hour * 24 // 1 day
 )
 
 var (
@@ -357,15 +358,33 @@ func incrementJobMetrics(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup)
 	}
 }
 
-func createJobEvent(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event) time.Time {
+	now := time.Now().UTC()
+	defaultExpire := now.Add(expireTTL)
+	cj, err := clusterClient.BatchV1().CronJobs(job.Namespace).Get(context.Background(), job.Name, metav1.GetOptions{})
+	if err != nil {
+		return defaultExpire
+	}
+	if cj.Spec.Suspend != nil && *cj.Spec.Suspend {
+		return defaultExpire
+	}
+	nextTime, err := gronx.NextTickAfter(cj.Spec.Schedule, now, false)
+	if err != nil {
+		return defaultExpire
+	}
+	if nextTime.Sub(now) < time.Hour {
+		return now.Add(time.Hour)
+	}
+	return defaultExpire
+}
+
+func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var evtErr error
 	var kind *permission.PermissionScheme
-	var expire time.Time
 	switch evt.Reason {
 	case "Completed":
 		kind = permission.PermJobRun
-		expire = time.Now().UTC().Add(expireTTL)
 	case "BackoffLimitExceeded":
 		kind = permission.PermJobRun
 		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
@@ -379,6 +398,7 @@ func createJobEvent(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
 		}
 	}
 
+	expire := generateExpireEventTime(clusterClient, job, evt)
 	opts := event.Opts{
 		Kind:       kind,
 		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},

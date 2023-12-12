@@ -697,7 +697,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				wg := &sync.WaitGroup{}
 				wg.Add(1)
-				createJobEvent(j, evt, wg)
+				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -782,7 +782,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				wg := &sync.WaitGroup{}
 				wg.Add(1)
-				createJobEvent(j, evt, wg)
+				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
@@ -866,12 +866,256 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				}
 				wg := &sync.WaitGroup{}
 				wg.Add(1)
-				createJobEvent(j, evt, wg)
+				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
 				evts, err := event.List(&event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 0)
+			},
+		},
+		{
+			name: "when job evt should expire in 1 hour",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "job",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				cj := &batchv1.CronJob{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+					},
+					Spec: batchv1.CronJobSpec{
+						Schedule: "* * * * *",
+						JobTemplate: batchv1.JobTemplateSpec{
+							Spec: j.Spec,
+							ObjectMeta: metav1.ObjectMeta{
+								Labels:    j.Labels,
+								Name:      j.Name,
+								Namespace: j.Namespace,
+							},
+						},
+					},
+				}
+				realCj, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), cj, metav1.CreateOptions{})
+				c.Assert(err, check.IsNil)
+				defer func() {
+					err := s.client.BatchV1().CronJobs("default").Delete(context.TODO(), cj.Name, metav1.DeleteOptions{})
+					c.Assert(err, check.IsNil)
+				}()
+				j.OwnerReferences = []metav1.OwnerReference{
+					{
+						APIVersion:         realCj.APIVersion,
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+						Kind:               realCj.Kind,
+						Name:               realCj.Name,
+						UID:                realCj.UID,
+					},
+				}
+
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Job completed",
+					Reason:  "Completed",
+					Type:    "Normal",
+				}
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(s.clusterClient, j, evt, wg)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				c.Assert(len(evts), check.Equals, 1)
+				gotEvt := evts[0]
+				c.Assert(gotEvt, check.NotNil)
+				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				expectedCustomData := map[string]string{
+					"job-name":           "myjob",
+					"job-controller":     "myjob",
+					"event-type":         "Normal",
+					"event-reason":       "Completed",
+					"message":            "Job completed",
+					"cluster-start-time": metav1.Time{}.String(),
+				}
+				gotCustomData := map[string]string{}
+				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
+				c.Assert(err, check.IsNil)
+				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+				c.Assert(gotEvt.Error, check.Equals, "")
+				c.Assert(gotEvt.ExpireTime, check.NotNil)
+				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(61*time.Minute)), check.Equals, false)
+				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(59*time.Minute)), check.Equals, true)
+			},
+		},
+		{
+			name: "when job evt should expire at the default specified time",
+			scenario: func() {
+				j := &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+						Labels: map[string]string{
+							"tsuru.io/is-tsuru": "true",
+							"tsuru.io/job-name": "myjob",
+							"tsuru.io/job-pool": "test-default",
+							"tsuru.io/job-team": "admin",
+							"tsuru.io/is-job":   "true",
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									"tsuru.io/is-tsuru": "true",
+									"tsuru.io/job-name": "myjob",
+									"tsuru.io/job-pool": "test-default",
+									"tsuru.io/job-team": "admin",
+									"tsuru.io/is-job":   "true",
+								},
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name:    "job",
+										Image:   "ubuntu:latest",
+										Command: []string{"echo", "hello world"},
+									},
+								},
+								RestartPolicy: "OnFailure",
+							},
+						},
+					},
+				}
+				cj := &batchv1.CronJob{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob",
+						Namespace: "default",
+					},
+					Spec: batchv1.CronJobSpec{
+						Schedule: "@dayly",
+						JobTemplate: batchv1.JobTemplateSpec{
+							Spec: j.Spec,
+							ObjectMeta: metav1.ObjectMeta{
+								Labels:    j.Labels,
+								Name:      j.Name,
+								Namespace: j.Namespace,
+							},
+						},
+					},
+				}
+				realCj, err := s.client.BatchV1().CronJobs("default").Create(context.TODO(), cj, metav1.CreateOptions{})
+				c.Assert(err, check.IsNil)
+				defer func() {
+					err := s.client.BatchV1().CronJobs("default").Delete(context.TODO(), cj.Name, metav1.DeleteOptions{})
+					c.Assert(err, check.IsNil)
+				}()
+				j.OwnerReferences = []metav1.OwnerReference{
+					{
+						APIVersion:         realCj.APIVersion,
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+						Kind:               realCj.Kind,
+						Name:               realCj.Name,
+						UID:                realCj.UID,
+					},
+				}
+
+				evt := &corev1.Event{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "myjob-somehash",
+						Namespace: j.Namespace,
+					},
+					InvolvedObject: corev1.ObjectReference{
+						APIVersion:      "batch/v1",
+						Kind:            "Job",
+						Name:            j.Name,
+						Namespace:       j.Namespace,
+						ResourceVersion: j.ResourceVersion,
+						UID:             j.UID,
+					},
+					Message: "Job completed",
+					Reason:  "Completed",
+					Type:    "Normal",
+				}
+				wg := &sync.WaitGroup{}
+				wg.Add(1)
+				createJobEvent(s.clusterClient, j, evt, wg)
+			},
+			testScenario: func(c *check.C) {
+				evts, err := event.List(&event.Filter{})
+				c.Assert(err, check.IsNil)
+				c.Assert(len(evts), check.Equals, 1)
+				gotEvt := evts[0]
+				c.Assert(gotEvt, check.NotNil)
+				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Cancelable, check.Equals, false)
+				expectedCustomData := map[string]string{
+					"job-name":           "myjob",
+					"job-controller":     "myjob",
+					"event-type":         "Normal",
+					"event-reason":       "Completed",
+					"message":            "Job completed",
+					"cluster-start-time": metav1.Time{}.String(),
+				}
+				gotCustomData := map[string]string{}
+				err = gotEvt.EndCustomData.Unmarshal(&gotCustomData)
+				c.Assert(err, check.IsNil)
+				c.Assert(gotCustomData, check.DeepEquals, expectedCustomData)
+				c.Assert(gotEvt.Error, check.Equals, "")
+				c.Assert(gotEvt.ExpireTime, check.NotNil)
+				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(25*time.Hour)), check.Equals, false)
+				c.Assert(gotEvt.ExpireTime.After(time.Now().Add(23*time.Hour)), check.Equals, true)
 			},
 		},
 	}
