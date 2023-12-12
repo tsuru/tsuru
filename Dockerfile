@@ -16,3 +16,6 @@ EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/tsurud"]
 CMD ["api"]
 COPY --from=builder /go/src/github.com/tsuru/tsuru/build/tsurud /usr/local/bin/tsurud
+COPY gke-auth-plugin_Linux_x86_64.tar.gz /tmp
+RUN cd /tmp && tar -C /usr/local/bin -xzvf gke-auth-plugin_Linux_x86_64.tar.gz gke-auth-plugin \
+    && gke-auth-plugin version
