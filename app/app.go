@@ -596,12 +596,20 @@ func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error
 		pos := positionByName[p.Name]
 		if pos == nil {
 			app.Processes = append(app.Processes, p)
-		} else {
-			if p.Plan != "" {
-				app.Processes[*pos].Plan = p.Plan
-			}
-			app.Processes[*pos].Metadata.Update(p.Metadata)
+			continue
 		}
+		if p.Plan != "" && p.Plan != "$default" {
+			_, err := servicemanager.Plan.FindByName(app.ctx, p.Plan)
+			if err != nil {
+				return false, errors.WithMessagef(err, "could not find plan %q", p.Plan)
+			}
+		}
+
+		if p.Plan != "" {
+			app.Processes[*pos].Plan = p.Plan
+		}
+		app.Processes[*pos].Metadata.Update(p.Metadata)
+
 	}
 
 	app.pruneProcesses()
@@ -611,7 +619,7 @@ func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error
 		return false, errors.WithMessage(err, "could not serialize app process")
 	}
 
-	return string(oldProcesses) == string(newProcesses), nil
+	return string(oldProcesses) != string(newProcesses), nil
 }
 
 func (app *App) pruneProcesses() {

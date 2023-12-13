@@ -4507,6 +4507,17 @@ func (s *S) TestAppUpdateProcessesWhenDelete(c *check.C) {
 }
 
 func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
+	oldPlanService := servicemanager.Plan
+	servicemanager.Plan = &appTypes.MockPlanService{
+		OnFindByName: func(s string) (*appTypes.Plan, error) {
+			c.Assert(s, check.Equals, "c1m1")
+			return &appTypes.Plan{Name: s}, nil
+		},
+	}
+	defer func() {
+		servicemanager.Plan = oldPlanService
+	}()
+
 	a := App{
 		Name: "test",
 		Processes: []appTypes.Process{
@@ -4528,7 +4539,7 @@ func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 			},
 		},
 	}
-	a.updateProcesses([]appTypes.Process{
+	changed, err := a.updateProcesses([]appTypes.Process{
 		{
 			Name: "web",
 			Plan: "c1m1",
@@ -4550,6 +4561,9 @@ func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 			Plan: "$default",
 		},
 	})
+	c.Assert(err, check.IsNil)
+	c.Assert(changed, check.Equals, true)
+
 	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{
 		{
 			Name: "web",
