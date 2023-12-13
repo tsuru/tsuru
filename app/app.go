@@ -578,6 +578,10 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 }
 
 func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error) {
+	if len(app.Processes) == 0 && len(new) == 0 {
+		return false, nil
+	}
+
 	oldProcesses, err := json.Marshal(app.Processes)
 	if err != nil {
 		return false, errors.WithMessage(err, "could not serialize app process")
