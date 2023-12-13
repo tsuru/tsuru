@@ -599,7 +599,7 @@ func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error
 			continue
 		}
 		if p.Plan != "" && p.Plan != "$default" {
-			_, err := servicemanager.Plan.FindByName(app.ctx, p.Plan)
+			_, err = servicemanager.Plan.FindByName(app.ctx, p.Plan)
 			if err != nil {
 				return false, errors.WithMessagef(err, "could not find plan %q", p.Plan)
 			}
