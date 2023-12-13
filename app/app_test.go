@@ -38,7 +38,6 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	tsuruTest "github.com/tsuru/tsuru/test"
 	"github.com/tsuru/tsuru/tsurutest"
-	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -4380,7 +4379,7 @@ func (s *S) TestAppUpdateProcessesWhenAppend(c *check.C) {
 		},
 	})
 
-	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4414,7 +4413,7 @@ func (s *S) TestAppUpdateProcessesWhenAppendEmpty(c *check.C) {
 		},
 	})
 
-	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4459,7 +4458,7 @@ func (s *S) TestAppUpdateProcessesWhenOverride(c *check.C) {
 			},
 		},
 	})
-	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{
 		{
 			Name: "web",
 			Metadata: appTypes.Metadata{
@@ -4504,7 +4503,7 @@ func (s *S) TestAppUpdateProcessesWhenDelete(c *check.C) {
 			},
 		},
 	})
-	c.Assert(a.Processes, check.DeepEquals, []app.Process{})
+	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{})
 }
 
 func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
@@ -4522,7 +4521,7 @@ func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 				Name: "worker-metadata",
 				Plan: "c4m4",
 				Metadata: appTypes.Metadata{
-					Labels: []app.MetadataItem{
+					Labels: []appTypes.MetadataItem{
 						{Name: "abc", Value: "123"},
 					},
 				},
@@ -4551,7 +4550,7 @@ func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 			Plan: "$default",
 		},
 	})
-	c.Assert(a.Processes, check.DeepEquals, []app.Process{
+	c.Assert(a.Processes, check.DeepEquals, []appTypes.Process{
 		{
 			Name: "web",
 			Plan: "c1m1",
@@ -4563,7 +4562,7 @@ func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 		{
 			Name: "worker-metadata",
 			Metadata: appTypes.Metadata{
-				Labels: []app.MetadataItem{
+				Labels: []appTypes.MetadataItem{
 					{Name: "abc", Value: "123"},
 				},
 			},
