@@ -520,7 +520,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		return err
 	}
 
-	app.updateProcesses(args.UpdateData.Processes)
+	processesHasChanged, err := app.updateProcesses(args.UpdateData.Processes)
+	if err != nil {
+		return err
+	}
+
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
@@ -565,7 +569,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
-	} else if !reflect.DeepEqual(app.Processes, oldApp.Processes) && args.ShouldRestart {
+	} else if processesHasChanged && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
@@ -573,7 +577,12 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }
 
-func (app *App) updateProcesses(new []appTypes.Process) {
+func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error) {
+	oldProcesses, err := json.Marshal(app.Processes)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not serialize app process")
+	}
+
 	positionByName := map[string]*int{}
 	for i, p := range app.Processes {
 		positionByName[p.Name] = func(n int) *int { return &n }(i)
@@ -592,6 +601,13 @@ func (app *App) updateProcesses(new []appTypes.Process) {
 	}
 
 	app.pruneProcesses()
+
+	newProcesses, err := json.Marshal(app.Processes)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not serialize app process")
+	}
+
+	return string(oldProcesses) == string(newProcesses), nil
 }
 
 func (app *App) pruneProcesses() {
