@@ -482,7 +482,7 @@ func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a pr
 			Type: "cpu",
 		}
 
-		if a.GetMilliCPU() > 0 {
+		if a.GetPlan().GetMilliCPU() > 0 {
 			cpuTrigger.MetricType = autoscalingv2.UtilizationMetricType
 		} else {
 			cpuTrigger.MetricType = autoscalingv2.AverageValueMetricType
