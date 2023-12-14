@@ -1,10 +1,15 @@
 package kubernetes
 
 import (
+	"context"
+
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	"github.com/pkg/errors"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 type requirementsFactors struct {
@@ -67,21 +72,21 @@ func burstValue(v int64, burst float64) int64 {
 	return int64(float64(v) * burst)
 }
 
-func resourceRequirements(object provisionTypes.ResourceGetter, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
+func resourceRequirements(plan *appTypes.Plan, pool string, client *ClusterClient, factors requirementsFactors) (apiv1.ResourceRequirements, error) {
 	resourceLimits := apiv1.ResourceList{}
 	resourceRequests := apiv1.ResourceList{}
-	memory := object.GetMemory()
+	memory := plan.GetMemory()
 	if memory != 0 {
 		resourceLimits[apiv1.ResourceMemory] = factors.memoryLimits(memory)
 		resourceRequests[apiv1.ResourceMemory] = factors.memoryRequests(memory)
 	}
-	cpuMilli := int64(object.GetMilliCPU())
-	cpuBurst := object.GetCPUBurst()
+	cpuMilli := int64(plan.GetMilliCPU())
+	cpuBurst := plan.GetCPUBurst()
 	if cpuMilli != 0 {
 		resourceLimits[apiv1.ResourceCPU] = factors.cpuLimits(cpuBurst, cpuMilli)
 		resourceRequests[apiv1.ResourceCPU] = factors.cpuRequests(cpuMilli)
 	}
-	ephemeral, err := client.ephemeralStorage(object.GetPool())
+	ephemeral, err := client.ephemeralStorage(pool)
 	if err != nil {
 		return apiv1.ResourceRequirements{}, err
 	}
@@ -91,4 +96,19 @@ func resourceRequirements(object provisionTypes.ResourceGetter, client *ClusterC
 	}
 
 	return apiv1.ResourceRequirements{Limits: resourceLimits, Requests: resourceRequests}, nil
+}
+
+func planForProcess(ctx context.Context, a provision.App, process string) (appTypes.Plan, error) {
+	p := a.GetProcess(process)
+	if p == nil || p.Plan == "" {
+		plan := a.GetPlan()
+		return plan, nil
+	}
+
+	plan, err := servicemanager.Plan.FindByName(ctx, p.Plan)
+	if err != nil {
+		return appTypes.Plan{}, errors.WithMessage(err, "Could not fetch plan")
+	}
+
+	return *plan, nil
 }

@@ -1965,6 +1965,144 @@ func (s *S) TestUpdateAppWithLabels(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestUpdateAppWithCustomPlanByProcesNotFound(c *check.C) {
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{{Name: "c", Value: "someData"}, {Name: "z", Value: "ground"}},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("processes.0.name=web&processes.0.plan=c1m1&noRestart=true")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "could not find plan \"c1m1\": plan not found\n")
+}
+
+func (s *S) TestUpdateAppWithCustomPlanByProcess(c *check.C) {
+	oldPlanService := servicemanager.Plan
+	servicemanager.Plan = &appTypes.MockPlanService{
+		Plans: []appTypes.Plan{{Name: "c1m1"}},
+	}
+	defer func() {
+		servicemanager.Plan = oldPlanService
+	}()
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{{Name: "c", Value: "someData"}, {Name: "z", Value: "ground"}},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("processes.0.name=web&processes.0.plan=c1m1&noRestart=true")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{{Name: "web", Plan: "c1m1", Metadata: appTypes.Metadata{Labels: []appTypes.MetadataItem{}, Annotations: []appTypes.MetadataItem{}}}})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "processes.0.name", "value": "web"},
+			{"name": "processes.0.plan", "value": "c1m1"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestUpdateAppWithResetPlanByProcess(c *check.C) {
+	oldPlanService := servicemanager.Plan
+	servicemanager.Plan = &appTypes.MockPlanService{
+		Plans: []appTypes.Plan{{Name: "c1m1"}},
+	}
+	defer func() {
+		servicemanager.Plan = oldPlanService
+	}()
+
+	a := app.App{
+		Name:      "myapp",
+		Platform:  "zend",
+		TeamOwner: s.team.Name,
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{{Name: "c", Value: "someData"}, {Name: "z", Value: "ground"}},
+		},
+		Processes: []appTypes.Process{
+			{
+				Name: "web",
+				Plan: "c1m1",
+			},
+		},
+	}
+	err := app.CreateApp(context.TODO(), &a, s.user)
+	c.Assert(err, check.IsNil)
+
+	token := userWithPermission(c, permission.Permission{
+		Scheme:  permission.PermAppUpdate,
+		Context: permission.Context(permTypes.CtxApp, a.Name),
+	})
+	b := strings.NewReader("processes.0.name=web&processes.0.plan=$default&noRestart=true")
+	request, err := http.NewRequest("PUT", "/apps/myapp", b)
+	c.Assert(err, check.IsNil)
+
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Processes, check.DeepEquals, []appTypes.Process{})
+	c.Assert(eventtest.EventDesc{
+		Target: appTarget("myapp"),
+		Owner:  token.GetUserName(),
+		Kind:   "app.update",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":app", "value": a.Name},
+			{"name": "processes.0.name", "value": "web"},
+			{"name": "processes.0.plan", "value": "$default"},
+		},
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestUpdateAppImageReset(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
@@ -2175,8 +2313,8 @@ func (s *S) TestUpdateAppPlanOverrideOnly(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %v", recorder.Body.String()))
 		dbApp, err := app.GetByName(context.TODO(), a.Name)
 		c.Assert(err, check.IsNil)
-		c.Assert(dbApp.GetMemory(), check.Equals, tt.memory)
-		c.Assert(dbApp.GetMilliCPU(), check.Equals, tt.cpuMilli)
+		c.Assert(dbApp.Plan.GetMemory(), check.Equals, tt.memory)
+		c.Assert(dbApp.Plan.GetMilliCPU(), check.Equals, tt.cpuMilli)
 		c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, i+1)
 	}
 }

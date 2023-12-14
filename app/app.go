@@ -99,8 +99,6 @@ const (
 	routerNone = "none"
 )
 
-var _ provisionTypes.ResourceGetter = &App{}
-
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -522,7 +520,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		return err
 	}
 
-	app.updateProcesses(args.UpdateData.Processes)
+	processesHasChanged, err := app.updateProcesses(args.UpdateData.Processes)
+	if err != nil {
+		return err
+	}
+
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
@@ -567,7 +569,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
-	} else if !reflect.DeepEqual(app.Processes, oldApp.Processes) && args.ShouldRestart {
+	} else if processesHasChanged && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
@@ -575,25 +577,50 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
 }
 
-func (app *App) updateProcesses(new []appTypes.Process) {
+func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error) {
+	if len(app.Processes) == 0 && len(new) == 0 {
+		return false, nil
+	}
+
+	oldProcesses, err := json.Marshal(app.Processes)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not serialize app process")
+	}
+
 	positionByName := map[string]*int{}
 	for i, p := range app.Processes {
 		positionByName[p.Name] = func(n int) *int { return &n }(i)
 	}
 
 	for _, p := range new {
+		if p.Plan != "" && p.Plan != "$default" {
+			_, err = servicemanager.Plan.FindByName(app.ctx, p.Plan)
+			if err != nil {
+				return false, errors.WithMessagef(err, "could not find plan %q", p.Plan)
+			}
+		}
+
 		pos := positionByName[p.Name]
 		if pos == nil {
 			app.Processes = append(app.Processes, p)
-		} else {
-			if p.Plan != "" {
-				app.Processes[*pos].Plan = p.Plan
-			}
-			app.Processes[*pos].Metadata.Update(p.Metadata)
+			continue
 		}
+
+		if p.Plan != "" {
+			app.Processes[*pos].Plan = p.Plan
+		}
+		app.Processes[*pos].Metadata.Update(p.Metadata)
+
 	}
 
 	app.pruneProcesses()
+
+	newProcesses, err := json.Marshal(app.Processes)
+	if err != nil {
+		return false, errors.WithMessage(err, "could not serialize app process")
+	}
+
+	return string(oldProcesses) != string(newProcesses), nil
 }
 
 func (app *App) pruneProcesses() {
@@ -1495,26 +1522,8 @@ func (app *App) GetTeamsName() []string {
 	return app.Teams
 }
 
-// GetMemory returns the memory limit (in bytes) for the app.
-func (app *App) GetMemory() int64 {
-	if app.Plan.Override.Memory != nil {
-		return *app.Plan.Override.Memory
-	}
-	return app.Plan.Memory
-}
-
-func (app *App) GetMilliCPU() int {
-	if app.Plan.Override.CPUMilli != nil {
-		return *app.Plan.Override.CPUMilli
-	}
-	return app.Plan.CPUMilli
-}
-
-func (app *App) GetCPUBurst() float64 {
-	if app.Plan.Override.CPUBurst != nil {
-		return *app.Plan.Override.CPUBurst
-	}
-	return app.Plan.CPUBurst.Default
+func (app *App) GetPlan() appTypes.Plan {
+	return app.Plan
 }
 
 func (app *App) GetAddresses() ([]string, error) {
@@ -2731,6 +2740,15 @@ func (app *App) ListTags() []string {
 	return app.Tags
 }
 
+func (app *App) GetProcess(process string) *appTypes.Process {
+	for _, p := range app.Processes {
+		if p.Name == process {
+			return &p
+		}
+	}
+	return nil
+}
+
 func (app *App) GetMetadata(process string) appTypes.Metadata {
 	labels := map[string]string{}
 	annotations := map[string]string{}
@@ -2857,5 +2875,5 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	if !ok {
 		return "", nil
 	}
-	return registryProv.RegistryForObject(app.ctx, app)
+	return registryProv.RegistryForPool(app.ctx, app.Pool)
 }

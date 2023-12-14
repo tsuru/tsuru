@@ -226,7 +226,6 @@ type RunArgs struct {
 // It contains only relevant information for provisioning.
 type App interface {
 	Named
-	provTypes.ResourceGetter
 
 	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.
@@ -246,6 +245,10 @@ type App interface {
 
 	GetTeamOwner() string
 	GetTeamsName() []string
+
+	GetPlan() appTypes.Plan
+	GetPool() string
+	GetProcess(process string) *appTypes.Process
 
 	ListTags() []string
 
@@ -500,7 +503,7 @@ func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
 		cpu = cpu / 10
 	}
 
-	cpuLimit := a.GetMilliCPU()
+	cpuLimit := a.GetPlan().GetMilliCPU()
 	if cpuLimit == 0 {
 		// No cpu limit is set in app, the AverageCPU value must be considered
 		// as absolute milli cores and we cannot validate it.
@@ -560,7 +563,7 @@ type NodeCheckResult struct {
 }
 
 type MultiRegistryProvisioner interface {
-	RegistryForObject(ctx context.Context, obj provTypes.ResourceGetter) (imgTypes.ImageRegistry, error)
+	RegistryForPool(ctx context.Context, pool string) (imgTypes.ImageRegistry, error)
 }
 
 type provisionerFactory func() (Provisioner, error)

@@ -57,7 +57,7 @@ var (
 func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations map[string]string) (batchv1.JobSpec, error) {
 	jSpec := job.Spec
 
-	requirements, err := resourceRequirements(job, client, requirementsFactors{})
+	requirements, err := resourceRequirements(&job.Plan, job.Pool, client, requirementsFactors{})
 	if err != nil {
 		return batchv1.JobSpec{}, err
 	}
