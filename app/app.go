@@ -593,16 +593,17 @@ func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error
 	}
 
 	for _, p := range new {
-		pos := positionByName[p.Name]
-		if pos == nil {
-			app.Processes = append(app.Processes, p)
-			continue
-		}
 		if p.Plan != "" && p.Plan != "$default" {
 			_, err = servicemanager.Plan.FindByName(app.ctx, p.Plan)
 			if err != nil {
 				return false, errors.WithMessagef(err, "could not find plan %q", p.Plan)
 			}
+		}
+
+		pos := positionByName[p.Name]
+		if pos == nil {
+			app.Processes = append(app.Processes, p)
+			continue
 		}
 
 		if p.Plan != "" {

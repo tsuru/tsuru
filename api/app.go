@@ -667,7 +667,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Writer:        evt,
 		ShouldRestart: !noRestart,
 	})
-	if err == appTypes.ErrPlanNotFound {
+	if pkgErrors.Cause(err) == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	if _, ok := err.(*router.ErrRouterNotFound); ok {

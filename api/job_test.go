@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	apiTypes "github.com/tsuru/tsuru/types/api"
-	"github.com/tsuru/tsuru/types/app"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -156,14 +155,14 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		Pool:        "test1",
 		Plan:        "default-plan",
 		Description: "some description",
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
 				{
 					Name:  "label1",
 					Value: "value1",
 				},
 			},
-			Annotations: []app.MetadataItem{
+			Annotations: []appTypes.MetadataItem{
 				{
 					Name:  "annotation1",
 					Value: "value2",
@@ -210,19 +209,19 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
-		Plan: app.Plan{
+		Plan: appTypes.Plan{
 			Name:    "default-plan",
 			Memory:  1024,
 			Default: true,
 		},
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
 				{
 					Name:  "label1",
 					Value: "value1",
 				},
 			},
-			Annotations: []app.MetadataItem{
+			Annotations: []appTypes.MetadataItem{
 				{
 					Name:  "annotation1",
 					Value: "value2",
@@ -302,13 +301,13 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "majortom@groundcontrol.com",
-		Plan: app.Plan{
+		Plan: appTypes.Plan{
 			Name:    "default-plan",
 			Memory:  1024,
 			Default: true,
 		},
 		Pool: "test1",
-		Metadata: app.Metadata{
+		Metadata: appTypes.Metadata{
 			Labels:      []appTypes.MetadataItem{},
 			Annotations: []appTypes.MetadataItem{},
 		},
@@ -412,14 +411,14 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Pool:        "test1",
 		Plan:        "default-plan",
 		Description: "some description",
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
 				{
 					Name:  "label1",
 					Value: "value1",
 				},
 			},
-			Annotations: []app.MetadataItem{
+			Annotations: []appTypes.MetadataItem{
 				{
 					Name:  "annotation1",
 					Value: "value2",
@@ -453,19 +452,19 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 		Teams:     []string{s.team.Name},
 		TeamOwner: s.team.Name,
 		Owner:     "super-root-toremove@groundcontrol.com",
-		Plan: app.Plan{
+		Plan: appTypes.Plan{
 			Name:    "default-plan",
 			Memory:  1024,
 			Default: true,
 		},
-		Metadata: app.Metadata{
-			Labels: []app.MetadataItem{
+		Metadata: appTypes.Metadata{
+			Labels: []appTypes.MetadataItem{
 				{
 					Name:  "label1",
 					Value: "value1",
 				},
 			},
-			Annotations: []app.MetadataItem{
+			Annotations: []appTypes.MetadataItem{
 				{
 					Name:  "annotation1",
 					Value: "value2",
@@ -2972,7 +2971,7 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 	enc := &fakeEncoder{done: make(chan struct{})}
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		logWatcher.(*app.MockLogWatcher).Enqueue(appTypes.Applog{Message: "xyz"})
+		logWatcher.(*appTypes.MockLogWatcher).Enqueue(appTypes.Applog{Message: "xyz"})
 		<-enc.done
 		cancel()
 	}()

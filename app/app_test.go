@@ -4509,10 +4509,7 @@ func (s *S) TestAppUpdateProcessesWhenDelete(c *check.C) {
 func (s *S) TestAppUpdateProcessesWhenPlan(c *check.C) {
 	oldPlanService := servicemanager.Plan
 	servicemanager.Plan = &appTypes.MockPlanService{
-		OnFindByName: func(s string) (*appTypes.Plan, error) {
-			c.Assert(s, check.Equals, "c1m1")
-			return &appTypes.Plan{Name: s}, nil
-		},
+		Plans: []appTypes.Plan{{Name: "c1m1"}, {Name: "c2m2"}},
 	}
 	defer func() {
 		servicemanager.Plan = oldPlanService
