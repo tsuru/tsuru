@@ -337,15 +337,11 @@ type JobProvisioner interface {
 	// JobUnits returns information about units related to a specific Job or CronJob
 	JobUnits(context.Context, *jobTypes.Job) ([]Unit, error)
 
-	// JobSchedule creates a cronjob object in the cluster
-	CreateJob(context.Context, *jobTypes.Job) (string, error)
+	// EnsureJob creates/update a cronjob object in the cluster
+	EnsureJob(context.Context, *jobTypes.Job) error
 
 	DestroyJob(context.Context, *jobTypes.Job) error
-
-	UpdateJob(context.Context, *jobTypes.Job) error
-
 	TriggerCron(ctx context.Context, name, pool string) error
-
 	KillJobUnit(ctx context.Context, job *jobTypes.Job, unitName string, force bool) error
 }
 
