@@ -1188,7 +1188,7 @@ func (p *JobProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]pro
 }
 
 // JobSchedule creates a cronjob object in the cluster
-func (p *JobProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (string, error) {
+func (p *JobProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	name := job.Name
@@ -1196,7 +1196,7 @@ func (p *JobProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (stri
 		units: []provision.Unit{},
 		job:   job,
 	}
-	return name, nil
+	return nil
 }
 
 func (p *JobProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
@@ -1206,18 +1206,6 @@ func (p *JobProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) erro
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	delete(p.jobs, job.Name)
-	return nil
-}
-
-func (p *JobProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	j, ok := p.jobs[job.Name]
-	if !ok {
-		return errNotProvisioned
-	}
-	j.job = job
-	p.jobs[job.Name] = j
 	return nil
 }
 

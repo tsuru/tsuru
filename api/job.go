@@ -321,12 +321,13 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	name := r.URL.Query().Get(":name")
 	var ij inputJob
 	err = ParseInput(r, &ij)
-	if ij.Manual && ij.Schedule != "" {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "you can't set schedule and manual job at the same time"}
-	}
 	if err != nil {
 		return err
 	}
+	if ij.Manual && ij.Schedule != "" {
+		return &errors.HTTP{Code: http.StatusConflict, Message: "you can't set schedule and manual job at the same time"}
+	}
+	ij.Name = name
 	oldJob, err := getJob(ctx, name)
 	if err != nil {
 		return err
@@ -344,7 +345,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	newJob := jobTypes.Job{
 		TeamOwner:   ij.TeamOwner,
 		Plan:        appTypes.Plan{Name: ij.Plan},
-		Name:        ij.Name,
+		Name:        name,
 		Description: ij.Description,
 		Pool:        ij.Pool,
 		Metadata:    ij.Metadata,
@@ -355,6 +356,14 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			ActiveDeadlineSeconds: ij.ActiveDeadlineSeconds,
 		},
 	}
+
+	if newJob.Pool != "" && oldJob.Pool != newJob.Pool {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Update pool is not implemented yet",
+		}
+	}
+
 	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
 		newJob.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
 	}

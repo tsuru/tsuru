@@ -79,7 +79,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 					},
 				}
-				_, err := s.p.CreateJob(context.TODO(), &cj)
+				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -202,7 +202,7 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 						},
 					},
 				}
-				_, err := s.p.CreateJob(context.TODO(), &cj)
+				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -285,7 +285,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						},
 					},
 				}
-				_, err := s.p.CreateJob(context.TODO(), &cj)
+				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -321,7 +321,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 						},
 					},
 				}
-				err := s.p.UpdateJob(context.TODO(), &newCJ)
+				err := s.p.EnsureJob(context.TODO(), &newCJ)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -437,7 +437,7 @@ func (s *S) TestProvisionerDeleteCronjob(c *check.C) {
 		{
 			name: "simple delete cronjob",
 			setup: func() {
-				_, err := s.p.CreateJob(context.TODO(), &cj)
+				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -501,7 +501,7 @@ func (s *S) TestProvisionerTriggerCron(c *check.C) {
 						},
 					},
 				}
-				_, err := s.p.CreateJob(context.TODO(), &cj)
+				err := s.p.EnsureJob(context.TODO(), &cj)
 				waitCron()
 				c.Assert(err, check.IsNil)
 			},
@@ -970,7 +970,7 @@ func (s *S) TestKillJobUnit(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	_, err := s.p.CreateJob(context.TODO(), &cj)
+	err := s.p.EnsureJob(context.TODO(), &cj)
 	defer func() {
 		j := jobTypes.Job{
 			Name: "myjob",
@@ -1012,7 +1012,7 @@ func (s *S) TestKillJobUnitUnknow(c *check.C) {
 			Schedule: "* * * * *",
 		},
 	}
-	_, err := s.p.CreateJob(context.TODO(), &cj)
+	err := s.p.EnsureJob(context.TODO(), &cj)
 	defer func() {
 		j := jobTypes.Job{
 			Name: "myjob",

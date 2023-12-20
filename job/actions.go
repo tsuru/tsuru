@@ -33,7 +33,8 @@ var provisionJob = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return prov.CreateJob(ctx.Context, job)
+		err = prov.EnsureJob(ctx.Context, job)
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 		var job *jobTypes.Job

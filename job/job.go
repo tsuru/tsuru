@@ -354,7 +354,7 @@ func (*jobService) UpdateJobProv(ctx context.Context, job *jobTypes.Job) error {
 		return err
 	}
 
-	return prov.UpdateJob(ctx, job)
+	return prov.EnsureJob(ctx, job)
 }
 
 // Trigger triggers an execution of either job or cronjob object
@@ -484,7 +484,7 @@ func SetEnvs(ctx context.Context, job *jobTypes.Job, setEnvs bind.SetEnvArgs) er
 	if err != nil {
 		return err
 	}
-	return prov.UpdateJob(ctx, job)
+	return prov.EnsureJob(ctx, job)
 
 }
 
@@ -520,7 +520,7 @@ func UnsetEnvs(ctx context.Context, job *jobTypes.Job, unsetEnvs bind.UnsetEnvAr
 	if err != nil {
 		return err
 	}
-	return prov.UpdateJob(ctx, job)
+	return prov.EnsureJob(ctx, job)
 }
 
 func indexEnvInSet(envName string, envs []bindTypes.EnvVar) int {

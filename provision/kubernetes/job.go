@@ -111,9 +111,23 @@ func buildJobSpec(job *jobTypes.Job, client *ClusterClient, labels, annotations 
 	}, nil
 }
 
-func buildCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job, jobSpec batchv1.JobSpec, labels, annotations map[string]string) (string, error) {
+func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job) error {
+	labels, annotations := buildMetadata(ctx, job)
+	jobSpec, err := buildJobSpec(job, client, labels, annotations)
+	if err != nil {
+		return err
+	}
+
 	namespace := client.PoolNamespace(job.Pool)
-	k8sCronjob, err := client.BatchV1().CronJobs(namespace).Create(ctx, &batchv1.CronJob{
+
+	existingCronjob, err := client.BatchV1().CronJobs(namespace).Get(ctx, job.Name, metav1.GetOptions{})
+	if k8sErrors.IsNotFound(err) {
+		existingCronjob = nil
+	} else if err != nil {
+		return errors.WithStack(err)
+	}
+
+	cronjob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.Name,
 			Namespace:   namespace,
@@ -127,11 +141,27 @@ func buildCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job,
 				Spec: jobSpec,
 			},
 		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		return "", err
 	}
-	return k8sCronjob.Name, nil
+
+	if existingCronjob == nil {
+		_, err = client.BatchV1().CronJobs(namespace).Create(ctx, cronjob, metav1.CreateOptions{})
+
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		return nil
+	}
+
+	cronjob.ResourceVersion = existingCronjob.ResourceVersion
+	cronjob.Finalizers = existingCronjob.Finalizers
+
+	_, err = client.BatchV1().CronJobs(namespace).Update(ctx, cronjob, metav1.UpdateOptions{})
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, map[string]string) {
@@ -151,20 +181,16 @@ func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, m
 	return jobLabels, jobAnnotations
 }
 
-func (p *kubernetesProvisioner) CreateJob(ctx context.Context, job *jobTypes.Job) (string, error) {
+func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job) error {
 	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
-		return "", err
+		return err
 	}
-	jobLabels, jobAnnotations := buildMetadata(ctx, job)
-	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
-	if err != nil {
-		return "", err
-	}
-	return buildCronjob(ctx, client, job, jobSpec, jobLabels, jobAnnotations)
+
+	return ensureCronjob(ctx, client, job)
 }
 
 func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool string) error {
@@ -206,38 +232,6 @@ func (p *kubernetesProvisioner) TriggerCron(ctx context.Context, name, pool stri
 func getManualJobName(job string) string {
 	scheduledTime := time.Now()
 	return fmt.Sprintf("%s-manual-job-%d", job, scheduledTime.Unix()/60)
-}
-
-func (p *kubernetesProvisioner) UpdateJob(ctx context.Context, job *jobTypes.Job) error {
-	client, err := clusterForPool(ctx, job.Pool)
-	if err != nil {
-		return err
-	}
-	if err = ensureServiceAccountForJob(ctx, client, *job); err != nil {
-		return err
-	}
-	jobLabels, jobAnnotations := buildMetadata(ctx, job)
-	jobSpec, err := buildJobSpec(job, client, jobLabels, jobAnnotations)
-	if err != nil {
-		return err
-	}
-	namespace := client.PoolNamespace(job.Pool)
-	_, err = client.BatchV1().CronJobs(namespace).Update(ctx, &batchv1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        job.Name,
-			Namespace:   namespace,
-			Labels:      jobLabels,
-			Annotations: jobAnnotations,
-		},
-		Spec: batchv1.CronJobSpec{
-			Schedule: job.Spec.Schedule,
-			Suspend:  &job.Spec.Manual,
-			JobTemplate: batchv1.JobTemplateSpec{
-				Spec: jobSpec,
-			},
-		},
-	}, metav1.UpdateOptions{})
-	return err
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob

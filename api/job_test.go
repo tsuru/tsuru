@@ -623,6 +623,43 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 	c.Assert(recorder.Body.String(), check.DeepEquals, "invalid schedule\n")
 }
 
+func (s *S) TestUpdateCronjobChangePool(c *check.C) {
+	oldProvisioner := provision.DefaultProvisioner
+	defer func() { provision.DefaultProvisioner = oldProvisioner }()
+	provision.DefaultProvisioner = "jobProv"
+	provision.Register("jobProv", func() (provision.Provisioner, error) {
+		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+	})
+	defer provision.Unregister("jobProv")
+	j1 := jobTypes.Job{
+		TeamOwner: s.team.Name,
+		Pool:      "test1",
+		Name:      "cron",
+		Spec: jobTypes.JobSpec{
+			Schedule: "* * * * *",
+		},
+	}
+	user, _ := auth.ConvertOldUser(s.user, nil)
+	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
+	c.Assert(err, check.IsNil)
+	_, err = servicemanager.Job.GetByName(context.TODO(), j1.Name)
+	c.Assert(err, check.IsNil)
+	ij := inputJob{
+		Pool: "test2",
+	}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(ij)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("PUT", fmt.Sprintf("/jobs/%s", j1.Name), &buffer)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "b "+s.token.GetValue())
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.DeepEquals, "Update pool is not implemented yet\n")
+}
+
 func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
