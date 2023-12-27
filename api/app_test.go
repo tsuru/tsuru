@@ -28,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -5975,168 +5974,6 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(app, check.DeepEquals, *expected)
 }
 
-func (s *S) TestSwapCnameOnly(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app1.io"}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=true")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app1.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app1.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %s", recorder.Body.String()))
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app1\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapApp2Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app2.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app2.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app2\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "y"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner:        s.token.GetUserName(),
-		Kind:         "app.update.swap",
-		ErrorMatches: "platforms don't match",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapIncompatibleUnits(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "x"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnit(&app2, provision.Unit{})
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "number of units doesn't match\n")
-}
-
-func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name, CName: []string{"app1.etc.io"}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "y", TeamOwner: s.team.Name, CName: []string{"app2.etc.io"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&force=true&cnameOnly=true")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "")
-}
-
 func (s *S) TestSwapDeprecated(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
@@ -6152,7 +5989,7 @@ func (s *S) TestSwapDeprecated(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "swapping without cnameOnly is deprecated\n")
+	c.Assert(recorder.Body.String(), check.Equals, "swapping is deprecated\n")
 }
 
 func (s *S) TestStartHandler(c *check.C) {

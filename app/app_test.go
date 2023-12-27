@@ -160,98 +160,6 @@ func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestSwapAppOnlyWithoutCnames(c *check.C) {
-	a := App{
-		Name:      "ritual",
-		Platform:  "ruby",
-		Owner:     s.user.Email,
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := &App{Name: "app2", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), &a, app2, true)
-	c.Assert(err, check.Equals, ErrSwapNoCNames)
-}
-
-func (s *S) TestDeleteSwappedAppOnlyCname(c *check.C) {
-	a := App{
-		Name:      "ritual",
-		Platform:  "ruby",
-		Owner:     s.user.Email,
-		TeamOwner: s.team.Name,
-		CName:     []string{"ritual.io"},
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := &App{Name: "app2", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), &a, app2, true)
-	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
-		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
-		Allowed:  event.Allowed(permission.PermApp),
-	})
-	c.Assert(err, check.IsNil)
-	err = Delete(context.TODO(), &a, evt, "")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
-}
-
-func (s *S) TestDeleteSwappedAppDifferentRouters(c *check.C) {
-	config.Set("routers:fake:type", "fake")
-	defer config.Unset("routers:fake-v2:type")
-	a := App{
-		Name:      "ritual",
-		Platform:  "ruby",
-		Owner:     s.user.Email,
-		TeamOwner: s.team.Name,
-		CName:     []string{"ritual.io"},
-		Routers:   []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := &App{
-		Name:      "app2",
-		TeamOwner: s.team.Name, CName: []string{"app2.io"},
-		Routers: []appTypes.AppRouter{{Name: "fake-tls"}},
-	}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), &a, app2, true)
-	c.Assert(err, check.Equals, ErrSwapDifferentRouters)
-}
-
-func (s *S) TestDeleteSwappedAppRouterV2WithoutCnameDeprecation(c *check.C) {
-	config.Set("routers:fake:type", "fake")
-	defer config.Unset("routers:fake-v2:type")
-	a := App{
-		Name:      "ritual",
-		Platform:  "ruby",
-		Owner:     s.user.Email,
-		TeamOwner: s.team.Name,
-		CName:     []string{"ritual.io"},
-		Routers:   []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := &App{
-		Name:      "app2",
-		TeamOwner: s.team.Name,
-		CName:     []string{"app2.io"},
-		Routers:   []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), &a, app2, false)
-	c.Assert(err, check.Equals, ErrSwapDeprecated)
-}
-
 func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	a := App{
 		Name:      "ritual",
@@ -4131,37 +4039,6 @@ func (s *S) TestAppAvailable(c *check.C) {
 	c.Assert(a.available(), check.Equals, true)
 	s.provisioner.Stop(context.TODO(), &a, "", version, nil)
 	c.Assert(a.available(), check.Equals, false)
-}
-
-func (s *S) TestSwap(c *check.C) {
-	app1 := &App{Name: "app1", CName: []string{"cname"}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := &App{Name: "app2", TeamOwner: s.team.Name}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), app1, app2, false)
-	c.Assert(err, check.Equals, ErrSwapDeprecated)
-}
-
-func (s *S) TestSwapCnameOnly(c *check.C) {
-	app1 := &App{Name: "app1", CName: []string{"app1.cname", "app1.cname2"}, TeamOwner: s.team.Name, Router: "fake"}
-	err := CreateApp(context.TODO(), app1, s.user)
-	c.Assert(err, check.IsNil)
-
-	app2 := &App{Name: "app2", CName: []string{"app2.cname"}, TeamOwner: s.team.Name, Router: "fake"}
-	err = CreateApp(context.TODO(), app2, s.user)
-	c.Assert(err, check.IsNil)
-	err = Swap(context.TODO(), app1, app2, true)
-	c.Assert(err, check.IsNil)
-	newAddrs1, err := app1.GetAddresses()
-	c.Assert(err, check.IsNil)
-	newAddrs2, err := app2.GetAddresses()
-	c.Assert(err, check.IsNil)
-	c.Assert(app1.CName, check.DeepEquals, []string{"app2.cname"})
-	c.Assert(app2.CName, check.DeepEquals, []string{"app1.cname", "app1.cname2"})
-	c.Assert(newAddrs1, check.DeepEquals, []string{"app1.fakerouter.com"})
-	c.Assert(newAddrs2, check.DeepEquals, []string{"app2.fakerouter.com"})
 }
 
 func (s *S) TestStart(c *check.C) {

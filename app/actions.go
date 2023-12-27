@@ -5,7 +5,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -693,84 +692,4 @@ var rebuildRoutes = action.Action{
 		}
 		return nil, nil
 	},
-}
-
-var swapCNamesInDatabaseAction = action.Action{
-	Name: "swap-cnames-in-database",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		return nil, swapCNamesInDatabase(app1, app2)
-	},
-}
-
-var swapReEnsureBackendsAction = action.Action{
-	Name: "re-ensure-backends",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		return nil, swapRebuildRoutes(ctx.Context, app1, app2)
-	},
-	Backward: func(ctx action.BWContext) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		err := swapCNamesInDatabase(app1, app2)
-		if err != nil {
-			return
-		}
-
-		_ = swapRebuildRoutes(ctx.Context, app1, app2)
-	},
-}
-
-func swapCNamesInDatabase(app1 *App, app2 *App) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	app1.CName, app2.CName = app2.CName, app1.CName
-	updateCName := func(app *App) error {
-		return conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName}},
-		)
-	}
-	err = updateCName(app1)
-	if err != nil {
-		return err
-	}
-	err = updateCName(app2)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func swapRebuildRoutes(ctx context.Context, app1 *App, app2 *App) error {
-	// preserveOldCnames makes the operation without downtime, however when using diffent pools we cant do that
-	preserveOldCNames := app1.Pool == app2.Pool
-	err := rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:               app1,
-		PreserveOldCNames: preserveOldCNames,
-	})
-	if err != nil {
-		return err
-	}
-	err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:               app2,
-		PreserveOldCNames: preserveOldCNames,
-	})
-	if err != nil {
-		return err
-	}
-
-	app1.GetRoutersWithAddr()
-	app2.GetRoutersWithAddr()
-
-	return nil
 }

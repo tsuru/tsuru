@@ -159,8 +159,6 @@ type EnsureBackendOpts struct {
 	CNames      []string               `json:"cnames"`
 	Prefixes    []BackendPrefix        `json:"prefixes"`
 	Healthcheck router.HealthcheckData `json:"healthcheck"`
-
-	PreserveOldCNames bool `json:"preserveOldCNames,omitempty"`
 }
 
 // TLSRouter is a router that supports adding and removing

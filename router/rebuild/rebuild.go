@@ -27,10 +27,9 @@ type RebuildApp interface {
 }
 
 type RebuildRoutesOpts struct {
-	App               RebuildApp
-	Writer            io.Writer
-	Dry               bool
-	PreserveOldCNames bool
+	App    RebuildApp
+	Writer io.Writer
+	Dry    bool
 }
 
 func RebuildRoutes(ctx context.Context, opts RebuildRoutesOpts) error {
@@ -74,8 +73,6 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 		Prefixes:    []router.BackendPrefix{},
 		CNames:      o.App.GetCname(),
 		Healthcheck: hcData,
-
-		PreserveOldCNames: o.PreserveOldCNames,
 	}
 	for key, opt := range appRouter.Opts {
 		opts.Opts[key] = opt

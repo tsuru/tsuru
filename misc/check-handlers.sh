@@ -53,6 +53,7 @@ github.com/tsuru/tsuru/api.nodeHealingRead
 github.com/tsuru/tsuru/api.tokenList
 github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/api.diffDeploy
+github.com/tsuru/tsuru/api.swap
 EOF
     )
     ignored=$(echo "$ignored" | sort)

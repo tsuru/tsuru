@@ -1769,83 +1769,10 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: App locked
 //	412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	app1Name := InputValue(r, "app1")
-	app2Name := InputValue(r, "app2")
-	forceSwap := InputValue(r, "force")
-	cnameOnly, _ := strconv.ParseBool(InputValue(r, "cnameOnly"))
-	if forceSwap == "" {
-		forceSwap = "false"
+	return &errors.HTTP{
+		Code:    http.StatusPreconditionFailed,
+		Message: "swapping is deprecated",
 	}
-	app1, err := getApp(ctx, app1Name)
-	if err != nil {
-		return err
-	}
-	app2, err := getApp(ctx, app2Name)
-	if err != nil {
-		return err
-	}
-	allowed1 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app1)...,
-	)
-	allowed2 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app2)...,
-	)
-	if !allowed1 || !allowed2 {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target: appTarget(app1Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: appTarget(app2Name), Lock: true},
-		},
-		Kind:       permission.PermAppUpdateSwap,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
-	})
-	if err != nil {
-		if _, locked := err.(event.ErrEventLocked); locked {
-			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
-		}
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	// compare apps by platform type and number of units
-	if forceSwap == "false" {
-		if app1.Platform != app2.Platform {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "platforms don't match",
-			}
-		}
-		var app1Units []provision.Unit
-		app1Units, err = app1.Units()
-		if err != nil {
-			return err
-		}
-		var app2Units []provision.Unit
-		app2Units, err = app2.Units()
-		if err != nil {
-			return err
-		}
-		if len(app1Units) != len(app2Units) {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "number of units doesn't match",
-			}
-		}
-	}
-	err = app.Swap(ctx, app1, app2, cnameOnly)
-	if pkgErrors.Cause(err) == app.ErrSwapDeprecated {
-		return &errors.HTTP{
-			Code:    http.StatusPreconditionFailed,
-			Message: err.Error(),
-		}
-	}
-
-	return err
 }
 
 // title: app start

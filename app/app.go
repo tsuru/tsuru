@@ -2067,43 +2067,6 @@ func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
 	return len(versions) > 1, nil
 }
 
-// Swap calls the Router.Swap and updates the app.CName in the database.
-func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
-	a1Routers := app1.GetRouters()
-	a2Routers := app2.GetRouters()
-	if len(a1Routers) != 1 || len(a2Routers) != 1 {
-		return ErrSwapMultipleRouters
-	}
-
-	if a1Routers[0].Name != a2Routers[0].Name {
-		return ErrSwapDifferentRouters
-	}
-	if !cnameOnly {
-		return ErrSwapDeprecated
-	}
-
-	if len(app1.CName) == 0 && len(app2.CName) == 0 {
-		return ErrSwapNoCNames
-	}
-
-	app1Multiple, err := app1.hasMultipleVersions(ctx)
-	if err != nil {
-		return err
-	}
-	app2Multiple, err := app2.hasMultipleVersions(ctx)
-	if err != nil {
-		return err
-	}
-	if app1Multiple || app2Multiple {
-		return ErrSwapMultipleVersions
-	}
-
-	return action.NewPipeline(
-		&swapCNamesInDatabaseAction,
-		&swapReEnsureBackendsAction,
-	).Execute(ctx, app1, app2)
-}
-
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
 func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr string) error {

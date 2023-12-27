@@ -71,7 +71,6 @@ var (
 	PermAppUpdateRouterUpdate            = PermissionRegistry.get("app.update.router.update")            // [global app team pool]
 	PermAppUpdateStart                   = PermissionRegistry.get("app.update.start")                    // [global app team pool]
 	PermAppUpdateStop                    = PermissionRegistry.get("app.update.stop")                     // [global app team pool]
-	PermAppUpdateSwap                    = PermissionRegistry.get("app.update.swap")                     // [global app team pool]
 	PermAppUpdateTags                    = PermissionRegistry.get("app.update.tags")                     // [global app team pool]
 	PermAppUpdateTeamowner               = PermissionRegistry.get("app.update.teamowner")                // [global app team pool]
 	PermAppUpdateUnbind                  = PermissionRegistry.get("app.update.unbind")                   // [global app team pool]
