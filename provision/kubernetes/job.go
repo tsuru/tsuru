@@ -8,8 +8,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/adhocore/gronx"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -29,6 +31,7 @@ import (
 const (
 	promNamespace = "tsuru"
 	promSubsystem = "job"
+	expireTTL     = time.Hour * 24 // 1 day
 )
 
 var (
@@ -334,37 +337,69 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 	return units, nil
 }
 
-func createJobEventAndMetrics(job *batchv1.Job, evt *apiv1.Event) {
-	var evtErr error
-	var kind *permission.PermissionScheme
+func incrementJobMetrics(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	defer wg.Done()
 	jobName := job.Labels[tsuruLabelJobName]
 	switch evt.Reason {
 	case "Completed":
-		kind = permission.PermJobRun
 		jobCompleted.WithLabelValues(jobName).Inc()
 	case "BackoffLimitExceeded":
-		kind = permission.PermJobRun
-		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
-		jobFailed.WithLabelValues(jobName, evt.Reason).Inc()
+		jobFailed.WithLabelValues(jobName, evt.Message).Inc()
 	case "SuccessfulCreate":
-		kind = permission.PermJobCreate
 		jobStarted.WithLabelValues(jobName).Inc()
 	default:
 		return
 	}
+}
 
+func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event) time.Time {
+	now := time.Now().UTC()
+	defaultExpire := now.Add(expireTTL)
+	cj, err := clusterClient.BatchV1().CronJobs(job.Namespace).Get(context.Background(), job.Name, metav1.GetOptions{})
+	if err != nil {
+		return defaultExpire
+	}
+	if cj.Spec.Suspend != nil && *cj.Spec.Suspend {
+		return defaultExpire
+	}
+	nextTime, err := gronx.NextTickAfter(cj.Spec.Schedule, now, false)
+	if err != nil {
+		return defaultExpire
+	}
+	if nextTime.Sub(now) < time.Hour {
+		return now.Add(time.Hour)
+	}
+	return defaultExpire
+}
+
+func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var evtErr error
+	var kind *permission.PermissionScheme
+	switch evt.Reason {
+	case "Completed":
+		kind = permission.PermJobRun
+	case "BackoffLimitExceeded":
+		kind = permission.PermJobRun
+		evtErr = errors.New(fmt.Sprintf("job failed: %s", evt.Message))
+	default:
+		return
+	}
 	realJobOwner := job.Name
 	for _, owner := range job.OwnerReferences {
 		if owner.Kind == "CronJob" {
 			realJobOwner = owner.Name
 		}
 	}
+
+	expire := generateExpireEventTime(clusterClient, job, evt)
 	opts := event.Opts{
 		Kind:       kind,
 		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},
 		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
 		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
 		Cancelable: false,
+		ExpireAt:   &expire,
 	}
 	e, err := event.New(&opts)
 	if err != nil {

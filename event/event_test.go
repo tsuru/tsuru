@@ -116,6 +116,39 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
+func (s *S) TestNewExpirable(c *check.C) {
+	expireAt := time.Now().UTC().Add(10 * time.Minute)
+	evt, err := New(&Opts{
+		Target:   Target{Type: "job", Value: "myjob"},
+		Kind:     permission.PermJobRun,
+		Owner:    s.token,
+		Allowed:  Allowed(permission.PermJobRun),
+		ExpireAt: &expireAt,
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.ExpireAt, check.NotNil)
+	c.Assert(evt.ExpireAt.IsZero(), check.Equals, false)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, false)
+}
+
+func (s *S) TestNewExpirableMissingShouldNotCreateTimestampInDB(c *check.C) {
+	evt, err := New(&Opts{
+		Target:  Target{Type: "job", Value: "myjob"},
+		Kind:    permission.PermJobRun,
+		Owner:   s.token,
+		Allowed: Allowed(permission.PermJobRun),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.ExpireAt.IsZero(), check.Equals, true)
+	evts, err := All()
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, true)
+}
+
 func (s *S) TestNewCustomDataDone(c *check.C) {
 	customData := struct{ A string }{A: "value"}
 	evt, err := New(&Opts{
