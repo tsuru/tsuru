@@ -25,6 +25,7 @@ function missing_handlers {
 
     ignored=$(cat <<EOF
 github.com/tsuru/tsuru/api.authScheme
+github.com/tsuru/tsuru/api.authSchemes
 github.com/tsuru/tsuru/api.healthcheck
 github.com/tsuru/tsuru/api.index
 github.com/tsuru/tsuru/api.info

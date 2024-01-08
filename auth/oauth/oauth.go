@@ -39,7 +39,8 @@ var (
 		Help: "The total number of oauth request errors.",
 	})
 
-	_ auth.Scheme = &oAuthScheme{}
+	_ auth.Scheme     = &oAuthScheme{}
+	_ auth.UserScheme = &oAuthScheme{}
 )
 
 type oAuthScheme struct {

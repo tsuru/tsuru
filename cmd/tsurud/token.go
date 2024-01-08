@@ -58,18 +58,28 @@ func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
 			return errors.New("Passwords didn't match.")
 		}
 	}
-	user, err = app.AuthScheme.Create(stdContext.Background(), &auth.User{
-		Email:    email,
-		Password: password,
-	})
-	if err != nil {
-		return err
+
+	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
+		user, err = userScheme.Create(stdContext.Background(), &auth.User{
+			Email:    email,
+			Password: password,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		err = user.Create()
+		if err != nil {
+			return err
+		}
 	}
+
 	err = addSuperRole(user)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(context.Stdout, "Root user successfully created.")
+
 	return nil
 }
 

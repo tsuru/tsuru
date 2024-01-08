@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -145,7 +146,36 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 }
 
 func (s *oidcScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
-	return nil, errNotImplemented
+	clientID, err := config.GetString("auth:oidc:client-id")
+	if err != nil {
+		return nil, err
+	}
+	scopes, err := config.GetList("auth:oidc:scopes")
+	if err != nil {
+		return nil, err
+	}
+	authURL, err := config.GetString("auth:oidc:auth-url")
+	if err != nil {
+		return nil, err
+	}
+	tokenURL, err := config.GetString("auth:oidc:token-url")
+	if err != nil {
+		return nil, err
+	}
+	callbackPort, err := config.GetInt("auth:oidc:callback-port")
+	if err != nil {
+		log.Debugf("auth:oidc:callback-port not found using random port: %s", err)
+	}
+	return &auth.SchemeInfo{
+		Name: "oidc",
+		Data: map[string]interface{}{
+			"clientID": clientID,
+			"authURL":  authURL,
+			"tokenURL": tokenURL,
+			"scopes":   scopes,
+			"port":     strconv.Itoa(callbackPort),
+		},
+	}, nil
 }
 
 func (s *oidcScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
