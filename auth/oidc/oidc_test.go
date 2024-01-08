@@ -66,6 +66,13 @@ func (s *AuthSuite) TestLoginNoJWKSURLDefined(c *check.C) {
 	c.Assert(token, check.IsNil)
 }
 
+func (s *AuthSuite) TestNotImplementUserScheme(c *check.C) {
+	var scheme auth.Scheme = &oidcScheme{}
+
+	_, implements := scheme.(auth.UserScheme)
+	c.Assert(implements, check.Equals, false)
+}
+
 func (s *AuthSuite) TestLoginWithRSAKey(c *check.C) {
 	kid := "rsa-test-123"
 	privateRSAKey, err := s.generateNewPrivateRSAKey(kid)
