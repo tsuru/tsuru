@@ -119,9 +119,8 @@ Other improvements
 * Improvements in the installing and management docs, reflecting the daemon
   rename (thanks Giuseppe Ciotta).
 
-* Fix instructions on the :doc:`Hipache installing
-  </installing/hipache-router>` page so it doesn't use a deprecated
-  configuration flag (thanks Giuseppe Ciotta).
+* Fix instructions on the `Hipache installing` page so it doesn't use a 
+  deprecated configuration flag (thanks Giuseppe Ciotta).
 
 * Improve database connection management in the application locking procedure,
   avoiding database connections leakage.

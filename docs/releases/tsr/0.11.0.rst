@@ -165,8 +165,8 @@ Other improvements
       </using/quickstart>` page (thanks Felippe Raposo).
     - improve documentation for the :doc:`contributing </contributing/index>`
       page (thanks Lucas Weiblen).
-    - fix user creation instruction in the :doc:`installing
-      </installing/api>` page (thanks Samuel Roze).
+    - fix user creation instruction in the `installing` page 
+      (thanks Samuel Roze).
     - fix wording and spelling in the `Gandalf install` page
       (thanks Martin Jackson).
 

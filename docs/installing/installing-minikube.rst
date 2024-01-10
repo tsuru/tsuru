@@ -87,7 +87,7 @@ Add the localhost to tsuru target and log in:
 
 ::
 
-   $ tsuru target-add default https://localhost:8080 -s
+   $ tsuru target-add default http://localhost:8080 -s
    $ tsuru login
 
 Create one team:

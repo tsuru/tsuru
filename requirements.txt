@@ -2,5 +2,7 @@ Sphinx==1.7.4
 sphinx-rtd-theme==0.3.1
 sphinx-tabs==1.1.13
 tsuru-sphinx==0.1.5
+sphinxcontrib-httpdomain==1.8.0
 sphinxcontrib-openapi==0.3.2
 pyrsistent==0.16.0
+docutils==0.12
