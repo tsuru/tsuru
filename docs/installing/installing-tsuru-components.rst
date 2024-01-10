@@ -18,6 +18,5 @@ ride.
 
 .. toctree::
 
-    api
     adding-nodes
     dashboard

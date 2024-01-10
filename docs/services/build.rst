@@ -407,6 +407,8 @@ _`submit your service`: `Submitting your service API`_
 Submiting your service API
 ==========================
 
+.. _Submitting your service API:
+
 To submit your service, you can run:
 
 .. highlight:: bash
