@@ -254,9 +254,8 @@ texinfo_documents = [
 # tsuru releases
 try:
     import releases
-except:
-    pass
-else:
     html_context = {
         'releases': releases.RELEASES,
     }
+except:
+    pass
