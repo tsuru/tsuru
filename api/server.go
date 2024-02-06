@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -693,12 +694,12 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 			Handler:      handler,
 			TLSConfig: &tls.Config{
 				GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-					srvConf.Lock()
-					defer srvConf.Unlock()
-					if srvConf.certificate == nil {
+					cert := srvConf.certificate.Load()
+
+					if cert == nil {
 						return nil, errors.New("there are no certificates to offer")
 					}
-					return srvConf.certificate, nil
+					return cert, nil
 				},
 			},
 		}
@@ -788,17 +789,14 @@ func (cv *certificateValidator) start() {
 		go func() {
 			for {
 				log.Debug("[certificate-validator] starting certificate validator")
-				cv.conf.Lock()
-				certificate, err := x509.ParseCertificate(cv.conf.certificate.Certificate[0])
+				certificate, err := x509.ParseCertificate(cv.conf.certificate.Load().Certificate[0])
 				if err != nil {
 					log.Errorf("[certificate-validator] could not parse the current certificate as a x509 certificate: %v\n", err)
 					time.Sleep(time.Second)
-					cv.conf.Unlock()
 					continue
 				}
 				nextValidation := time.Until(certificate.NotAfter)
-				err = validateTLSCertificate(cv.conf.certificate, cv.conf.roots)
-				cv.conf.Unlock()
+				err = validateTLSCertificate(cv.conf.certificate.Load(), cv.conf.roots)
 				if err != nil {
 					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
 					cv.shutdownServerFunc(err)
@@ -868,7 +866,7 @@ type srvConfig struct {
 	keyFile         string
 	httpSrv         *http.Server
 	httpsSrv        *http.Server
-	certificate     *tls.Certificate
+	certificate     atomic.Pointer[tls.Certificate]
 	shutdownTimeout time.Duration
 	// roots holds a set of trusted certificates that are used by certificate
 	// validator to check a given certificate. If roots is nil, the system
@@ -878,14 +876,11 @@ type srvConfig struct {
 	// certificate reloader routine.
 	certificateReloadedCh chan bool
 	once                  sync.Once
-	sync.Mutex
-	shutdownCalled      bool
-	validateCertificate bool
+	shutdownCalled        bool
+	validateCertificate   bool
 }
 
 func (conf *srvConfig) loadCertificate() (bool, error) {
-	conf.Lock()
-	defer conf.Unlock()
 	newCertificate, err := tls.LoadX509KeyPair(conf.certFile, conf.keyFile)
 	if err != nil {
 		return false, err
@@ -895,12 +890,12 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 			return false, err
 		}
 	}
-	if conf.certificate == nil {
-		conf.certificate = &newCertificate
+	if conf.certificate.Load() == nil {
+		conf.certificate.Store(&newCertificate)
 		return true, nil
 	}
-	if len(newCertificate.Certificate) != len(conf.certificate.Certificate) {
-		conf.certificate = &newCertificate
+	if len(newCertificate.Certificate) != len(conf.certificate.Load().Certificate) {
+		conf.certificate.Store(&newCertificate)
 		return true, nil
 	}
 	for i := 0; i < len(newCertificate.Certificate); i++ {
@@ -908,9 +903,9 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		older, _ := x509.ParseCertificate(conf.certificate.Certificate[i])
+		older, _ := x509.ParseCertificate(conf.certificate.Load().Certificate[i])
 		if !older.Equal(newer) {
-			conf.certificate = &newCertificate
+			conf.certificate.Store(&newCertificate)
 			return true, nil
 		}
 	}
@@ -918,8 +913,6 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 }
 
 func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
-	conf.Lock()
-	defer conf.Unlock()
 	conf.once.Do(func() {
 		conf.onceShutdown(shutdownTimeout)
 	})
@@ -965,8 +958,6 @@ func (conf *srvConfig) handleSignals(shutdownTimeout time.Duration) {
 }
 
 func (conf *srvConfig) start() <-chan error {
-	conf.Lock()
-	defer conf.Unlock()
 	errChan := make(chan error, 2)
 	if conf.shutdownCalled {
 		errChan <- errors.New("shutdown called")

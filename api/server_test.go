@@ -246,9 +246,7 @@ func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledReturnsTheNewerLoaded
 	tlsCertificate, err := generateTLSCertificate()
 	c.Assert(err, check.IsNil)
 
-	srvConf.Lock()
-	srvConf.certificate = tlsCertificate
-	srvConf.Unlock()
+	srvConf.certificate.Store(tlsCertificate)
 
 	time.Sleep(time.Second)
 
@@ -272,9 +270,7 @@ func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledAndCertificateIsNullS
 	srvConf, err := createServers(nil)
 	c.Assert(err, check.IsNil)
 
-	srvConf.Lock()
-	srvConf.certificate = nil
-	srvConf.Unlock()
+	srvConf.certificate.Store(nil)
 
 	_, err = srvConf.httpsSrv.TLSConfig.GetCertificate(nil)
 	c.Assert(err, check.Not(check.IsNil))
@@ -282,9 +278,8 @@ func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledAndCertificateIsNullS
 
 func (s *S) TestSrvConfig_LoadCertificate_WhenFieldCertificateIsNullShouldLoadExpectedCertificate(c *check.C) {
 	srvConf := &srvConfig{
-		certificate: nil,
-		certFile:    "./testdata/cert.pem",
-		keyFile:     "./testdata/key.pem",
+		certFile: "./testdata/cert.pem",
+		keyFile:  "./testdata/key.pem",
 	}
 
 	tlsCert, err := tls.LoadX509KeyPair("./testdata/cert.pem", "./testdata/key.pem")
@@ -297,7 +292,7 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenFieldCertificateIsNullShouldLoadEx
 	c.Assert(err, check.IsNil)
 	c.Assert(changed, check.Equals, true)
 
-	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Certificate[0])
+	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Load().Certificate[0])
 	c.Assert(err, check.IsNil)
 
 	c.Assert(expectedCertificate.Equal(gotCertificate), check.Equals, true)
@@ -308,10 +303,10 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenNewCertificateIsEqualsToOlderCerti
 	c.Assert(err, check.IsNil)
 
 	srvConf := &srvConfig{
-		certificate: &tlsCert,
-		certFile:    "./testdata/cert.pem",
-		keyFile:     "./testdata/key.pem",
+		certFile: "./testdata/cert.pem",
+		keyFile:  "./testdata/key.pem",
 	}
+	srvConf.certificate.Store(&tlsCert)
 
 	changed, err := srvConf.loadCertificate()
 	c.Assert(err, check.IsNil)
@@ -320,7 +315,7 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenNewCertificateIsEqualsToOlderCerti
 	expectedCertificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
 	c.Assert(err, check.IsNil)
 
-	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Certificate[0])
+	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Load().Certificate[0])
 	c.Assert(err, check.IsNil)
 
 	c.Assert(expectedCertificate.Equal(gotCertificate), check.Equals, true)
@@ -331,10 +326,11 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenCertificatesAreNotEqualShouldLoadT
 	c.Assert(err, check.IsNil)
 
 	srvConf := &srvConfig{
-		certificate: tlsCert,
-		certFile:    "./testdata/cert.pem",
-		keyFile:     "./testdata/key.pem",
+		certFile: "./testdata/cert.pem",
+		keyFile:  "./testdata/key.pem",
 	}
+
+	srvConf.certificate.Store(tlsCert)
 
 	changed, err := srvConf.loadCertificate()
 	c.Assert(err, check.IsNil)
@@ -343,7 +339,7 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenCertificatesAreNotEqualShouldLoadT
 	expectedCertificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
 	c.Assert(err, check.IsNil)
 
-	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Certificate[0])
+	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Load().Certificate[0])
 	c.Assert(err, check.IsNil)
 
 	c.Assert(expectedCertificate.Equal(gotCertificate), check.Equals, false)
@@ -621,9 +617,9 @@ func (s *S) TestCertificateValidator_start_WhenCurrentlyLoadedCertificateExpire_
 	rootsCertPool := x509.NewCertPool()
 	rootsCertPool.AddCert(caX509)
 	srvConf := &srvConfig{
-		certificate: caCert,
-		roots:       rootsCertPool,
+		roots: rootsCertPool,
 	}
+	srvConf.certificate.Store(caCert)
 	invokedActionFunc := make(chan bool)
 	cv := &certificateValidator{
 		conf: srvConf,
