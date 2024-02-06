@@ -668,7 +668,7 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 	}
 	if tlsListen != "" {
 		srvConf.validateCertificate, _ = config.GetBool("tls:validate-certificate")
-		if _, err := srvConf.loadCertificate(); err != nil {
+		if _, err := srvConf.readCertificateFromFilesystem(); err != nil {
 			return nil, err
 		}
 		if srvConf.validateCertificate {
@@ -730,7 +730,7 @@ func (cr *certificateReloader) start() {
 		go func() {
 			watcher, err := fsnotify.NewWatcher()
 			if err != nil {
-				fmt.Printf("[certificate-reloader] could not initialize watcher: %s", err.Error())
+				log.Debugf("[certificate-reloader] could not initialize watcher: %s", err.Error())
 				return
 			}
 
@@ -739,14 +739,14 @@ func (cr *certificateReloader) start() {
 			// Add path of cert
 			err = watcher.Add(cr.conf.certFile)
 			if err != nil {
-				fmt.Printf("[certificate-reloader] could watch cert file, err: %s", err.Error())
+				log.Debugf("[certificate-reloader] could watch cert file, err: %s\n", err.Error())
 				return
 			}
 
 			// Add path of cert
 			err = watcher.Add(cr.conf.keyFile)
 			if err != nil {
-				fmt.Printf("[certificate-reloader] could watch key file, err: %s", err.Error())
+				log.Debugf("[certificate-reloader] could watch key file, err: %s\n", err.Error())
 				return
 			}
 
@@ -759,14 +759,14 @@ func (cr *certificateReloader) start() {
 						return
 					}
 					if event.Has(fsnotify.Write) {
-						fmt.Printf("[certificate-reloader] modified file: %s", event.Name)
+						log.Debugf("[certificate-reloader] modified file: %s\n", event.Name)
 
-						changed, err := cr.conf.loadCertificate()
+						changed, err := cr.conf.readCertificateFromFilesystem()
 						if err != nil {
 							log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
 						}
 						if changed {
-							fmt.Println("[certificate-reloader] a new certificate was successfully loaded")
+							log.Debugf("[certificate-reloader] a new certificate was successfully loaded")
 
 							// send message to certificateReloadedCh without blocking
 							select {
@@ -779,7 +779,7 @@ func (cr *certificateReloader) start() {
 					if !ok {
 						return
 					}
-					fmt.Println("[certificate-reloader] error:", err)
+					log.Errorf("[certificate-reloader] error: %s", err.Error())
 				}
 			}
 		}()
@@ -916,7 +916,7 @@ type srvConfig struct {
 	validateCertificate   bool
 }
 
-func (conf *srvConfig) loadCertificate() (changed bool, err error) {
+func (conf *srvConfig) readCertificateFromFilesystem() (changed bool, err error) {
 	newCertificate, err := tls.LoadX509KeyPair(conf.certFile, conf.keyFile)
 	if err != nil {
 		return false, err

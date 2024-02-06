@@ -18,6 +18,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -228,25 +230,37 @@ func (s *S) TestCreateServersHTTPAndHTTPS(c *check.C) {
 func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledReturnsTheNewerLoadedCertificate(c *check.C) {
 	config.Set("use-tls", true)
 	config.Set("tls:listen", "127.0.0.1:8443")
-	config.Set("tls:cert-file", "./testdata/cert.pem")
-	config.Set("tls:key-file", "./testdata/key.pem")
-	config.Set("tls:auto-reload:interval", "500ms")
+
+	cert, err := createTempFromData("./testdata/cert.pem")
+	c.Assert(err, check.IsNil)
+	defer cert.Close()
+
+	key, err := createTempFromData("./testdata/key.pem")
+	c.Assert(err, check.IsNil)
+	defer key.Close()
+
+	defer os.Remove(cert.Name()) // clean up
+	defer os.Remove(key.Name())  // clean up
+
+	config.Set("tls:cert-file", cert.Name())
+	config.Set("tls:key-file", key.Name())
 
 	defer config.Unset("use-tls")
-
-	expectedTLSCertificate, err := tls.LoadX509KeyPair("./testdata/cert.pem", "./testdata/key.pem")
-	c.Assert(err, check.IsNil)
-
-	expectedCertificate, err := x509.ParseCertificate(expectedTLSCertificate.Certificate[0])
-	c.Assert(err, check.IsNil)
 
 	srvConf, err := createServers(nil)
 	c.Assert(err, check.IsNil)
 
-	tlsCertificate, err := generateTLSCertificate()
+	tlsCertificate, encodedCert, err := generateTLSCertificate()
 	c.Assert(err, check.IsNil)
 
-	srvConf.certificate.Store(tlsCertificate)
+	err = replaceFileContent(cert, encodedCert.Certicate)
+	c.Assert(err, check.IsNil)
+
+	err = replaceFileContent(key, encodedCert.PrivateKey)
+	c.Assert(err, check.IsNil)
+
+	expectedCertificate, err := x509.ParseCertificate(tlsCertificate.Certificate[0])
+	c.Assert(err, check.IsNil)
 
 	time.Sleep(time.Second)
 
@@ -257,6 +271,36 @@ func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledReturnsTheNewerLoaded
 	c.Assert(err, check.IsNil)
 
 	c.Assert(gotX509Certificate.Equal(expectedCertificate), check.Equals, true)
+}
+
+func createTempFromData(origin string) (*os.File, error) {
+	f, err := os.CreateTemp("", "file")
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(origin)
+	if err != nil {
+		return nil, err
+	}
+	_, err = f.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
+}
+
+func replaceFileContent(f *os.File, content []byte) error {
+	err := f.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(content)
+	return err
 }
 
 func (s *S) TestCreateServerHTTPSWhenGetCertificateIsCalledAndCertificateIsNullShouldReturnError(c *check.C) {
@@ -288,7 +332,7 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenFieldCertificateIsNullShouldLoadEx
 	expectedCertificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
 	c.Assert(err, check.IsNil)
 
-	changed, err := srvConf.loadCertificate()
+	changed, err := srvConf.readCertificateFromFilesystem()
 	c.Assert(err, check.IsNil)
 	c.Assert(changed, check.Equals, true)
 
@@ -308,7 +352,7 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenNewCertificateIsEqualsToOlderCerti
 	}
 	srvConf.certificate.Store(&tlsCert)
 
-	changed, err := srvConf.loadCertificate()
+	changed, err := srvConf.readCertificateFromFilesystem()
 	c.Assert(err, check.IsNil)
 	c.Assert(changed, check.Equals, false)
 
@@ -321,8 +365,8 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenNewCertificateIsEqualsToOlderCerti
 	c.Assert(expectedCertificate.Equal(gotCertificate), check.Equals, true)
 }
 
-func (s *S) TestSrvConfig_LoadCertificate_WhenCertificatesAreNotEqualShouldLoadTheNewOne(c *check.C) {
-	tlsCert, err := generateTLSCertificate()
+func (s *S) TestSrvConfig_readCertificateFromFilesystem_WhenCertificatesAreNotEqualShouldLoadTheNewOne(c *check.C) {
+	inMemoryCertificate, _, err := generateTLSCertificate()
 	c.Assert(err, check.IsNil)
 
 	srvConf := &srvConfig{
@@ -330,27 +374,32 @@ func (s *S) TestSrvConfig_LoadCertificate_WhenCertificatesAreNotEqualShouldLoadT
 		keyFile:  "./testdata/key.pem",
 	}
 
-	srvConf.certificate.Store(tlsCert)
+	srvConf.certificate.Store(inMemoryCertificate)
 
-	changed, err := srvConf.loadCertificate()
+	changed, err := srvConf.readCertificateFromFilesystem()
 	c.Assert(err, check.IsNil)
 	c.Assert(changed, check.Equals, true)
 
-	expectedCertificate, err := x509.ParseCertificate(tlsCert.Certificate[0])
+	expectedCertificate, err := tls.LoadX509KeyPair(srvConf.certFile, srvConf.keyFile)
 	c.Assert(err, check.IsNil)
 
-	gotCertificate, err := x509.ParseCertificate(srvConf.certificate.Load().Certificate[0])
-	c.Assert(err, check.IsNil)
+	gotCertificate := srvConf.certificate.Load()
 
-	c.Assert(expectedCertificate.Equal(gotCertificate), check.Equals, false)
+	c.Assert(reflect.DeepEqual(inMemoryCertificate.Certificate, gotCertificate.Certificate), check.Equals, false)
+	c.Assert(reflect.DeepEqual(expectedCertificate.Certificate, gotCertificate.Certificate), check.Equals, true)
 }
 
-func generateTLSCertificate() (*tls.Certificate, error) {
+type encodedCertificate struct {
+	Certicate  []byte
+	PrivateKey []byte
+}
+
+func generateTLSCertificate() (cert *tls.Certificate, raw *encodedCertificate, err error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := cryptoRand.Int(cryptoRand.Reader, serialNumberLimit)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	template := x509.Certificate{
@@ -368,13 +417,13 @@ func generateTLSCertificate() (*tls.Certificate, error) {
 	privateKey, err := rsa.GenerateKey(cryptoRand.Reader, 1024)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	derBytes, err := x509.CreateCertificate(cryptoRand.Reader, &template, &template, privateKey.Public(), privateKey)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	certPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
@@ -382,7 +431,7 @@ func generateTLSCertificate() (*tls.Certificate, error) {
 
 	certificate, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 
-	return &certificate, err
+	return &certificate, &encodedCertificate{certPEMBlock, keyPEMBlock}, nil
 }
 
 func generateCertificate(template *x509.Certificate, parent *tls.Certificate) (*tls.Certificate, error) {
