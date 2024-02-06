@@ -23,6 +23,7 @@ import (
 	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
+	"github.com/fsnotify/fsnotify"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -677,16 +678,15 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 			shutdown.Register(certValidator)
 			certValidator.start()
 		}
-		autoReloadInterval, err := config.GetDuration("tls:auto-reload:interval")
-		if err == nil && autoReloadInterval > 0 {
-			reloader := &certificateReloader{
-				conf:     &srvConf,
-				interval: autoReloadInterval,
-			}
-			shutdown.Register(reloader)
-			reloader.start()
-			srvConf.certificateReloadedCh = make(chan bool)
+
+		srvConf.certificateReloadedCh = make(chan bool)
+
+		reloader := &certificateReloader{
+			conf: &srvConf,
 		}
+		shutdown.Register(reloader)
+		reloader.start()
+
 		srvConf.httpsSrv = &http.Server{
 			ReadTimeout:  time.Duration(readTimeout) * time.Second,
 			WriteTimeout: time.Duration(writeTimeout) * time.Second,
@@ -708,10 +708,9 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 }
 
 type certificateReloader struct {
-	conf     *srvConfig
-	interval time.Duration
-	stopCh   chan bool
-	once     *sync.Once
+	conf   *srvConfig
+	stopCh chan bool
+	once   *sync.Once
 }
 
 func (cr *certificateReloader) Shutdown(ctx context.Context) error {
@@ -729,21 +728,58 @@ func (cr *certificateReloader) start() {
 	cr.once.Do(func() {
 		cr.stopCh = make(chan bool)
 		go func() {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				fmt.Printf("[certificate-reloader] could not initialize watcher: %s", err.Error())
+				return
+			}
+
+			defer watcher.Close()
+
+			// Add path of cert
+			err = watcher.Add(cr.conf.certFile)
+			if err != nil {
+				fmt.Printf("[certificate-reloader] could watch cert file, err: %s", err.Error())
+				return
+			}
+
+			// Add path of cert
+			err = watcher.Add(cr.conf.keyFile)
+			if err != nil {
+				fmt.Printf("[certificate-reloader] could watch key file, err: %s", err.Error())
+				return
+			}
+
 			for {
-				log.Debugf("[certificate-reloader] starting the certificate reloader")
-				changed, err := cr.conf.loadCertificate()
-				if err != nil {
-					log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
-				}
-				if changed {
-					fmt.Println("[certificate-reloader] a new certificate was successfully loaded")
-					cr.conf.certificateReloadedCh <- true
-				}
-				log.Debugf("[certificate-reloader] finishing the certificate reloader")
 				select {
 				case <-cr.stopCh:
 					return
-				case <-time.After(cr.interval):
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+					if event.Has(fsnotify.Write) {
+						fmt.Printf("[certificate-reloader] modified file: %s", event.Name)
+
+						changed, err := cr.conf.loadCertificate()
+						if err != nil {
+							log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
+						}
+						if changed {
+							fmt.Println("[certificate-reloader] a new certificate was successfully loaded")
+
+							// send message to certificateReloadedCh without blocking
+							select {
+							case cr.conf.certificateReloadedCh <- true:
+							default:
+							}
+						}
+					}
+				case err, ok := <-watcher.Errors:
+					if !ok {
+						return
+					}
+					fmt.Println("[certificate-reloader] error:", err)
 				}
 			}
 		}()
@@ -880,7 +916,7 @@ type srvConfig struct {
 	validateCertificate   bool
 }
 
-func (conf *srvConfig) loadCertificate() (bool, error) {
+func (conf *srvConfig) loadCertificate() (changed bool, err error) {
 	newCertificate, err := tls.LoadX509KeyPair(conf.certFile, conf.keyFile)
 	if err != nil {
 		return false, err
