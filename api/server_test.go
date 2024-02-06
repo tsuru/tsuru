@@ -430,7 +430,9 @@ func generateTLSCertificate() (cert *tls.Certificate, raw *encodedCertificate, e
 	keyPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
 
 	certificate, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-
+	if err != nil {
+		return nil, nil, err
+	}
 	return &certificate, &encodedCertificate{certPEMBlock, keyPEMBlock}, nil
 }
 
