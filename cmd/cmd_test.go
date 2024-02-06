@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
@@ -388,7 +387,6 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	globalManager.RegisterDeprecated(&login{}, "login")
 	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
 	err := command.Run(&context, nil)
@@ -413,7 +411,6 @@ Available topics:
 
 Use glb help <topicname> to get more information about a topic.
 `
-	globalManager.Register(&login{})
 	globalManager.RegisterTopic("target", "something")
 	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
@@ -754,139 +751,12 @@ func (s *S) TestFinisherReturnTheDefinedE(c *check.C) {
 	c.Assert(m.finisher(), check.FitsTypeOf, &exiter)
 }
 
-func (s *S) TestLoginIsRegistered(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	lgn, ok := mngr.Commands["login"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(lgn, check.FitsTypeOf, &login{})
-}
-
-func (s *S) TestLogoutIsRegistered(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	lgt, ok := mngr.Commands["logout"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(lgt, check.FitsTypeOf, &logout{})
-}
-
-func (s *S) TestTargetListIsRegistered(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	tgt, ok := mngr.Commands["target-list"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(tgt, check.FitsTypeOf, &targetList{})
-}
-
-func (s *S) TestTargetTopicIsRegistered(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	c.Assert(mngr.topics["target"], check.Equals, targetTopic)
-}
-
 func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	ver, ok := mngr.Commands["version"]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(ver, check.FitsTypeOf, &version{})
-}
-
-func (s *S) TestInvalidCommandTopicMatch(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.stdout = &stdout
-	mngr.stderr = &stderr
-	mngr.Run([]string{"target"})
-	expectedOutput := fmt.Sprintf(`%s
-
-The following commands are available in the "target" topic:
-
-  target add           Adds a new entry to the list of available targets
-  target list          Displays the list of targets, marking the current
-  target remove        Remove a target from target-list (tsuru server)
-  target set           Change current target (tsuru server)
-
-Use tsuru help <commandname> to get more information about a command.
-`, targetTopic)
-	c.Assert(stderr.String(), check.Equals, "")
-	c.Assert(stdout.String(), check.Equals, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 0)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch02(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.stdout = &stdout
-	mngr.stderr = &stderr
-	mngr.Run([]string{"target lisr"})
-	expectedOutput := `.*: "target lisr" is not a tsuru command. See "tsuru help".
-
-Did you mean?
-	target list
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch03(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.stdout = &stdout
-	mngr.stderr = &stderr
-	mngr.Run([]string{"list"})
-	expectedOutput := `.*: "list" is not a tsuru command. See "tsuru help".
-
-Did you mean?
-	target list
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch04(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.stdout = &stdout
-	mngr.stderr = &stderr
-	mngr.Run([]string{"not-command"})
-	expectedOutput := `.*: "not-command" is not a tsuru command. See "tsuru help".
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch05(c *check.C) {
-	mngr := BuildBaseManager("tsuru", "1.0", "", nil)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	mngr.e = &exiter
-	mngr.stdout = &stdout
-	mngr.stderr = &stderr
-	mngr.Run([]string{"target", "sit"})
-	expectedOutput := `.*: "target sit" is not a tsuru command. See "tsuru help".
-
-Did you mean?
-	target list
-	target set
-`
-
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), check.Matches, expectedOutput)
-	c.Assert(mngr.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
 func (s *S) TestFileSystem(c *check.C) {

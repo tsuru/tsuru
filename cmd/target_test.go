@@ -5,11 +5,9 @@
 package cmd
 
 import (
-	"bytes"
 	"io"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/tsuru/tsuru/fs/fstest"
 	check "gopkg.in/check.v1"
@@ -272,81 +270,6 @@ func (s *S) TestGetURLUndefinedTarget(c *check.C) {
 	c.Assert(err, check.Equals, errUndefinedTarget)
 }
 
-func (s *S) TestTargetAddInfo(c *check.C) {
-	expected := &Info{
-		Name:    "target-add",
-		Usage:   "target add <label> <target> [--set-current|-s]",
-		Desc:    "Adds a new entry to the list of available targets",
-		MinArgs: 2,
-	}
-	targetAdd := &targetAdd{}
-	c.Assert(targetAdd.Info(), check.DeepEquals, expected)
-}
-
-func (s *S) TestTargetAddRun(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "default   http://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	context := &Context{[]string{"default", "http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	targetAdd := &targetAdd{}
-	err := targetAdd.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), check.Equals, "New target default -> http://tsuru.google.com added to target list\n")
-}
-
-func (s *S) TestTargetAddRunOnlyOneArg(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "default   http://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	context := &Context{[]string{"default http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	targetAdd := &targetAdd{}
-	err := targetAdd.Run(context, nil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Invalid arguments")
-}
-
-func (s *S) TestTargetAddWithSet(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
-	rfs := &fstest.RecordingFs{FileContent: "old\thttp://tsuru.io"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	context := &Context{[]string{"default", "http://tsuru.google.com"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	targetAdd := &targetAdd{}
-	targetAdd.Flags().Parse(true, []string{"-s"})
-	err := targetAdd.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(context.Stdout.(*bytes.Buffer).String(), check.Equals, "New target default -> http://tsuru.google.com added to target list and defined as the current target\n")
-	t, err := ReadTarget()
-	c.Assert(err, check.IsNil)
-	c.Assert(t, check.Equals, "http://tsuru.google.com")
-}
-
-func (s *S) TestTargetAddFlags(c *check.C) {
-	command := targetAdd{}
-	flagset := command.Flags()
-	c.Assert(flagset, check.NotNil)
-	flagset.Parse(true, []string{"--set-current"})
-	set := flagset.Lookup("set-current")
-	c.Assert(set, check.NotNil)
-	c.Check(set.Name, check.Equals, "set-current")
-	c.Check(set.Usage, check.Equals, "Add and define the target as the current target")
-	c.Check(set.Value.String(), check.Equals, "true")
-	c.Check(set.DefValue, check.Equals, "false")
-	sset := flagset.Lookup("s")
-	c.Assert(sset, check.NotNil)
-	c.Check(sset.Name, check.Equals, "s")
-	c.Check(sset.Usage, check.Equals, "Add and define the target as the current target")
-	c.Check(sset.Value.String(), check.Equals, "true")
-	c.Check(sset.DefValue, check.Equals, "false")
-	c.Check(command.set, check.Equals, true)
-}
-
 func (s *S) TestIfTargetLabelExists(c *check.C) {
 	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
@@ -410,51 +333,6 @@ func (s *S) TestGetTargetsLegacy(c *check.C) {
 	c.Assert(string(b), check.Equals, content)
 }
 
-func (s *S) TestTargetInfo(c *check.C) {
-	desc := `Displays the list of targets, marking the current.
-
-Other commands related to target:
-
-  - target add: adds a new target to the list of targets
-  - target set: defines one of the targets in the list as the current target
-  - target remove: removes one target from the list`
-	expected := &Info{
-		Name:    "target-list",
-		Usage:   "target list",
-		Desc:    desc,
-		MinArgs: 0,
-	}
-	target := &targetList{}
-	c.Assert(target.Info(), check.DeepEquals, expected)
-}
-
-func (s *S) TestTargetRun(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
-	content := `first	http://tsuru.io
-default	http://tsuru.google.com
-other	http://other.tsuru.io`
-	rfs := &fstest.RecordingFs{}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "target"))
-	f.Write([]byte("http://tsuru.io"))
-	f.Close()
-	f, _ = rfs.Create(JoinWithUserDir(".tsuru", "targets"))
-	f.Write([]byte(content))
-	f.Close()
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	expected := `  default (http://tsuru.google.com)
-* first (http://tsuru.io)
-  other (http://other.tsuru.io)` + "\n"
-	target := &targetList{}
-	context := &Context{[]string{""}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err := target.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	got := context.Stdout.(*bytes.Buffer).String()
-	c.Assert(got, check.Equals, expected)
-}
-
 func (s *S) TestResetTargetList(c *check.C) {
 	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
@@ -473,111 +351,6 @@ func (s *S) TestResetTargetList(c *check.C) {
 	got, err = getTargets()
 	c.Assert(err, check.IsNil)
 	c.Assert(got, check.DeepEquals, map[string]string{})
-}
-
-func (s *S) TestTargetRemoveInfo(c *check.C) {
-	desc := `Remove a target from target-list (tsuru server)
-`
-	expected := &Info{
-		Name:    "target-remove",
-		Usage:   "target remove",
-		Desc:    desc,
-		MinArgs: 1,
-	}
-	targetRemove := &targetRemove{}
-	c.Assert(targetRemove.Info(), check.DeepEquals, expected)
-}
-
-func (s *S) TestTargetRemove(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "target"))
-	f.Write([]byte("http://tsuru.google.com"))
-	f.Close()
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	var expectedBefore = map[string]string{
-		"first":   "http://tsuru.io/",
-		"default": "http://tsuru.google.com",
-	}
-	var expectedAfter = map[string]string{
-		"default": "http://tsuru.google.com",
-	}
-	got, err := getTargets()
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.HasLen, len(expectedBefore))
-	targetRemove := &targetRemove{}
-	context := &Context{[]string{"first"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err = targetRemove.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	got, err = getTargets()
-	c.Assert(err, check.IsNil)
-	c.Assert(got, check.HasLen, len(expectedAfter))
-	_, hasKey := got["default"]
-	c.Assert(hasKey, check.Equals, true)
-	_, hasKey = got["first"]
-	c.Assert(hasKey, check.Equals, false)
-}
-
-func (s *S) TestTargetRemoveCurrentTarget(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
-	rfs := &fstest.RecordingFs{}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "targets"))
-	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
-	f.Close()
-	f, _ = rfs.Create(JoinWithUserDir(".tsuru", "target"))
-	f.Write([]byte("http://tsuru.google.com"))
-	f.Close()
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	targetRemove := &targetRemove{}
-	context := &Context{[]string{"default"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err := targetRemove.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	_, err = ReadTarget()
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestTargetSetInfo(c *check.C) {
-	desc := `Change current target (tsuru server)
-`
-	expected := &Info{
-		Name:    "target-set",
-		Usage:   "target set <label>",
-		Desc:    desc,
-		MinArgs: 1,
-	}
-	targetSet := &targetSet{}
-	c.Assert(targetSet.Info(), check.DeepEquals, expected)
-}
-
-func (s *S) TestTargetSetRun(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	targetSet := &targetSet{}
-	context := &Context{[]string{"default"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err := targetSet.Run(context, nil)
-	c.Assert(err, check.IsNil)
-	got := context.Stdout.(*bytes.Buffer).String()
-	c.Assert(strings.Contains(got, "New target is default -> http://tsuru.google.com\n"), check.Equals, true)
-}
-
-func (s *S) TestTargetSetRunUnknowTarget(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
-	fsystem = rfs
-	defer func() {
-		fsystem = nil
-	}()
-	targetSet := &targetSet{}
-	context := &Context{[]string{"doesnotexist"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err := targetSet.Run(context, nil)
-	c.Assert(err, check.ErrorMatches, "Target not found")
 }
 
 func (s *S) TestNewTargetSlice(c *check.C) {

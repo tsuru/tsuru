@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -14,7 +13,6 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/gnuflag"
 )
 
 var errUndefinedTarget = errors.New(`No target defined. Please use target-add/target-set to define a target.
@@ -187,50 +185,6 @@ func WriteTarget(t string) error {
 	return nil
 }
 
-type targetAdd struct {
-	fs  *gnuflag.FlagSet
-	set bool
-}
-
-func (t *targetAdd) Info() *Info {
-	return &Info{
-		Name:    "target-add",
-		Usage:   "target add <label> <target> [--set-current|-s]",
-		Desc:    "Adds a new entry to the list of available targets",
-		MinArgs: 2,
-	}
-}
-
-func (t *targetAdd) Run(ctx *Context, client *Client) error {
-	var target string
-	var label string
-	if len(ctx.Args) != 2 {
-		return errors.New("Invalid arguments")
-	}
-	label = ctx.Args[0]
-	target = ctx.Args[1]
-	err := WriteOnTargetList(label, target)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(ctx.Stdout, "New target %s -> %s added to target list", label, target)
-	if t.set {
-		WriteTarget(target)
-		fmt.Fprint(ctx.Stdout, " and defined as the current target")
-	}
-	fmt.Fprintln(ctx.Stdout)
-	return nil
-}
-
-func (t *targetAdd) Flags() *gnuflag.FlagSet {
-	if t.fs == nil {
-		t.fs = gnuflag.NewFlagSet("target-add", gnuflag.ExitOnError)
-		t.fs.BoolVar(&t.set, "set-current", false, "Add and define the target as the current target")
-		t.fs.BoolVar(&t.set, "s", false, "Add and define the target as the current target")
-	}
-	return t.fs
-}
-
 func resetTargetList() error {
 	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
@@ -323,124 +277,4 @@ func copyTargetFiles() {
 	if target, err := readTarget(JoinWithUserDir(".tsuru_target")); err == nil {
 		WriteTarget(target)
 	}
-}
-
-type targetList struct{}
-
-func (t *targetList) Info() *Info {
-	desc := `Displays the list of targets, marking the current.
-
-Other commands related to target:
-
-  - target add: adds a new target to the list of targets
-  - target set: defines one of the targets in the list as the current target
-  - target remove: removes one target from the list`
-	return &Info{
-		Name:    "target-list",
-		Usage:   "target list",
-		Desc:    desc,
-		MinArgs: 0,
-	}
-}
-
-func (t *targetList) Run(ctx *Context, client *Client) error {
-	slice := newTargetSlice()
-	targets, err := getTargets()
-	if err != nil {
-		return err
-	}
-	for label, target := range targets {
-		slice.add(label, target)
-	}
-	if current, err := ReadTarget(); err == nil {
-		slice.setCurrent(current)
-	}
-	fmt.Fprintf(ctx.Stdout, "%v\n", slice)
-	return nil
-}
-
-type targetRemove struct{}
-
-func (t *targetRemove) Info() *Info {
-	desc := `Remove a target from target-list (tsuru server)
-`
-	return &Info{
-		Name:    "target-remove",
-		Usage:   "target remove",
-		Desc:    desc,
-		MinArgs: 1,
-	}
-}
-
-func (t *targetRemove) Run(ctx *Context, client *Client) error {
-	if len(ctx.Args) != 1 {
-		return errors.New("Invalid arguments")
-	}
-	targetLabelToRemove := strings.TrimSpace(ctx.Args[0])
-	targets, err := getTargets()
-	if err != nil {
-		return err
-	}
-	var turl string
-	for label, url := range targets {
-		if label == targetLabelToRemove {
-			turl = url
-			delete(targets, label)
-		}
-	}
-	if turl != "" {
-		var current string
-		if current, err = ReadTarget(); err == nil && current == turl {
-			deleteTargetFile()
-		}
-	}
-	err = resetTargetList()
-	if err != nil {
-		return err
-	}
-	for label, target := range targets {
-		WriteOnTargetList(label, target)
-	}
-	return nil
-}
-
-type targetSet struct{}
-
-func (t *targetSet) Info() *Info {
-	desc := `Change current target (tsuru server)
-`
-	return &Info{
-		Name:    "target-set",
-		Usage:   "target set <label>",
-		Desc:    desc,
-		MinArgs: 1,
-	}
-}
-
-func (t *targetSet) Run(ctx *Context, client *Client) error {
-	if len(ctx.Args) != 1 {
-		return errors.New("Invalid arguments")
-	}
-	targetLabelToSet := strings.TrimSpace(ctx.Args[0])
-	labelExist, err := CheckIfTargetLabelExists(targetLabelToSet)
-	if err != nil {
-		return err
-	}
-	if !labelExist {
-		return errors.New("Target not found")
-	}
-	targets, err := getTargets()
-	if err != nil {
-		return err
-	}
-	for label, target := range targets {
-		if label == targetLabelToSet {
-			err = WriteTarget(target)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(ctx.Stdout, "New target is %s -> %s\n", label, target)
-		}
-	}
-	return nil
 }

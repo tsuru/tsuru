@@ -119,32 +119,6 @@ func NewManagerPanicExiter(name, ver, verHeader string, stdout, stderr io.Writer
 	return manager
 }
 
-// This is discouraged: use BuildBaseManagerPanicExiter instead. Handle panic(*PanicExitError) accordingly
-func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manager {
-	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin, lookup)
-	m.Register(&login{})
-	m.Register(&logout{})
-	m.Register(&targetList{})
-	m.Register(&targetAdd{})
-	m.Register(&targetRemove{})
-	m.Register(&targetSet{})
-	m.RegisterTopic("target", targetTopic)
-	return m
-}
-
-// When using this, you should handle panic(*PanicExitError) accordingly
-func BuildBaseManagerPanicExiter(name, version, versionHeader string, lookup Lookup) *Manager {
-	m := NewManagerPanicExiter(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin, lookup)
-	m.Register(&login{})
-	m.Register(&logout{})
-	m.Register(&targetList{})
-	m.Register(&targetAdd{})
-	m.Register(&targetRemove{})
-	m.Register(&targetSet{})
-	m.RegisterTopic("target", targetTopic)
-	return m
-}
-
 func (m *Manager) Register(command Command) {
 	if m.Commands == nil {
 		m.Commands = make(map[string]Command)
