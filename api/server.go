@@ -348,6 +348,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/users/info", AuthorizationRequiredHandler(userInfo))
 	m.Add("1.0", http.MethodGet, "/auth/scheme", Handler(authScheme))
 	m.Add("1.0", http.MethodPost, "/auth/login", Handler(login))
+	m.Add("1.0", http.MethodPost, "/auth/webLogin", Handler(webLogin))
 
 	m.Add("1.0", http.MethodPost, "/auth/saml", Handler(samlCallbackLogin))
 	m.Add("1.0", http.MethodGet, "/auth/saml", Handler(samlMetadata))

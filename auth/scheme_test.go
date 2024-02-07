@@ -23,6 +23,7 @@ func (t TestScheme) AppLogout(ctx context.Context, token string) error {
 func (t TestScheme) Login(ctx context.Context, params map[string]string) (Token, error) {
 	return nil, nil
 }
+func (t TestScheme) WebLogin(ctx context.Context, email string, token string) error { return nil }
 func (t TestScheme) Logout(ctx context.Context, token string) error {
 	return nil
 }

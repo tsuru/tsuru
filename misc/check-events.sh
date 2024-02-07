@@ -9,6 +9,7 @@ github.com/tsuru/tsuru/api.setNodeStatus
 github.com/tsuru/tsuru/api.addLog
 github.com/tsuru/tsuru/api.logout
 github.com/tsuru/tsuru/api.login
+github.com/tsuru/tsuru/api.webLogin
 github.com/tsuru/tsuru/api.samlCallbackLogin
 github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/api.diffDeploy

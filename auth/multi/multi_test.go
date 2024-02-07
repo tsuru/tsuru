@@ -500,12 +500,13 @@ error #1: failed to create on scheme02
 }
 
 type fakeScheme struct {
-	login  func(params map[string]string) (auth.Token, error)
-	logout func(token string) error
-	auth   func(token string) (auth.Token, error)
-	info   func() (*auth.SchemeInfo, error)
-	create func(u *auth.User) (*auth.User, error)
-	remove func(u *auth.User) error
+	login    func(params map[string]string) (auth.Token, error)
+	webLogin func(email string, token string) error
+	logout   func(token string) error
+	auth     func(token string) (auth.Token, error)
+	info     func() (*auth.SchemeInfo, error)
+	create   func(u *auth.User) (*auth.User, error)
+	remove   func(u *auth.User) error
 }
 
 func (t *fakeScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
@@ -514,6 +515,9 @@ func (t *fakeScheme) Login(ctx context.Context, params map[string]string) (auth.
 	}
 	return nil, nil
 }
+
+func (t *fakeScheme) WebLogin(_ context.Context, _ string, _ string) error { return nil }
+
 func (t *fakeScheme) Logout(ctx context.Context, token string) error {
 	if t.logout != nil {
 		return t.logout(token)

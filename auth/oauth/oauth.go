@@ -120,6 +120,16 @@ func (s *oAuthScheme) Login(ctx context.Context, params map[string]string) (auth
 	return s.handleToken(ctx, oauthToken)
 }
 
+func (s *oAuthScheme) WebLogin(ctx context.Context, _ string, token string) error {
+	oAuthToken := &oauth2.Token{
+		AccessToken: token,
+	}
+
+	// TODO: check that email matches on both email req and in token req
+	_, err := s.handleToken(ctx, oAuthToken)
+	return err
+}
+
 func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenWrapper, error) {
 	if t.AccessToken == "" {
 		return nil, ErrEmptyAccessToken
