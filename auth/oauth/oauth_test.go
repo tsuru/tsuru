@@ -39,7 +39,7 @@ func (s *S) TestOAuthLoginWithoutRedirectUrl(c *check.C) {
 func (s *S) TestOAuthLogin(c *check.C) {
 	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
-	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	s.rsps["/user"] = `{"userPrincipalName":"rand@althor.com"}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
@@ -67,7 +67,7 @@ func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
 	defer config.Set("auth:user-registration", true)
 	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
-	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	s.rsps["/user"] = `{"userPrincipalName":"rand@althor.com"}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
@@ -90,7 +90,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *check.C) {
 func (s *S) TestOAuthLoginEmptyEmail(c *check.C) {
 	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
-	s.rsps["/user"] = `{"email":""}`
+	s.rsps["/user"] = `{"userPrincipalName":""}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
@@ -122,7 +122,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 }
 
 func (s *S) TestOAuthParse(c *check.C) {
-	b := io.NopCloser(bytes.NewBufferString(`{"email":"x@x.com"}`))
+	b := io.NopCloser(bytes.NewBufferString(`{"userPrincipalName":"x@x.com"}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := &oAuthScheme{}
 	email, err := parser.parse(rsp)
@@ -131,7 +131,7 @@ func (s *S) TestOAuthParse(c *check.C) {
 }
 
 func (s *S) TestOAuthParseWithGroups(c *check.C) {
-	b := io.NopCloser(bytes.NewBufferString(`{"email":"x@x.com", "groups": ["g1", "g2"]}`))
+	b := io.NopCloser(bytes.NewBufferString(`{"userPrincipalName":"x@x.com", "groups": ["g1", "g2"]}`))
 	rsp := &http.Response{Body: b, StatusCode: http.StatusOK}
 	parser := &oAuthScheme{}
 	email, err := parser.parse(rsp)
@@ -196,7 +196,7 @@ func (s *S) TestOAuthCreate(c *check.C) {
 func (s *S) TestOAuthRemove(c *check.C) {
 	scheme := oAuthScheme{}
 	s.rsps["/token"] = `access_token=my_token`
-	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	s.rsps["/user"] = `{"userPrincipalName":"rand@althor.com"}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
 	params["redirectUrl"] = "http://localhost"
