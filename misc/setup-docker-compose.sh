@@ -29,7 +29,7 @@ function set_ip_on_interface() {
   local interface_name=${2}
 
   if [[ $(command -v ifconfig) ]]; then
-    sudo ifconfig "${interface_name}" alias "${FAKE_HOST_IP}/32"
+    sudo ip addr add ${FAKE_HOST_IP}/32 dev ${interface_name}
     return $?
   fi
 
