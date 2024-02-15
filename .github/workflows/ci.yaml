@@ -156,6 +156,9 @@ jobs:
     - verify-codegen
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v2
     - name: Set up Docker Buildx
@@ -175,8 +178,9 @@ jobs:
         tag_with_sha: 'true'
     - uses: docker/login-action@v1
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - uses: docker/build-push-action@v2
       with:
         context: .
@@ -199,7 +203,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   publish-openapi-specs:
-    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: false
     needs: [validate-api-spec]
     runs-on: ubuntu-latest
     steps:
