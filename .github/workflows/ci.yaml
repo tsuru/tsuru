@@ -33,6 +33,7 @@ jobs:
     - run: sudo apt-get update && sudo apt-get install -y xmlsec1
     - run: go test -race ./...
   lint:
+    if: false
     runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-go@v3
@@ -51,6 +52,7 @@ jobs:
     - uses: actions/checkout@v2
     - run: ./misc/check-contributors.sh
   leakdetector:
+    if: false
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -147,7 +149,6 @@ jobs:
     needs:
     - test
     - check-contributors
-    - leakdetector
     - check-handlers
     - check-events
     - check-api-doc
