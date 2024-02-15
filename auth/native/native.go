@@ -34,6 +34,11 @@ var (
 	_ auth.ManagedScheme = &NativeScheme{}
 )
 
+func (s NativeScheme) WebLogin(_ context.Context, _ string, _ string) error {
+	//	TODO
+	return nil
+}
+
 func (s NativeScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	email, ok := params["email"]
 	if !ok {

@@ -59,6 +59,11 @@ type oidcScheme struct {
 	groupsInClaims      bool
 }
 
+func (s *oidcScheme) WebLogin(_ context.Context, _ string, _ string) error {
+	//	TODO
+	return nil
+}
+
 func (s *oidcScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	return nil, nil
 }

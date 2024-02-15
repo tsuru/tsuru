@@ -138,6 +138,41 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 }
 
+// title: webLogin
+// path: /auth/webLogin
+// method: POST
+// consume: application/x-www-form-urlencoded
+// produce: application/json
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	403: Forbidden
+//	404: Not found
+func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
+	ctx := r.Context()
+	body, err := r.GetBody()
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(body)
+	type webResponseBody struct {
+		email string
+		token string
+	}
+	var responseBody webResponseBody
+	err = decoder.Decode(&responseBody)
+	if err != nil {
+		return err
+	}
+	err = app.AuthScheme.WebLogin(ctx, responseBody.email, responseBody.token)
+	if err != nil {
+		return handleAuthError(err)
+	}
+	return json.NewEncoder(w).Encode(map[string]string{"token": responseBody.token})
+}
+
 // title: logout
 // path: /users/tokens
 // method: DELETE

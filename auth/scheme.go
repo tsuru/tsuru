@@ -6,7 +6,6 @@ package auth
 
 import (
 	"context"
-
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +21,7 @@ type Scheme interface {
 	Info(ctx context.Context) (*SchemeInfo, error)
 	Create(ctx context.Context, user *User) (*User, error)
 	Remove(ctx context.Context, user *User) error
+	WebLogin(ctx context.Context, email string, token string) error
 }
 
 type AppScheme interface {

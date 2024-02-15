@@ -128,6 +128,11 @@ func Metadata() (string, error) {
 	return md, nil
 }
 
+func (s *SAMLAuthScheme) WebLogin(_ context.Context, _ string, _ string) error {
+	//	TODO
+	return nil
+}
+
 func (s *SAMLAuthScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	_, err := s.loadConfig()
 	if err != nil {

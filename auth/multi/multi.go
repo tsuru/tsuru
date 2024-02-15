@@ -32,6 +32,11 @@ func (s *multiScheme) Name() string {
 	return "multi"
 }
 
+func (s *multiScheme) WebLogin(_ context.Context, _ string, _ string) error {
+	//	TODO
+	return nil
+}
+
 func (s *multiScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
 	schemes, err := s.schemes()
 	if err != nil {
