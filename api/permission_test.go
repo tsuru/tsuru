@@ -400,6 +400,52 @@ func (s *S) TestAssignRole(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *S) TestAssignRoleBatch(c *check.C) {
+	role, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	_, emptyToken1 := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1")
+	_, emptyToken2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
+	type RequestBody struct {
+		Users   []string `json:"users"`
+		Role    string   `json:"role"`
+		Context string   `json:"context"`
+	}
+	users := []string{emptyToken1.GetUserName(), emptyToken2.GetUserName()}
+	roleBody, err := json.Marshal(RequestBody{
+		Users:   users,
+		Role:    "test",
+		Context: "myteam",
+	})
+	req, err := http.NewRequest(http.MethodPost, "/roles/associate", bytes.NewBuffer(roleBody))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user3", permission.Permission{
+		Scheme:  permission.PermRoleUpdateAssign,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	emptyUser1, err := emptyToken1.User()
+	c.Assert(err, check.IsNil)
+	emptyUser2, err := emptyToken2.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(emptyUser1.Roles, check.HasLen, 1)
+	c.Assert(emptyUser2.Roles, check.HasLen, 1)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.assign",
+	}, eventtest.HasEvent)
+}
+
 func (s *S) TestAssignRoleNotFound(c *check.C) {
 	_, emptyToken := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=myteam", emptyToken.GetUserName()))
@@ -884,6 +930,60 @@ func (s *S) TestDissociateRole(c *check.C) {
 			{"name": ":email", "value": otherToken.GetUserName()},
 			{"name": "context", "value": "myteam"},
 		},
+	}, eventtest.HasEvent)
+}
+
+func (s *S) TestDissociateRoleBatch(c *check.C) {
+	role, err := permission.NewRole("test", "team", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.create")
+	c.Assert(err, check.IsNil)
+	_, otherToken1 := permissiontest.CustomUserWithPermission(c, nativeScheme, "user1")
+	_, otherToken2 := permissiontest.CustomUserWithPermission(c, nativeScheme, "user2")
+	otherUser1, err := auth.ConvertNewUser(otherToken1.User())
+	otherUser2, err := auth.ConvertNewUser(otherToken2.User())
+	c.Assert(err, check.IsNil)
+	err = otherUser1.AddRole(role.Name, "myteam")
+	err = otherUser2.AddRole(role.Name, "myteam")
+	c.Assert(err, check.IsNil)
+	url := "/roles/dissociate"
+
+	type RequestBody struct {
+		Users   []string `json:"users"`
+		Role    string   `json:"role"`
+		Context string   `json:"context"`
+	}
+	users := []string{otherUser1.Email, otherUser2.Email}
+	roleBody, err := json.Marshal(RequestBody{
+		Users:   users,
+		Role:    "test",
+		Context: "myteam",
+	})
+
+	req, err := http.NewRequest(http.MethodDelete, url, bytes.NewBuffer(roleBody))
+	c.Assert(err, check.IsNil)
+	_, token := permissiontest.CustomUserWithPermission(c, nativeScheme, "user3", permission.Permission{
+		Scheme:  permission.PermRoleUpdateDissociate,
+		Context: permission.Context(permTypes.CtxGlobal, ""),
+	}, permission.Permission{
+		Scheme:  permission.PermAppCreate,
+		Context: permission.Context(permTypes.CtxTeam, "myteam"),
+	})
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	server := RunServer(true)
+	server.ServeHTTP(recorder, req)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	otherUser1, err = auth.ConvertNewUser(otherToken1.User())
+	otherUser2, err = auth.ConvertNewUser(otherToken2.User())
+	c.Assert(err, check.IsNil)
+	c.Assert(otherUser1.Roles, check.HasLen, 0)
+	c.Assert(otherUser2.Roles, check.HasLen, 0)
+	c.Assert(eventtest.EventDesc{
+		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Owner:  token.GetUserName(),
+		Kind:   "role.update.dissociate",
 	}, eventtest.HasEvent)
 }
 

@@ -396,6 +396,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.3", http.MethodPut, "/constraints", AuthorizationRequiredHandler(poolConstraintSet))
 
 	m.Add("1.0", http.MethodGet, "/roles", AuthorizationRequiredHandler(listRoles))
+	m.Add("1.0", http.MethodDelete, "/roles/dissociate", AuthorizationRequiredHandler(dissociateRoleBatch))
 	m.Add("1.4", http.MethodPut, "/roles", AuthorizationRequiredHandler(roleUpdate))
 	m.Add("1.0", http.MethodPost, "/roles", AuthorizationRequiredHandler(addRole))
 	m.Add("1.0", http.MethodGet, "/roles/{name}", AuthorizationRequiredHandler(roleInfo))
@@ -403,6 +404,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/roles/{name}/permissions", AuthorizationRequiredHandler(addPermissions))
 	m.Add("1.0", http.MethodDelete, "/roles/{name}/permissions/{permission}", AuthorizationRequiredHandler(removePermissions))
 	m.Add("1.0", http.MethodPost, "/roles/{name}/user", AuthorizationRequiredHandler(assignRole))
+	m.Add("1.0", http.MethodPost, "/roles/associate", AuthorizationRequiredHandler(assignRoleBatch))
 	m.Add("1.0", http.MethodDelete, "/roles/{name}/user/{email}", AuthorizationRequiredHandler(dissociateRole))
 	m.Add("1.0", http.MethodGet, "/role/default", AuthorizationRequiredHandler(listDefaultRoles))
 	m.Add("1.0", http.MethodPost, "/role/default", AuthorizationRequiredHandler(addDefaultRole))
