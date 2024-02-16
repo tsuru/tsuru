@@ -360,6 +360,80 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	return user.AddRole(roleName, contextValue)
 }
 
+// title: assign role to set of users
+// path: /roles/associate
+// method: POST
+// consume: application/json
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Role not found
+func assignRoleBatch(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+		return permission.ErrUnauthorized
+	}
+
+	type associateRoleBatchResponseBody struct {
+		Users   []string `json:"users"`
+		Role    string   `json:"role"`
+		Context string   `json:"context"`
+	}
+
+	var associateRoleBatchResponse associateRoleBatchResponseBody
+	if err := ParseInput(r, &associateRoleBatchResponse); err != nil {
+		return err
+	}
+
+	users := associateRoleBatchResponse.Users
+	roleName := associateRoleBatchResponse.Role
+	contextValue := associateRoleBatchResponse.Context
+
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateAssign,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { evt.Done(err) }()
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+
+	if err = validateContextValue(ctx, role, contextValue); err != nil {
+		return err
+	}
+
+	// Stops & fails if any one user in the batch request fails.
+	// TODO: make operation atomic
+	for _, email := range users {
+		user, err := auth.GetUserByEmail(email)
+		if err != nil {
+			return err
+		}
+
+		err = canUseRole(t, role, contextValue)
+		if err != nil {
+			return err
+		}
+
+		err = user.AddRole(roleName, contextValue)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
 // title: dissociate role from user
 // path: /roles/{name}/user/{email}
 // method: DELETE
@@ -403,6 +477,77 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 
 	return user.RemoveRole(roleName, contextValue)
+}
+
+// title: dissociate role from user
+// path: /roles/dissociate
+// method: POST
+// consume: application/json
+// responses:
+//
+//	200: Ok
+//	400: Invalid data
+//	401: Unauthorized
+//	404: Role not found
+func dissociateRoleBatch(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+		return permission.ErrUnauthorized
+	}
+
+	type dissociateRoleBatchResponseBody struct {
+		Users   []string `json:"users"`
+		Role    string   `json:"role"`
+		Context string   `json:"context"`
+	}
+
+	var dissociateRoleBatchResponse dissociateRoleBatchResponseBody
+	if err := ParseInput(r, &dissociateRoleBatchResponse); err != nil {
+		return err
+	}
+
+	users := dissociateRoleBatchResponse.Users
+	roleName := dissociateRoleBatchResponse.Role
+	contextValue := dissociateRoleBatchResponse.Context
+
+	evt, err := event.New(&event.Opts{
+		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Kind:       permission.PermRoleUpdateDissociate,
+		Owner:      t,
+		RemoteAddr: r.RemoteAddr,
+		CustomData: event.FormToCustomData(InputFields(r)),
+		Allowed:    event.Allowed(permission.PermRoleReadEvents),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	defer func() { evt.Done(err) }()
+
+	role, err := getRoleReturnNotFound(roleName)
+	if err != nil {
+		return err
+	}
+
+	// Stops & fails if any one user in the batch request fails.
+	// TODO: make operation atomic
+	for _, email := range users {
+		user, err := auth.GetUserByEmail(email)
+		if err != nil {
+			return err
+		}
+
+		err = canUseRole(t, role, contextValue)
+		if err != nil {
+			return err
+		}
+
+		err = user.RemoveRole(roleName, contextValue)
+		if err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 type permissionSchemeData struct {

@@ -141,7 +141,7 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 // title: webLogin
 // path: /auth/webLogin
 // method: POST
-// consume: application/x-www-form-urlencoded
+// consume: application/json
 // produce: application/json
 // responses:
 //
@@ -154,8 +154,8 @@ func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
 
 	type webResponseBody struct {
-		email string
-		token string
+		Email string `json:"email"`
+		Token string `json:"token"`
 	}
 
 	var webResponse webResponseBody
@@ -163,8 +163,8 @@ func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
 		return err
 	}
 
-	email := webResponse.email
-	token := webResponse.token
+	email := webResponse.Email
+	token := webResponse.Token
 
 	err = app.AuthScheme.WebLogin(ctx, email, token)
 	if err != nil {

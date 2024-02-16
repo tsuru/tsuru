@@ -1,5 +1,6 @@
 *.test
 .vscode/
+.idea/
 .DS_Store
 dist-*
 cmd/tsurud/tsurud
