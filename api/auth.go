@@ -152,25 +152,25 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 //	404: Not found
 func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
 	ctx := r.Context()
-	body, err := r.GetBody()
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(body)
+
 	type webResponseBody struct {
 		email string
 		token string
 	}
-	var responseBody webResponseBody
-	err = decoder.Decode(&responseBody)
-	if err != nil {
+
+	var webResponse webResponseBody
+	if err := ParseInput(r, &webResponse); err != nil {
 		return err
 	}
-	err = app.AuthScheme.WebLogin(ctx, responseBody.email, responseBody.token)
+
+	email := webResponse.email
+	token := webResponse.token
+
+	err = app.AuthScheme.WebLogin(ctx, email, token)
 	if err != nil {
 		return handleAuthError(err)
 	}
-	return json.NewEncoder(w).Encode(map[string]string{"token": responseBody.token})
+	return json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
 // title: logout
