@@ -7,7 +7,6 @@ package job
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -23,7 +22,6 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	jobTypes "github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -187,12 +185,6 @@ func (s *S) SetUpTest(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	builder.DefaultBuilder = "fake"
-	s.builder = &builder.MockBuilder{
-		OnBuildJob: func(job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
-			return fmt.Sprintf("fake.registry.io/job-%s:latest", job.Name), nil
-		},
-	}
-	builder.Register("fake", s.builder)
 	setupMocks(s)
 	s.defaultPlan, err = s.mockService.Plan.OnDefaultPlan()
 	c.Assert(err, check.IsNil)
@@ -200,4 +192,6 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	servicemanager.Job, err = JobService()
 	c.Assert(err, check.IsNil)
+	s.builder = &builder.MockBuilder{}
+	builder.Register("fake", s.builder)
 }

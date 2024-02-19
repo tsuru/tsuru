@@ -41,8 +41,6 @@ type inputJob struct {
 	Pool        string            `json:"pool"`
 	Metadata    appTypes.Metadata `json:"metadata"`
 
-	DeployOptions *jobTypes.DeployOptions `json:"deployOptions"`
-
 	Container             jobTypes.ContainerInfo `json:"container"`
 	Schedule              string                 `json:"schedule"`
 	Manual                bool                   `json:"manual"`  // creates a cronjob with the suspended attr + label tsuru.io/job-manual = true + "invalid" schedule
@@ -422,13 +420,12 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusConflict, Message: "you can't set schedule and manual job at the same time"}
 	}
 	j := &jobTypes.Job{
-		TeamOwner:     ij.TeamOwner,
-		Plan:          appTypes.Plan{Name: ij.Plan},
-		Name:          ij.Name,
-		Description:   ij.Description,
-		Pool:          ij.Pool,
-		Metadata:      ij.Metadata,
-		DeployOptions: ij.DeployOptions,
+		TeamOwner:   ij.TeamOwner,
+		Plan:        appTypes.Plan{Name: ij.Plan},
+		Name:        ij.Name,
+		Description: ij.Description,
+		Pool:        ij.Pool,
+		Metadata:    ij.Metadata,
 		Spec: jobTypes.JobSpec{
 			Manual:    ij.Manual,
 			Schedule:  ij.Schedule,

@@ -33,7 +33,6 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -52,10 +51,6 @@ func (s *S) TestDeleteCronjobAdminAuthorized(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -94,10 +89,6 @@ func (s *S) TestDeleteCronjob(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -239,10 +230,6 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 		},
 		Pool:        "test1",
 		Description: "some description",
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
 				OriginalImageSrc: "busybox:1.28",
@@ -323,10 +310,6 @@ func (s *S) TestCreateManualJob(c *check.C) {
 		Metadata: appTypes.Metadata{
 			Labels:      []appTypes.MetadataItem{},
 			Annotations: []appTypes.MetadataItem{},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 		Spec: jobTypes.JobSpec{
 			Container: jobTypes.ContainerInfo{
@@ -414,20 +397,13 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 			Schedule:              "* * * * *",
 			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{
-		OriginalImageSrc: "busybox:1.28",
-		Command:          []string{},
-	})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	ij := inputJob{
 		Name:        j1.Name,
@@ -510,10 +486,6 @@ func (s *S) TestUpdateCronjob(c *check.C) {
 				return &v
 			}(),
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	c.Assert(*gotJob, check.DeepEquals, expectedJob)
 }
@@ -534,17 +506,13 @@ func (s *S) TestKillJob(c *check.C) {
 			Schedule:              "* * * * *",
 			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit2", &buffer)
@@ -571,17 +539,13 @@ func (s *S) TestKillJobUnitNotFound(c *check.C) {
 			Schedule:              "* * * * *",
 			ActiveDeadlineSeconds: func() *int64 { i := int64(36); return &i }(),
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
 	c.Assert(err, check.IsNil)
 	gotJob, err := servicemanager.Job.GetByName(context.TODO(), j1.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{OriginalImageSrc: "busybox:1.28", Command: []string{}})
+	c.Assert(gotJob.Spec.Container, check.DeepEquals, jobTypes.ContainerInfo{Command: []string{}})
 	c.Assert(gotJob.Spec.Schedule, check.DeepEquals, "* * * * *")
 	var buffer bytes.Buffer
 	request, err := http.NewRequest("DELETE", "/jobs/job1/units/unit1", &buffer)
@@ -635,10 +599,6 @@ func (s *S) TestUpdateCronjobInvalidSchedule(c *check.C) {
 		Name:      "cron",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -715,10 +675,6 @@ func (s *S) TestUpdateCronjobInvalidTeam(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j1, user)
@@ -756,10 +712,6 @@ func (s *S) TestUpdateCronjobAndManualReturnConflict(c *check.C) {
 		Name:      "cron",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -831,10 +783,6 @@ func (s *S) TestJobList(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j2 := jobTypes.Job{
 		Name:      "j2",
@@ -843,10 +791,6 @@ func (s *S) TestJobList(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/2 * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j3 := jobTypes.Job{
 		Name:      "j3",
@@ -854,10 +798,6 @@ func (s *S) TestJobList(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/3 * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -894,10 +834,6 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j2 := jobTypes.Job{
 		Name:      "j2",
@@ -906,10 +842,6 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/2 * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j3 := jobTypes.Job{
 		Name:      "j3",
@@ -917,10 +849,6 @@ func (s *S) TestJobListFilterByName(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/3 * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -965,10 +893,6 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j2 := jobTypes.Job{
 		Name:      "j2",
@@ -977,10 +901,6 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/2 * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j3 := jobTypes.Job{
 		Name:      "j3",
@@ -988,10 +908,6 @@ func (s *S) TestJobListFilterByTeamowner(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/3 * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1034,10 +950,6 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j2 := jobTypes.Job{
 		Name:      "j2",
@@ -1046,10 +958,6 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/2 * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j3 := jobTypes.Job{
 		Name:      "j3",
@@ -1057,10 +965,6 @@ func (s *S) TestJobListFilterByOwner(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/3 * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1100,10 +1004,6 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j2 := jobTypes.Job{
 		Name:      "j2",
@@ -1112,10 +1012,6 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/2 * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	j3 := jobTypes.Job{
 		Name:      "j3",
@@ -1123,10 +1019,6 @@ func (s *S) TestJobListFilterPool(c *check.C) {
 		Pool:      "test1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "*/3 * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1194,10 +1086,6 @@ func (s *S) TestJobInfo(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &j1, user)
@@ -1259,10 +1147,6 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1317,10 +1201,6 @@ func (s *S) TestJobServiceInstanceBindWithNonExistentServiceInstance(c *check.C)
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1365,10 +1245,6 @@ func (s *S) TestJobServiceInstanceBindServiceInstanceUpdateUnauthorized(c *check
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1450,10 +1326,6 @@ func (s *S) TestJobServiceInstanceBindJobUpdateUnauthorized(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1509,10 +1381,6 @@ func (s *S) TestJobServiceInstanceBindWithInvalidPoolService(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1567,10 +1435,6 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1624,10 +1488,6 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "my-mysql", ServiceName: "mysql"},
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1731,10 +1591,6 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "our-mysql", ServiceName: "mysql"},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1827,10 +1683,6 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "my-mysql", ServiceName: "mysql"},
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "fakehost"}, InstanceName: "my-mysql", ServiceName: "mysql2"},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -1932,10 +1784,6 @@ func (s *S) TestJobServiceInstanceUnbindWithNonExistentServiceInstance(c *check.
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -1980,10 +1828,6 @@ func (s *S) TestJobServiceInstanceUnbindServiceInstanceUpdateUnauthorized(c *che
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2035,10 +1879,6 @@ func (s *S) TestJobServiceInstanceUnbindJobUpdateUnauthorized(c *check.C) {
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2095,10 +1935,6 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 		TeamOwner: s.team.Name,
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2163,10 +1999,6 @@ func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2217,10 +2049,6 @@ func (s *S) TestGetEnvsAllJobEnvs(c *check.C) {
 				{Name: "YOUR_ENV", Value: "your-value", Public: true},
 				{Name: "THEIR_ENV", Value: "their-value", Public: true},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2283,10 +2111,6 @@ func (s *S) TestGetOneJobEnv(c *check.C) {
 				{Name: "THEIR_ENV", Value: "their-value", Public: true},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2338,10 +2162,6 @@ func (s *S) TestGetMultipleJobEnvs(c *check.C) {
 				{Name: "YOUR_ENV", Value: "your-value", Public: true},
 				{Name: "THEIR_ENV", Value: "their-value", Public: true},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2402,10 +2222,6 @@ func (s *S) TestGetJobEnvUserDoesNotHaveAccessToTheJob(c *check.C) {
 				{Name: "MY_ENV", Value: "my-value", Public: true},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2435,14 +2251,7 @@ func (s *S) TestJobEnvPublicEnvironmentVariableInTheJob(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := &jobTypes.Job{Name: "black-dog",
-		TeamOwner: s.team.Name, Pool: "pool1",
-		Spec: jobTypes.JobSpec{Schedule: "* * * * *"},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
-	}
+	j := &jobTypes.Job{Name: "black-dog", TeamOwner: s.team.Name, Pool: "pool1", Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), j, user)
 	c.Assert(err, check.IsNil)
@@ -2504,10 +2313,6 @@ func (s *S) TestSetJobEnvPrivateEnvironmentVariableInTheJob(c *check.C) {
 		Pool:      "pool1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2576,10 +2381,6 @@ func (s *S) TestSetJobEnvSetMultipleEnvironmentVariablesInTheJob(c *check.C) {
 		Pool:      "pool1",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -2656,10 +2457,6 @@ func (s *S) TestSetJobEnvNotToChangeValueOfServiceVariables(c *check.C) {
 				{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "servicehost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2727,10 +2524,6 @@ func (s *S) TestSetBindEnvMissingFormBody(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2756,10 +2549,6 @@ func (s *S) TestSetJobEnvReturnsBadRequestIfVariablesAreMissing(c *check.C) {
 		Name:      "test-job",
 		TeamOwner: s.team.Name,
 		Pool:      "pool1",
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 
 	url := fmt.Sprintf("/jobs/%s/env", job.Name)
@@ -2816,10 +2605,6 @@ func (s *S) TestSetJobEnvReturnsForbiddenIfTheUserDoesNotHaveAccessToTheJob(c *c
 		Spec: jobTypes.JobSpec{
 			Schedule: "@yearly",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2870,10 +2655,6 @@ func (s *S) TestSetJobEnvReturnsBadRequestWhenGivenInvalidEnvName(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.28",
-		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err = servicemanager.Job.CreateJob(context.TODO(), &job, user)
@@ -2915,10 +2696,6 @@ func (s *S) TestUnsetJobEnv(c *check.C) {
 		Name:      "test-job",
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "tsuru/python:latest",
-		},
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 			Envs: []bindTypes.EnvVar{
@@ -2988,10 +2765,6 @@ func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
 				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "tsuru/python:latest",
-		},
 	}
 
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -3050,10 +2823,6 @@ func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
 				{Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "tsuru/python:latest",
-		},
 	}
 
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -3101,10 +2870,6 @@ func (s *S) TestUnsetJobEnvReturnsBadRequestWhenVariablesMissing(c *check.C) {
 				{Name: "DATABASE_HOST", Value: "fakehost", Public: false},
 			},
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "tsuru/python:latest",
-		},
 	}
 	url := fmt.Sprintf("/jobs/%s/env?env=", job.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -3147,10 +2912,6 @@ func (s *S) TestUnsetJobEnvReturnsForbiddenWhenUserDoesNotHaveAccessToTheJob(c *
 			Envs: []bindTypes.EnvVar{
 				{Name: "DATABASE_HOST", Value: "fakehost", Public: false},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "tsuru/python:latest",
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
@@ -3206,18 +2967,7 @@ func (s *S) TestJobLogsList(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{
-		Name:      "lost1",
-		Pool:      s.Pool,
-		TeamOwner: s.team.Name,
-		Spec: jobTypes.JobSpec{
-			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
-	}
+	j := jobTypes.Job{Name: "lost1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)
@@ -3243,18 +2993,7 @@ func (s *S) TestJobLogsWatch(c *check.C) {
 		return &provisiontest.JobProvisioner{FakeProvisioner: prov}, nil
 	})
 	defer provision.Unregister("jobProv")
-	j := jobTypes.Job{
-		Name:      "j1",
-		Pool:      s.Pool,
-		TeamOwner: s.team.Name,
-		Spec: jobTypes.JobSpec{
-			Schedule: "* * * * *",
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provTypes.DeployImage,
-			Image: "busybox:1.18",
-		},
-	}
+	j := jobTypes.Job{Name: "j1", Pool: s.Pool, TeamOwner: s.team.Name, Spec: jobTypes.JobSpec{Schedule: "* * * * *"}}
 	user, _ := auth.ConvertOldUser(s.user, nil)
 	err := servicemanager.Job.CreateJob(context.TODO(), &j, user)
 	c.Assert(err, check.IsNil)

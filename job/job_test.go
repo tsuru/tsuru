@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"gopkg.in/check.v1"
 )
@@ -35,10 +34,6 @@ func (s *S) TestGetByName(c *check.C) {
 				i := int64(300)
 				return &i
 			}(),
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "alpine:latest",
 		},
 	}
 	err := servicemanager.Job.CreateJob(context.TODO(), &newJob, s.user)
@@ -202,10 +197,6 @@ func (s *S) TestIncreaseDecreaseQuotaForJob(c *check.C) {
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
 		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "alpine:latest",
-		},
 	}
 	c.Assert(*teaminUseNow, check.Equals, 0)
 	c.Assert(*userinUseNow, check.Equals, 0)
@@ -264,10 +255,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
 				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 			newJob: jobTypes.Job{
 				Name: "some-job",
@@ -289,18 +276,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						Command:               []string{"echo", "hello!"},
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(300); return &i }(),
 					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -316,10 +298,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 						OriginalImageSrc: "alpine:latest",
 						Command:          []string{"echo", "hello!"},
 					},
-				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
 				},
 			},
 			newJob: jobTypes.Job{
@@ -343,18 +321,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "0 0 * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -389,18 +362,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Schedule: "* * 31 2 *",
 					Manual:   true,
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -417,10 +385,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 						OriginalImageSrc: "alpine:latest",
 						Command:          []string{"echo", "hello!"},
 					},
-				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
 				},
 			},
 			newJob: jobTypes.Job{
@@ -440,18 +404,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 					Schedule: "*/5 * * * *",
 					Manual:   false,
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -469,10 +428,6 @@ func (s *S) TestUpdateJob(c *check.C) {
 					},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 			newJob: jobTypes.Job{
 				Name:     "some-job",
@@ -488,18 +443,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "*/5 * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "foo", Value: "bar"}, {Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -532,18 +482,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 					ServiceEnvs:           []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{{Name: "xxx", Value: "yyy"}}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -575,18 +520,13 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
 			},
 		},
 		{
@@ -620,9 +560,8 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:latest",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
+						OriginalImageSrc: "alpine:latest",
+						Command:          []string{"echo", "hello!"},
 					},
 				},
 			},
@@ -702,7 +641,7 @@ func (s *S) TestUpdateJob(c *check.C) {
 			expectedErr: &tsuruErrors.ValidationError{Message: "invalid schedule"},
 		},
 		{
-			name: "update job should use deploy agent with container info on both newJob and oldJob",
+			name: "update job should use deploy agent",
 			oldJob: jobTypes.Job{
 				Name:      "some-job",
 				TeamOwner: s.team.Name,
@@ -744,122 +683,22 @@ func (s *S) TestUpdateJob(c *check.C) {
 					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
 				},
 				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:v1",
-				},
 			},
 			expectedErr: nil,
-		},
-		{
-			name: "update job should use deploy agent with deploy options populated on newJob and legacy way on oldJob",
-			oldJob: jobTypes.Job{
-				Name:      "some-job",
-				TeamOwner: s.team.Name,
-				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-					// legacy way
-					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc: "alpine:latest",
-						Command:          []string{"echo", "hello!"},
-					},
-				},
+			beforeFunc: func() {
+				s.builder.OnBuildJob = func(job *jobTypes.Job, opts builder.BuildOpts) (string, error) {
+					return fmt.Sprintf("fake.registry.io/job-%s:latest", job.Name), nil
+				}
 			},
-			newJob: jobTypes.Job{
-				Name: "some-job",
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:v1",
-				},
-			},
-			expectedJob: jobTypes.Job{
-				Name:      "some-job",
-				TeamOwner: s.team.Name,
-				Plan:      *s.defaultPlan,
-				Owner:     s.user.Email,
-				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:v1",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{"echo", "hello!"},
-					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
-					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
-				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:v1",
-				},
-			},
-			expectedErr: nil,
-		},
-		{
-			name: "update job should use deploy agent with deploy options populated on newJob and oldJob",
-			oldJob: jobTypes.Job{
-				Name:      "some-job",
-				TeamOwner: s.team.Name,
-				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:latest",
-				},
-			},
-			newJob: jobTypes.Job{
-				Name: "some-job",
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-				},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:v1",
-				},
-			},
-			expectedJob: jobTypes.Job{
-				Name:      "some-job",
-				TeamOwner: s.team.Name,
-				Plan:      *s.defaultPlan,
-				Owner:     s.user.Email,
-				Pool:      s.Pool,
-				Teams:     []string{s.team.Name},
-				Spec: jobTypes.JobSpec{
-					Schedule: "* * * * *",
-					Container: jobTypes.ContainerInfo{
-						OriginalImageSrc:      "alpine:v1",
-						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
-						Command:               []string{},
-					},
-					ServiceEnvs: []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
-					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
-				},
-				Metadata: app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
-				DeployOptions: &jobTypes.DeployOptions{
-					Kind:  provisionTypes.DeployImage,
-					Image: "alpine:v1",
-				},
-			},
-			expectedErr: nil,
 		},
 	}
 	for _, t := range updateTests {
-		if t.beforeFunc != nil {
-			t.beforeFunc()
-		}
 		c.Logf("test %q", t.name)
 		err := servicemanager.Job.CreateJob(context.TODO(), &t.oldJob, s.user)
 		c.Assert(err, check.IsNil)
+		if t.beforeFunc != nil {
+			t.beforeFunc()
+		}
 		err = servicemanager.Job.UpdateJob(context.TODO(), &t.newJob, &t.oldJob, s.user)
 		if t.expectedErr != nil {
 			c.Assert(err, check.DeepEquals, t.expectedErr)
@@ -886,10 +725,6 @@ func (s *S) TestTriggerCronShouldExecuteJob(c *check.C) {
 			Container: jobTypes.ContainerInfo{
 				Command: []string{"echo", "hello world!"},
 			},
-		},
-		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
-			Image: "alpine:latest",
 		},
 	}
 	err := servicemanager.Job.CreateJob(context.TODO(), &j1, s.user)

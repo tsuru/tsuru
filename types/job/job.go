@@ -18,18 +18,16 @@ import (
 // this struct carries some tsuru metadata as is the case with the app object
 // it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
-	Name        string
-	Teams       []string
-	TeamOwner   string
-	Owner       string
-	Plan        appTypes.Plan
-	Metadata    appTypes.Metadata
-	Pool        string
-	Description string
+	Name        string            `json:"name"`
+	Teams       []string          `json:"teams"`
+	TeamOwner   string            `json:"teamOwner"`
+	Owner       string            `json:"owner"`
+	Plan        appTypes.Plan     `json:"plan"`
+	Metadata    appTypes.Metadata `json:"metadata"`
+	Pool        string            `json:"pool"`
+	Description string            `json:"description"`
 
-	DeployOptions *DeployOptions
-
-	Spec JobSpec
+	Spec JobSpec `json:"spec"`
 }
 
 func (job *Job) GetName() string {
@@ -76,11 +74,6 @@ type RemoveInstanceArgs struct {
 	ServiceName  string
 	InstanceName string
 	Writer       io.Writer
-}
-
-type DeployOptions struct {
-	Kind  provisionTypes.DeployKind
-	Image string
 }
 
 type JobService interface {
