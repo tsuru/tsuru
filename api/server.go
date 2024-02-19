@@ -40,7 +40,6 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/oidc"
-	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
@@ -348,9 +347,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodGet, "/users/info", AuthorizationRequiredHandler(userInfo))
 	m.Add("1.0", http.MethodGet, "/auth/scheme", Handler(authScheme))
 	m.Add("1.0", http.MethodPost, "/auth/login", Handler(login))
-
-	m.Add("1.0", http.MethodPost, "/auth/saml", Handler(samlCallbackLogin))
-	m.Add("1.0", http.MethodGet, "/auth/saml", Handler(samlMetadata))
 
 	m.Add("1.0", http.MethodPost, "/users/{email}/password", Handler(resetPassword))
 	m.Add("1.0", http.MethodPost, "/users/{email}/tokens", Handler(login))

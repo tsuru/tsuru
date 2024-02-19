@@ -91,9 +91,6 @@ func (c *login) Run(context *Context, client *Client) error {
 	if c.getScheme().Name == "oauth" {
 		return c.oauthLogin(context, client)
 	}
-	if c.getScheme().Name == "saml" {
-		return c.samlLogin(context, client)
-	}
 	return nativeLogin(context, client)
 }
 

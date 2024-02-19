@@ -29,8 +29,6 @@ github.com/tsuru/tsuru/api.healthcheck
 github.com/tsuru/tsuru/api.index
 github.com/tsuru/tsuru/api.info
 github.com/tsuru/tsuru/api.resetPassword
-github.com/tsuru/tsuru/api.samlCallbackLogin
-github.com/tsuru/tsuru/api.samlMetadata
 github.com/tsuru/tsuru/api.addKeyToUser
 github.com/tsuru/tsuru/api.listPlans
 github.com/tsuru/tsuru/api.login

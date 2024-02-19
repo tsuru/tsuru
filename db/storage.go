@@ -136,14 +136,6 @@ func (s *Storage) PasswordTokens() *storage.Collection {
 	return s.Collection("password_tokens")
 }
 
-// SAMLRequests returns the saml_requests from MongoDB.
-func (s *Storage) SAMLRequests() *storage.Collection {
-	id := mgo.Index{Key: []string{"id"}}
-	coll := s.Collection("saml_requests")
-	coll.EnsureIndex(id)
-	return coll
-}
-
 func (s *Storage) Roles() *storage.Collection {
 	return s.Collection("roles")
 }
