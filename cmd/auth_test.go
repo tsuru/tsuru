@@ -14,10 +14,6 @@ import (
 	check "gopkg.in/check.v1"
 )
 
-func nativeScheme() {
-	os.Setenv("TSURU_AUTH_SCHEME", "")
-}
-
 func TargetInit(fsystem fs.Fs) {
 	f, _ := fsystem.Create(JoinWithUserDir(".tsuru", "target"))
 	f.Write([]byte("http://localhost"))
