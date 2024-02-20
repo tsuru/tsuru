@@ -47,7 +47,7 @@ func (c *tsurudCommand) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-func (c *tsurudCommand) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *tsurudCommand) Run(context *cmd.Context) error {
 	fmt.Fprintf(context.Stderr, "Opening config file: %s\n", configPath)
 	err := config.ReadConfigFile(configPath)
 	if err != nil {
@@ -63,5 +63,5 @@ func (c *tsurudCommand) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return errors.Wrap(err, "error initializing services")
 	}
-	return c.Command.Run(context, client)
+	return c.Command.Run(context)
 }

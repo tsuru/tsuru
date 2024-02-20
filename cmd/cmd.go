@@ -6,10 +6,8 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -23,7 +21,6 @@ import (
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs"
-	"github.com/tsuru/tsuru/net"
 )
 
 var (
@@ -32,10 +29,6 @@ var (
 	// ErrLookup is the error that should be returned by lookup functions when it
 	// cannot find a matching command for the given parameters.
 	ErrLookup = errors.New("lookup error - command not found")
-)
-
-const (
-	loginCmdName = "login"
 )
 
 type exiter interface {
@@ -96,7 +89,6 @@ func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.
 		topicCommands: map[string][]Command{},
 	}
 	manager.Register(&help{manager})
-	manager.Register(&version{manager})
 	return manager
 }
 
@@ -115,7 +107,6 @@ func NewManagerPanicExiter(name, ver, verHeader string, stdout, stderr io.Writer
 	}
 	manager.e = PanicExiter{}
 	manager.Register(&help{manager})
-	manager.Register(&version{manager})
 	return manager
 }
 
@@ -169,7 +160,7 @@ func (c *RemovedCommand) Info() *Info {
 	}
 }
 
-func (c *RemovedCommand) Run(context *Context, client *Client) error {
+func (c *RemovedCommand) Run(context *Context) error {
 	return ErrAbortCommand
 }
 
@@ -304,35 +295,23 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
-	client := NewClient(net.Dial15FullUnlimitedClient, context, m)
-	client.Verbosity = verbosity
 	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {
 		signal.Notify(sigChan, syscall.SIGINT)
-		go func(context Context, client *Client) {
+		go func(context Context) {
 			for range sigChan {
 				fmt.Fprintln(m.stdout, "Attempting command cancellation...")
-				errCancel := cancelable.Cancel(context, client)
+				errCancel := cancelable.Cancel(context)
 				if errCancel == nil {
 					return
 				}
 				fmt.Fprintf(m.stderr, "Error canceling command: %v. Proceeding.", errCancel)
 			}
-		}(*context, client)
+		}(*context)
 	}
-	err = command.Run(context, client)
+	err = command.Run(context)
 	close(sigChan)
-	if isUnauthorized(err) && name != loginCmdName {
-		if cmd, ok := m.Commands[loginCmdName]; ok {
-			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
-			fmt.Fprintf(m.stderr, "Calling the %q command...\n", loginCmdName)
-			loginContext := m.newContext(nil, m.stdout, m.stderr, m.stdin)
-			if err = cmd.Run(loginContext, client); err == nil {
-				fmt.Fprintln(m.stderr)
-				err = command.Run(context, client)
-			}
-		}
-	}
+
 	if err != nil {
 		errorMsg := err.Error()
 		if verbosity > 0 {
@@ -345,9 +324,6 @@ func (m *Manager) Run(args []string) {
 			if body != "" {
 				errorMsg = fmt.Sprintf("%s: %s", errorMsg, body)
 			}
-		}
-		if isUnauthorized(err) && name != loginCmdName {
-			errorMsg = fmt.Sprintf(`You're not authenticated or your session has expired. Please use %q command for authentication.`, loginCmdName)
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
@@ -546,12 +522,12 @@ type Cancelable interface {
 	// Cancel should return an error if the operation is not cancelable yet/anymore or there
 	// was any error during the cancellation.
 	// Cancel may be called multiple times.
-	Cancel(context Context, client *Client) error
+	Cancel(context Context) error
 }
 
 type Command interface {
 	Info() *Info
-	Run(context *Context, client *Client) error
+	Run(context *Context) error
 }
 
 type FlaggedCommand interface {
@@ -564,9 +540,9 @@ type DeprecatedCommand struct {
 	oldName string
 }
 
-func (c *DeprecatedCommand) Run(context *Context, client *Client) error {
+func (c *DeprecatedCommand) Run(context *Context) error {
 	fmt.Fprintf(context.Stderr, "WARNING: %q has been deprecated, please use %q instead.\n\n", c.oldName, c.Command.Info().Name)
-	return c.Command.Run(context, client)
+	return c.Command.Run(context)
 }
 
 func (c *DeprecatedCommand) Flags() *gnuflag.FlagSet {
@@ -609,9 +585,9 @@ func (c *help) Info() *Info {
 	return &Info{Name: "help", Usage: "command [args]"}
 }
 
-func (c *help) Run(context *Context, client *Client) error {
+func (c *help) Run(context *Context) error {
 	const deprecatedMsg = "WARNING: %q is deprecated. Showing help for %q instead.\n\n"
-	output := fmt.Sprintf("%s\n", versionString(c.manager))
+	output := ""
 	if c.manager.wrong {
 		output += "ERROR: wrong number of arguments.\n\n"
 	}
@@ -672,77 +648,6 @@ func (c *help) parseFlags(command Command) string {
 		}
 	}
 	return strings.Replace(output, "\n", "\n  ", -1)
-}
-
-type version struct {
-	manager *Manager
-}
-
-func (c *version) Info() *Info {
-	return &Info{
-		Name:    "version",
-		MinArgs: 0,
-		Usage:   "version",
-		Desc:    "display the current version",
-	}
-}
-
-var GitHash = ""
-
-func versionString(manager *Manager) string {
-	suffix := "\n"
-	if GitHash != "" {
-		suffix = fmt.Sprintf(" hash %s\n", GitHash)
-	}
-	return fmt.Sprintf("Client version: %s.%s", manager.version, suffix)
-}
-
-func apiVersionString(client *Client) (string, error) {
-	if client == nil {
-		return "", fmt.Errorf("client cannot be nil")
-	}
-
-	url, err := GetURL("/info")
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		// if we return the error, stdout won't flush until the prompt
-		return fmt.Sprintf("Unable to retrieve server version: %v", err), nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var version map[string]string
-	err = json.Unmarshal(body, &version)
-	if err != nil {
-		return "", err
-	}
-
-	resp.Body.Close()
-	return fmt.Sprintf("Server version: %s.\n", version["version"]), nil
-}
-
-func (c *version) Run(context *Context, client *Client) error {
-	fmt.Fprint(context.Stdout, versionString(c.manager))
-
-	apiVersion, err := apiVersionString(client)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(context.Stdout, apiVersion)
-
-	return nil
 }
 
 func ExtractProgramName(path string) string {

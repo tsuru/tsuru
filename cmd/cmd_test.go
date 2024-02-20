@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/gnuflag"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/fstest"
@@ -118,7 +118,7 @@ func (c *TopicCommand) Info() *Info {
 	}
 }
 
-func (c *TopicCommand) Run(context *Context, client *Client) error {
+func (c *TopicCommand) Run(context *Context) error {
 	c.executed = true
 	c.args = context.Args
 	return nil
@@ -129,11 +129,9 @@ func (s *S) TestImplicitTopicsHelp(c *check.C) {
 	globalManager.Register(&TopicCommand{name: "foo-baz"})
 	context := Context{[]string{"foo"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
-	expected := `Client version: 1.0.
-
-The following commands are available in the "foo" topic:
+	expected := `The following commands are available in the "foo" topic:
 
   foo bar              Desc foo-bar
   foo baz              Desc foo-baz
@@ -148,11 +146,9 @@ func (s *S) TestImplicitSubTopicsHelp(c *check.C) {
 	globalManager.Register(&TopicCommand{name: "topic-subtopic-baz"})
 	context := Context{[]string{"topic", "subtopic"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
-	expected := `Client version: 1.0.
-
-The following commands are available in the "topic subtopic" topic:
+	expected := `The following commands are available in the "topic subtopic" topic:
 
   topic subtopic bar   Desc topic-subtopic-bar
   topic subtopic baz   Desc topic-subtopic-baz
@@ -259,45 +255,6 @@ func (s *S) TestManagerRunShouldNotWriteErrorOnStderrWhenErrAbortIsTriggered(c *
 	c.Assert(globalManager.e.(*recordingExiter).value(), check.Equals, 1)
 }
 
-func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *check.C) {
-	globalManager.Register(&UnauthorizedErrorCommand{})
-	globalManager.Run([]string{"unauthorized-error"})
-	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
-}
-
-func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginRegistered(c *check.C) {
-	expectedStderr := `Error: you're not authenticated or your session has expired.
-Calling the "login" command...
-
-`
-	expectedStdout := `logged in!
-worked nicely!
-`
-	globalManager.Register(&FailAndWorkCommand{})
-	globalManager.Register(&SuccessLoginCommand{})
-	globalManager.Run([]string{"fail-and-work"})
-	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
-	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
-}
-
-func (s *S) TestManagerRunWithGenericHTTPUnauthorizedErrorAndLoginRegistered(c *check.C) {
-	expectedStderr := `Error: you're not authenticated or your session has expired.
-Calling the "login" command...
-
-`
-	expectedStdout := `logged in!
-worked nicely!
-`
-
-	globalManager.Register(&FailAndWorkCommandCustom{
-		err: testStatusErr{status: http.StatusUnauthorized},
-	})
-	globalManager.Register(&SuccessLoginCommand{})
-	globalManager.Run([]string{"fail-and-work"})
-	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
-	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
-}
-
 func (s *S) TestManagerRunWithGenericOtherError(c *check.C) {
 	expectedStderr := `Error: my unauth
 `
@@ -308,17 +265,6 @@ func (s *S) TestManagerRunWithGenericOtherError(c *check.C) {
 	globalManager.Run([]string{"fail-and-work"})
 	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
-}
-
-func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginFailure(c *check.C) {
-	expected := `Error: you're not authenticated or your session has expired.
-Calling the "login" command...
-Error: You're not authenticated or your session has expired. Please use "login" command for authentication.
-`
-	globalManager.Register(&FailAndWorkCommand{})
-	globalManager.Register(&UnauthorizedLoginErrorCommand{})
-	globalManager.Run([]string{"fail-and-work"})
-	c.Assert(globalManager.stderr.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestManagerRunLoginWithHTTPUnauthorizedError(c *check.C) {
@@ -377,32 +323,25 @@ func (s *S) TestRunCommandThatDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestHelp(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb command [args]
+	expected := `Usage: glb command [args]
 
 Available commands:
   help                 
-  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
 	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpWithTopics(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb command [args]
+	expected := `Usage: glb command [args]
 
 Available commands:
   help                 
-  login                Initiates a new tsuru session for a user
-  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 
@@ -414,22 +353,20 @@ Use glb help <topicname> to get more information about a topic.
 	globalManager.RegisterTopic("target", "something")
 	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
 func (s *S) TestHelpFromTopic(c *check.C) {
-	expected := `Client version: 1.0.
-
-Targets
+	expected := `Targets
 
 Tsuru likes to manage targets
 `
 	globalManager.RegisterTopic("target", "Targets\n\nTsuru likes to manage targets\n")
 	context := Context{[]string{"target"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
 	command := help{manager: globalManager}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
@@ -446,19 +383,16 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *check.C) {
 	command := help{manager: globalManager}
 	context := Context{[]string{"user-create"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `^command "user-create" does not exist.$`)
 }
 
 func (s *S) TestRunWithoutArgsShouldRunHelp(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb command [args]
+	expected := `Usage: glb command [args]
 
 Available commands:
   help                 
-  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
@@ -467,13 +401,10 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestDashDashHelp(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb command [args]
+	expected := `Usage: glb command [args]
 
 Available commands:
   help                 
-  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
@@ -482,9 +413,7 @@ Use glb help <commandname> to get more information about a command.
 }
 
 func (s *S) TestRunCommandWithDashHelp(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb foo
+	expected := `Usage: glb foo
 
 Foo do anything or nothing.
 
@@ -495,9 +424,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestRunCommandWithDashH(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb foo
+	expected := `Usage: glb foo
 
 Foo do anything or nothing.
 
@@ -508,9 +435,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb foo
+	expected := `Usage: glb foo
 
 Foo do anything or nothing.
 
@@ -521,9 +446,7 @@ Foo do anything or nothing.
 }
 
 func (s *S) TestDashDashHelpShouldReturnHelpForACmd(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb foo
+	expected := `Usage: glb foo
 
 Foo do anything or nothing.
 
@@ -548,9 +471,7 @@ func (s *S) TestDuplicateHFlag(c *check.C) {
 }
 
 func (s *S) TestHelpFlaggedCommand(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb with-flags
+	expected := `Usage: glb with-flags
 
 with-flags doesn't do anything, really.
 
@@ -566,9 +487,7 @@ Flags:
 }
 
 func (s *S) TestHelpFlaggedMultilineCommand(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: glb with-flags
+	expected := `Usage: glb with-flags
 
 with-flags doesn't do anything, really.
 
@@ -585,9 +504,7 @@ Flags:
 }
 
 func (s *S) TestHelpDeprecatedCmd(c *check.C) {
-	expectedStdout := `Client version: 1.0.
-
-Usage: glb foo
+	expectedStdout := `Usage: glb foo
 
 Foo do anything or nothing.
 
@@ -610,8 +527,6 @@ Foo do anything or nothing.
 func (s *S) TestHelpDeprecatedCmdWritesWarningFirst(c *check.C) {
 	expected := `WARNING: "bar" is deprecated. Showing help for "foo" instead.
 
-Client version: 1.0.
-
 Usage: glb foo
 
 Foo do anything or nothing.
@@ -623,34 +538,6 @@ Foo do anything or nothing.
 	globalManager.RegisterDeprecated(&TestCommand{}, "bar")
 	globalManager.Run([]string{"help", "bar"})
 	c.Assert(output.String(), check.Equals, expected)
-}
-
-func (s *S) TestVersion(c *check.C) {
-	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	command := version{manager: mngr}
-	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
-	err := command.Run(&context, nil)
-	c.Assert(err, check.ErrorMatches, "client cannot be nil")
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, "Client version: 5.0.\n")
-}
-
-func (s *S) TestDashDashVersion(c *check.C) {
-	expected := "Client version: 1.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down."
-	globalManager.Run([]string{"--version"})
-	c.Assert(globalManager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-}
-
-func (s *S) TestVersionInfo(c *check.C) {
-	expected := &Info{
-		Name:    "version",
-		MinArgs: 0,
-		Usage:   "version",
-		Desc:    "display the current version",
-	}
-	c.Assert((&version{}).Info(), check.DeepEquals, expected)
 }
 
 type ArgCmd struct{}
@@ -665,14 +552,12 @@ func (c *ArgCmd) Info() *Info {
 	}
 }
 
-func (cmd *ArgCmd) Run(ctx *Context, client *Client) error {
+func (cmd *ArgCmd) Run(ctx *Context) error {
 	return nil
 }
 
 func (s *S) TestRunWrongArgsNumberShouldRunsHelpAndReturnStatus1(c *check.C) {
-	expected := `Client version: 1.0.
-
-ERROR: wrong number of arguments.
+	expected := `ERROR: wrong number of arguments.
 
 Usage: glb arg [args]
 
@@ -688,9 +573,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestRunWithTooManyArguments(c *check.C) {
-	expected := `Client version: 1.0.
-
-ERROR: wrong number of arguments.
+	expected := `ERROR: wrong number of arguments.
 
 Usage: glb arg [args]
 
@@ -706,9 +589,7 @@ Maximum # of arguments: 2
 }
 
 func (s *S) TestHelpShouldReturnUsageWithTheCommandName(c *check.C) {
-	expected := `Client version: 1.0.
-
-Usage: tsuru foo
+	expected := `Usage: tsuru foo
 
 Foo do anything or nothing.
 
@@ -720,7 +601,7 @@ Foo do anything or nothing.
 	mngr.Register(&TestCommand{})
 	context := Context{[]string{"foo"}, mngr.stdout, mngr.stderr, mngr.stdin}
 	command := help{manager: mngr}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(mngr.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
@@ -749,14 +630,6 @@ func (s *S) TestFinisherReturnTheDefinedE(c *check.C) {
 	var exiter recordingExiter
 	m := Manager{e: &exiter}
 	c.Assert(m.finisher(), check.FitsTypeOf, &exiter)
-}
-
-func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
-	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
-	ver, ok := mngr.Commands["version"]
-	c.Assert(ok, check.Equals, true)
-	c.Assert(ver, check.FitsTypeOf, &version{})
 }
 
 func (s *S) TestFileSystem(c *check.C) {
@@ -888,7 +761,7 @@ func (c *CancelableCommand) Info() *Info {
 	}
 }
 
-func (c *CancelableCommand) Run(context *Context, client *Client) error {
+func (c *CancelableCommand) Run(context *Context) error {
 	c.running <- struct{}{}
 	select {
 	case <-c.canceled:
@@ -898,7 +771,7 @@ func (c *CancelableCommand) Run(context *Context, client *Client) error {
 	return nil
 }
 
-func (c *CancelableCommand) Cancel(context Context, client *Client) error {
+func (c *CancelableCommand) Cancel(context Context) error {
 	fmt.Fprintln(context.Stdout, "Canceled.")
 	c.canceled <- struct{}{}
 	return nil
@@ -914,7 +787,7 @@ func (c *TestCommand) Info() *Info {
 	}
 }
 
-func (c *TestCommand) Run(context *Context, client *Client) error {
+func (c *TestCommand) Run(context *Context) error {
 	io.WriteString(context.Stdout, "Running TestCommand")
 	return nil
 }
@@ -927,7 +800,7 @@ func (c *ErrorCommand) Info() *Info {
 	return &Info{Name: "error"}
 }
 
-func (c *ErrorCommand) Run(context *Context, client *Client) error {
+func (c *ErrorCommand) Run(context *Context) error {
 	if c.msg == "abort" {
 		return ErrAbortCommand
 	}
@@ -942,10 +815,10 @@ func (c *FailAndWorkCommand) Info() *Info {
 	return &Info{Name: "fail-and-work"}
 }
 
-func (c *FailAndWorkCommand) Run(context *Context, client *Client) error {
+func (c *FailAndWorkCommand) Run(context *Context) error {
 	c.calls++
 	if c.calls == 1 {
-		return errUnauthorized
+		return errors.New("FailAndWorkCommand more than one call")
 	}
 	fmt.Fprintln(context.Stdout, "worked nicely!")
 	return nil
@@ -957,7 +830,7 @@ func (c *SuccessLoginCommand) Info() *Info {
 	return &Info{Name: "login"}
 }
 
-func (c *SuccessLoginCommand) Run(context *Context, client *Client) error {
+func (c *SuccessLoginCommand) Run(context *Context) error {
 	fmt.Fprintln(context.Stdout, "logged in!")
 	return nil
 }
@@ -968,8 +841,8 @@ func (c *UnauthorizedErrorCommand) Info() *Info {
 	return &Info{Name: "unauthorized-error"}
 }
 
-func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
-	return errUnauthorized
+func (c *UnauthorizedErrorCommand) Run(context *Context) error {
+	return errors.New("unauthorized")
 }
 
 type UnauthorizedLoginErrorCommand struct {
@@ -997,7 +870,7 @@ func (c *CommandWithFlags) Info() *Info {
 	}
 }
 
-func (c *CommandWithFlags) Run(context *Context, client *Client) error {
+func (c *CommandWithFlags) Run(context *Context) error {
 	c.args = context.Args
 	return nil
 }
@@ -1028,7 +901,7 @@ func (c *HelpCommandWithFlags) Info() *Info {
 	}
 }
 
-func (c *HelpCommandWithFlags) Run(context *Context, client *Client) error {
+func (c *HelpCommandWithFlags) Run(context *Context) error {
 	fmt.Fprintf(context.Stdout, "help called? %v", c.h)
 	return nil
 }
@@ -1051,7 +924,7 @@ func (c *FailAndWorkCommandCustom) Info() *Info {
 	return &Info{Name: "fail-and-work"}
 }
 
-func (c *FailAndWorkCommandCustom) Run(context *Context, client *Client) error {
+func (c *FailAndWorkCommandCustom) Run(context *Context) error {
 	c.calls++
 	if c.calls == 1 {
 		return c.err
@@ -1090,71 +963,8 @@ func (c *FailCommandCustom) Info() *Info {
 	return &Info{Name: "failcmd"}
 }
 
-func (c *FailCommandCustom) Run(context *Context, client *Client) error {
+func (c *FailCommandCustom) Run(context *Context) error {
 	return c.err
-}
-
-func (s *S) TestVersionWithAPI(c *check.C) {
-	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	command := version{manager: mngr}
-	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
-
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Write([]byte(`{"version":"1.7.4"}`))
-	}))
-	defer ts.Close()
-
-	client := NewClient(&http.Client{}, &context, mngr)
-
-	os.Setenv("TSURU_TARGET", ts.URL)
-	defer os.Unsetenv("TSURU_TARGET")
-	err := command.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
-		check.Equals, "Client version: 5.0.\nServer version: 1.7.4.\n")
-}
-
-func (s *S) TestVersionWithoutEnvVar(c *check.C) {
-	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	command := version{manager: mngr}
-	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
-
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Write([]byte(`{"version":"1.7.4"}`))
-	}))
-	defer ts.Close()
-
-	client := NewClient(ts.Client(), &context, mngr)
-	err := command.Run(&context, client)
-	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
-		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (http://localhost), it's probably down.")
-}
-
-func (s *S) TestVersionAPIInvalidURL(c *check.C) {
-	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
-	var exiter recordingExiter
-	mngr.e = &exiter
-	command := version{manager: mngr}
-	context := Context{[]string{}, mngr.stdout, mngr.stderr, mngr.stdin}
-
-	client := NewClient(&http.Client{}, &context, mngr)
-
-	URL := "notvalid.test"
-	os.Setenv("TSURU_TARGET", URL)
-	defer os.Unsetenv("TSURU_TARGET")
-	err := command.Run(&context, client)
-	c.Assert(exiter.value(), check.Equals, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(mngr.stdout.(*bytes.Buffer).String(),
-		check.Equals, "Client version: 5.0.\nUnable to retrieve server version: Failed to connect to tsuru server (notvalid.test), it's probably down.")
 }
 
 func (s *S) TestNewManagerPanicExiter(c *check.C) {

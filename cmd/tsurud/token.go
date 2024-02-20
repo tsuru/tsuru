@@ -22,7 +22,7 @@ import (
 
 type createRootUserCmd struct{}
 
-func (createRootUserCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (createRootUserCmd) Run(context *cmd.Context) error {
 	context.RawOutput()
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
@@ -112,7 +112,7 @@ roles are properly created and assigned.`,
 
 type tokenCmd struct{}
 
-func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (tokenCmd) Run(context *cmd.Context) error {
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
 		scheme = nativeSchemeName

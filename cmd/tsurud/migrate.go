@@ -108,7 +108,7 @@ func (*migrationListCmd) Info() *cmd.Info {
 	}
 }
 
-func (*migrationListCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (*migrationListCmd) Run(context *cmd.Context) error {
 	migrations, err := migration.List()
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ must be informed.`,
 	}
 }
 
-func (c *migrateCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *migrateCmd) Run(context *cmd.Context) error {
 	return migration.Run(migration.RunArgs{
 		Writer: context.Stdout,
 		Dry:    c.dry,

@@ -6,8 +6,6 @@ package main
 
 import (
 	"bytes"
-	"net/http"
-	"os"
 	"strings"
 
 	"github.com/tsuru/tsuru/auth"
@@ -37,10 +35,8 @@ func (s *S) TestTokenRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin, nil)
-	client := cmd.NewClient(&http.Client{}, nil, manager)
 	command := tokenCmd{}
-	err := command.Run(&context, client)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Not(check.Equals), "")
 }
@@ -58,11 +54,9 @@ func (s *S) TestCreateRootUserCmdRun(c *check.C) {
 		Stderr: &stderr,
 		Stdin:  reader,
 	}
-	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin, nil)
-	client := cmd.NewClient(&http.Client{}, nil, manager)
 	command := &tsurudCommand{Command: createRootUserCmd{}}
 	command.Flags().Parse(true, []string{"--config", "testdata/tsuru.conf"})
-	err := command.Run(&context, client)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Password: \nConfirm: \nRoot user successfully created.\n")
 	u, err := auth.GetUserByEmail("my@user.com")

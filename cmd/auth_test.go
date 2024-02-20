@@ -10,24 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tsuru/tsuru/fs"
 	check "gopkg.in/check.v1"
 )
-
-func TargetInit(fsystem fs.Fs) {
-	f, _ := fsystem.Create(JoinWithUserDir(".tsuru", "target"))
-	f.Write([]byte("http://localhost"))
-	f.Close()
-	WriteOnTargetList("test", "http://localhost")
-}
-
-func (s *S) TestReadTokenEnvironmentVariable(c *check.C) {
-	os.Setenv("TSURU_TOKEN", "ABCDEFGH")
-	defer os.Setenv("TSURU_TOKEN", "")
-	token, err := ReadToken()
-	c.Assert(err, check.IsNil)
-	c.Assert(token, check.Equals, "ABCDEFGH")
-}
 
 func (s *S) TestPasswordFromReaderUsingFile(c *check.C) {
 	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
