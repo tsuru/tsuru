@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -151,6 +152,6 @@ func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
 	return u.Delete()
 }
 
-func (s NativeScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
-	return &auth.SchemeInfo{Name: "native"}, nil
+func (s NativeScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
+	return &authTypes.SchemeInfo{Name: "native"}, nil
 }

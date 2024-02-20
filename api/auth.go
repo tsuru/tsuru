@@ -639,20 +639,20 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 //
 //	200: OK
 func authSchemes(w http.ResponseWriter, r *http.Request) (err error) {
-	var infos []auth.SchemeInfo
+	var infos []authTypes.SchemeInfo
 	if multiScheme, ok := app.AuthScheme.(auth.MultiScheme); ok {
 		infos, err = multiScheme.Infos(r.Context())
 		if err != nil {
 			return err
 		}
 	} else {
-		var info *auth.SchemeInfo
+		var info *authTypes.SchemeInfo
 		info, err = app.AuthScheme.Info(r.Context())
 		if err != nil {
 			return err
 		}
 
-		infos = []auth.SchemeInfo{*info}
+		infos = []authTypes.SchemeInfo{*info}
 	}
 
 	w.Header().Add("Content-Type", "application/json")

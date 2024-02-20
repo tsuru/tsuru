@@ -147,7 +147,7 @@ func (s *MultiSuite) TestInfos(c *check.C) {
 		schemes       []auth.Scheme
 		defaultScheme string
 		expectedError string
-		expectedInfos []auth.SchemeInfo
+		expectedInfos []authTypes.SchemeInfo
 	}
 
 	testCases := []testCase{
@@ -155,17 +155,17 @@ func (s *MultiSuite) TestInfos(c *check.C) {
 			desc: "no defaults",
 			schemes: []auth.Scheme{
 				&fakeScheme{
-					info: func() (*auth.SchemeInfo, error) {
-						return &auth.SchemeInfo{Name: "auth1"}, nil
+					info: func() (*authTypes.SchemeInfo, error) {
+						return &authTypes.SchemeInfo{Name: "auth1"}, nil
 					},
 				},
 				&fakeScheme{
-					info: func() (*auth.SchemeInfo, error) {
-						return &auth.SchemeInfo{Name: "auth2"}, nil
+					info: func() (*authTypes.SchemeInfo, error) {
+						return &authTypes.SchemeInfo{Name: "auth2"}, nil
 					},
 				},
 			},
-			expectedInfos: []auth.SchemeInfo{
+			expectedInfos: []authTypes.SchemeInfo{
 				{Name: "auth1", Default: true},
 				{Name: "auth2"},
 			},
@@ -176,17 +176,17 @@ func (s *MultiSuite) TestInfos(c *check.C) {
 			defaultScheme: "auth2",
 			schemes: []auth.Scheme{
 				&fakeScheme{
-					info: func() (*auth.SchemeInfo, error) {
-						return &auth.SchemeInfo{Name: "auth1"}, nil
+					info: func() (*authTypes.SchemeInfo, error) {
+						return &authTypes.SchemeInfo{Name: "auth1"}, nil
 					},
 				},
 				&fakeScheme{
-					info: func() (*auth.SchemeInfo, error) {
-						return &auth.SchemeInfo{Name: "auth2"}, nil
+					info: func() (*authTypes.SchemeInfo, error) {
+						return &authTypes.SchemeInfo{Name: "auth2"}, nil
 					},
 				},
 			},
-			expectedInfos: []auth.SchemeInfo{
+			expectedInfos: []authTypes.SchemeInfo{
 				{Name: "auth1"},
 				{Name: "auth2", Default: true},
 			},
@@ -576,7 +576,7 @@ type fakeScheme struct {
 	login  func(params map[string]string) (auth.Token, error)
 	logout func(token string) error
 	auth   func(token string) (auth.Token, error)
-	info   func() (*auth.SchemeInfo, error)
+	info   func() (*authTypes.SchemeInfo, error)
 	create func(u *auth.User) (*auth.User, error)
 	remove func(u *auth.User) error
 }
@@ -599,7 +599,7 @@ func (t *fakeScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}
 	return nil, nil
 }
-func (t *fakeScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+func (t *fakeScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	if t.info != nil {
 		return t.info()
 	}

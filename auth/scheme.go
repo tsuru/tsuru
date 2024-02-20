@@ -8,21 +8,16 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
-
-type SchemeInfo struct {
-	Name    string                 `json:"name"`
-	Default bool                   `json:"default,omitempty"`
-	Data    map[string]interface{} `json:"data"`
-}
 
 type Scheme interface {
 	Auth(ctx context.Context, token string) (Token, error)
-	Info(ctx context.Context) (*SchemeInfo, error)
+	Info(ctx context.Context) (*authTypes.SchemeInfo, error)
 }
 
 type MultiScheme interface {
-	Infos(ctx context.Context) ([]SchemeInfo, error)
+	Infos(ctx context.Context) ([]authTypes.SchemeInfo, error)
 }
 
 type UserScheme interface {

@@ -137,7 +137,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}, nil
 }
 
-func (s *oidcScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+func (s *oidcScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	clientID, err := config.GetString("auth:oidc:client-id")
 	if err != nil {
 		return nil, err
@@ -158,14 +158,14 @@ func (s *oidcScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	if err != nil {
 		log.Debugf("auth:oidc:callback-port not found using random port: %s", err)
 	}
-	return &auth.SchemeInfo{
+	return &authTypes.SchemeInfo{
 		Name: "oidc",
-		Data: map[string]interface{}{
-			"clientID": clientID,
-			"authURL":  authURL,
-			"tokenURL": tokenURL,
-			"scopes":   scopes,
-			"port":     strconv.Itoa(callbackPort),
+		Data: authTypes.SchemeData{
+			ClientID: clientID,
+			AuthURL:  authURL,
+			TokenURL: tokenURL,
+			Scopes:   scopes,
+			Port:     strconv.Itoa(callbackPort),
 		},
 	}, nil
 }

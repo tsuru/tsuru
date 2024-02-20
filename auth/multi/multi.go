@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 var (
@@ -131,7 +132,7 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 	return nil, newErrNotImplemented("auth")
 }
 
-func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+func (s *multiScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	schemes, err := s.schemes()
 	if err != nil {
 		return nil, err
@@ -164,13 +165,13 @@ func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	return nil, newErrNotImplemented("info")
 }
 
-func (s *multiScheme) Infos(ctx context.Context) ([]auth.SchemeInfo, error) {
+func (s *multiScheme) Infos(ctx context.Context) ([]authTypes.SchemeInfo, error) {
 	schemes, err := s.schemes()
 	if err != nil {
 		return nil, err
 	}
 
-	infos := []auth.SchemeInfo{}
+	infos := []authTypes.SchemeInfo{}
 	errors := tsuruErrors.NewMultiError()
 
 	defaultScheme, _ := config.GetString("auth:multi:default-scheme")
