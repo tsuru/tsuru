@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *check.C) {
-	baseManager := cmd.NewManager("tsurud", "0.3.0", "", os.Stdout, os.Stderr, os.Stdin, nil)
+	baseManager := cmd.NewManager("tsurud", os.Stdout, os.Stderr, os.Stdin, nil)
 	manager := buildManager()
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]

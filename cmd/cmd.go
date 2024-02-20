@@ -66,8 +66,6 @@ type Manager struct {
 	stdout        io.Writer
 	stderr        io.Writer
 	stdin         io.Reader
-	version       string
-	versionHeader string
 	e             exiter
 	original      string
 	wrong         bool
@@ -76,11 +74,9 @@ type Manager struct {
 }
 
 // This is discouraged: use NewManagerPanicExiter instead. Handle panic(*PanicExitError) accordingly
-func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
+func NewManager(name string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
 	manager := &Manager{
 		name:          name,
-		version:       ver,
-		versionHeader: verHeader,
 		stdout:        stdout,
 		stderr:        stderr,
 		stdin:         stdin,
@@ -93,11 +89,9 @@ func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.
 }
 
 // When using this, you should handle panic(*PanicExitError) accordingly
-func NewManagerPanicExiter(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
+func NewManagerPanicExiter(name string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
 	manager := &Manager{
 		name:          name,
-		version:       ver,
-		versionHeader: verHeader,
 		stdout:        stdout,
 		stderr:        stderr,
 		stdin:         stdin,

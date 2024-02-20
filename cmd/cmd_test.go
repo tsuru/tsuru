@@ -210,7 +210,7 @@ func (s *S) TestCustomLookup(c *check.C) {
 		return nil
 	}
 	var stdout, stderr bytes.Buffer
-	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr := NewManager("glb", &stdout, &stderr, os.Stdin, lookup)
 	var exiter recordingExiter
 	mngr.e = &exiter
 	mngr.Run([]string{"custom"})
@@ -222,7 +222,7 @@ func (s *S) TestCustomLookupNotFound(c *check.C) {
 		return ErrLookup
 	}
 	var stdout, stderr bytes.Buffer
-	mngr := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr := NewManager("glb", &stdout, &stderr, os.Stdin, lookup)
 	var exiter recordingExiter
 	mngr.e = &exiter
 	mngr.Register(&TestCommand{})
@@ -373,7 +373,7 @@ Tsuru likes to manage targets
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	m := NewManager("tsuru", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
 	m.e = &exiter
 	_, exists := m.Commands["help"]
@@ -595,7 +595,7 @@ Foo do anything or nothing.
 
 `
 	var stdout, stderr bytes.Buffer
-	mngr := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
+	mngr := NewManager("tsuru", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
 	mngr.e = &exiter
 	mngr.Register(&TestCommand{})
@@ -982,7 +982,7 @@ func (s *S) TestNewManagerPanicExiter(c *check.C) {
 	}()
 
 	var stdout, stderr bytes.Buffer
-	mngr := NewManagerPanicExiter("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	mngr := NewManagerPanicExiter("glb", &stdout, &stderr, os.Stdin, lookup)
 	mngr.Run([]string{"custom"})
 	c.Assert("This code is never called", check.Equals, "Because Panic occurred")
 }
