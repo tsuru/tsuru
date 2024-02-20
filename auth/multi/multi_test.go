@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -136,6 +137,78 @@ error #1: failed to login on scheme02
 				c.Assert(token.GetValue(), check.Equals, testCase.expectedToken)
 			}
 		}
+	}
+
+}
+
+func (s *MultiSuite) TestInfos(c *check.C) {
+	type testCase struct {
+		desc          string
+		schemes       []auth.Scheme
+		defaultScheme string
+		expectedError string
+		expectedInfos []auth.SchemeInfo
+	}
+
+	testCases := []testCase{
+		{
+			desc: "no defaults",
+			schemes: []auth.Scheme{
+				&fakeScheme{
+					info: func() (*auth.SchemeInfo, error) {
+						return &auth.SchemeInfo{Name: "auth1"}, nil
+					},
+				},
+				&fakeScheme{
+					info: func() (*auth.SchemeInfo, error) {
+						return &auth.SchemeInfo{Name: "auth2"}, nil
+					},
+				},
+			},
+			expectedInfos: []auth.SchemeInfo{
+				{Name: "auth1", Default: true},
+				{Name: "auth2"},
+			},
+		},
+
+		{
+			desc:          "default defined by config",
+			defaultScheme: "auth2",
+			schemes: []auth.Scheme{
+				&fakeScheme{
+					info: func() (*auth.SchemeInfo, error) {
+						return &auth.SchemeInfo{Name: "auth1"}, nil
+					},
+				},
+				&fakeScheme{
+					info: func() (*auth.SchemeInfo, error) {
+						return &auth.SchemeInfo{Name: "auth2"}, nil
+					},
+				},
+			},
+			expectedInfos: []auth.SchemeInfo{
+				{Name: "auth1"},
+				{Name: "auth2", Default: true},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		scheme := &multiScheme{
+			cachedSchemes: atomic.Pointer[[]auth.Scheme]{},
+		}
+		scheme.cachedSchemes.Store(&testCase.schemes)
+		config.Set("auth:multi:default-scheme", testCase.defaultScheme)
+		infos, err := scheme.Infos(context.TODO())
+
+		if testCase.expectedError != "" {
+			c.Check(err, check.Not(check.IsNil))
+			if c.Check(infos, check.IsNil) {
+				c.Check(err.Error(), check.Equals, testCase.expectedError)
+			}
+		}
+
+		c.Assert(infos, check.DeepEquals, testCase.expectedInfos)
 	}
 
 }

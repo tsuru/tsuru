@@ -11,8 +11,9 @@ import (
 )
 
 type SchemeInfo struct {
-	Name string                 `json:"name"`
-	Data map[string]interface{} `json:"data"`
+	Name    string                 `json:"name"`
+	Default bool                   `json:"default,omitempty"`
+	Data    map[string]interface{} `json:"data"`
 }
 
 type Scheme interface {

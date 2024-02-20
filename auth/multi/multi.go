@@ -172,8 +172,18 @@ func (s *multiScheme) Infos(ctx context.Context) ([]auth.SchemeInfo, error) {
 
 	infos := []auth.SchemeInfo{}
 	errors := tsuruErrors.NewMultiError()
+
+	defaultScheme, _ := config.GetString("auth:multi:default-scheme")
+
+	defaultDefined := false
+
 	for _, scheme := range schemes {
 		schemeInfo, err := scheme.Info(ctx)
+
+		if schemeInfo.Name == defaultScheme {
+			schemeInfo.Default = true
+			defaultDefined = true
+		}
 
 		if err != nil {
 			errors.Add(err)
@@ -181,6 +191,10 @@ func (s *multiScheme) Infos(ctx context.Context) ([]auth.SchemeInfo, error) {
 		}
 
 		infos = append(infos, *schemeInfo)
+	}
+
+	if !defaultDefined && len(infos) > 0 {
+		infos[0].Default = true
 	}
 
 	if errors.Len() > 0 {
