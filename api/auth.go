@@ -651,7 +651,7 @@ func authSchemes(w http.ResponseWriter, r *http.Request) (err error) {
 		if err != nil {
 			return err
 		}
-
+		info.Default = true
 		infos = []authTypes.SchemeInfo{*info}
 	}
 
