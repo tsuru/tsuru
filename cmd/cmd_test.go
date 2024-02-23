@@ -127,7 +127,12 @@ func (c *TopicCommand) Run(context *Context) error {
 func (s *S) TestImplicitTopicsHelp(c *check.C) {
 	globalManager.Register(&TopicCommand{name: "foo-bar"})
 	globalManager.Register(&TopicCommand{name: "foo-baz"})
-	context := Context{[]string{"foo"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{"foo"},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	command := help{manager: globalManager}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
@@ -144,7 +149,12 @@ Use glb help <commandname> to get more information about a command.
 func (s *S) TestImplicitSubTopicsHelp(c *check.C) {
 	globalManager.Register(&TopicCommand{name: "topic-subtopic-bar"})
 	globalManager.Register(&TopicCommand{name: "topic-subtopic-baz"})
-	context := Context{[]string{"topic", "subtopic"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{"topic", "subtopic"},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	command := help{manager: globalManager}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
@@ -330,7 +340,12 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	command := help{manager: globalManager}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
@@ -351,7 +366,12 @@ Available topics:
 Use glb help <topicname> to get more information about a topic.
 `
 	globalManager.RegisterTopic("target", "something")
-	context := Context{[]string{}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	command := help{manager: globalManager}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
@@ -364,7 +384,12 @@ func (s *S) TestHelpFromTopic(c *check.C) {
 Tsuru likes to manage targets
 `
 	globalManager.RegisterTopic("target", "Targets\n\nTsuru likes to manage targets\n")
-	context := Context{[]string{"target"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{"target"},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	command := help{manager: globalManager}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
@@ -382,7 +407,12 @@ func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *check.C) {
 
 func (s *S) TestHelpReturnErrorIfTheGivenCommandDoesNotExist(c *check.C) {
 	command := help{manager: globalManager}
-	context := Context{[]string{"user-create"}, globalManager.stdout, globalManager.stderr, globalManager.stdin}
+	context := Context{
+		Args:   []string{"user-create"},
+		Stdout: globalManager.stdout,
+		Stderr: globalManager.stderr,
+		Stdin:  globalManager.stdin,
+	}
 	err := command.Run(&context)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, `^command "user-create" does not exist.$`)
@@ -599,7 +629,12 @@ Foo do anything or nothing.
 	var exiter recordingExiter
 	mngr.e = &exiter
 	mngr.Register(&TestCommand{})
-	context := Context{[]string{"foo"}, mngr.stdout, mngr.stderr, mngr.stdin}
+	context := Context{
+		Args:   []string{"foo"},
+		Stdout: mngr.stdout,
+		Stderr: mngr.stderr,
+		Stdin:  mngr.stdin,
+	}
 	command := help{manager: mngr}
 	err := command.Run(&context)
 	c.Assert(err, check.IsNil)

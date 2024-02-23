@@ -217,7 +217,13 @@ func (m *Manager) Run(args []string) {
 		os.Setenv("TSURU_TARGET", target)
 	}
 	if m.lookup != nil {
-		context := m.newContext(args, m.stdout, m.stderr, m.stdin)
+		context := m.newContext(Context{
+			Args:      args,
+			Stdout:    m.stdout,
+			Stderr:    m.stderr,
+			Stdin:     m.stdin,
+			Verbosity: verbosity,
+		})
 		err := m.lookup(context)
 		if err != nil && err != ErrLookup {
 			fmt.Fprint(m.stderr, err)
@@ -288,7 +294,13 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
+	context := m.newContext(Context{
+		Args:      args,
+		Stdout:    m.stdout,
+		Stderr:    m.stderr,
+		Stdin:     m.stdin,
+		Verbosity: verbosity,
+	})
 	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {
 		signal.Notify(sigChan, syscall.SIGINT)
@@ -343,10 +355,10 @@ func (m *Manager) findTopicBasedCommand(args []string) string {
 	return strings.Join(safeCmd, " ")
 }
 
-func (m *Manager) newContext(args []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) *Context {
-	stdout = newPagerWriter(stdout)
-	stdin = newSyncReader(stdin, stdout)
-	ctx := &Context{Args: args, Stdout: stdout, Stderr: stderr, Stdin: stdin}
+func (m *Manager) newContext(c Context) *Context {
+	stdout := newPagerWriter(c.Stdout)
+	stdin := newSyncReader(c.Stdin, c.Stdout)
+	ctx := &Context{Args: c.Args, Stdout: stdout, Stderr: c.Stderr, Stdin: stdin, Verbosity: c.Verbosity}
 	m.contexts = append(m.contexts, ctx)
 	return ctx
 }
@@ -547,10 +559,11 @@ func (c *DeprecatedCommand) Flags() *gnuflag.FlagSet {
 }
 
 type Context struct {
-	Args   []string
-	Stdout io.Writer
-	Stderr io.Writer
-	Stdin  io.Reader
+	Args      []string
+	Stdout    io.Writer
+	Stderr    io.Writer
+	Stdin     io.Reader
+	Verbosity int
 }
 
 func (c *Context) RawOutput() {
