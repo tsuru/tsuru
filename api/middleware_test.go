@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -218,7 +217,7 @@ func (s *S) TestErrorHandlingMiddlewareWithCauseValidationError(c *check.C) {
 func (s *S) TestErrorHandlingMiddlewareWithVerbosity(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
-	request.Header.Add(cmd.VerbosityHeader, "1")
+	request.Header.Add(verbosityHeader, "1")
 	c.Assert(err, check.IsNil)
 	h, log := doHandler()
 	context.AddRequestError(request, errors.WithStack(&tsuruErrors.ValidationError{Message: "invalid request"}))
