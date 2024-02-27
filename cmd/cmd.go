@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -213,16 +214,21 @@ func (m *Manager) Run(args []string) {
 	} else if displayVersion {
 		args = []string{"version"}
 	}
+
 	if len(target) > 0 {
 		os.Setenv("TSURU_TARGET", target)
 	}
+
+	if verbosity > 0 {
+		os.Setenv("TSURU_VERBOSITY", strconv.Itoa(verbosity))
+	}
+
 	if m.lookup != nil {
 		context := m.newContext(Context{
-			Args:      args,
-			Stdout:    m.stdout,
-			Stderr:    m.stderr,
-			Stdin:     m.stdin,
-			Verbosity: verbosity,
+			Args:   args,
+			Stdout: m.stdout,
+			Stderr: m.stderr,
+			Stdin:  m.stdin,
 		})
 		err := m.lookup(context)
 		if err != nil && err != ErrLookup {
@@ -295,11 +301,10 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	context := m.newContext(Context{
-		Args:      args,
-		Stdout:    m.stdout,
-		Stderr:    m.stderr,
-		Stdin:     m.stdin,
-		Verbosity: verbosity,
+		Args:   args,
+		Stdout: m.stdout,
+		Stderr: m.stderr,
+		Stdin:  m.stdin,
 	})
 	sigChan := make(chan os.Signal, 1)
 	if cancelable, ok := command.(Cancelable); ok {
@@ -358,7 +363,7 @@ func (m *Manager) findTopicBasedCommand(args []string) string {
 func (m *Manager) newContext(c Context) *Context {
 	stdout := newPagerWriter(c.Stdout)
 	stdin := newSyncReader(c.Stdin, c.Stdout)
-	ctx := &Context{Args: c.Args, Stdout: stdout, Stderr: c.Stderr, Stdin: stdin, Verbosity: c.Verbosity}
+	ctx := &Context{Args: c.Args, Stdout: stdout, Stderr: c.Stderr, Stdin: stdin}
 	m.contexts = append(m.contexts, ctx)
 	return ctx
 }
@@ -559,11 +564,10 @@ func (c *DeprecatedCommand) Flags() *gnuflag.FlagSet {
 }
 
 type Context struct {
-	Args      []string
-	Stdout    io.Writer
-	Stderr    io.Writer
-	Stdin     io.Reader
-	Verbosity int
+	Args   []string
+	Stdout io.Writer
+	Stderr io.Writer
+	Stdin  io.Reader
 }
 
 func (c *Context) RawOutput() {
