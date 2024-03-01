@@ -61,6 +61,7 @@ type Lookup func(context *Context) error
 
 type Manager struct {
 	Commands      map[string]Command
+	RetryHook     func(err error) (retry bool)
 	topics        map[string]string
 	topicCommands map[string][]Command
 	name          string
@@ -321,6 +322,13 @@ func (m *Manager) Run(args []string) {
 		}(*context)
 	}
 	err = command.Run(context)
+
+	if m.RetryHook != nil && err != nil {
+		if retry := m.RetryHook(err); retry {
+			err = command.Run(context)
+		}
+	}
+
 	close(sigChan)
 
 	if err != nil {
