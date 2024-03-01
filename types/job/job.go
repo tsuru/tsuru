@@ -11,6 +11,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 // Job is another main type in tsuru as of version 1.13
