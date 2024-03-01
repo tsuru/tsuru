@@ -677,6 +677,9 @@ func (s *S) TestUpdateCronjobChangePool(c *check.C) {
 		Name:      "cron",
 		Spec: jobTypes.JobSpec{
 			Schedule: "* * * * *",
+			Container: jobTypes.ContainerInfo{
+				OriginalImageSrc: "busybox:1.28",
+			},
 		},
 	}
 	user, _ := auth.ConvertOldUser(s.user, nil)
