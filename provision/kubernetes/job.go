@@ -130,6 +130,11 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		return errors.WithStack(err)
 	}
 
+	concurrencyPolicy := ""
+	if job.Spec.ConcurrencyPolicy != nil {
+		concurrencyPolicy = *job.Spec.ConcurrencyPolicy
+	}
+
 	cronjob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.Name,
@@ -143,6 +148,7 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
+			ConcurrencyPolicy: batchv1.ConcurrencyPolicy(concurrencyPolicy),
 		},
 	}
 

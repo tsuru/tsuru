@@ -589,5 +589,11 @@ func validateJob(ctx context.Context, j *jobTypes.Job) error {
 			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidSchedule.Error()}
 		}
 	}
+	if j.Spec.ConcurrencyPolicy != nil {
+		allowedValues := []string{"Allow", "Forbid", "Replace"}
+		if !set.FromSlice(allowedValues).Includes(*j.Spec.ConcurrencyPolicy) {
+			return &tsuruErrors.ValidationError{Message: jobTypes.ErrInvalidConcurrencyPolicy.Error()}
+		}
+	}
 	return nil
 }

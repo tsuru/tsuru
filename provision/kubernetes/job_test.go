@@ -233,6 +233,39 @@ func (s *S) TestProvisionerCreateCronJob(c *check.C) {
 				c.Assert(err, check.IsNil)
 			},
 		},
+		{
+			name:      "create cronjob with concurrency policy set to forbid",
+			jobName:   "myjob",
+			namespace: "default",
+			scenario: func() {
+				cj := jobTypes.Job{
+					Name:      "myjob",
+					TeamOwner: s.team.Name,
+					Pool:      "test-default",
+					Spec: jobTypes.JobSpec{
+						ConcurrencyPolicy: func() *string { r := "Forbid"; return &r }(),
+						Schedule:          "* * * * *",
+						Container: jobTypes.ContainerInfo{
+							OriginalImageSrc: "ubuntu:latest",
+							Command:          []string{"echo", "hello world"},
+						},
+					},
+				}
+				err := s.p.EnsureJob(context.TODO(), &cj)
+				waitCron()
+				c.Assert(err, check.IsNil)
+			},
+			assertion: func(c *check.C, gotCron *batchv1.CronJob) {
+				c.Assert(gotCron.Spec.ConcurrencyPolicy, check.DeepEquals, batchv1.ForbidConcurrent)
+			},
+			teardown: func() {
+				err := s.p.DestroyJob(context.TODO(), &jobTypes.Job{
+					Name: "myjob",
+					Pool: "test-default",
+				})
+				c.Assert(err, check.IsNil)
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt.scenario()
@@ -312,6 +345,7 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					},
 					Spec: jobTypes.JobSpec{
 						Schedule:              "* * * * *",
+						ConcurrencyPolicy:     func() *string { r := "Forbid"; return &r }(),
 						Parallelism:           func() *int32 { r := int32(2); return &r }(),
 						Completions:           func() *int32 { r := int32(1); return &r }(),
 						ActiveDeadlineSeconds: func() *int64 { r := int64(0); return &r }(),
@@ -349,8 +383,9 @@ func (s *S) TestProvisionerUpdateCronJob(c *check.C) {
 					Annotations: map[string]string{"annotation2": "value4"},
 				},
 				Spec: batchv1.CronJobSpec{
-					Schedule: "* * * * *",
-					Suspend:  func() *bool { r := false; return &r }(),
+					Schedule:          "* * * * *",
+					ConcurrencyPolicy: batchv1.ForbidConcurrent,
+					Suspend:           func() *bool { r := false; return &r }(),
 					JobTemplate: batchv1.JobTemplateSpec{
 						Spec: batchv1.JobSpec{
 							TTLSecondsAfterFinished: func() *int32 { defaultTTL := int32(86400); return &defaultTTL }(),
