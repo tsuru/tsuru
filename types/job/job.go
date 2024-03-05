@@ -11,6 +11,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 // Job is another main type in tsuru as of version 1.13
@@ -18,16 +19,18 @@ import (
 // this struct carries some tsuru metadata as is the case with the app object
 // it also holds a JobSpec value that defines how the Job is supposed to be run
 type Job struct {
-	Name        string            `json:"name"`
-	Teams       []string          `json:"teams"`
-	TeamOwner   string            `json:"teamOwner"`
-	Owner       string            `json:"owner"`
-	Plan        appTypes.Plan     `json:"plan"`
-	Metadata    appTypes.Metadata `json:"metadata"`
-	Pool        string            `json:"pool"`
-	Description string            `json:"description"`
+	Name        string
+	Teams       []string
+	TeamOwner   string
+	Owner       string
+	Plan        appTypes.Plan
+	Metadata    appTypes.Metadata
+	Pool        string
+	Description string
 
-	Spec JobSpec `json:"spec"`
+	DeployOptions *DeployOptions
+
+	Spec JobSpec
 }
 
 func (job *Job) GetName() string {
@@ -74,6 +77,11 @@ type RemoveInstanceArgs struct {
 	ServiceName  string
 	InstanceName string
 	Writer       io.Writer
+}
+
+type DeployOptions struct {
+	Kind  provisionTypes.DeployKind
+	Image string
 }
 
 type JobService interface {
