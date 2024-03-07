@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,10 +25,10 @@ import (
 )
 
 var (
-	errNoJWKSURLS                    = errors.New("no jwks URLs")
-	errMissingEmailClaim             = errors.New("email claim is missing")
-	errNotImplemented                = errors.New("not implemented")
-	_                    auth.Scheme = &oidcScheme{}
+	errNoJWKSURLS        = errors.New("no jwks URLs")
+	errMissingEmailClaim = errors.New("email claim is missing")
+
+	_ auth.Scheme = &oidcScheme{}
 )
 
 type errKIDNotFound struct {
@@ -57,14 +58,6 @@ type oidcScheme struct {
 	initialized         sync.Once
 	registrationEnabled bool
 	groupsInClaims      bool
-}
-
-func (s *oidcScheme) Login(ctx context.Context, params map[string]string) (auth.Token, error) {
-	return nil, nil
-}
-
-func (s *oidcScheme) Logout(ctx context.Context, token string) error {
-	return nil
 }
 
 func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
@@ -144,17 +137,37 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	}, nil
 }
 
-func (s *oidcScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
-	return nil, errNotImplemented
-}
-
-func (s *oidcScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
-	return nil, errNotImplemented
-}
-
-func (s *oidcScheme) Remove(ctx context.Context, user *auth.User) error {
-	user.Disabled = true
-	return user.Update()
+func (s *oidcScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
+	clientID, err := config.GetString("auth:oidc:client-id")
+	if err != nil {
+		return nil, err
+	}
+	scopes, err := config.GetList("auth:oidc:scopes")
+	if err != nil {
+		return nil, err
+	}
+	authURL, err := config.GetString("auth:oidc:auth-url")
+	if err != nil {
+		return nil, err
+	}
+	tokenURL, err := config.GetString("auth:oidc:token-url")
+	if err != nil {
+		return nil, err
+	}
+	callbackPort, err := config.GetInt("auth:oidc:callback-port")
+	if err != nil {
+		log.Debugf("auth:oidc:callback-port not found using random port: %s", err)
+	}
+	return &authTypes.SchemeInfo{
+		Name: "oidc",
+		Data: authTypes.SchemeData{
+			ClientID: clientID,
+			AuthURL:  authURL,
+			TokenURL: tokenURL,
+			Scopes:   scopes,
+			Port:     strconv.Itoa(callbackPort),
+		},
+	}, nil
 }
 
 func (s *oidcScheme) lazyInitialize(ctx context.Context) error {

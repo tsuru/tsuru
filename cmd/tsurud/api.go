@@ -17,7 +17,7 @@ type apiCmd struct {
 	checkOnly bool
 }
 
-func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *apiCmd) Run(context *cmd.Context) error {
 	err := config.CheckWithWarnings([]config.Checker{
 		checkProvisioner,
 		checkBeanstalkd,

@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/peer"
-	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
@@ -46,6 +45,8 @@ const (
 
 	promNamespace = "tsuru"
 	promSubsystem = "api"
+
+	verbosityHeader = "X-Tsuru-Verbosity"
 )
 
 var (
@@ -197,7 +198,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	next(w, r)
 	err := context.GetRequestError(r)
 	if err != nil {
-		verbosity, _ := strconv.Atoi(r.Header.Get(cmd.VerbosityHeader))
+		verbosity, _ := strconv.Atoi(r.Header.Get(verbosityHeader))
 		code := http.StatusInternalServerError
 		switch t := errors.Cause(err).(type) {
 		case *tsuruErrors.ValidationError:

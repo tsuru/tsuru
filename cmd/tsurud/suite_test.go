@@ -52,7 +52,7 @@ func (c *FakeCommand) Info() *cmd.Info {
 	}
 }
 
-func (c *FakeCommand) Run(*cmd.Context, *cmd.Client) error {
+func (c *FakeCommand) Run(*cmd.Context) error {
 	atomic.AddInt32(&c.calls, 1)
 	return nil
 }

@@ -39,7 +39,8 @@ var (
 		Help: "The total number of oauth request errors.",
 	})
 
-	_ auth.Scheme = &oAuthScheme{}
+	_ auth.Scheme     = &oAuthScheme{}
+	_ auth.UserScheme = &oAuthScheme{}
 )
 
 type oAuthScheme struct {
@@ -199,17 +200,17 @@ func (s *oAuthScheme) Auth(ctx context.Context, header string) (auth.Token, erro
 	return token, nil
 }
 
-func (s *oAuthScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+func (s *oAuthScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	config, err := s.loadConfig()
 	if err != nil {
 		return nil, err
 	}
 	config.RedirectURL = "__redirect_url__"
-	return &auth.SchemeInfo{
+	return &authTypes.SchemeInfo{
 		Name: "oauth",
-		Data: map[string]interface{}{
-			"authorizeUrl": config.AuthCodeURL(""),
-			"port":         strconv.Itoa(s.callbackPort),
+		Data: authTypes.SchemeData{
+			AuthorizeURL: config.AuthCodeURL(""),
+			Port:         strconv.Itoa(s.callbackPort),
 		},
 	}, nil
 }
