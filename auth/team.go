@@ -20,7 +20,7 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-// for some compatibility reasons the name of team must be compilant on some cloud providers
+// for some compatibility reasons the name of team must be compliant on some cloud providers
 // GCP: https://cloud.google.com/compute/docs/labeling-resources#requirements
 //
 //	Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty. Values can be empty, and have a maximum length of 63 characters.
