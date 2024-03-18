@@ -109,31 +109,3 @@ roles are properly created and assigned.`,
 		MinArgs: 1,
 	}
 }
-
-type tokenCmd struct{}
-
-func (tokenCmd) Run(context *cmd.Context) error {
-	scheme, err := config.GetString("auth:scheme")
-	if err != nil {
-		scheme = nativeSchemeName
-	}
-	app.AuthScheme, err = auth.GetScheme(scheme)
-	if err != nil {
-		return err
-	}
-	t, err := auth.GetAppScheme().AppLogin(stdContext.TODO(), app.InternalAppName)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(context.Stdout, t.GetValue())
-	return nil
-}
-
-func (tokenCmd) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "token",
-		Usage:   "token",
-		Desc:    "Generates a tsuru token.",
-		MinArgs: 0,
-	}
-}

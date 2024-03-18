@@ -29,12 +29,6 @@ type UserScheme interface {
 	Remove(ctx context.Context, user *User) error
 }
 
-type AppScheme interface {
-	UserScheme
-	AppLogin(ctx context.Context, appName string) (Token, error)
-	AppLogout(ctx context.Context, token string) error
-}
-
 type ManagedScheme interface {
 	UserScheme
 	StartPasswordReset(ctx context.Context, user *User) error
@@ -69,14 +63,4 @@ func GetScheme(name string) (Scheme, error) {
 		return nil, errors.Errorf("Unknown auth scheme: %q.", name)
 	}
 	return scheme, nil
-}
-
-func GetAppScheme() AppScheme {
-	scheme, err := GetScheme("native")
-
-	if err != nil {
-		panic("native scheme is not linked")
-	}
-
-	return scheme.(AppScheme)
 }

@@ -39,15 +39,6 @@ func (s *S) TestAPICmdIsRegistered(c *check.C) {
 	c.Assert(tsurudApi.Command, check.FitsTypeOf, &apiCmd{})
 }
 
-func (s *S) TestTokenCmdIsRegistered(c *check.C) {
-	manager := buildManager()
-	token, ok := manager.Commands["token"]
-	c.Assert(ok, check.Equals, true)
-	tsurudToken, ok := token.(*tsurudCommand)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(tsurudToken.Command, check.FitsTypeOf, tokenCmd{})
-}
-
 func (s *S) TestMigrateCmdIsRegistered(c *check.C) {
 	manager := buildManager()
 	cmd, ok := manager.Commands["migrate"]

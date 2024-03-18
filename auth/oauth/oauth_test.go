@@ -47,7 +47,6 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(token.GetValue(), check.Equals, "my_token")
 	c.Assert(token.GetUserName(), check.Equals, "rand@althor.com")
-	c.Assert(token.IsAppToken(), check.Equals, false)
 	u, err := token.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "rand@althor.com")

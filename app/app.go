@@ -89,11 +89,6 @@ func init() {
 }
 
 const (
-	// InternalAppName is a reserved name used for token generation. For
-	// backward compatibility and historical purpose, the value remained
-	// "tsr" when the name of the daemon changed to "tsurud".
-	InternalAppName = "tsr"
-
 	defaultAppDir = "/home/application/current"
 
 	routerNone = "none"
@@ -413,7 +408,6 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		&reserveTeamApp,
 		&reserveUserApp,
 		&insertApp,
-		&createAppToken,
 		&exportEnvironmentsAction,
 		&provisionApp,
 		&addRouterBackend,
@@ -811,11 +805,6 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
-	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = auth.GetAppScheme().AppLogout(ctx, token)
-	if err != nil {
-		logErr("Unable to remove app token in destroy", err)
-	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
 		err = servicemanager.UserQuota.Inc(ctx, owner, -1)
@@ -1168,7 +1157,7 @@ func (app *App) getEnv(name string) (bindTypes.EnvVar, error) {
 
 // validateNew checks app name format, pool and plan
 func (app *App) validateNew(ctx context.Context) error {
-	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
+	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."

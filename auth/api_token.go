@@ -27,16 +27,8 @@ func (t *APIToken) User() (*authTypes.User, error) {
 	return ConvertOldUser(GetUserByEmail(t.UserEmail))
 }
 
-func (t *APIToken) IsAppToken() bool {
-	return false
-}
-
 func (t *APIToken) GetUserName() string {
 	return t.UserEmail
-}
-
-func (t *APIToken) GetAppName() string {
-	return ""
 }
 
 func (t *APIToken) Engine() string {

@@ -24,7 +24,6 @@ var configPath = defaultConfigPath
 func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsurud", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsurudCommand{Command: &apiCmd{}})
-	m.Register(&tsurudCommand{Command: tokenCmd{}})
 	m.Register(&tsurudCommand{Command: &migrateCmd{}})
 	m.Register(&tsurudCommand{Command: createRootUserCmd{}})
 	m.Register(&tsurudCommand{Command: &migrationListCmd{}})

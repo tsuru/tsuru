@@ -1076,14 +1076,13 @@ func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if !t.IsAppToken() {
-		allowed := permission.Check(t, permission.PermAppReadEnv,
-			contextsForApp(&a)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
+	allowed := permission.Check(t, permission.PermAppReadEnv,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
+
 	return writeEnvVars(w, &a, variables...)
 }
 
@@ -1765,14 +1764,13 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if t.GetAppName() != app.InternalAppName {
-		allowed := permission.Check(t, permission.PermAppUpdateLog,
-			contextsForApp(a)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
+	allowed := permission.Check(t, permission.PermAppUpdateLog,
+		contextsForApp(a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
+
 	logs, _ := InputValues(r, "message")
 	source := InputValue(r, "source")
 	if source == "" {

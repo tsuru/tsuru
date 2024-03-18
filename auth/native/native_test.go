@@ -41,9 +41,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 	params["password"] = "123456"
 	token, err := scheme.Login(context.TODO(), params)
 	c.Assert(err, check.IsNil)
-	c.Assert(token.GetAppName(), check.Equals, "")
 	c.Assert(token.GetValue(), check.Not(check.Equals), "")
-	c.Assert(token.IsAppToken(), check.Equals, false)
 	u, err := token.User()
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Email, check.Equals, "timeredbull@globo.com")
@@ -261,12 +259,4 @@ func (s *S) TestNativeRemove(c *check.C) {
 	c.Assert(tokens, check.HasLen, 0)
 	_, err = auth.GetUserByEmail("timeredbull@globo.com")
 	c.Assert(err, check.Equals, authTypes.ErrUserNotFound)
-}
-
-func (s *S) TestAppLogin(c *check.C) {
-	scheme := NativeScheme{}
-	token, err := scheme.AppLogin(context.TODO(), "myApp")
-	c.Assert(err, check.IsNil)
-	c.Assert(token.IsAppToken(), check.Equals, true)
-	c.Assert(token.GetAppName(), check.Equals, "myApp")
 }

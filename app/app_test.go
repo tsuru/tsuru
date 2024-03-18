@@ -2287,7 +2287,6 @@ func (s *S) TestIsValid(c *check.C) {
 		{"-myapp", s.team.Name, "pool1", "fake", "default-plan", errMsg},
 		{"my_app", s.team.Name, "pool1", "fake", "default-plan", errMsg},
 		{"b", s.team.Name, "pool1", "fake", "default-plan", ""},
-		{InternalAppName, s.team.Name, "pool1", "fake", "default-plan", errMsg},
 		{"myapp", "invalidteam", "pool1", "fake", "default-plan", "team not found"},
 		{"myapp", s.team.Name, "pool1", "faketls", "default-plan", "router \"faketls\" is not available for pool \"pool1\". Available routers are: \"fake, fake-hc, fake-tls, fake-v2\""},
 		{"myapp", "noaccessteam", "pool1", "fake", "default-plan", "App team owner \"noaccessteam\" has no access to pool \"pool1\""},

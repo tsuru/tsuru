@@ -176,41 +176,6 @@ func removeApp(app *App) error {
 	return nil
 }
 
-// createAppToken generates a token for the app and saves it in the database.
-// It requires a pointer to an App instance as the first parameter.
-var createAppToken = action.Action{
-	Name: "create-app-token",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
-		if !ok {
-			return nil, errors.New("First parameter must be *App.")
-		}
-		app, err := GetByName(ctx.Context, app.Name)
-		if err != nil {
-			return nil, err
-		}
-		t, err := auth.GetAppScheme().AppLogin(ctx.Context, app.Name)
-		if err != nil {
-			return nil, err
-		}
-		return &t, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		var tokenValue string
-		if token, ok := ctx.FWResult.(*auth.Token); ok {
-			tokenValue = (*token).GetValue()
-		} else if app, ok := ctx.Params[0].(*App); ok {
-			if tokenVar, ok := app.Env["TSURU_APP_TOKEN"]; ok {
-				tokenValue = tokenVar.Value
-			}
-		}
-		if tokenValue != "" {
-			auth.GetAppScheme().Logout(ctx.Context, tokenValue)
-		}
-	},
-	MinParams: 1,
-}
-
 // exportEnvironmentsAction exports tsuru's default environment variables in a
 // new app. It requires a pointer to an App instance as the first parameter.
 var exportEnvironmentsAction = action.Action{
@@ -221,11 +186,9 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t := ctx.Previous.(*auth.Token)
 		envVars := []bindTypes.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
-			{Name: "TSURU_APP_TOKEN", Value: (*t).GetValue()},
 		}
 		err = app.SetEnvs(bind.SetEnvArgs{
 			Envs:          envVars,

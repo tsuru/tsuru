@@ -3258,7 +3258,6 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		{Name: "DATABASE_USER", Value: "root", Public: true},
 		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
-		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
 		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
 	result := []bindTypes.EnvVar{}
@@ -3368,42 +3367,6 @@ func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *S) TestGetEnvWithAppToken(c *check.C) {
-	a := app.App{
-		Name:      "everything-i-want",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-		Env: map[string]bindTypes.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	c.Assert(err, check.IsNil)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := []map[string]interface{}{{
-		"name":   "DATABASE_HOST",
-		"value":  "localhost",
-		"public": true,
-		"alias":  "",
-	}}
-	result := []map[string]interface{}{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 }
 
 func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {

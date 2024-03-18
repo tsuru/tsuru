@@ -32,16 +32,8 @@ func (t *tokenWrapper) User() (*authTypes.User, error) {
 	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
-func (t *tokenWrapper) IsAppToken() bool {
-	return false
-}
-
 func (t *tokenWrapper) GetUserName() string {
 	return t.UserEmail
-}
-
-func (t *tokenWrapper) GetAppName() string {
-	return ""
 }
 
 func (t *tokenWrapper) Engine() string {
