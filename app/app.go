@@ -1057,11 +1057,6 @@ func (app *App) Grant(team *authTypes.Team) error {
 		return err
 	}
 
-	if err != nil {
-		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
-		return err
-	}
-
 	return nil
 }
 

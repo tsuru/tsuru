@@ -33,7 +33,6 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -2919,7 +2918,7 @@ func (s *S) TestUnsetJobEnv(c *check.C) {
 		Pool:      "pool1",
 		TeamOwner: s.team.Name,
 		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: "tsuru/python:latest",
 		},
 		Spec: jobTypes.JobSpec{
@@ -2992,7 +2991,7 @@ func (s *S) TestUnsetJobEnvRemovesMultipleEnvironmentVariables(c *check.C) {
 			},
 		},
 		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: "tsuru/python:latest",
 		},
 	}
@@ -3054,7 +3053,7 @@ func (s *S) TestUnsetJobEnvRemovesPrivateVariables(c *check.C) {
 			},
 		},
 		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: "tsuru/python:latest",
 		},
 	}
@@ -3105,7 +3104,7 @@ func (s *S) TestUnsetJobEnvReturnsBadRequestWhenVariablesMissing(c *check.C) {
 			},
 		},
 		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: "tsuru/python:latest",
 		},
 	}
@@ -3152,7 +3151,7 @@ func (s *S) TestUnsetJobEnvReturnsForbiddenWhenUserDoesNotHaveAccessToTheJob(c *
 			},
 		},
 		DeployOptions: &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: "tsuru/python:latest",
 		},
 	}
