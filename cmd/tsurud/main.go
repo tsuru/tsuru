@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/gops/agent"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api"
 	_ "github.com/tsuru/tsuru/builder/kubernetes"
 	"github.com/tsuru/tsuru/cmd"
 	_ "github.com/tsuru/tsuru/provision/kubernetes"
@@ -23,7 +22,7 @@ const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 var configPath = defaultConfigPath
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsurud", api.Version, "", os.Stdout, os.Stderr, os.Stdin, nil)
+	m := cmd.NewManager("tsurud", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsurudCommand{Command: &apiCmd{}})
 	m.Register(&tsurudCommand{Command: tokenCmd{}})
 	m.Register(&tsurudCommand{Command: &migrateCmd{}})

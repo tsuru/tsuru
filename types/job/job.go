@@ -11,6 +11,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 // Job is another main type in tsuru as of version 1.13
@@ -26,6 +27,8 @@ type Job struct {
 	Metadata    appTypes.Metadata `json:"metadata"`
 	Pool        string            `json:"pool"`
 	Description string            `json:"description"`
+
+	DeployOptions *DeployOptions `json:"deployOptions"`
 
 	Spec JobSpec `json:"spec"`
 }
@@ -75,6 +78,11 @@ type RemoveInstanceArgs struct {
 	ServiceName  string
 	InstanceName string
 	Writer       io.Writer
+}
+
+type DeployOptions struct {
+	Kind  provisionTypes.DeployKind `json:"kind"`
+	Image string                    `json:"image"`
 }
 
 type JobService interface {

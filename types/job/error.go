@@ -17,6 +17,7 @@ var (
 	ErrJobAlreadyExists         = errors.New("a job with the same name already exists")
 	ErrInvalidSchedule          = errors.New("invalid schedule")
 	ErrInvalidConcurrencyPolicy = errors.New("invalid concurrency policy, allowed values are: Allow, Forbid, Replace")
+	ErrInvalidDeployKind        = errors.New("invalid deploy kind")
 )
 
 type JobCreationError struct {

@@ -107,9 +107,10 @@ func (s *S) TestTeamServiceCreateValidation(c *check.C) {
 		{"TEAM", authTypes.ErrInvalidTeamName},
 		{"TeaM", authTypes.ErrInvalidTeamName},
 		{"team_1", nil},
-		{"tsuru@corp.globo.com", nil},
+		{"tsuru@corp.globo.com", authTypes.ErrInvalidTeamName},
 		{"team-1", nil},
 		{"a", authTypes.ErrInvalidTeamName},
+		{"longteam-longteam-longteam-longteam-longteam-longteam-longteam-longteam-longteam", authTypes.ErrInvalidTeamName},
 		{"ab", nil},
 		{"team1", nil},
 	}

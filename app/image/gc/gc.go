@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"github.com/tsuru/tsuru/types/provision"
 )
 
 const (
@@ -158,10 +159,12 @@ func (g *imgGC) spin() {
 }
 
 func runPeriodicGC() (err error) {
+	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
 	evt, err := event.NewInternal(&event.Opts{
 		Target:       event.Target{Type: event.TargetTypeGC, Value: "global"},
 		InternalKind: "gc",
 		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxGlobal, "")),
+		ExpireAt:     &eventExpireAt,
 	})
 	defer func() {
 		if err != nil {
@@ -215,6 +218,8 @@ func runPeriodicGC() (err error) {
 }
 
 func markOldImages() error {
+	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
+
 	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC markOldImages")
 	defer span.Finish()
 
@@ -266,6 +271,7 @@ func markOldImages() error {
 			Target:       event.Target{Type: event.TargetTypeApp, Value: appVersions.AppName},
 			InternalKind: "version gc",
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appVersions.AppName)),
+			ExpireAt:     &eventExpireAt,
 		})
 
 		if err != nil {
@@ -287,7 +293,8 @@ func markOldImages() error {
 
 func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
 	deployedVersions, err := a.DeployedVersions()
-	if err == app.ErrNoVersionProvisioner {
+	causeErr := errors.Cause(err)
+	if causeErr == app.ErrNoVersionProvisioner || causeErr == provision.ErrNoCluster {
 		deployedVersions = []int{appVersions.LastSuccessfulVersion}
 	} else if err != nil {
 		return false, errors.Wrapf(err, "Could not get deployed versions of app: %s", appVersions.AppName)

@@ -74,7 +74,7 @@ func (s *S) TestTsrCommandRunInvalidConfig(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.NotNil)
 	c.Assert(stderr.String(), check.Equals, `Opening config file: /invalid/file
 Could not open tsuru config file at /invalid/file (open /invalid/file: no such file or directory).
@@ -94,7 +94,7 @@ func (s *S) TestTsrCommandRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stderr.String(), check.Equals, "Opening config file: testdata/tsuru.conf\nDone reading config file: testdata/tsuru.conf\n")
 	c.Assert(stdout.String(), check.Equals, "")

@@ -106,10 +106,10 @@ func (s *S) TestOAuthInfo(c *check.C) {
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Name, check.Equals, "oauth")
-	c.Assert(info.Data["authorizeUrl"], check.Matches, s.server.URL+"/auth.*")
-	c.Assert(info.Data["authorizeUrl"], check.Matches, ".*client_id=clientid.*")
-	c.Assert(info.Data["authorizeUrl"], check.Matches, ".*redirect_uri=__redirect_url__.*")
-	c.Assert(info.Data["port"], check.Equals, "0")
+	c.Assert(info.Data.AuthorizeURL, check.Matches, s.server.URL+"/auth.*")
+	c.Assert(info.Data.AuthorizeURL, check.Matches, ".*client_id=clientid.*")
+	c.Assert(info.Data.AuthorizeURL, check.Matches, ".*redirect_uri=__redirect_url__.*")
+	c.Assert(info.Data.Port, check.Equals, "0")
 }
 
 func (s *S) TestOAuthInfoWithPort(c *check.C) {
@@ -118,7 +118,7 @@ func (s *S) TestOAuthInfoWithPort(c *check.C) {
 	scheme := oAuthScheme{}
 	info, err := scheme.Info(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(info.Data["port"], check.Equals, "9009")
+	c.Assert(info.Data.Port, check.Equals, "9009")
 }
 
 func (s *S) TestOAuthParse(c *check.C) {

@@ -205,7 +205,7 @@ var createAppToken = action.Action{
 			}
 		}
 		if tokenValue != "" {
-			AuthScheme.Logout(ctx.Context, tokenValue)
+			auth.GetAppScheme().Logout(ctx.Context, tokenValue)
 		}
 	},
 	MinParams: 1,

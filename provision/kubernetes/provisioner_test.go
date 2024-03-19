@@ -2738,3 +2738,116 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	c.Assert(pods.Items, check.HasLen, 1)
 	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "true")
 }
+
+func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
+	ctx := context.TODO()
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
+	c.Assert(err, check.IsNil)
+
+	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
+		"external.io/teste": "true",
+	}
+
+	_, err = tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Update(ctx, foundTsuruApp, metav1.UpdateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+
+	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+		Namespace: "tsuru",
+		Name:      "myapp",
+		Annotations: map[string]string{
+			"external.io/teste": "true",
+		},
+	})
+
+	c.Assert(appCRD.Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments: map[string][]string{
+			"web": {"myapp-web"},
+		},
+		Services: map[string][]string{
+			"web": {"myapp-web", "myapp-web-units"},
+		},
+		PodDisruptionBudgets: map[string][]string{
+			"web": {"myapp-web"},
+		},
+	})
+
+}
+
+func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations2(c *check.C) {
+	ctx := context.TODO()
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(ctx, a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	tclient, err := TsuruClientForConfig(s.clusterClient.restConfig)
+	c.Assert(err, check.IsNil)
+
+	foundTsuruApp, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	foundTsuruApp.ObjectMeta.Annotations = map[string]string{
+		"external.io/teste": "true",
+	}
+	foundTsuruApp.Spec.ServiceAccountName = "another" // this is the unique line different from previous test
+
+	_, err = tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Update(ctx, foundTsuruApp, metav1.UpdateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = ensureAppCustomResourceSynced(context.TODO(), s.clusterClient, a)
+	c.Assert(err, check.IsNil)
+
+	appCRD, err := tclient.TsuruV1().Apps(s.clusterClient.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(appCRD.ObjectMeta, check.DeepEquals, metav1.ObjectMeta{
+		Namespace: "tsuru",
+		Name:      "myapp",
+		Annotations: map[string]string{
+			"external.io/teste": "true",
+		},
+	})
+
+	c.Assert(appCRD.Spec, check.DeepEquals, tsuruv1.AppSpec{
+		NamespaceName:      "default",
+		ServiceAccountName: "app-myapp",
+		Deployments: map[string][]string{
+			"web": {"myapp-web"},
+		},
+		Services: map[string][]string{
+			"web": {"myapp-web", "myapp-web-units"},
+		},
+		PodDisruptionBudgets: map[string][]string{
+			"web": {"myapp-web"},
+		},
+	})
+
+}

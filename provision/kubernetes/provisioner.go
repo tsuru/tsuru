@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1348,33 +1349,30 @@ func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
 }
 
 func ensureAppCustomResourceSynced(ctx context.Context, client *ClusterClient, a provision.App) error {
-	_, err := loadAndEnsureAppCustomResourceSynced(ctx, client, a)
-	return err
-}
-
-func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterClient, a provision.App) (*tsuruv1.App, error) {
 	err := ensureNamespace(ctx, client, client.Namespace())
 	if err != nil {
-		return nil, err
+		return err
 	}
 	err = ensureAppCustomResource(ctx, client, a)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	tclient, err := TsuruClientForConfig(client.restConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	appCRD, err := tclient.TsuruV1().Apps(client.Namespace()).Get(ctx, a.GetName(), metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	originalAPPCRD := appCRD.DeepCopy()
 	appCRD.Spec.ServiceAccountName = serviceAccountNameForApp(a)
 
 	deploys, err := allDeploymentsForApp(ctx, client, a)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sort.Slice(deploys, func(i, j int) bool {
 		return deploys[i].Name < deploys[j].Name
@@ -1382,7 +1380,7 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 
 	svcs, err := allServicesForApp(ctx, client, a)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sort.Slice(svcs, func(i, j int) bool {
 		return svcs[i].Name < svcs[j].Name
@@ -1407,7 +1405,7 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 
 	pdbs, err := allPDBsForApp(ctx, client, a)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sort.Slice(pdbs, func(i, j int) bool {
 		return pdbs[i].Name < pdbs[j].Name
@@ -1420,17 +1418,22 @@ func loadAndEnsureAppCustomResourceSynced(ctx context.Context, client *ClusterCl
 
 	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, a)
 	if err != nil && err != appTypes.ErrNoVersionsAvailable {
-		return nil, err
+		return err
 	}
 
 	if version != nil {
 		appCRD.Spec.Configs, err = normalizeConfigs(version)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return tclient.TsuruV1().Apps(client.Namespace()).Update(ctx, appCRD, metav1.UpdateOptions{})
+	if reflect.DeepEqual(originalAPPCRD.Spec, appCRD.Spec) {
+		return nil
+	}
+
+	_, err = tclient.TsuruV1().Apps(client.Namespace()).Update(ctx, appCRD, metav1.UpdateOptions{})
+	return err
 }
 
 func ensureAppCustomResource(ctx context.Context, client *ClusterClient, a provision.App) error {
