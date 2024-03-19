@@ -348,8 +348,13 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
+
+	appInfo, err := app.AppInfo(&a)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(&a)
+	return json.NewEncoder(w).Encode(&appInfo)
 }
 
 type inputApp struct {
@@ -542,7 +547,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	imageReset, _ := strconv.ParseBool(InputValue(r, "imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
-		Plan:           appTypes.Plan{Name: ia.Plan, Override: ia.PlanOverride},
+		Plan:           appTypes.Plan{Name: ia.Plan, Override: &ia.PlanOverride},
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
@@ -574,7 +579,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.Plan.Name != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
 	}
-	if updateData.Plan.Override != (appTypes.PlanOverride{}) {
+	if updateData.Plan.Override != nil && *updateData.Plan.Override != (appTypes.PlanOverride{}) {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlanoverride)
 	}
 	if updateData.Pool != "" {

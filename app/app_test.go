@@ -2123,7 +2123,7 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 	for _, d := range data {
 		a := App{Name: d.name, Plan: appTypes.Plan{Name: d.plan}, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
-		if valid := a.validateNew(context.TODO()); valid != nil && valid.Error() != d.expected {
+		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
@@ -2400,12 +2400,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
@@ -2440,7 +2434,9 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2512,12 +2508,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2555,7 +2545,9 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2596,12 +2588,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"name":     "",
 			"memory":   float64(0),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2637,7 +2623,9 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			}},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2694,12 +2682,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2735,7 +2717,9 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 				"Version":  "",
 			}},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2773,7 +2757,9 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.Quota{InUse: 100, Limit: 777}, nil
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2795,12 +2781,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2905,7 +2885,9 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance3)
 	c.Assert(err, check.IsNil)
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2927,12 +2909,6 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -5053,8 +5029,8 @@ func (s *S) TestUpdatePlanWithCPUBurstExceeds(c *check.C) {
 	s.plan = appTypes.Plan{
 		Name:     "something",
 		Memory:   268435456,
-		CPUBurst: appTypes.CPUBurst{MaxAllowed: 1.8},
-		Override: appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
+		CPUBurst: &appTypes.CPUBurst{MaxAllowed: 1.8},
+		Override: &appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
 	}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",

@@ -9,6 +9,9 @@ import (
 	"net/url"
 
 	"github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/volume"
 )
 
 type App interface {
@@ -56,4 +59,39 @@ type Filter struct {
 type AppService interface {
 	GetByName(ctx context.Context, name string) (App, error)
 	List(ctx context.Context, filter *Filter) ([]App, error)
+}
+
+type AppInfo struct {
+	Name        string   `json:"name"`
+	Platform    string   `json:"platform"`
+	Teams       []string `json:"teams"`
+	Plan        *Plan    `json:"plan"`
+	CName       []string `json:"cname"`
+	Owner       string   `json:"owner"` // we may move this to createdBy
+	Pool        string   `json:"pool"`
+	Description string   `json:"description"`
+	Deploys     uint     `json:"deploys"`
+	TeamOwner   string   `json:"teamowner"`
+	Lock        AppLock  `json:"lock"`
+	Tags        []string `json:"tags"`
+	Metadata    Metadata `json:"metadata"`
+
+	Units                   any `json:"units,omitempty"`                   // TODO: convert to typed field
+	InternalAddresses       any `json:"internalAddresses,omitempty"`       // TODO: convert to typed field
+	Autoscale               any `json:"autoscale,omitempty"`               // TODO: convert to typed field
+	UnitsMetrics            any `json:"unitsMetrics,omitempty"`            // TODO: convert to typed field
+	AutoscaleRecommendation any `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
+
+	Provisioner          string                     `json:"provisioner,omitempty"`
+	Cluster              string                     `json:"cluster,omitempty"`
+	Processes            []Process                  `json:"processes,omitempty"`
+	Routers              []AppRouter                `json:"routers"`
+	VolumeBinds          []volume.VolumeBind        `json:"volumeBinds,omitempty"`
+	ServiceInstanceBinds []bind.ServiceInstanceBind `json:"serviceInstanceBinds"`
+
+	IP         string            `json:"ip,omitempty"`
+	Router     string            `json:"router,omitempty"`
+	RouterOpts map[string]string `json:"routeropts"`
+	Quota      *quota.Quota      `json:"quota,omitempty"`
+	Error      string            `json:"error,omitempty"`
 }

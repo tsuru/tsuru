@@ -203,14 +203,27 @@ func (app *App) Units() ([]provision.Unit, error) {
 	return units, err
 }
 
-// MarshalJSON marshals the app in json format.
-func (app *App) MarshalJSON() ([]byte, error) {
+// AppInfo returns a agregated format of app
+func AppInfo(app *App) (*appTypes.AppInfo, error) {
 	var errMsgs []string
-	result := make(map[string]interface{})
-	result["name"] = app.Name
-	result["platform"] = app.Platform
+	result := &appTypes.AppInfo{
+		Name:        app.Name,
+		Description: app.Description,
+		Platform:    app.Platform,
+		Teams:       app.Teams,
+		Plan:        &app.Plan,
+		CName:       app.CName,
+		Owner:       app.Owner,
+		Pool:        app.Pool,
+		Deploys:     app.Deploys,
+		TeamOwner:   app.TeamOwner,
+		Lock:        app.Lock,
+		Tags:        app.Tags,
+		Metadata:    app.Metadata,
+	}
+
 	if version := app.GetPlatformVersion(); version != "latest" {
-		result["platform"] = fmt.Sprintf("%s:%s", app.Platform, version)
+		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -218,30 +231,19 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	}
 	if prov != nil {
 		provisionerName := prov.GetName()
-		result["provisioner"] = provisionerName
+		result.Provisioner = provisionerName
 		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
 		if clusterErr != nil && clusterErr != provisionTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
 		if cluster != nil {
-			result["cluster"] = cluster.Name
+			result.Cluster = cluster.Name
 		}
 	}
-	result["teams"] = app.Teams
 	units, err := app.Units()
-	result["units"] = units
+	result.Units = units
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
-	}
-	plan := map[string]interface{}{
-		"name":     app.Plan.Name,
-		"memory":   app.Plan.Memory,
-		"cpumilli": app.Plan.CPUMilli,
-		"override": app.Plan.Override,
-	}
-
-	if (app.Plan.CPUBurst != appTypes.CPUBurst{}) {
-		plan["cpuBurst"] = app.Plan.CPUBurst
 	}
 
 	routers, err := app.GetRoutersWithAddr()
@@ -249,25 +251,14 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
 	}
 	if len(routers) > 0 {
-		result["ip"] = routers[0].Address
-		plan["router"] = routers[0].Name
-		result["router"] = routers[0].Name
-		result["routeropts"] = routers[0].Opts
+		result.IP = routers[0].Address
+		result.Router = routers[0].Name
+		result.RouterOpts = routers[0].Opts
 	}
-	result["cname"] = app.CName
-	result["owner"] = app.Owner
-	result["pool"] = app.Pool
-	result["description"] = app.Description
-	result["deploys"] = app.Deploys
-	result["teamowner"] = app.TeamOwner
-	result["plan"] = plan
-	result["lock"] = app.Lock
-	result["tags"] = app.Tags
-	result["routers"] = routers
-	result["metadata"] = app.Metadata
+	result.Routers = routers
 
 	if len(app.Processes) > 0 {
-		result["processes"] = app.Processes
+		result.Processes = app.Processes
 	}
 
 	q, err := app.GetQuota()
@@ -275,7 +266,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
 	}
 	if q != nil {
-		result["quota"] = *q
+		result.Quota = q
 	}
 	if len(app.InternalAddresses) == 0 {
 		err = app.fillInternalAddresses()
@@ -284,35 +275,35 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		}
 	}
 	if len(app.InternalAddresses) > 0 {
-		result["internalAddresses"] = app.InternalAddresses
+		result.InternalAddresses = app.InternalAddresses
 	}
 	autoscale, err := app.AutoScaleInfo()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
 	}
 	if autoscale != nil {
-		result["autoscale"] = autoscale
+		result.Autoscale = autoscale
 	}
 	autoscaleRec, err := app.VerticalAutoScaleRecommendations()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale recommendation info: %+v", err))
 	}
 	if autoscaleRec != nil {
-		result["autoscaleRecommendation"] = autoscaleRec
+		result.AutoscaleRecommendation = autoscaleRec
 	}
 	unitMetrics, err := app.UnitsMetrics()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
 	}
 	if unitMetrics != nil {
-		result["unitsMetrics"] = unitMetrics
+		result.UnitsMetrics = unitMetrics
 	}
 	volumeBinds, err := servicemanager.Volume.BindsForApp(app.ctx, nil, app.Name)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get volume binds: %+v", err))
 	}
 	if volumeBinds != nil {
-		result["volumeBinds"] = volumeBinds
+		result.VolumeBinds = volumeBinds
 	}
 	sis, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
@@ -326,11 +317,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 			Plan:     si.PlanName,
 		})
 	}
-	result["serviceInstanceBinds"] = binds
+	result.ServiceInstanceBinds = binds
 	if len(errMsgs) > 0 {
-		result["error"] = strings.Join(errMsgs, "\n")
+		result.Error = strings.Join(errMsgs, "\n")
 	}
-	return json.Marshal(&result)
+	return result, nil
 }
 
 // GetByName queries the database to find an app identified by the given
@@ -400,7 +391,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		}
 	}
 	app.pruneProcesses()
-	err = app.validateNew(ctx)
+	err = app.validateNew()
 	if err != nil {
 		return err
 	}
@@ -492,7 +483,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		}
 		app.Plan = *plan
 	}
-	app.Plan.MergeOverride(args.UpdateData.Plan.Override)
+	override := args.UpdateData.Plan.Override
+	if override == nil {
+		override = &appTypes.PlanOverride{}
+	}
+	app.Plan.MergeOverride(*override)
 	if teamOwner != "" {
 		team, errTeam := servicemanager.Team.FindByName(app.ctx, teamOwner)
 		if errTeam != nil {
@@ -1115,7 +1110,7 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 }
 
 // validateNew checks app name format, pool and plan
-func (app *App) validateNew(ctx context.Context) error {
+func (app *App) validateNew() error {
 	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
@@ -1141,7 +1136,13 @@ func (app *App) validate() error {
 }
 
 func (app *App) validatePlan() error {
-	if (app.Plan.CPUBurst.MaxAllowed != 0) &&
+	cpuBurst := app.Plan.CPUBurst
+
+	if cpuBurst == nil {
+		cpuBurst = &appTypes.CPUBurst{}
+	}
+
+	if (cpuBurst.MaxAllowed != 0) &&
 		(app.Plan.Override.CPUBurst != nil) &&
 		(*app.Plan.Override.CPUBurst > app.Plan.CPUBurst.MaxAllowed) {
 

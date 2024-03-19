@@ -1812,6 +1812,7 @@ func (s *S) TestUpdateAppWithTagsOnly(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
+	c.Assert(recorder.Body.String(), check.Equals, "jaja")
 
 	var gotApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": "myapp"}).One(&gotApp)
