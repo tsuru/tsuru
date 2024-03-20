@@ -675,15 +675,15 @@ func (p *kubernetesProvisioner) Stop(ctx context.Context, a provision.App, proce
 	return changeState(ctx, a, process, version, servicecommon.ProcessState{Stop: true}, w)
 }
 
-var stateMap = map[apiv1.PodPhase]provision.Status{
-	apiv1.PodPending:   provision.StatusCreated,
-	apiv1.PodRunning:   provision.StatusStarted,
-	apiv1.PodSucceeded: provision.StatusStopped,
-	apiv1.PodFailed:    provision.StatusError,
-	apiv1.PodUnknown:   provision.StatusError,
+var stateMap = map[apiv1.PodPhase]provTypes.UnitStatus{
+	apiv1.PodPending:   provTypes.UnitStatusCreated,
+	apiv1.PodRunning:   provTypes.UnitStatusStarted,
+	apiv1.PodSucceeded: provTypes.UnitStatusStopped,
+	apiv1.PodFailed:    provTypes.UnitStatusError,
+	apiv1.PodUnknown:   provTypes.UnitStatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps []provision.App) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps []provision.App) ([]provTypes.Unit, error) {
 	if len(pods) == 0 {
 		return nil, nil
 	}
@@ -692,7 +692,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps [
 		appMap[baseApp.GetName()] = baseApp
 	}
 
-	var units []provision.Unit
+	var units []provTypes.Unit
 	for _, pod := range pods {
 		if isTerminating(pod) || podIsAllowedToFail(pod) {
 			continue
@@ -710,7 +710,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps [
 			}
 		}
 
-		var status provision.Status
+		var status provTypes.UnitStatus
 		var reason string
 		if pod.Status.Phase == apiv1.PodRunning {
 			status, reason = extractStatusAndReasonFromContainerStatuses(pod.Status.ContainerStatuses)
@@ -720,7 +720,7 @@ func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps [
 		}
 
 		createdAt := pod.CreationTimestamp.Time.In(time.UTC)
-		units = append(units, provision.Unit{
+		units = append(units, provTypes.Unit{
 			ID:           pod.Name,
 			Name:         pod.Name,
 			AppName:      l.AppName(),
@@ -759,7 +759,7 @@ func containersReady(containersStatus []apiv1.ContainerStatus) *bool {
 	return &ready
 }
 
-func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatus) (provision.Status, string) {
+func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatus) (provTypes.UnitStatus, string) {
 	for _, containerStatus := range statuses {
 		if containerStatus.Ready {
 			continue
@@ -768,26 +768,26 @@ func extractStatusAndReasonFromContainerStatuses(statuses []apiv1.ContainerStatu
 		return extractStatusAndReasonFromContainerStatus(containerStatus.State, containerStatus.LastTerminationState)
 
 	}
-	return provision.StatusStarted, ""
+	return provTypes.UnitStatusStarted, ""
 }
 
-func extractStatusAndReasonFromContainerStatus(state apiv1.ContainerState, lastTerminationState apiv1.ContainerState) (provision.Status, string) {
+func extractStatusAndReasonFromContainerStatus(state apiv1.ContainerState, lastTerminationState apiv1.ContainerState) (provTypes.UnitStatus, string) {
 	if state.Waiting != nil {
 		if state.Waiting.Reason == "CrashLoopBackOff" && lastTerminationState.Terminated != nil {
 			if lastTerminationState.Terminated.Reason == "Error" && lastTerminationState.Terminated.ExitCode > 0 {
-				return provision.StatusError, fmt.Sprintf("exitCode: %d", lastTerminationState.Terminated.ExitCode)
+				return provTypes.UnitStatusError, fmt.Sprintf("exitCode: %d", lastTerminationState.Terminated.ExitCode)
 			}
-			return provision.StatusError, lastTerminationState.Terminated.Reason
+			return provTypes.UnitStatusError, lastTerminationState.Terminated.Reason
 		}
 
-		return provision.StatusError, state.Waiting.Reason
+		return provTypes.UnitStatusError, state.Waiting.Reason
 	}
 
 	if lastTerminationState.Terminated != nil {
-		return provision.StatusError, lastTerminationState.Terminated.Reason
+		return provTypes.UnitStatusError, lastTerminationState.Terminated.Reason
 	}
 
-	return provision.StatusStarting, ""
+	return provTypes.UnitStatusStarting, ""
 }
 
 // merged from https://github.com/kubernetes/kubernetes/blob/1f69c34478800e150acd022f6313a15e1cb7a97c/pkg/quota/evaluator/core/pods.go#L333
@@ -801,12 +801,12 @@ func podIsAllowedToFail(pod apiv1.Pod) bool {
 	return pod.Status.Phase == apiv1.PodFailed && podAllowedReasonsToFail[reason]
 }
 
-func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provTypes.Unit, error) {
 	cApps, err := clustersForApps(ctx, apps)
 	if err != nil {
 		return nil, err
 	}
-	var units []provision.Unit
+	var units []provTypes.Unit
 	for _, cApp := range cApps {
 		pods, err := p.podsForApps(ctx, cApp.client, cApp.apps)
 		if err != nil {

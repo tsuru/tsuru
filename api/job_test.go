@@ -1209,7 +1209,7 @@ func (s *S) TestJobInfo(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result jobInfoResult
+	var result jobTypes.JobInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Cluster, check.Equals, "cluster1")

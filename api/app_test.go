@@ -46,6 +46,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 	check "gopkg.in/check.v1"
@@ -675,14 +676,14 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var apps []struct {
 		Name  string
-		Units []provision.Unit
+		Units []provTypes.Unit
 		Error string
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
-	c.Assert(apps[0].Units, check.DeepEquals, []provision.Unit{})
+	c.Assert(apps[0].Units, check.DeepEquals, []provTypes.Unit{})
 	c.Assert(apps[0].Error, check.Equals, "unable to list app units: some units error")
 }
 

@@ -30,7 +30,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -52,10 +52,10 @@ func getProvisioner(ctx context.Context, job *jobTypes.Job) (provision.JobProvis
 }
 
 // Units returns the list of units.
-func Units(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
+func Units(ctx context.Context, job *jobTypes.Job) ([]provTypes.Unit, error) {
 	prov, err := getProvisioner(ctx, job)
 	if err != nil {
-		return []provision.Unit{}, err
+		return []provTypes.Unit{}, err
 	}
 	return prov.JobUnits(context.TODO(), job)
 }
@@ -203,7 +203,7 @@ func ensureDeployOptions(j *jobTypes.Job) error {
 	// TODO: remove this when we remove the old deploy kind from the client side
 	if j.Spec.Container.OriginalImageSrc != "" {
 		j.DeployOptions = &jobTypes.DeployOptions{
-			Kind:  provisionTypes.DeployImage,
+			Kind:  provTypes.DeployImage,
 			Image: j.Spec.Container.OriginalImageSrc,
 		}
 		return nil

@@ -28,6 +28,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	logTypes "github.com/tsuru/tsuru/types/log"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
 
@@ -64,7 +65,7 @@ type FakeApp struct {
 	IP                string
 	platform          string
 	platformVersion   string
-	units             []provision.Unit
+	units             []provTypes.Unit
 	logs              []string
 	logMut            sync.Mutex
 	Commands          []string
@@ -111,16 +112,16 @@ func NewFakeAppWithPool(name, platform, pool string, units int) *FakeApp {
 		name:            name,
 		platform:        repo,
 		platformVersion: version,
-		units:           make([]provision.Unit, units),
+		units:           make([]provTypes.Unit, units),
 		Pool:            pool,
 	}
 	routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
-		app.units[i] = provision.Unit{
+		app.units[i] = provTypes.Unit{
 			ID:     fmt.Sprintf(namefmt, name, i),
-			Status: provision.StatusStarted,
+			Status: provTypes.UnitStatusStarted,
 			IP:     fmt.Sprintf("10.10.10.%d", val),
 			Address: &url.URL{
 				Scheme: "http",
@@ -264,11 +265,11 @@ func (a *FakeApp) GetTeamOwner() string {
 	return a.TeamOwner
 }
 
-func (a *FakeApp) Units() ([]provision.Unit, error) {
+func (a *FakeApp) Units() ([]provTypes.Unit, error) {
 	return a.units, nil
 }
 
-func (a *FakeApp) AddUnit(u provision.Unit) {
+func (a *FakeApp) AddUnit(u provTypes.Unit) {
 	a.units = append(a.units, u)
 }
 
@@ -460,7 +461,7 @@ func (p *FakeProvisioner) JobExecutions(jobName string) int {
 	return 0
 }
 
-func (p *FakeProvisioner) GetUnits(app provision.App) []provision.Unit {
+func (p *FakeProvisioner) GetUnits(app provision.App) []provTypes.Unit {
 	p.mut.RLock()
 	pApp := p.apps[app.GetName()]
 	p.mut.RUnlock()
@@ -636,7 +637,7 @@ func (p *FakeProvisioner) AddUnits(ctx context.Context, app provision.App, n uin
 	return err
 }
 
-func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string, version appTypes.AppVersion) ([]provision.Unit, error) {
+func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process string, w io.Writer, nodeAddr string, version appTypes.AppVersion) ([]provTypes.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
 		return nil, err
 	}
@@ -665,11 +666,11 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 		} else {
 			hostAddr = fmt.Sprintf("10.10.10.%d", val)
 		}
-		unit := provision.Unit{
+		unit := provTypes.Unit{
 			ID:          fmt.Sprintf("%s-%d", name, pApp.unitLen),
 			AppName:     name,
 			Type:        platform,
-			Status:      provision.StatusStarted,
+			Status:      provTypes.UnitStatusStarted,
 			IP:          hostAddr,
 			ProcessName: process,
 			Address: &url.URL{
@@ -681,7 +682,9 @@ func (p *FakeProvisioner) AddUnitsToNode(app provision.App, n uint, process stri
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
 	}
-	result := make([]provision.Unit, int(n))
+
+	result := make([]provTypes.Unit, int(n))
+
 	copy(result, pApp.units[length:])
 	p.apps[app.GetName()] = pApp
 	if w != nil {
@@ -703,7 +706,7 @@ func (p *FakeProvisioner) RemoveUnits(ctx context.Context, app provision.App, n 
 	if !ok {
 		return errNotProvisioned
 	}
-	var newUnits []provision.Unit
+	var newUnits []provTypes.Unit
 	removedCount := n
 	for _, u := range pApp.units {
 		if removedCount > 0 && u.ProcessName == process {
@@ -728,7 +731,7 @@ func (p *FakeProvisioner) RemoveUnits(ctx context.Context, app provision.App, n 
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
+func (p *FakeProvisioner) AddUnit(app provision.App, unit provTypes.Unit) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	a := p.apps[app.GetName()]
@@ -737,28 +740,28 @@ func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 	p.apps[app.GetName()] = a
 }
 
-func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provision.Unit, error) {
+func (p *FakeProvisioner) Units(ctx context.Context, apps ...provision.App) ([]provTypes.Unit, error) {
 	if err := p.getError("Units"); err != nil {
 		return nil, err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	var allUnits []provision.Unit
+	var allUnits []provTypes.Unit
 	for _, a := range apps {
 		allUnits = append(allUnits, p.apps[a.GetName()].units...)
 	}
 	return allUnits, nil
 }
 
-func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provision.UnitMetric, error) {
+func (p *FakeProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provTypes.UnitMetric, error) {
 	if err := p.getError("UnitsMetrics"); err != nil {
 		return nil, err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	var unitsMetrics []provision.UnitMetric
+	var unitsMetrics []provTypes.UnitMetric
 	for _, unit := range p.apps[a.GetName()].units {
-		unitsMetrics = append(unitsMetrics, provision.UnitMetric{
+		unitsMetrics = append(unitsMetrics, provTypes.UnitMetric{
 			ID:     unit.ID,
 			CPU:    "10m",
 			Memory: "100Mi",
@@ -814,7 +817,7 @@ func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process s
 	}
 	pApp.stops[process]++
 	for i, u := range pApp.units {
-		u.Status = provision.StatusStopped
+		u.Status = provTypes.UnitStatusStopped
 		pApp.units[i] = u
 	}
 	p.apps[app.GetName()] = pApp
@@ -1004,7 +1007,7 @@ func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 type provisionedApp struct {
-	units     []provision.Unit
+	units     []provTypes.Unit
 	app       provision.App
 	restarts  map[string]int
 	starts    map[string]int
@@ -1016,7 +1019,7 @@ type provisionedApp struct {
 }
 
 type provisionedJob struct {
-	units      []provision.Unit
+	units      []provTypes.Unit
 	job        *jobTypes.Job
 	executions int
 }
@@ -1074,7 +1077,7 @@ type JobProvisioner struct {
 var _ provision.JobProvisioner = &JobProvisioner{}
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *JobProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
+func (p *JobProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provTypes.Unit, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	return p.jobs[job.Name].units, nil
@@ -1086,7 +1089,7 @@ func (p *JobProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job) error
 	defer p.mut.Unlock()
 	name := job.Name
 	p.jobs[name] = &provisionedJob{
-		units: []provision.Unit{},
+		units: []provTypes.Unit{},
 		job:   job,
 	}
 	return nil
@@ -1118,7 +1121,7 @@ func (p *JobProvisioner) NewJobWithUnits(ctx context.Context, job *jobTypes.Job)
 	defer p.mut.Unlock()
 	name := job.Name
 	p.jobs[name] = &provisionedJob{
-		units: []provision.Unit{
+		units: []provTypes.Unit{
 			{
 				Name:        "unit1",
 				ProcessName: "p1",

@@ -43,6 +43,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -2165,7 +2166,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	for _, u := range units {
-		c.Assert(u.Status, check.Equals, provision.StatusStopped)
+		c.Assert(u.Status, check.Equals, provTypes.UnitStatusStopped)
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	batchv1 "k8s.io/api/batch/v1"
 	apiv1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -309,7 +310,7 @@ func getManualJobName(job string) string {
 }
 
 // JobUnits returns information about units related to a specific Job or CronJob
-func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job) ([]provTypes.Unit, error) {
 	client, err := clusterForPool(ctx, job.Pool)
 	if err != nil {
 		return nil, err
@@ -372,13 +373,13 @@ func (p *kubernetesProvisioner) getPodsForJob(ctx context.Context, client *Clust
 	return pods.Items, nil
 }
 
-func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *ClusterClient, k8sJobs []batchv1.Job, job *jobTypes.Job) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *ClusterClient, k8sJobs []batchv1.Job, job *jobTypes.Job) ([]provTypes.Unit, error) {
 	if len(k8sJobs) == 0 {
 		return nil, nil
 	}
-	var units []provision.Unit
+	var units []provTypes.Unit
 	for _, k8sJob := range k8sJobs {
-		var status provision.Status
+		var status provTypes.UnitStatus
 		var restarts int32
 		pods, err := p.getPodsForJob(ctx, client, &k8sJob)
 		if err != nil {
@@ -389,15 +390,15 @@ func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *Clus
 		}
 		switch {
 		case k8sJob.Status.Failed > 0:
-			status = provision.StatusError
+			status = provTypes.UnitStatusError
 		case k8sJob.Status.Succeeded > 0:
-			status = provision.StatusSucceeded
+			status = provTypes.UnitStatusSucceeded
 		default:
-			status = provision.StatusStarted
+			status = provTypes.UnitStatusStarted
 		}
 
 		createdAt := k8sJob.CreationTimestamp.Time.In(time.UTC)
-		units = append(units, provision.Unit{
+		units = append(units, provTypes.Unit{
 			ID:        k8sJob.Name,
 			Name:      k8sJob.Name,
 			Status:    status,

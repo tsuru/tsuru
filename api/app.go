@@ -39,6 +39,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
@@ -185,7 +186,7 @@ type miniApp struct {
 	Pool        string               `json:"pool"`
 	TeamOwner   string               `json:"teamowner"`
 	Plan        appTypes.Plan        `json:"plan"`
-	Units       []provision.Unit     `json:"units"`
+	Units       []provTypes.Unit     `json:"units"`
 	CName       []string             `json:"cname"`
 	IP          string               `json:"ip"`
 	Routers     []appTypes.AppRouter `json:"routers"`
@@ -203,7 +204,7 @@ func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (miniA
 		errorStr = unitData.Err.Error()
 	}
 	if unitData.Units == nil {
-		unitData.Units = []provision.Unit{}
+		unitData.Units = []provTypes.Unit{}
 	}
 	ma := miniApp{
 		Name:      app.Name,
