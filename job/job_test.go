@@ -883,6 +883,10 @@ func (s *S) TestUpdateJob(c *check.C) {
 				Pool:      s.Pool,
 				Teams:     []string{s.team.Name},
 				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+				DeployOptions: &jobTypes.DeployOptions{
+					Kind:  provisionTypes.DeployImage,
+					Image: "alpine:v1",
+				},
 				Spec: jobTypes.JobSpec{
 					Schedule: "* * * * *",
 					Container: jobTypes.ContainerInfo{
