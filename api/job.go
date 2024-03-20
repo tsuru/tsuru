@@ -223,7 +223,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		})
 	}
 
-	result := jobInfoResult{
+	result := jobTypes.JobInfo{
 		Job:                  j,
 		Units:                units,
 		ServiceInstanceBinds: binds,
@@ -298,14 +298,6 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	return err
-}
-
-// TODO: after move of provision.Unit to types, leave this structure to types/job
-type jobInfoResult struct {
-	Cluster              string                          `json:"cluster,omitempty"`
-	Job                  *jobTypes.Job                   `json:"job,omitempty"`
-	Units                []provision.Unit                `json:"units,omitempty"`
-	ServiceInstanceBinds []bindTypes.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
 }
 
 // title: job update

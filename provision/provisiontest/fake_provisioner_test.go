@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -50,7 +51,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TestFakeAppAddUnit(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(provision.Unit{ID: "jean-0"})
+	app.AddUnit(provTypes.Unit{ID: "jean-0"})
 	c.Assert(app.units, check.HasLen, 1)
 }
 
@@ -318,9 +319,9 @@ func (s *S) TestStops(c *check.C) {
 }
 
 func (s *S) TestGetUnits(c *check.C) {
-	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
-		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provision.StatusStarted},
+	list := []provTypes.Unit{
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provTypes.UnitStatusStarted},
+		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provTypes.UnitStatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -821,7 +822,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
+	p.AddUnit(app, provTypes.Unit{ID: "red-sector/1"})
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -833,7 +834,7 @@ func (s *S) TestFakeProvisionerUnits(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
+	p.AddUnit(app, provTypes.Unit{ID: "red-sector/1"})
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -852,14 +853,14 @@ func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
+	unit := provTypes.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provTypes.UnitStatusStarted}
 	p.AddUnit(app, unit)
-	err = p.SetUnitStatus(unit, provision.StatusError)
+	err = p.SetUnitStatus(unit, provTypes.UnitStatusError)
 	c.Assert(err, check.IsNil)
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
+	c.Assert(unit.Status, check.Equals, provTypes.UnitStatusError)
 }
 
 func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
@@ -867,20 +868,20 @@ func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
+	unit := provTypes.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provTypes.UnitStatusStarted}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{ID: "red-sector/1"}
-	err = p.SetUnitStatus(unit, provision.StatusError)
+	unit = provTypes.Unit{ID: "red-sector/1"}
+	err = p.SetUnitStatus(unit, provTypes.UnitStatusError)
 	c.Assert(err, check.IsNil)
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
+	c.Assert(unit.Status, check.Equals, provTypes.UnitStatusError)
 }
 
 func (s *S) TestFakeProvisionerSetUnitStatusAppNotFound(c *check.C) {
 	p := NewFakeProvisioner()
-	err := p.SetUnitStatus(provision.Unit{AppName: "something"}, provision.StatusError)
+	err := p.SetUnitStatus(provTypes.Unit{AppName: "something"}, provTypes.UnitStatusError)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
@@ -889,8 +890,8 @@ func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
-	err = p.SetUnitStatus(unit, provision.StatusError)
+	unit := provTypes.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provTypes.UnitStatusStarted}
+	err = p.SetUnitStatus(unit, provTypes.UnitStatusError)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*provision.UnitNotFoundError)
 	c.Assert(ok, check.Equals, true)
@@ -902,7 +903,7 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
+	unit := provTypes.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
@@ -919,7 +920,7 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
+	unit := provTypes.Unit{AppName: "shine-on", ID: "unit/1"}
 	err = p.RegisterUnit(context.TODO(), app, unit.ID, nil)
 	c.Assert(err, check.ErrorMatches, "unit \"unit/1\" not found")
 }
@@ -929,7 +930,7 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
+	unit := provTypes.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
@@ -951,11 +952,11 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.Provision(context.TODO(), app2)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
+	unit := provTypes.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provTypes.UnitStatusStarting}
 	p.AddUnit(app1, unit)
-	unit = provision.Unit{AppName: "unfairly-tale", ID: "unit/2", Status: provision.StatusStarting}
+	unit = provTypes.Unit{AppName: "unfairly-tale", ID: "unit/2", Status: provTypes.UnitStatusStarting}
 	p.AddUnit(app2, unit)
-	err = p.SetUnitStatus(unit, provision.StatusError)
+	err = p.SetUnitStatus(unit, provTypes.UnitStatusError)
 	c.Assert(err, check.IsNil)
 	apps, err := p.FilterAppsByUnitStatus(context.TODO(), []provision.App{app1, app2}, []string{"starting"})
 	c.Assert(apps, check.DeepEquals, []provision.App{app1})
@@ -963,8 +964,8 @@ func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
 }
 
 func (s *S) TestGetAppFromUnitID(c *check.C) {
-	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
+	list := []provTypes.Unit{
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provTypes.UnitStatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()

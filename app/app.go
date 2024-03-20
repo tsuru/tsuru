@@ -48,7 +48,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -171,17 +171,17 @@ func (app *App) getProvisioner() (provision.Provisioner, error) {
 }
 
 // Units returns the list of units.
-func (app *App) Units() ([]provision.Unit, error) {
+func (app *App) Units() ([]provTypes.Unit, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
-		return []provision.Unit{}, err
+		return []provTypes.Unit{}, err
 	}
 	units, err := prov.Units(context.TODO(), app)
 	if units == nil {
 		// This is unusual but was done because previously this method didn't
 		// return an error. This ensures we always return an empty list instead
 		// of nil to preserve compatibility with old clients.
-		units = []provision.Unit{}
+		units = []provTypes.Unit{}
 	}
 	return units, err
 }
@@ -216,7 +216,7 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 		provisionerName := prov.GetName()
 		result.Provisioner = provisionerName
 		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
-		if clusterErr != nil && clusterErr != provisionTypes.ErrNoCluster {
+		if clusterErr != nil && clusterErr != provTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
 		if cluster != nil {
@@ -886,7 +886,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		return err
 	}
 	for _, u := range units {
-		if u.Status == provision.StatusStopped {
+		if u.Status == provTypes.UnitStatusStopped {
 			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
@@ -955,7 +955,7 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 }
 
 // SetUnitStatus changes the status of the given unit.
-func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
+func (app *App) SetUnitStatus(unitName string, status provTypes.UnitStatus) error {
 	units, err := app.Units()
 	if err != nil {
 		return err
@@ -1366,7 +1366,7 @@ func cleanupOtherProcesses(vpMap map[vpPair]int, process string) {
 	}
 }
 
-func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []provision.Unit, process string) map[vpPair]int {
+func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []provTypes.Unit, process string) map[vpPair]int {
 	pastUnitsMap := map[vpPair]int{}
 	if version == nil {
 		for _, unit := range units {
@@ -1551,7 +1551,7 @@ func (app *App) GetQuotaInUse() (int, error) {
 	counter := 0
 	for _, u := range units {
 		switch u.Status {
-		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped:
+		case provTypes.UnitStatusStarting, provTypes.UnitStatusStarted, provTypes.UnitStatusStopped:
 			counter++
 		}
 	}
@@ -1908,7 +1908,7 @@ func (f *Filter) Query() bson.M {
 }
 
 type AppUnitsResponse struct {
-	Units []provision.Unit
+	Units []provTypes.Unit
 	Err   error
 }
 
@@ -1929,7 +1929,7 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 	}
 	type parallelRsp struct {
 		provApps []provision.App
-		units    []provision.Unit
+		units    []provTypes.Unit
 		err      error
 	}
 	rspCh := make(chan parallelRsp, len(provMap))
@@ -2802,7 +2802,7 @@ func (app *App) VerticalAutoScaleRecommendations() ([]provision.RecommendedResou
 	return autoscaleProv.GetVerticalAutoScaleRecommendations(app.ctx, app)
 }
 
-func (app *App) UnitsMetrics() ([]provision.UnitMetric, error) {
+func (app *App) UnitsMetrics() ([]provTypes.UnitMetric, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err

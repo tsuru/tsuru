@@ -42,6 +42,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -1015,11 +1016,11 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	err = a.SetUnitStatus(units[0].ID, provision.StatusError)
+	err = a.SetUnitStatus(units[0].ID, provTypes.UnitStatusError)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Status, check.Equals, provision.StatusError)
+	c.Assert(units[0].Status, check.Equals, provTypes.UnitStatusError)
 }
 
 func (s *S) TestSetUnitStatusPartialID(c *check.C) {
@@ -1030,16 +1031,16 @@ func (s *S) TestSetUnitStatusPartialID(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	name := units[0].ID
-	err = a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
+	err = a.SetUnitStatus(name[0:len(name)-2], provTypes.UnitStatusError)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Status, check.Equals, provision.StatusError)
+	c.Assert(units[0].Status, check.Equals, provTypes.UnitStatusError)
 }
 
 func (s *S) TestSetUnitStatusNotFound(c *check.C) {
 	a := App{Name: "app-name", Platform: "django"}
-	err := a.SetUnitStatus("someunit", provision.StatusError)
+	err := a.SetUnitStatus("someunit", provTypes.UnitStatusError)
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*provision.UnitNotFoundError)
 	c.Assert(ok, check.Equals, true)
@@ -2338,7 +2339,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	for _, u := range units {
-		c.Assert(u.Status, check.Equals, provision.StatusStopped)
+		c.Assert(u.Status, check.Equals, provTypes.UnitStatusStopped)
 	}
 }
 
