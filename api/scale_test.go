@@ -83,6 +83,9 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		c.Assert(recorder.Body.String(), check.Equals, "check err")
+	}
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	spec, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)

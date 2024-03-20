@@ -124,15 +124,9 @@ type App struct {
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
 
-	// InterApp Properties implemented by provision.InterAppProvisioner
-	// it is lazy generated on the first call to FillInternalAddresses
-	InternalAddresses []provision.AppInternalAddress `json:",omitempty" bson:"-"`
-
 	Quota quota.Quota
 
-	ctx         context.Context
-	builder     builder.Builder
-	provisioner provision.Provisioner
+	ctx context.Context
 }
 
 var (
@@ -152,39 +146,28 @@ func (app *App) Context() context.Context {
 }
 
 func (app *App) getBuilder() (builder.Builder, error) {
-	if app.builder != nil {
-		return app.builder, nil
-	}
 	p, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
-	app.builder, err = builder.GetForProvisioner(p)
-	return app.builder, err
+	return builder.GetForProvisioner(p)
 }
 
-func (app *App) fillInternalAddresses() error {
+func internalAddresses(app *App) ([]appTypes.AppInternalAddress, error) {
 	provisioner, err := app.getProvisioner()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if interAppProvisioner, ok := provisioner.(provision.InterAppProvisioner); ok {
-		app.InternalAddresses, err = interAppProvisioner.InternalAddresses(app.ctx, app)
-		if err != nil {
-			return err
-		}
+		return interAppProvisioner.InternalAddresses(app.ctx, app)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
-	var err error
-	if app.provisioner == nil {
-		app.provisioner, err = pool.GetProvisionerForPool(app.ctx, app.Pool)
-	}
-	return app.provisioner, err
+	return pool.GetProvisionerForPool(app.ctx, app.Pool)
 }
 
 // Units returns the list of units.
@@ -268,14 +251,13 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 	if q != nil {
 		result.Quota = q
 	}
-	if len(app.InternalAddresses) == 0 {
-		err = app.fillInternalAddresses()
-		if err != nil {
-			errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
-		}
+	internalAddresses, err := internalAddresses(app)
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
 	}
-	if len(app.InternalAddresses) > 0 {
-		result.InternalAddresses = app.InternalAddresses
+
+	if len(internalAddresses) > 0 {
+		result.InternalAddresses = internalAddresses
 	}
 	autoscale, err := app.AutoScaleInfo()
 	if err != nil {
@@ -457,12 +439,16 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	tags := processTags(args.UpdateData.Tags)
 	oldApp := *app
 
+	oldPlan, err := json.Marshal(oldApp.Plan)
+	if err != nil {
+		return err
+	}
+
 	if description != "" {
 		app.Description = description
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		app.provisioner = nil
 		_, err = app.getPoolForApp(app.Pool)
 		if err != nil {
 			return err
@@ -488,6 +474,12 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		override = &appTypes.PlanOverride{}
 	}
 	app.Plan.MergeOverride(*override)
+
+	newPlan, err := json.Marshal(app.Plan)
+	if err != nil {
+		return err
+	}
+
 	if teamOwner != "" {
 		team, errTeam := servicemanager.Team.FindByName(app.ctx, teamOwner)
 		if errTeam != nil {
@@ -557,7 +549,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
 			&destroyAppOldProvisioner)
-	} else if !reflect.DeepEqual(app.Plan, oldApp.Plan) && args.ShouldRestart {
+	} else if string(newPlan) != string(oldPlan) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
@@ -1377,7 +1369,11 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 }
 
 func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion, process string) error {
-	units, err := app.provisioner.Units(ctx, app)
+	provisioner, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	units, err := provisioner.Units(ctx, app)
 	if err != nil {
 		return err
 	}

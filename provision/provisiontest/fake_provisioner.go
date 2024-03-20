@@ -81,7 +81,7 @@ type FakeApp struct {
 	Teams             []string
 	Tags              []string
 	Metadata          appTypes.Metadata
-	InternalAddresses []provision.AppInternalAddress
+	InternalAddresses []appTypes.AppInternalAddress
 }
 
 func NewFakeJob(name, pool, teamOwner string) *jobTypes.Job {
@@ -900,8 +900,8 @@ func (p *FakeProvisioner) UpdateApp(ctx context.Context, old, new provision.App,
 	return nil
 }
 
-func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
-	return []provision.AppInternalAddress{
+func (p *FakeProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]appTypes.AppInternalAddress, error) {
+	return []appTypes.AppInternalAddress{
 		{
 			Domain:   fmt.Sprintf("%s-web.fake-cluster.local", a.GetName()),
 			Port:     80,
