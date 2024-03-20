@@ -1041,7 +1041,7 @@ func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.Ap
 	return errors.WithStack(err)
 }
 
-func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
+func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]appTypes.AppInternalAddress, error) {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
@@ -1087,14 +1087,14 @@ func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provisi
 		return iProcess < jProcess
 	})
 
-	addresses := []provision.AppInternalAddress{}
+	addresses := []appTypes.AppInternalAddress{}
 	for _, service := range svcs {
 		// we can't show headless services
 		if service.Spec.ClusterIP == "None" {
 			continue
 		}
 		for _, port := range service.Spec.Ports {
-			addresses = append(addresses, provision.AppInternalAddress{
+			addresses = append(addresses, appTypes.AppInternalAddress{
 				Domain:   fmt.Sprintf("%s.%s.svc.cluster.local", service.Name, ns),
 				Protocol: string(port.Protocol),
 				Port:     port.Port,

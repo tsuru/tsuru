@@ -55,28 +55,36 @@ func (p *Plan) MergeOverride(po PlanOverride) {
 		}
 	}
 
-	p.Override = newOverride
+	if (*newOverride == PlanOverride{}) {
+		p.Override = nil
+	} else {
+		p.Override = newOverride
+	}
 }
 
 func (p Plan) GetMemory() int64 {
-	if p.Override.Memory != nil {
+	if p.Override != nil && p.Override.Memory != nil {
 		return *p.Override.Memory
 	}
 	return p.Memory
 }
 
 func (p Plan) GetMilliCPU() int {
-	if p.Override.CPUMilli != nil {
+	if p.Override != nil && p.Override.CPUMilli != nil {
 		return *p.Override.CPUMilli
 	}
 	return p.CPUMilli
 }
 
 func (p Plan) GetCPUBurst() float64 {
-	if p.Override.CPUBurst != nil {
+	if p.Override != nil && p.Override.CPUBurst != nil {
 		return *p.Override.CPUBurst
 	}
-	return p.CPUBurst.Default
+	if p.CPUBurst != nil {
+		return p.CPUBurst.Default
+	}
+
+	return 0
 }
 
 type PlanService interface {
