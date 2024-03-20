@@ -852,6 +852,50 @@ func (s *S) TestUpdateJob(c *check.C) {
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "update concurrency policy",
+			oldJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc: "alpine:v1",
+						Command:          []string{"echo", "hello!"},
+					},
+				},
+			},
+			newJob: jobTypes.Job{
+				Name: "some-job",
+				Spec: jobTypes.JobSpec{
+					ConcurrencyPolicy: func() *string { s := "Forbid"; return &s }(),
+				},
+			},
+			expectedJob: jobTypes.Job{
+				Name:      "some-job",
+				TeamOwner: s.team.Name,
+				Plan:      *s.defaultPlan,
+				Owner:     s.user.Email,
+				Pool:      s.Pool,
+				Teams:     []string{s.team.Name},
+				Metadata:  app.Metadata{Labels: []app.MetadataItem{}, Annotations: []app.MetadataItem{}},
+				Spec: jobTypes.JobSpec{
+					Schedule: "* * * * *",
+					Container: jobTypes.ContainerInfo{
+						OriginalImageSrc:      "alpine:v1",
+						InternalRegistryImage: "fake.registry.io/job-some-job:latest",
+						Command:               []string{"echo", "hello!"},
+					},
+					ConcurrencyPolicy: func() *string { s := "Forbid"; return &s }(),
+					ServiceEnvs:       []bind.ServiceEnvVar{}, Envs: []bind.EnvVar{},
+					ActiveDeadlineSeconds: func() *int64 { i := int64(0); return &i }(),
+				},
+			},
+		},
 	}
 	for _, t := range updateTests {
 		if t.beforeFunc != nil {

@@ -48,6 +48,7 @@ type ContainerInfo struct {
 }
 
 type JobSpec struct {
+	ConcurrencyPolicy     *string                   `json:"concurrentPolicy,omitempty"`
 	Completions           *int32                    `json:"completions,omitempty"`
 	Parallelism           *int32                    `json:"parallelism,omitempty"`
 	ActiveDeadlineSeconds *int64                    `json:"activeDeadlineSeconds,omitempty"`

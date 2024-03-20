@@ -181,8 +181,9 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 			OriginalImageSrc: "busybox:1.28",
 			Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 		},
-		Schedule: "* * * * *",
-		Manual:   false,
+		Schedule:          "* * * * *",
+		Manual:            false,
+		ConcurrencyPolicy: func() *string { s := "Allow"; return &s }(),
 	}
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(j)
@@ -247,14 +248,12 @@ func (s *S) TestCreateFullyFeaturedCronjob(c *check.C) {
 				OriginalImageSrc: "busybox:1.28",
 				Command:          []string{"/bin/sh", "-c", "echo Hello!"},
 			},
-			Schedule:    "* * * * *",
-			Manual:      false,
-			ServiceEnvs: []bindTypes.ServiceEnvVar{},
-			Envs:        []bindTypes.EnvVar{},
-			ActiveDeadlineSeconds: func() *int64 {
-				v := int64(0)
-				return &v
-			}(),
+			Schedule:              "* * * * *",
+			Manual:                false,
+			ServiceEnvs:           []bindTypes.ServiceEnvVar{},
+			Envs:                  []bindTypes.EnvVar{},
+			ActiveDeadlineSeconds: func() *int64 { v := int64(0); return &v }(),
+			ConcurrencyPolicy:     func() *string { s := "Allow"; return &s }(),
 		},
 	}
 	c.Assert(gotJob, check.DeepEquals, expectedJob)
