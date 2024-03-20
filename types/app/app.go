@@ -76,11 +76,11 @@ type AppInfo struct {
 	Tags        []string `json:"tags"`
 	Metadata    Metadata `json:"metadata"`
 
-	Units                   any `json:"units,omitempty"`                   // TODO: convert to typed field
-	InternalAddresses       any `json:"internalAddresses,omitempty"`       // TODO: convert to typed field
-	Autoscale               any `json:"autoscale,omitempty"`               // TODO: convert to typed field
-	UnitsMetrics            any `json:"unitsMetrics,omitempty"`            // TODO: convert to typed field
-	AutoscaleRecommendation any `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
+	Units                   any                  `json:"units,omitempty"` // TODO: convert to typed field
+	InternalAddresses       []AppInternalAddress `json:"internalAddresses,omitempty"`
+	Autoscale               any                  `json:"autoscale,omitempty"`               // TODO: convert to typed field
+	UnitsMetrics            any                  `json:"unitsMetrics,omitempty"`            // TODO: convert to typed field
+	AutoscaleRecommendation any                  `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
 
 	Provisioner          string                     `json:"provisioner,omitempty"`
 	Cluster              string                     `json:"cluster,omitempty"`
@@ -94,4 +94,12 @@ type AppInfo struct {
 	RouterOpts map[string]string `json:"routeropts"`
 	Quota      *quota.Quota      `json:"quota,omitempty"`
 	Error      string            `json:"error,omitempty"`
+}
+
+type AppInternalAddress struct {
+	Domain   string
+	Protocol string
+	Port     int32
+	Version  string
+	Process  string
 }
