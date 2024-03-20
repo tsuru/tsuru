@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	authTypes "github.com/tsuru/tsuru/types/auth"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
 // Token type alias exists to ease refactoring while we move auth types to
@@ -54,33 +53,6 @@ func ParseToken(header string) (string, error) {
 }
 
 func BaseTokenPermission(t Token) ([]permission.Permission, error) {
-	if t.IsAppToken() {
-		// TODO(cezarsa): Improve handling of app tokens. These permissions
-		// listed here are the ones required by deploy-agent and legacy tsuru-
-		// unit-agent.
-		return []permission.Permission{
-			{
-				Scheme:  permission.PermAppUpdateUnitRegister,
-				Context: permission.Context(permTypes.CtxApp, t.GetAppName()),
-			},
-			{
-				Scheme:  permission.PermAppUpdateLog,
-				Context: permission.Context(permTypes.CtxApp, t.GetAppName()),
-			},
-			{
-				Scheme:  permission.PermAppUpdateUnitStatus,
-				Context: permission.Context(permTypes.CtxApp, t.GetAppName()),
-			},
-			{
-				Scheme:  permission.PermAppReadDeploy,
-				Context: permission.Context(permTypes.CtxApp, t.GetAppName()),
-			},
-			{
-				Scheme:  permission.PermAppReadLog,
-				Context: permission.Context(permTypes.CtxApp, t.GetAppName()),
-			},
-		}, nil
-	}
 	u, err := ConvertNewUser(t.User())
 	if err != nil {
 		return nil, err

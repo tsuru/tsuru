@@ -631,16 +631,8 @@ func (t fakeToken) User() (*authTypes.User, error) {
 	return &authTypes.User{}, nil
 }
 
-func (t fakeToken) IsAppToken() bool {
-	return false
-}
-
 func (t fakeToken) GetUserName() string {
 	return "faketoken"
-}
-
-func (t fakeToken) GetAppName() string {
-	return ""
 }
 
 func (t fakeToken) Engine() string {

@@ -37,9 +37,7 @@ import (
 )
 
 const (
-	tsuruMin      = "1.0.1"
-	craneMin      = "1.0.0"
-	tsuruAdminMin = "1.0.0"
+	tsuruMin = "1.0.1"
 
 	defaultMaxMemory = 32 << 20 // 32 MB
 
@@ -76,28 +74,16 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 
 	span := opentracing.SpanFromContext(r.Context())
 
-	if t.IsAppToken() {
-		tokenAppName := t.GetAppName()
-		if span != nil {
-			span.SetTag("app.name", tokenAppName)
-		}
-		if q := r.URL.Query().Get(":app"); q != "" && tokenAppName != q {
-			return nil, &tsuruErrors.HTTP{
-				Code:    http.StatusForbidden,
-				Message: fmt.Sprintf("app token mismatch, token for %q, request for %q", t.GetAppName(), q),
-			}
-		}
-	} else {
-		if span != nil {
-			span.SetTag("user.name", t.GetUserName())
-		}
-		if q := r.URL.Query().Get(":app"); q != "" {
-			_, err = getAppFromContext(q, r)
-			if err != nil {
-				return nil, err
-			}
+	if span != nil {
+		span.SetTag("user.name", t.GetUserName())
+	}
+	if q := r.URL.Query().Get(":app"); q != "" {
+		_, err = getAppFromContext(q, r)
+		if err != nil {
+			return nil, err
 		}
 	}
+
 	return t, nil
 }
 
@@ -119,12 +105,6 @@ func tokenByAllAuthEngines(ctx stdContext.Context, token string) (auth.Token, er
 
 	t, err = peer.Auth(ctx, token)
 	if err == nil {
-		return t, nil
-	}
-
-	appScheme := auth.GetAppScheme()
-	t, appAuthErr := appScheme.Auth(ctx, token)
-	if appAuthErr == nil && t.IsAppToken() {
 		return t, nil
 	}
 
@@ -189,8 +169,6 @@ func setRequestIDHeaderMiddleware(w http.ResponseWriter, r *http.Request, next h
 
 func setVersionHeadersMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	w.Header().Set("Supported-Tsuru", tsuruMin)
-	w.Header().Set("Supported-Crane", craneMin)
-	w.Header().Set("Supported-Tsuru-Admin", tsuruAdminMin)
 	next(w, r)
 }
 

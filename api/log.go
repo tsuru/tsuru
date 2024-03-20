@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/api/context"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -32,10 +31,6 @@ func addLogs(ws *websocket.Conn) {
 	t := context.GetAuthToken(req)
 	if t == nil {
 		err = errors.Errorf("wslogs: no token")
-		return
-	}
-	if t.GetAppName() != app.InternalAppName {
-		err = errors.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
 		return
 	}
 	err = scanLogs(ws)

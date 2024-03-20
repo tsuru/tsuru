@@ -63,16 +63,8 @@ func (t *jwtToken) User() (*authTypes.User, error) {
 	return t.AuthUser, nil
 }
 
-func (t *jwtToken) IsAppToken() bool {
-	return false
-}
-
 func (t *jwtToken) GetUserName() string {
 	return t.AuthUser.Email
-}
-
-func (t *jwtToken) GetAppName() string {
-	return ""
 }
 
 func (t *jwtToken) Engine() string {

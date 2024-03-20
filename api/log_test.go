@@ -58,8 +58,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "name": "myapp2", "unit": "unit4"}
 	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "name": "myapp1", "unit": "unit3"}
 	`
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
+
 	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
 	testServerURL, err := url.Parse(srv.URL)
@@ -67,7 +66,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	wsURL := fmt.Sprintf("ws://%s/logs", testServerURL.Host)
 	config, err := websocket.NewConfig(wsURL, "ws://localhost/")
 	c.Assert(err, check.IsNil)
-	config.Header.Set("Authorization", "bearer "+token.GetValue())
+	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	wsConn, err := websocket.DialConfig(config)
 	c.Assert(err, check.IsNil)
 	defer wsConn.Close()
@@ -136,8 +135,6 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 	{"date": "2015-06-16T15:00:00.000Z", "message": "msg1", "source": "web", "name": "myapp1", "unit": "unit1"}
 	{"date": "2015-06-16T15:00:01.000Z", "message": "msg2", "source": "web", "name": "myapp2", "unit": "unit2"}
 	`
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
 	srv := httptest.NewServer(s.testServer)
 	defer srv.Close()
 	testServerURL, err := url.Parse(srv.URL)
@@ -151,7 +148,7 @@ func (s *S) TestAddLogsHandlerConcurrent(c *check.C) {
 			defer wg.Done()
 			config, wsErr := websocket.NewConfig(wsURL, "ws://localhost/")
 			c.Assert(wsErr, check.IsNil)
-			config.Header.Set("Authorization", "bearer "+token.GetValue())
+			config.Header.Set("Authorization", "bearer "+s.token.GetValue())
 			wsConn, wsErr := websocket.DialConfig(config)
 			c.Assert(wsErr, check.IsNil)
 			defer wsConn.Close()
@@ -185,26 +182,6 @@ loop:
 	compareLogs(c, logs, []appTypes.Applog{
 		{Date: baseTime, Message: "msg1", Source: "web", Name: "myapp1", Unit: "unit1"},
 	})
-}
-
-func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
-	srv := httptest.NewServer(s.testServer)
-	defer srv.Close()
-	testServerURL, err := url.Parse(srv.URL)
-	c.Assert(err, check.IsNil)
-	wsURL := fmt.Sprintf("ws://%s/logs", testServerURL.Host)
-	config, err := websocket.NewConfig(wsURL, "ws://localhost/")
-	c.Assert(err, check.IsNil)
-	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	wsConn, err := websocket.DialConfig(config)
-	c.Assert(err, check.IsNil)
-	defer wsConn.Close()
-	_, err = wsConn.Write([]byte("a"))
-	c.Assert(err, check.IsNil)
-	buffer := make([]byte, 1024)
-	n, err := wsConn.Read(buffer)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(buffer[:n]), check.Equals, `{"error":"wslogs: invalid token app name: \"\""}`)
 }
 
 func (s *S) BenchmarkScanLogs(c *check.C) {

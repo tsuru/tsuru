@@ -465,56 +465,6 @@ func (s *DeploySuite) TestDeployUploadLargeFile(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
-func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
-	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
-		return newAppVersion(c, app), nil
-	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:      "otherapp",
-		Platform:  "python",
-		TeamOwner: s.team.Name,
-		Router:    "fake",
-	}
-	err = app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano&commit=123"))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Matches, ".*Builder deploy called\nOK\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  "fulano",
-		Kind:   "app.deploy",
-		StartCustomData: map[string]interface{}{
-			"app.name":   a.Name,
-			"commit":     "123",
-			"filesize":   0,
-			"kind":       "git",
-			"archiveurl": "http://something.tar.gz",
-			"user":       "fulano",
-			"image":      "",
-			"origin":     "git",
-			"build":      false,
-			"rollback":   false,
-			"message":    "",
-		},
-		EndCustomData: map[string]interface{}{
-			"image": "tsuru/app-" + a.Name + ":v1",
-		},
-		LogMatches: []string{`.*Builder deploy called`},
-	}, eventtest.HasEvent)
-}
-
 func (s *DeploySuite) TestDeployWithCommitUserToken(c *check.C) {
 	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
@@ -566,22 +516,20 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err = app.CreateApp(context.TODO(), &a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&message=and when he falleth"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
@@ -589,7 +537,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Matches, ".*Builder deploy called\nOK\n")
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
-		Owner:  token.GetUserName(),
+		Owner:  s.token.GetUserName(),
 		Kind:   "app.deploy",
 		StartCustomData: map[string]interface{}{
 			"app.name":   a.Name,
@@ -597,7 +545,7 @@ func (s *DeploySuite) TestDeployWithMessage(c *check.C) {
 			"filesize":   0,
 			"kind":       "archive-url",
 			"archiveurl": "http://something.tar.gz",
-			"user":       token.GetUserName(),
+			"user":       s.token.GetUserName(),
 			"image":      "",
 			"origin":     "",
 			"build":      false,
@@ -615,21 +563,19 @@ func (s *DeploySuite) TestDeployWithoutPlatformFails(c *check.C) {
 	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err = app.CreateApp(context.TODO(), &a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
@@ -730,47 +676,24 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	c.Assert(recorder.Body.String(), check.Equals, "User does not have permission to do this action in this app\n")
 }
 
-func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {
-	app1 := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "superapp", Platform: "python", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(context.TODO(), app2.Name)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", app1.Name, app2.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	server := RunServer(true)
-	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), check.Equals, "invalid app token\n")
-}
-
 func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	s.builder.OnBuild = func(app provision.App, evt *event.Event, opts builder.BuildOpts) (appTypes.AppVersion, error) {
 		return newAppVersion(c, app), nil
 	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.InternalAppName)
-	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "otherapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
 		Router:    "fake",
 	}
-	err = app.CreateApp(context.TODO(), &a, s.user)
+	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/deploy?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)

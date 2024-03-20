@@ -51,20 +51,12 @@ func (t *teamToken) User() (*authTypes.User, error) {
 	}, nil
 }
 
-func (t *teamToken) IsAppToken() bool {
-	return false
-}
-
 func (t *teamToken) GetUserName() string {
 	return t.GetTokenName()
 }
 
 func (t *teamToken) GetTokenName() string {
 	return t.TokenID
-}
-
-func (t *teamToken) GetAppName() string {
-	return ""
 }
 
 func (t *teamToken) Engine() string {

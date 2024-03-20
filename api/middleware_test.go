@@ -154,8 +154,6 @@ func (s *S) TestSetVersionHeadersMiddleware(c *check.C) {
 	setVersionHeadersMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
-	c.Assert(recorder.Header().Get("Supported-Tsuru-Admin"), check.Equals, tsuruAdminMin)
 }
 
 func (s *S) TestErrorHandlingMiddlewareWithoutError(c *check.C) {
@@ -297,7 +295,6 @@ func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
 	t := context.GetAuthToken(request)
 	c.Assert(t, check.NotNil)
 	c.Assert(t.GetValue(), check.Equals, token.Token)
-	c.Assert(t.GetAppName(), check.Equals, "")
 	mockSpan := span.(*mocktracer.MockSpan)
 	c.Check(mockSpan.Tag("user.name"), check.Equals, token.TokenID)
 	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)
