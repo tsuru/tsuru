@@ -181,26 +181,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	return app.Delete(ctx, &a, evt, requestIDHeader(r))
 }
 
-// miniApp is a minimal representation of the app, created to make appList
-// faster and transmit less data.
-type miniApp struct {
-	Name        string               `json:"name"`
-	Pool        string               `json:"pool"`
-	TeamOwner   string               `json:"teamowner"`
-	Plan        appTypes.Plan        `json:"plan"`
-	Units       []provTypes.Unit     `json:"units"`
-	CName       []string             `json:"cname"`
-	IP          string               `json:"ip"`
-	Routers     []appTypes.AppRouter `json:"routers"`
-	Lock        appTypes.AppLock     `json:"lock"`
-	Tags        []string             `json:"tags"`
-	Error       string               `json:"error,omitempty"`
-	Platform    string               `json:"platform,omitempty"`
-	Description string               `json:"description,omitempty"`
-	Metadata    appTypes.Metadata    `json:"metadata,omitempty"`
-}
-
-func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (miniApp, error) {
+func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
 	var errorStr string
 	if unitData.Err != nil {
 		errorStr = unitData.Err.Error()
@@ -208,7 +189,7 @@ func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (miniA
 	if unitData.Units == nil {
 		unitData.Units = []provTypes.Unit{}
 	}
-	ma := miniApp{
+	ma := appTypes.AppResume{
 		Name:      app.Name,
 		Pool:      app.Pool,
 		Plan:      app.Plan,
@@ -306,7 +287,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	simple, _ := strconv.ParseBool(r.URL.Query().Get("simplified"))
 	extended, _ := strconv.ParseBool(r.URL.Query().Get("extended"))
 	w.Header().Set("Content-Type", "application/json")
-	miniApps := make([]miniApp, len(apps))
+	miniApps := make([]appTypes.AppResume, len(apps))
 	if simple {
 		for i, ap := range apps {
 			ur := app.AppUnitsResponse{Units: nil, Err: nil}
