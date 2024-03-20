@@ -298,9 +298,9 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	newJobActiveDeadlineSeconds := buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 
-	deployOptionsHasChanged, err := updateDeployOptions(oldJob, newJob)
-	if err != nil {
-		return err
+	deployOptionsHasChanged, updateErr := updateDeployOptions(oldJob, newJob)
+	if updateErr != nil {
+		return updateErr
 	}
 
 	// NOTE: we're merging newJob as dst in mergo, newJob is not 100% populated, it just contains the changes the user wants to make
@@ -312,7 +312,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 
 	if deployOptionsHasChanged {
-		err = buildWithDeployAgent(ctx, newJob)
+		err := buildWithDeployAgent(ctx, newJob)
 		if err != nil {
 			return err
 		}
