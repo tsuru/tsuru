@@ -104,3 +104,22 @@ type AppInternalAddress struct {
 	Version  string
 	Process  string
 }
+
+// AppResume is a minimal representation of the app, created to make appList
+// faster and transmit less data.
+type AppResume struct {
+	Name        string           `json:"name"`
+	Pool        string           `json:"pool"`
+	TeamOwner   string           `json:"teamowner"`
+	Plan        Plan             `json:"plan"`
+	Units       []provision.Unit `json:"units"`
+	CName       []string         `json:"cname"`
+	IP          string           `json:"ip"`
+	Routers     []AppRouter      `json:"routers"`
+	Lock        AppLock          `json:"lock"`
+	Tags        []string         `json:"tags"`
+	Error       string           `json:"error,omitempty"`
+	Platform    string           `json:"platform,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Metadata    Metadata         `json:"metadata,omitempty"`
+}
