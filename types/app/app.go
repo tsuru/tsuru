@@ -77,11 +77,11 @@ type AppInfo struct {
 	Tags        []string `json:"tags"`
 	Metadata    Metadata `json:"metadata"`
 
-	Units                   []provision.Unit       `json:"units"`
-	InternalAddresses       []AppInternalAddress   `json:"internalAddresses,omitempty"`
-	Autoscale               any                    `json:"autoscale,omitempty"` // TODO: convert to typed field
-	UnitsMetrics            []provision.UnitMetric `json:"unitsMetrics,omitempty"`
-	AutoscaleRecommendation any                    `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
+	Units                   []provision.Unit                 `json:"units"`
+	InternalAddresses       []AppInternalAddress             `json:"internalAddresses,omitempty"`
+	Autoscale               []provision.AutoScaleSpec        `json:"autoscale,omitempty"`
+	UnitsMetrics            []provision.UnitMetric           `json:"unitsMetrics,omitempty"`
+	AutoscaleRecommendation []provision.RecommendedResources `json:"autoscaleRecommendation,omitempty"`
 
 	Provisioner          string                     `json:"provisioner,omitempty"`
 	Cluster              string                     `json:"cluster,omitempty"`

@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
 )
@@ -28,7 +29,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	autoscaleSpec := provision.AutoScaleSpec{
+	autoscaleSpec := provTypes.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
@@ -50,7 +51,7 @@ func (s *S) TestAutoScaleUnitsInfo(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 
-	var autoscales []provision.AutoScaleSpec
+	var autoscales []provTypes.AutoScaleSpec
 	err = json.Unmarshal(recorder.Body.Bytes(), &autoscales)
 	c.Assert(err, check.IsNil)
 	c.Assert(autoscales, check.HasLen, 1)
@@ -89,7 +90,7 @@ func (s *S) TestAddAutoScaleUnits(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	spec, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(spec, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(spec, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1", MinUnits: 2, MaxUnits: 10, AverageCPU: "600m"},
 	})
 	c.Assert(eventtest.EventDesc{
@@ -115,7 +116,7 @@ func (s *S) TestRemoveAutoScaleUnits(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(provision.AutoScaleSpec{
+	err = a.AutoScale(provTypes.AutoScaleSpec{
 		Process:    "p1",
 		AverageCPU: "300m",
 		MaxUnits:   10,
