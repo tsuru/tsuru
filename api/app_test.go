@@ -47,6 +47,7 @@ import (
 	"github.com/tsuru/tsuru/types/cache"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 	check "gopkg.in/check.v1"
@@ -676,14 +677,14 @@ func (s *S) TestAppListUnitsError(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	var apps []struct {
 		Name  string
-		Units []provision.Unit
+		Units []provTypes.Unit
 		Error string
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 1)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)
-	c.Assert(apps[0].Units, check.DeepEquals, []provision.Unit{})
+	c.Assert(apps[0].Units, check.DeepEquals, []provTypes.Unit{})
 	c.Assert(apps[0].Error, check.Equals, "unable to list app units: some units error")
 }
 
@@ -2785,7 +2786,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
 	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
+	c.Assert(unit.Status, check.Equals, provTypes.UnitStatusError)
 }
 
 func (s *S) TestSetUnitStatusNoUnit(c *check.C) {
@@ -2814,7 +2815,7 @@ func (s *S) TestSetUnitStatusInvalidStatus(c *check.C) {
 		e, ok := err.(*errors.HTTP)
 		c.Assert(ok, check.Equals, true)
 		c.Check(e.Code, check.Equals, http.StatusBadRequest)
-		c.Check(e.Message, check.Equals, provision.ErrInvalidStatus.Error())
+		c.Check(e.Message, check.Equals, provTypes.ErrInvalidUnitStatus.Error())
 	}
 }
 
@@ -6224,7 +6225,7 @@ func (s *S) TestSwapIncompatibleUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.provisioner.Provision(context.TODO(), &app2)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnit(&app2, provision.Unit{})
+	s.provisioner.AddUnit(&app2, provTypes.Unit{})
 	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
 	request, err := http.NewRequest("POST", "/swap", b)
 	c.Assert(err, check.IsNil)

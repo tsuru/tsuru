@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -65,36 +66,36 @@ func (ProvisionSuite) TestErrorImplementsError(c *check.C) {
 }
 
 func (ProvisionSuite) TestStatusString(c *check.C) {
-	var s Status = "pending"
+	var s provTypes.UnitStatus = "pending"
 	c.Assert(s.String(), check.Equals, "pending")
 }
 
 func (ProvisionSuite) TestStatuses(c *check.C) {
-	c.Check(StatusCreated.String(), check.Equals, "created")
-	c.Check(StatusBuilding.String(), check.Equals, "building")
-	c.Check(StatusError.String(), check.Equals, "error")
-	c.Check(StatusStarted.String(), check.Equals, "started")
-	c.Check(StatusStopped.String(), check.Equals, "stopped")
-	c.Check(StatusStarting.String(), check.Equals, "starting")
+	c.Check(provTypes.UnitStatusCreated.String(), check.Equals, "created")
+	c.Check(provTypes.UnitStatusBuilding.String(), check.Equals, "building")
+	c.Check(provTypes.UnitStatusError.String(), check.Equals, "error")
+	c.Check(provTypes.UnitStatusStarted.String(), check.Equals, "started")
+	c.Check(provTypes.UnitStatusStopped.String(), check.Equals, "stopped")
+	c.Check(provTypes.UnitStatusStarting.String(), check.Equals, "starting")
 }
 
 func (ProvisionSuite) TestParseStatus(c *check.C) {
 	var tests = []struct {
 		input  string
-		output Status
+		output provTypes.UnitStatus
 		err    error
 	}{
-		{"created", StatusCreated, nil},
-		{"building", StatusBuilding, nil},
-		{"error", StatusError, nil},
-		{"started", StatusStarted, nil},
-		{"stopped", StatusStopped, nil},
-		{"starting", StatusStarting, nil},
-		{"something", Status(""), ErrInvalidStatus},
-		{"otherthing", Status(""), ErrInvalidStatus},
+		{"created", provTypes.UnitStatusCreated, nil},
+		{"building", provTypes.UnitStatusBuilding, nil},
+		{"error", provTypes.UnitStatusError, nil},
+		{"started", provTypes.UnitStatusStarted, nil},
+		{"stopped", provTypes.UnitStatusStopped, nil},
+		{"starting", provTypes.UnitStatusStarting, nil},
+		{"something", provTypes.UnitStatus(""), provTypes.ErrInvalidUnitStatus},
+		{"otherthing", provTypes.UnitStatus(""), provTypes.ErrInvalidUnitStatus},
 	}
 	for _, t := range tests {
-		got, err := ParseStatus(t.input)
+		got, err := provTypes.ParseUnitStatus(t.input)
 		c.Check(got, check.Equals, t.output)
 		c.Check(err, check.Equals, t.err)
 	}
@@ -102,23 +103,23 @@ func (ProvisionSuite) TestParseStatus(c *check.C) {
 
 func (ProvisionSuite) TestUnitAvailable(c *check.C) {
 	var tests = []struct {
-		input    Status
+		input    provTypes.UnitStatus
 		expected bool
 	}{
-		{StatusCreated, false},
-		{StatusStarting, true},
-		{StatusStarted, true},
-		{StatusBuilding, false},
-		{StatusError, true},
+		{provTypes.UnitStatusCreated, false},
+		{provTypes.UnitStatusStarting, true},
+		{provTypes.UnitStatusStarted, true},
+		{provTypes.UnitStatusBuilding, false},
+		{provTypes.UnitStatusError, true},
 	}
 	for _, test := range tests {
-		u := Unit{Status: test.input}
+		u := provTypes.Unit{Status: test.input}
 		c.Check(u.Available(), check.Equals, test.expected)
 	}
 }
 
 func (ProvisionSuite) TestUnitGetIp(c *check.C) {
-	u := Unit{IP: "10.3.3.1"}
+	u := provTypes.Unit{IP: "10.3.3.1"}
 	c.Assert(u.IP, check.Equals, u.GetIp())
 }
 

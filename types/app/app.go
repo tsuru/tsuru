@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/types/app/image"
 	"github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	"github.com/tsuru/tsuru/types/volume"
 )
@@ -76,11 +77,11 @@ type AppInfo struct {
 	Tags        []string `json:"tags"`
 	Metadata    Metadata `json:"metadata"`
 
-	Units                   any                  `json:"units,omitempty"` // TODO: convert to typed field
-	InternalAddresses       []AppInternalAddress `json:"internalAddresses,omitempty"`
-	Autoscale               any                  `json:"autoscale,omitempty"`               // TODO: convert to typed field
-	UnitsMetrics            any                  `json:"unitsMetrics,omitempty"`            // TODO: convert to typed field
-	AutoscaleRecommendation any                  `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
+	Units                   []provision.Unit       `json:"units"`
+	InternalAddresses       []AppInternalAddress   `json:"internalAddresses,omitempty"`
+	Autoscale               any                    `json:"autoscale,omitempty"` // TODO: convert to typed field
+	UnitsMetrics            []provision.UnitMetric `json:"unitsMetrics,omitempty"`
+	AutoscaleRecommendation any                    `json:"autoscaleRecommendation,omitempty"` // TODO: convert to typed field or deprecate
 
 	Provisioner          string                     `json:"provisioner,omitempty"`
 	Cluster              string                     `json:"cluster,omitempty"`

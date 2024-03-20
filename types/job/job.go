@@ -10,7 +10,9 @@ import (
 
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	"github.com/tsuru/tsuru/types/bind"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/provision"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -99,4 +101,11 @@ type JobService interface {
 	GetEnvs(ctx context.Context, job *Job) map[string]bindTypes.EnvVar
 	BaseImageName(ctx context.Context, job *Job) (string, error)
 	KillUnit(ctx context.Context, job *Job, unitName string, force bool) error
+}
+
+type JobInfo struct {
+	Cluster              string                     `json:"cluster,omitempty"`
+	Job                  *Job                       `json:"job,omitempty"`
+	Units                []provision.Unit           `json:"units,omitempty"`
+	ServiceInstanceBinds []bind.ServiceInstanceBind `json:"serviceInstanceBinds,omitempty"`
 }
