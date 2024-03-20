@@ -2485,7 +2485,7 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
 	}
-	err = app.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	err = app.AutoScale(provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -4065,7 +4065,7 @@ func (s *S) TestAppUnitsWithAutoscaler(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	err = provisioner.SetAutoScale(context.TODO(), &a, provision.AutoScaleSpec{
+	err = provisioner.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
 		Process:    "web",
 		Version:    1,
 		MinUnits:   1,
@@ -5877,13 +5877,13 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
-	err := a.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	err := a.AutoScale(provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(provision.AutoScaleSpec{Process: "p2"})
+	err = a.AutoScale(provTypes.AutoScaleSpec{Process: "p2"})
 	c.Assert(err, check.IsNil)
 	scales, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1"},
 		{Process: "p2"},
 	})
@@ -5891,7 +5891,7 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scales, err = a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p2"},
 	})
 }

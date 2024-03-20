@@ -1026,30 +1026,30 @@ type provisionedJob struct {
 
 type AutoScaleProvisioner struct {
 	*FakeProvisioner
-	autoscales map[string][]provision.AutoScaleSpec
+	autoscales map[string][]provTypes.AutoScaleSpec
 }
 
 var _ provision.AutoScaleProvisioner = &AutoScaleProvisioner{}
 
-func (p *AutoScaleProvisioner) GetAutoScale(ctx context.Context, app provision.App) ([]provision.AutoScaleSpec, error) {
+func (p *AutoScaleProvisioner) GetAutoScale(ctx context.Context, app provision.App) ([]provTypes.AutoScaleSpec, error) {
 	if p.autoscales == nil {
 		return nil, nil
 	}
 	return p.autoscales[app.GetName()], nil
 }
 
-func (p *AutoScaleProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, app provision.App) ([]provision.RecommendedResources, error) {
+func (p *AutoScaleProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, app provision.App) ([]provTypes.RecommendedResources, error) {
 	if p.autoscales == nil {
 		return nil, nil
 	}
-	return []provision.RecommendedResources{
-		{Process: "p1", Recommendations: []provision.RecommendedProcessResources{{Type: "target", CPU: "100m", Memory: "100MiB"}}},
+	return []provTypes.RecommendedResources{
+		{Process: "p1", Recommendations: []provTypes.RecommendedProcessResources{{Type: "target", CPU: "100m", Memory: "100MiB"}}},
 	}, nil
 }
 
-func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app provision.App, spec provision.AutoScaleSpec) error {
+func (p *AutoScaleProvisioner) SetAutoScale(ctx context.Context, app provision.App, spec provTypes.AutoScaleSpec) error {
 	if p.autoscales == nil {
-		p.autoscales = make(map[string][]provision.AutoScaleSpec)
+		p.autoscales = make(map[string][]provTypes.AutoScaleSpec)
 	}
 	p.autoscales[app.GetName()] = append(p.autoscales[app.GetName()], spec)
 	return nil

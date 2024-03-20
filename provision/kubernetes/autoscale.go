@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
@@ -35,7 +36,7 @@ const (
 
 var errNoDeploy = errors.New("no routable version found for app, at least one deploy is required before configuring autoscale")
 
-func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, a provision.App) ([]provision.RecommendedResources, error) {
+func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.Context, a provision.App) ([]provTypes.RecommendedResources, error) {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
@@ -76,16 +77,16 @@ func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.
 		return nil, errors.WithStack(err)
 	}
 
-	var specs []provision.RecommendedResources
+	var specs []provTypes.RecommendedResources
 	for _, vpa := range vpas {
 		specs = append(specs, vpaToRecommended(*vpa))
 	}
 	return specs, nil
 }
 
-func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedResources {
+func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provTypes.RecommendedResources {
 	ls := labelSetFromMeta(&vpa.ObjectMeta)
-	rec := provision.RecommendedResources{
+	rec := provTypes.RecommendedResources{
 		Process: ls.AppProcess(),
 	}
 	if vpa.Status.Recommendation == nil {
@@ -95,22 +96,22 @@ func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedReso
 		if contRec.ContainerName != vpa.Name {
 			continue
 		}
-		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+		rec.Recommendations = append(rec.Recommendations, provTypes.RecommendedProcessResources{
 			Type:   "target",
 			CPU:    contRec.Target.Cpu().String(),
 			Memory: contRec.Target.Memory().String(),
 		})
-		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+		rec.Recommendations = append(rec.Recommendations, provTypes.RecommendedProcessResources{
 			Type:   "uncappedTarget",
 			CPU:    contRec.UncappedTarget.Cpu().String(),
 			Memory: contRec.UncappedTarget.Memory().String(),
 		})
-		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+		rec.Recommendations = append(rec.Recommendations, provTypes.RecommendedProcessResources{
 			Type:   "lowerBound",
 			CPU:    contRec.LowerBound.Cpu().String(),
 			Memory: contRec.LowerBound.Memory().String(),
 		})
-		rec.Recommendations = append(rec.Recommendations, provision.RecommendedProcessResources{
+		rec.Recommendations = append(rec.Recommendations, provTypes.RecommendedProcessResources{
 			Type:   "upperBound",
 			CPU:    contRec.UpperBound.Cpu().String(),
 			Memory: contRec.UpperBound.Memory().String(),
@@ -119,7 +120,7 @@ func vpaToRecommended(vpa vpav1.VerticalPodAutoscaler) provision.RecommendedReso
 	return rec
 }
 
-func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.App) ([]provision.AutoScaleSpec, error) {
+func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.App) ([]provTypes.AutoScaleSpec, error) {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
@@ -154,7 +155,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 		return nil, err
 	}
 
-	var specs []provision.AutoScaleSpec
+	var specs []provTypes.AutoScaleSpec
 
 	hpas, err := hpaInformer.Lister().HorizontalPodAutoscalers(ns).List(labels.SelectorFromSet(labels.Set(ls.ToHPASelector())))
 	if err != nil {
@@ -180,9 +181,9 @@ func kedaScaledObjectName(hpa autoscalingv2.HorizontalPodAutoscaler) string {
 	return hpa.Labels["scaledobject.keda.sh/name"]
 }
 
-func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoScaleSpec {
+func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provTypes.AutoScaleSpec {
 	ls := labelSetFromMeta(&scaledObject.ObjectMeta)
-	spec := provision.AutoScaleSpec{
+	spec := provTypes.AutoScaleSpec{
 		MaxUnits: uint(*scaledObject.Spec.MaxReplicaCount),
 		MinUnits: uint(*scaledObject.Spec.MinReplicaCount),
 		Process:  ls.AppProcess(),
@@ -194,7 +195,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 		case "cron":
 			minReplicas, _ := strconv.Atoi(metric.Metadata["desiredReplicas"])
 
-			spec.Schedules = append(spec.Schedules, provision.AutoScaleSchedule{
+			spec.Schedules = append(spec.Schedules, provTypes.AutoScaleSchedule{
 				MinReplicas: minReplicas,
 				Start:       metric.Metadata["start"],
 				End:         metric.Metadata["end"],
@@ -206,7 +207,7 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 			thresholdValue, _ := strconv.ParseFloat(metric.Metadata["threshold"], 64)
 			activationThresholdValue, _ := strconv.ParseFloat(metric.Metadata["activationThreshold"], 64)
 
-			spec.Prometheus = append(spec.Prometheus, provision.AutoScalePrometheus{
+			spec.Prometheus = append(spec.Prometheus, provTypes.AutoScalePrometheus{
 				Name:                metric.Metadata["prometheusMetricName"],
 				Query:               metric.Metadata["query"],
 				Threshold:           thresholdValue,
@@ -228,9 +229,9 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 	return spec
 }
 
-func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provision.AutoScaleSpec {
+func hpaToSpec(hpa autoscalingv2.HorizontalPodAutoscaler) provTypes.AutoScaleSpec {
 	ls := labelSetFromMeta(&hpa.ObjectMeta)
-	spec := provision.AutoScaleSpec{
+	spec := provTypes.AutoScaleSpec{
 		MaxUnits: uint(hpa.Spec.MaxReplicas),
 		Process:  ls.AppProcess(),
 		Version:  ls.AppVersion(),
@@ -331,7 +332,7 @@ func removeKEDAScaleObject(ctx context.Context, client *ClusterClient, ns string
 	return nil
 }
 
-func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.App, spec provision.AutoScaleSpec) error {
+func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.App, spec provTypes.AutoScaleSpec) error {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return err
@@ -339,7 +340,7 @@ func (p *kubernetesProvisioner) SetAutoScale(ctx context.Context, a provision.Ap
 	return setAutoScale(ctx, client, a, spec)
 }
 
-func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, spec provision.AutoScaleSpec) error {
+func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, spec provTypes.AutoScaleSpec) error {
 	depInfo, err := minimumAutoScaleVersion(ctx, client, a, spec.Process)
 	if err != nil {
 		return err
@@ -370,7 +371,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 
 	minUnits := int32(spec.MinUnits)
 
-	cpuValue, err := spec.ToCPUValue(a)
+	cpuValue, err := provision.CPUValueOfAutoScaleSpec(&spec, a)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -447,7 +448,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	return nil
 }
 
-func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
+func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, hpaName string, labels *provision.LabelSet) error {
 	kedaClient, err := KEDAClientForConfig(client.restConfig)
 	if err != nil {
 		return err
@@ -483,11 +484,11 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provision
 	return err
 }
 
-func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
+func newKEDAScaledObject(ctx context.Context, spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
 	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
 
 	if spec.AverageCPU != "" {
-		cpu, err := spec.ToCPUValue(a)
+		cpu, err := provision.CPUValueOfAutoScaleSpec(&spec, a)
 		if err != nil {
 			return nil, err
 		}
@@ -558,7 +559,7 @@ func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a pr
 	}, nil
 }
 
-func buildPrometheusTrigger(ns string, prometheus provision.AutoScalePrometheus) (*kedav1alpha1.ScaleTriggers, error) {
+func buildPrometheusTrigger(ns string, prometheus provTypes.AutoScalePrometheus) (*kedav1alpha1.ScaleTriggers, error) {
 	if prometheus.PrometheusAddress == "" {
 		defaultPrometheusAddress, err := buildDefaultPrometheusAddress(ns)
 		if err != nil {
@@ -811,7 +812,7 @@ func ensureHPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 	return multiErr.ToError()
 }
 
-func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provision.AutoScaleSpec, error) {
+func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, process string) ([]provTypes.AutoScaleSpec, error) {
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
 		return nil, err
@@ -835,7 +836,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		return nil, errors.WithStack(err)
 	}
 
-	var specs []provision.AutoScaleSpec
+	var specs []provTypes.AutoScaleSpec
 	for _, hpa := range hpas.Items {
 		scaledObjectName := kedaScaledObjectName(hpa)
 		if scaledObjectName != "" {

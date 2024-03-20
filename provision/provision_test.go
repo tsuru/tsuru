@@ -130,59 +130,59 @@ func (ProvisionSuite) TestUnitNotFoundError(c *check.C) {
 
 func (ProvisionSuite) TestValidate(c *check.C) {
 	var tests = []struct {
-		input    AutoScaleSpec
+		input    provTypes.AutoScaleSpec
 		expected string
 	}{
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 0,
 				MaxUnits: 10,
 			},
 			"minimum units must be greater than 0",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 11,
 				MaxUnits: 10,
 			},
 			"maximum units must be greater than minimum units",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 10,
 				MaxUnits: 10,
 			},
 			"maximum units must be greater than minimum units",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 10,
 				MaxUnits: 20,
 			},
 			"maximum units cannot be greater than quota limit",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 1,
 				MaxUnits: 2,
 			},
 			"you have to configure at least one trigger between cpu, schedule and prometheus",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 1,
 				MaxUnits: 2,
-				Prometheus: []AutoScalePrometheus{{
+				Prometheus: []provTypes.AutoScalePrometheus{{
 					Name: "Invalid-Name",
 				}},
 			},
 			"\"Invalid-Name\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter",
 		},
 		{
-			AutoScaleSpec{
+			provTypes.AutoScaleSpec{
 				MinUnits: 1,
 				MaxUnits: 2,
-				Prometheus: []AutoScalePrometheus{{
+				Prometheus: []provTypes.AutoScalePrometheus{{
 					Name: "valid-name",
 				}, {
 					Name: "another$invalid",
@@ -193,7 +193,7 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 	}
 
 	for _, test := range tests {
-		err := test.input.Validate(10, nil)
+		err := ValidateAutoScaleSpec(&test.input, 10, nil)
 		c.Assert(err, check.NotNil)
 		c.Assert(err.Error(), check.Equals, test.expected)
 	}

@@ -302,44 +302,7 @@ type VolumeProvisioner interface {
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }
 
-type AutoScaleSpec struct {
-	Process    string                `json:"process"`
-	MinUnits   uint                  `json:"minUnits"`
-	MaxUnits   uint                  `json:"maxUnits"`
-	AverageCPU string                `json:"averageCPU,omitempty"`
-	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
-	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
-	Version    int                   `json:"version"`
-}
-
-type AutoScalePrometheus struct {
-	Name                string  `json:"name"`
-	Query               string  `json:"query"`
-	Threshold           float64 `json:"threshold"`
-	ActivationThreshold float64 `json:"activationThreshold,omitempty"`
-	PrometheusAddress   string  `json:"prometheusAddress,omitempty"`
-}
-
-type AutoScaleSchedule struct {
-	Name        string `json:"name,omitempty"`
-	MinReplicas int    `json:"minReplicas"`
-	Start       string `json:"start"`
-	End         string `json:"end"`
-	Timezone    string `json:"timezone,omitempty"`
-}
-
-type RecommendedResources struct {
-	Process         string                        `json:"process"`
-	Recommendations []RecommendedProcessResources `json:"recommendations"`
-}
-
-type RecommendedProcessResources struct {
-	Type   string `json:"type"`
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-}
-
-func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
+func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a App) (int, error) {
 	rawCPU := strings.TrimSuffix(s.AverageCPU, "%")
 	cpu, err := strconv.Atoi(rawCPU)
 	if err != nil {
@@ -369,7 +332,7 @@ func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
 	return cpu, nil
 }
 
-func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
+func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a App) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
@@ -383,7 +346,7 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 		return errors.New("you have to configure at least one trigger between cpu, schedule and prometheus")
 	}
 	if s.AverageCPU != "" {
-		_, err := s.ToCPUValue(a)
+		_, err := CPUValueOfAutoScaleSpec(s, a)
 		if err != nil {
 			return err
 		}
@@ -398,9 +361,9 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 }
 
 type AutoScaleProvisioner interface {
-	GetAutoScale(ctx context.Context, a App) ([]AutoScaleSpec, error)
-	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]RecommendedResources, error)
-	SetAutoScale(ctx context.Context, a App, spec AutoScaleSpec) error
+	GetAutoScale(ctx context.Context, a App) ([]provTypes.AutoScaleSpec, error)
+	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]provTypes.RecommendedResources, error)
+	SetAutoScale(ctx context.Context, a App, spec provTypes.AutoScaleSpec) error
 	RemoveAutoScale(ctx context.Context, a App, process string) error
 }
 

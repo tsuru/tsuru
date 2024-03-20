@@ -2669,7 +2669,7 @@ buildResult:
 	return result
 }
 
-func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
+func (app *App) AutoScaleInfo() ([]provTypes.AutoScaleSpec, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2681,7 +2681,7 @@ func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
 	return autoscaleProv.GetAutoScale(app.ctx, app)
 }
 
-func (app *App) VerticalAutoScaleRecommendations() ([]provision.RecommendedResources, error) {
+func (app *App) VerticalAutoScaleRecommendations() ([]provTypes.RecommendedResources, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2705,7 +2705,7 @@ func (app *App) UnitsMetrics() ([]provTypes.UnitMetric, error) {
 	return metricsProv.UnitsMetrics(app.ctx, app)
 }
 
-func (app *App) AutoScale(spec provision.AutoScaleSpec) error {
+func (app *App) AutoScale(spec provTypes.AutoScaleSpec) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err
