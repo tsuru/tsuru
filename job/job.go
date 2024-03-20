@@ -258,10 +258,10 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 }
 
 // updateDeployOptions updates the job's deployOptions if the job's image has changed
-func updateDeployOptions(ctx context.Context, oldJob, newJob *jobTypes.Job) error {
+func updateDeployOptions(oldJob, newJob *jobTypes.Job) (hasChanged bool, err error) {
 	// we have to ensure oldJob has deployOptions, for compatibility with legacy way of creating jobs
 	if err := ensureDeployOptions(oldJob); err != nil {
-		return err
+		return false, err
 	}
 	// if newJob doesn't have any info about deployOptions, it means client did not pass job.Spec.Container.Image nor job.DeployOptions
 	// so it doesnt want to change the deployOptions
@@ -270,16 +270,10 @@ func updateDeployOptions(ctx context.Context, oldJob, newJob *jobTypes.Job) erro
 		if err == jobTypes.ErrInvalidDeployKind {
 			newJob.DeployOptions = oldJob.DeployOptions
 		} else {
-			return err
+			return false, err
 		}
 	}
-	if !reflect.DeepEqual(newJob.DeployOptions, oldJob.DeployOptions) {
-		err := buildWithDeployAgent(ctx, newJob)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return !reflect.DeepEqual(newJob.DeployOptions, oldJob.DeployOptions), nil
 }
 
 // UpdateJob updates an existing cronjob.
@@ -304,7 +298,8 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	newJobActiveDeadlineSeconds := buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 
-	if err := updateDeployOptions(ctx, oldJob, newJob); err != nil {
+	deployOptionsHasChanged, err := updateDeployOptions(oldJob, newJob)
+	if err != nil {
 		return err
 	}
 
@@ -315,6 +310,14 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	if err := mergo.Merge(newJob, oldJob); err != nil {
 		return err
 	}
+
+	if deployOptionsHasChanged {
+		err = buildWithDeployAgent(ctx, newJob)
+		if err != nil {
+			return err
+		}
+	}
+
 	if newJobActiveDeadlineSeconds != nil {
 		newJob.Spec.ActiveDeadlineSeconds = newJobActiveDeadlineSeconds
 	}
