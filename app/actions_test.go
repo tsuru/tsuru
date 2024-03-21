@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
@@ -45,10 +44,6 @@ func (s *S) TestReserveUnitsToAddName(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsName(c *check.C) {
 	c.Assert(provisionAddUnits.Name, check.Equals, "provision-add-units")
-}
-
-func (s *S) TestAddRouterBackendName(c *check.C) {
-	c.Assert(addRouterBackend.Name, check.Equals, "add-router-backend")
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
@@ -535,50 +530,6 @@ func (s *S) TestProvisionAddUnitsInvalidApp(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 	c.Assert(provisionAddUnits.MinParams, check.Equals, 1)
-}
-
-func (s *S) TestAddRouterBackendForward(c *check.C) {
-	app := App{
-		Name:     "earthshine",
-		Platform: "django",
-		Routers:  []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{&app, 4}}
-	result, err := addRouterBackend.Forward(ctx)
-	c.Assert(err, check.IsNil)
-	a, ok := result.(*App)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Name, check.Equals, app.Name)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-}
-
-func (s *S) TestAddRouterBackendForwardInvalidApp(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"something", 1}}
-	_, err := addRouterBackend.Forward(ctx)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestAddRouterBackendBackward(c *check.C) {
-	app := App{
-		Name:     "earthshine",
-		Platform: "django",
-		Routers:  []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
-	result, err := addRouterBackend.Forward(fwctx)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
-	addRouterBackend.Backward(bwctx)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
-}
-
-func (s *S) TestAddRouterBackendMinParams(c *check.C) {
-	c.Assert(addRouterBackend.MinParams, check.Equals, 1)
 }
 
 func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {

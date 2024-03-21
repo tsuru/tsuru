@@ -1893,7 +1893,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
@@ -1901,7 +1901,6 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	defer rebuild.Shutdown(context.Background())
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -1983,7 +1982,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
@@ -1991,7 +1990,6 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	defer rebuild.Shutdown(context.Background())
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
@@ -2057,7 +2055,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	err = rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		return &app.App{
 			Name:    appName,
 			Pool:    "test-pool-2",
@@ -2065,7 +2063,6 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	defer rebuild.Shutdown(context.Background())
 	evt, err := event.New(&event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,

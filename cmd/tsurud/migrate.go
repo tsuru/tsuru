@@ -25,7 +25,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	kubeMigrate "github.com/tsuru/tsuru/provision/kubernetes/migrate"
 	"github.com/tsuru/tsuru/provision/pool"
-	"github.com/tsuru/tsuru/router"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
@@ -53,10 +52,6 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-rc-events", migrateRCEvents)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-router-unique", router.MigrateUniqueCollection)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}

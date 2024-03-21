@@ -197,63 +197,6 @@ func (s *S) TestDefaultSingleRouter(c *check.C) {
 	c.Assert(d, check.Equals, "fake")
 }
 
-func (s *S) TestStore(c *check.C) {
-	err := Store("appname", "routername", "fake")
-	c.Assert(err, check.IsNil)
-	name, err := Retrieve("appname")
-	c.Assert(err, check.IsNil)
-	c.Assert(name, check.Equals, "routername")
-	err = Remove("appname")
-	c.Assert(err, check.IsNil)
-	_, err = Retrieve("appname")
-	c.Assert(err, check.Equals, ErrBackendNotFound)
-}
-
-func (s *S) TestStoreUpdatesEntry(c *check.C) {
-	err := Store("appname", "routername", "fake")
-	c.Assert(err, check.IsNil)
-	err = Store("appname", "routername2", "fake2")
-	c.Assert(err, check.IsNil)
-	name, err := Retrieve("appname")
-	c.Assert(err, check.IsNil)
-	c.Assert(name, check.Equals, "routername2")
-	data, err := retrieveRouterData("appname")
-	c.Assert(err, check.IsNil)
-	data.ID = ""
-	c.Assert(data, check.DeepEquals, routerAppEntry{
-		App:    "appname",
-		Router: "routername2",
-		Kind:   "fake2",
-	})
-	err = Remove("appname")
-	c.Assert(err, check.IsNil)
-	_, err = Retrieve("appname")
-	c.Assert(err, check.Equals, ErrBackendNotFound)
-}
-
-func (s *S) TestRetireveNotFound(c *check.C) {
-	name, err := Retrieve("notfound")
-	c.Assert(err, check.Not(check.IsNil))
-	c.Assert("", check.Equals, name)
-}
-
-func (s *S) TestSwapBackendName(c *check.C) {
-	err := Store("appname", "routername", "fake")
-	c.Assert(err, check.IsNil)
-	defer Remove("appname")
-	err = Store("appname2", "routername2", "fake")
-	c.Assert(err, check.IsNil)
-	defer Remove("appname2")
-	err = swapBackendName("appname", "appname2")
-	c.Assert(err, check.IsNil)
-	name, err := Retrieve("appname")
-	c.Assert(err, check.IsNil)
-	c.Assert(name, check.Equals, "routername2")
-	name, err = Retrieve("appname2")
-	c.Assert(err, check.IsNil)
-	c.Assert(name, check.Equals, "routername")
-}
-
 func (s *S) TestList(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
@@ -301,7 +244,7 @@ func (s *S) TestListIncludesDynamic(c *check.C) {
 
 type testInfoRouter struct{ Router }
 
-var _ InfoRouter = &testInfoRouter{}
+var _ Router = &testInfoRouter{}
 
 func (r *testInfoRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return map[string]string{"her": "amaat"}, nil
@@ -309,7 +252,7 @@ func (r *testInfoRouter) GetInfo(ctx context.Context) (map[string]string, error)
 
 type testInfoErrRouter struct{ Router }
 
-var _ InfoRouter = &testInfoErrRouter{}
+var _ Router = &testInfoErrRouter{}
 
 func (r *testInfoErrRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	return nil, errors.New("error getting router info")

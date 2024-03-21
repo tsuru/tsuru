@@ -473,10 +473,6 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(allUnits[1].ProcessName, check.Equals, "web")
 	c.Assert(allUnits[2].ProcessName, check.Equals, "worker")
 	c.Assert(allUnits[3].ProcessName, check.Equals, "worker")
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[2].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
@@ -543,10 +539,6 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(units[0].ID, check.Equals, "hemispheres-3")
 	c.Assert(buf.String(), check.Equals, "removing 3 units")
 	c.Assert(units[0].Address.String(), check.Equals, oldUnits[3].Address.String())
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[0].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[1].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[2].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
@@ -743,77 +735,6 @@ func (s *S) TestAddrFailure(c *check.C) {
 	c.Assert(addr, check.Equals, "")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot get addr of this app.")
-}
-
-func (s *S) TestSetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
-}
-
-func (s *S) TestSetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.SetCName(app, "cname.com")
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestSetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	p.PrepareFailure("SetCName", errors.New("wut"))
-	err := p.SetCName(app, "cname.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "wut")
-}
-
-func (s *S) TestUnsetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
-	err = p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, false)
-}
-
-func (s *S) TestUnsetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestUnsetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	p.PrepareFailure("UnsetCName", errors.New("wut"))
-	err := p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "wut")
-}
-
-func (s *S) TestHasCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, true)
-	err = p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
 }
 
 func (s *S) TestFakeProvisionerAddUnit(c *check.C) {

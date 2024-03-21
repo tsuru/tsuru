@@ -11,6 +11,7 @@ github.com/tsuru/tsuru/api.logout
 github.com/tsuru/tsuru/api.login
 github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/api.diffDeploy
+github.com/tsuru/tsuru/api.swap
 EOF
 )
 ignored=$(echo "$ignored" | sort)
