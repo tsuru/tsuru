@@ -5662,7 +5662,12 @@ definitions:
           activeDeadlineSeconds:
             type: integer
             format: int64
+            x-go-custom-type: "*int64"
             description: job active deadline seconds.
+          concurrencyPolicy:
+            type: string
+            x-go-custom-type: "*string"
+            description: concurrency policy.
           container:
             type: object
             properties:
@@ -5717,6 +5722,10 @@ definitions:
         format: int64
         x-go-custom-type: "*int64"
         description: job active deadline seconds.
+      concurrencyPolicy:
+        type: string
+        x-go-custom-type: "*string"
+        description: concurrency policy.
       container:
         type: object
         properties:
