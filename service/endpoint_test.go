@@ -19,10 +19,11 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+
 	check "gopkg.in/check.v1"
 )
 
@@ -395,7 +396,7 @@ func (s *S) TestBindAppWithParams(c *check.C) {
 	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeAppWithPool("her-app", "python", "her-pool", 1)
-	a.InternalAddresses = []provision.AppInternalAddress{
+	a.InternalAddresses = []appTypes.AppInternalAddress{
 		{
 			Protocol: "TCP",
 			Domain:   "aclfromhell-web.tsuru.svc.cluster.local",

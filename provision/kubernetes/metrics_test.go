@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -78,7 +79,7 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 	metrics, err := s.p.UnitsMetrics(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(metrics, check.HasLen, 1)
-	c.Assert(metrics, check.DeepEquals, []provision.UnitMetric{
+	c.Assert(metrics, check.DeepEquals, []provTypes.UnitMetric{
 		{
 			ID:     "myapp-123",
 			CPU:    "2200m",

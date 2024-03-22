@@ -11,9 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
-func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provision.UnitMetric, error) {
+func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.App) ([]provTypes.UnitMetric, error) {
 	clusterClient, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
 		return nil, err
@@ -45,7 +47,7 @@ func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.Ap
 		return nil, err
 	}
 
-	unitMetrics := []provision.UnitMetric{}
+	unitMetrics := []provTypes.UnitMetric{}
 	for _, metric := range metricList.Items {
 		totalCPUUsage := resource.NewQuantity(0, resource.DecimalSI)
 		totalMemoryUsage := resource.NewQuantity(0, resource.BinarySI)
@@ -66,7 +68,7 @@ func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.Ap
 			totalMemoryUsage.Add(memoryUsage)
 		}
 
-		unitMetrics = append(unitMetrics, provision.UnitMetric{
+		unitMetrics = append(unitMetrics, provTypes.UnitMetric{
 			ID:     metric.ObjectMeta.Name,
 			CPU:    totalCPUUsage.String(),
 			Memory: totalMemoryUsage.String(),

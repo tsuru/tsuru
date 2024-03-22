@@ -24,9 +24,9 @@ type planOnMongoDB struct {
 	Name     string `bson:"_id"`
 	Memory   int64
 	CPUMilli int
-	CPUBurst app.CPUBurst
+	CPUBurst *app.CPUBurst
 	Default  bool
-	Override app.PlanOverride `bson:"-"`
+	Override *app.PlanOverride `bson:"-"`
 }
 
 func plansCollection(conn *db.Storage) *dbStorage.Collection {
