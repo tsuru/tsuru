@@ -1233,7 +1233,7 @@ func isInternalEnv(envKey string) bool {
 }
 
 func internalEnvs() []string {
-	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
+	return []string{"TSURU_APPNAME", "TSURU_SERVICES", "TSURU_APPDIR"}
 }
 
 var envVarUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)

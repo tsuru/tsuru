@@ -3265,9 +3265,6 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, len(expected))
 	for _, r := range result {
-		if r.Name == "TSURU_APP_TOKEN" {
-			continue
-		}
 		for _, e := range expected {
 			if e.Name == r.Name {
 				c.Check(e.Public, check.Equals, r.Public)
@@ -3378,8 +3375,7 @@ func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {
 		Envs: []apiTypes.Env{
 			{Name: "TSURU_APPNAME", Value: "everything-i-want", Alias: ""},
 			{Name: "TSURU_APPDIR", Value: "everything-i-want", Alias: ""},
-			{Name: "TSURU_APPN_TOKEN", Value: "everything-i-want", Alias: ""},
-			{Name: "TSURU_SERVICE", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_SERVICES", Value: "everything-i-want", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -4085,16 +4081,12 @@ func (s *S) TestIsEnvVarValid(c *check.C) {
 	}{
 		{},
 		{
-			envs:          []apiTypes.Env{{Name: "TSURU_SERVICE"}},
-			expectedError: "cannot change an internal environment variable (TSURU_SERVICE): write-protected environment variable",
+			envs:          []apiTypes.Env{{Name: "TSURU_SERVICES"}},
+			expectedError: "cannot change an internal environment variable (TSURU_SERVICES): write-protected environment variable",
 		},
 		{
 			envs:          []apiTypes.Env{{Name: "TSURU_APPNAME"}},
 			expectedError: "cannot change an internal environment variable (TSURU_APPNAME): write-protected environment variable",
-		},
-		{
-			envs:          []apiTypes.Env{{Name: "TSURU_APP_TOKEN"}},
-			expectedError: "cannot change an internal environment variable (TSURU_APP_TOKEN): write-protected environment variable",
 		},
 		{
 			envs:          []apiTypes.Env{{Name: "TSURU_APPDIR"}},

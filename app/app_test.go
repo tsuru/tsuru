@@ -1786,7 +1786,6 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	delete(allEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	delete(allEnvs, "TSURU_APPDIR")
 	delete(allEnvs, "TSURU_APPNAME")
-	delete(allEnvs, "TSURU_APP_TOKEN")
 	c.Assert(allEnvs, check.DeepEquals, map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
@@ -3607,8 +3606,6 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
-	delete(apps[0].Env, "TSURU_APP_TOKEN")
-	delete(apps[1].Env, "TSURU_APP_TOKEN")
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Name < apps[j].Name
 	})
