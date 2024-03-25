@@ -167,7 +167,7 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 
 func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
-		"TSURU_APP_TOKEN",
+		"TSURU_APPNAME",
 	}
 	app := App{
 		Name:      "moon",
