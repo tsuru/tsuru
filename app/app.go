@@ -1621,15 +1621,23 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 		return nil
 	}
 
+	envNames := []string{}
 	for _, env := range setEnvs.Envs {
 		err := validateEnv(env.Name)
 		if err != nil {
 			return err
 		}
+		envNames = append(envNames, env.Name)
 	}
 
 	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
+	}
+
+	err := validateEnvConflicts(app, envNames)
+	if err != nil {
+		fmt.Fprintf(setEnvs.Writer, "---- environment variables have conflicts with service binds: %s ----\n", err.Error())
+		return err
 	}
 
 	if setEnvs.PruneUnused {
@@ -1665,6 +1673,23 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	}
 
 	return nil
+}
+
+func validateEnvConflicts(app *App, envNames []string) error {
+	serviceEnvs := map[string]bindTypes.ServiceEnvVar{}
+	for _, env := range app.ServiceEnvs {
+		serviceEnvs[env.Name] = env
+	}
+
+	multiError := &tsuruErrors.MultiError{}
+
+	for _, env := range envNames {
+		if serviceEnv, ok := serviceEnvs[env]; ok {
+			multiError.Add(fmt.Errorf("Environment variable %q is already in use by service bind \"%s/%s\"", env, serviceEnv.ServiceName, serviceEnv.InstanceName))
+		}
+	}
+
+	return multiError.ToError()
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
