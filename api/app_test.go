@@ -3929,16 +3929,10 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	}
 	c.Assert(envs, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "http://foo.com:8080"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.env.set",
+		ErrorMatches: "Environment variable \"DATABASE_HOST\" is already in use by service bind \"srv1/some service\"",
 	}, eventtest.HasEvent)
 }
 
