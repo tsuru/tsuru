@@ -24,6 +24,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/utils/ptr"
 
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
@@ -128,6 +129,21 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		existingCronjob = nil
 	} else if err != nil {
 		return errors.WithStack(err)
+	}
+
+	// when the schedule suffer changes some cronjobs may suffer a unexpected execution
+	// for these reason we decided to recreate the entire cronjob to avoid this
+	if existingCronjob != nil && existingCronjob.Spec.Schedule != job.Spec.Schedule {
+		propagationPolicy := metav1.DeletePropagationForeground
+		err = client.BatchV1().CronJobs(namespace).Delete(ctx, existingCronjob.Name, metav1.DeleteOptions{
+			GracePeriodSeconds: ptr.To[int64](0),
+			PropagationPolicy:  &propagationPolicy,
+		})
+
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		existingCronjob = nil
 	}
 
 	concurrencyPolicy := ""
