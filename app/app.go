@@ -2172,19 +2172,6 @@ func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
 }
 
-func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[string]interface{}) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	err = prov.RegisterUnit(ctx, app, unitId, customData)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	for _, r := range app.GetRouters() {
 		if appRouter.Name == r.Name {

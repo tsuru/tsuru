@@ -57,9 +57,8 @@ func (s *S) TestProcessLabels(c *check.C) {
 		"tag3=a=b=c obla di obla da",
 	}
 	opts := provision.ProcessLabelsOpts{
-		App:         a,
-		Process:     "p1",
-		Provisioner: "kubernetes",
+		App:     a,
+		Process: "p1",
 	}
 	ls, err := provision.ProcessLabels(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -91,10 +90,8 @@ func (s *S) TestServiceLabels(c *check.C) {
 		Process: "p1",
 		Version: 9,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			BuildImage:  "myimg",
-			IsBuild:     true,
-			Provisioner: "kubernetes",
-			Builder:     "docker",
+			IsBuild: true,
+			Builder: "docker",
 		},
 	}
 	ls, err := provision.ServiceLabels(context.TODO(), opts)
@@ -123,7 +120,6 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"app-pool":        "test-default",
 			"app-version":     "9",
 			"provisioner":     "kubernetes",
-			"build-image":     "myimg",
 			"builder":         "docker",
 		},
 	})
@@ -169,10 +165,9 @@ func (s *S) TestPDBLabels(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "haskell", 42)
 	app.TeamOwner = "team-one"
 	ls := provision.PDBLabels(provision.PDBLabelsOpts{
-		App:         app,
-		Prefix:      "tsuru.io/",
-		Process:     "web",
-		Provisioner: "kubernetes",
+		App:     app,
+		Prefix:  "tsuru.io/",
+		Process: "web",
 	})
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{

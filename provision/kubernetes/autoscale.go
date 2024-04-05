@@ -57,8 +57,7 @@ func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -140,8 +139,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -335,8 +333,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		Process: depInfo.process,
 		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -661,8 +658,7 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 		Process: depInfo.process,
 		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -753,8 +749,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -796,8 +791,7 @@ func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient 
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -821,8 +815,7 @@ func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 		Version: version,
 	})

@@ -46,9 +46,8 @@ const (
 	tsuruLabelAppName         = tsuruLabelPrefix + provision.LabelAppName
 	tsuruLabelJobName         = tsuruLabelPrefix + provision.LabelJobName
 	tsuruLabelAppVersion      = tsuruLabelPrefix + provision.LabelAppVersion
-	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
 	tsuruLabelIsBuild         = tsuruLabelPrefix + provision.LabelIsBuild
-	tsuruLabelIsDeploy        = tsuruLabelPrefix + provision.LabelIsDeploy
+	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
 	replicaDepRevision        = "deployment.kubernetes.io/revision"
 )
 

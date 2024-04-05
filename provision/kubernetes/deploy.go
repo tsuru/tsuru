@@ -426,9 +426,8 @@ func ensureServiceAccount(ctx context.Context, client *ClusterClient, name strin
 
 func ensureServiceAccountForApp(ctx context.Context, client *ClusterClient, a provision.App) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
-		App:         a,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App:    a,
+		Prefix: tsuruLabelPrefix,
 	})
 	ns, err := client.AppNamespace(ctx, a)
 	if err != nil {
@@ -693,7 +692,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 							Name:           depName,
 							Image:          deployImage,
 							Command:        cmds,
-							Env:            appEnvs(a, process, version, false),
+							Env:            appEnvs(a, process, version),
 							ReadinessProbe: hcData.readiness,
 							LivenessProbe:  hcData.liveness,
 							Resources:      resourceRequirements,
@@ -715,8 +714,8 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	return newDep, labels, errors.WithStack(err)
 }
 
-func appEnvs(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []apiv1.EnvVar {
-	appEnvs := EnvsForApp(a, process, version, isDeploy)
+func appEnvs(a provision.App, process string, version appTypes.AppVersion) []apiv1.EnvVar {
+	appEnvs := EnvsForApp(a, process, version)
 	envs := make([]apiv1.EnvVar, len(appEnvs))
 	for i, envData := range appEnvs {
 		envs[i] = apiv1.EnvVar{
@@ -1122,8 +1121,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 	}
 
 	provision.ExtendServiceLabels(opts.Labels, provision.ServiceLabelExtendedOpts{
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		Prefix: tsuruLabelPrefix,
 	})
 
 	depArgs, err := m.baseDeploymentArgs(ctx, opts.App, opts.ProcessName, opts.Labels, opts.Version, opts.PreserveVersions)

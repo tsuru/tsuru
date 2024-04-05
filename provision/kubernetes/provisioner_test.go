@@ -655,32 +655,6 @@ func (s *S) TestUnitsNoApps(c *check.C) {
 	c.Assert(units, check.HasLen, 0)
 }
 
-func (s *S) TestRegisterUnit(c *check.C) {
-	s.mock.DefaultHook = func(w http.ResponseWriter, r *http.Request) {
-		c.Assert(r.FormValue("labelSelector"), check.Equals, "tsuru.io/app-name in (myapp)")
-		output := `{"items": [
-		{"metadata": {"name": "myapp-web-pod-1-1", "labels": {"tsuru.io/app-name": "myapp", "tsuru.io/app-process": "web", "tsuru.io/app-platform": "python"}}, "status": {"phase": "Running"}}
-	]}`
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(output))
-	}
-	a, wait, rollback := s.mock.DefaultReactions(c)
-	defer rollback()
-	version := newSuccessfulVersion(c, a, map[string]interface{}{
-		"processes": map[string]interface{}{
-			"web": "python myapp.py",
-		},
-	})
-	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
-	c.Assert(err, check.IsNil)
-	wait()
-	units, err := s.p.Units(context.TODO(), a)
-	c.Assert(err, check.IsNil)
-	c.Assert(units, check.HasLen, 1)
-	err = s.p.RegisterUnit(context.TODO(), a, units[0].ID, nil)
-	c.Assert(err, check.IsNil, check.Commentf("%+v", err))
-}
-
 func (s *S) TestAddUnits(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
@@ -2558,7 +2532,7 @@ func (s *S) TestEnvsForAppDefaultPort(c *check.C) {
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "web", version, false)
+	envs := EnvsForApp(fa, "web", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "web"},
@@ -2625,7 +2599,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 	fa := provisiontest.NewFakeApp("myapp", "java", 1)
 	fa.SetEnv(bindTypes.EnvVar{Name: "e1", Value: "v1"})
 
-	envs := EnvsForApp(fa, "proc1", version, false)
+	envs := EnvsForApp(fa, "proc1", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc1"},
@@ -2634,7 +2608,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc1", Value: "8080,9000"},
 	})
 
-	envs = EnvsForApp(fa, "proc2", version, false)
+	envs = EnvsForApp(fa, "proc2", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc2"},
@@ -2643,7 +2617,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc2", Value: "8000"},
 	})
 
-	envs = EnvsForApp(fa, "proc3", version, false)
+	envs = EnvsForApp(fa, "proc3", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc3"},
@@ -2652,7 +2626,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc3", Value: "8080"},
 	})
 
-	envs = EnvsForApp(fa, "proc4", version, false)
+	envs = EnvsForApp(fa, "proc4", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc4"},
@@ -2663,7 +2637,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "PORT_proc4", Value: "8888"},
 	})
 
-	envs = EnvsForApp(fa, "proc5", version, false)
+	envs = EnvsForApp(fa, "proc5", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc5"},
@@ -2671,7 +2645,7 @@ func (s *S) TestEnvsForAppCustomPorts(c *check.C) {
 		{Name: "TSURU_HOST", Value: ""},
 	})
 
-	envs = EnvsForApp(fa, "proc6", version, false)
+	envs = EnvsForApp(fa, "proc6", version)
 	c.Assert(envs, check.DeepEquals, []bindTypes.EnvVar{
 		{Name: "e1", Value: "v1"},
 		{Name: "TSURU_PROCESSNAME", Value: "proc6"},

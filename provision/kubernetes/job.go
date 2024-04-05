@@ -489,9 +489,8 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 
 func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job jobTypes.Job) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
-		Job:         &job,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		Job:    &job,
+		Prefix: tsuruLabelPrefix,
 	})
 	ns := client.PoolNamespace(job.Pool)
 	return ensureServiceAccount(ctx, client, serviceAccountNameForJob(job), labels, ns, &job.Metadata)

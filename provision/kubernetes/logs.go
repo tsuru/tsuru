@@ -204,10 +204,7 @@ func listLogsFromPods(ctx context.Context, clusterClient *ClusterClient, ns stri
 }
 
 func listPodsSelectorForLog(args appTypes.ListLogArgs) labels.Selector {
-	m := map[string]string{
-		tsuruLabelIsBuild:  "false",
-		tsuruLabelIsDeploy: "false",
-	}
+	m := map[string]string{}
 	if args.Type == logTypes.LogTypeJob {
 		m[tsuruLabelJobName] = args.Name
 	} else {
@@ -377,9 +374,6 @@ func filterPods(pods []*apiv1.Pod, names []string) []*apiv1.Pod {
 
 func matchPod(pod *apiv1.Pod, args appTypes.ListLogArgs) bool {
 	if pod.ObjectMeta.Labels[tsuruLabelIsBuild] == "true" {
-		return false
-	}
-	if pod.ObjectMeta.Labels[tsuruLabelIsDeploy] == "true" {
 		return false
 	}
 	if args.Source != "" && pod.ObjectMeta.Labels[tsuruLabelAppProcess] != args.Source {

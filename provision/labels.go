@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	LabelIsBuild  = "is-build"
-	LabelIsDeploy = "is-deploy"
+	LabelIsBuild = "is-build"
 
 	labelIsTsuru           = "is-tsuru"
 	labelIsStopped         = "is-stopped"
@@ -55,10 +54,7 @@ const (
 	labelVolumePlan = "volume-plan"
 	labelVolumeTeam = "volume-team"
 
-	labelBuildImage = "build-image"
-	labelRestarts   = "restarts"
-
-	labelProvisioner = "provisioner"
+	labelRestarts = "restarts"
 
 	labelBuilder = "builder"
 
@@ -297,16 +293,8 @@ func (s *LabelSet) Restarts() int {
 	return restarts
 }
 
-func (s *LabelSet) BuildImage() string {
-	return s.getLabel(labelBuildImage)
-}
-
 func (s *LabelSet) IsStopped() bool {
 	return s.getBoolLabel(labelIsStopped)
-}
-
-func (s *LabelSet) IsDeploy() bool {
-	return s.getBoolLabel(LabelIsDeploy)
 }
 
 func (s *LabelSet) IsService() bool {
@@ -351,10 +339,6 @@ func (s *LabelSet) SetIsRoutable() {
 
 func (s *LabelSet) ToggleIsRoutable(isRoutable bool) {
 	s.addLabel(labelIsRoutable, strconv.FormatBool(isRoutable))
-}
-
-func (s *LabelSet) SetBuildImage(image string) {
-	s.addLabel(labelBuildImage, image)
 }
 
 func (s *LabelSet) SetVersion(version int) {
@@ -407,10 +391,7 @@ type ServiceLabelsOpts struct {
 }
 
 type ServiceLabelExtendedOpts struct {
-	Provisioner   string
 	Prefix        string
-	BuildImage    string
-	IsDeploy      bool
 	IsIsolatedRun bool
 	IsBuild       bool
 	Builder       string
@@ -418,12 +399,7 @@ type ServiceLabelExtendedOpts struct {
 
 func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 	set.Prefix = opts.Prefix
-	if opts.BuildImage != "" {
-		set.Labels[labelBuildImage] = opts.BuildImage
-	}
-	set.Labels[labelProvisioner] = opts.Provisioner
 	set.Labels[labelIsService] = strconv.FormatBool(true)
-	set.Labels[LabelIsDeploy] = strconv.FormatBool(opts.IsDeploy)
 	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
 	set.Labels[LabelIsBuild] = strconv.FormatBool(opts.IsBuild)
 	set.Labels[labelBuilder] = opts.Builder
@@ -431,9 +407,8 @@ func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 
 func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, error) {
 	set, err := ProcessLabels(ctx, ProcessLabelsOpts{
-		App:      opts.App,
-		Process:  opts.Process,
-		IsDeploy: opts.IsDeploy,
+		App:     opts.App,
+		Process: opts.Process,
 	})
 	if err != nil {
 		return nil, err
@@ -468,7 +443,6 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 			LabelJobIsManual:  strconv.FormatBool(job.Spec.Manual),
 			labelIsService:    strconv.FormatBool(true),
 			LabelIsBuild:      strconv.FormatBool(false),
-			LabelIsDeploy:     strconv.FormatBool(false),
 		},
 		RawLabels: map[string]string{
 			// Reference about these labels: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
@@ -482,12 +456,10 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 }
 
 type ProcessLabelsOpts struct {
-	App         App
-	Process     string
-	Provisioner string
-	Builder     string
-	Prefix      string
-	IsDeploy    bool
+	App     App
+	Process string
+	Builder string
+	Prefix  string
 }
 
 func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, error) {
@@ -495,13 +467,11 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
 			labelIsStopped:    strconv.FormatBool(false),
-			LabelIsDeploy:     strconv.FormatBool(opts.IsDeploy),
 			LabelAppName:      opts.App.GetName(),
 			LabelAppTeamOwner: opts.App.GetTeamOwner(),
 			LabelAppProcess:   opts.Process,
 			LabelAppPlatform:  opts.App.GetPlatform(),
 			LabelAppPool:      opts.App.GetPool(),
-			labelProvisioner:  opts.Provisioner,
 			labelBuilder:      opts.Builder,
 		},
 		Prefix: opts.Prefix,
@@ -532,14 +502,12 @@ type ServiceAccountLabelsOpts struct {
 	App               App
 	Job               *jobTypes.Job
 	NodeContainerName string
-	Provisioner       string
 	Prefix            string
 }
 
 func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 	labelMap := map[string]string{
-		labelIsTsuru:     strconv.FormatBool(true),
-		labelProvisioner: opts.Provisioner,
+		labelIsTsuru: strconv.FormatBool(true),
 	}
 	if opts.App != nil {
 		labelMap[LabelAppName] = opts.App.GetName()
@@ -576,22 +544,20 @@ func NodeLabels(opts NodeLabelsOpts) *LabelSet {
 }
 
 type VolumeLabelsOpts struct {
-	Name        string
-	Provisioner string
-	Pool        string
-	Plan        string
-	Team        string
-	Prefix      string
+	Name   string
+	Pool   string
+	Plan   string
+	Team   string
+	Prefix string
 }
 
 func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
 	labels := map[string]string{
-		labelIsTsuru:     strconv.FormatBool(true),
-		labelProvisioner: opts.Provisioner,
-		labelVolumeName:  opts.Name,
-		labelVolumePool:  opts.Pool,
-		labelVolumePlan:  opts.Plan,
-		labelVolumeTeam:  opts.Team,
+		labelIsTsuru:    strconv.FormatBool(true),
+		labelVolumeName: opts.Name,
+		labelVolumePool: opts.Pool,
+		labelVolumePlan: opts.Plan,
+		labelVolumeTeam: opts.Team,
 	}
 	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
@@ -599,16 +565,14 @@ func VolumeLabels(opts VolumeLabelsOpts) *LabelSet {
 type ImageBuildLabelsOpts struct {
 	Name         string
 	CustomLabels map[string]string
-	Provisioner  string
 	Prefix       string
 	IsBuild      bool
 }
 
 func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 	labels := map[string]string{
-		labelIsTsuru:     strconv.FormatBool(true),
-		labelProvisioner: opts.Provisioner,
-		LabelIsBuild:     strconv.FormatBool(opts.IsBuild),
+		labelIsTsuru: strconv.FormatBool(true),
+		LabelIsBuild: strconv.FormatBool(opts.IsBuild),
 	}
 	for k, v := range opts.CustomLabels {
 		labels[k] = v
@@ -617,17 +581,15 @@ func ImageBuildLabels(opts ImageBuildLabelsOpts) *LabelSet {
 }
 
 type PDBLabelsOpts struct {
-	App         App
-	Prefix      string
-	Process     string
-	Provisioner string
+	App     App
+	Prefix  string
+	Process string
 }
 
 func PDBLabels(opts PDBLabelsOpts) *LabelSet {
 	return &LabelSet{
 		Labels: map[string]string{
 			labelIsTsuru:      strconv.FormatBool(true),
-			labelProvisioner:  opts.Provisioner,
 			LabelAppName:      opts.App.GetName(),
 			LabelAppProcess:   opts.Process,
 			LabelAppTeamOwner: opts.App.GetTeamOwner(),

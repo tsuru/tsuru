@@ -328,9 +328,6 @@ type Provisioner interface {
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
-
-	// Register a unit after the container has been created or restarted.
-	RegisterUnit(context.Context, App, string, map[string]interface{}) error
 }
 
 type JobProvisioner interface {

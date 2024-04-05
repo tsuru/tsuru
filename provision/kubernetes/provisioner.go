@@ -835,8 +835,7 @@ func (p *kubernetesProvisioner) podsForApps(ctx context.Context, client *Cluster
 		l, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 			App: a,
 			ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-				Prefix:      tsuruLabelPrefix,
-				Provisioner: provisionerName,
+				Prefix: tsuruLabelPrefix,
 			},
 		})
 		if err != nil {
@@ -1000,47 +999,6 @@ func (p *kubernetesProvisioner) addressesForApp(ctx context.Context, client *Clu
 	return addrs, nil
 }
 
-func (p *kubernetesProvisioner) RegisterUnit(ctx context.Context, a provision.App, unitID string, customData map[string]interface{}) error {
-	client, err := clusterForPool(ctx, a.GetPool())
-	if err != nil {
-		return err
-	}
-	ns, err := client.AppNamespace(ctx, a)
-	if err != nil {
-		return err
-	}
-	pod, err := client.CoreV1().Pods(ns).Get(ctx, unitID, metav1.GetOptions{})
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return &provision.UnitNotFoundError{ID: unitID}
-		}
-		return errors.WithStack(err)
-	}
-	units, err := p.podsToUnits(ctx, client, []apiv1.Pod{*pod}, a)
-	if err != nil {
-		return err
-	}
-	if len(units) == 0 {
-		return errors.Errorf("unable to convert pod to unit: %#v", pod)
-	}
-	if customData == nil {
-		return nil
-	}
-	l := labelSetFromMeta(&pod.ObjectMeta)
-	buildingImage := l.BuildImage()
-	if buildingImage == "" {
-		return nil
-	}
-	version, err := servicemanager.AppVersion.VersionByPendingImage(ctx, a, buildingImage)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	err = version.AddData(appTypes.AddVersionDataArgs{
-		CustomData: customData,
-	})
-	return errors.WithStack(err)
-}
-
 func (p *kubernetesProvisioner) InternalAddresses(ctx context.Context, a provision.App) ([]provision.AppInternalAddress, error) {
 	client, err := clusterForPool(ctx, a.GetPool())
 	if err != nil {
@@ -1185,7 +1143,6 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		App: opts.app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			Prefix:        tsuruLabelPrefix,
-			Provisioner:   provisionerName,
 			IsIsolatedRun: true,
 		},
 	})
@@ -1200,7 +1157,7 @@ func runIsolatedCmdPod(ctx context.Context, client *ClusterClient, opts execOpts
 		}
 		opts.image = version.VersionInfo().DeployImage
 	}
-	appEnvs := provision.EnvsForApp(opts.app, "", false, version)
+	appEnvs := provision.EnvsForApp(opts.app, "", version)
 	var envs []apiv1.EnvVar
 	for _, envData := range appEnvs {
 		envs = append(envs, apiv1.EnvVar{Name: envData.Name, Value: envData.Value})
@@ -1593,11 +1550,8 @@ func normalizeConfigs(version appTypes.AppVersion) (*provTypes.TsuruYamlKubernet
 	return config, nil
 }
 
-func EnvsForApp(a provision.App, process string, version appTypes.AppVersion, isDeploy bool) []bindTypes.EnvVar {
-	envs := provision.EnvsForApp(a, process, isDeploy, version)
-	if isDeploy {
-		return envs
-	}
+func EnvsForApp(a provision.App, process string, version appTypes.AppVersion) []bindTypes.EnvVar {
+	envs := provision.EnvsForApp(a, process, version)
 
 	portsConfig, err := getProcessPortsForVersion(version, process)
 	if err != nil {
