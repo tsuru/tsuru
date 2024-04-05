@@ -4720,12 +4720,19 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSchedule"
+      prometheus:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AutoScalePrometheus"
       version:
         type: integer
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object
     properties:
+      name:
+        type: string
       minReplicas:
         type: integer
       start:
@@ -4733,6 +4740,22 @@ definitions:
       end:
         type: string
       timezone:
+        type: string
+  AutoScalePrometheus:
+    description: Auto Scale prometheus struct
+    type: object
+    properties:
+      name:
+        type: string
+      query:
+        type: string
+      threshold:
+        type: number
+        x-go-custom-type: "float64"
+      activationThreshold:
+        type: number
+        x-go-custom-type: "float64"
+      prometheusAddress:
         type: string
   AppCName:
     description: Application CNames
