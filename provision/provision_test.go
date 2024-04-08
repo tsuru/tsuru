@@ -160,6 +160,13 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 			},
 			"maximum units cannot be greater than quota limit",
 		},
+		{
+			AutoScaleSpec{
+				MinUnits: 1,
+				MaxUnits: 2,
+			},
+			"you have to configure at least one trigger between cpu, schedule and prometheus",
+		},
 	}
 
 	for _, test := range tests {
