@@ -1630,7 +1630,7 @@ func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, versio
 	ls.SetVersion(version)
 	dep.Spec.Paused = true
 	dep.ObjectMeta.Labels = ls.WithoutVersion().ToLabels()
-	dep.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
+	dep.Spec.Template.ObjectMeta.Labels = ls.PodLabels()
 	_, err = client.AppsV1().Deployments(dep.Namespace).Update(ctx, dep, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.WithStack(err)

@@ -598,8 +598,11 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	metadata := a.GetMetadata(process)
+	podLabels := labels.PodLabels()
+
 	for _, l := range metadata.Labels {
 		labels.RawLabels[l.Name] = l.Value
+		podLabels[l.Name] = l.Value
 	}
 
 	annotations := map[string]string{}
@@ -608,7 +611,6 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	}
 
 	depLabels := labels.WithoutVersion().ToLabels()
-	podLabels := labels.LeanPodLabels()
 	containerPorts := make([]apiv1.ContainerPort, len(processPorts))
 	for i, port := range processPorts {
 		portInt := port.TargetPort

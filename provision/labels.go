@@ -24,7 +24,6 @@ const (
 	labelIsStopped         = "is-stopped"
 	labelIsIsolatedRun     = "is-isolated-run"
 	labelIsIsolatedRunNew  = "is-isolated-run-version"
-	labelIsNodeContainer   = "is-node-container"
 	labelIsService         = "is-service"
 	labelIsHeadlessService = "is-headless-service"
 	labelIsRoutable        = "is-routable"
@@ -126,13 +125,12 @@ func (s *LabelSet) ToRoutableSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, LabelIsBuild, labelIsRoutable), s.Prefix)
 }
 
-func (s *LabelSet) LeanPodLabels() map[string]string {
-	result := withPrefix(subMap(s.Labels, LabelAppName, LabelAppProcess, labelIsRoutable, labelIsTsuru, LabelIsBuild, labelIsIsolatedRun, LabelAppVersion, LabelAppTeamOwner), s.Prefix)
-
-	for k, v := range s.RawLabels {
-		result[k] = v
-	}
-	return result
+func (s *LabelSet) PodLabels() map[string]string {
+	return withPrefix(subMap(
+		s.Labels,
+		LabelAppName, LabelAppProcess, labelIsRoutable, labelIsTsuru, LabelIsBuild, labelIsIsolatedRun,
+		labelIsIsolatedRunNew, LabelAppVersion, LabelAppTeamOwner, LabelAppPool, labelRestarts, LabelAppPlatform,
+	), s.Prefix)
 }
 
 func (s *LabelSet) ToAppSelector() map[string]string {
