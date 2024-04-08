@@ -12,6 +12,7 @@ import (
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kr/pretty"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
@@ -99,7 +100,7 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 	}
 }
 
-func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provision.AutoScaleSchedule) *kedav1alpha1.ScaledObject {
+func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provision.AutoScaleSchedule, prometheusSpecs []provision.AutoScalePrometheus, ns string) *kedav1alpha1.ScaledObject {
 	triggers := []kedav1alpha1.ScaleTriggers{}
 
 	if cpuTrigger != nil {
@@ -110,6 +111,7 @@ func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs 
 		scheduleTrigger := kedav1alpha1.ScaleTriggers{
 			Type: "cron",
 			Metadata: map[string]string{
+				"scheduleName":    schedule.Name,
 				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
 				"start":           schedule.Start,
 				"end":             schedule.End,
@@ -118,6 +120,16 @@ func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs 
 		}
 		triggers = append(triggers, scheduleTrigger)
 	}
+
+	for _, prometheus := range prometheusSpecs {
+		prometheusTrigger, err := buildPrometheusTrigger(ns, prometheus)
+		if err != nil {
+			return nil
+		}
+
+		triggers = append(triggers, *prometheusTrigger)
+	}
+
 	policyMin := autoscalingv2.MinChangePolicySelect
 
 	return &kedav1alpha1.ScaledObject{
@@ -334,7 +346,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 	}
 }
 
-func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
+func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string]interface{}{
@@ -469,8 +481,228 @@ func (s *S) TestProvisionerSetKEDAAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs)
+		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs, []provision.AutoScalePrometheus{}, "default")
 		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+	}
+}
+
+func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	config.Set("kubernetes:keda:prometheus-address-template", "http://prometheus-address-test.{{.namespace}}")
+	defer config.Unset("kubernetes:keda:prometheus-address-template")
+
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	prometheusList := []provision.AutoScalePrometheus{
+		{
+			Name:      "prometheus_metric_1",
+			Query:     "some_query_1",
+			Threshold: 10.0,
+		},
+		{
+			Name:                "prometheus_metric_2",
+			Query:               "some_query_2",
+			Threshold:           10.0,
+			ActivationThreshold: 2.0,
+		},
+		{
+			Name:              "prometheus_metric_3",
+			Query:             "some_query_3",
+			PrometheusAddress: "test.prometheus.address.exemple",
+			Threshold:         30.0,
+		},
+	}
+
+	tests := []struct {
+		scenario        func()
+		cpuTrigger      *kedav1alpha1.ScaleTriggers
+		prometheusSpecs []provision.AutoScalePrometheus
+	}{
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+					Prometheus: prometheusList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			prometheusSpecs: prometheusList[:1],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50%",
+					Prometheus: prometheusList[:2],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			prometheusSpecs: prometheusList[:2],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "50",
+					Prometheus: prometheusList[:3],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.AverageValueMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(500),
+				},
+			},
+			prometheusSpecs: prometheusList[:3],
+		},
+		{
+			scenario: func() {
+				a.MilliCPU = 700
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					AverageCPU: "500m",
+					Prometheus: prometheusList[:3],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger: &kedav1alpha1.ScaleTriggers{
+				Type:       "cpu",
+				MetricType: autoscalingv2.UtilizationMetricType,
+				Metadata: map[string]string{
+					"value": strconv.Itoa(50),
+				},
+			},
+			prometheusSpecs: prometheusList[:3],
+		},
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					Prometheus: prometheusList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			cpuTrigger:      nil,
+			prometheusSpecs: prometheusList[:1],
+		},
+	}
+	for _, tt := range tests {
+		tt.scenario()
+
+		ns, err := s.client.AppNamespace(context.TODO(), a)
+		c.Assert(err, check.IsNil)
+		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		c.Assert(err, check.IsNil)
+		expected := testKEDAScaledObject(tt.cpuTrigger, []provision.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
+		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+	}
+}
+
+func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	prometheusList := []provision.AutoScalePrometheus{
+		{
+			Name:              "prometheus_metric_1",
+			Query:             "some_query_1",
+			PrometheusAddress: "test.prometheus.address.exemple",
+			Threshold:         10.0,
+		},
+		{
+			Name:      "prometheus_metric_2",
+			Query:     "some_query_2",
+			Threshold: 10.0,
+		},
+	}
+
+	tests := []struct {
+		scenario        func()
+		prometheusSpecs []provision.AutoScalePrometheus
+		assertion       func(error, *kedav1alpha1.ScaledObject)
+	}{
+		{
+			scenario: func() {
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					Prometheus: prometheusList[:1],
+				})
+				c.Assert(err, check.IsNil)
+			},
+			prometheusSpecs: prometheusList[:1],
+			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
+				c.Assert(err, check.IsNil)
+				expected := testKEDAScaledObject(nil, []provision.AutoScaleSchedule{}, prometheusList[:1], "default")
+				c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
+			},
+		},
+		{
+			scenario: func() {
+				config.Unset("kubernetes:keda:prometheus-address-template")
+				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+					MinUnits:   1,
+					MaxUnits:   2,
+					Prometheus: prometheusList[1:],
+				})
+				expectedError := config.ErrKeyNotFound{Key: "kubernetes:keda:prometheus-address-template"}
+				c.Assert(err.Error(), check.Equals, expectedError.Error())
+			},
+			prometheusSpecs: prometheusList[:1],
+			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
+				c.Assert(err.Error(), check.Equals, "scaledobjects.keda \"myapp-web\" not found")
+				c.Assert(scaledObject, check.IsNil)
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt.scenario()
+
+		ns, err := s.client.AppNamespace(context.TODO(), a)
+		c.Assert(err, check.IsNil)
+		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+		tt.assertion(err, scaledObject)
+		s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Delete(context.TODO(), "myapp-web", metav1.DeleteOptions{})
 	}
 }
 
@@ -597,7 +829,6 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 			},
 		})
 	}
-
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
 	c.Assert(err, check.IsNil)
 	wait()
@@ -611,6 +842,14 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 				Start:       "0 6 * * *",
 				End:         "0 18 * * *",
 				Timezone:    "UTC",
+			},
+		},
+		Prometheus: []provision.AutoScalePrometheus{
+			{
+				Name:              "prometheus_metric",
+				Query:             "sum(some_metric{app='app_test'})",
+				PrometheusAddress: "test.prometheus.address.exemple",
+				Threshold:         10.0,
 			},
 		},
 	})
@@ -808,6 +1047,14 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 				Timezone:    "UTC",
 			},
 		},
+		Prometheus: []provision.AutoScalePrometheus{
+			{
+				Name:              "prometheus_metric",
+				Query:             "sum(some_metric{app='app_test'})",
+				PrometheusAddress: "test.prometheus.address.exemple",
+				Threshold:         10.0,
+			},
+		},
 	})
 	c.Assert(err, check.IsNil)
 
@@ -877,7 +1124,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	})
 }
 
-func (s *S) TestProvisionerGetKEDAAutoScale(c *check.C) {
+func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 	version := newSuccessfulVersion(c, a, map[string]interface{}{
@@ -967,6 +1214,117 @@ func (s *S) TestProvisionerGetKEDAAutoScale(c *check.C) {
 					Start:       "0 12 * * *",
 					End:         "0 15 * * *",
 					Timezone:    "UTC",
+				},
+			},
+		},
+	})
+}
+
+func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+
+	config.Set("kubernetes:keda:prometheus-address-template", "http://prometheus-address-test.{{.namespace}}")
+	defer config.Unset("kubernetes:keda:prometheus-address-template")
+
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python worker.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+	err = s.p.AddUnits(context.TODO(), a, 1, "worker", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   1,
+		MaxUnits:   2,
+		AverageCPU: "500m",
+		Process:    "web",
+		Prometheus: []provision.AutoScalePrometheus{
+			{
+				Name:              "prometheus_metric_1",
+				Query:             "some_query_1",
+				PrometheusAddress: "test.prometheus.address.exemple",
+				Threshold:         10.0,
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+		MinUnits:   2,
+		MaxUnits:   4,
+		AverageCPU: "200m",
+		Process:    "worker",
+		Prometheus: []provision.AutoScalePrometheus{
+			{
+				Name:      "prometheus_metric_2",
+				Query:     "some_query_2",
+				Threshold: 20.0,
+			},
+			{
+				Name:              "prometheus_metric_3",
+				Query:             "some_query_3",
+				PrometheusAddress: "test.prometheus.address3.exemple",
+				Threshold:         30.0,
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+
+	ns, err := s.client.AppNamespace(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-web"), metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	_, err = s.client.AutoscalingV2().HorizontalPodAutoscalers(ns).Create(context.TODO(), testKEDAHPA("myapp-worker"), metav1.CreateOptions{})
+	c.Assert(err, check.IsNil)
+
+	scales, err := s.p.GetAutoScale(context.TODO(), a)
+	c.Assert(err, check.IsNil)
+	sort.Slice(scales, func(i, j int) bool {
+		return scales[i].Process < scales[j].Process
+	})
+	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+		{
+			MinUnits:   1,
+			MaxUnits:   2,
+			AverageCPU: "500m",
+			Version:    1,
+			Process:    "web",
+			Prometheus: []provision.AutoScalePrometheus{
+				{
+					Name:              "prometheus_metric_1",
+					Query:             "some_query_1",
+					PrometheusAddress: "test.prometheus.address.exemple",
+					Threshold:         10.0,
+				},
+			},
+		},
+		{
+			MinUnits:   2,
+			MaxUnits:   4,
+			AverageCPU: "200m",
+			Version:    1,
+			Process:    "worker",
+			Prometheus: []provision.AutoScalePrometheus{
+				{
+					Name:              "prometheus_metric_2",
+					Query:             "some_query_2",
+					PrometheusAddress: "http://prometheus-address-test.default",
+					Threshold:         20.0,
+				},
+				{
+					Name:              "prometheus_metric_3",
+					Query:             "some_query_3",
+					PrometheusAddress: "test.prometheus.address3.exemple",
+					Threshold:         30.0,
 				},
 			},
 		},

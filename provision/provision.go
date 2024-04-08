@@ -461,15 +461,25 @@ type VolumeProvisioner interface {
 }
 
 type AutoScaleSpec struct {
-	Process    string              `json:"process"`
-	MinUnits   uint                `json:"minUnits"`
-	MaxUnits   uint                `json:"maxUnits"`
-	AverageCPU string              `json:"averageCPU,omitempty"`
-	Schedules  []AutoScaleSchedule `json:"schedules,omitempty"`
-	Version    int                 `json:"version"`
+	Process    string                `json:"process"`
+	MinUnits   uint                  `json:"minUnits"`
+	MaxUnits   uint                  `json:"maxUnits"`
+	AverageCPU string                `json:"averageCPU,omitempty"`
+	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
+	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
+	Version    int                   `json:"version"`
+}
+
+type AutoScalePrometheus struct {
+	Name                string  `json:"name"`
+	Query               string  `json:"query"`
+	Threshold           float64 `json:"threshold"`
+	ActivationThreshold float64 `json:"activationThreshold,omitempty"`
+	PrometheusAddress   string  `json:"prometheusAddress,omitempty"`
 }
 
 type AutoScaleSchedule struct {
+	Name        string `json:"name,omitempty"`
 	MinReplicas int    `json:"minReplicas"`
 	Start       string `json:"start"`
 	End         string `json:"end"`
@@ -527,8 +537,8 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
 		return errors.New("maximum units cannot be greater than quota limit")
 	}
-	if s.AverageCPU == "" && len(s.Schedules) == 0 {
-		return errors.New("you have to configure at least one trigger between cpu and schedule")
+	if s.AverageCPU == "" && len(s.Schedules) == 0 && len(s.Prometheus) == 0 {
+		return errors.New("you have to configure at least one trigger between cpu, schedule and prometheus")
 	}
 	if s.AverageCPU != "" {
 		_, err := s.ToCPUValue(a)
