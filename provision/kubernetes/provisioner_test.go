@@ -1683,9 +1683,8 @@ func (s *S) TestExecuteCommandNoUnits(c *check.C) {
 			Name:      "app-myapp",
 			Namespace: ns,
 			Labels: map[string]string{
-				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/app-name":    "myapp",
-				"tsuru.io/provisioner": "kubernetes",
+				"tsuru.io/is-tsuru": "true",
+				"tsuru.io/app-name": "myapp",
 			},
 		},
 	})

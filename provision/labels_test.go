@@ -66,14 +66,11 @@ func (s *S) TestProcessLabels(c *check.C) {
 		Labels: map[string]string{
 			"is-tsuru":        "true",
 			"is-stopped":      "false",
-			"is-deploy":       "false",
 			"app-name":        "myapp",
 			"app-process":     "p1",
 			"app-platform":    "cobol",
 			"app-pool":        "test-default",
 			"app-team":        "",
-			"provisioner":     "kubernetes",
-			"builder":         "",
 			"custom-tag-tag1": "1",
 			"custom-tag-tag2": "",
 			"custom-tag-tag3": "a=b=c obla di obla da",
@@ -91,7 +88,6 @@ func (s *S) TestServiceLabels(c *check.C) {
 		Version: 9,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
 			IsBuild: true,
-			Builder: "docker",
 		},
 	}
 	ls, err := provision.ServiceLabels(context.TODO(), opts)
@@ -112,15 +108,12 @@ func (s *S) TestServiceLabels(c *check.C) {
 			"is-service":      "true",
 			"is-stopped":      "false",
 			"is-isolated-run": "false",
-			"is-deploy":       "false",
 			"app-name":        "myapp",
 			"app-team":        "",
 			"app-process":     "p1",
 			"app-platform":    "cobol",
 			"app-pool":        "test-default",
 			"app-version":     "9",
-			"provisioner":     "kubernetes",
-			"builder":         "docker",
 		},
 	})
 }
@@ -172,7 +165,6 @@ func (s *S) TestPDBLabels(c *check.C) {
 	c.Assert(ls, check.DeepEquals, &provision.LabelSet{
 		Labels: map[string]string{
 			"is-tsuru":    "true",
-			"provisioner": "kubernetes",
 			"app-name":    "myapp",
 			"app-process": "web",
 			"app-team":    "team-one",

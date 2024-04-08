@@ -32,7 +32,6 @@ func (s *S) TestNewPDB(c *check.C) {
 						"tsuru.io/app-name":    "myapp-01",
 						"tsuru.io/app-process": "p1",
 						"tsuru.io/app-team":    "admin",
-						"tsuru.io/provisioner": "kubernetes",
 					},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
@@ -69,7 +68,6 @@ func (s *S) TestNewPDB(c *check.C) {
 						"tsuru.io/app-name":    "myapp-02",
 						"tsuru.io/app-process": "p1",
 						"tsuru.io/app-team":    "admin",
-						"tsuru.io/provisioner": "kubernetes",
 					},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{

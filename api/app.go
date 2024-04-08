@@ -1975,12 +1975,6 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
-func isDeployAgentUA(r *http.Request) bool {
-	ua := strings.ToLower(r.UserAgent())
-	return strings.HasPrefix(ua, "go-http-client") ||
-		strings.HasPrefix(ua, "tsuru-deploy-agent")
-}
-
 // compatRebuildRoutesResult is a backward compatible rebuild routes struct
 // used in the handler so that old clients won't break.
 type compatRebuildRoutesResult struct {

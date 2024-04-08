@@ -56,8 +56,6 @@ const (
 
 	labelRestarts = "restarts"
 
-	labelBuilder = "builder"
-
 	labelClusterMetadata = "tsuru.io/cluster"
 
 	labelCustomTagsPrefix = "custom-tag-"
@@ -403,7 +401,6 @@ type ServiceLabelExtendedOpts struct {
 	Prefix        string
 	IsIsolatedRun bool
 	IsBuild       bool
-	Builder       string
 }
 
 func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
@@ -411,7 +408,6 @@ func ExtendServiceLabels(set *LabelSet, opts ServiceLabelExtendedOpts) {
 	set.Labels[labelIsService] = strconv.FormatBool(true)
 	set.Labels[labelIsIsolatedRun] = strconv.FormatBool(opts.IsIsolatedRun)
 	set.Labels[LabelIsBuild] = strconv.FormatBool(opts.IsBuild)
-	set.Labels[labelBuilder] = opts.Builder
 }
 
 func ServiceLabels(ctx context.Context, opts ServiceLabelsOpts) (*LabelSet, error) {
@@ -467,7 +463,6 @@ func JobLabels(ctx context.Context, job *jobTypes.Job) *LabelSet {
 type ProcessLabelsOpts struct {
 	App     App
 	Process string
-	Builder string
 	Prefix  string
 }
 
@@ -481,7 +476,6 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 			LabelAppProcess:   opts.Process,
 			LabelAppPlatform:  opts.App.GetPlatform(),
 			LabelAppPool:      opts.App.GetPool(),
-			labelBuilder:      opts.Builder,
 		},
 		Prefix: opts.Prefix,
 	}

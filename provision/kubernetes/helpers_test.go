@@ -419,7 +419,6 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/is-service":      "true",
 		"tsuru.io/is-build":        "false",
 		"tsuru.io/is-stopped":      "false",
-		"tsuru.io/is-deploy":       "false",
 		"tsuru.io/is-isolated-run": "false",
 		"tsuru.io/restarts":        "0",
 		"tsuru.io/app-name":        "myapp",
@@ -427,7 +426,6 @@ func (s *S) TestCleanupDeployment(c *check.C) {
 		"tsuru.io/app-platform":    "plat",
 		"tsuru.io/app-pool":        "test-default",
 		"tsuru.io/app-version":     "1",
-		"tsuru.io/provisioner":     "kubernetes",
 	}
 	err := s.p.Provision(context.TODO(), a)
 	c.Assert(err, check.IsNil)
