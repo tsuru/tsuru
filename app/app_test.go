@@ -1130,7 +1130,8 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 					Value:  "localhost",
 					Public: false,
 				},
-				InstanceName: "some service",
+				InstanceName: "instance",
+				ServiceName:  "service",
 			},
 		},
 		TeamOwner: s.team.Name,
@@ -1159,7 +1160,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 		ShouldRestart: true,
 		Writer:        &buf,
 	})
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, "Environment variable \"DATABASE_HOST\" is already in use by service bind \"service/instance\"")
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bindTypes.EnvVar{
@@ -1168,17 +1169,15 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 			Value:  "localhost",
 			Public: false,
 		},
-		"DATABASE_PASSWORD": {
-			Name:   "DATABASE_PASSWORD",
-			Value:  "123",
-			Public: true,
-		},
 	}
 	newAppEnvs := newApp.Envs()
 	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
+	delete(newAppEnvs, "TSURU_APPNAME")
+	delete(newAppEnvs, "TSURU_APPDIR")
+
 	c.Assert(newAppEnvs, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
-	c.Assert(buf.String(), check.Equals, "---- Setting 2 new environment variables ----\nrestarting app")
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
+	c.Assert(buf.String(), check.Equals, "---- Setting 2 new environment variables ----\n---- environment variables have conflicts with service binds: Environment variable \"DATABASE_HOST\" is already in use by service bind \"service/instance\" ----\n")
 }
 
 func (s *S) TestSetEnvWithNoRestartFlag(c *check.C) {
