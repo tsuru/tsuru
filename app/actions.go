@@ -203,7 +203,7 @@ var exportEnvironmentsAction = action.Action{
 		app := ctx.Params[0].(*App)
 		app, err := GetByName(ctx.Context, app.Name)
 		if err == nil {
-			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR", "TSURU_APP_TOKEN"}
+			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
 			app.UnsetEnvs(bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,

@@ -6,7 +6,6 @@ package dockercommon_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -17,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	bindTypes "github.com/tsuru/tsuru/types/bind"
 	check "gopkg.in/check.v1"
 )
 
@@ -48,38 +46,6 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestArchiveBuildCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	config.Set("host", "tsuru_host")
-	defer config.Unset("host")
-	tokenEnv := bindTypes.EnvVar{
-		Name:   "TSURU_APP_TOKEN",
-		Value:  "app_token",
-		Public: true,
-	}
-	app.SetEnv(tokenEnv)
-	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
-	expectedPart1 := fmt.Sprintf("/var/lib/tsuru/deploy archive %s", archiveURL)
-	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" build`, expectedPart1)
-	cmds := dockercommon.ArchiveBuildCmds(app, archiveURL)
-	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
-}
-
-func (s *S) TestDeployCmds(c *check.C) {
-	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	config.Set("host", "tsuru_host")
-	defer config.Unset("host")
-	tokenEnv := bindTypes.EnvVar{
-		Name:   "TSURU_APP_TOKEN",
-		Value:  "app_token",
-		Public: true,
-	}
-	app.SetEnv(tokenEnv)
-	expectedAgent := "tsuru_unit_agent tsuru_host app_token app-name deploy-only"
-	cmds := dockercommon.DeployCmds(app)
-	c.Assert(cmds, check.DeepEquals, []string{"/bin/sh", "-lc", expectedAgent})
 }
 
 func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
@@ -132,28 +98,6 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "web")
 	expected := []string{"/bin/sh", "-lc", "[ -d /home/application/current ] && cd /home/application/current; cmd1 && cmd2 && exec python web.py"}
-	c.Assert(cmds, check.DeepEquals, expected)
-}
-
-func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
-	customData := map[string]interface{}{}
-	fakeApp := provisiontest.NewFakeApp("sample", "python", 0)
-	version := newVersion(c, fakeApp, customData)
-	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	config.Set("host", "tsuru_host")
-	defer config.Unset("host")
-	tokenEnv := bindTypes.EnvVar{
-		Name:   "TSURU_APP_TOKEN",
-		Value:  "app_token",
-		Public: true,
-	}
-	app.SetEnv(tokenEnv)
-	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
-	c.Assert(err, check.IsNil)
-	cmds, process, err := dockercommon.LeanContainerCmds("", cmdData, app)
-	c.Assert(err, check.IsNil)
-	c.Assert(process, check.Equals, "")
-	expected := []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", "/var/lib/tsuru/start"}
 	c.Assert(cmds, check.DeepEquals, expected)
 }
 
