@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -544,6 +545,13 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 		_, err := s.ToCPUValue(a)
 		if err != nil {
 			return err
+		}
+	}
+
+	var prometheuNameUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
+	for _, prometheus := range s.Prometheus {
+		if !prometheuNameUnixLikeRegexp.MatchString(prometheus.Name) {
+			return fmt.Errorf("\"%s\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit", prometheus.Name)
 		}
 	}
 	return nil

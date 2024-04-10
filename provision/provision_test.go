@@ -167,10 +167,32 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 			},
 			"you have to configure at least one trigger between cpu, schedule and prometheus",
 		},
+		{
+			AutoScaleSpec{
+				MinUnits: 1,
+				MaxUnits: 2,
+				Prometheus: []AutoScalePrometheus{{
+					Name: "Invalid Name",
+				}},
+			},
+			"\"Invalid Name\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit",
+		},
+		{
+			AutoScaleSpec{
+				MinUnits: 1,
+				MaxUnits: 2,
+				Prometheus: []AutoScalePrometheus{{
+					Name: "Valid_Name",
+				}, {
+					Name: "another$invalid",
+				}},
+			},
+			"\"another$invalid\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit",
+		},
 	}
 
 	for _, test := range tests {
 		err := test.input.Validate(10, nil)
-		c.Check(err, check.ErrorMatches, test.expected)
+		c.Check(err.Error(), check.Equals, test.expected)
 	}
 }
