@@ -28,6 +28,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	"github.com/tsuru/tsuru/validation"
 
 	_ "github.com/tsuru/tsuru/router/api"
 )
@@ -544,6 +545,12 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 		_, err := s.ToCPUValue(a)
 		if err != nil {
 			return err
+		}
+	}
+
+	for _, prometheus := range s.Prometheus {
+		if !validation.ValidateName(prometheus.Name) {
+			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", prometheus.Name)
 		}
 	}
 	return nil
