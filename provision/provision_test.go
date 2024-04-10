@@ -172,27 +172,28 @@ func (ProvisionSuite) TestValidate(c *check.C) {
 				MinUnits: 1,
 				MaxUnits: 2,
 				Prometheus: []AutoScalePrometheus{{
-					Name: "Invalid Name",
+					Name: "Invalid-Name",
 				}},
 			},
-			"\"Invalid Name\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit",
+			"\"Invalid-Name\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter",
 		},
 		{
 			AutoScaleSpec{
 				MinUnits: 1,
 				MaxUnits: 2,
 				Prometheus: []AutoScalePrometheus{{
-					Name: "Valid_Name",
+					Name: "valid-name",
 				}, {
 					Name: "another$invalid",
 				}},
 			},
-			"\"another$invalid\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit",
+			"\"another$invalid\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter",
 		},
 	}
 
 	for _, test := range tests {
 		err := test.input.Validate(10, nil)
-		c.Check(err.Error(), check.Equals, test.expected)
+		c.Assert(err, check.NotNil)
+		c.Assert(err.Error(), check.Equals, test.expected)
 	}
 }

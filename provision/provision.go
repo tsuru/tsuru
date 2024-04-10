@@ -13,7 +13,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	"github.com/tsuru/tsuru/validation"
 
 	_ "github.com/tsuru/tsuru/router/api"
 )
@@ -548,10 +548,9 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 		}
 	}
 
-	var prometheuNameUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
 	for _, prometheus := range s.Prometheus {
-		if !prometheuNameUnixLikeRegexp.MatchString(prometheus.Name) {
-			return fmt.Errorf("\"%s\" is an invalid name, it must consist only of alphabetic characters, digits, '_' and must not start with a digit", prometheus.Name)
+		if !validation.ValidateName(prometheus.Name) {
+			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", prometheus.Name)
 		}
 	}
 	return nil
