@@ -60,8 +60,8 @@ func (e PanicExiter) Exit(code int) {
 type Lookup func(context *Context) error
 
 type Manager struct {
-	Commands      map[string]Command
-	RetryHook     func(err error) (retry bool)
+	Commands map[string]Command
+
 	topics        map[string]string
 	topicCommands map[string][]Command
 	name          string
@@ -73,6 +73,9 @@ type Manager struct {
 	wrong         bool
 	lookup        Lookup
 	contexts      []*Context
+
+	AfterFlagParseHook func()
+	RetryHook          func(err error) (retry bool)
 }
 
 // This is discouraged: use NewManagerPanicExiter instead. Handle panic(*PanicExitError) accordingly
@@ -222,6 +225,10 @@ func (m *Manager) Run(args []string) {
 
 	if verbosity > 0 {
 		os.Setenv("TSURU_VERBOSITY", strconv.Itoa(verbosity))
+	}
+
+	if m.AfterFlagParseHook != nil {
+		m.AfterFlagParseHook()
 	}
 
 	if m.lookup != nil {
