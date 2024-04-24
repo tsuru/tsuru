@@ -805,44 +805,6 @@ func (p *FakeProvisioner) RoutableAddresses(ctx context.Context, app provision.A
 	return []appTypes.RoutableAddresses{{Addresses: addrs}}, nil
 }
 
-func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	var units []provision.Unit
-	if unit.AppName == "" {
-		units = p.getAllUnits()
-	} else {
-		app, ok := p.apps[unit.AppName]
-		if !ok {
-			return errNotProvisioned
-		}
-		units = app.units
-	}
-	index := -1
-	for i, unt := range units {
-		if unt.ID == unit.ID {
-			index = i
-			unit.AppName = unt.AppName
-			break
-		}
-	}
-	if index < 0 {
-		return &provision.UnitNotFoundError{ID: unit.ID}
-	}
-	app := p.apps[unit.AppName]
-	app.units[index].Status = status
-	p.apps[unit.AppName] = app
-	return nil
-}
-
-func (p *FakeProvisioner) getAllUnits() []provision.Unit {
-	var units []provision.Unit
-	for _, app := range p.apps {
-		units = append(units, app.units...)
-	}
-	return units
-}
-
 func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
@@ -906,25 +868,6 @@ func (p *FakeProvisioner) Stop(ctx context.Context, app provision.App, process s
 	}
 	p.apps[app.GetName()] = pApp
 	return nil
-}
-
-func (p *FakeProvisioner) RegisterUnit(ctx context.Context, a provision.App, unitId string, customData map[string]interface{}) error {
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pa, ok := p.apps[a.GetName()]
-	if !ok {
-		return errors.New("app not found")
-	}
-	pa.lastData = customData
-	for i, u := range pa.units {
-		if u.ID == unitId {
-			u.IP = u.IP + "-updated"
-			pa.units[i] = u
-			p.apps[a.GetName()] = pa
-			return nil
-		}
-	}
-	return &provision.UnitNotFoundError{ID: unitId}
 }
 
 func (p *FakeProvisioner) ExecuteCommand(ctx context.Context, opts provision.ExecOptions) error {

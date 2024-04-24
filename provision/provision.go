@@ -132,7 +132,7 @@ const (
 	StatusStarting = Status("starting")
 
 	// StatusStarted is for cases where the unit is up and running, and bound
-	// to the proper status, it's set by RegisterUnit and SetUnitStatus.
+	// to the proper status.
 	StatusStarted = Status("started")
 
 	// StatusStopped is for cases where the unit has been stopped.
@@ -407,13 +407,6 @@ type InitializableProvisioner interface {
 type OptionalLogsProvisioner interface {
 	// Checks if logs are enabled for given app.
 	LogsEnabled(App) (bool, string, error)
-}
-
-// UnitStatusProvisioner is a provisioner that receive notifications about unit
-// status changes.
-type UnitStatusProvisioner interface {
-	// SetUnitStatus changes the status of a unit.
-	SetUnitStatus(Unit, Status) error
 }
 
 type KillUnitProvisioner interface {

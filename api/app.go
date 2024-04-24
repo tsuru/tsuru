@@ -800,51 +800,6 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	return a.RemoveUnits(ctx, n, processName, version, evt)
 }
 
-// title: set unit status
-// path: /apps/{app}/units/{unit}
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	404: App or unit not found
-func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	unitName := r.URL.Query().Get(":unit")
-	if unitName == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "missing unit",
-		}
-	}
-	postStatus := InputValue(r, "status")
-	status, err := provision.ParseStatus(postStatus)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitStatus,
-		contextsForApp(a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	err = a.SetUnitStatus(unitName, status)
-	if _, ok := err.(*provision.UnitNotFoundError); ok {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return err
-}
-
 // title: kill a running unit
 // path: /apps/{app}/units/{unit}
 // method: DELETE

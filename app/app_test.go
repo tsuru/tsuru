@@ -1008,44 +1008,6 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 	}
 }
 
-func (s *S) TestSetUnitStatus(c *check.C) {
-	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	err = a.SetUnitStatus(units[0].ID, provision.StatusError)
-	c.Assert(err, check.IsNil)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Status, check.Equals, provision.StatusError)
-}
-
-func (s *S) TestSetUnitStatusPartialID(c *check.C) {
-	a := App{Name: "app-name", Platform: "python", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	name := units[0].ID
-	err = a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
-	c.Assert(err, check.IsNil)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].Status, check.Equals, provision.StatusError)
-}
-
-func (s *S) TestSetUnitStatusNotFound(c *check.C) {
-	a := App{Name: "app-name", Platform: "django"}
-	err := a.SetUnitStatus("someunit", provision.StatusError)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*provision.UnitNotFoundError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.ID, check.Equals, "someunit")
-}
-
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 	a := App{Name: "app-name", Platform: "django", Teams: []string{s.team.Name}}
 	err := a.Grant(&s.team)
