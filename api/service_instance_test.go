@@ -2288,6 +2288,41 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath/hi", si.ServiceName, si.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/resources/foo-instance/mypath/hi")
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
+}
+
 func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	var (
 		proxyedRequest *http.Request
@@ -2336,6 +2371,62 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 			{"name": "method", "value": "POST"},
 			{"name": "my", "value": "awesome"},
 			{"name": "body", "value": "1"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2Post(c *check.C) {
+	var (
+		proxyedRequest *http.Request
+		proxyedBody    []byte
+	)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		proxyedBody, err = stdIo.ReadAll(r.Body)
+		c.Assert(err, check.IsNil)
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath", si.ServiceName, si.Name)
+	body := strings.NewReader("my=awesome&body=1")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/resources/foo-instance/mypath")
+	c.Assert(string(proxyedBody), check.Equals, "my=awesome&body=1")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.update.proxy",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":instance", "value": "foo-instance"},
+			{"name": ":mux-path-template", "value": "/services/{service}/resources/{instance}/{path:.*}"},
+			{"name": ":path", "value": "mypath"},
+			{"name": ":service", "value": "foo"},
+			{"name": "my", "value": "awesome"},
+			{"name": "body", "value": "1"},
+			{"name": ":version", "value": "1.20"},
+			{"name": "method", "value": "POST"},
 		},
 	}, eventtest.HasEvent)
 }

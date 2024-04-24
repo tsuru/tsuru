@@ -249,6 +249,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodDelete, "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceRevokeTeam))
 
 	m.AddAll("1.0", "/services/{service}/proxy/{instance}", AuthorizationRequiredHandler(serviceInstanceProxy))
+	m.AddAll("1.20", "/services/{service}/resources/{instance}/{path:.*}", AuthorizationRequiredHandler(serviceInstanceProxyV2))
 	m.AddAll("1.0", "/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))
 
 	m.Add("1.0", http.MethodGet, "/services", AuthorizationRequiredHandler(serviceList))
