@@ -48,6 +48,7 @@ type clusterController struct {
 	cluster                 *ClusterClient
 	informerFactory         informers.SharedInformerFactory
 	filteredInformerFactory informers.SharedInformerFactory
+	podInformerFactory      informers.SharedInformerFactory
 	jobInformerFactory      informers.SharedInformerFactory
 	vpaInformerFactory      vpaInformers.SharedInformerFactory
 	podInformer             v1informers.PodInformer
@@ -322,7 +323,7 @@ func (c *clusterController) getPodInformerWait(wait bool) (v1informers.PodInform
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.podInformer == nil {
-		err := c.withFilteredInformerFactory(func(factory informers.SharedInformerFactory) {
+		err := c.withPodFilteredInformerFactory(func(factory informers.SharedInformerFactory) {
 			c.podInformer = factory.Core().V1().Pods()
 			c.podInformer.Informer()
 		})
@@ -349,6 +350,16 @@ func (c *clusterController) withInformerFactory(fn func(factory informers.Shared
 
 func (c *clusterController) withFilteredInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
 	factory, err := c.getFilteredFactory()
+	if err != nil {
+		return err
+	}
+	fn(factory)
+	factory.Start(c.stopCh)
+	return nil
+}
+
+func (c *clusterController) withPodFilteredInformerFactory(fn func(factory informers.SharedInformerFactory)) error {
+	factory, err := c.getPodFilteredFactory()
 	if err != nil {
 		return err
 	}
@@ -392,6 +403,15 @@ func (c *clusterController) getFilteredFactory() (informers.SharedInformerFactor
 	var err error
 	c.filteredInformerFactory, err = filteredInformerFactory(c.cluster)
 	return c.filteredInformerFactory, err
+}
+
+func (c *clusterController) getPodFilteredFactory() (informers.SharedInformerFactory, error) {
+	if c.podInformerFactory != nil {
+		return c.podInformerFactory, nil
+	}
+	var err error
+	c.podInformerFactory, err = podFilteredInformerFactory(c.cluster)
+	return c.podInformerFactory, err
 }
 
 func contextWithCancelByChannel(ctx context.Context, ch chan struct{}, timeout time.Duration) (context.Context, func()) {
@@ -492,6 +512,13 @@ func tsuruServiceTweakFunc() internalinterfaces.TweakListOptionsFunc {
 	}
 }
 
+func podTweakFunc() internalinterfaces.TweakListOptionsFunc {
+	return func(opts *metav1.ListOptions) {
+		ls := provision.ServiceLabelSet(tsuruLabelPrefix)
+		opts.LabelSelector = labels.SelectorFromSet(labels.Set(ls.ToIsTsuruSelector())).String()
+	}
+}
+
 func tsuruJobTweakFunc() internalinterfaces.TweakListOptionsFunc {
 	return func(opts *metav1.ListOptions) {
 		ls := provision.TsuruJobLabelSet(tsuruLabelPrefix)
@@ -501,6 +528,10 @@ func tsuruJobTweakFunc() internalinterfaces.TweakListOptionsFunc {
 
 func filteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
 	return InformerFactory(client, tsuruServiceTweakFunc())
+}
+
+func podFilteredInformerFactory(client *ClusterClient) (informers.SharedInformerFactory, error) {
+	return InformerFactory(client, podTweakFunc())
 }
 
 type informerFactoryArgs struct {

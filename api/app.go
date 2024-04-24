@@ -8,9 +8,7 @@ import (
 	stdContext "context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -800,51 +798,6 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	return a.RemoveUnits(ctx, n, processName, version, evt)
-}
-
-// title: set unit status
-// path: /apps/{app}/units/{unit}
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	404: App or unit not found
-func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	unitName := r.URL.Query().Get(":unit")
-	if unitName == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "missing unit",
-		}
-	}
-	postStatus := InputValue(r, "status")
-	status, err := provision.ParseStatus(postStatus)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitStatus,
-		contextsForApp(a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	err = a.SetUnitStatus(unitName, status)
-	if _, ok := err.(*provision.UnitNotFoundError); ok {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return err
 }
 
 // title: kill a running unit
@@ -1975,71 +1928,6 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //	410: Not available anymore
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
-}
-
-func isDeployAgentUA(r *http.Request) bool {
-	ua := strings.ToLower(r.UserAgent())
-	return strings.HasPrefix(ua, "go-http-client") ||
-		strings.HasPrefix(ua, "tsuru-deploy-agent")
-}
-
-// title: register unit
-// path: /apps/{app}/units/register
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-//	404: App not found
-func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitRegister,
-		contextsForApp(a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	if isDeployAgentUA(r) && r.Header.Get("X-Agent-Version") == "" {
-		// Filtering the user-agent is not pretty, but it's safer than doing
-		// the header check for every request, otherwise calling directly the
-		// API would always fail without this header that only makes sense to
-		// the agent.
-		msgError := fmt.Sprintf("Please contact admin. %s platform is using outdated deploy-agent version, minimum required version is 0.2.4", a.GetPlatform())
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msgError}
-	}
-	defer r.Body.Close()
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	val, err := url.ParseQuery(string(data))
-	if err != nil {
-		return err
-	}
-	hostname := val.Get("hostname")
-	var customData map[string]interface{}
-	rawCustomData := val.Get("customdata")
-	if rawCustomData != "" {
-		err = json.Unmarshal([]byte(rawCustomData), &customData)
-		if err != nil {
-			return err
-		}
-	}
-	err = a.RegisterUnit(ctx, hostname, customData)
-	if err != nil {
-		if err, ok := err.(*provision.UnitNotFoundError); ok {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
-		return err
-	}
-	return writeEnvVars(w, a)
 }
 
 // compatRebuildRoutesResult is a backward compatible rebuild routes struct

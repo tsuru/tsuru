@@ -100,7 +100,6 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 				"tsuru.io/volume-plan": "p1",
 				"tsuru.io/volume-team": "admin",
 				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/provisioner": "kubernetes",
 			},
 		},
 		Spec: apiv1.PersistentVolumeSpec{
@@ -130,7 +129,6 @@ func (s *S) TestCreateVolumesForAppPlugin(c *check.C) {
 				"tsuru.io/volume-plan": "p1",
 				"tsuru.io/volume-team": "admin",
 				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/provisioner": "kubernetes",
 			},
 			Namespace: ns,
 		},
@@ -286,7 +284,6 @@ func (s *S) TestCreateVolumesForAppPluginNonPersistentEphemeral(c *check.C) {
 							"tsuru.io/volume-plan": "p1",
 							"tsuru.io/volume-team": "admin",
 							"tsuru.io/is-tsuru":    "true",
-							"tsuru.io/provisioner": "kubernetes",
 						},
 					},
 					Spec: apiv1.PersistentVolumeClaimSpec{
@@ -387,7 +384,6 @@ func (s *S) TestCreateVolumesForAppStorageClass(c *check.C) {
 				"tsuru.io/volume-plan": "p1",
 				"tsuru.io/volume-team": "admin",
 				"tsuru.io/is-tsuru":    "true",
-				"tsuru.io/provisioner": "kubernetes",
 			},
 			Namespace: ns,
 		},
@@ -456,7 +452,6 @@ func (s *S) TestCreateVolumeAppNamespace(c *check.C) {
 			"tsuru.io/volume-plan": "p1",
 			"tsuru.io/volume-team": "admin",
 			"tsuru.io/is-tsuru":    "true",
-			"tsuru.io/provisioner": "kubernetes",
 		},
 		Namespace: "custom-namespace",
 	})

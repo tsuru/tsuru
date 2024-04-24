@@ -967,28 +967,6 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 	return nil
 }
 
-// SetUnitStatus changes the status of the given unit.
-func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
-	units, err := app.Units()
-	if err != nil {
-		return err
-	}
-	for _, unit := range units {
-		if strings.HasPrefix(unit.ID, unitName) {
-			prov, err := app.getProvisioner()
-			if err != nil {
-				return err
-			}
-			unitProv, ok := prov.(provision.UnitStatusProvisioner)
-			if !ok {
-				return nil
-			}
-			return unitProv.SetUnitStatus(unit, status)
-		}
-	}
-	return &provision.UnitNotFoundError{ID: unitName}
-}
-
 func (app *App) KillUnit(unitName string, force bool) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -2195,19 +2173,6 @@ func (app *App) SetUpdatePlatform(check bool) error {
 
 func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
-}
-
-func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[string]interface{}) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	err = prov.RegisterUnit(ctx, app, unitId, customData)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {

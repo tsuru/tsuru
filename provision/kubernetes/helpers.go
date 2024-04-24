@@ -46,9 +46,8 @@ const (
 	tsuruLabelAppName         = tsuruLabelPrefix + provision.LabelAppName
 	tsuruLabelJobName         = tsuruLabelPrefix + provision.LabelJobName
 	tsuruLabelAppVersion      = tsuruLabelPrefix + provision.LabelAppVersion
-	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
 	tsuruLabelIsBuild         = tsuruLabelPrefix + provision.LabelIsBuild
-	tsuruLabelIsDeploy        = tsuruLabelPrefix + provision.LabelIsDeploy
+	tsuruLabelAppProcess      = tsuruLabelPrefix + provision.LabelAppProcess
 	replicaDepRevision        = "deployment.kubernetes.io/revision"
 )
 
@@ -1025,7 +1024,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
 			Namespace: ns,
-			Labels:    args.labels.ToLabels(),
+			Labels:    args.labels.PodLabels(),
 		},
 		Spec: apiv1.PodSpec{
 			Affinity:           affinity,
