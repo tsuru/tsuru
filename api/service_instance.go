@@ -725,6 +725,13 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
 
+// title: service instance proxy V2
+// path: /services/{service}/resources/{instance}/{path:*}
+// method: "*"
+// responses:
+//
+//	401: Unauthorized
+//	404: Instance not found
 func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	serviceName := r.URL.Query().Get(":service")
