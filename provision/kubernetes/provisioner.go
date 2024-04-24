@@ -683,7 +683,7 @@ var stateMap = map[apiv1.PodPhase]provision.Status{
 	apiv1.PodUnknown:   provision.StatusError,
 }
 
-func (p *kubernetesProvisioner) podsToUnitsMultiple(ctx context.Context, client *ClusterClient, pods []apiv1.Pod, baseApps []provision.App) ([]provision.Unit, error) {
+func (p *kubernetesProvisioner) podsToUnitsMultiple(pods []apiv1.Pod, baseApps []provision.App) ([]provision.Unit, error) {
 	if len(pods) == 0 {
 		return nil, nil
 	}
@@ -812,7 +812,7 @@ func (p *kubernetesProvisioner) Units(ctx context.Context, apps ...provision.App
 		if err != nil {
 			return nil, err
 		}
-		clusterUnits, err := p.podsToUnitsMultiple(ctx, cApp.client, pods, cApp.apps)
+		clusterUnits, err := p.podsToUnitsMultiple(pods, cApp.apps)
 		if err != nil {
 			return nil, err
 		}

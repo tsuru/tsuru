@@ -1024,7 +1024,7 @@ func runPod(ctx context.Context, args runSinglePodArgs) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      args.name,
 			Namespace: ns,
-			Labels:    args.labels.ToLabels(),
+			Labels:    args.labels.PodLabels(),
 		},
 		Spec: apiv1.PodSpec{
 			Affinity:           affinity,

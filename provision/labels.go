@@ -157,6 +157,10 @@ func (s *LabelSet) ToIsServiceSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelIsService), s.Prefix)
 }
 
+func (s *LabelSet) ToIsTsuruSelector() map[string]string {
+	return withPrefix(subMap(s.Labels, labelIsTsuru), s.Prefix)
+}
+
 func (s *LabelSet) ToVolumeSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, labelVolumeName), s.Prefix)
 }
