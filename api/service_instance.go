@@ -725,6 +725,54 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
 
+// title: service instance proxy V2
+// path: /services/{service}/resources/{instance}/{path:*}
+// method: "*"
+// responses:
+//
+//	401: Unauthorized
+//	404: Instance not found
+func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	queryPath := r.URL.Query().Get(":path")
+
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateProxy,
+		contextsForServiceInstance(serviceInstance, serviceName)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	path := "/resources/" + serviceInstance.GetIdentifier() + "/" + queryPath
+
+	var evt *event.Event
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		evt, err = event.New(&event.Opts{
+			Target:     serviceInstanceTarget(serviceName, instanceName),
+			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
+				"name":  "method",
+				"value": r.Method,
+			}),
+			Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
+				contextsForServiceInstance(serviceInstance, serviceName)...),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { evt.Done(err) }()
+	}
+	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
+}
+
 // title: grant access to service instance
 // path: /services/{service}/instances/permission/{instance}/{team}
 // consume: application/x-www-form-urlencoded

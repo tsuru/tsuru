@@ -413,6 +413,8 @@ func (c *endpointClient) Proxy(ctx context.Context, opts *ProxyOpts) error {
 	delete(q, "callback")
 	delete(q, ":service")           // injected as named param by DelayedRouter
 	delete(q, ":instance")          // injected as named param by DelayedRouter
+	delete(q, ":path")              // injected as named param by DelayedRouter
+	delete(q, ":version")           // injected as named param by DelayedRouter
 	delete(q, ":mux-route-name")    // injected as named param by DelayedRouter
 	delete(q, ":mux-path-template") // injected as named param by DelayedRouter
 	qstring := q.Encode()
