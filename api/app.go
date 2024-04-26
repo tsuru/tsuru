@@ -1546,6 +1546,14 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	defer func() { evt.Done(err) }()
+
+	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
+	// read more about event retry-lock at event/event.go on newEvt function
+	// to avoid an outdated app fetching from database again
+	a, err = app.GetByName(ctx, appName)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1633,6 +1641,15 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
+
+	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
+	// read more about event retry-lock at event/event.go on newEvt function
+	// to avoid an outdated app fetching from database again
+	a, err = app.GetByName(ctx, appName)
+	if err != nil {
+		return err
+	}
+
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
