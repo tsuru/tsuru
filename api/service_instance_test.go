@@ -1814,6 +1814,72 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 	c.Assert(instances, check.DeepEquals, expected)
 }
 
+func (s *ServiceInstanceSuite) TestServiceInstanceInfoWithRemovedPlan(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/resources/my_nosql" {
+			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+		}
+		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
+			w.Write([]byte(`[{"name": "plan2", "description": "some value"}]`))
+		}
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
+	}))
+	defer ts.Close()
+	srv := service.Service{
+		Name:       "mongodb",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+	}
+	err := service.Create(srv)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"app1", "app2"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		PlanName:    "plan1",
+		Pool:        "my-pool",
+		Description: "desc",
+		Tags:        []string{"tag 1"},
+		Parameters: map[string]interface{}{
+			"storage-type": "ssd",
+		},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
+	request.Header.Set(requestIDHeader, "test")
+	s.testServer.ServeHTTP(recorder, request)
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Errorf("received body: %s", recorder.Body.String())
+	}
+	c.Check(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var instances serviceInstanceInfo
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
+	c.Assert(err, check.IsNil)
+	expected := serviceInstanceInfo{
+		Apps:      si.Apps,
+		Jobs:      []string{},
+		Teams:     si.Teams,
+		TeamOwner: si.TeamOwner,
+		CustomInfo: map[string]string{
+			"key":  "value",
+			"key2": "value2",
+		},
+		Pool:        "my-pool",
+		PlanName:    "plan1",
+		Description: si.Description,
+		Tags:        []string{"tag 1"},
+		Parameters:  map[string]interface{}{"storage-type": "ssd"},
+	}
+	c.Assert(instances, check.DeepEquals, expected)
+}
+
 func (s *ServiceInstanceSuite) TestServiceInstanceInfoForJob(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[]`))

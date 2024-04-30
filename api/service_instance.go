@@ -516,6 +516,9 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		Tags:            serviceInstance.Tags,
 		Parameters:      serviceInstance.Parameters,
 	}
+	if sInfo.PlanName == "" {
+		sInfo.PlanName = serviceInstance.PlanName
+	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(sInfo)
 }
