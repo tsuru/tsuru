@@ -28,6 +28,7 @@ func (cmd *ConfirmationCommand) Confirm(context *Context, question string) bool 
 	if cmd.yes {
 		return true
 	}
+	context.RawOutput()
 	fmt.Fprintf(context.Stdout, `%s (y/n) `, question)
 	var answer string
 	if context.Stdin != nil {
