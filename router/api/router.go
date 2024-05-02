@@ -76,13 +76,9 @@ type backendResp struct {
 type capability string
 
 var (
-	capTLS         = capability("tls")
-	capHealthcheck = capability("healthcheck")
-	capInfo        = capability("info")
-	capStatus      = capability("status")
-	capPrefix      = capability("prefix")
+	capTLS = capability("tls")
 
-	allCaps = []capability{capTLS, capHealthcheck, capInfo, capStatus, capPrefix}
+	allCaps = []capability{capTLS}
 )
 
 func init() {
