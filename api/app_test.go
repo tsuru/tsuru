@@ -28,14 +28,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -630,7 +629,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddBackend(context.TODO(), &app1)
+	routertest.FakeRouter.EnsureBackend(context.TODO(), &app1, router.EnsureBackendOpts{})
 	request, err := http.NewRequest("GET", "/apps/app1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -5975,188 +5974,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(app, check.DeepEquals, *expected)
 }
 
-func (s *S) TestSwap(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapCnameOnly(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app1.io"}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=true")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app1.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app1.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %s", recorder.Body.String()))
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app1\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapApp2Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app2.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app2.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app2\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "y"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner:        s.token.GetUserName(),
-		Kind:         "app.update.swap",
-		ErrorMatches: "platforms don't match",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapIncompatibleUnits(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "x"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnit(&app2, provision.Unit{})
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "number of units doesn't match\n")
-}
-
-func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
+func (s *S) TestSwapDeprecated(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -6170,8 +5988,8 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Body.String(), check.Equals, "swapping is deprecated\n")
 }
 
 func (s *S) TestStartHandler(c *check.C) {
@@ -6264,9 +6082,7 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(context.TODO(), &a)
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), &a, []*url.URL{
-		{Host: "h1"},
-	})
+	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &a, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("dry", "true")
@@ -6279,38 +6095,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	var parsed map[string]rebuild.RebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &parsed)
-	c.Assert(err, check.IsNil)
-	c.Assert(parsed, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
-		"fake": {
-			PrefixResults: []rebuild.RebuildPrefixResult{
-				{
-					Added:   nil,
-					Removed: []string{"http://h1"},
-				},
-			},
-		},
-	})
-
-	var compatResult map[string]compatRebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &compatResult)
-	c.Assert(err, check.IsNil)
-	c.Assert(compatResult, check.DeepEquals, map[string]compatRebuildRoutesResult{
-		"fake": {
-			RebuildRoutesResult: rebuild.RebuildRoutesResult{
-				PrefixResults: []rebuild.RebuildPrefixResult{
-					{
-						Added:   nil,
-						Removed: []string{"http://h1"},
-					},
-				},
-			},
-			Added:   nil,
-			Removed: []string{"http://h1"},
-		},
-	})
-
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -6318,10 +6102,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "dry", "value": "true"},
 			{"name": ":app", "value": a.Name},
-		},
-		EndCustomData: map[string]interface{}{
-			"fake.prefixresults.added":   []string(nil),
-			"fake.prefixresults.removed": []string{"http://h1"},
 		},
 	}, eventtest.HasEvent)
 }

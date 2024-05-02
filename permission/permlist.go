@@ -29,7 +29,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"app.update.restart",
 	"app.update.start",
 	"app.update.stop",
-	"app.update.swap",
 	"app.update.grant",
 	"app.update.revoke",
 	"app.update.teamowner",

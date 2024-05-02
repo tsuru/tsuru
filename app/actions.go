@@ -5,7 +5,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -19,10 +18,8 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/rebuild"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -208,66 +205,6 @@ var exportEnvironmentsAction = action.Action{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
-		}
-	},
-	MinParams: 1,
-}
-
-func removeAllRoutersBackend(ctx context.Context, app *App) error {
-	multi := tsuruErrors.NewMultiError()
-	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(ctx, appRouter.Name)
-		if err != nil {
-			multi.Add(err)
-			continue
-		}
-		err = r.RemoveBackend(ctx, app)
-		if err != nil && err != router.ErrBackendNotFound {
-			multi.Add(err)
-		}
-	}
-	return multi.ToError()
-}
-
-var addRouterBackend = action.Action{
-	Name: "add-router-backend",
-	Forward: func(ctx action.FWContext) (result action.Result, err error) {
-		stdCtx := ctx.Context
-		var app *App
-		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
-		default:
-			return nil, errors.New("First parameter must be *App.")
-		}
-		defer func() {
-			if err != nil {
-				removeAllRoutersBackend(stdCtx, app)
-			}
-		}()
-		for _, appRouter := range app.GetRouters() {
-			r, err := router.Get(stdCtx, appRouter.Name)
-			if err != nil {
-				return nil, err
-			}
-			if _, ok := r.(router.RouterV2); ok {
-				err = router.Store(app.GetName(), app.GetName(), r.GetType())
-			} else if optsRouter, ok := r.(router.OptsRouter); ok {
-				err = optsRouter.AddBackendOpts(ctx.Context, app, appRouter.Opts)
-			} else {
-				err = r.AddBackend(ctx.Context, app)
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
-		return app, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		app := ctx.FWResult.(*App)
-		err := removeAllRoutersBackend(ctx.Context, app)
-		if err != nil {
-			log.Errorf("[add-router-backend rollback] unable to remove all routers backends: %s", err)
 		}
 	},
 	MinParams: 1,
@@ -485,10 +422,7 @@ var provisionAppAddUnits = action.Action{
 			app.Routers = routers
 			app.Router = router
 			if err == nil {
-				_, err = rebuild.RebuildRoutes(ctx.Context, rebuild.RebuildRoutesOpts{
-					App:  app,
-					Wait: true,
-				})
+				err = rebuild.RebuildRoutes(ctx.Context, rebuild.RebuildRoutesOpts{App: app})
 			}
 		}()
 		for processData, count := range unitCount {
@@ -505,7 +439,7 @@ var provisionAppAddUnits = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		rebuild.RoutesRebuildOrEnqueue(app.Name)
+		rebuild.RebuildRoutesWithAppName(app.Name, nil)
 	},
 }
 
@@ -614,83 +548,6 @@ var validateNewCNames = action.Action{
 	},
 }
 
-func setUnsetCnames(ctx context.Context, app *App, cnames []string, toSet bool) error {
-	multi := tsuruErrors.NewMultiError()
-	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(ctx, appRouter.Name)
-		if err != nil {
-			multi.Add(err)
-			continue
-		}
-		cnameRouter, ok := r.(router.CNameRouter)
-		if !ok {
-			continue
-		}
-		for _, c := range cnames {
-			if toSet {
-				err = cnameRouter.SetCName(ctx, c, app)
-				if err == router.ErrCNameExists {
-					err = nil
-				}
-			} else {
-				err = cnameRouter.UnsetCName(ctx, c, app)
-				if err == router.ErrCNameNotFound {
-					err = nil
-				}
-			}
-			if err != nil {
-				multi.Add(err)
-			}
-		}
-	}
-	return multi.ToError()
-}
-
-var setNewCNamesToProvisioner = action.Action{
-	Name: "set-new-cnames-to-provisioner",
-	Forward: func(ctx action.FWContext) (result action.Result, err error) {
-		stdCtx := ctx.Context
-		app := ctx.Params[0].(*App)
-		cnames := ctx.Params[1].([]string)
-		defer func() {
-			if err != nil {
-				setUnsetCnames(stdCtx, app, cnames, false)
-			}
-		}()
-
-		routers := app.GetRouters()
-
-		for _, appRouter := range routers {
-			var r router.Router
-			r, err = router.Get(stdCtx, appRouter.Name)
-			if err != nil {
-				return nil, err
-			}
-			cnameRouter, ok := r.(router.CNameRouter)
-			if !ok {
-				continue
-			}
-			for _, cname := range cnames {
-				err = cnameRouter.SetCName(ctx.Context, cname, app)
-				if err == router.ErrCNameNotAllowed && len(routers) > 1 {
-					// ignore CName not allowed when have more than one router
-				} else if err != nil {
-					return nil, err
-				}
-			}
-		}
-		return cnames, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		cnames := ctx.Params[1].([]string)
-		app := ctx.Params[0].(*App)
-		err := setUnsetCnames(ctx.Context, app, cnames, false)
-		if err != nil {
-			log.Errorf("BACKWARD set cnames - unable to remove cnames from routers: %s", err)
-		}
-	},
-}
-
 var saveCNames = action.Action{
 	Name: "add-cname-save-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -773,46 +630,6 @@ var checkCNameExists = action.Action{
 	},
 }
 
-var unsetCNameFromProvisioner = action.Action{
-	Name: "unset-cname-from-provisioner",
-	Forward: func(ctx action.FWContext) (result action.Result, err error) {
-		stdCtx := ctx.Context
-		app := ctx.Params[0].(*App)
-		cnames := ctx.Params[1].([]string)
-		defer func() {
-			if err != nil {
-				setUnsetCnames(stdCtx, app, cnames, true)
-			}
-		}()
-		for _, appRouter := range app.GetRouters() {
-			var r router.Router
-			r, err = router.Get(stdCtx, appRouter.Name)
-			if err != nil {
-				return nil, err
-			}
-			cnameRouter, ok := r.(router.CNameRouter)
-			if !ok {
-				continue
-			}
-			for _, cname := range cnames {
-				err = cnameRouter.UnsetCName(ctx.Context, cname, app)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-		return cnames, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		cnames := ctx.Params[1].([]string)
-		app := ctx.Params[0].(*App)
-		err := setUnsetCnames(ctx.Context, app, cnames, true)
-		if err != nil {
-			log.Errorf("BACKWARD unset cname - unable to set cnames in routers: %s", err)
-		}
-	},
-}
-
 var removeCNameFromDatabase = action.Action{
 	Name: "remove-cname-from-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -864,98 +681,15 @@ var removeCNameFromDatabase = action.Action{
 	},
 }
 
-var removeCNameFromApp = action.Action{
-	Name: "remove-cname-from-app",
+var rebuildRoutes = action.Action{
+	Name: "rebuild-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
-		var conn *db.Storage
-		conn, err := db.Conn()
+
+		err := rebuild.RebuildRoutesWithAppName(app.Name, nil)
 		if err != nil {
 			return nil, err
 		}
-		defer conn.Close()
-		return nil, conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+		return nil, nil
 	},
-}
-
-var swapCNamesInDatabaseAction = action.Action{
-	Name: "swap-cnames-in-database",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		return nil, swapCNamesInDatabase(app1, app2)
-	},
-}
-
-var swapReEnsureBackendsAction = action.Action{
-	Name: "re-ensure-backends",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		return nil, swapRebuildRoutes(ctx.Context, app1, app2)
-	},
-	Backward: func(ctx action.BWContext) {
-		app1 := ctx.Params[0].(*App)
-		app2 := ctx.Params[1].(*App)
-
-		err := swapCNamesInDatabase(app1, app2)
-		if err != nil {
-			return
-		}
-
-		_ = swapRebuildRoutes(ctx.Context, app1, app2)
-	},
-}
-
-func swapCNamesInDatabase(app1 *App, app2 *App) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	app1.CName, app2.CName = app2.CName, app1.CName
-	updateCName := func(app *App) error {
-		return conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName}},
-		)
-	}
-	err = updateCName(app1)
-	if err != nil {
-		return err
-	}
-	err = updateCName(app2)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func swapRebuildRoutes(ctx context.Context, app1 *App, app2 *App) error {
-	// preserveOldCnames makes the operation without downtime, however when using diffent pools we cant do that
-	preserveOldCNames := app1.Pool == app2.Pool
-	_, err := rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:               app1,
-		Wait:              true,
-		PreserveOldCNames: preserveOldCNames,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:               app2,
-		Wait:              true,
-		PreserveOldCNames: preserveOldCNames,
-	})
-	if err != nil {
-		return err
-	}
-
-	app1.GetRoutersWithAddr()
-	app2.GetRoutersWithAddr()
-
-	return nil
 }

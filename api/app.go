@@ -1769,73 +1769,10 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: App locked
 //	412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	app1Name := InputValue(r, "app1")
-	app2Name := InputValue(r, "app2")
-	forceSwap := InputValue(r, "force")
-	cnameOnly, _ := strconv.ParseBool(InputValue(r, "cnameOnly"))
-	if forceSwap == "" {
-		forceSwap = "false"
+	return &errors.HTTP{
+		Code:    http.StatusPreconditionFailed,
+		Message: "swapping is deprecated",
 	}
-	app1, err := getApp(ctx, app1Name)
-	if err != nil {
-		return err
-	}
-	app2, err := getApp(ctx, app2Name)
-	if err != nil {
-		return err
-	}
-	allowed1 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app1)...,
-	)
-	allowed2 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app2)...,
-	)
-	if !allowed1 || !allowed2 {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target: appTarget(app1Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: appTarget(app2Name), Lock: true},
-		},
-		Kind:       permission.PermAppUpdateSwap,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
-	})
-	if err != nil {
-		if _, locked := err.(event.ErrEventLocked); locked {
-			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
-		}
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	// compare apps by platform type and number of units
-	if forceSwap == "false" {
-		if app1.Platform != app2.Platform {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "platforms don't match",
-			}
-		}
-		app1Units, err := app1.Units()
-		if err != nil {
-			return err
-		}
-		app2Units, err := app2.Units()
-		if err != nil {
-			return err
-		}
-		if len(app1Units) != len(app2Units) {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "number of units doesn't match",
-			}
-		}
-	}
-	return app.Swap(ctx, app1, app2, cnameOnly)
 }
 
 // title: app start
@@ -1947,18 +1884,9 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
-// compatRebuildRoutesResult is a backward compatible rebuild routes struct
-// used in the handler so that old clients won't break.
-type compatRebuildRoutesResult struct {
-	rebuild.RebuildRoutesResult
-	Added   []string
-	Removed []string
-}
-
 // title: rebuild routes
 // path: /apps/{app}/routes
 // method: POST
-// produce: application/json
 // responses:
 //
 //	200: Ok
@@ -1988,33 +1916,11 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	result := make(map[string]rebuild.RebuildRoutesResult)
-	defer func() { evt.DoneCustomData(err, result) }()
-	w.Header().Set("Content-Type", "application/json")
-	result, err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:  &a,
-		Wait: true,
-		Dry:  dry,
+	defer func() { evt.Done(err) }()
+	return rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
+		App: &a,
+		Dry: dry,
 	})
-	if err != nil {
-		return err
-	}
-
-	compatResult := make(map[string]compatRebuildRoutesResult)
-	for routerName, routerResult := range result {
-		compatRouterResult := compatRebuildRoutesResult{
-			RebuildRoutesResult: routerResult,
-		}
-		for _, prefixResult := range routerResult.PrefixResults {
-			if prefixResult.Prefix == "" {
-				compatRouterResult.Added = prefixResult.Added
-				compatRouterResult.Removed = prefixResult.Removed
-				break
-			}
-		}
-		compatResult[routerName] = compatRouterResult
-	}
-	return json.NewEncoder(w).Encode(&compatResult)
 }
 
 // title: set app certificate
