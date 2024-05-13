@@ -178,7 +178,7 @@ func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
 	email := webResponse.Email
 	token := webResponse.Token
 
-	err = app.AuthScheme.WebLogin(ctx, email, token)
+	err = app.AuthScheme.(auth.UserScheme).WebLogin(ctx, email, token)
 	if err != nil {
 		return handleAuthError(err)
 	}
