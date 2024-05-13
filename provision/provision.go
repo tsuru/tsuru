@@ -28,6 +28,7 @@ import (
 	logTypes "github.com/tsuru/tsuru/types/log"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
+	"github.com/tsuru/tsuru/validation"
 
 	_ "github.com/tsuru/tsuru/router/api"
 )
@@ -132,7 +133,7 @@ const (
 	StatusStarting = Status("starting")
 
 	// StatusStarted is for cases where the unit is up and running, and bound
-	// to the proper status, it's set by RegisterUnit and SetUnitStatus.
+	// to the proper status.
 	StatusStarted = Status("started")
 
 	// StatusStopped is for cases where the unit has been stopped.
@@ -328,9 +329,6 @@ type Provisioner interface {
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
-
-	// Register a unit after the container has been created or restarted.
-	RegisterUnit(context.Context, App, string, map[string]interface{}) error
 }
 
 type JobProvisioner interface {
@@ -412,13 +410,6 @@ type OptionalLogsProvisioner interface {
 	LogsEnabled(App) (bool, string, error)
 }
 
-// UnitStatusProvisioner is a provisioner that receive notifications about unit
-// status changes.
-type UnitStatusProvisioner interface {
-	// SetUnitStatus changes the status of a unit.
-	SetUnitStatus(Unit, Status) error
-}
-
 type KillUnitProvisioner interface {
 	KillUnit(ctx context.Context, app App, unit string, force bool) error
 }
@@ -461,15 +452,25 @@ type VolumeProvisioner interface {
 }
 
 type AutoScaleSpec struct {
-	Process    string              `json:"process"`
-	MinUnits   uint                `json:"minUnits"`
-	MaxUnits   uint                `json:"maxUnits"`
-	AverageCPU string              `json:"averageCPU,omitempty"`
-	Schedules  []AutoScaleSchedule `json:"schedules,omitempty"`
-	Version    int                 `json:"version"`
+	Process    string                `json:"process"`
+	MinUnits   uint                  `json:"minUnits"`
+	MaxUnits   uint                  `json:"maxUnits"`
+	AverageCPU string                `json:"averageCPU,omitempty"`
+	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
+	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
+	Version    int                   `json:"version"`
+}
+
+type AutoScalePrometheus struct {
+	Name                string  `json:"name"`
+	Query               string  `json:"query"`
+	Threshold           float64 `json:"threshold"`
+	ActivationThreshold float64 `json:"activationThreshold,omitempty"`
+	PrometheusAddress   string  `json:"prometheusAddress,omitempty"`
 }
 
 type AutoScaleSchedule struct {
+	Name        string `json:"name,omitempty"`
 	MinReplicas int    `json:"minReplicas"`
 	Start       string `json:"start"`
 	End         string `json:"end"`
@@ -527,13 +528,19 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 	if quotaLimit > 0 && s.MaxUnits > uint(quotaLimit) {
 		return errors.New("maximum units cannot be greater than quota limit")
 	}
-	if s.AverageCPU == "" && len(s.Schedules) == 0 {
-		return errors.New("you have to configure at least one trigger between cpu and schedule")
+	if s.AverageCPU == "" && len(s.Schedules) == 0 && len(s.Prometheus) == 0 {
+		return errors.New("you have to configure at least one trigger between cpu, schedule and prometheus")
 	}
 	if s.AverageCPU != "" {
 		_, err := s.ToCPUValue(a)
 		if err != nil {
 			return err
+		}
+	}
+
+	for _, prometheus := range s.Prometheus {
+		if !validation.ValidateName(prometheus.Name) {
+			return fmt.Errorf("\"%s\" is an invalid name, it must contain only lower case letters, numbers or dashes and starts with a letter", prometheus.Name)
 		}
 	}
 	return nil

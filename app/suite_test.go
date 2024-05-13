@@ -102,7 +102,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("log:disable-syslog", true)
 	config.Set("docker:registry", "registry.somewhere")
 	config.Set("routers:fake-tls:type", "fake-tls")
-	config.Set("routers:fake-v2:type", "fake-v2")
+	config.Set("routers:fake:type", "fake")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -125,23 +125,17 @@ func (s *S) SetUpTest(c *check.C) {
 	// allow pending enqueued tasks to run, second time (after queue is reset)
 	// will remove any routes added by executed queue tasks.
 	routertest.FakeRouter.Reset()
-	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
-	routertest.OptsRouter.Reset()
-	rebuild.Shutdown(context.Background())
 	routertest.FakeRouter.Reset()
-	routertest.HCRouter.Reset()
 	routertest.TLSRouter.Reset()
-	routertest.OptsRouter.Reset()
 	pool.ResetCache()
-	err := rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
+	rebuild.Initialize(func(appName string) (rebuild.RebuildApp, error) {
 		a, err := GetByName(context.TODO(), appName)
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
 		return a, err
 	})
-	c.Assert(err, check.IsNil)
 	config.Set("docker:router", "fake")
 	s.provisioner.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
@@ -154,7 +148,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.plan = appTypes.Plan{}
 	s.Pool = "pool1"
 	opts := pool.AddPoolOptions{Name: s.Pool, Default: true}
-	err = pool.AddPool(context.TODO(), opts)
+	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
 	s.builder = &builder.MockBuilder{}
 	builder.Register("fake", s.builder)

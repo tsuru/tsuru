@@ -10,12 +10,14 @@ import (
 )
 
 var (
-	ErrJobNotFound        = errors.New("Job not found")
-	ErrJobUnitNotFound    = errors.New("Job unit not found")
-	MaxAttempts           = 5
-	ErrMaxAttemptsReached = fmt.Errorf("Unable to generate unique job name: max attempts reached (%d)", MaxAttempts)
-	ErrJobAlreadyExists   = errors.New("a job with the same name already exists")
-	ErrInvalidSchedule    = errors.New("invalid schedule")
+	ErrJobNotFound              = errors.New("Job not found")
+	ErrJobUnitNotFound          = errors.New("Job unit not found")
+	MaxAttempts                 = 5
+	ErrMaxAttemptsReached       = fmt.Errorf("Unable to generate unique job name: max attempts reached (%d)", MaxAttempts)
+	ErrJobAlreadyExists         = errors.New("a job with the same name already exists")
+	ErrInvalidSchedule          = errors.New("invalid schedule")
+	ErrInvalidConcurrencyPolicy = errors.New("invalid concurrency policy, allowed values are: Allow, Forbid, Replace")
+	ErrInvalidDeployKind        = errors.New("invalid deploy kind")
 )
 
 type JobCreationError struct {

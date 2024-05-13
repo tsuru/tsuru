@@ -28,14 +28,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	tsuruEnvs "github.com/tsuru/tsuru/envs"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/rebuild"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -630,7 +629,7 @@ func (s *S) TestAppListAfterAppInfoHasAddrLegacyRouter(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.AddBackend(context.TODO(), &app1)
+	routertest.FakeRouter.EnsureBackend(context.TODO(), &app1, router.EnsureBackendOpts{})
 	request, err := http.NewRequest("GET", "/apps/app1", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -2766,72 +2765,6 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {
 	}
 }
 
-func (s *S) TestSetUnitStatus(c *check.C) {
-	a := app.App{Name: "telegram", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", nil, nil)
-	body := strings.NewReader("status=error")
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	unit := units[0]
-	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.ID, body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
-}
-
-func (s *S) TestSetUnitStatusNoUnit(c *check.C) {
-	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	err = setUnitStatus(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "missing unit")
-}
-
-func (s *S) TestSetUnitStatusInvalidStatus(c *check.C) {
-	bodies := []io.Reader{strings.NewReader("status=something"), strings.NewReader("")}
-	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha&:unit=af32db", body)
-		c.Assert(err, check.IsNil)
-		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		recorder := httptest.NewRecorder()
-		err = setUnitStatus(recorder, request, s.token)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Check(e.Code, check.Equals, http.StatusBadRequest)
-		c.Check(e.Message, check.Equals, provision.ErrInvalidStatus.Error())
-	}
-}
-
-func (s *S) TestSetUnitStatusAppNotFound(c *check.C) {
-	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha&:unit=af32db", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	recorder := httptest.NewRecorder()
-	err = setUnitStatus(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Check(e.Code, check.Equals, http.StatusNotFound)
-	c.Check(e.Message, check.Equals, "App not found")
-}
-
 func (s *S) TestAddTeamToTheApp(c *check.C) {
 	t := authTypes.Team{Name: "itshardteam"}
 	s.mockService.Team.OnList = func() ([]authTypes.Team, error) {
@@ -3258,7 +3191,6 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 		{Name: "DATABASE_USER", Value: "root", Public: true},
 		{Name: "TSURU_APPNAME", Value: "everything-i-want", Public: false},
 		{Name: "TSURU_APPDIR", Value: "/home/application/current", Public: false},
-		{Name: "TSURU_APP_TOKEN", Value: "123", Public: false},
 		{Name: "TSURU_SERVICES", Value: "{}", Public: false},
 	}
 	result := []bindTypes.EnvVar{}
@@ -3266,9 +3198,6 @@ func (s *S) TestGetEnvAllEnvs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, len(expected))
 	for _, r := range result {
-		if r.Name == "TSURU_APP_TOKEN" {
-			continue
-		}
 		for _, e := range expected {
 			if e.Name == r.Name {
 				c.Check(e.Public, check.Equals, r.Public)
@@ -3370,42 +3299,6 @@ func (s *S) TestGetEnvUserDoesNotHaveAccessToTheApp(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestGetEnvWithAppToken(c *check.C) {
-	a := app.App{
-		Name:      "everything-i-want",
-		Platform:  "zend",
-		TeamOwner: s.team.Name,
-		Env: map[string]bindTypes.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("/apps/%s/env?env=DATABASE_HOST", a.Name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(context.TODO(), a.Name)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+token.GetValue())
-	recorder := httptest.NewRecorder()
-	c.Assert(err, check.IsNil)
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := []map[string]interface{}{{
-		"name":   "DATABASE_HOST",
-		"value":  "localhost",
-		"public": true,
-		"alias":  "",
-	}}
-	result := []map[string]interface{}{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-}
-
 func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {
 	a := app.App{Name: "black-erro", Platform: "zend", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &a, s.user)
@@ -3415,8 +3308,7 @@ func (s *S) TestSetEnvTsuruInternalEnvorimentVariableInApp(c *check.C) {
 		Envs: []apiTypes.Env{
 			{Name: "TSURU_APPNAME", Value: "everything-i-want", Alias: ""},
 			{Name: "TSURU_APPDIR", Value: "everything-i-want", Alias: ""},
-			{Name: "TSURU_APPN_TOKEN", Value: "everything-i-want", Alias: ""},
-			{Name: "TSURU_SERVICE", Value: "everything-i-want", Alias: ""},
+			{Name: "TSURU_SERVICES", Value: "everything-i-want", Alias: ""},
 		},
 		NoRestart: false,
 		Private:   false,
@@ -3966,16 +3858,10 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	}
 	c.Assert(envs, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
-		Target: appTarget(a.Name),
-		Owner:  s.token.GetUserName(),
-		Kind:   "app.update.env.set",
-		StartCustomData: []map[string]interface{}{
-			{"name": ":app", "value": a.Name},
-			{"name": "Envs.0.Name", "value": "DATABASE_HOST"},
-			{"name": "Envs.0.Value", "value": "http://foo.com:8080"},
-			{"name": "NoRestart", "value": ""},
-			{"name": "Private", "value": ""},
-		},
+		Target:       appTarget(a.Name),
+		Owner:        s.token.GetUserName(),
+		Kind:         "app.update.env.set",
+		ErrorMatches: "Environment variable \"DATABASE_HOST\" is already in use by service bind \"srv1/some service\"",
 	}, eventtest.HasEvent)
 }
 
@@ -4122,16 +4008,12 @@ func (s *S) TestIsEnvVarValid(c *check.C) {
 	}{
 		{},
 		{
-			envs:          []apiTypes.Env{{Name: "TSURU_SERVICE"}},
-			expectedError: "cannot change an internal environment variable (TSURU_SERVICE): write-protected environment variable",
+			envs:          []apiTypes.Env{{Name: "TSURU_SERVICES"}},
+			expectedError: "cannot change an internal environment variable (TSURU_SERVICES): write-protected environment variable",
 		},
 		{
 			envs:          []apiTypes.Env{{Name: "TSURU_APPNAME"}},
 			expectedError: "cannot change an internal environment variable (TSURU_APPNAME): write-protected environment variable",
-		},
-		{
-			envs:          []apiTypes.Env{{Name: "TSURU_APP_TOKEN"}},
-			expectedError: "cannot change an internal environment variable (TSURU_APP_TOKEN): write-protected environment variable",
 		},
 		{
 			envs:          []apiTypes.Env{{Name: "TSURU_APPDIR"}},
@@ -6092,188 +5974,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(app, check.DeepEquals, *expected)
 }
 
-func (s *S) TestSwap(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapCnameOnly(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app1.io"}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, CName: []string{"app2.io"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=true")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var dbApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	err = s.conn.Apps().Find(bson.M{"name": app2.Name}).One(&dbApp)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.Lock, check.Equals, appTypes.AppLock{})
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner: s.token.GetUserName(),
-		Kind:  "app.update.swap",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "true"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app1.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app1.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict, check.Commentf("body: %s", recorder.Body.String()))
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app1\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapApp2Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	_, err = event.NewInternal(&event.Opts{
-		Target:       event.Target{Type: event.TargetTypeApp, Value: app2.GetName()},
-		InternalKind: "anything",
-		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, app2.GetName())),
-	})
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
-	c.Assert(recorder.Body.String(), check.Matches, "event locked: app\\(app2\\) running \"anything\" start by internal.*\n")
-}
-
-func (s *S) TestSwapIncompatiblePlatforms(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "y"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "platforms don't match\n")
-	c.Assert(eventtest.EventDesc{
-		Target: appTarget(app1.Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: app2.Name}, Lock: true},
-		},
-		Owner:        s.token.GetUserName(),
-		Kind:         "app.update.swap",
-		ErrorMatches: "platforms don't match",
-		StartCustomData: []map[string]interface{}{
-			{"name": "app1", "value": app1.Name},
-			{"name": "app2", "value": app2.Name},
-			{"name": "cnameOnly", "value": "false"},
-		},
-	}, eventtest.HasEvent)
-}
-
-func (s *S) TestSwapIncompatibleUnits(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
-	err := s.conn.Apps().Insert(&app1)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app1)
-	c.Assert(err, check.IsNil)
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "x"}
-	err = s.conn.Apps().Insert(&app2)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &app2)
-	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnit(&app2, provision.Unit{})
-	b := strings.NewReader("app1=app1&app2=app2&cnameOnly=false")
-	request, err := http.NewRequest("POST", "/swap", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
-	c.Assert(recorder.Body.String(), check.Equals, "number of units doesn't match\n")
-}
-
-func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
+func (s *S) TestSwapDeprecated(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "x", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
 	c.Assert(err, check.IsNil)
@@ -6287,8 +5988,8 @@ func (s *S) TestSwapIncompatibleAppsForceSwap(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(recorder.Body.String(), check.Equals, "swapping is deprecated\n")
 }
 
 func (s *S) TestStartHandler(c *check.C) {
@@ -6376,179 +6077,12 @@ func (s *S) TestForceDeleteLock(c *check.C) {
 	c.Assert(recorder.Body.String(), check.Equals, "app unlock is deprecated, this call does nothing\n")
 }
 
-func (s *S) TestRegisterUnit(c *check.C) {
-	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bindTypes.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	oldIP := units[0].IP
-	body := strings.NewReader("hostname=" + units[0].ID)
-	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("X-Agent-Version", "0.2.4")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	result := []map[string]interface{}{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	envMap := map[interface{}]interface{}{}
-	for _, envVar := range result {
-		envMap[envVar["name"]] = envVar["value"]
-	}
-	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].IP, check.Equals, oldIP+"-updated")
-}
-
-func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
-	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bindTypes.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("hostname=invalid-unit-host")
-	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("X-Agent-Version", "0.2.4")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "unit \"invalid-unit-host\" not found\n")
-}
-
-func (s *S) TestRegisterUnitOutdatedDeployAgent(c *check.C) {
-	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bindTypes.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.Provision(context.TODO(), &a)
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("hostname=invalid-unit-host")
-	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("User-Agent", "Go-http-client/1.1")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
-
-	body = strings.NewReader("hostname=invalid-unit-host")
-	request, err = http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("User-Agent", "tsuru-deploy-agent/1.1")
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(recorder.Body.String(), check.Equals, "Please contact admin. python platform is using outdated deploy-agent version, minimum required version is 0.2.4\n")
-}
-
-func (s *S) TestRegisterUnitOtherUA(c *check.C) {
-	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bindTypes.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	body := strings.NewReader("hostname=" + units[0].ID)
-	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("User-Agent", "curl/1.1")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
-func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
-	a := app.App{
-		Name:     "myappx",
-		Platform: "python",
-		Env: map[string]bindTypes.EnvVar{
-			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
-		},
-		TeamOwner: s.team.Name,
-	}
-	err := app.CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
-	c.Assert(err, check.IsNil)
-	units, err := a.Units()
-	c.Assert(err, check.IsNil)
-	oldIP := units[0].IP
-	v := url.Values{}
-	v.Set("hostname", units[0].ID)
-	v.Set("customdata", `{"mydata": "something"}`)
-	body := strings.NewReader(v.Encode())
-	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	request.Header.Set("X-Agent-Version", "0.2.4")
-	recorder := httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	result := []map[string]interface{}{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	envMap := map[interface{}]interface{}{}
-	for _, envVar := range result {
-		envMap[envVar["name"]] = envVar["value"]
-	}
-	c.Assert(envMap["MY_VAR_1"], check.Equals, "value1")
-	units, err = a.Units()
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].IP, check.Equals, oldIP+"-updated")
-	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
-		"mydata": "something",
-	})
-}
-
 func (s *S) TestRebuildRoutes(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", TeamOwner: s.team.Name, Router: "fake"}
 	err := app.CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(context.TODO(), &a)
-	err = routertest.FakeRouter.AddRoutes(context.TODO(), &a, []*url.URL{
-		{Host: "h1"},
-	})
+	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &a, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	v := url.Values{}
 	v.Set("dry", "true")
@@ -6561,38 +6095,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 
-	var parsed map[string]rebuild.RebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &parsed)
-	c.Assert(err, check.IsNil)
-	c.Assert(parsed, check.DeepEquals, map[string]rebuild.RebuildRoutesResult{
-		"fake": {
-			PrefixResults: []rebuild.RebuildPrefixResult{
-				{
-					Added:   nil,
-					Removed: []string{"http://h1"},
-				},
-			},
-		},
-	})
-
-	var compatResult map[string]compatRebuildRoutesResult
-	err = json.Unmarshal(recorder.Body.Bytes(), &compatResult)
-	c.Assert(err, check.IsNil)
-	c.Assert(compatResult, check.DeepEquals, map[string]compatRebuildRoutesResult{
-		"fake": {
-			RebuildRoutesResult: rebuild.RebuildRoutesResult{
-				PrefixResults: []rebuild.RebuildPrefixResult{
-					{
-						Added:   nil,
-						Removed: []string{"http://h1"},
-					},
-				},
-			},
-			Added:   nil,
-			Removed: []string{"http://h1"},
-		},
-	})
-
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget(a.Name),
 		Owner:  s.token.GetUserName(),
@@ -6600,10 +6102,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 		StartCustomData: []map[string]interface{}{
 			{"name": "dry", "value": "true"},
 			{"name": ":app", "value": a.Name},
-		},
-		EndCustomData: map[string]interface{}{
-			"fake.prefixresults.added":   []string(nil),
-			"fake.prefixresults.removed": []string{"http://h1"},
 		},
 	}, eventtest.HasEvent)
 }

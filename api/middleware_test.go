@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/cmd"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/servicemanager"
@@ -155,8 +154,6 @@ func (s *S) TestSetVersionHeadersMiddleware(c *check.C) {
 	setVersionHeadersMiddleware(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
-	c.Assert(recorder.Header().Get("Supported-Tsuru-Admin"), check.Equals, tsuruAdminMin)
 }
 
 func (s *S) TestErrorHandlingMiddlewareWithoutError(c *check.C) {
@@ -218,7 +215,7 @@ func (s *S) TestErrorHandlingMiddlewareWithCauseValidationError(c *check.C) {
 func (s *S) TestErrorHandlingMiddlewareWithVerbosity(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
-	request.Header.Add(cmd.VerbosityHeader, "1")
+	request.Header.Add(verbosityHeader, "1")
 	c.Assert(err, check.IsNil)
 	h, log := doHandler()
 	context.AddRequestError(request, errors.WithStack(&tsuruErrors.ValidationError{Message: "invalid request"}))
@@ -298,7 +295,6 @@ func (s *S) TestAuthTokenMiddlewareWithTeamToken(c *check.C) {
 	t := context.GetAuthToken(request)
 	c.Assert(t, check.NotNil)
 	c.Assert(t.GetValue(), check.Equals, token.Token)
-	c.Assert(t.GetAppName(), check.Equals, "")
 	mockSpan := span.(*mocktracer.MockSpan)
 	c.Check(mockSpan.Tag("user.name"), check.Equals, token.TokenID)
 	c.Check(mockSpan.Tag("app.name"), check.Equals, nil)

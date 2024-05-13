@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *check.C) {
-	baseManager := cmd.NewManager("tsurud", "0.3.0", "", os.Stdout, os.Stderr, os.Stdin, nil)
+	baseManager := cmd.NewManager("tsurud", os.Stdout, os.Stderr, os.Stdin, nil)
 	manager := buildManager()
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]
@@ -37,15 +37,6 @@ func (s *S) TestAPICmdIsRegistered(c *check.C) {
 	tsurudApi, ok := api.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(tsurudApi.Command, check.FitsTypeOf, &apiCmd{})
-}
-
-func (s *S) TestTokenCmdIsRegistered(c *check.C) {
-	manager := buildManager()
-	token, ok := manager.Commands["token"]
-	c.Assert(ok, check.Equals, true)
-	tsurudToken, ok := token.(*tsurudCommand)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(tsurudToken.Command, check.FitsTypeOf, tokenCmd{})
 }
 
 func (s *S) TestMigrateCmdIsRegistered(c *check.C) {

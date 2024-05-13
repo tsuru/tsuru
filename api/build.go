@@ -72,15 +72,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
-	var userName string
-	if t.IsAppToken() {
-		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
-			return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
-		}
-		userName = InputValue(r, "user")
-	} else {
-		userName = t.GetUserName()
-	}
+	userName := t.GetUserName()
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -90,11 +82,9 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	opts.BuildTag = tag
 	opts.User = userName
 	opts.GetKind()
-	if t.GetAppName() != app.InternalAppName {
-		canBuild := permission.Check(t, permission.PermAppBuild, contextsForApp(instance)...)
-		if !canBuild {
-			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
-		}
+	canBuild := permission.Check(t, permission.PermAppBuild, contextsForApp(instance)...)
+	if !canBuild {
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),

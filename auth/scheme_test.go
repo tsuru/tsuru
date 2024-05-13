@@ -7,6 +7,7 @@ package auth
 import (
 	"context"
 
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
 
@@ -30,7 +31,7 @@ func (t TestScheme) Logout(ctx context.Context, token string) error {
 func (t TestScheme) Auth(ctx context.Context, token string) (Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info(ctx context.Context) (*SchemeInfo, error) {
+func (t TestScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	return nil, nil
 }
 func (t TestScheme) Name() string {

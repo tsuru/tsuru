@@ -8,9 +8,7 @@ import (
 	stdContext "context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -802,51 +800,6 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	return a.RemoveUnits(ctx, n, processName, version, evt)
 }
 
-// title: set unit status
-// path: /apps/{app}/units/{unit}
-// method: POST
-// consume: application/x-www-form-urlencoded
-// responses:
-//
-//	200: Ok
-//	400: Invalid data
-//	401: Unauthorized
-//	404: App or unit not found
-func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	unitName := r.URL.Query().Get(":unit")
-	if unitName == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "missing unit",
-		}
-	}
-	postStatus := InputValue(r, "status")
-	status, err := provision.ParseStatus(postStatus)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: err.Error(),
-		}
-	}
-	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitStatus,
-		contextsForApp(a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	err = a.SetUnitStatus(unitName, status)
-	if _, ok := err.(*provision.UnitNotFoundError); ok {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	return err
-}
-
 // title: kill a running unit
 // path: /apps/{app}/units/{unit}
 // method: DELETE
@@ -1076,14 +1029,13 @@ func getAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if !t.IsAppToken() {
-		allowed := permission.Check(t, permission.PermAppReadEnv,
-			contextsForApp(&a)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
+	allowed := permission.Check(t, permission.PermAppReadEnv,
+		contextsForApp(&a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
+
 	return writeEnvVars(w, &a, variables...)
 }
 
@@ -1234,7 +1186,7 @@ func isInternalEnv(envKey string) bool {
 }
 
 func internalEnvs() []string {
-	return []string{"TSURU_APPNAME", "TSURU_APP_TOKEN", "TSURU_SERVICE", "TSURU_APPDIR"}
+	return []string{"TSURU_APPNAME", "TSURU_SERVICES", "TSURU_APPDIR"}
 }
 
 var envVarUnixLikeRegexp = regexp.MustCompile(`^[_a-zA-Z][_a-zA-Z0-9]*$`)
@@ -1594,6 +1546,14 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		return err
 	}
 	defer func() { evt.Done(err) }()
+
+	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
+	// read more about event retry-lock at event/event.go on newEvt function
+	// to avoid an outdated app fetching from database again
+	a, err = app.GetByName(ctx, appName)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1681,6 +1641,15 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	defer func() { evt.Done(err) }()
+
+	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
+	// read more about event retry-lock at event/event.go on newEvt function
+	// to avoid an outdated app fetching from database again
+	a, err = app.GetByName(ctx, appName)
+	if err != nil {
+		return err
+	}
+
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1765,14 +1734,13 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if t.GetAppName() != app.InternalAppName {
-		allowed := permission.Check(t, permission.PermAppUpdateLog,
-			contextsForApp(a)...,
-		)
-		if !allowed {
-			return permission.ErrUnauthorized
-		}
+	allowed := permission.Check(t, permission.PermAppUpdateLog,
+		contextsForApp(a)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
 	}
+
 	logs, _ := InputValues(r, "message")
 	source := InputValue(r, "source")
 	if source == "" {
@@ -1801,73 +1769,10 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: App locked
 //	412: Number of units or platform don't match
 func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	ctx := r.Context()
-	app1Name := InputValue(r, "app1")
-	app2Name := InputValue(r, "app2")
-	forceSwap := InputValue(r, "force")
-	cnameOnly, _ := strconv.ParseBool(InputValue(r, "cnameOnly"))
-	if forceSwap == "" {
-		forceSwap = "false"
+	return &errors.HTTP{
+		Code:    http.StatusPreconditionFailed,
+		Message: "swapping is deprecated",
 	}
-	app1, err := getApp(ctx, app1Name)
-	if err != nil {
-		return err
-	}
-	app2, err := getApp(ctx, app2Name)
-	if err != nil {
-		return err
-	}
-	allowed1 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app1)...,
-	)
-	allowed2 := permission.Check(t, permission.PermAppUpdateSwap,
-		contextsForApp(app2)...,
-	)
-	if !allowed1 || !allowed2 {
-		return permission.ErrUnauthorized
-	}
-	evt, err := event.New(&event.Opts{
-		Target: appTarget(app1Name),
-		ExtraTargets: []event.ExtraTarget{
-			{Target: appTarget(app2Name), Lock: true},
-		},
-		Kind:       permission.PermAppUpdateSwap,
-		Owner:      t,
-		RemoteAddr: r.RemoteAddr,
-		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(app1)...),
-	})
-	if err != nil {
-		if _, locked := err.(event.ErrEventLocked); locked {
-			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
-		}
-		return err
-	}
-	defer func() { evt.Done(err) }()
-	// compare apps by platform type and number of units
-	if forceSwap == "false" {
-		if app1.Platform != app2.Platform {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "platforms don't match",
-			}
-		}
-		app1Units, err := app1.Units()
-		if err != nil {
-			return err
-		}
-		app2Units, err := app2.Units()
-		if err != nil {
-			return err
-		}
-		if len(app1Units) != len(app2Units) {
-			return &errors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "number of units doesn't match",
-			}
-		}
-	}
-	return app.Swap(ctx, app1, app2, cnameOnly)
 }
 
 // title: app start
@@ -1979,83 +1884,9 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	return &errors.HTTP{Code: http.StatusGone, Message: "app unlock is deprecated, this call does nothing"}
 }
 
-func isDeployAgentUA(r *http.Request) bool {
-	ua := strings.ToLower(r.UserAgent())
-	return strings.HasPrefix(ua, "go-http-client") ||
-		strings.HasPrefix(ua, "tsuru-deploy-agent")
-}
-
-// title: register unit
-// path: /apps/{app}/units/register
-// method: POST
-// consume: application/x-www-form-urlencoded
-// produce: application/json
-// responses:
-//
-//	200: Ok
-//	401: Unauthorized
-//	404: App not found
-func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	ctx := r.Context()
-	appName := r.URL.Query().Get(":app")
-	a, err := app.GetByName(ctx, appName)
-	if err != nil {
-		return err
-	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitRegister,
-		contextsForApp(a)...,
-	)
-	if !allowed {
-		return permission.ErrUnauthorized
-	}
-	if isDeployAgentUA(r) && r.Header.Get("X-Agent-Version") == "" {
-		// Filtering the user-agent is not pretty, but it's safer than doing
-		// the header check for every request, otherwise calling directly the
-		// API would always fail without this header that only makes sense to
-		// the agent.
-		msgError := fmt.Sprintf("Please contact admin. %s platform is using outdated deploy-agent version, minimum required version is 0.2.4", a.GetPlatform())
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msgError}
-	}
-	defer r.Body.Close()
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	val, err := url.ParseQuery(string(data))
-	if err != nil {
-		return err
-	}
-	hostname := val.Get("hostname")
-	var customData map[string]interface{}
-	rawCustomData := val.Get("customdata")
-	if rawCustomData != "" {
-		err = json.Unmarshal([]byte(rawCustomData), &customData)
-		if err != nil {
-			return err
-		}
-	}
-	err = a.RegisterUnit(ctx, hostname, customData)
-	if err != nil {
-		if err, ok := err.(*provision.UnitNotFoundError); ok {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-		}
-		return err
-	}
-	return writeEnvVars(w, a)
-}
-
-// compatRebuildRoutesResult is a backward compatible rebuild routes struct
-// used in the handler so that old clients won't break.
-type compatRebuildRoutesResult struct {
-	rebuild.RebuildRoutesResult
-	Added   []string
-	Removed []string
-}
-
 // title: rebuild routes
 // path: /apps/{app}/routes
 // method: POST
-// produce: application/json
 // responses:
 //
 //	200: Ok
@@ -2085,33 +1916,11 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	result := make(map[string]rebuild.RebuildRoutesResult)
-	defer func() { evt.DoneCustomData(err, result) }()
-	w.Header().Set("Content-Type", "application/json")
-	result, err = rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
-		App:  &a,
-		Wait: true,
-		Dry:  dry,
+	defer func() { evt.Done(err) }()
+	return rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
+		App: &a,
+		Dry: dry,
 	})
-	if err != nil {
-		return err
-	}
-
-	compatResult := make(map[string]compatRebuildRoutesResult)
-	for routerName, routerResult := range result {
-		compatRouterResult := compatRebuildRoutesResult{
-			RebuildRoutesResult: routerResult,
-		}
-		for _, prefixResult := range routerResult.PrefixResults {
-			if prefixResult.Prefix == "" {
-				compatRouterResult.Added = prefixResult.Added
-				compatRouterResult.Removed = prefixResult.Removed
-				break
-			}
-		}
-		compatResult[routerName] = compatRouterResult
-	}
-	return json.NewEncoder(w).Encode(&compatResult)
 }
 
 // title: set app certificate

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -79,13 +78,6 @@ func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func outputHandler(w http.ResponseWriter, r *http.Request) error {
-	w.Header().Set("Content-Type", "text")
-	output := "2012-06-05 17:03:36,887 WARNING ssl-hostname-verification is disabled for this environment"
-	fmt.Fprint(w, output)
-	return nil
-}
-
 func authorizedErrorHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return errorHandler(w, r)
 }
@@ -100,10 +92,6 @@ func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, t auth.
 
 func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return simpleHandler(w, r)
-}
-
-func authorizedOutputHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return outputHandler(w, r)
 }
 
 type recorder struct {
@@ -162,8 +150,6 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeaders(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
-	c.Assert(recorder.Header().Get("Supported-Tsuru-Admin"), check.Equals, tsuruAdminMin)
 }
 
 func (s *HandlerSuite) TestHandlerShouldSetVersionHeadersEvenOnFail(c *check.C) {
@@ -175,7 +161,6 @@ func (s *HandlerSuite) TestHandlerShouldSetVersionHeadersEvenOnFail(c *check.C) 
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheAuthorizationHeadIsNotPresent(c *check.C) {
@@ -228,7 +213,6 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeaders(c
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEvenOnError(c *check.C) {
@@ -241,7 +225,6 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldSetVersionHeadersEv
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Supported-Tsuru"), check.Equals, tsuruMin)
-	c.Assert(recorder.Header().Get("Supported-Crane"), check.Equals, craneMin)
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerErrorIfAnyHappen(c *check.C) {
@@ -281,55 +264,4 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldRespectTheHandlerSt
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
-}
-
-func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *check.C) {
-	myApp := app.App{
-		Name: "my-app",
-	}
-	err := s.conn.Apps().Insert(myApp)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
-	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
-	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest(http.MethodGet, "/apps/my-app/", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps/{app}/", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
-	defer resetHandlers()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-}
-
-func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *check.C) {
-	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
-	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest(http.MethodGet, "/apps/your-app", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps/{app}", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
-	defer resetHandlers()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-}
-
-func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *check.C) {
-	token, err := nativeScheme.AppLogin(context.TODO(), "my-app")
-	c.Assert(err, check.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest(http.MethodGet, "/apps", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	RegisterHandler("/apps", http.MethodGet, AuthorizationRequiredHandler(authorizedOutputHandler))
-	defer resetHandlers()
-	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }

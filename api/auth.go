@@ -102,11 +102,17 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		Email:    email,
 		Password: password,
 	}
-	_, err = app.AuthScheme.Create(ctx, &u)
-	if err != nil {
-		return handleAuthError(err)
+
+	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
+		_, err = userScheme.Create(ctx, &u)
+		if err != nil {
+			return handleAuthError(err)
+		}
+		w.WriteHeader(http.StatusCreated)
+		return nil
 	}
-	w.WriteHeader(http.StatusCreated)
+
+	w.WriteHeader(http.StatusNotImplemented)
 	return nil
 }
 
@@ -131,11 +137,17 @@ func login(w http.ResponseWriter, r *http.Request) (err error) {
 	for key, values := range fields {
 		params[key] = values[0]
 	}
-	token, err := app.AuthScheme.Login(ctx, params)
-	if err != nil {
-		return handleAuthError(err)
+
+	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
+		token, err := userScheme.Login(ctx, params)
+		if err != nil {
+			return handleAuthError(err)
+		}
+		return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
 	}
-	return json.NewEncoder(w).Encode(map[string]string{"token": token.GetValue()})
+
+	w.WriteHeader(http.StatusNotImplemented)
+	return nil
 }
 
 // title: webLogin
@@ -180,7 +192,12 @@ func webLogin(w http.ResponseWriter, r *http.Request) (err error) {
 //
 //	200: Ok
 func logout(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
-	return app.AuthScheme.Logout(r.Context(), t.GetValue())
+	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
+		return userScheme.Logout(r.Context(), t.GetValue())
+	}
+
+	w.WriteHeader(http.StatusNotImplemented)
+	return nil
 }
 
 // title: change password
@@ -625,7 +642,12 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return app.AuthScheme.Remove(ctx, u)
+
+	if userScheme, ok := app.AuthScheme.(auth.UserScheme); ok {
+		return userScheme.Remove(ctx, u)
+	}
+
+	return nil
 }
 
 // title: get auth scheme
@@ -642,6 +664,34 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(info)
+}
+
+// title: get auth scheme
+// path: /auth/schemes
+// method: GET
+// produce: application/json
+// responses:
+//
+//	200: OK
+func authSchemes(w http.ResponseWriter, r *http.Request) (err error) {
+	var infos []authTypes.SchemeInfo
+	if multiScheme, ok := app.AuthScheme.(auth.MultiScheme); ok {
+		infos, err = multiScheme.Infos(r.Context())
+		if err != nil {
+			return err
+		}
+	} else {
+		var info *authTypes.SchemeInfo
+		info, err = app.AuthScheme.Info(r.Context())
+		if err != nil {
+			return err
+		}
+		info.Default = true
+		infos = []authTypes.SchemeInfo{*info}
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(infos)
 }
 
 // title: regenerate token

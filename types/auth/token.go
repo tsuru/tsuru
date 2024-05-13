@@ -8,9 +8,7 @@ import "github.com/tsuru/tsuru/permission"
 
 type Token interface {
 	GetValue() string
-	GetAppName() string
 	GetUserName() string
-	IsAppToken() bool
 	User() (*User, error)
 	Engine() string
 	Permissions() ([]permission.Permission, error)

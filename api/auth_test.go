@@ -919,8 +919,8 @@ func (t TestScheme) Logout(ctx context.Context, token string) error {
 func (t TestScheme) Auth(ctx context.Context, token string) (auth.Token, error) {
 	return nil, nil
 }
-func (t TestScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
-	return &auth.SchemeInfo{Name: "test", Data: map[string]interface{}{"foo": "bar", "foo2": "bar2"}}, nil
+func (t TestScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
+	return &authTypes.SchemeInfo{Name: "test", Data: authTypes.SchemeData{AuthorizeURL: "http://foo/bar"}}, nil
 }
 func (t TestScheme) Create(ctx context.Context, u *auth.User) (*auth.User, error) {
 	return nil, nil
@@ -943,7 +943,7 @@ func (s *AuthSuite) TestAuthScheme(c *check.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&parsed)
 	c.Assert(err, check.IsNil)
 	c.Assert(parsed["name"], check.Equals, "test")
-	c.Assert(parsed["data"], check.DeepEquals, map[string]interface{}{"foo": "bar", "foo2": "bar2"})
+	c.Assert(parsed["data"], check.DeepEquals, map[string]interface{}{"authorizeUrl": "http://foo/bar"})
 }
 
 func (s *AuthSuite) TestRegenerateAPITokenHandler(c *check.C) {

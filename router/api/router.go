@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -20,8 +19,6 @@ import (
 	"github.com/tsuru/tsuru/net"
 	poolMultiCluster "github.com/tsuru/tsuru/provision/pool/multicluster"
 	"github.com/tsuru/tsuru/router"
-	appTypes "github.com/tsuru/tsuru/types/app"
-	routerTypes "github.com/tsuru/tsuru/types/router"
 )
 
 //go:generate bash -c "rm -f routeriface.go && go run ./generator/combinations.go -o routeriface.go"
@@ -29,17 +26,8 @@ import (
 const routerType = "api"
 
 var (
-	_ router.OptsRouter              = &apiRouter{}
-	_ router.Router                  = &apiRouter{}
-	_ router.RouterV2                = &apiRouterV2{}
-	_ router.MessageRouter           = &apiRouter{}
-	_ router.HealthChecker           = &apiRouter{}
-	_ router.TLSRouter               = &apiRouterWithTLSSupport{}
-	_ router.CNameRouter             = &apiRouterWithCnameSupport{}
-	_ router.CustomHealthcheckRouter = &apiRouterWithHealthcheckSupport{}
-	_ router.InfoRouter              = &apiRouterWithInfo{}
-	_ router.StatusRouter            = &apiRouterWithStatus{}
-	_ router.PrefixRouter            = &apiRouterWithPrefix{}
+	_ router.Router    = &apiRouter{}
+	_ router.TLSRouter = &apiRouterWithTLSSupport{}
 )
 
 type apiRouter struct {
@@ -53,19 +41,7 @@ type apiRouter struct {
 	multiCluster bool
 }
 
-type apiRouterV2 struct{ *apiRouter }
-
-type apiRouterWithCnameSupport struct{ *apiRouter }
-
 type apiRouterWithTLSSupport struct{ *apiRouter }
-
-type apiRouterWithHealthcheckSupport struct{ *apiRouter }
-
-type apiRouterWithInfo struct{ *apiRouter }
-
-type apiRouterWithStatus struct{ *apiRouter }
-
-type apiRouterWithPrefix struct{ *apiRouter }
 
 type routesReq struct {
 	Prefix    string            `json:"prefix"`
@@ -100,15 +76,9 @@ type backendResp struct {
 type capability string
 
 var (
-	capCName       = capability("cname")
-	capTLS         = capability("tls")
-	capHealthcheck = capability("healthcheck")
-	capInfo        = capability("info")
-	capStatus      = capability("status")
-	capPrefix      = capability("prefix")
-	capV2          = capability("v2")
+	capTLS = capability("tls")
 
-	allCaps = []capability{capCName, capTLS, capHealthcheck, capInfo, capStatus, capPrefix, capV2}
+	allCaps = []capability{capTLS}
 )
 
 func init() {
@@ -147,25 +117,13 @@ func (r *apiRouter) GetType() string {
 	return routerType
 }
 
-func (r *apiRouter) AddBackend(ctx context.Context, app router.App) (err error) {
-	return r.AddBackendOpts(ctx, app, nil)
-}
-
-func (r *apiRouter) AddBackendOpts(ctx context.Context, app router.App, opts map[string]string) error {
-	err := r.doBackendOpts(ctx, app, http.MethodPost, opts)
-	if err != nil {
-		return err
-	}
-	return router.Store(app.GetName(), app.GetName(), routerType)
-}
-
-func (r *apiRouter) UpdateBackendOpts(ctx context.Context, app router.App, opts map[string]string) error {
-	return r.doBackendOpts(ctx, app, http.MethodPut, opts)
-}
-
-func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method string, opts map[string]string) error {
+func (r *apiRouter) EnsureBackend(ctx context.Context, app router.App, o router.EnsureBackendOpts) error {
 	path := fmt.Sprintf("backend/%s", app.GetName())
-	b, err := json.Marshal(addDefaultOpts(app, mapStringToMapInterface(opts)))
+
+	o.Opts = addDefaultOpts(app, o.Opts)
+
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(o)
 	if err != nil {
 		return err
 	}
@@ -175,23 +133,9 @@ func (r *apiRouter) doBackendOpts(ctx context.Context, app router.App, method st
 		return err
 	}
 
-	data := bytes.NewReader(b)
-	_, statusCode, err := r.do(ctx, method, path, headers, data)
-	if statusCode == http.StatusConflict {
-		return router.ErrBackendExists
-	}
-	if statusCode == http.StatusNotFound {
-		return router.ErrBackendNotFound
-	}
+	headers.Set("Content-Type", "application/json; router=v2")
+	_, _, err = r.do(ctx, http.MethodPut, path, headers, &buf)
 	return err
-}
-
-func mapStringToMapInterface(origin map[string]string) map[string]interface{} {
-	result := map[string]interface{}{}
-	for k, v := range origin {
-		result[k] = v
-	}
-	return result
 }
 
 func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err error) {
@@ -212,139 +156,23 @@ func (r *apiRouter) RemoveBackend(ctx context.Context, app router.App) (err erro
 	return err
 }
 
-func (r *apiRouter) AddRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
-	return r.doRoutes(ctx, app, addresses, "")
-}
-
-func (r *apiRouter) RemoveRoutes(ctx context.Context, app router.App, addresses []*url.URL) (err error) {
-	return r.doRoutes(ctx, app, addresses, "/remove")
-}
-
-func (r *apiRouter) doRoutes(ctx context.Context, app router.App, addresses []*url.URL, suffix string) error {
-	req := &routesReq{}
-	req.Addresses = make([]string, len(addresses))
-	for i := range addresses {
-		req.Addresses[i] = addresses[i].String()
-	}
-	return r.doRoutesReq(ctx, app, req, suffix)
-}
-
-func (r *apiRouter) doRoutesReq(ctx context.Context, app router.App, req *routesReq, suffix string) error {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return err
-	}
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-	data, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	body := bytes.NewReader(data)
-	path := fmt.Sprintf("backend/%s/routes%s", backendName, suffix)
-	_, statusCode, err := r.do(ctx, http.MethodPost, path, headers, body)
-	if statusCode == http.StatusNotFound {
-		return router.ErrBackendNotFound
-	}
-	return err
-}
-
-func (r *apiRouter) Routes(ctx context.Context, app router.App) (result []*url.URL, err error) {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return nil, err
-	}
-	path := fmt.Sprintf("backend/%s/routes", backendName)
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	data, statusCode, err := r.do(ctx, http.MethodGet, path, headers, nil)
-	if statusCode == http.StatusNotFound {
-		return nil, router.ErrBackendNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	req := &routesPrefixReq{}
-	err = json.Unmarshal(data, req)
-	if err != nil {
-		return nil, err
-	}
-	result = []*url.URL{}
-	for _, addr := range req.Addresses {
-		u, err := url.Parse(addr)
-		if err != nil {
-			return nil, errors.Errorf("failed to parse url %s: %s", addr, err)
-		}
-		result = append(result, u)
-	}
-	return result, nil
-}
-
-func (r *apiRouter) Addr(ctx context.Context, app router.App) (addr string, err error) {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return "", err
-	}
+func (r *apiRouter) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
+	backendName := app.GetName()
 	path := fmt.Sprintf("backend/%s", backendName)
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	data, code, err := r.do(ctx, http.MethodGet, path, headers, nil)
 	if err != nil {
 		if code == http.StatusNotFound {
-			return "", router.ErrBackendNotFound
+			return nil, router.ErrBackendNotFound
 		}
-		return "", err
+		return nil, err
 	}
 	resp := &backendResp{}
 	err = json.Unmarshal(data, resp)
-	return resp.Address, err
-}
-
-func (r *apiRouter) Swap(ctx context.Context, app1 router.App, app2 router.App, cnameOnly bool) (err error) {
-	path := fmt.Sprintf("backend/%s/swap", app1.GetName())
-	data, err := json.Marshal(swapReq{Target: app2.GetName(), CnameOnly: cnameOnly})
-	if err != nil {
-		return err
-	}
-	body := bytes.NewReader(data)
-
-	if r.multiCluster && app1.GetPool() != app2.GetPool() {
-		return router.ErrSwapAmongDifferentClusters
-	}
-
-	headers, err := r.getExtraHeadersFromApp(ctx, app1)
-	if err != nil {
-		return err
-	}
-	_, code, err := r.do(ctx, http.MethodPost, path, headers, body)
-	if code == http.StatusNotFound {
-		return router.ErrBackendNotFound
-	}
-	if err != nil {
-		return err
-	}
-	return router.Swap(ctx, r.supIface, app1, app2, cnameOnly)
-}
-
-func (r *apiRouter) StartupMessage() (string, error) {
-	return fmt.Sprintf("api router %q with endpoint %q", r.routerName, r.endpoint), nil
-}
-
-func (r *apiRouter) HealthCheck(ctx context.Context) error {
-	data, code, err := r.do(ctx, http.MethodGet, "healthcheck", nil, nil)
-	if err != nil {
-		return err
-	}
-	if code != http.StatusOK {
-		return errors.Errorf("invalid status code %d from healthcheck %q: %s", code, r.endpoint+"/healthcheck", data)
-	}
-	return nil
+	return resp.Addresses, err
 }
 
 func (r *apiRouter) checkSupports(ctx context.Context, feature string) (bool, error) {
@@ -411,97 +239,6 @@ func (r *apiRouter) do(ctx context.Context, method, path string, headers http.He
 	return data, code, nil
 }
 
-func (r *apiRouterV2) EnsureBackend(ctx context.Context, app router.App, o router.EnsureBackendOpts) error {
-	path := fmt.Sprintf("backend/%s", app.GetName())
-
-	o.Opts = addDefaultOpts(app, o.Opts)
-
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(o)
-	if err != nil {
-		return err
-	}
-
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-
-	headers.Set("Content-Type", "application/json; router=v2")
-	_, _, err = r.do(ctx, http.MethodPut, path, headers, &buf)
-	return err
-}
-
-func (r *apiRouterWithCnameSupport) SetCName(ctx context.Context, cname string, app router.App) error {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return err
-	}
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-	_, code, err := r.do(ctx, http.MethodPost, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), headers, nil)
-	switch code {
-	case http.StatusBadRequest:
-		return router.ErrCNameNotAllowed
-	case http.StatusNotFound:
-		return router.ErrBackendNotFound
-	case http.StatusConflict:
-		return router.ErrCNameExists
-	}
-	return err
-}
-
-func (r *apiRouterWithCnameSupport) UnsetCName(ctx context.Context, cname string, app router.App) error {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return err
-	}
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-	data, code, err := r.do(ctx, http.MethodDelete, fmt.Sprintf("backend/%s/cname/%s", backendName, cname), headers, nil)
-	switch code {
-	case http.StatusNotFound:
-		return router.ErrBackendNotFound
-	case http.StatusBadRequest:
-		if strings.Contains(string(data), router.ErrCNameNotFound.Error()) {
-			return router.ErrCNameNotFound
-		}
-	}
-	return err
-}
-
-func (r *apiRouterWithCnameSupport) CNames(ctx context.Context, app router.App) ([]*url.URL, error) {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return nil, err
-	}
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	data, code, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/cname", backendName), headers, nil)
-	if code == http.StatusNotFound {
-		return nil, router.ErrBackendNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	var resp cnamesResp
-	err = json.Unmarshal(data, &resp)
-	if err != nil {
-		return nil, err
-	}
-	var urls []*url.URL
-	for _, addr := range resp.Cnames {
-		urls = append(urls, &url.URL{Host: addr})
-	}
-	return urls, nil
-}
-
 func (r *apiRouterWithTLSSupport) AddCertificate(ctx context.Context, app router.App, cname, certificate, key string) error {
 	cert := certData{Certificate: certificate, Key: key}
 	b, err := json.Marshal(&cert)
@@ -548,27 +285,7 @@ func (r *apiRouterWithTLSSupport) GetCertificate(ctx context.Context, app router
 	return "", err
 }
 
-func (r *apiRouterWithHealthcheckSupport) SetHealthcheck(ctx context.Context, app router.App, data routerTypes.HealthcheckData) error {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return err
-	}
-	b, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return err
-	}
-	_, code, err := r.do(ctx, http.MethodPut, fmt.Sprintf("backend/%s/healthcheck", backendName), headers, bytes.NewReader(b))
-	if code == http.StatusNotFound {
-		return router.ErrBackendNotFound
-	}
-	return err
-}
-
-func (r *apiRouterWithInfo) GetInfo(ctx context.Context) (map[string]string, error) {
+func (r *apiRouter) GetInfo(ctx context.Context) (map[string]string, error) {
 	data, _, err := r.do(ctx, http.MethodGet, "info", nil, nil)
 	if err != nil {
 		return nil, err
@@ -581,21 +298,15 @@ func (r *apiRouterWithInfo) GetInfo(ctx context.Context) (map[string]string, err
 	return result, nil
 }
 
-func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, app router.App, path string) (router.RouterBackendStatus, error) {
+func (r *apiRouter) GetBackendStatus(ctx context.Context, app router.App) (router.RouterBackendStatus, error) {
 	rsp := router.RouterBackendStatus{}
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return rsp, err
-	}
+	backendName := app.GetName()
 	headers, err := r.getExtraHeadersFromApp(ctx, app)
 	if err != nil {
 		return rsp, err
 	}
-	qs := url.Values{}
-	if path != "" {
-		qs.Add("checkpath", path)
-	}
-	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status?%s", backendName, qs.Encode()), headers, nil)
+
+	data, _, err := r.do(ctx, http.MethodGet, fmt.Sprintf("backend/%s/status", backendName), headers, nil)
 	if err != nil {
 		return rsp, err
 	}
@@ -604,89 +315,6 @@ func (r *apiRouterWithStatus) GetBackendStatus(ctx context.Context, app router.A
 		return rsp, err
 	}
 	return rsp, nil
-}
-
-func (r *apiRouterWithPrefix) Addresses(ctx context.Context, app router.App) (addrs []string, err error) {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return nil, err
-	}
-	path := fmt.Sprintf("backend/%s", backendName)
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	data, code, err := r.do(ctx, http.MethodGet, path, headers, nil)
-	if err != nil {
-		if code == http.StatusNotFound {
-			return nil, router.ErrBackendNotFound
-		}
-		return nil, err
-	}
-	resp := &backendResp{}
-	err = json.Unmarshal(data, resp)
-	return resp.Addresses, err
-}
-
-func (r *apiRouterWithPrefix) RoutesPrefix(ctx context.Context, app router.App) ([]appTypes.RoutableAddresses, error) {
-	backendName, err := router.Retrieve(app.GetName())
-	if err != nil {
-		return nil, err
-	}
-	path := fmt.Sprintf("backend/%s/routes", backendName)
-	headers, err := r.getExtraHeadersFromApp(ctx, app)
-	if err != nil {
-		return nil, err
-	}
-	data, statusCode, err := r.do(ctx, http.MethodGet, path, headers, nil)
-	if statusCode == http.StatusNotFound {
-		return nil, router.ErrBackendNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	var req routesPrefixReq
-	err = json.Unmarshal(data, &req)
-	if err != nil {
-		return nil, err
-	}
-	var result []appTypes.RoutableAddresses
-	for _, addrData := range req.AddressesWithPrefix {
-		urls := []*url.URL{}
-		for _, addr := range addrData.Addresses {
-			u, err := url.Parse(addr)
-			if err != nil {
-				return nil, errors.Errorf("failed to parse url %s: %s", addr, err)
-			}
-			urls = append(urls, u)
-		}
-		result = append(result, appTypes.RoutableAddresses{
-			Prefix:    addrData.Prefix,
-			Addresses: urls,
-			ExtraData: addrData.ExtraData,
-		})
-	}
-	return result, nil
-}
-
-func (r *apiRouterWithPrefix) AddRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
-	return r.doRoutesPrefix(ctx, app, addresses, "")
-}
-
-func (r *apiRouterWithPrefix) RemoveRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, sync bool) error {
-	return r.doRoutesPrefix(ctx, app, addresses, "/remove")
-}
-
-func (r *apiRouter) doRoutesPrefix(ctx context.Context, app router.App, addresses appTypes.RoutableAddresses, suffix string) error {
-	req := &routesReq{
-		Prefix:    addresses.Prefix,
-		ExtraData: addresses.ExtraData,
-	}
-	req.Addresses = make([]string, len(addresses.Addresses))
-	for i := range addresses.Addresses {
-		req.Addresses[i] = addresses.Addresses[i].String()
-	}
-	return r.doRoutesReq(ctx, app, req, suffix)
 }
 
 func addDefaultOpts(app router.App, opts map[string]interface{}) map[string]interface{} {

@@ -473,10 +473,6 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(allUnits[1].ProcessName, check.Equals, "web")
 	c.Assert(allUnits[2].ProcessName, check.Equals, "worker")
 	c.Assert(allUnits[3].ProcessName, check.Equals, "worker")
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[0].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[1].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[2].Address.String()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
@@ -543,10 +539,6 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(units[0].ID, check.Equals, "hemispheres-3")
 	c.Assert(buf.String(), check.Equals, "removing 3 units")
 	c.Assert(units[0].Address.String(), check.Equals, oldUnits[3].Address.String())
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[0].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[1].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[2].Address.String()), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
@@ -745,77 +737,6 @@ func (s *S) TestAddrFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "Cannot get addr of this app.")
 }
 
-func (s *S) TestSetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
-}
-
-func (s *S) TestSetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.SetCName(app, "cname.com")
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestSetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	p.PrepareFailure("SetCName", errors.New("wut"))
-	err := p.SetCName(app, "cname.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "wut")
-}
-
-func (s *S) TestUnsetCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
-	err = p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, false)
-}
-
-func (s *S) TestUnsetCNameNotProvisioned(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestUnsetCNameFailure(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	p.PrepareFailure("UnsetCName", errors.New("wut"))
-	err := p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "wut")
-}
-
-func (s *S) TestHasCName(c *check.C) {
-	app := NewFakeApp("jean", "mj", 0)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	err = p.SetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, true)
-	err = p.UnsetCName(app, "cname.com")
-	c.Assert(err, check.IsNil)
-	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
-}
-
 func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
@@ -845,121 +766,6 @@ func (s *S) TestFakeProvisionerUnitsAppNotFound(c *check.C) {
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
-}
-
-func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
-	p.AddUnit(app, unit)
-	err = p.SetUnitStatus(unit, provision.StatusError)
-	c.Assert(err, check.IsNil)
-	units, err := p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
-}
-
-func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
-	p.AddUnit(app, unit)
-	unit = provision.Unit{ID: "red-sector/1"}
-	err = p.SetUnitStatus(unit, provision.StatusError)
-	c.Assert(err, check.IsNil)
-	units, err := p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit = units[0]
-	c.Assert(unit.Status, check.Equals, provision.StatusError)
-}
-
-func (s *S) TestFakeProvisionerSetUnitStatusAppNotFound(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.SetUnitStatus(provision.Unit{AppName: "something"}, provision.StatusError)
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
-	app := NewFakeApp("red-sector", "rush", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
-	err = p.SetUnitStatus(unit, provision.StatusError)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*provision.UnitNotFoundError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.ID, check.Equals, "red-sector/1")
-}
-
-func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	p.AddUnit(app, unit)
-	units, err := p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	ip := units[0].IP
-	err = p.RegisterUnit(context.TODO(), app, unit.ID, nil)
-	c.Assert(err, check.IsNil)
-	units, err = p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].IP, check.Equals, ip+"-updated")
-}
-
-func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	err = p.RegisterUnit(context.TODO(), app, unit.ID, nil)
-	c.Assert(err, check.ErrorMatches, "unit \"unit/1\" not found")
-}
-
-func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
-	app := NewFakeApp("shine-on", "diamond", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
-	p.AddUnit(app, unit)
-	units, err := p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	ip := units[0].IP
-	data := map[string]interface{}{"my": "data"}
-	err = p.RegisterUnit(context.TODO(), app, unit.ID, data)
-	c.Assert(err, check.IsNil)
-	units, err = p.Units(context.TODO(), app)
-	c.Assert(err, check.IsNil)
-	c.Assert(units[0].IP, check.Equals, ip+"-updated")
-	c.Assert(p.CustomData(app), check.DeepEquals, data)
-}
-
-func (s *S) TestFakeProvisionerFilterAppsByUnitStatus(c *check.C) {
-	app1 := NewFakeApp("fairy-tale", "shaman", 1)
-	app2 := NewFakeApp("unfairly-tale", "shaman", 1)
-	p := NewFakeProvisioner()
-	err := p.Provision(context.TODO(), app1)
-	c.Assert(err, check.IsNil)
-	err = p.Provision(context.TODO(), app2)
-	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "fairy-tale", ID: "unit/1", Status: provision.StatusStarting}
-	p.AddUnit(app1, unit)
-	unit = provision.Unit{AppName: "unfairly-tale", ID: "unit/2", Status: provision.StatusStarting}
-	p.AddUnit(app2, unit)
-	err = p.SetUnitStatus(unit, provision.StatusError)
-	c.Assert(err, check.IsNil)
-	apps, err := p.FilterAppsByUnitStatus(context.TODO(), []provision.App{app1, app2}, []string{"starting"})
-	c.Assert(apps, check.DeepEquals, []provision.App{app1})
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestGetAppFromUnitID(c *check.C) {

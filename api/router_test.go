@@ -111,17 +111,17 @@ func (s *S) TestRoutersList(c *check.C) {
 	config.Set("routers:router2:mycfg", "1")
 	defer config.Unset("routers:router1")
 	defer config.Unset("routers:router2")
-	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
-	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
+	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("foo")
 	defer router.Unregister("bar")
 	recorder := httptest.NewRecorder()
 	expected := []routerTypes.PlanRouter{
-		{Name: "dr1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}},
-		{Name: "fake", Type: "fake", Default: true},
-		{Name: "fake-tls", Type: "fake-tls"},
-		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar", Config: map[string]interface{}{"mycfg": "1"}},
+		{Name: "dr1", Type: "foo", Dynamic: true, Config: map[string]interface{}{"a": "b"}, Info: map[string]string{}},
+		{Name: "fake", Type: "fake", Default: true, Info: map[string]string{}},
+		{Name: "fake-tls", Type: "fake-tls", Info: map[string]string{}},
+		{Name: "router1", Type: "foo", Info: map[string]string{}},
+		{Name: "router2", Type: "bar", Config: map[string]interface{}{"mycfg": "1"}, Info: map[string]string{}},
 	}
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
@@ -145,16 +145,16 @@ func (s *S) TestRoutersListRestrictedTokeNoConfig(c *check.C) {
 	config.Set("routers:router2:mycfg", "1")
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
-	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
-	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
+	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("foo")
 	defer router.Unregister("bar")
 	recorder := httptest.NewRecorder()
 	expected := []routerTypes.PlanRouter{
-		{Name: "fake", Type: "fake", Default: true},
-		{Name: "fake-tls", Type: "fake-tls"},
-		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar"},
+		{Name: "fake", Type: "fake", Default: true, Info: map[string]string{}},
+		{Name: "fake-tls", Type: "fake-tls", Info: map[string]string{}},
+		{Name: "router1", Type: "foo", Info: map[string]string{}},
+		{Name: "router2", Type: "bar", Info: map[string]string{}},
 	}
 	request, err := http.NewRequest("GET", "/routers", nil)
 	c.Assert(err, check.IsNil)
@@ -173,8 +173,8 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	config.Set("routers:router2:type", "bar")
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
-	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
-	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	router.Register("foo", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
+	router.Register("bar", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("foo")
 	defer router.Unregister("bar")
 	token := userWithPermission(c, permission.Permission{
@@ -193,8 +193,8 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []routerTypes.PlanRouter{
-		{Name: "router1", Type: "foo"},
-		{Name: "router2", Type: "bar"},
+		{Name: "router1", Type: "foo", Info: map[string]string{}},
+		{Name: "router2", Type: "bar", Info: map[string]string{}},
 	})
 }
 
@@ -205,7 +205,7 @@ func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	router1 := routerTypes.DynamicRouter{Name: "router-1", Type: "api", Config: map[string]interface{}{"key1": "value1", "key2": "value2"}}
 	router2 := routerTypes.DynamicRouter{Name: "router-2", Type: "api"}
-	router.Register("api", func(_ string, _ router.ConfigGetter) (router.Router, error) { return nil, nil })
+	router.Register("api", func(_ string, _ router.ConfigGetter) (router.Router, error) { return &routertest.FakeRouter, nil })
 	defer router.Unregister("api")
 	s.mockService.DynamicRouter.OnList = func() ([]routerTypes.DynamicRouter, error) {
 		return []routerTypes.DynamicRouter{router1, router2}, nil
@@ -246,14 +246,12 @@ func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
-	c.Assert(routers, check.DeepEquals, []routerTypes.PlanRouter{{Name: "router-1", Type: "api", Dynamic: true}})
+	c.Assert(routers, check.DeepEquals, []routerTypes.PlanRouter{{Name: "router-1", Type: "api", Dynamic: true, Info: map[string]string{}}})
 }
 
 func (s *S) TestListRoutersWithInfo(c *check.C) {
-	config.Set("routers:my-fake-info:type", "fake-info")
-	defer config.Unset("routers:my-fake-info")
-	routertest.InfoRouter.Reset()
-	routertest.InfoRouter.Info = map[string]string{
+	routertest.FakeRouter.Reset()
+	routertest.FakeRouter.Info = map[string]string{
 		"info1": "val1",
 		"info2": "val2",
 	}
@@ -267,12 +265,11 @@ func (s *S) TestListRoutersWithInfo(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []routerTypes.PlanRouter{
-		{Name: "fake", Type: "fake", Default: true},
-		{Name: "fake-tls", Type: "fake-tls"},
-		{Name: "my-fake-info", Type: "fake-info", Info: map[string]string{
+		{Name: "fake", Type: "fake", Default: true, Info: map[string]string{
 			"info1": "val1",
 			"info2": "val2",
 		}},
+		{Name: "fake-tls", Type: "fake-tls", Info: map[string]string{}},
 	})
 }
 
@@ -294,25 +291,23 @@ func (s *S) TestListAppRouters(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Status: "ready"},
 	})
 }
 
 func (s *S) TestListAppRoutersWithStatus(c *check.C) {
-	config.Set("routers:mystatus:type", "fake-status")
-	defer config.Unset("routers:mystatus")
-	routertest.StatusRouter.Status.Status = router.BackendStatusNotReady
-	routertest.StatusRouter.Status.Detail = "burn"
-	defer routertest.StatusRouter.Reset()
+	routertest.FakeRouter.Status.Status = router.BackendStatusNotReady
+	routertest.FakeRouter.Status.Detail = "burn"
+	defer routertest.FakeRouter.Reset()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadRouter,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
 	err = myapp.AddRouter(appTypes.AppRouter{
-		Name: "mystatus",
+		Name: "fake",
 	})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -325,8 +320,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
-		{Name: "mystatus", Opts: map[string]string{}, Type: "fake-status", Status: "not ready", StatusDetail: "burn", Address: "myapp.fakerouter.com"},
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Status: "not ready", StatusDetail: "burn", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}},
 	})
 }
 
@@ -369,8 +363,8 @@ func (s *S) TestAddAppRouter(c *check.C) {
 	routers, err := dbApp.GetRoutersWithAddr()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com"},
-		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Type: "fake-tls", Address: "myapp.faketlsrouter.com"},
+		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Status: "ready"},
+		{Name: "fake-tls", Opts: map[string]string{"x": "y", "z": "w"}, Type: "fake-tls", Address: "myapp.faketlsrouter.com", Addresses: []string{"myapp.faketlsrouter.com"}, Status: "ready"},
 	})
 }
 
@@ -413,20 +407,18 @@ func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 }
 
 func (s *S) TestUpdateAppRouter(c *check.C) {
-	config.Set("routers:fake-opts:type", "fake-opts")
-	defer config.Unset("routers:fake-opts:type")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake-opts"})
+	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)
-	request, err := http.NewRequest("PUT", "/1.5/apps/myapp/routers/fake-opts", body)
+	request, err := http.NewRequest("PUT", "/1.5/apps/myapp/routers/fake", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
@@ -436,8 +428,7 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routers := dbApp.GetRouters()
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
-		{Name: "fake", Opts: map[string]string{}},
-		{Name: "fake-opts", Opts: map[string]string{"x": "y", "z": "w"}},
+		{Name: "fake", Opts: map[string]string{"x": "y", "z": "w"}},
 	})
 }
 
@@ -460,22 +451,20 @@ func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 }
 
 func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
-	config.Set("routers:fake-opts:type", "fake-opts")
-	defer config.Unset("routers:fake-opts:type")
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "apptest", Platform: "go", TeamOwner: s.team.Name}
+	myapp := app.App{Name: "apptest", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake-opts"})
+	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake-opts"}, Blacklist: true})
+	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)
-	request, err := http.NewRequest("PUT", "/1.5/apps/apptest/routers/fake-opts", body)
+	request, err := http.NewRequest("PUT", "/1.5/apps/apptest/routers/fake", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+token.GetValue())

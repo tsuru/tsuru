@@ -41,7 +41,6 @@ type Token struct {
 	Creation  time.Time     `json:"creation"`
 	Expires   time.Duration `json:"expires"`
 	UserEmail string        `json:"email"`
-	AppName   string        `json:"app"`
 }
 
 func (t *Token) GetValue() string {
@@ -52,22 +51,11 @@ func (t *Token) User() (*authTypes.User, error) {
 	return auth.ConvertOldUser(auth.GetUserByEmail(t.UserEmail))
 }
 
-func (t *Token) IsAppToken() bool {
-	return t.AppName != ""
-}
-
 func (t *Token) GetUserName() string {
 	return t.UserEmail
 }
 
-func (t *Token) GetAppName() string {
-	return t.AppName
-}
-
 func (t *Token) Engine() string {
-	if t.IsAppToken() {
-		return "app"
-	}
 	return "native"
 }
 func (t *Token) Permissions() ([]permission.Permission, error) {
@@ -238,23 +226,4 @@ func deleteAllTokens(email string) error {
 	defer conn.Close()
 	_, err = conn.Tokens().RemoveAll(bson.M{"useremail": email})
 	return err
-}
-
-func createApplicationToken(appName string) (*Token, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	t := Token{
-		Token:    token(appName, crypto.SHA1),
-		Creation: time.Now(),
-		Expires:  0,
-		AppName:  appName,
-	}
-	err = conn.Tokens().Insert(t)
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
 }

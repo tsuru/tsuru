@@ -20,7 +20,12 @@ import (
 	"github.com/tsuru/tsuru/types/quota"
 )
 
-var teamNameRegexp = regexp.MustCompile(`^[a-z][-@_.+\w]+$`)
+// for some compatibility reasons the name of team must be compliant on some cloud providers
+// GCP: https://cloud.google.com/compute/docs/labeling-resources#requirements
+//
+//	Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty. Values can be empty, and have a maximum length of 63 characters.
+//	Keys and values can contain only lowercase letters, numeric characters, underscores, and dashes. All characters must use UTF-8 encoding, and international characters are allowed. Keys must start with a lowercase letter or international character.
+var teamNameRegexp = regexp.MustCompile(`^[a-z][a-z0-9_\-]{1,62}$`)
 
 type teamService struct {
 	storage authTypes.TeamStorage

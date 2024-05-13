@@ -40,7 +40,6 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	_ "github.com/tsuru/tsuru/auth/oidc"
-	_ "github.com/tsuru/tsuru/auth/saml"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/webhook"
@@ -61,7 +60,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-const Version = "1.19.1"
+const Version = "1.20.5"
 
 type TsuruHandler struct {
 	version string
@@ -250,6 +249,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodDelete, "/services/{service}/instances/permission/{instance}/{team}", AuthorizationRequiredHandler(serviceInstanceRevokeTeam))
 
 	m.AddAll("1.0", "/services/{service}/proxy/{instance}", AuthorizationRequiredHandler(serviceInstanceProxy))
+	m.AddAll("1.20", "/services/{service}/resources/{instance}/{path:.*}", AuthorizationRequiredHandler(serviceInstanceProxyV2))
 	m.AddAll("1.0", "/services/proxy/service/{service}", AuthorizationRequiredHandler(serviceProxy))
 
 	m.Add("1.0", http.MethodGet, "/services", AuthorizationRequiredHandler(serviceList))
@@ -286,8 +286,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.9", http.MethodGet, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(autoScaleUnitsInfo))
 	m.Add("1.9", http.MethodPost, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(addAutoScaleUnits))
 	m.Add("1.9", http.MethodDelete, "/apps/{app}/units/autoscale", AuthorizationRequiredHandler(removeAutoScaleUnits))
-	m.Add("1.0", http.MethodPost, "/apps/{app}/units/register", AuthorizationRequiredHandler(registerUnit))
-	m.Add("1.0", http.MethodPost, "/apps/{app}/units/{unit}", AuthorizationRequiredHandler(setUnitStatus))
 	m.Add("1.12", http.MethodDelete, "/apps/{app}/units/{unit}", AuthorizationRequiredHandler(killUnit))
 	m.Add("1.0", http.MethodPut, "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(grantAppAccess))
 	m.Add("1.0", http.MethodDelete, "/apps/{app}/teams/{team}", AuthorizationRequiredHandler(revokeAppAccess))
@@ -347,11 +345,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("1.0", http.MethodPost, "/users", Handler(createUser))
 	m.Add("1.0", http.MethodGet, "/users/info", AuthorizationRequiredHandler(userInfo))
 	m.Add("1.0", http.MethodGet, "/auth/scheme", Handler(authScheme))
+	m.Add("1.18", http.MethodGet, "/auth/schemes", Handler(authSchemes))
 	m.Add("1.0", http.MethodPost, "/auth/login", Handler(login))
 	m.Add("1.0", http.MethodPost, "/auth/webLogin", Handler(webLogin))
-
-	m.Add("1.0", http.MethodPost, "/auth/saml", Handler(samlCallbackLogin))
-	m.Add("1.0", http.MethodGet, "/auth/saml", Handler(samlMetadata))
 
 	m.Add("1.0", http.MethodPost, "/users/{email}/password", Handler(resetPassword))
 	m.Add("1.0", http.MethodPost, "/users/{email}/tokens", Handler(login))
@@ -569,34 +565,18 @@ func startServer(handler http.Handler) error {
 	defer srvConf.shutdown(srvConf.shutdownTimeout)
 
 	shutdown.Register(&logTracker)
-	var startupMessage string
-	err = router.Initialize()
-	if err != nil {
-		return err
-	}
 	routers, err := router.List(ctx)
 	if err != nil {
 		return err
 	}
 	for _, routerDesc := range routers {
-		var r router.Router
-		r, err = router.Get(ctx, routerDesc.Name)
+		_, err = router.Get(ctx, routerDesc.Name)
 		if err != nil {
 			return err
 		}
 		fmt.Printf("Registered router %q", routerDesc.Name)
-		if messageRouter, ok := r.(router.MessageRouter); ok {
-			startupMessage, err = messageRouter.StartupMessage()
-			if err == nil && startupMessage != "" {
-				fmt.Printf(": %s", startupMessage)
-			}
-		}
-		fmt.Println()
 	}
-	err = rebuild.Initialize(appFinder)
-	if err != nil {
-		return err
-	}
+	rebuild.Initialize(appFinder)
 	scheme, err := getAuthScheme()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Warning: configuration didn't declare auth:scheme, using default scheme.")

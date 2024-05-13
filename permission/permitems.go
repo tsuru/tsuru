@@ -1,7 +1,7 @@
 // AUTOMATICALLY GENERATED FILE - DO NOT EDIT!
 // Please run 'go generate' to update this file.
 //
-// Copyright 2023 tsuru authors. All rights reserved.
+// Copyright 2024 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -71,7 +71,6 @@ var (
 	PermAppUpdateRouterUpdate            = PermissionRegistry.get("app.update.router.update")            // [global app team pool]
 	PermAppUpdateStart                   = PermissionRegistry.get("app.update.start")                    // [global app team pool]
 	PermAppUpdateStop                    = PermissionRegistry.get("app.update.stop")                     // [global app team pool]
-	PermAppUpdateSwap                    = PermissionRegistry.get("app.update.swap")                     // [global app team pool]
 	PermAppUpdateTags                    = PermissionRegistry.get("app.update.tags")                     // [global app team pool]
 	PermAppUpdateTeamowner               = PermissionRegistry.get("app.update.teamowner")                // [global app team pool]
 	PermAppUpdateUnbind                  = PermissionRegistry.get("app.update.unbind")                   // [global app team pool]
@@ -82,9 +81,7 @@ var (
 	PermAppUpdateUnitAutoscaleAdd        = PermissionRegistry.get("app.update.unit.autoscale.add")       // [global app team pool]
 	PermAppUpdateUnitAutoscaleRemove     = PermissionRegistry.get("app.update.unit.autoscale.remove")    // [global app team pool]
 	PermAppUpdateUnitKill                = PermissionRegistry.get("app.update.unit.kill")                // [global app team pool]
-	PermAppUpdateUnitRegister            = PermissionRegistry.get("app.update.unit.register")            // [global app team pool]
 	PermAppUpdateUnitRemove              = PermissionRegistry.get("app.update.unit.remove")              // [global app team pool]
-	PermAppUpdateUnitStatus              = PermissionRegistry.get("app.update.unit.status")              // [global app team pool]
 	PermCluster                          = PermissionRegistry.get("cluster")                             // [global]
 	PermClusterAdmin                     = PermissionRegistry.get("cluster.admin")                       // [global]
 	PermClusterCreate                    = PermissionRegistry.get("cluster.create")                      // [global]

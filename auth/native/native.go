@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/validation"
 )
 
@@ -30,7 +31,7 @@ func init() {
 
 var (
 	_ auth.Scheme        = &NativeScheme{}
-	_ auth.AppScheme     = &NativeScheme{}
+	_ auth.UserScheme    = &NativeScheme{}
 	_ auth.ManagedScheme = &NativeScheme{}
 )
 
@@ -65,14 +66,6 @@ func (s NativeScheme) Auth(ctx context.Context, token string) (auth.Token, error
 
 func (s NativeScheme) Logout(ctx context.Context, token string) error {
 	return deleteToken(token)
-}
-
-func (s NativeScheme) AppLogin(ctx context.Context, appName string) (auth.Token, error) {
-	return createApplicationToken(appName)
-}
-
-func (s NativeScheme) AppLogout(ctx context.Context, token string) error {
-	return s.Logout(ctx, token)
 }
 
 func (s NativeScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
@@ -155,6 +148,6 @@ func (s NativeScheme) Remove(ctx context.Context, u *auth.User) error {
 	return u.Delete()
 }
 
-func (s NativeScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
-	return &auth.SchemeInfo{Name: "native"}, nil
+func (s NativeScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
+	return &authTypes.SchemeInfo{Name: "native"}, nil
 }

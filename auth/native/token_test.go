@@ -300,46 +300,51 @@ func (s *S) TestGetTokenInvalid(c *check.C) {
 }
 
 func (s *S) TestGetExpiredToken(c *check.C) {
-	t, err := createApplicationToken("tsuru-healer")
-	c.Assert(err, check.IsNil)
+
+	t := Token{
+		Token:    "tsuru-healer",
+		Creation: time.Now(),
+		Expires:  0,
+	}
+
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
 	t.Creation = time.Now().Add(-24 * time.Hour)
 	t.Expires = time.Hour
-	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	s.conn.Tokens().Insert(t)
 	t2, err := getToken(t.Token)
 	c.Assert(t2, check.IsNil)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenNoExpiration(c *check.C) {
-	t, err := createApplicationToken("tsuru-healer")
-	c.Assert(err, check.IsNil)
+	t := Token{
+		Token:    "tsuru-healer",
+		Creation: time.Now(),
+		Expires:  0,
+	}
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
 	t.Creation = time.Now().Add(-24 * time.Hour)
-	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	err := s.conn.Tokens().Insert(t)
+	c.Assert(err, check.IsNil)
+
 	t2, err := getToken(t.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t2.GetValue(), check.DeepEquals, t.GetValue())
 }
 
 func (s *S) TestDeleteToken(c *check.C) {
-	t, err := createApplicationToken("tsuru-healer")
+	t := Token{
+		Token:    "tsuru-healer",
+		Creation: time.Now(),
+		Expires:  0,
+	}
+
+	err := s.conn.Tokens().Insert(t)
 	c.Assert(err, check.IsNil)
 	err = deleteToken(t.Token)
 	c.Assert(err, check.IsNil)
 	_, err = getToken("bearer " + t.Token)
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
-}
-
-func (s *S) TestCreateApplicationToken(c *check.C) {
-	t, err := createApplicationToken("tsuru-healer")
-	c.Assert(err, check.IsNil)
-	c.Assert(t, check.NotNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
-	n, err := s.conn.Tokens().Find(t).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 1)
-	c.Assert(t.AppName, check.Equals, "tsuru-healer")
 }
 
 func (s *S) TestTokenGetUser(c *check.C) {
@@ -362,26 +367,12 @@ func (s *S) TestTokenMarshalJSON(c *check.C) {
 		Creation:  valid,
 		Expires:   time.Hour,
 		UserEmail: "something@something.com",
-		AppName:   "myapp",
 	}
 	b, err := json.Marshal(&t)
 	c.Assert(err, check.IsNil)
-	want := fmt.Sprintf(`{"token":"12saii","creation":%q,"expires":%d,"email":"something@something.com","app":"myapp"}`,
+	want := fmt.Sprintf(`{"token":"12saii","creation":%q,"expires":%d,"email":"something@something.com"}`,
 		valid.Format(time.RFC3339Nano), time.Hour)
 	c.Assert(string(b), check.Equals, want)
-}
-
-func (s *S) TestTokenIsAppToken(c *check.C) {
-	t := Token{AppName: "myapp"}
-	isAppToken := t.IsAppToken()
-	c.Assert(isAppToken, check.Equals, true)
-	c.Assert(t.Engine(), check.Equals, "app")
-
-	t = Token{UserEmail: "something@something.com"}
-	isAppToken = t.IsAppToken()
-	c.Assert(isAppToken, check.Equals, false)
-	c.Assert(t.Engine(), check.Equals, "native")
-
 }
 
 func (s *S) TestUserCheckPasswordUsesBcrypt(c *check.C) {

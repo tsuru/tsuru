@@ -39,22 +39,22 @@ func (s *S) TestTsrCommandFlagged(c *check.C) {
 	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
 }
 
-func (s *S) TestTsrCommandNotFlagged(c *check.C) {
-	var originalCmd tokenCmd
-	cmd := tsurudCommand{Command: originalCmd}
-	flags := cmd.Flags()
-	err := flags.Parse(true, []string{"--config", "testdata/tsuru.conf"})
-	c.Assert(err, check.IsNil)
-	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
-	cmd = tsurudCommand{Command: originalCmd}
-	flags.Parse(true, []string{"-c", "testdata/tsuru.conf"})
-	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
-}
-
 type fakeCommand struct {
-	tokenCmd
 	name string
 	fs   *gnuflag.FlagSet
+}
+
+func (f *fakeCommand) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "fake",
+		Usage:   "fake",
+		Desc:    `Fake`,
+		MinArgs: 1,
+	}
+}
+
+func (f *fakeCommand) Run(*cmd.Context) error {
+	return nil
 }
 
 func (f *fakeCommand) Flags() *gnuflag.FlagSet {
@@ -74,7 +74,7 @@ func (s *S) TestTsrCommandRunInvalidConfig(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.NotNil)
 	c.Assert(stderr.String(), check.Equals, `Opening config file: /invalid/file
 Could not open tsuru config file at /invalid/file (open /invalid/file: no such file or directory).
@@ -94,7 +94,7 @@ func (s *S) TestTsrCommandRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stderr.String(), check.Equals, "Opening config file: testdata/tsuru.conf\nDone reading config file: testdata/tsuru.conf\n")
 	c.Assert(stdout.String(), check.Equals, "")

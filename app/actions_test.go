@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/quota"
@@ -29,10 +28,6 @@ func (s *S) TestReserveUserAppName(c *check.C) {
 
 func (s *S) TestInsertAppName(c *check.C) {
 	c.Assert(insertApp.Name, check.Equals, "insert-app")
-}
-
-func (s *S) TestCreateAppTokenName(c *check.C) {
-	c.Assert(createAppToken.Name, check.Equals, "create-app-token")
 }
 
 func (s *S) TestExportEnvironmentsName(c *check.C) {
@@ -49,10 +44,6 @@ func (s *S) TestReserveUnitsToAddName(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsName(c *check.C) {
 	c.Assert(provisionAddUnits.Name, check.Equals, "provision-add-units")
-}
-
-func (s *S) TestAddRouterBackendName(c *check.C) {
-	c.Assert(addRouterBackend.Name, check.Equals, "add-router-backend")
 }
 
 func (s *S) TestInsertAppForward(c *check.C) {
@@ -149,49 +140,13 @@ func (s *S) TestInsertAppMinimumParams(c *check.C) {
 	c.Assert(insertApp.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestCreateAppTokenForward(c *check.C) {
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{&app}}
-	result, err := createAppToken.Forward(ctx)
-	c.Assert(err, check.IsNil)
-	var token *auth.Token
-	c.Assert(result, check.FitsTypeOf, token)
-	token = result.(*auth.Token)
-	c.Assert((*token).GetAppName(), check.Equals, app.Name)
-}
-
-func (s *S) TestCreateAppTokenBackward(c *check.C) {
-	app := App{
-		Name:      "moon",
-		Platform:  "opeth",
-		TeamOwner: s.team.Name,
-	}
-	err := CreateApp(context.TODO(), &app, s.user)
-	c.Assert(err, check.IsNil)
-	ctx := action.BWContext{Params: []interface{}{&app}}
-	createAppToken.Backward(ctx)
-	t, err := nativeScheme.Auth(context.TODO(), app.Envs()["TSURU_APP_TOKEN"].Value)
-	c.Assert(t, check.IsNil)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestCreateAppTokenMinimumParams(c *check.C) {
-	c.Assert(createAppToken.MinParams, check.Equals, 1)
-}
-
 func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
-	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &token}
+	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.FitsTypeOf, &app)
@@ -201,15 +156,13 @@ func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	appEnv := gotApp.Envs()
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
-	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, check.Equals, token.GetValue())
-	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, check.Equals, false)
 	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")
 	c.Assert(appEnv["TSURU_APPDir"].Public, check.Equals, false)
 }
 
 func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
-		"TSURU_APP_TOKEN",
+		"TSURU_APPNAME",
 	}
 	app := App{
 		Name:      "moon",
@@ -221,10 +174,7 @@ func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 		envVar := bindTypes.EnvVar{Name: name, Value: name, Public: false}
 		app.Env[name] = envVar
 	}
-	token, err := nativeScheme.AppLogin(context.TODO(), app.Name)
-	c.Assert(err, check.IsNil)
-	app.Env["TSURU_APP_TOKEN"] = bindTypes.EnvVar{Name: "TSURU_APP_TOKEN", Value: token.GetValue()}
-	err = CreateApp(context.TODO(), &app, s.user)
+	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
@@ -580,50 +530,6 @@ func (s *S) TestProvisionAddUnitsInvalidApp(c *check.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 	c.Assert(provisionAddUnits.MinParams, check.Equals, 1)
-}
-
-func (s *S) TestAddRouterBackendForward(c *check.C) {
-	app := App{
-		Name:     "earthshine",
-		Platform: "django",
-		Routers:  []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{&app, 4}}
-	result, err := addRouterBackend.Forward(ctx)
-	c.Assert(err, check.IsNil)
-	a, ok := result.(*App)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Name, check.Equals, app.Name)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-}
-
-func (s *S) TestAddRouterBackendForwardInvalidApp(c *check.C) {
-	ctx := action.FWContext{Params: []interface{}{"something", 1}}
-	_, err := addRouterBackend.Forward(ctx)
-	c.Assert(err, check.NotNil)
-}
-
-func (s *S) TestAddRouterBackendBackward(c *check.C) {
-	app := App{
-		Name:     "earthshine",
-		Platform: "django",
-		Routers:  []appTypes.AppRouter{{Name: "fake"}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
-	result, err := addRouterBackend.Forward(fwctx)
-	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
-	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
-	addRouterBackend.Backward(bwctx)
-	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
-}
-
-func (s *S) TestAddRouterBackendMinParams(c *check.C) {
-	c.Assert(addRouterBackend.MinParams, check.Equals, 1)
 }
 
 func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {

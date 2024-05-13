@@ -89,8 +89,7 @@ func backendConfigFromHC(ctx context.Context, app provision.App, process string,
 		App:     app,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -202,8 +201,7 @@ func deleteAllBackendConfig(ctx context.Context, client *ClusterClient, app prov
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: app,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {

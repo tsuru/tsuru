@@ -25,12 +25,11 @@ function missing_handlers {
 
     ignored=$(cat <<EOF
 github.com/tsuru/tsuru/api.authScheme
+github.com/tsuru/tsuru/api.authSchemes
 github.com/tsuru/tsuru/api.healthcheck
 github.com/tsuru/tsuru/api.index
 github.com/tsuru/tsuru/api.info
 github.com/tsuru/tsuru/api.resetPassword
-github.com/tsuru/tsuru/api.samlCallbackLogin
-github.com/tsuru/tsuru/api.samlMetadata
 github.com/tsuru/tsuru/api.addKeyToUser
 github.com/tsuru/tsuru/api.listPlans
 github.com/tsuru/tsuru/api.login
@@ -55,6 +54,7 @@ github.com/tsuru/tsuru/api.tokenList
 github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/api.diffDeploy
 github.com/tsuru/tsuru/api.webLogin
+github.com/tsuru/tsuru/api.swap
 EOF
     )
     ignored=$(echo "$ignored" | sort)

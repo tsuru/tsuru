@@ -28,9 +28,7 @@ type userToken struct {
 func (t *userToken) GetValue() string {
 	return ""
 }
-func (t *userToken) GetAppName() string {
-	return ""
-}
+
 func (t *userToken) GetUserName() string {
 	return ""
 }
@@ -39,9 +37,6 @@ func (t *userToken) Engine() string {
 	return "user"
 }
 
-func (t *userToken) IsAppToken() bool {
-	return false
-}
 func (t *userToken) User() (*authTypes.User, error) {
 	return ConvertOldUser(t.user, nil)
 }
@@ -116,8 +111,6 @@ func (s *S) Test_TeamTokenService_Authenticate(c *check.C) {
 	t, err := servicemanager.TeamToken.Authenticate(context.TODO(), "bearer "+token.Token)
 	c.Assert(err, check.IsNil)
 	c.Assert(t.GetValue(), check.Equals, token.Token)
-	c.Assert(t.IsAppToken(), check.Equals, false)
-	c.Assert(t.GetAppName(), check.Equals, "")
 	c.Assert(t.GetUserName(), check.Equals, fmt.Sprintf("cobrateam-%s", token.Token[:5]))
 	namedToken, ok := t.(authTypes.NamedToken)
 	c.Assert(ok, check.Equals, true)

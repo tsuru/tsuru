@@ -30,8 +30,7 @@ func (p *kubernetesProvisioner) UnitsMetrics(ctx context.Context, a provision.Ap
 	l, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {

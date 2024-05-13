@@ -103,12 +103,11 @@ func nonPersistentVolume(v *volumeTypes.Volume, opts *volumeOptions) (apiv1.Volu
 	var volumeSrc apiv1.VolumeSource
 	if opts.Plugin == "ephemeral" {
 		labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
-			Name:        v.Name,
-			Provisioner: provisionerName,
-			Prefix:      tsuruLabelPrefix,
-			Pool:        v.Pool,
-			Plan:        v.Plan.Name,
-			Team:        v.TeamOwner,
+			Name:   v.Name,
+			Prefix: tsuruLabelPrefix,
+			Pool:   v.Pool,
+			Plan:   v.Plan.Name,
+			Team:   v.TeamOwner,
 		})
 		var accessModes []apiv1.PersistentVolumeAccessMode
 		for _, am := range strings.Split(opts.AccessModes, ",") {
@@ -225,12 +224,11 @@ func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Vol
 		return err
 	}
 	labelSet := provision.VolumeLabels(provision.VolumeLabelsOpts{
-		Name:        v.Name,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-		Pool:        v.Pool,
-		Plan:        v.Plan.Name,
-		Team:        v.TeamOwner,
+		Name:   v.Name,
+		Prefix: tsuruLabelPrefix,
+		Pool:   v.Pool,
+		Plan:   v.Plan.Name,
+		Team:   v.TeamOwner,
 	})
 	capacity := apiv1.ResourceList{
 		apiv1.ResourceStorage: opts.Capacity,

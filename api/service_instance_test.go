@@ -1814,6 +1814,72 @@ func (s *ServiceInstanceSuite) TestServiceInstanceInfo(c *check.C) {
 	c.Assert(instances, check.DeepEquals, expected)
 }
 
+func (s *ServiceInstanceSuite) TestServiceInstanceInfoWithRemovedPlan(c *check.C) {
+	requestIDHeader := "RequestID"
+	config.Set("request-id-header", requestIDHeader)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/resources/my_nosql" {
+			w.Write([]byte(`[{"label": "key", "value": "value"}, {"label": "key2", "value": "value2"}]`))
+		}
+		if r.Method == "GET" && r.URL.Path == "/resources/plans" {
+			w.Write([]byte(`[{"name": "plan2", "description": "some value"}]`))
+		}
+		c.Assert(r.Header.Get(requestIDHeader), check.Equals, "test")
+	}))
+	defer ts.Close()
+	srv := service.Service{
+		Name:       "mongodb",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.team.Name},
+		Endpoint:   map[string]string{"production": ts.URL},
+		Password:   "abcde",
+	}
+	err := service.Create(srv)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"app1", "app2"},
+		Teams:       []string{s.team.Name},
+		TeamOwner:   s.team.Name,
+		PlanName:    "plan1",
+		Pool:        "my-pool",
+		Description: "desc",
+		Tags:        []string{"tag 1"},
+		Parameters: map[string]interface{}{
+			"storage-type": "ssd",
+		},
+	}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	recorder, request := makeRequestToServiceInstanceInfo("mongodb", "my_nosql", s.token.GetValue(), c)
+	request.Header.Set(requestIDHeader, "test")
+	s.testServer.ServeHTTP(recorder, request)
+	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
+		c.Errorf("received body: %s", recorder.Body.String())
+	}
+	c.Check(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var instances serviceInstanceInfo
+	err = json.Unmarshal(recorder.Body.Bytes(), &instances)
+	c.Assert(err, check.IsNil)
+	expected := serviceInstanceInfo{
+		Apps:      si.Apps,
+		Jobs:      []string{},
+		Teams:     si.Teams,
+		TeamOwner: si.TeamOwner,
+		CustomInfo: map[string]string{
+			"key":  "value",
+			"key2": "value2",
+		},
+		Pool:        "my-pool",
+		PlanName:    "plan1",
+		Description: si.Description,
+		Tags:        []string{"tag 1"},
+		Parameters:  map[string]interface{}{"storage-type": "ssd"},
+	}
+	c.Assert(instances, check.DeepEquals, expected)
+}
+
 func (s *ServiceInstanceSuite) TestServiceInstanceInfoForJob(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`[]`))
@@ -2288,6 +2354,41 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxy(c *check.C) {
 	}, eventtest.HasEvent)
 }
 
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath/hi", si.ServiceName, si.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/resources/foo-instance/mypath/hi")
+	c.Assert(eventtest.EventDesc{
+		IsEmpty: true,
+	}, eventtest.HasEvent)
+}
+
 func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 	var (
 		proxyedRequest *http.Request
@@ -2336,6 +2437,62 @@ func (s *ServiceInstanceSuite) TestServiceInstanceProxyPost(c *check.C) {
 			{"name": "method", "value": "POST"},
 			{"name": "my", "value": "awesome"},
 			{"name": "body", "value": "1"},
+		},
+	}, eventtest.HasEvent)
+}
+
+func (s *ServiceInstanceSuite) TestServiceInstanceProxyV2Post(c *check.C) {
+	var (
+		proxyedRequest *http.Request
+		proxyedBody    []byte
+	)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		proxyedBody, err = stdIo.ReadAll(r.Body)
+		c.Assert(err, check.IsNil)
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
+	err := service.Create(se)
+	c.Assert(err, check.IsNil)
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(si)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/1.20/services/%s/resources/%s/mypath", si.ServiceName, si.Name)
+	body := strings.NewReader("my=awesome&body=1")
+	request, err := http.NewRequest("POST", url, body)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	s.testServer.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/resources/foo-instance/mypath")
+	c.Assert(string(proxyedBody), check.Equals, "my=awesome&body=1")
+	c.Assert(eventtest.EventDesc{
+		Target: serviceInstanceTarget("foo", "foo-instance"),
+		Owner:  s.token.GetUserName(),
+		Kind:   "service-instance.update.proxy",
+		StartCustomData: []map[string]interface{}{
+			{"name": ":instance", "value": "foo-instance"},
+			{"name": ":mux-path-template", "value": "/services/{service}/resources/{instance}/{path:.*}"},
+			{"name": ":path", "value": "mypath"},
+			{"name": ":service", "value": "foo"},
+			{"name": "my", "value": "awesome"},
+			{"name": "body", "value": "1"},
+			{"name": ":version", "value": "1.20"},
+			{"name": "method", "value": "POST"},
 		},
 	}, eventtest.HasEvent)
 }

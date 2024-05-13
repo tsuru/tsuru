@@ -43,16 +43,8 @@ func (t *Token) User() (*authTypes.User, error) {
 	return nil, errors.New("no token user")
 }
 
-func (t *Token) IsAppToken() bool {
-	return false
-}
-
 func (t *Token) GetUserName() string {
 	return "peer"
-}
-
-func (t *Token) GetAppName() string {
-	return ""
 }
 
 func (t *Token) Engine() string {

@@ -25,8 +25,8 @@ func serviceTarget(name string) event.Target {
 	return event.Target{Type: event.TargetTypeService, Value: name}
 }
 
-func provisionReadableServices(ctx context.Context, t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
-	teams, serviceNames := filtersForServiceList(t, contexts)
+func provisionReadableServices(ctx context.Context, contexts []permTypes.PermissionContext) ([]service.Service, error) {
+	teams, serviceNames := filtersForServiceList(contexts)
 	return service.GetServicesByOwnerTeamsAndServices(ctx, teams, serviceNames)
 }
 
@@ -42,7 +42,7 @@ func provisionReadableServices(ctx context.Context, t auth.Token, contexts []per
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
-	services, err := provisionReadableServices(ctx, t, contexts)
+	services, err := provisionReadableServices(ctx, contexts)
 	if err != nil {
 		return err
 	}

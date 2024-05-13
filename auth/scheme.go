@@ -7,31 +7,30 @@ package auth
 import (
 	"context"
 	"github.com/pkg/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
-type SchemeInfo struct {
-	Name string                 `json:"name"`
-	Data map[string]interface{} `json:"data"`
+type Scheme interface {
+	Auth(ctx context.Context, token string) (Token, error)
+	Info(ctx context.Context) (*authTypes.SchemeInfo, error)
 }
 
-type Scheme interface {
+type MultiScheme interface {
+	Infos(ctx context.Context) ([]authTypes.SchemeInfo, error)
+}
+
+type UserScheme interface {
+	Scheme
+
 	Login(ctx context.Context, params map[string]string) (Token, error)
 	Logout(ctx context.Context, token string) error
-	Auth(ctx context.Context, token string) (Token, error)
-	Info(ctx context.Context) (*SchemeInfo, error)
 	Create(ctx context.Context, user *User) (*User, error)
 	Remove(ctx context.Context, user *User) error
 	WebLogin(ctx context.Context, email string, token string) error
 }
 
-type AppScheme interface {
-	Scheme
-	AppLogin(ctx context.Context, appName string) (Token, error)
-	AppLogout(ctx context.Context, token string) error
-}
-
 type ManagedScheme interface {
-	Scheme
+	UserScheme
 	StartPasswordReset(ctx context.Context, user *User) error
 	ResetPassword(ctx context.Context, user *User, resetToken string) error
 	ChangePassword(ctx context.Context, token Token, oldPassword string, newPassword string) error
@@ -64,14 +63,4 @@ func GetScheme(name string) (Scheme, error) {
 		return nil, errors.Errorf("Unknown auth scheme: %q.", name)
 	}
 	return scheme, nil
-}
-
-func GetAppScheme() AppScheme {
-	scheme, err := GetScheme("native")
-
-	if err != nil {
-		panic("native scheme is not linked")
-	}
-
-	return scheme.(AppScheme)
 }

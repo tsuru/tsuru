@@ -5,13 +5,16 @@
 package kubernetes
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"strconv"
 	"strings"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/pkg/errors"
+	"github.com/tsuru/config"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,8 +60,7 @@ func (p *kubernetesProvisioner) GetVerticalAutoScaleRecommendations(ctx context.
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -140,8 +142,7 @@ func (p *kubernetesProvisioner) GetAutoScale(ctx context.Context, a provision.Ap
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -189,7 +190,8 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 	}
 
 	for _, metric := range scaledObject.Spec.Triggers {
-		if metric.Type == "cron" {
+		switch metric.Type {
+		case "cron":
 			minReplicas, _ := strconv.Atoi(metric.Metadata["desiredReplicas"])
 
 			spec.Schedules = append(spec.Schedules, provision.AutoScaleSchedule{
@@ -197,9 +199,22 @@ func scaledObjectToSpec(scaledObject kedav1alpha1.ScaledObject) provision.AutoSc
 				Start:       metric.Metadata["start"],
 				End:         metric.Metadata["end"],
 				Timezone:    metric.Metadata["timezone"],
+				Name:        metric.Metadata["scheduleName"],
 			})
-		}
-		if metric.Type == "cpu" {
+
+		case "prometheus":
+			thresholdValue, _ := strconv.ParseFloat(metric.Metadata["threshold"], 64)
+			activationThresholdValue, _ := strconv.ParseFloat(metric.Metadata["activationThreshold"], 64)
+
+			spec.Prometheus = append(spec.Prometheus, provision.AutoScalePrometheus{
+				Name:                metric.Metadata["prometheusMetricName"],
+				Query:               metric.Metadata["query"],
+				Threshold:           thresholdValue,
+				ActivationThreshold: activationThresholdValue,
+				PrometheusAddress:   metric.Metadata["serverAddress"],
+			})
+
+		case "cpu":
 			cpuValue := metric.Metadata["value"]
 			if metric.MetricType == autoscalingv2.UtilizationMetricType {
 				//percentage based, so multiple by 10
@@ -335,8 +350,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 		Process: depInfo.process,
 		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -345,7 +359,7 @@ func setAutoScale(ctx context.Context, client *ClusterClient, a provision.App, s
 	labels = labels.WithoutIsolated().WithoutRoutable()
 	hpaName := hpaNameForApp(a, depInfo.process)
 
-	if len(spec.Schedules) > 0 {
+	if len(spec.Schedules) > 0 || len(spec.Prometheus) > 0 {
 		err = setKEDAAutoscale(ctx, client, spec, a, depInfo, hpaName, labels)
 		if err != nil {
 			return errors.WithStack(err)
@@ -502,12 +516,22 @@ func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a pr
 		kedaTriggers = append(kedaTriggers, kedav1alpha1.ScaleTriggers{
 			Type: "cron",
 			Metadata: map[string]string{
+				"scheduleName":    schedule.Name,
 				"desiredReplicas": strconv.Itoa(schedule.MinReplicas),
 				"start":           schedule.Start,
 				"end":             schedule.End,
 				"timezone":        timezone,
 			},
 		})
+	}
+
+	for _, prometheus := range spec.Prometheus {
+		prometheusTrigger, err := buildPrometheusTrigger(ns, prometheus)
+		if err != nil {
+			return nil, err
+		}
+
+		kedaTriggers = append(kedaTriggers, *prometheusTrigger)
 	}
 
 	return &kedav1alpha1.ScaledObject{
@@ -532,6 +556,51 @@ func newKEDAScaledObject(ctx context.Context, spec provision.AutoScaleSpec, a pr
 			},
 		},
 	}, nil
+}
+
+func buildPrometheusTrigger(ns string, prometheus provision.AutoScalePrometheus) (*kedav1alpha1.ScaleTriggers, error) {
+	if prometheus.PrometheusAddress == "" {
+		defaultPrometheusAddress, err := buildDefaultPrometheusAddress(ns)
+		if err != nil {
+			return nil, err
+		}
+
+		prometheus.PrometheusAddress = defaultPrometheusAddress
+	}
+
+	return &kedav1alpha1.ScaleTriggers{
+		Type: "prometheus",
+		Metadata: map[string]string{
+			"serverAddress":        prometheus.PrometheusAddress,
+			"query":                prometheus.Query,
+			"threshold":            strconv.FormatFloat(prometheus.Threshold, 'f', -1, 64),
+			"activationThreshold":  strconv.FormatFloat(prometheus.ActivationThreshold, 'f', -1, 64),
+			"prometheusMetricName": prometheus.Name,
+		},
+	}, nil
+}
+
+func buildDefaultPrometheusAddress(ns string) (string, error) {
+	prometheusAddressTemplate, err := config.GetString("kubernetes:keda:prometheus-address-template")
+	if err != nil {
+		return "", err
+	}
+
+	tmpl, err := template.New("prometheusAddress").Parse(prometheusAddressTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+
+	err = tmpl.Execute(&buf, map[string]string{
+		"namespace": ns,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
 func buildHPABehavior() *autoscalingv2.HorizontalPodAutoscalerBehavior {
@@ -661,8 +730,7 @@ func ensureVPA(ctx context.Context, client *ClusterClient, a provision.App, proc
 		Process: depInfo.process,
 		Version: depInfo.version,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -753,8 +821,7 @@ func getAutoScale(ctx context.Context, client *ClusterClient, a provision.App, p
 		App:     a,
 		Process: process,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -796,8 +863,7 @@ func allVPAsForApp(ctx context.Context, clusterClient *ClusterClient, vpaClient 
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 	})
 	if err != nil {
@@ -821,8 +887,7 @@ func vpasForVersion(ctx context.Context, clusterClient *ClusterClient, vpaClient
 	ls, err := provision.ServiceLabels(ctx, provision.ServiceLabelsOpts{
 		App: a,
 		ServiceLabelExtendedOpts: provision.ServiceLabelExtendedOpts{
-			Prefix:      tsuruLabelPrefix,
-			Provisioner: provisionerName,
+			Prefix: tsuruLabelPrefix,
 		},
 		Version: version,
 	})

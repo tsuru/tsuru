@@ -911,9 +911,6 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 		if token, ok := opts.Owner.(authTypes.NamedToken); ok {
 			o.Type = OwnerTypeToken
 			o.Name = token.GetTokenName()
-		} else if opts.Owner.IsAppToken() {
-			o.Type = OwnerTypeApp
-			o.Name = opts.Owner.GetAppName()
 		} else {
 			o.Type = OwnerTypeUser
 			o.Name = opts.Owner.GetUserName()

@@ -4,7 +4,7 @@ info:
   description: Open source, extensible and Docker-based Platform as a Service (PaaS)
   # Warning:
   # DO NOT UPDATE THIS FIELD MANUALLY. RUN "make release version=X.Z.Y" INSTEAD.
-  version: "1.19"
+  version: "1.20"
 schemes:
 - http
 - https
@@ -4720,12 +4720,19 @@ definitions:
         items:
           type: object
           $ref: "#/definitions/AutoScaleSchedule"
+      prometheus:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/AutoScalePrometheus"
       version:
         type: integer
   AutoScaleSchedule:
     description: Auto Scale schedules struct
     type: object
     properties:
+      name:
+        type: string
       minReplicas:
         type: integer
       start:
@@ -4733,6 +4740,22 @@ definitions:
       end:
         type: string
       timezone:
+        type: string
+  AutoScalePrometheus:
+    description: Auto Scale prometheus struct
+    type: object
+    properties:
+      name:
+        type: string
+      query:
+        type: string
+      threshold:
+        type: number
+        x-go-custom-type: "float64"
+      activationThreshold:
+        type: number
+        x-go-custom-type: "float64"
+      prometheusAddress:
         type: string
   AppCName:
     description: Application CNames
@@ -5662,7 +5685,12 @@ definitions:
           activeDeadlineSeconds:
             type: integer
             format: int64
+            x-go-custom-type: "*int64"
             description: job active deadline seconds.
+          concurrencyPolicy:
+            type: string
+            x-go-custom-type: "*string"
+            description: concurrency policy.
           container:
             type: object
             properties:
@@ -5717,6 +5745,10 @@ definitions:
         format: int64
         x-go-custom-type: "*int64"
         description: job active deadline seconds.
+      concurrencyPolicy:
+        type: string
+        x-go-custom-type: "*string"
+        description: concurrency policy.
       container:
         type: object
         properties:

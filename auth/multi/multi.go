@@ -12,10 +12,12 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	authTypes "github.com/tsuru/tsuru/types/auth"
 )
 
 var (
-	_ auth.Scheme = &multiScheme{}
+	_ auth.Scheme      = &multiScheme{}
+	_ auth.MultiScheme = &multiScheme{}
 )
 
 func init() {
@@ -45,7 +47,11 @@ func (s *multiScheme) Login(ctx context.Context, params map[string]string) (auth
 
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
-		authToken, err := scheme.Login(ctx, params)
+		userScheme, ok := scheme.(auth.UserScheme)
+		if !ok {
+			continue
+		}
+		authToken, err := userScheme.Login(ctx, params)
 
 		if err != nil {
 			errors.Add(err)
@@ -72,7 +78,11 @@ func (s *multiScheme) Logout(ctx context.Context, token string) error {
 
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
-		err := scheme.Logout(ctx, token)
+		userScheme, ok := scheme.(auth.UserScheme)
+		if !ok {
+			continue
+		}
+		err := userScheme.Logout(ctx, token)
 
 		if err != nil {
 			errors.Add(err)
@@ -127,7 +137,7 @@ func (s *multiScheme) Auth(ctx context.Context, token string) (auth.Token, error
 	return nil, newErrNotImplemented("auth")
 }
 
-func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
+func (s *multiScheme) Info(ctx context.Context) (*authTypes.SchemeInfo, error) {
 	schemes, err := s.schemes()
 	if err != nil {
 		return nil, err
@@ -135,6 +145,12 @@ func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
+		// for compatibility reasons the method info must return first authScheme that implements auth.UserScheme
+		// previously auth.Scheme had all methods of auth.UserScheme, for this reason we prefer to maintain interoperability with old clients
+		if _, ok := scheme.(auth.UserScheme); !ok {
+			continue
+		}
+
 		schemeInfo, err := scheme.Info(ctx)
 
 		if err != nil {
@@ -154,6 +170,46 @@ func (s *multiScheme) Info(ctx context.Context) (*auth.SchemeInfo, error) {
 	return nil, newErrNotImplemented("info")
 }
 
+func (s *multiScheme) Infos(ctx context.Context) ([]authTypes.SchemeInfo, error) {
+	schemes, err := s.schemes()
+	if err != nil {
+		return nil, err
+	}
+
+	infos := []authTypes.SchemeInfo{}
+	errors := tsuruErrors.NewMultiError()
+
+	defaultScheme, _ := config.GetString("auth:multi:default-scheme")
+
+	defaultDefined := false
+
+	for _, scheme := range schemes {
+		schemeInfo, err := scheme.Info(ctx)
+
+		if schemeInfo.Name == defaultScheme {
+			schemeInfo.Default = true
+			defaultDefined = true
+		}
+
+		if err != nil {
+			errors.Add(err)
+			continue
+		}
+
+		infos = append(infos, *schemeInfo)
+	}
+
+	if !defaultDefined && len(infos) > 0 {
+		infos[0].Default = true
+	}
+
+	if errors.Len() > 0 {
+		return nil, errors.ToError()
+	}
+
+	return infos, nil
+}
+
 func (s *multiScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
 	schemes, err := s.schemes()
 	if err != nil {
@@ -162,7 +218,12 @@ func (s *multiScheme) Create(ctx context.Context, user *auth.User) (*auth.User, 
 
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
-		authUser, err := scheme.Create(ctx, user)
+		userScheme, ok := scheme.(auth.UserScheme)
+		if !ok {
+			continue
+		}
+
+		authUser, err := userScheme.Create(ctx, user)
 
 		if err != nil {
 			errors.Add(err)
@@ -189,8 +250,11 @@ func (s *multiScheme) Remove(ctx context.Context, user *auth.User) error {
 
 	errors := tsuruErrors.NewMultiError()
 	for _, scheme := range schemes {
-		err := scheme.Remove(ctx, user)
-
+		userScheme, ok := scheme.(auth.UserScheme)
+		if !ok {
+			continue
+		}
+		err := userScheme.Remove(ctx, user)
 		if err != nil {
 			errors.Add(err)
 			continue

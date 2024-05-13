@@ -323,7 +323,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	return nil
 }
 
-func readableInstances(t auth.Token, contexts []permTypes.PermissionContext, appName, serviceName string) ([]service.ServiceInstance, error) {
+func readableInstances(contexts []permTypes.PermissionContext, appName, serviceName string) ([]service.ServiceInstance, error) {
 	teams := []string{}
 	instanceNames := []string{}
 	for _, c := range contexts {
@@ -345,7 +345,7 @@ func readableInstances(t auth.Token, contexts []permTypes.PermissionContext, app
 	return service.GetServicesInstancesByTeamsAndNames(teams, instanceNames, appName, serviceName)
 }
 
-func filtersForServiceList(t auth.Token, contexts []permTypes.PermissionContext) ([]string, []string) {
+func filtersForServiceList(contexts []permTypes.PermissionContext) ([]string, []string) {
 	teams := []string{}
 	serviceNames := []string{}
 	for _, c := range contexts {
@@ -364,8 +364,8 @@ func filtersForServiceList(t auth.Token, contexts []permTypes.PermissionContext)
 	return teams, serviceNames
 }
 
-func readableServices(ctx stdContext.Context, t auth.Token, contexts []permTypes.PermissionContext) ([]service.Service, error) {
-	teams, serviceNames := filtersForServiceList(t, contexts)
+func readableServices(ctx stdContext.Context, contexts []permTypes.PermissionContext) ([]service.Service, error) {
+	teams, serviceNames := filtersForServiceList(contexts)
 	return service.GetServicesByTeamsAndServices(ctx, teams, serviceNames)
 }
 
@@ -382,12 +382,12 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	ctx := r.Context()
 	appName := r.URL.Query().Get("app")
 	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
-	instances, err := readableInstances(t, contexts, appName, "")
+	instances, err := readableInstances(contexts, appName, "")
 	if err != nil {
 		return err
 	}
 	contexts = permission.ContextsForPermission(t, permission.PermServiceRead)
-	services, err := readableServices(ctx, t, contexts)
+	services, err := readableServices(ctx, contexts)
 	if err != nil {
 		return err
 	}
@@ -516,6 +516,9 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		Tags:            serviceInstance.Tags,
 		Parameters:      serviceInstance.Parameters,
 	}
+	if sInfo.PlanName == "" {
+		sInfo.PlanName = serviceInstance.PlanName
+	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(sInfo)
 }
@@ -535,7 +538,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
-	instances, err := readableInstances(t, contexts, "", serviceName)
+	instances, err := readableInstances(contexts, "", serviceName)
 	if err != nil {
 		return err
 	}
@@ -703,6 +706,54 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	path := r.URL.Query().Get("callback")
+	var evt *event.Event
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		evt, err = event.New(&event.Opts{
+			Target:     serviceInstanceTarget(serviceName, instanceName),
+			Kind:       permission.PermServiceInstanceUpdateProxy,
+			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
+				"name":  "method",
+				"value": r.Method,
+			}),
+			Allowed: event.Allowed(permission.PermServiceInstanceReadEvents,
+				contextsForServiceInstance(serviceInstance, serviceName)...),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { evt.Done(err) }()
+	}
+	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
+}
+
+// title: service instance proxy V2
+// path: /services/{service}/resources/{instance}/{path:*}
+// method: "*"
+// responses:
+//
+//	401: Unauthorized
+//	404: Instance not found
+func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	serviceName := r.URL.Query().Get(":service")
+	instanceName := r.URL.Query().Get(":instance")
+	queryPath := r.URL.Query().Get(":path")
+
+	serviceInstance, err := getServiceInstanceOrError(ctx, serviceName, instanceName)
+	if err != nil {
+		return err
+	}
+	allowed := permission.Check(t, permission.PermServiceInstanceUpdateProxy,
+		contextsForServiceInstance(serviceInstance, serviceName)...,
+	)
+	if !allowed {
+		return permission.ErrUnauthorized
+	}
+
+	path := "/resources/" + serviceInstance.GetIdentifier() + "/" + queryPath
+
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		evt, err = event.New(&event.Opts{

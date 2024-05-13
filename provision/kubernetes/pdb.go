@@ -109,10 +109,9 @@ func newPDB(ctx context.Context, client *ClusterClient, app provision.App, proce
 
 func pdbLabels(app provision.App, process string) *provision.LabelSet {
 	return provision.PDBLabels(provision.PDBLabelsOpts{
-		App:         app,
-		Process:     process,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		App:     app,
+		Process: process,
+		Prefix:  tsuruLabelPrefix,
 	})
 }
 

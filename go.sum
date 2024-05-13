@@ -77,8 +77,6 @@ github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 h1:GmKJxiZbNy8VrLxN/UNwmQytQv7dYHQ/xOiGfjOf9Ig=
-github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01/go.mod h1:3SAoF0F5EbcOuBD5WT9nYkbIJieBS84cUQXADbXeBsU=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d/go.mod h1:HI8ITrYtUY+O+ZhtlqUnD8+KwNPOyugEhfP9fdUIaEQ=
 github.com/adhocore/gronx v1.6.6 h1:Gk1OAP4CCSs2/i3f7HHwB2tX/EtYP3TzzWSHvesTR4k=
 github.com/adhocore/gronx v1.6.6/go.mod h1:7oUY1WAU8rEJWmAxXR2DN0JaO4gi9khSgKjiRypqteg=
@@ -263,8 +261,6 @@ github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba/go.mod h1:dV8l
 github.com/dgrijalva/jwt-go v0.0.0-20170104182250-a601269ab70c/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
-github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537 h1:mgal9Xg+e1psnD6jytARoVNAVp5C3HTgXJQA6In9MSg=
-github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537/go.mod h1:6Jv9Wy+cvndn2nA35UC3ffEkG/bRdufsypJ66ehhJG4=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
 github.com/docker/cli v23.0.0-rc.1+incompatible h1:Vl3pcUK4/LFAD56Ys3BrqgAtuwpWd/IO3amuSL0ZbP0=
 github.com/docker/cli v23.0.0-rc.1+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=

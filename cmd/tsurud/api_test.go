@@ -32,7 +32,7 @@ func (s *S) TestAPICmdCheckOnlyWarnings(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	err := command.Run(&context, nil)
+	err := command.Run(&context)
 	c.Assert(err, check.IsNil)
 	c.Assert(stderr.String(), check.Matches, "(?s)WARNING: Config entry \"queue:mongo-url\".*")
 }

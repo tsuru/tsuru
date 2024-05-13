@@ -47,7 +47,7 @@ type TeamStorage interface {
 var (
 	ErrInvalidTeamName = &tsuruErrors.ValidationError{
 		Message: "Invalid team name, team names should start with a letter and" +
-			"contain only lower case letters, numbers, dashes, underscore and @.",
+			"contain only lower case letters, numbers, dashes and underscore",
 	}
 	ErrTeamAlreadyExists = errors.New("team already exists")
 	ErrTeamNotFound      = errors.New("team not found")

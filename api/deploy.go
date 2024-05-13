@@ -65,7 +65,6 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if opts.File != nil {
 		defer opts.File.Close()
 	}
-	commit := InputValue(r, "commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	origin := InputValue(r, "origin")
@@ -80,38 +79,26 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 			}
 		}
 	}
-	var userName string
-	if t.IsAppToken() {
-		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
-			return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
-		}
-		userName = InputValue(r, "user")
-	} else {
-		commit = ""
-		userName = t.GetUserName()
-	}
+
+	userName := t.GetUserName()
+
 	instance, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	message := InputValue(r, "message")
-	if origin == "" && commit != "" {
-		origin = "git"
-	}
 	opts.App = instance
-	opts.Commit = commit
 	opts.User = userName
 	opts.Origin = origin
 	opts.Message = message
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	opts.GetKind()
-	if t.GetAppName() != app.InternalAppName {
-		canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
-		if !canDeploy {
-			return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
-		}
+	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	if !canDeploy {
+		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}
+
 	var imageID string
 	evt, err := event.New(&event.Opts{
 		Target:        appTarget(appName),

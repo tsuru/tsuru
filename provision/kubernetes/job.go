@@ -24,6 +24,9 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
@@ -130,6 +133,37 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 		return errors.WithStack(err)
 	}
 
+	// when the schedule suffer changes some cronjobs may suffer a unexpected execution
+	// for these reason we decided to recreate the entire cronjob to avoid this
+	if existingCronjob != nil && existingCronjob.Spec.Schedule != job.Spec.Schedule {
+
+		wait, waitErr := waitToJobDeletion(ctx, client, existingCronjob)
+		if waitErr != nil {
+			return errors.WithStack(waitErr)
+		}
+
+		propagationPolicy := metav1.DeletePropagationForeground
+		err = client.BatchV1().CronJobs(namespace).Delete(ctx, existingCronjob.Name, metav1.DeleteOptions{
+			GracePeriodSeconds: ptr.To[int64](0),
+			PropagationPolicy:  &propagationPolicy,
+		})
+
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		existingCronjob = nil
+
+		waitErr = wait()
+		if waitErr != nil {
+			return errors.WithStack(waitErr)
+		}
+	}
+
+	concurrencyPolicy := ""
+	if job.Spec.ConcurrencyPolicy != nil {
+		concurrencyPolicy = *job.Spec.ConcurrencyPolicy
+	}
+
 	cronjob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        job.Name,
@@ -143,6 +177,7 @@ func ensureCronjob(ctx context.Context, client *ClusterClient, job *jobTypes.Job
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
+			ConcurrencyPolicy: batchv1.ConcurrencyPolicy(concurrencyPolicy),
 		},
 	}
 
@@ -182,6 +217,42 @@ func buildMetadata(ctx context.Context, job *jobTypes.Job) (map[string]string, m
 		jobAnnotations[a.Name] = a.Value
 	}
 	return jobLabels, jobAnnotations
+}
+
+type deleteWaiterFunc func() error
+
+func waitToJobDeletion(ctx context.Context, client kubernetes.Interface, existingCronjob *batchv1.CronJob) (deleteWaiterFunc, error) {
+	deleted := make(chan struct{}, 1)
+
+	watchInterface, err := client.BatchV1().CronJobs(existingCronjob.ObjectMeta.Namespace).Watch(ctx, metav1.ListOptions{
+		Watch:           true,
+		FieldSelector:   "metadata.name=" + existingCronjob.ObjectMeta.Name,
+		ResourceVersion: existingCronjob.ObjectMeta.ResourceVersion,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			event := <-watchInterface.ResultChan()
+
+			if event.Type == watch.Deleted {
+				close(deleted)
+				break
+			}
+		}
+	}()
+
+	return func() error {
+		select {
+		case <-deleted:
+			return nil
+		case <-time.After(time.Second * 30):
+			return errors.New("timeout waiting delete")
+		}
+	}, nil
 }
 
 func (p *kubernetesProvisioner) EnsureJob(ctx context.Context, job *jobTypes.Job) error {
@@ -418,9 +489,8 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 
 func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job jobTypes.Job) error {
 	labels := provision.ServiceAccountLabels(provision.ServiceAccountLabelsOpts{
-		Job:         &job,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
+		Job:    &job,
+		Prefix: tsuruLabelPrefix,
 	})
 	ns := client.PoolNamespace(job.Pool)
 	return ensureServiceAccount(ctx, client, serviceAccountNameForJob(job), labels, ns, &job.Metadata)

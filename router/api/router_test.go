@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
-	provTypes "github.com/tsuru/tsuru/types/provision"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	check "gopkg.in/check.v1"
 )
@@ -80,7 +79,6 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "router_api_tests")
 	s.apiRouter.backends = make(map[string]*backend)
-	s.testRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "mybackend"})
 	s.apiRouter.backends = map[string]*backend{
 		"mybackend": {addr: "mybackend.cloud.com", addresses: []string{"http://127.0.0.1:32876", "http://127.0.0.1:32678"}},
 	}
@@ -97,112 +95,6 @@ func (s *S) TearDownTest(c *check.C) {
 	s.apiRouter.stop()
 }
 
-func (s *S) TestAddr(c *check.C) {
-	addr, err := s.testRouter.Addr(context.TODO(), routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.DeepEquals, "mybackend.cloud.com")
-}
-
-func (s *S) TestAddrNotFound(c *check.C) {
-	addr, err := s.testRouter.Addr(context.TODO(), routertest.FakeApp{Name: "invalid"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-	c.Assert(addr, check.DeepEquals, "")
-}
-
-func (s *S) TestAddBackend(c *check.C) {
-	err := s.testRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "new-backend"})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"], check.NotNil)
-}
-
-func (s *S) TestAddBackendOpts(c *check.C) {
-	app := routertest.FakeApp{
-		Name:      "new-backend",
-		Pool:      "mypool",
-		TeamOwner: "owner",
-		Teams:     []string{"team1", "team2"},
-	}
-	err := s.testRouter.AddBackendOpts(context.TODO(), app, map[string]string{"opt1": "val1"})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]interface{}{
-		"opt1":                   "val1",
-		"tsuru.io/app-pool":      "mypool",
-		"tsuru.io/app-teamowner": "owner",
-		"tsuru.io/app-teams":     []interface{}{"team1", "team2"},
-	})
-}
-
-func (s *S) TestAddBackendOptsMultiCluster(c *check.C) {
-	s.mockService.ResetCluster()
-	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
-		return &provTypes.Pool{
-			Name:        "my-pool",
-			Provisioner: "kubernetes",
-		}, nil
-	}
-	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
-		return &provTypes.Cluster{
-			Name:        "cluster-my-pool",
-			Provisioner: "kubernetes",
-			Addresses: []string{
-				"https://kubernetes.example.com",
-			},
-		}, nil
-	}
-	s.apiRouter.interceptor = func(r *http.Request) {
-		c.Assert(r.Header.Get("X-Tsuru-Pool-Name"), check.Equals, "my-pool")
-		c.Assert(r.Header.Get("X-Tsuru-Pool-Provisioner"), check.Equals, "kubernetes")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Name"), check.Equals, "cluster-my-pool")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Provisioner"), check.Equals, "kubernetes")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Addresses"), check.Equals, "https://kubernetes.example.com")
-	}
-	defer func() {
-		s.apiRouter.interceptor = nil
-	}()
-
-	s.testRouter.multiCluster = true
-	app := routertest.FakeApp{
-		Name:      "new-backend",
-		Pool:      "my-pool",
-		TeamOwner: "owner",
-		Teams:     []string{"team1", "team2"},
-	}
-	err := s.testRouter.AddBackendOpts(context.TODO(), app, map[string]string{"opt1": "val1"})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]interface{}{
-		"opt1":                   "val1",
-		"tsuru.io/app-pool":      "my-pool",
-		"tsuru.io/app-teamowner": "owner",
-		"tsuru.io/app-teams":     []interface{}{"team1", "team2"},
-	})
-}
-
-func (s *S) TestUpdateBackendOpts(c *check.C) {
-	app := routertest.FakeApp{
-		Name:      "new-backend",
-		Pool:      "pool",
-		TeamOwner: "owner",
-		Teams:     []string{"team1", "team2"},
-	}
-	err := s.testRouter.AddBackendOpts(context.TODO(), app, map[string]string{"opt1": "val1"})
-	c.Assert(err, check.IsNil)
-	app.Pool = "newpool"
-	app.Teams = []string{"team1"}
-	err = s.testRouter.UpdateBackendOpts(context.TODO(), app, map[string]string{"opt1": "val2"})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["new-backend"].opts, check.DeepEquals, map[string]interface{}{
-		"opt1":                   "val2",
-		"tsuru.io/app-pool":      "newpool",
-		"tsuru.io/app-teamowner": "owner",
-		"tsuru.io/app-teams":     []interface{}{"team1"},
-	})
-}
-
-func (s *S) TestAddBackendExists(c *check.C) {
-	err := s.testRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendExists)
-}
-
 func (s *S) TestRemoveBackend(c *check.C) {
 	err := s.testRouter.RemoveBackend(context.TODO(), routertest.FakeApp{Name: "mybackend"})
 	c.Assert(err, check.IsNil)
@@ -212,197 +104,6 @@ func (s *S) TestRemoveBackend(c *check.C) {
 func (s *S) TestRemoveBackendNotFound(c *check.C) {
 	err := s.testRouter.RemoveBackend(context.TODO(), routertest.FakeApp{Name: "invalid"})
 	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestRemoveBackendSwapped(c *check.C) {
-	app1 := routertest.FakeApp{Name: "mybackend1"}
-	app2 := routertest.FakeApp{Name: "mybackend2"}
-	err := s.testRouter.AddBackend(context.TODO(), app1)
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddBackend(context.TODO(), app2)
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.Swap(context.TODO(), app1, app2, false)
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.RemoveBackend(context.TODO(), app1)
-	c.Assert(err, check.DeepEquals, router.ErrBackendSwapped)
-}
-
-func (s *S) TestAddRoutes(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:1234")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddRoutes(context.TODO(), routertest.FakeApp{Name: "mybackend"}, []*url.URL{addr})
-	c.Assert(err, check.IsNil)
-	sort.Strings(s.apiRouter.backends["mybackend"].addresses)
-	c.Assert(s.apiRouter.backends["mybackend"].addresses, check.DeepEquals,
-		[]string{"http://127.0.0.1:1234", "http://127.0.0.1:32678", "http://127.0.0.1:32876"})
-}
-
-func (s *S) TestAddRoutesBackendNotFound(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:1234")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddRoutes(context.TODO(), routertest.FakeApp{Name: "invalid"}, []*url.URL{addr})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestRemoveRoute(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:32678")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.RemoveRoutes(context.TODO(), routertest.FakeApp{Name: "mybackend"}, []*url.URL{addr})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].addresses, check.DeepEquals,
-		[]string{"http://127.0.0.1:32876"})
-}
-
-func (s *S) TestRemoveRoutes(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:32678")
-	c.Assert(err, check.IsNil)
-	addr2, err := url.Parse("http://127.0.0.1:32876")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.RemoveRoutes(context.TODO(), routertest.FakeApp{Name: "mybackend"}, []*url.URL{addr, addr2})
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].addresses, check.DeepEquals, []string(nil))
-}
-
-func (s *S) TestRemoveRoutesBackendNotFound(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:1234")
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.RemoveRoutes(context.TODO(), routertest.FakeApp{Name: "invalid"}, []*url.URL{addr})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestGetRoutes(c *check.C) {
-	addr, err := url.Parse("http://127.0.0.1:32876")
-	c.Assert(err, check.IsNil)
-	addr2, err := url.Parse("http://127.0.0.1:32678")
-	c.Assert(err, check.IsNil)
-	addrs, err := s.testRouter.Routes(context.TODO(), routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.IsNil)
-	c.Assert(addrs, check.DeepEquals, []*url.URL{addr, addr2})
-}
-
-func (s *S) TestGetRoutesBackendNotFound(c *check.C) {
-	addrs, err := s.testRouter.Routes(context.TODO(), routertest.FakeApp{Name: "invalid"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-	c.Assert(len(addrs), check.Equals, 0)
-}
-
-func (s *S) TestSwap(c *check.C) {
-	err := s.testRouter.AddBackend(context.TODO(), routertest.FakeApp{Name: "backend2"})
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.Swap(context.TODO(), routertest.FakeApp{Name: "mybackend"}, routertest.FakeApp{Name: "backend2"}, true)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].cnameOnly, check.Equals, true)
-	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "backend2")
-	err = s.testRouter.Swap(context.TODO(), routertest.FakeApp{Name: "mybackend"}, routertest.FakeApp{Name: "backend2"}, true)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].swapWith, check.Equals, "")
-}
-
-func (s *S) TestSwapMultiCluster(c *check.C) {
-	s.testRouter.multiCluster = true
-	defer func() {
-		s.testRouter.multiCluster = false
-	}()
-	s.mockService.Pool.OnFindByName = func(name string) (*provTypes.Pool, error) {
-		return &provTypes.Pool{
-			Name:        name,
-			Provisioner: "kubernetes",
-		}, nil
-	}
-	s.mockService.Cluster.OnFindByPool = func(provisioner, pool string) (*provTypes.Cluster, error) {
-		return &provTypes.Cluster{
-			Name:        "cluster-" + pool,
-			Provisioner: "kubernetes",
-			Addresses: []string{
-				"https://kubernetes.example.com",
-			},
-		}, nil
-	}
-	s.apiRouter.interceptor = func(r *http.Request) {
-		if !strings.HasSuffix(r.URL.String(), "/swap") {
-			return
-		}
-		c.Assert(r.Header.Get("X-Tsuru-Pool-Name"), check.Equals, "videos")
-		c.Assert(r.Header.Get("X-Tsuru-Pool-Provisioner"), check.Equals, "kubernetes")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Name"), check.Equals, "cluster-videos")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Provisioner"), check.Equals, "kubernetes")
-		c.Assert(r.Header.Get("X-Tsuru-Cluster-Addresses"), check.Equals, "https://kubernetes.example.com")
-	}
-	app1 := routertest.FakeApp{Name: "app1", Pool: "sports"}
-	app2 := routertest.FakeApp{Name: "app2", Pool: "videos"}
-	app3 := routertest.FakeApp{Name: "app3", Pool: "videos"}
-	err := s.testRouter.AddBackend(context.TODO(), app1)
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddBackend(context.TODO(), app2)
-	c.Assert(err, check.IsNil)
-	err = s.testRouter.AddBackend(context.TODO(), app3)
-	c.Assert(err, check.IsNil)
-
-	err = s.testRouter.Swap(context.TODO(), app1, app2, true)
-	c.Assert(err, check.Equals, router.ErrSwapAmongDifferentClusters)
-
-	err = s.testRouter.Swap(context.TODO(), app2, app3, true)
-	c.Assert(err, check.IsNil)
-	c.Check(s.apiRouter.backends["app2"].swapWith, check.Equals, "app3")
-	c.Check(s.apiRouter.backends["app3"].swapWith, check.Equals, "app2")
-}
-
-func (s *S) TestSwapNotFound(c *check.C) {
-	err := s.testRouter.Swap(context.TODO(), routertest.FakeApp{Name: "invalid"}, routertest.FakeApp{Name: "backend2"}, false)
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestSetCName(c *check.C) {
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.SetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestSetCNameBackendNotFound(c *check.C) {
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.SetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "invalid"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestSetCNameCNameAlreadyExists(c *check.C) {
-	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com"}
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.SetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.DeepEquals, router.ErrCNameExists)
-}
-
-func (s *S) TestUnsetCName(c *check.C) {
-	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com"}
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.UnsetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestUnsetCNameBackendNotFound(c *check.C) {
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.UnsetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "invalid"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-func (s *S) TestUnsetCNameCNameNotFound(c *check.C) {
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	err := cnameRouter.UnsetCName(context.TODO(), "cname.com", routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.DeepEquals, router.ErrCNameNotFound)
-}
-
-func (s *S) TestCNames(c *check.C) {
-	s.apiRouter.backends["mybackend"].cnames = []string{"cname.com", "cname2.com"}
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	cnames, err := cnameRouter.CNames(context.TODO(), routertest.FakeApp{Name: "mybackend"})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(cnames), check.Equals, 2)
-}
-
-func (s *S) TestCNamesBackendNotFound(c *check.C) {
-	cnameRouter := &apiRouterWithCnameSupport{s.testRouter}
-	cnames, err := cnameRouter.CNames(context.TODO(), routertest.FakeApp{Name: "invalid"})
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-	c.Assert(len(cnames), check.Equals, 0)
 }
 
 func (s *S) TestAddCertificate(c *check.C) {
@@ -442,24 +143,8 @@ func (s *S) TestGetCertificateNotFound(c *check.C) {
 	c.Assert(cert, check.DeepEquals, "")
 }
 
-func (s *S) TestSetHealthcheck(c *check.C) {
-	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
-	hc := routerTypes.HealthcheckData{Path: "/", Status: 200}
-	err := hcRouter.SetHealthcheck(context.TODO(), routertest.FakeApp{Name: "mybackend"}, hc)
-	c.Assert(err, check.IsNil)
-	c.Assert(s.apiRouter.backends["mybackend"].healthcheck, check.DeepEquals, hc)
-}
-
-func (s *S) TestHealcheckBackendNotFound(c *check.C) {
-	hcRouter := &apiRouterWithHealthcheckSupport{s.testRouter}
-	hc := routerTypes.HealthcheckData{Path: "/", Status: 200}
-	err := hcRouter.SetHealthcheck(context.TODO(), routertest.FakeApp{Name: "invalid"}, hc)
-	c.Assert(err, check.DeepEquals, router.ErrBackendNotFound)
-}
-
-// Router V2 exclusive APIs
 func (s *S) TestEnsureBackend(c *check.C) {
-	routerV2 := &apiRouterV2{s.testRouter}
+	routerV2 := s.testRouter
 	app := routertest.FakeApp{Name: "myapp", Pool: "mypool", Teams: []string{"team01", "team02"}, TeamOwner: "team03"}
 	err := routerV2.EnsureBackend(context.TODO(), app, router.EnsureBackendOpts{
 		Opts: map[string]interface{}{
@@ -537,12 +222,8 @@ func (s *S) TestCreateRouterSupport(c *check.C) {
 		comment := check.Commentf("case %d: %v", i, tt[i])
 		r, err := createRouter("myrouter", router.ConfigGetterFromPrefix("routers:apirouter"))
 		c.Assert(err, check.IsNil, comment)
-		_, ok := r.(router.CNameRouter)
-		c.Assert(ok, check.Equals, tt[i].expectCname, comment)
-		_, ok = r.(router.TLSRouter)
+		_, ok := r.(router.TLSRouter)
 		c.Assert(ok, check.Equals, tt[i].expectTLS, comment)
-		_, ok = r.(router.CustomHealthcheckRouter)
-		c.Assert(ok, check.Equals, tt[i].expectHC, comment)
 	}
 }
 
@@ -561,7 +242,6 @@ func (s *S) TestCreateCustomHeaders(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, code, err := r.(*struct {
 		router.Router
-		router.OptsRouter
 	}).Router.(*apiRouter).do(context.TODO(), http.MethodGet, "/custom", nil, nil)
 	c.Assert(code, check.DeepEquals, http.StatusOK)
 	c.Assert(err, check.IsNil)
@@ -589,7 +269,6 @@ func (s *S) TestCreateDuplicatedCustomHeaders(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, code, err := r.(*struct {
 		router.Router
-		router.OptsRouter
 	}).Router.(*apiRouter).do(context.TODO(), http.MethodGet, "/custom", nil, nil)
 	c.Assert(code, check.DeepEquals, http.StatusOK)
 	c.Assert(err, check.IsNil)

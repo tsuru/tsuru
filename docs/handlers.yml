@@ -1294,19 +1294,6 @@ handlers:
   responses:
     200: OK
     404: App or router not found
-- title: saml metadata
-  path: /auth/saml
-  method: GET
-  produce: application/xml
-  responses:
-    200: Ok
-    400: Invalid data
-- title: saml callback
-  path: /auth/saml
-  method: POST
-  responses:
-    200: Ok
-    400: Invalid data
 - title: units autoscale info
   path: /apps/{app}/units/autoscale
   method: GET

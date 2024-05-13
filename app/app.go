@@ -73,7 +73,7 @@ var (
 	ErrSwapMultipleRouters  = errors.New("swapping apps with multiple routers is not supported")
 	ErrSwapDifferentRouters = errors.New("swapping apps with different routers is not supported")
 	ErrSwapNoCNames         = errors.New("no cnames to swap")
-	ErrSwapDeprecated       = errors.New("swapping using router api v2 will work only with cnameOnly")
+	ErrSwapDeprecated       = errors.New("swapping without cnameOnly is deprecated")
 )
 
 var (
@@ -89,11 +89,6 @@ func init() {
 }
 
 const (
-	// InternalAppName is a reserved name used for token generation. For
-	// backward compatibility and historical purpose, the value remained
-	// "tsr" when the name of the daemon changed to "tsurud".
-	InternalAppName = "tsr"
-
 	defaultAppDir = "/home/application/current"
 
 	routerNone = "none"
@@ -413,10 +408,8 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		&reserveTeamApp,
 		&reserveUserApp,
 		&insertApp,
-		&createAppToken,
 		&exportEnvironmentsAction,
 		&provisionApp,
-		&addRouterBackend,
 	}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(ctx, app, user)
@@ -555,7 +548,11 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 	if newProv.GetName() != oldProv.GetName() {
 		defer func() {
-			rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, args.Writer)
+			rebuildErr := rebuild.RebuildRoutesWithAppName(app.Name, args.Writer)
+			if rebuildErr != nil {
+				log.Errorf("Could not rebuild route: %s", rebuildErr.Error())
+			}
+
 		}()
 		err = validateVolumes(app.ctx, app)
 		if err != nil {
@@ -752,13 +749,6 @@ func (app *App) unbindVolumes() error {
 // Delete deletes an app.
 func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) error {
 	w := evt
-	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
-	if err != nil {
-		return errors.Wrap(err, "unable to check if app is swapped")
-	}
-	if isSwapped {
-		return errors.Errorf("application is swapped with %q, cannot remove it", swappedWith)
-	}
 	appName := app.Name
 	fmt.Fprintf(w, "---- Removing application %q...\n", appName)
 	var hasErrors bool
@@ -799,22 +789,13 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		if err == nil {
 			err = r.RemoveBackend(ctx, app)
 		}
-		if err != nil {
+		if err != nil && err != router.ErrBackendNotFound {
 			logErr("Failed to remove router backend", err)
 		}
-	}
-	err = router.Remove(app.Name)
-	if err != nil {
-		logErr("Failed to remove router backend from database", err)
 	}
 	err = app.unbindVolumes()
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
-	}
-	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = auth.GetAppScheme().AppLogout(ctx, token)
-	if err != nil {
-		logErr("Unable to remove app token in destroy", err)
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
 	if err == nil {
@@ -923,9 +904,12 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 	).Execute(app.ctx, app, n, w, process, version)
-	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "add units")
+	}
+	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -971,33 +955,11 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 		return err
 	}
 	err = prov.RemoveUnits(ctx, app, n, process, version, w)
-	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
 	if err != nil {
 		return newErrorWithLog(err, app, "remove units")
 	}
-	return nil
-}
-
-// SetUnitStatus changes the status of the given unit.
-func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
-	units, err := app.Units()
-	if err != nil {
-		return err
-	}
-	for _, unit := range units {
-		if strings.HasPrefix(unit.ID, unitName) {
-			prov, err := app.getProvisioner()
-			if err != nil {
-				return err
-			}
-			unitProv, ok := prov.(provision.UnitStatusProvisioner)
-			if !ok {
-				return nil
-			}
-			return unitProv.SetUnitStatus(unit, status)
-		}
-	}
-	return &provision.UnitNotFoundError{ID: unitName}
+	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
+	return err
 }
 
 func (app *App) KillUnit(unitName string, force bool) error {
@@ -1054,11 +1016,6 @@ func (app *App) Grant(team *authTypes.Team) error {
 	defer conn.Close()
 	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
 	if err != nil {
-		return err
-	}
-
-	if err != nil {
-		conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
 		return err
 	}
 
@@ -1157,18 +1114,9 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 	}
 }
 
-// getEnv returns the environment variable if it's declared in the app. It will
-// return an error if the variable is not defined in this app.
-func (app *App) getEnv(name string) (bindTypes.EnvVar, error) {
-	if env, ok := app.Env[name]; ok {
-		return env, nil
-	}
-	return bindTypes.EnvVar{}, errors.New("Environment variable not declared for this app.")
-}
-
 // validateNew checks app name format, pool and plan
 func (app *App) validateNew(ctx context.Context) error {
-	if app.Name == InternalAppName || !validation.ValidateName(app.Name) {
+	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
@@ -1371,8 +1319,8 @@ func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Wr
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "restart")
 	}
-	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
-	return nil
+	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
+	return err
 }
 
 // vpPair represents each version-process pair
@@ -1637,15 +1585,23 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 		return nil
 	}
 
+	envNames := []string{}
 	for _, env := range setEnvs.Envs {
 		err := validateEnv(env.Name)
 		if err != nil {
 			return err
 		}
+		envNames = append(envNames, env.Name)
 	}
 
 	if setEnvs.Writer != nil && len(setEnvs.Envs) > 0 {
 		fmt.Fprintf(setEnvs.Writer, "---- Setting %d new environment variables ----\n", len(setEnvs.Envs))
+	}
+
+	err := validateEnvConflicts(app, envNames)
+	if err != nil {
+		fmt.Fprintf(setEnvs.Writer, "---- environment variables have conflicts with service binds: %s ----\n", err.Error())
+		return err
 	}
 
 	if setEnvs.PruneUnused {
@@ -1681,6 +1637,23 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	}
 
 	return nil
+}
+
+func validateEnvConflicts(app *App, envNames []string) error {
+	serviceEnvs := map[string]bindTypes.ServiceEnvVar{}
+	for _, env := range app.ServiceEnvs {
+		serviceEnvs[env.Name] = env
+	}
+
+	multiError := &tsuruErrors.MultiError{}
+
+	for _, env := range envNames {
+		if serviceEnv, ok := serviceEnvs[env]; ok {
+			multiError.Add(fmt.Errorf("Environment variable %q is already in use by service bind \"%s/%s\"", env, serviceEnv.ServiceName, serviceEnv.InstanceName))
+		}
+	}
+
+	return multiError.ToError()
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
@@ -1740,25 +1713,24 @@ func (app *App) restartIfUnits(w io.Writer) error {
 func (app *App) AddCName(cnames ...string) error {
 	actions := []*action.Action{
 		&validateNewCNames,
-		&setNewCNamesToProvisioner,
 		&saveCNames,
 		&updateApp,
 	}
 	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
+	if err != nil {
+		return err
+	}
+	err = rebuild.RebuildRoutesWithAppName(app.Name, nil)
 	return err
 }
 
 func (app *App) RemoveCName(cnames ...string) error {
 	actions := []*action.Action{
 		&checkCNameExists,
-		&unsetCNameFromProvisioner,
 		&removeCNameFromDatabase,
-		&removeCNameFromApp,
+		&rebuildRoutes,
 	}
-	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
-	rebuild.RoutesRebuildOrEnqueue(app.Name)
-	return err
+	return action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
 }
 
 func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
@@ -2095,57 +2067,6 @@ func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
 	return len(versions) > 1, nil
 }
 
-// Swap calls the Router.Swap and updates the app.CName in the database.
-func Swap(ctx context.Context, app1, app2 *App, cnameOnly bool) error {
-	app1Multiple, err := app1.hasMultipleVersions(ctx)
-	if err != nil {
-		return err
-	}
-	app2Multiple, err := app2.hasMultipleVersions(ctx)
-	if err != nil {
-		return err
-	}
-	if app1Multiple || app2Multiple {
-		return ErrSwapMultipleVersions
-	}
-	a1Routers := app1.GetRouters()
-	a2Routers := app2.GetRouters()
-	if len(a1Routers) != 1 || len(a2Routers) != 1 {
-		return ErrSwapMultipleRouters
-	}
-
-	if a1Routers[0].Name != a2Routers[0].Name {
-		return ErrSwapDifferentRouters
-	}
-
-	r, err := router.Get(ctx, a1Routers[0].Name)
-	if err != nil {
-		return err
-	}
-
-	if cnameOnly && len(app1.CName) == 0 && len(app2.CName) == 0 {
-		return ErrSwapNoCNames
-	}
-
-	_, isRouterV2 := r.(router.RouterV2)
-	if !cnameOnly && isRouterV2 {
-		return ErrSwapDeprecated
-	}
-
-	// router v2 swap with rebuild with PreserveOldCNames
-	if !isRouterV2 {
-		err = r.Swap(ctx, app1, app2, cnameOnly)
-		if err != nil {
-			return err
-		}
-	}
-
-	return action.NewPipeline(
-		&swapCNamesInDatabaseAction,
-		&swapReEnsureBackendsAction,
-	).Execute(ctx, app1, app2)
-}
-
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
 func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr string) error {
@@ -2168,7 +2089,7 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return newErrorWithLog(err, app, "start")
 	}
-	rebuild.RoutesRebuildOrEnqueueWithProgress(app.Name, w)
+	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	return err
 }
 
@@ -2186,19 +2107,6 @@ func (app *App) SetUpdatePlatform(check bool) error {
 
 func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
-}
-
-func (app *App) RegisterUnit(ctx context.Context, unitId string, customData map[string]interface{}) error {
-	prov, err := app.getProvisioner()
-	if err != nil {
-		return err
-	}
-	err = prov.RegisterUnit(ctx, app, unitId, customData)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
@@ -2229,26 +2137,14 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := r.(router.RouterV2); ok {
-		err = router.Store(app.GetName(), app.GetName(), r.GetType())
-		if err != nil {
-			return err
-		}
 
-		// skip rebuild routes task if app has no units available
-		if app.available() {
-			_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
-				App:  app,
-				Wait: true,
-			})
-		}
-	} else if optsRouter, ok := r.(router.OptsRouter); ok {
-		defer rebuild.RoutesRebuildOrEnqueue(app.Name)
-		err = optsRouter.AddBackendOpts(app.ctx, app, appRouter.Opts)
-	} else {
-		defer rebuild.RoutesRebuildOrEnqueue(app.Name)
-		err = r.AddBackend(app.ctx, app)
+	// skip rebuild routes task if app has no units available
+	if app.available() {
+		err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+			App: app,
+		})
 	}
+
 	if err != nil {
 		return err
 	}
@@ -2285,40 +2181,20 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	if existing == nil {
 		return &router.ErrRouterNotFound{Name: appRouter.Name}
 	}
-	r, err := router.Get(app.ctx, appRouter.Name)
-	if err != nil {
-		return err
-	}
-	_, isRouterV2 := r.(router.RouterV2)
-	optsRouter, ok := r.(router.OptsRouter)
-	if !ok {
-		return errors.Errorf("updating is not supported by router %q", appRouter.Name)
-	}
-	oldOpts := existing.Opts
+
 	existing.Opts = appRouter.Opts
-	err = app.updateRoutersDB(routers)
+	err := app.updateRoutersDB(routers)
 	if err != nil {
 		return err
 	}
-	if isRouterV2 {
-		_, err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
-			App:  app,
-			Wait: true,
-		})
-		if err != nil {
-			return err
-		}
-	} else {
-		err = optsRouter.UpdateBackendOpts(app.ctx, app, appRouter.Opts)
-		if err != nil {
-			existing.Opts = oldOpts
-			rollbackErr := app.updateRoutersDB(routers)
-			if rollbackErr != nil {
-				log.Errorf("unable to update router opts in db rolling back update router: %v", rollbackErr)
-			}
-			return err
-		}
+
+	err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+		App: app,
+	})
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -2395,38 +2271,36 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 			multi.Add(err)
 			continue
 		}
-		addr, err := r.Addr(app.ctx, app)
-		if err != nil {
-			if errors.Cause(err) == router.ErrBackendNotFound {
-				routers[i].Status = "not ready"
-				continue
+		routers[i].Type = planRouter.Type
+
+		addrs, aErr := r.Addresses(app.ctx, app)
+		if aErr == nil {
+			routers[i].Addresses = addrs
+		} else {
+			routers[i].Status = "not ready"
+			if errors.Cause(aErr) != router.ErrBackendNotFound {
+				routers[i].StatusDetail = aErr.Error()
 			}
-			multi.Add(err)
+			multi.Add(aErr)
 			continue
 		}
-		if statusRouter, ok := r.(router.StatusRouter); ok {
-			status, stErr := statusRouter.GetBackendStatus(app.ctx, app, "")
-			if stErr != nil {
-				multi.Add(stErr)
-				continue
-			}
+
+		if len(addrs) > 0 {
+			routers[i].Address = addrs[0]
+			servicemanager.AppCache.Create(app.ctx, cache.CacheEntry{
+				Key:   appRouterAddrKey(app.Name, routerName),
+				Value: addrs[0],
+			})
+		}
+
+		status, stErr := r.GetBackendStatus(app.ctx, app)
+		if stErr == nil {
 			routers[i].Status = string(status.Status)
 			routers[i].StatusDetail = status.Detail
+		} else {
+			multi.Add(stErr)
 		}
-		if prefixRouter, ok := r.(router.PrefixRouter); ok {
-			addrs, aErr := prefixRouter.Addresses(app.ctx, app)
-			if aErr != nil {
-				multi.Add(aErr)
-				continue
-			}
-			routers[i].Addresses = addrs
-		}
-		servicemanager.AppCache.Create(app.ctx, cache.CacheEntry{
-			Key:   appRouterAddrKey(app.Name, routerName),
-			Value: addr,
-		})
-		routers[i].Address = addr
-		routers[i].Type = planRouter.Type
+
 	}
 	return routers, multi.ToError()
 }
