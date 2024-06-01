@@ -49,8 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Run govulncheck
     steps:
-      - id: govulncheck
-        uses: golang/govulncheck-action@v1
+    - id: govulncheck
+      uses: golang/govulncheck-action@v1
   check-contributors:
     runs-on: ubuntu-latest
     steps:
