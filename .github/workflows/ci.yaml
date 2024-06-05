@@ -41,9 +41,9 @@ jobs:
     - uses: actions/checkout@v2
     - run: make yamllint
     - uses: golangci/golangci-lint-action@v6
-      args: --timeout=10m
       with:
         version: v1.59.0
+        args: --timeout=10m
       env:
         GOROOT: ''
   govulncheck:
