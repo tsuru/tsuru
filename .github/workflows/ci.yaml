@@ -45,6 +45,12 @@ jobs:
         version: v1.52.2
       env:
         GOROOT: ''
+  govulncheck:
+    runs-on: ubuntu-latest
+    name: Run govulncheck
+    steps:
+    - id: govulncheck
+      uses: golang/govulncheck-action@v1
   check-contributors:
     runs-on: ubuntu-latest
     steps:
@@ -154,6 +160,7 @@ jobs:
     - check-api-doc
     - validate-api-spec
     - verify-codegen
+    - govulncheck
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
