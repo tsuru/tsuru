@@ -42,7 +42,7 @@ jobs:
     - run: make yamllint
     - uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.52.2
+        version: v1.59.0
       env:
         GOROOT: ''
   govulncheck:
