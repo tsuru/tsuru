@@ -15,6 +15,5 @@ linters:
   - goimports
   - gofmt
   - misspell
-  - maligned
   disable:
   - errcheck
