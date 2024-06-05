@@ -5962,10 +5962,11 @@ func (s *S) TestAddLog(c *check.C) {
 }
 
 func (s *S) TestGetApp(c *check.C) {
+	ctx := context.Background()
 	a := app.App{Name: "testapp", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	err := app.CreateApp(ctx, &a, s.user)
 	c.Assert(err, check.IsNil)
-	expected, err := app.GetByName(context.TODO(), a.Name)
+	expected, err := app.GetByName(ctx, a.Name)
 	c.Assert(err, check.IsNil)
 	r, err := http.NewRequest(http.MethodGet, "", nil)
 	c.Assert(err, check.IsNil)
