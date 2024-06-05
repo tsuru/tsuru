@@ -40,7 +40,7 @@ jobs:
         go-version: '1.21'
     - uses: actions/checkout@v2
     - run: make yamllint
-    - uses: golangci/golangci-lint-action@v3
+    - uses: golangci/golangci-lint-action@v6
       with:
         version: v1.59.0
       env:
