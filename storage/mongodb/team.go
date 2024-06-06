@@ -84,7 +84,13 @@ func (s *TeamStorage) FindByName(ctx context.Context, name string) (*auth.Team, 
 
 	var t team
 
-	err := storagev2.Collection(teamsCollectionName).FindOne(ctx, mongoBSON.M{
+	collection, err := storagev2.Collection(teamsCollectionName)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
+	err = collection.FindOne(ctx, mongoBSON.M{
 		"_id": name,
 	}).Decode(&t)
 
@@ -110,7 +116,12 @@ func (s *TeamStorage) findByQuery(ctx context.Context, query bson.M) ([]auth.Tea
 	defer span.Finish()
 
 	var teams []team
-	cursor, err := storagev2.Collection(teamsCollectionName).Find(ctx, query)
+	collection, err := storagev2.Collection(teamsCollectionName)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		span.SetError(err)
 		return nil, err

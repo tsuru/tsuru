@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/tsuru/config"
@@ -17,30 +18,35 @@ const (
 )
 
 var (
-	client       *mongo.Client
+	client       atomic.Pointer[mongo.Client]
 	databaseName string
 )
 
-func Connect() error {
+func Reset() {
+	client.Store(nil)
+}
+
+func connect() (*mongo.Client, error) {
 	var uri string
-	var err error
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	uri, databaseName = dbConfig()
 
-	client, err = mongo.Connect(
+	connectedClient, err := mongo.Connect(
 		ctx,
 		options.Client().
 			ApplyURI(uri).
 			SetAppName("tsurud"),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	client.Store(connectedClient)
+
+	return connectedClient, nil
 }
 
 func dbConfig() (string, string) {
@@ -67,6 +73,14 @@ func dbConfig() (string, string) {
 	return uriParsed.String(), dbname
 }
 
-func Collection(name string) *mongo.Collection {
-	return client.Database(databaseName).Collection(name, options.Collection())
+func Collection(name string) (*mongo.Collection, error) {
+	connectedClient := client.Load()
+	if connectedClient == nil {
+		var err error
+		connectedClient, err = connect()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return connectedClient.Database(databaseName).Collection(name, options.Collection()), nil
 }
