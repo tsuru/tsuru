@@ -122,7 +122,7 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 				},
 			},
 			expectedAllEnvs: map[string]bindTypes.EnvVar{
-				"ENV1": {Name: "ENV1", Value: "val3"},
+				"ENV1": {Name: "ENV1", Value: "val3", ManagedBy: "srv1/myinst3"},
 			},
 		},
 		{
@@ -154,8 +154,8 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 				},
 			},
 			expectedAllEnvs: map[string]bindTypes.EnvVar{
-				"ENV1":             {Name: "ENV1", Value: "val1"},
-				"NO_MIGRATION_VAR": {Name: "NO_MIGRATION_VAR", Value: "valx"},
+				"ENV1":             {Name: "ENV1", Value: "val1", ManagedBy: "srv1/myinst"},
+				"NO_MIGRATION_VAR": {Name: "NO_MIGRATION_VAR", Value: "valx", ManagedBy: "srv2/myinst"},
 			},
 			expectedServicesEnv: `{"srv1":[{"instance_name": "myinst","envs": {"ENV1": "val1"}}], "srv2":[{"instance_name": "myinst","envs": {"NO_MIGRATION_VAR": "valx"}}]}`,
 		},
@@ -198,10 +198,10 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 				},
 			},
 			expectedAllEnvs: map[string]bindTypes.EnvVar{
-				"ENV1":      {Name: "ENV1", Value: "val1"},
-				"ENV2":      {Name: "ENV2", Value: "val2"},
-				"ENV3":      {Name: "ENV3", Value: "val3"},
-				"OTHER_VAR": {Name: "OTHER_VAR", Value: "otherval"},
+				"ENV1":      {Name: "ENV1", Value: "val1", ManagedBy: "srv1/myinst"},
+				"ENV2":      {Name: "ENV2", Value: "val2", ManagedBy: "srv2/myinst"},
+				"ENV3":      {Name: "ENV3", Value: "val3", ManagedBy: "srv3/myinst2"},
+				"OTHER_VAR": {Name: "OTHER_VAR", Value: "otherval", ManagedBy: ""},
 			},
 		},
 	}
@@ -233,6 +233,8 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 			c.Assert(oldServicesEnvVar, check.DeepEquals, newServicesEnvVar)
 		}
 		delete(allEnvs, tsuruEnvs.TsuruServicesEnvVar)
+		delete(allEnvs, "TSURU_APPNAME")
+		delete(allEnvs, "TSURU_APPDIR")
 		c.Assert(allEnvs, check.DeepEquals, tt.expectedAllEnvs)
 	}
 	// Running again should change nothing

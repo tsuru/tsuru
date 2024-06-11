@@ -191,14 +191,16 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "SRV1",
-		Value:  "val1",
-		Public: false,
+		Name:      "SRV1",
+		Value:     "val1",
+		Public:    false,
+		ManagedBy: "mysql/my-db",
 	})
 	c.Assert(envs["SRV2"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "SRV2",
-		Value:  "val2",
-		Public: false,
+		Name:      "SRV2",
+		Value:     "val2",
+		Public:    false,
+		ManagedBy: "postgres/my-db",
 	})
 	dbI1, err := service.GetServiceInstance(context.TODO(), instance1.ServiceName, instance1.Name)
 	c.Assert(err, check.IsNil)
@@ -211,9 +213,10 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	envs = a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bindTypes.EnvVar{})
 	c.Assert(envs["SRV2"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "SRV2",
-		Value:  "val2",
-		Public: false,
+		Name:      "SRV2",
+		Value:     "val2",
+		Public:    false,
+		ManagedBy: "postgres/my-db",
 	})
 }
 
@@ -262,14 +265,16 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_USER",
-		Value:  "root",
-		Public: false,
+		Name:      "DATABASE_USER",
+		Value:     "root",
+		Public:    false,
+		ManagedBy: "mysql/my-mysql",
 	})
 	c.Assert(envs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_PASSWORD",
-		Value:  "s3cr3t",
-		Public: false,
+		Name:      "DATABASE_PASSWORD",
+		Value:     "s3cr3t",
+		Public:    false,
+		ManagedBy: "mysql/my-mysql",
 	})
 }
 

@@ -3823,7 +3823,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 				Value: "privatehost.com",
 			},
 			ServiceName:  "srv1",
-			InstanceName: "some service",
+			InstanceName: "some-service",
 		},
 	}}
 	err := s.conn.Apps().Insert(a)
@@ -3851,10 +3851,14 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	delete(envs, tsuruEnvs.TsuruServicesEnvVar)
+	delete(envs, "TSURU_APPNAME")
+	delete(envs, "TSURU_APPDIR")
+
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
-			Name:  "DATABASE_HOST",
-			Value: "privatehost.com",
+			Name:      "DATABASE_HOST",
+			Value:     "privatehost.com",
+			ManagedBy: "srv1/some-service",
 		},
 	}
 	c.Assert(envs, check.DeepEquals, expected)
@@ -3862,7 +3866,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 		Target:       appTarget(a.Name),
 		Owner:        s.token.GetUserName(),
 		Kind:         "app.update.env.set",
-		ErrorMatches: "Environment variable \"DATABASE_HOST\" is already in use by service bind \"srv1/some service\"",
+		ErrorMatches: "Environment variable \"DATABASE_HOST\" is already in use by service bind \"srv1/some-service\"",
 	}, eventtest.HasEvent)
 }
 
@@ -4977,8 +4981,8 @@ func (s *S) TestBindHandler(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
-	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
+	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql/my-mysql"})
+	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, ManagedBy: "mysql/my-mysql"})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 8)
 	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)
@@ -5271,8 +5275,8 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
-	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false})
-	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false})
+	c.Assert(allEnvs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_USER", Value: "root", Public: false, ManagedBy: "mysql2/my-mysql"})
+	c.Assert(allEnvs["DATABASE_PASSWORD"], check.DeepEquals, bindTypes.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, ManagedBy: "mysql2/my-mysql"})
 	parts := strings.Split(recorder.Body.String(), "\n")
 	c.Assert(parts, check.HasLen, 7)
 	c.Assert(parts[0], check.Matches, `{"Message":".*---- Setting 3 new environment variables ----\\n","Timestamp":".*"}`)

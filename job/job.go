@@ -468,7 +468,9 @@ func (*jobService) GetEnvs(ctx context.Context, job *jobTypes.Job) map[string]bi
 	}
 
 	for _, e := range job.Spec.ServiceEnvs {
-		mergedEnvs[e.Name] = e.EnvVar
+		envVar := e.EnvVar
+		envVar.ManagedBy = fmt.Sprintf("%s/%s", e.ServiceName, e.InstanceName)
+		mergedEnvs[e.Name] = envVar
 	}
 	sort.Strings(toInterpolateKeys)
 

@@ -162,6 +162,8 @@ func (s *S) TestServiceManagerDeployService(c *check.C) {
 								"[ -d /home/application/current ] && cd /home/application/current; exec cm1",
 							},
 							Env: []apiv1.EnvVar{
+								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
+								{Name: "TSURU_APPNAME", Value: a.Name},
 								{Name: "TSURU_SERVICES", Value: "{}"},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "1"},
@@ -2747,6 +2749,8 @@ func (s *S) TestServiceManagerDeployServiceWithPreserveVersions(c *check.C) {
 								"[ -d /home/application/current ] && cd /home/application/current; exec cm1",
 							},
 							Env: []apiv1.EnvVar{
+								{Name: "TSURU_APPDIR", Value: "/home/application/current"},
+								{Name: "TSURU_APPNAME", Value: a.Name},
 								{Name: "TSURU_SERVICES", Value: "{}"},
 								{Name: "TSURU_PROCESSNAME", Value: "p1"},
 								{Name: "TSURU_APPVERSION", Value: "2"},
@@ -2893,6 +2897,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeploy(c *check.C) {
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/app-team"] = "admin"
 	expectedDep.Spec.Template.ObjectMeta.Labels["tsuru.io/is-routable"] = "true"
 	expectedDep.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
+		{Name: "TSURU_APPNAME", Value: "myapp"},
 		{Name: "TSURU_SERVICES", Value: "{}"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "1"},
@@ -3005,6 +3011,8 @@ func (s *S) TestServiceManagerDeployServiceWithLegacyDeployAndNewVersion(c *chec
 	expectedDepV2.Spec.Template.Spec.Containers[0].Name = "myapp-p1-v2"
 	expectedDepV2.Spec.Template.Spec.Containers[0].Image = "tsuru/app-myapp:v2"
 	expectedDepV2.Spec.Template.Spec.Containers[0].Env = []apiv1.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
+		{Name: "TSURU_APPNAME", Value: a.Name},
 		{Name: "TSURU_SERVICES", Value: "{}"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},
 		{Name: "TSURU_APPVERSION", Value: "2"},
@@ -3289,6 +3297,8 @@ func (s *S) TestServiceManagerDeployServiceWithEscapedEnvs(c *check.C) {
 	dep, err := s.client.Clientset.AppsV1().Deployments(ns).Get(context.TODO(), "myapp-p1", metav1.GetOptions{})
 	c.Assert(err, check.IsNil)
 	c.Check(dep.Spec.Template.Spec.Containers[0].Env, check.DeepEquals, []apiv1.EnvVar{
+		{Name: "TSURU_APPDIR", Value: "/home/application/current"},
+		{Name: "TSURU_APPNAME", Value: a.Name},
 		{Name: "TSURU_SERVICES", Value: "{}"},
 		{Name: "env1", Value: "a$$()b$$$$c"},
 		{Name: "TSURU_PROCESSNAME", Value: "p1"},

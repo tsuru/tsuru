@@ -159,9 +159,10 @@ func (s *S) TestServiceEnvsFromEnvVars(c *check.C) {
 
 	expectedValue := "{\"my-service\":[{\"instance_name\":\"my-instance-1\",\"envs\":{\"DB_HOST\":\"fake.host1\"}}]}"
 	expectedTsuruServicesEnvVar := bindTypes.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  expectedValue,
-		Public: false,
+		Name:      TsuruServicesEnvVar,
+		Value:     expectedValue,
+		Public:    false,
+		ManagedBy: "tsuru",
 	}
 	c.Assert(tsuruServicesEnvVar, check.DeepEquals, expectedTsuruServicesEnvVar)
 }
@@ -189,9 +190,10 @@ func (s *S) TestServiceEnvsFromEnvVarsWithMultipleServiceInstances(c *check.C) {
 
 	expectedValue := "{\"my-service\":[{\"instance_name\":\"my-instance-1\",\"envs\":{\"DB_HOST\":\"fake.host1\"}},{\"instance_name\":\"my-instance-2\",\"envs\":{\"DB_HOST\":\"fake.host2\"}}]}"
 	expectedTsuruServicesEnvVar := bindTypes.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  expectedValue,
-		Public: false,
+		Name:      TsuruServicesEnvVar,
+		Value:     expectedValue,
+		Public:    false,
+		ManagedBy: "tsuru",
 	}
 	c.Assert(tsuruServicesEnvVar, check.DeepEquals, expectedTsuruServicesEnvVar)
 }
@@ -219,9 +221,10 @@ func (s *S) TestServiceEnvsFromEnvVarsWithMultipleServices(c *check.C) {
 
 	expectedValue := "{\"my-service-1\":[{\"instance_name\":\"my-instance\",\"envs\":{\"DB_HOST\":\"fake.host1\"}}],\"my-service-2\":[{\"instance_name\":\"my-instance\",\"envs\":{\"DB_HOST\":\"fake.host2\"}}]}"
 	expectedTsuruServicesEnvVar := bindTypes.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  expectedValue,
-		Public: false,
+		Name:      TsuruServicesEnvVar,
+		Value:     expectedValue,
+		Public:    false,
+		ManagedBy: "tsuru",
 	}
 	c.Assert(tsuruServicesEnvVar, check.DeepEquals, expectedTsuruServicesEnvVar)
 }
