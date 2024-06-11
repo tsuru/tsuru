@@ -7,12 +7,12 @@ package app
 import "context"
 
 type Plan struct {
-	Name     string       `json:"name"`
-	Memory   int64        `json:"memory"`
-	CPUMilli int          `json:"cpumilli"`
-	CPUBurst CPUBurst     `json:"cpuBurst,omitempty"`
-	Default  bool         `json:"default,omitempty"`
-	Override PlanOverride `json:"override,omitempty"`
+	Name     string        `json:"name"`
+	Memory   int64         `json:"memory"`
+	CPUMilli int           `json:"cpumilli"`
+	CPUBurst *CPUBurst     `json:"cpuBurst,omitempty"`
+	Default  bool          `json:"default,omitempty"`
+	Override *PlanOverride `json:"override,omitempty"`
 }
 
 type PlanOverride struct {
@@ -27,49 +27,64 @@ type CPUBurst struct {
 }
 
 func (p *Plan) MergeOverride(po PlanOverride) {
+
+	newOverride := p.Override
+	if newOverride == nil {
+		newOverride = &PlanOverride{}
+	}
 	if po.Memory != nil {
 		if *po.Memory == 0 {
-			p.Override.Memory = nil
+			newOverride.Memory = nil
 		} else {
-			p.Override.Memory = po.Memory
+			newOverride.Memory = po.Memory
 		}
 	}
 	if po.CPUMilli != nil {
 		if *po.CPUMilli == 0 {
-			p.Override.CPUMilli = nil
+			newOverride.CPUMilli = nil
 		} else {
-			p.Override.CPUMilli = po.CPUMilli
+			newOverride.CPUMilli = po.CPUMilli
 		}
 	}
 
 	if po.CPUBurst != nil {
 		if *po.CPUBurst == 0 {
-			p.Override.CPUBurst = nil
+			newOverride.CPUBurst = nil
 		} else {
-			p.Override.CPUBurst = po.CPUBurst
+			newOverride.CPUBurst = po.CPUBurst
 		}
+	}
+
+	if (*newOverride == PlanOverride{}) {
+		p.Override = nil
+	} else {
+		p.Override = newOverride
 	}
 }
 
 func (p Plan) GetMemory() int64 {
-	if p.Override.Memory != nil {
+	if p.Override != nil && p.Override.Memory != nil {
 		return *p.Override.Memory
 	}
 	return p.Memory
 }
 
 func (p Plan) GetMilliCPU() int {
-	if p.Override.CPUMilli != nil {
+	if p.Override != nil && p.Override.CPUMilli != nil {
 		return *p.Override.CPUMilli
 	}
 	return p.CPUMilli
 }
 
 func (p Plan) GetCPUBurst() float64 {
-	if p.Override.CPUBurst != nil {
+	if p.Override != nil && p.Override.CPUBurst != nil {
 		return *p.Override.CPUBurst
 	}
-	return p.CPUBurst.Default
+	if p.CPUBurst != nil {
+		return p.CPUBurst.Default
+	}
+
+	return 0
 }
 
 type PlanService interface {

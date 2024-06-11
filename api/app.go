@@ -39,6 +39,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
@@ -178,34 +179,15 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	return app.Delete(ctx, &a, evt, requestIDHeader(r))
 }
 
-// miniApp is a minimal representation of the app, created to make appList
-// faster and transmit less data.
-type miniApp struct {
-	Name        string               `json:"name"`
-	Pool        string               `json:"pool"`
-	TeamOwner   string               `json:"teamowner"`
-	Plan        appTypes.Plan        `json:"plan"`
-	Units       []provision.Unit     `json:"units"`
-	CName       []string             `json:"cname"`
-	IP          string               `json:"ip"`
-	Routers     []appTypes.AppRouter `json:"routers"`
-	Lock        appTypes.AppLock     `json:"lock"`
-	Tags        []string             `json:"tags"`
-	Error       string               `json:"error,omitempty"`
-	Platform    string               `json:"platform,omitempty"`
-	Description string               `json:"description,omitempty"`
-	Metadata    appTypes.Metadata    `json:"metadata,omitempty"`
-}
-
-func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (miniApp, error) {
+func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
 	var errorStr string
 	if unitData.Err != nil {
 		errorStr = unitData.Err.Error()
 	}
 	if unitData.Units == nil {
-		unitData.Units = []provision.Unit{}
+		unitData.Units = []provTypes.Unit{}
 	}
-	ma := miniApp{
+	ma := appTypes.AppResume{
 		Name:      app.Name,
 		Pool:      app.Pool,
 		Plan:      app.Plan,
@@ -303,7 +285,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	simple, _ := strconv.ParseBool(r.URL.Query().Get("simplified"))
 	extended, _ := strconv.ParseBool(r.URL.Query().Get("extended"))
 	w.Header().Set("Content-Type", "application/json")
-	miniApps := make([]miniApp, len(apps))
+	miniApps := make([]appTypes.AppResume, len(apps))
 	if simple {
 		for i, ap := range apps {
 			ur := app.AppUnitsResponse{Units: nil, Err: nil}
@@ -348,8 +330,13 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
+
+	appInfo, err := app.AppInfo(&a)
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(&a)
+	return json.NewEncoder(w).Encode(&appInfo)
 }
 
 type inputApp struct {
@@ -542,7 +529,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	imageReset, _ := strconv.ParseBool(InputValue(r, "imageReset"))
 	updateData := app.App{
 		TeamOwner:      ia.TeamOwner,
-		Plan:           appTypes.Plan{Name: ia.Plan, Override: ia.PlanOverride},
+		Plan:           appTypes.Plan{Name: ia.Plan, Override: &ia.PlanOverride},
 		Pool:           ia.Pool,
 		Description:    ia.Description,
 		Router:         ia.Router,
@@ -574,7 +561,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if updateData.Plan.Name != "" {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlan)
 	}
-	if updateData.Plan.Override != (appTypes.PlanOverride{}) {
+	if updateData.Plan.Override != nil && *updateData.Plan.Override != (appTypes.PlanOverride{}) {
 		wantedPerms = append(wantedPerms, permission.PermAppUpdatePlanoverride)
 	}
 	if updateData.Pool != "" {

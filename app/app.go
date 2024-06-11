@@ -48,7 +48,7 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -124,15 +124,9 @@ type App struct {
 	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
 	UUID string
 
-	// InterApp Properties implemented by provision.InterAppProvisioner
-	// it is lazy generated on the first call to FillInternalAddresses
-	InternalAddresses []provision.AppInternalAddress `json:",omitempty" bson:"-"`
-
 	Quota quota.Quota
 
-	ctx         context.Context
-	builder     builder.Builder
-	provisioner provision.Provisioner
+	ctx context.Context
 }
 
 var (
@@ -152,65 +146,67 @@ func (app *App) Context() context.Context {
 }
 
 func (app *App) getBuilder() (builder.Builder, error) {
-	if app.builder != nil {
-		return app.builder, nil
-	}
 	p, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
 	}
-	app.builder, err = builder.GetForProvisioner(p)
-	return app.builder, err
+	return builder.GetForProvisioner(p)
 }
 
-func (app *App) fillInternalAddresses() error {
+func internalAddresses(app *App) ([]appTypes.AppInternalAddress, error) {
 	provisioner, err := app.getProvisioner()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if interAppProvisioner, ok := provisioner.(provision.InterAppProvisioner); ok {
-		app.InternalAddresses, err = interAppProvisioner.InternalAddresses(app.ctx, app)
-		if err != nil {
-			return err
-		}
+		return interAppProvisioner.InternalAddresses(app.ctx, app)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (app *App) getProvisioner() (provision.Provisioner, error) {
-	var err error
-	if app.provisioner == nil {
-		app.provisioner, err = pool.GetProvisionerForPool(app.ctx, app.Pool)
-	}
-	return app.provisioner, err
+	return pool.GetProvisionerForPool(app.ctx, app.Pool)
 }
 
 // Units returns the list of units.
-func (app *App) Units() ([]provision.Unit, error) {
+func (app *App) Units() ([]provTypes.Unit, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
-		return []provision.Unit{}, err
+		return []provTypes.Unit{}, err
 	}
 	units, err := prov.Units(context.TODO(), app)
 	if units == nil {
 		// This is unusual but was done because previously this method didn't
 		// return an error. This ensures we always return an empty list instead
 		// of nil to preserve compatibility with old clients.
-		units = []provision.Unit{}
+		units = []provTypes.Unit{}
 	}
 	return units, err
 }
 
-// MarshalJSON marshals the app in json format.
-func (app *App) MarshalJSON() ([]byte, error) {
+// AppInfo returns a agregated format of app
+func AppInfo(app *App) (*appTypes.AppInfo, error) {
 	var errMsgs []string
-	result := make(map[string]interface{})
-	result["name"] = app.Name
-	result["platform"] = app.Platform
+	result := &appTypes.AppInfo{
+		Name:        app.Name,
+		Description: app.Description,
+		Platform:    app.Platform,
+		Teams:       app.Teams,
+		Plan:        &app.Plan,
+		CName:       app.CName,
+		Owner:       app.Owner,
+		Pool:        app.Pool,
+		Deploys:     app.Deploys,
+		TeamOwner:   app.TeamOwner,
+		Lock:        app.Lock,
+		Tags:        app.Tags,
+		Metadata:    app.Metadata,
+	}
+
 	if version := app.GetPlatformVersion(); version != "latest" {
-		result["platform"] = fmt.Sprintf("%s:%s", app.Platform, version)
+		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
 	prov, err := app.getProvisioner()
 	if err != nil {
@@ -218,30 +214,19 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	}
 	if prov != nil {
 		provisionerName := prov.GetName()
-		result["provisioner"] = provisionerName
+		result.Provisioner = provisionerName
 		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
-		if clusterErr != nil && clusterErr != provisionTypes.ErrNoCluster {
+		if clusterErr != nil && clusterErr != provTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
 		if cluster != nil {
-			result["cluster"] = cluster.Name
+			result.Cluster = cluster.Name
 		}
 	}
-	result["teams"] = app.Teams
 	units, err := app.Units()
-	result["units"] = units
+	result.Units = units
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
-	}
-	plan := map[string]interface{}{
-		"name":     app.Plan.Name,
-		"memory":   app.Plan.Memory,
-		"cpumilli": app.Plan.CPUMilli,
-		"override": app.Plan.Override,
-	}
-
-	if (app.Plan.CPUBurst != appTypes.CPUBurst{}) {
-		plan["cpuBurst"] = app.Plan.CPUBurst
 	}
 
 	routers, err := app.GetRoutersWithAddr()
@@ -249,25 +234,14 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
 	}
 	if len(routers) > 0 {
-		result["ip"] = routers[0].Address
-		plan["router"] = routers[0].Name
-		result["router"] = routers[0].Name
-		result["routeropts"] = routers[0].Opts
+		result.IP = routers[0].Address
+		result.Router = routers[0].Name
+		result.RouterOpts = routers[0].Opts
 	}
-	result["cname"] = app.CName
-	result["owner"] = app.Owner
-	result["pool"] = app.Pool
-	result["description"] = app.Description
-	result["deploys"] = app.Deploys
-	result["teamowner"] = app.TeamOwner
-	result["plan"] = plan
-	result["lock"] = app.Lock
-	result["tags"] = app.Tags
-	result["routers"] = routers
-	result["metadata"] = app.Metadata
+	result.Routers = routers
 
 	if len(app.Processes) > 0 {
-		result["processes"] = app.Processes
+		result.Processes = app.Processes
 	}
 
 	q, err := app.GetQuota()
@@ -275,44 +249,43 @@ func (app *App) MarshalJSON() ([]byte, error) {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
 	}
 	if q != nil {
-		result["quota"] = *q
+		result.Quota = q
 	}
-	if len(app.InternalAddresses) == 0 {
-		err = app.fillInternalAddresses()
-		if err != nil {
-			errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
-		}
+	internalAddresses, err := internalAddresses(app)
+	if err != nil {
+		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
 	}
-	if len(app.InternalAddresses) > 0 {
-		result["internalAddresses"] = app.InternalAddresses
+
+	if len(internalAddresses) > 0 {
+		result.InternalAddresses = internalAddresses
 	}
 	autoscale, err := app.AutoScaleInfo()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
 	}
 	if autoscale != nil {
-		result["autoscale"] = autoscale
+		result.Autoscale = autoscale
 	}
 	autoscaleRec, err := app.VerticalAutoScaleRecommendations()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale recommendation info: %+v", err))
 	}
 	if autoscaleRec != nil {
-		result["autoscaleRecommendation"] = autoscaleRec
+		result.AutoscaleRecommendation = autoscaleRec
 	}
 	unitMetrics, err := app.UnitsMetrics()
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
 	}
 	if unitMetrics != nil {
-		result["unitsMetrics"] = unitMetrics
+		result.UnitsMetrics = unitMetrics
 	}
 	volumeBinds, err := servicemanager.Volume.BindsForApp(app.ctx, nil, app.Name)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get volume binds: %+v", err))
 	}
 	if volumeBinds != nil {
-		result["volumeBinds"] = volumeBinds
+		result.VolumeBinds = volumeBinds
 	}
 	sis, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
@@ -326,11 +299,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 			Plan:     si.PlanName,
 		})
 	}
-	result["serviceInstanceBinds"] = binds
+	result.ServiceInstanceBinds = binds
 	if len(errMsgs) > 0 {
-		result["error"] = strings.Join(errMsgs, "\n")
+		result.Error = strings.Join(errMsgs, "\n")
 	}
-	return json.Marshal(&result)
+	return result, nil
 }
 
 // GetByName queries the database to find an app identified by the given
@@ -400,7 +373,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		}
 	}
 	app.pruneProcesses()
-	err = app.validateNew(ctx)
+	err = app.validateNew()
 	if err != nil {
 		return err
 	}
@@ -466,12 +439,16 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	tags := processTags(args.UpdateData.Tags)
 	oldApp := *app
 
+	oldPlan, err := json.Marshal(oldApp.Plan)
+	if err != nil {
+		return err
+	}
+
 	if description != "" {
 		app.Description = description
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		app.provisioner = nil
 		_, err = app.getPoolForApp(app.Pool)
 		if err != nil {
 			return err
@@ -492,7 +469,17 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		}
 		app.Plan = *plan
 	}
-	app.Plan.MergeOverride(args.UpdateData.Plan.Override)
+	override := args.UpdateData.Plan.Override
+	if override == nil {
+		override = &appTypes.PlanOverride{}
+	}
+	app.Plan.MergeOverride(*override)
+
+	newPlan, err := json.Marshal(app.Plan)
+	if err != nil {
+		return err
+	}
+
 	if teamOwner != "" {
 		team, errTeam := servicemanager.Team.FindByName(app.ctx, teamOwner)
 		if errTeam != nil {
@@ -562,7 +549,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			&provisionAppNewProvisioner,
 			&provisionAppAddUnits,
 			&destroyAppOldProvisioner)
-	} else if !reflect.DeepEqual(app.Plan, oldApp.Plan) && args.ShouldRestart {
+	} else if string(newPlan) != string(oldPlan) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	} else if app.Pool != oldApp.Pool && !updatePipelineAdded {
 		actions = append(actions, &restartApp)
@@ -891,7 +878,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 		return err
 	}
 	for _, u := range units {
-		if u.Status == provision.StatusStopped {
+		if u.Status == provTypes.UnitStatusStopped {
 			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
@@ -958,6 +945,7 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 	if err != nil {
 		return newErrorWithLog(err, app, "remove units")
 	}
+
 	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	return err
 }
@@ -1115,7 +1103,7 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 }
 
 // validateNew checks app name format, pool and plan
-func (app *App) validateNew(ctx context.Context) error {
+func (app *App) validateNew() error {
 	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
@@ -1141,7 +1129,13 @@ func (app *App) validate() error {
 }
 
 func (app *App) validatePlan() error {
-	if (app.Plan.CPUBurst.MaxAllowed != 0) &&
+	cpuBurst := app.Plan.CPUBurst
+
+	if cpuBurst == nil {
+		cpuBurst = &appTypes.CPUBurst{}
+	}
+
+	if (cpuBurst.MaxAllowed != 0) &&
 		(app.Plan.Override.CPUBurst != nil) &&
 		(*app.Plan.Override.CPUBurst > app.Plan.CPUBurst.MaxAllowed) {
 
@@ -1337,7 +1331,7 @@ func cleanupOtherProcesses(vpMap map[vpPair]int, process string) {
 	}
 }
 
-func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []provision.Unit, process string) map[vpPair]int {
+func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []provTypes.Unit, process string) map[vpPair]int {
 	pastUnitsMap := map[vpPair]int{}
 	if version == nil {
 		for _, unit := range units {
@@ -1376,7 +1370,11 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 }
 
 func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion, process string) error {
-	units, err := app.provisioner.Units(ctx, app)
+	provisioner, err := app.getProvisioner()
+	if err != nil {
+		return err
+	}
+	units, err := provisioner.Units(ctx, app)
 	if err != nil {
 		return err
 	}
@@ -1518,7 +1516,7 @@ func (app *App) GetQuotaInUse() (int, error) {
 	counter := 0
 	for _, u := range units {
 		switch u.Status {
-		case provision.StatusStarting, provision.StatusStarted, provision.StatusStopped:
+		case provTypes.UnitStatusStarting, provTypes.UnitStatusStarted, provTypes.UnitStatusStopped:
 			counter++
 		}
 	}
@@ -1899,7 +1897,7 @@ func (f *Filter) Query() bson.M {
 }
 
 type AppUnitsResponse struct {
-	Units []provision.Unit
+	Units []provTypes.Unit
 	Err   error
 }
 
@@ -1920,7 +1918,7 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 	}
 	type parallelRsp struct {
 		provApps []provision.App
-		units    []provision.Unit
+		units    []provTypes.Unit
 		err      error
 	}
 	rspCh := make(chan parallelRsp, len(provMap))
@@ -2671,7 +2669,7 @@ buildResult:
 	return result
 }
 
-func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
+func (app *App) AutoScaleInfo() ([]provTypes.AutoScaleSpec, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2683,7 +2681,7 @@ func (app *App) AutoScaleInfo() ([]provision.AutoScaleSpec, error) {
 	return autoscaleProv.GetAutoScale(app.ctx, app)
 }
 
-func (app *App) VerticalAutoScaleRecommendations() ([]provision.RecommendedResources, error) {
+func (app *App) VerticalAutoScaleRecommendations() ([]provTypes.RecommendedResources, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2695,7 +2693,7 @@ func (app *App) VerticalAutoScaleRecommendations() ([]provision.RecommendedResou
 	return autoscaleProv.GetVerticalAutoScaleRecommendations(app.ctx, app)
 }
 
-func (app *App) UnitsMetrics() ([]provision.UnitMetric, error) {
+func (app *App) UnitsMetrics() ([]provTypes.UnitMetric, error) {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return nil, err
@@ -2707,7 +2705,7 @@ func (app *App) UnitsMetrics() ([]provision.UnitMetric, error) {
 	return metricsProv.UnitsMetrics(app.ctx, app)
 }
 
-func (app *App) AutoScale(spec provision.AutoScaleSpec) error {
+func (app *App) AutoScale(spec provTypes.AutoScaleSpec) error {
 	prov, err := app.getProvisioner()
 	if err != nil {
 		return err

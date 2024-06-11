@@ -13,8 +13,8 @@ import (
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -97,7 +97,7 @@ func testHPAWithTarget(tg autoscalingv2.MetricTarget) *autoscalingv2.HorizontalP
 	}
 }
 
-func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provision.AutoScaleSchedule, prometheusSpecs []provision.AutoScalePrometheus, ns string) *kedav1alpha1.ScaledObject {
+func testKEDAScaledObject(cpuTrigger *kedav1alpha1.ScaleTriggers, scheduleSpecs []provTypes.AutoScaleSchedule, prometheusSpecs []provTypes.AutoScalePrometheus, ns string) *kedav1alpha1.ScaledObject {
 	triggers := []kedav1alpha1.ScaleTriggers{}
 
 	if cpuTrigger != nil {
@@ -236,7 +236,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 	}{
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -250,7 +250,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50%",
@@ -264,7 +264,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50",
@@ -280,7 +280,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 			scenario: func() {
 				a.MilliCPU = 700
 				defer func() { a.MilliCPU = 0 }()
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -296,7 +296,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 			scenario: func() {
 				a.MilliCPU = 700
 				defer func() { a.MilliCPU = 0 }()
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50%",
@@ -312,7 +312,7 @@ func (s *S) TestProvisionerSetAutoScale(c *check.C) {
 			scenario: func() {
 				a.MilliCPU = 700
 				defer func() { a.MilliCPU = 0 }()
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50",
@@ -349,7 +349,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	schedulesList := []provision.AutoScaleSchedule{
+	schedulesList := []provTypes.AutoScaleSchedule{
 		{
 			MinReplicas: 2,
 			Start:       "0 6 * * *",
@@ -373,11 +373,11 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 	tests := []struct {
 		scenario      func()
 		cpuTrigger    *kedav1alpha1.ScaleTriggers
-		scheduleSpecs []provision.AutoScaleSchedule
+		scheduleSpecs []provTypes.AutoScaleSchedule
 	}{
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -396,7 +396,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50%",
@@ -415,7 +415,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50",
@@ -435,7 +435,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		{
 			scenario: func() {
 				a.MilliCPU = 700
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -454,7 +454,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:  1,
 					MaxUnits:  2,
 					Schedules: schedulesList[:1],
@@ -472,7 +472,7 @@ func (s *S) TestProvisionerSetScheduleKEDAAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs, []provision.AutoScalePrometheus{}, "default")
+		expected := testKEDAScaledObject(tt.cpuTrigger, tt.scheduleSpecs, []provTypes.AutoScalePrometheus{}, "default")
 		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 	}
 }
@@ -493,7 +493,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	prometheusList := []provision.AutoScalePrometheus{
+	prometheusList := []provTypes.AutoScalePrometheus{
 		{
 			Name:      "prometheus_metric_1",
 			Query:     "some_query_1",
@@ -516,11 +516,11 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 	tests := []struct {
 		scenario        func()
 		cpuTrigger      *kedav1alpha1.ScaleTriggers
-		prometheusSpecs []provision.AutoScalePrometheus
+		prometheusSpecs []provTypes.AutoScalePrometheus
 	}{
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -539,7 +539,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50%",
@@ -558,7 +558,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "50",
@@ -578,7 +578,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		{
 			scenario: func() {
 				a.MilliCPU = 700
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					AverageCPU: "500m",
@@ -597,7 +597,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		},
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					Prometheus: prometheusList[:1],
@@ -615,7 +615,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		scaledObject, err := s.client.KEDAClientForConfig.KedaV1alpha1().ScaledObjects(ns).Get(context.TODO(), "myapp-web", metav1.GetOptions{})
 		c.Assert(err, check.IsNil)
-		expected := testKEDAScaledObject(tt.cpuTrigger, []provision.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
+		expected := testKEDAScaledObject(tt.cpuTrigger, []provTypes.AutoScaleSchedule{}, tt.prometheusSpecs, "default")
 		c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 	}
 }
@@ -633,7 +633,7 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 	c.Assert(err, check.IsNil)
 	wait()
 
-	prometheusList := []provision.AutoScalePrometheus{
+	prometheusList := []provTypes.AutoScalePrometheus{
 		{
 			Name:              "prometheus_metric_1",
 			Query:             "some_query_1",
@@ -649,12 +649,12 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 
 	tests := []struct {
 		scenario        func()
-		prometheusSpecs []provision.AutoScalePrometheus
+		prometheusSpecs []provTypes.AutoScalePrometheus
 		assertion       func(error, *kedav1alpha1.ScaledObject)
 	}{
 		{
 			scenario: func() {
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					Prometheus: prometheusList[:1],
@@ -664,14 +664,14 @@ func (s *S) TestProvisionerSetPrometheusKEDAAutoScaleWithoutTemplateConfig(c *ch
 			prometheusSpecs: prometheusList[:1],
 			assertion: func(err error, scaledObject *kedav1alpha1.ScaledObject) {
 				c.Assert(err, check.IsNil)
-				expected := testKEDAScaledObject(nil, []provision.AutoScaleSchedule{}, prometheusList[:1], "default")
+				expected := testKEDAScaledObject(nil, []provTypes.AutoScaleSchedule{}, prometheusList[:1], "default")
 				c.Assert(scaledObject, check.DeepEquals, expected, check.Commentf("diff: %v", pretty.Diff(scaledObject, expected)))
 			},
 		},
 		{
 			scenario: func() {
 				config.Unset("kubernetes:keda:prometheus-address-template")
-				err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+				err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 					MinUnits:   1,
 					MaxUnits:   2,
 					Prometheus: prometheusList[1:],
@@ -713,7 +713,7 @@ func (s *S) TestProvisionerSetAutoScaleMultipleVersions(c *check.C) {
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
@@ -823,11 +823,11 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 	err := s.p.AddUnits(context.TODO(), a, 1, "web", versions[0], nil)
 	c.Assert(err, check.IsNil)
 	wait()
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
-		Schedules: []provision.AutoScaleSchedule{
+		Schedules: []provTypes.AutoScaleSchedule{
 			{
 				MinReplicas: 2,
 				Start:       "0 6 * * *",
@@ -835,7 +835,7 @@ func (s *S) TestProvisionerSetKEDAAutoScaleMultipleVersions(c *check.C) {
 				Timezone:    "UTC",
 			},
 		},
-		Prometheus: []provision.AutoScalePrometheus{
+		Prometheus: []provTypes.AutoScalePrometheus{
 			{
 				Name:              "prometheus_metric",
 				Query:             "sum(some_metric{app='app_test'})",
@@ -946,7 +946,7 @@ func (s *S) TestProvisionerRemoveAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   5,
 		MaxUnits:   20,
 		AverageCPU: "500m",
@@ -1024,11 +1024,11 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   5,
 		MaxUnits:   20,
 		AverageCPU: "500m",
-		Schedules: []provision.AutoScaleSchedule{
+		Schedules: []provTypes.AutoScaleSchedule{
 			{
 				MinReplicas: 2,
 				Start:       "0 6 * * *",
@@ -1036,7 +1036,7 @@ func (s *S) TestProvisionerRemoveKEDAAutoScale(c *check.C) {
 				Timezone:    "UTC",
 			},
 		},
-		Prometheus: []provision.AutoScalePrometheus{
+		Prometheus: []provTypes.AutoScalePrometheus{
 			{
 				Name:              "prometheus_metric",
 				Query:             "sum(some_metric{app='app_test'})",
@@ -1074,7 +1074,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
@@ -1082,7 +1082,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
 		MaxUnits:   4,
 		AverageCPU: "200m",
@@ -1095,7 +1095,7 @@ func (s *S) TestProvisionerGetAutoScale(c *check.C) {
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
@@ -1129,12 +1129,12 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
 		Process:    "web",
-		Schedules: []provision.AutoScaleSchedule{
+		Schedules: []provTypes.AutoScaleSchedule{
 			{
 				MinReplicas: 2,
 				Start:       "0 6 * * *",
@@ -1145,12 +1145,12 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
 		MaxUnits:   4,
 		AverageCPU: "200m",
 		Process:    "worker",
-		Schedules: []provision.AutoScaleSchedule{
+		Schedules: []provTypes.AutoScaleSchedule{
 			{
 				MinReplicas: 4,
 				Start:       "0 12 * * *",
@@ -1175,14 +1175,14 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
 			AverageCPU: "500m",
 			Version:    1,
 			Process:    "web",
-			Schedules: []provision.AutoScaleSchedule{
+			Schedules: []provTypes.AutoScaleSchedule{
 				{
 					MinReplicas: 2,
 					Start:       "0 6 * * *",
@@ -1197,7 +1197,7 @@ func (s *S) TestProvisionerGetScheduleKEDAAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
-			Schedules: []provision.AutoScaleSchedule{
+			Schedules: []provTypes.AutoScaleSchedule{
 				{
 					MinReplicas: 4,
 					Start:       "0 12 * * *",
@@ -1229,12 +1229,12 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   1,
 		MaxUnits:   2,
 		AverageCPU: "500m",
 		Process:    "web",
-		Prometheus: []provision.AutoScalePrometheus{
+		Prometheus: []provTypes.AutoScalePrometheus{
 			{
 				Name:              "prometheus_metric_1",
 				Query:             "some_query_1",
@@ -1245,12 +1245,12 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	err = s.p.SetAutoScale(context.TODO(), a, provision.AutoScaleSpec{
+	err = s.p.SetAutoScale(context.TODO(), a, provTypes.AutoScaleSpec{
 		MinUnits:   2,
 		MaxUnits:   4,
 		AverageCPU: "200m",
 		Process:    "worker",
-		Prometheus: []provision.AutoScalePrometheus{
+		Prometheus: []provTypes.AutoScalePrometheus{
 			{
 				Name:      "prometheus_metric_2",
 				Query:     "some_query_2",
@@ -1280,14 +1280,14 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 	sort.Slice(scales, func(i, j int) bool {
 		return scales[i].Process < scales[j].Process
 	})
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{
 			MinUnits:   1,
 			MaxUnits:   2,
 			AverageCPU: "500m",
 			Version:    1,
 			Process:    "web",
-			Prometheus: []provision.AutoScalePrometheus{
+			Prometheus: []provTypes.AutoScalePrometheus{
 				{
 					Name:              "prometheus_metric_1",
 					Query:             "some_query_1",
@@ -1302,7 +1302,7 @@ func (s *S) TestProvisionerGetPrometheusKEDAAutoScale(c *check.C) {
 			AverageCPU: "200m",
 			Version:    1,
 			Process:    "worker",
-			Prometheus: []provision.AutoScalePrometheus{
+			Prometheus: []provTypes.AutoScalePrometheus{
 				{
 					Name:              "prometheus_metric_2",
 					Query:             "some_query_2",
@@ -1479,10 +1479,10 @@ func (s *S) TestGetVerticalAutoScaleRecommendations(c *check.C) {
 
 	rec, err = s.p.GetVerticalAutoScaleRecommendations(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	c.Assert(rec, check.DeepEquals, []provision.RecommendedResources{
+	c.Assert(rec, check.DeepEquals, []provTypes.RecommendedResources{
 		{
 			Process: "web",
-			Recommendations: []provision.RecommendedProcessResources{
+			Recommendations: []provTypes.RecommendedProcessResources{
 				{Type: "target", CPU: "100m", Memory: "99Mi"},
 				{Type: "uncappedTarget", CPU: "101m", Memory: "98Mi"},
 				{Type: "lowerBound", CPU: "102m", Memory: "97Mi"},

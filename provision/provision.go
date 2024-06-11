@@ -8,15 +8,11 @@ package provision
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
@@ -42,9 +38,8 @@ const (
 )
 
 var (
-	ErrInvalidStatus = errors.New("invalid status")
-	ErrEmptyApp      = errors.New("no units for this app")
-	ErrNodeNotFound  = errors.New("node not found")
+	ErrEmptyApp     = errors.New("no units for this app")
+	ErrNodeNotFound = errors.New("node not found")
 
 	ErrLogsUnavailable = errors.New("logs from provisioner are unavailable")
 	DefaultProvisioner = defaultKubernetesProvisioner
@@ -73,142 +68,6 @@ type ProvisionerNotSupported struct {
 
 func (e ProvisionerNotSupported) Error() string {
 	return fmt.Sprintf("provisioner %q does not support %s", e.Prov.GetName(), e.Action)
-}
-
-// Status represents the status of a unit in tsuru.
-type Status string
-
-func (s Status) String() string {
-	return string(s)
-}
-
-func ParseStatus(status string) (Status, error) {
-	switch status {
-	case "created":
-		return StatusCreated, nil
-	case "building":
-		return StatusBuilding, nil
-	case "error":
-		return StatusError, nil
-	case "started":
-		return StatusStarted, nil
-	case "starting":
-		return StatusStarting, nil
-	case "stopped":
-		return StatusStopped, nil
-	case "success":
-		return StatusSucceeded, nil
-	}
-	return Status(""), ErrInvalidStatus
-}
-
-// Flow:
-
-// +---------+             +----------+                 +---------+
-// | Created | +---------> | Starting | +-------------> | Started |
-// +---------+             +----------+                 +---------+
-//
-//	^                         + +
-//	|                         | |
-//	|                         | |
-//	|                         | |
-//	v                         | |
-//	+-------+                 | |
-//	| Error | +---------------+ |
-//	+-------+ ------------------+
-const (
-	// StatusCreated is the initial status of a unit in the database,
-	// it should transition shortly to a more specific status
-	StatusCreated = Status("created")
-
-	// StatusBuilding is the status for units being provisioned by the
-	// provisioner, like in the deployment.
-	StatusBuilding = Status("building")
-
-	// StatusError is the status for units that failed to start, because of
-	// an application error.
-	StatusError = Status("error")
-
-	// StatusStarting is set when the container is started in docker.
-	StatusStarting = Status("starting")
-
-	// StatusStarted is for cases where the unit is up and running, and bound
-	// to the proper status.
-	StatusStarted = Status("started")
-
-	// StatusStopped is for cases where the unit has been stopped.
-	StatusStopped = Status("stopped")
-
-	// StatusSucceeded is for alternete cases where the unit has been
-	// stopped with succeeded end.
-	StatusSucceeded = Status("succeeded")
-)
-
-// Unit represents a provision unit. Can be a machine, container or anything
-// IP-addressable.
-type Unit struct {
-	ID           string
-	Name         string
-	AppName      string
-	ProcessName  string
-	Type         string
-	IP           string
-	InternalIP   string
-	Status       Status
-	StatusReason string
-	Address      *url.URL  // TODO: deprecate after drop docker provisioner
-	Addresses    []url.URL // TODO: deprecate after drop docker provisioner
-	Version      int
-	Routable     bool
-	Restarts     *int32
-	CreatedAt    *time.Time
-	Ready        *bool
-}
-
-// GetName returns the name of the unit.
-func (u *Unit) GetID() string {
-	return u.ID
-}
-
-// GetIp returns the Unit.IP.
-func (u *Unit) GetIp() string {
-	return u.IP
-}
-
-func (u *Unit) MarshalJSON() ([]byte, error) {
-	type UnitForMarshal Unit
-	var host, port string
-	if u.Address != nil {
-		host, port, _ = net.SplitHostPort(u.Address.Host)
-	}
-	// New fields added for compatibility with old routes returning containers.
-	return json.Marshal(&struct {
-		*UnitForMarshal
-		HostAddr string
-		HostPort string
-		IP       string
-	}{
-		UnitForMarshal: (*UnitForMarshal)(u),
-		HostAddr:       host,
-		HostPort:       port,
-		IP:             u.IP,
-	})
-}
-
-// Available returns true if the unit is available. It will return true
-// whenever the unit itself is available, even when the application process is
-// not.
-func (u *Unit) Available() bool {
-	return u.Status == StatusStarted ||
-		u.Status == StatusStarting ||
-		u.Status == StatusError
-}
-
-// UnitMetric represents a a related metrics for an unit.
-type UnitMetric struct {
-	ID     string
-	CPU    string
-	Memory string
 }
 
 // Named is something that has a name, providing the GetName method.
@@ -325,7 +184,7 @@ type Provisioner interface {
 	Stop(context.Context, App, string, appTypes.AppVersion, io.Writer) error
 
 	// Units returns information about units by App.
-	Units(context.Context, ...App) ([]Unit, error)
+	Units(context.Context, ...App) ([]provTypes.Unit, error)
 
 	// RoutableAddresses returns the addresses used to access an application.
 	RoutableAddresses(context.Context, App) ([]appTypes.RoutableAddresses, error)
@@ -333,7 +192,7 @@ type Provisioner interface {
 
 type JobProvisioner interface {
 	// JobUnits returns information about units related to a specific Job or CronJob
-	JobUnits(context.Context, *jobTypes.Job) ([]Unit, error)
+	JobUnits(context.Context, *jobTypes.Job) ([]provTypes.Unit, error)
 
 	// EnsureJob creates/update a cronjob object in the cluster
 	EnsureJob(context.Context, *jobTypes.Job) error
@@ -368,7 +227,7 @@ type LogsProvisioner interface {
 // MetricsProvisioner is a provisioner that have capability to view metrics of workloads
 type MetricsProvisioner interface {
 	// Units returns information about cpu and memory usage by App.
-	UnitsMetrics(ctx context.Context, a App) ([]UnitMetric, error)
+	UnitsMetrics(ctx context.Context, a App) ([]provTypes.UnitMetric, error)
 }
 
 // UpdatableProvisioner is a provisioner that stores data about applications
@@ -380,15 +239,7 @@ type UpdatableProvisioner interface {
 // InterAppProvisioner is a provisioner that allows an app to comunicate with each other
 // using internal dns and own load balancers provided by provisioner.
 type InterAppProvisioner interface {
-	InternalAddresses(ctx context.Context, a App) ([]AppInternalAddress, error)
-}
-
-type AppInternalAddress struct {
-	Domain   string
-	Protocol string
-	Port     int32
-	Version  string
-	Process  string
+	InternalAddresses(ctx context.Context, a App) ([]appTypes.AppInternalAddress, error)
 }
 
 // MessageProvisioner is a provisioner that provides a welcome message for
@@ -451,44 +302,7 @@ type VolumeProvisioner interface {
 	DeleteVolume(ctx context.Context, volumeName, pool string) error
 }
 
-type AutoScaleSpec struct {
-	Process    string                `json:"process"`
-	MinUnits   uint                  `json:"minUnits"`
-	MaxUnits   uint                  `json:"maxUnits"`
-	AverageCPU string                `json:"averageCPU,omitempty"`
-	Schedules  []AutoScaleSchedule   `json:"schedules,omitempty"`
-	Prometheus []AutoScalePrometheus `json:"prometheus,omitempty"`
-	Version    int                   `json:"version"`
-}
-
-type AutoScalePrometheus struct {
-	Name                string  `json:"name"`
-	Query               string  `json:"query"`
-	Threshold           float64 `json:"threshold"`
-	ActivationThreshold float64 `json:"activationThreshold,omitempty"`
-	PrometheusAddress   string  `json:"prometheusAddress,omitempty"`
-}
-
-type AutoScaleSchedule struct {
-	Name        string `json:"name,omitempty"`
-	MinReplicas int    `json:"minReplicas"`
-	Start       string `json:"start"`
-	End         string `json:"end"`
-	Timezone    string `json:"timezone,omitempty"`
-}
-
-type RecommendedResources struct {
-	Process         string                        `json:"process"`
-	Recommendations []RecommendedProcessResources `json:"recommendations"`
-}
-
-type RecommendedProcessResources struct {
-	Type   string `json:"type"`
-	CPU    string `json:"cpu"`
-	Memory string `json:"memory"`
-}
-
-func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
+func CPUValueOfAutoScaleSpec(s *provTypes.AutoScaleSpec, a App) (int, error) {
 	rawCPU := strings.TrimSuffix(s.AverageCPU, "%")
 	cpu, err := strconv.Atoi(rawCPU)
 	if err != nil {
@@ -518,7 +332,7 @@ func (s AutoScaleSpec) ToCPUValue(a App) (int, error) {
 	return cpu, nil
 }
 
-func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
+func ValidateAutoScaleSpec(s *provTypes.AutoScaleSpec, quotaLimit int, a App) error {
 	if s.MinUnits == 0 {
 		return errors.New("minimum units must be greater than 0")
 	}
@@ -532,7 +346,7 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 		return errors.New("you have to configure at least one trigger between cpu, schedule and prometheus")
 	}
 	if s.AverageCPU != "" {
-		_, err := s.ToCPUValue(a)
+		_, err := CPUValueOfAutoScaleSpec(s, a)
 		if err != nil {
 			return err
 		}
@@ -547,16 +361,16 @@ func (s AutoScaleSpec) Validate(quotaLimit int, a App) error {
 }
 
 type AutoScaleProvisioner interface {
-	GetAutoScale(ctx context.Context, a App) ([]AutoScaleSpec, error)
-	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]RecommendedResources, error)
-	SetAutoScale(ctx context.Context, a App, spec AutoScaleSpec) error
+	GetAutoScale(ctx context.Context, a App) ([]provTypes.AutoScaleSpec, error)
+	GetVerticalAutoScaleRecommendations(ctx context.Context, a App) ([]provTypes.RecommendedResources, error)
+	SetAutoScale(ctx context.Context, a App, spec provTypes.AutoScaleSpec) error
 	RemoveAutoScale(ctx context.Context, a App, process string) error
 }
 
 type UnitStatusData struct {
 	ID     string
 	Name   string
-	Status Status
+	Status provTypes.UnitStatus
 }
 
 type NodeCheckResult struct {

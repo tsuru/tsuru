@@ -10,6 +10,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+
+	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
 // title: units autoscale info
@@ -66,7 +68,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	var spec provision.AutoScaleSpec
+	var spec provTypes.AutoScaleSpec
 	err = ParseInput(r, &spec)
 	if err != nil {
 		return &errors.HTTP{
@@ -78,7 +80,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	err = spec.Validate(quota.Limit, &a)
+	err = provision.ValidateAutoScaleSpec(&spec, quota.Limit, &a)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,

@@ -183,7 +183,7 @@ func (s *S) TestUnits(c *check.C) {
 	}
 	restarts := int32(0)
 	ready := false
-	c.Assert(units, check.DeepEquals, []provision.Unit{
+	c.Assert(units, check.DeepEquals, []provTypes.Unit{
 		{
 			AppName:     "myapp",
 			ProcessName: "web",
@@ -281,7 +281,7 @@ func (s *S) TestUnitsMultipleAppsNodes(c *check.C) {
 	})
 	restarts := int32(0)
 	ready := false
-	c.Assert(units, check.DeepEquals, []provision.Unit{
+	c.Assert(units, check.DeepEquals, []provTypes.Unit{
 		{
 			ID:          "myapp-1",
 			Name:        "myapp-1",
@@ -463,7 +463,7 @@ func (s *S) TestUnitsStarting(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provision.StatusStarting)
+	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusStarting)
 }
 
 func (s *S) TestUnitsStartingError(c *check.C) {
@@ -513,7 +513,7 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
 	c.Assert(units[0].StatusReason, check.DeepEquals, "OOMKilled")
 
 }
@@ -570,7 +570,7 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
 	c.Assert(units[0].StatusReason, check.DeepEquals, "OOMKilled")
 
 }
@@ -628,7 +628,7 @@ func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 	units, err := s.p.Units(context.TODO(), a)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 1)
-	c.Assert(units[0].Status, check.DeepEquals, provision.StatusError)
+	c.Assert(units[0].Status, check.DeepEquals, provTypes.UnitStatusError)
 	c.Assert(units[0].StatusReason, check.DeepEquals, "exitCode: 1")
 
 }
@@ -1295,7 +1295,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	wait()
 
-	c.Assert(addrs, check.DeepEquals, []provision.AppInternalAddress{
+	c.Assert(addrs, check.DeepEquals, []appTypes.AppInternalAddress{
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 80, Process: "web"},
 		{Domain: "myapp-web.default.svc.cluster.local", Protocol: "TCP", Port: 443, Process: "web"},
 		{Domain: "myapp-jobs.default.svc.cluster.local", Protocol: "UDP", Port: 12201, Process: "jobs"},

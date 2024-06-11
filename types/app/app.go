@@ -9,6 +9,10 @@ import (
 	"net/url"
 
 	"github.com/tsuru/tsuru/types/app/image"
+	"github.com/tsuru/tsuru/types/bind"
+	"github.com/tsuru/tsuru/types/provision"
+	"github.com/tsuru/tsuru/types/quota"
+	"github.com/tsuru/tsuru/types/volume"
 )
 
 type App interface {
@@ -56,4 +60,66 @@ type Filter struct {
 type AppService interface {
 	GetByName(ctx context.Context, name string) (App, error)
 	List(ctx context.Context, filter *Filter) ([]App, error)
+}
+
+type AppInfo struct {
+	Name        string   `json:"name"`
+	Platform    string   `json:"platform"`
+	Teams       []string `json:"teams"`
+	Plan        *Plan    `json:"plan"`
+	CName       []string `json:"cname"`
+	Owner       string   `json:"owner"` // we may move this to createdBy
+	Pool        string   `json:"pool"`
+	Description string   `json:"description"`
+	Deploys     uint     `json:"deploys"`
+	TeamOwner   string   `json:"teamowner"`
+	Lock        AppLock  `json:"lock"`
+	Tags        []string `json:"tags"`
+	Metadata    Metadata `json:"metadata"`
+
+	Units                   []provision.Unit                 `json:"units"`
+	InternalAddresses       []AppInternalAddress             `json:"internalAddresses,omitempty"`
+	Autoscale               []provision.AutoScaleSpec        `json:"autoscale,omitempty"`
+	UnitsMetrics            []provision.UnitMetric           `json:"unitsMetrics,omitempty"`
+	AutoscaleRecommendation []provision.RecommendedResources `json:"autoscaleRecommendation,omitempty"`
+
+	Provisioner          string                     `json:"provisioner,omitempty"`
+	Cluster              string                     `json:"cluster,omitempty"`
+	Processes            []Process                  `json:"processes,omitempty"`
+	Routers              []AppRouter                `json:"routers"`
+	VolumeBinds          []volume.VolumeBind        `json:"volumeBinds,omitempty"`
+	ServiceInstanceBinds []bind.ServiceInstanceBind `json:"serviceInstanceBinds"`
+
+	IP         string            `json:"ip,omitempty"`
+	Router     string            `json:"router,omitempty"`
+	RouterOpts map[string]string `json:"routeropts"`
+	Quota      *quota.Quota      `json:"quota,omitempty"`
+	Error      string            `json:"error,omitempty"`
+}
+
+type AppInternalAddress struct {
+	Domain   string
+	Protocol string
+	Port     int32
+	Version  string
+	Process  string
+}
+
+// AppResume is a minimal representation of the app, created to make appList
+// faster and transmit less data.
+type AppResume struct {
+	Name        string           `json:"name"`
+	Pool        string           `json:"pool"`
+	TeamOwner   string           `json:"teamowner"`
+	Plan        Plan             `json:"plan"`
+	Units       []provision.Unit `json:"units"`
+	CName       []string         `json:"cname"`
+	IP          string           `json:"ip"`
+	Routers     []AppRouter      `json:"routers"`
+	Lock        AppLock          `json:"lock"`
+	Tags        []string         `json:"tags"`
+	Error       string           `json:"error,omitempty"`
+	Platform    string           `json:"platform,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Metadata    Metadata         `json:"metadata,omitempty"`
 }

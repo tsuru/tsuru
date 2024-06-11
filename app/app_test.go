@@ -43,6 +43,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
@@ -2123,7 +2124,7 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 	for _, d := range data {
 		a := App{Name: d.name, Plan: appTypes.Plan{Name: d.plan}, TeamOwner: d.teamOwner, Pool: d.pool, Routers: []appTypes.AppRouter{{Name: d.router}}}
-		if valid := a.validateNew(context.TODO()); valid != nil && valid.Error() != d.expected {
+		if valid := a.validateNew(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
@@ -2165,7 +2166,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 2)
 	for _, u := range units {
-		c.Assert(u.Status, check.Equals, provision.StatusStopped)
+		c.Assert(u.Status, check.Equals, provTypes.UnitStatusStopped)
 	}
 }
 
@@ -2319,14 +2320,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
-		InternalAddresses: []provision.AppInternalAddress{
-			{
-				Domain:   "name-web.cluster.local",
-				Protocol: "TCP",
-				Port:     4000,
-				Process:  "web",
-			},
-		},
 	}
 	err = CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
@@ -2382,12 +2375,34 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"ip": "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name-web.cluster.local",
+				"Domain":   "name-web.fake-cluster.local",
 				"Protocol": "TCP",
-				"Port":     float64(4000),
+				"Port":     float64(80),
 				"Process":  "web",
 				"Version":  "",
-			}},
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs.fake-cluster.local",
+				"Protocol": "UDP",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs-v2.fake-cluster.local",
+				"Protocol": "UDP",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "name-web-v2.fake-cluster.local",
+				"Protocol": "TCP",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Version":  "2",
+			},
+		},
 		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
 		"owner":       s.user.Email,
@@ -2400,12 +2415,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"router":     "fake",
 		"routeropts": map[string]interface{}{"opt1": "val1"},
@@ -2440,7 +2449,9 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2473,16 +2484,8 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		TeamOwner:   "myteam",
 		Routers:     []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:        []string{"tag a", "tag b"},
-		InternalAddresses: []provision.AppInternalAddress{
-			{
-				Domain:   "name-web.cluster.local",
-				Protocol: "TCP",
-				Port:     4000,
-				Process:  "web",
-			},
-		},
 	}
-	err = app.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	err = app.AutoScale(provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -2494,12 +2497,34 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		"ip":       "name.fakerouter.com",
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name-web.cluster.local",
-				"Protocol": "TCP",
-				"Port":     float64(4000),
-				"Version":  "",
+				"Domain":   "name-web.fake-cluster.local",
+				"Port":     float64(80),
 				"Process":  "web",
-			}},
+				"Protocol": "TCP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs-v2.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "name-web-v2.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "2",
+			},
+		},
 		"provisioner": "fake",
 		"cname":       []interface{}{"name.mycompany.com"},
 		"owner":       "appOwner",
@@ -2512,12 +2537,6 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2555,7 +2574,9 @@ func (s *S) TestAppMarshalJSONWithAutoscaleProv(c *check.C) {
 		},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2568,14 +2589,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 	app := App{
 		Name:    "name",
 		Routers: []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{}}},
-		InternalAddresses: []provision.AppInternalAddress{
-			{
-				Domain:   "name-web.cluster.local",
-				Protocol: "TCP",
-				Port:     4000,
-				Process:  "web",
-			},
-		},
 	}
 	err := routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -2596,12 +2609,6 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 			"name":     "",
 			"memory":   float64(0),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2629,15 +2636,39 @@ func (s *S) TestAppMarshalJSONUnitsError(c *check.C) {
 		},
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name-web.cluster.local",
-				"Protocol": "TCP",
-				"Port":     float64(4000),
+				"Domain":   "name-web.fake-cluster.local",
+				"Port":     float64(80),
 				"Process":  "web",
+				"Protocol": "TCP",
 				"Version":  "",
-			}},
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs-v2.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "name-web-v2.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "2",
+			},
+		},
 		"serviceInstanceBinds": []interface{}{},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2666,14 +2697,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
 		Tags:            []string{"tag a", "tag b"},
 		Metadata:        appTypes.Metadata{Labels: []appTypes.MetadataItem{{Name: "label", Value: "value"}}},
-		InternalAddresses: []provision.AppInternalAddress{
-			{
-				Domain:   "name-web.cluster.local",
-				Protocol: "TCP",
-				Port:     4000,
-				Process:  "web",
-			},
-		},
 	}
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
@@ -2694,12 +2717,6 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 			"name":     "myplan",
 			"memory":   float64(64),
 			"cpumilli": float64(0),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2728,14 +2745,38 @@ func (s *S) TestAppMarshalJSONPlatformLocked(c *check.C) {
 		"serviceInstanceBinds": []interface{}{},
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name-web.cluster.local",
-				"Protocol": "TCP",
-				"Port":     float64(4000),
+				"Domain":   "name-web.fake-cluster.local",
+				"Port":     float64(80),
 				"Process":  "web",
+				"Protocol": "TCP",
 				"Version":  "",
-			}},
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "name-logs-v2.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "name-web-v2.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "2",
+			},
+		},
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2759,21 +2800,15 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 		Plan:            appTypes.Plan{Name: "small", CPUMilli: 1000, Memory: 128},
 		TeamOwner:       "team-one",
 		Routers:         []appTypes.AppRouter{{Name: "fake", Opts: map[string]string{"opt1": "val1"}}},
-		InternalAddresses: []provision.AppInternalAddress{
-			{
-				Domain:   "name-web.cluster.local",
-				Protocol: "TCP",
-				Port:     4000,
-				Process:  "web",
-			},
-		},
 	}
 	err = routertest.FakeRouter.EnsureBackend(context.TODO(), &app, router.EnsureBackendOpts{})
 	c.Assert(err, check.IsNil)
 	s.mockService.AppQuota.OnGet = func(_ quota.QuotaItem) (*quota.Quota, error) {
 		return &quota.Quota{InUse: 100, Limit: 777}, nil
 	}
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2795,12 +2830,6 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -2829,12 +2858,34 @@ func (s *S) TestAppMarshalJSONWithCustomQuota(c *check.C) {
 		"serviceInstanceBinds": []interface{}{},
 		"internalAddresses": []interface{}{
 			map[string]interface{}{
-				"Domain":   "name-web.cluster.local",
-				"Protocol": "TCP",
-				"Port":     float64(4000),
+				"Domain":   "my-awesome-app-web.fake-cluster.local",
+				"Port":     float64(80),
 				"Process":  "web",
+				"Protocol": "TCP",
 				"Version":  "",
-			}},
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-logs.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "",
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-logs-v2.fake-cluster.local",
+				"Port":     float64(12201),
+				"Process":  "logs",
+				"Protocol": "UDP",
+				"Version":  "2",
+			},
+			map[string]interface{}{
+				"Domain":   "my-awesome-app-web-v2.fake-cluster.local",
+				"Port":     float64(80),
+				"Process":  "web",
+				"Protocol": "TCP",
+				"Version":  "2",
+			},
+		},
 	})
 
 }
@@ -2905,7 +2956,9 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(instance3)
 	c.Assert(err, check.IsNil)
-	data, err := app.MarshalJSON()
+	appInfo, err := AppInfo(&app)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(appInfo)
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
@@ -2927,12 +2980,6 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 			"name":     "small",
 			"cpumilli": float64(1000),
 			"memory":   float64(128),
-			"router":   "fake",
-			"override": map[string]interface{}{
-				"cpumilli": nil,
-				"memory":   nil,
-				"cpuBurst": nil,
-			},
 		},
 		"metadata": map[string]interface{}{
 			"annotations": nil,
@@ -3485,7 +3532,8 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
-			Quota: quota.UnlimitedQuota,
+			Processes: []appTypes.Process{},
+			Quota:     quota.UnlimitedQuota,
 		},
 		{
 			Name:      "app2",
@@ -3513,7 +3561,8 @@ func (s *S) TestListUsesCachedRouterAddrs(c *check.C) {
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
-			Quota: quota.UnlimitedQuota,
+			Processes: []appTypes.Process{},
+			Quota:     quota.UnlimitedQuota,
 		},
 	})
 	s.mockService.Cache.OnList = func(keys ...string) ([]cache.CacheEntry, error) {
@@ -3546,6 +3595,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 		TeamOwner: s.team.Name,
 		Teams:     []string{s.team.Name},
 		Router:    "fake",
+		ctx:       context.TODO(),
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -3569,6 +3619,7 @@ func (s *S) TestListUsesCachedRouterAddrsWithLegacyRouter(c *check.C) {
 				Labels:      []appTypes.MetadataItem{},
 				Annotations: []appTypes.MetadataItem{},
 			},
+			Processes: []appTypes.Process{},
 			Routers: []appTypes.AppRouter{
 				{Name: "fake", Opts: map[string]string{}},
 			},
@@ -4014,7 +4065,7 @@ func (s *S) TestAppUnitsWithAutoscaler(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 
-	err = provisioner.SetAutoScale(context.TODO(), &a, provision.AutoScaleSpec{
+	err = provisioner.SetAutoScale(context.TODO(), &a, provTypes.AutoScaleSpec{
 		Process:    "web",
 		Version:    1,
 		MinUnits:   1,
@@ -5053,8 +5104,8 @@ func (s *S) TestUpdatePlanWithCPUBurstExceeds(c *check.C) {
 	s.plan = appTypes.Plan{
 		Name:     "something",
 		Memory:   268435456,
-		CPUBurst: appTypes.CPUBurst{MaxAllowed: 1.8},
-		Override: appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
+		CPUBurst: &appTypes.CPUBurst{MaxAllowed: 1.8},
+		Override: &appTypes.PlanOverride{CPUBurst: func(f float64) *float64 { return &f }(2)},
 	}
 	err := pool.SetPoolConstraint(&pool.PoolConstraint{
 		PoolExpr:  "pool1",
@@ -5739,31 +5790,33 @@ func (s *S) TestGetUUID(c *check.C) {
 	c.Assert(storedApp.UUID, check.DeepEquals, uuid)
 }
 
-func (s *S) TestFillInternalAddresses(c *check.C) {
+func (s *S) TestInternalAddresses(c *check.C) {
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: s.Pool}
-	err := app.fillInternalAddresses()
+
+	addresses, err := internalAddresses(&app)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.InternalAddresses, check.HasLen, 4)
-	c.Assert(app.InternalAddresses[0], check.DeepEquals, provision.AppInternalAddress{
+
+	c.Assert(addresses, check.HasLen, 4)
+	c.Assert(addresses[0], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:   "test-web.fake-cluster.local",
 		Protocol: "TCP",
 		Process:  "web",
 		Port:     80,
 	})
-	c.Assert(app.InternalAddresses[1], check.DeepEquals, provision.AppInternalAddress{
+	c.Assert(addresses[1], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:   "test-logs.fake-cluster.local",
 		Protocol: "UDP",
 		Process:  "logs",
 		Port:     12201,
 	})
-	c.Assert(app.InternalAddresses[2], check.DeepEquals, provision.AppInternalAddress{
+	c.Assert(addresses[2], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:   "test-logs-v2.fake-cluster.local",
 		Protocol: "UDP",
 		Process:  "logs",
 		Version:  "2",
 		Port:     12201,
 	})
-	c.Assert(app.InternalAddresses[3], check.DeepEquals, provision.AppInternalAddress{
+	c.Assert(addresses[3], check.DeepEquals, appTypes.AppInternalAddress{
 		Domain:   "test-web-v2.fake-cluster.local",
 		Protocol: "TCP",
 		Process:  "web",
@@ -5818,18 +5871,19 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	oldProvisioner := provision.DefaultProvisioner
 	defer func() { provision.DefaultProvisioner = oldProvisioner }()
 	provision.DefaultProvisioner = "autoscaleProv"
+	autoScaleProv := &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}
 	provision.Register("autoscaleProv", func() (provision.Provisioner, error) {
-		return &provisiontest.AutoScaleProvisioner{FakeProvisioner: provisiontest.ProvisionerInstance}, nil
+		return autoScaleProv, nil
 	})
 	defer provision.Unregister("autoscaleProv")
 	a := App{Name: "my-test-app", TeamOwner: s.team.Name}
-	err := a.AutoScale(provision.AutoScaleSpec{Process: "p1"})
+	err := a.AutoScale(provTypes.AutoScaleSpec{Process: "p1"})
 	c.Assert(err, check.IsNil)
-	err = a.AutoScale(provision.AutoScaleSpec{Process: "p2"})
+	err = a.AutoScale(provTypes.AutoScaleSpec{Process: "p2"})
 	c.Assert(err, check.IsNil)
 	scales, err := a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p1"},
 		{Process: "p2"},
 	})
@@ -5837,13 +5891,13 @@ func (s *S) TestAutoscaleWithAutoscaleProvisioner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	scales, err = a.AutoScaleInfo()
 	c.Assert(err, check.IsNil)
-	c.Assert(scales, check.DeepEquals, []provision.AutoScaleSpec{
+	c.Assert(scales, check.DeepEquals, []provTypes.AutoScaleSpec{
 		{Process: "p2"},
 	})
 }
 
 func (s *S) TestGetInternalBindableAddresses(c *check.C) {
-	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, provisioner: s.provisioner}
+	app := App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := CreateApp(context.TODO(), &app, s.user)
 	c.Assert(err, check.IsNil)
 	addresses, err := app.GetInternalBindableAddresses()

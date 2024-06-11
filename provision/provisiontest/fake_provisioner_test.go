@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 )
 
@@ -50,7 +51,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TestFakeAppAddUnit(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(provision.Unit{ID: "jean-0"})
+	app.AddUnit(provTypes.Unit{ID: "jean-0"})
 	c.Assert(app.units, check.HasLen, 1)
 }
 
@@ -318,9 +319,9 @@ func (s *S) TestStops(c *check.C) {
 }
 
 func (s *S) TestGetUnits(c *check.C) {
-	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
-		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provision.StatusStarted},
+	list := []provTypes.Unit{
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provTypes.UnitStatusStarted},
+		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.15", Status: provTypes.UnitStatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -742,7 +743,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
+	p.AddUnit(app, provTypes.Unit{ID: "red-sector/1"})
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -754,7 +755,7 @@ func (s *S) TestFakeProvisionerUnits(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(context.TODO(), app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
+	p.AddUnit(app, provTypes.Unit{ID: "red-sector/1"})
 	units, err := p.Units(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -769,8 +770,8 @@ func (s *S) TestFakeProvisionerUnitsAppNotFound(c *check.C) {
 }
 
 func (s *S) TestGetAppFromUnitID(c *check.C) {
-	list := []provision.Unit{
-		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provision.StatusStarted},
+	list := []provTypes.Unit{
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", IP: "10.10.10.10", Status: provTypes.UnitStatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
