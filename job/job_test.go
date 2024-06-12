@@ -1009,8 +1009,9 @@ func (s *S) TestGetEnvs(c *check.C) {
 			Public: true,
 		},
 		"TSURU_SERVICES": {
-			Name:  "TSURU_SERVICES",
-			Value: "{}",
+			Name:      "TSURU_SERVICES",
+			Value:     "{}",
+			ManagedBy: "tsuru",
 		},
 	}
 	env := servicemanager.Job.GetEnvs(context.TODO(), job)
@@ -1050,13 +1051,15 @@ func (s *S) TestGetEnvsWithServiceEnvs(c *check.C) {
 			Public: true,
 		},
 		"MY_SERVICE_VAR": {
-			Name:   "MY_SERVICE_VAR",
-			Value:  "my-service-value",
-			Public: true,
+			Name:      "MY_SERVICE_VAR",
+			Value:     "my-service-value",
+			ManagedBy: "my-service/my-instance",
+			Public:    true,
 		},
 		"TSURU_SERVICES": {
-			Name:  "TSURU_SERVICES",
-			Value: "{\"my-service\":[{\"instance_name\":\"my-instance\",\"envs\":{\"MY_SERVICE_VAR\":\"my-service-value\"}}]}",
+			Name:      "TSURU_SERVICES",
+			Value:     "{\"my-service\":[{\"instance_name\":\"my-instance\",\"envs\":{\"MY_SERVICE_VAR\":\"my-service-value\"}}]}",
+			ManagedBy: "tsuru",
 		},
 	}
 	envs := servicemanager.Job.GetEnvs(context.TODO(), job)
@@ -1110,9 +1113,10 @@ func (s *S) TestJobEnvsWithServiceEnvConflict(c *check.C) {
 			Public: true,
 		},
 		"DB_HOST": {
-			Name:   "DB_HOST",
-			Value:  "fake.host2",
-			Public: false,
+			Name:      "DB_HOST",
+			Value:     "fake.host2",
+			Public:    false,
+			ManagedBy: "my-service/my-instance-2",
 		},
 	}
 	env := servicemanager.Job.GetEnvs(context.TODO(), job)

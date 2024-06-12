@@ -1567,13 +1567,28 @@ func (app *App) Envs() map[string]bindTypes.EnvVar {
 		}
 	}
 	for _, e := range app.ServiceEnvs {
-		mergedEnvs[e.Name] = e.EnvVar
+		envVar := e.EnvVar
+		envVar.ManagedBy = fmt.Sprintf("%s/%s", e.ServiceName, e.InstanceName)
+		mergedEnvs[e.Name] = envVar
 	}
 	sort.Strings(toInterpolateKeys)
 	for _, envName := range toInterpolateKeys {
 		tsuruEnvs.Interpolate(mergedEnvs, toInterpolate, envName, toInterpolate[envName])
 	}
 	mergedEnvs[tsuruEnvs.TsuruServicesEnvVar] = tsuruEnvs.ServiceEnvsFromEnvVars(app.ServiceEnvs)
+
+	mergedEnvs["TSURU_APPNAME"] = bindTypes.EnvVar{
+		Name:      "TSURU_APPNAME",
+		Value:     app.Name,
+		ManagedBy: "tsuru",
+	}
+
+	mergedEnvs["TSURU_APPDIR"] = bindTypes.EnvVar{
+		Name:      "TSURU_APPDIR",
+		Value:     defaultAppDir,
+		ManagedBy: "tsuru",
+	}
+
 	return mergedEnvs
 }
 

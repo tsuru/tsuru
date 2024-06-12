@@ -1007,9 +1007,10 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
+			Name:      "DATABASE_HOST",
+			Value:     "localhost",
+			Public:    false,
+			ManagedBy: "service/instance",
 		},
 	}
 	newAppEnvs := newApp.Envs()
@@ -1200,9 +1201,24 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
+			Name:      "DATABASE_HOST",
+			Value:     "localhost",
+			Public:    false,
+			ManagedBy: "s1/si1",
+		},
+
+		"TSURU_APPNAME": {
+			Name:      "TSURU_APPNAME",
+			Value:     "myapp",
+			Public:    false,
+			ManagedBy: "tsuru",
+		},
+
+		"TSURU_APPDIR": {
+			Name:      "TSURU_APPDIR",
+			Value:     "/home/application/current",
+			Public:    false,
+			ManagedBy: "tsuru",
 		},
 	}
 	newAppEnvs := newApp.Envs()
@@ -1617,19 +1633,22 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	delete(allEnvs, "TSURU_APPNAME")
 	c.Assert(allEnvs, check.DeepEquals, map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
+			Name:      "DATABASE_HOST",
+			Value:     "localhost",
+			ManagedBy: "srv1/myinstance",
+			Public:    false,
 		},
 		"DATABASE_PORT": {
-			Name:   "DATABASE_PORT",
-			Value:  "3306",
-			Public: false,
+			Name:      "DATABASE_PORT",
+			Value:     "3306",
+			ManagedBy: "srv1/myinstance",
+			Public:    false,
 		},
 		"DATABASE_USER": {
-			Name:   "DATABASE_USER",
-			Value:  "root",
-			Public: false,
+			Name:      "DATABASE_USER",
+			Value:     "root",
+			ManagedBy: "srv1/myinstance",
+			Public:    false,
 		},
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
@@ -1669,9 +1688,10 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["ZMQ_PEER"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "ZMQ_PEER",
-		Value:  "8.8.8.8",
-		Public: false,
+		Name:      "ZMQ_PEER",
+		Value:     "8.8.8.8",
+		ManagedBy: "srv1/myinstance",
+		Public:    false,
 	})
 }
 
@@ -1706,9 +1726,10 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_HOST",
-		Value:  "localhost",
-		Public: false,
+		Name:      "DATABASE_HOST",
+		Value:     "localhost",
+		ManagedBy: "myservice/myinstance",
+		Public:    false,
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
@@ -1744,9 +1765,10 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_HOST",
-		Value:  "localhost",
-		Public: false,
+		Name:      "DATABASE_HOST",
+		Value:     "localhost",
+		ManagedBy: "myservice/myinstance",
+		Public:    false,
 	})
 	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
@@ -1799,9 +1821,10 @@ func (s *S) TestAddInstanceMultipleServices(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_HOST",
-		Value:  "host3",
-		Public: false,
+		Name:      "DATABASE_HOST",
+		Value:     "host3",
+		ManagedBy: "mongodb/instance3",
+		Public:    false,
 	})
 }
 
@@ -1825,9 +1848,10 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs := a.Envs()
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_HOST",
-		Value:  "host2",
-		Public: false,
+		Name:      "DATABASE_HOST",
+		Value:     "host2",
+		ManagedBy: "mysql/instance2",
+		Public:    false,
 	})
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
@@ -1850,9 +1874,10 @@ func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *check.C) {
 	c.Assert(err, check.IsNil)
 	allEnvs = a.Envs()
 	c.Assert(allEnvs["DATABASE_HOST"], check.DeepEquals, bindTypes.EnvVar{
-		Name:   "DATABASE_HOST",
-		Value:  "host1",
-		Public: false,
+		Name:      "DATABASE_HOST",
+		Value:     "host1",
+		ManagedBy: "mysql/instance1",
+		Public:    false,
 	})
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
@@ -1936,8 +1961,9 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{
-		Name:  "DATABASE_NAME",
-		Value: "ourdb",
+		Name:      "DATABASE_NAME",
+		Value:     "ourdb",
+		ManagedBy: "mysql/ourdb",
 	})
 }
 
@@ -1970,8 +1996,9 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{
-		Name:  "DATABASE_NAME",
-		Value: "mydb",
+		Name:      "DATABASE_NAME",
+		Value:     "mydb",
+		ManagedBy: "mysql/mydb",
 	})
 }
 
@@ -2004,8 +2031,9 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 		},
 	})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{
-		Name:  "DATABASE_NAME",
-		Value: "mydb",
+		Name:      "DATABASE_NAME",
+		Value:     "mydb",
+		ManagedBy: "mysql/mydb",
 	})
 }
 
@@ -3188,8 +3216,19 @@ func (s *S) TestEnvs(c *check.C) {
 			Public: true,
 		},
 		"TSURU_SERVICES": {
-			Name:  "TSURU_SERVICES",
-			Value: "{}",
+			Name:      "TSURU_SERVICES",
+			Value:     "{}",
+			ManagedBy: "tsuru",
+		},
+		"TSURU_APPNAME": {
+			Name:      "TSURU_APPNAME",
+			Value:     "time",
+			ManagedBy: "tsuru",
+		},
+		"TSURU_APPDIR": {
+			Name:      "TSURU_APPDIR",
+			Value:     "/home/application/current",
+			ManagedBy: "tsuru",
 		},
 	}
 	env := app.Envs()
@@ -3236,8 +3275,10 @@ func (s *S) TestEnvsInterpolate(c *check.C) {
 		"g":              {Name: "g", Value: "", Alias: "g"},
 		"h":              {Name: "h", Value: "host1", Alias: "DB_HOST"},
 		"i":              {Name: "i", Value: "", Alias: "notfound"},
-		"DB_HOST":        {Name: "DB_HOST", Value: "host1"},
-		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}"},
+		"DB_HOST":        {Name: "DB_HOST", Value: "host1", ManagedBy: "srv1/inst1"},
+		"TSURU_SERVICES": {Name: "TSURU_SERVICES", Value: "{\"srv1\":[{\"instance_name\":\"inst1\",\"envs\":{\"DB_HOST\":\"host1\"}}]}", ManagedBy: "tsuru"},
+		"TSURU_APPNAME":  {Name: "TSURU_APPNAME", Value: "time", ManagedBy: "tsuru"},
+		"TSURU_APPDIR":   {Name: "TSURU_APPDIR", Value: "/home/application/current", ManagedBy: "tsuru"},
 	}
 	env := app.Envs()
 	c.Assert(env, check.DeepEquals, expected)
@@ -3283,13 +3324,16 @@ func (s *S) TestEnvsWithServiceEnvConflict(c *check.C) {
 			Public: true,
 		},
 		"DB_HOST": {
-			Name:  "DB_HOST",
-			Value: "host2",
+			Name:      "DB_HOST",
+			Value:     "host2",
+			ManagedBy: "srv1/inst2",
 		},
 	}
 	env := app.Envs()
 	serviceEnvsRaw := env[tsuruEnvs.TsuruServicesEnvVar]
 	delete(env, tsuruEnvs.TsuruServicesEnvVar)
+	delete(env, "TSURU_APPNAME")
+	delete(env, "TSURU_APPDIR")
 	c.Assert(env, check.DeepEquals, expected)
 	var serviceEnvVal map[string]interface{}
 	err := json.Unmarshal([]byte(serviceEnvsRaw.Value), &serviceEnvVal)

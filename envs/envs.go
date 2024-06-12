@@ -50,8 +50,9 @@ func ServiceEnvsFromEnvVars(vars []bindTypes.ServiceEnvVar) bindTypes.EnvVar {
 	}
 	jsonVal, _ := json.Marshal(result)
 	return bindTypes.EnvVar{
-		Name:   TsuruServicesEnvVar,
-		Value:  string(jsonVal),
-		Public: false,
+		Name:      TsuruServicesEnvVar,
+		Value:     string(jsonVal),
+		ManagedBy: "tsuru",
+		Public:    false,
 	}
 }
