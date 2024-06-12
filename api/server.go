@@ -16,12 +16,14 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/ajg/form"
 	"github.com/codegangsta/negroni"
 	"github.com/felixge/fgprof"
+	"github.com/fsnotify/fsnotify"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -646,7 +648,7 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 	}
 	if tlsListen != "" {
 		srvConf.validateCertificate, _ = config.GetBool("tls:validate-certificate")
-		if _, err := srvConf.loadCertificate(); err != nil {
+		if _, err := srvConf.readCertificateFromFilesystem(); err != nil {
 			return nil, err
 		}
 		if srvConf.validateCertificate {
@@ -656,16 +658,15 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 			shutdown.Register(certValidator)
 			certValidator.start()
 		}
-		autoReloadInterval, err := config.GetDuration("tls:auto-reload:interval")
-		if err == nil && autoReloadInterval > 0 {
-			reloader := &certificateReloader{
-				conf:     &srvConf,
-				interval: autoReloadInterval,
-			}
-			shutdown.Register(reloader)
-			reloader.start()
-			srvConf.certificateReloadedCh = make(chan bool)
+
+		srvConf.certificateReloadedCh = make(chan bool)
+
+		reloader := &certificateReloader{
+			conf: &srvConf,
 		}
+		shutdown.Register(reloader)
+		reloader.start()
+
 		srvConf.httpsSrv = &http.Server{
 			ReadTimeout:  time.Duration(readTimeout) * time.Second,
 			WriteTimeout: time.Duration(writeTimeout) * time.Second,
@@ -673,12 +674,12 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 			Handler:      handler,
 			TLSConfig: &tls.Config{
 				GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-					srvConf.Lock()
-					defer srvConf.Unlock()
-					if srvConf.certificate == nil {
+					cert := srvConf.certificate.Load()
+
+					if cert == nil {
 						return nil, errors.New("there are no certificates to offer")
 					}
-					return srvConf.certificate, nil
+					return cert, nil
 				},
 			},
 		}
@@ -687,10 +688,9 @@ func createServers(handler http.Handler) (*srvConfig, error) {
 }
 
 type certificateReloader struct {
-	conf     *srvConfig
-	interval time.Duration
-	stopCh   chan bool
-	once     *sync.Once
+	conf   *srvConfig
+	stopCh chan bool
+	once   *sync.Once
 }
 
 func (cr *certificateReloader) Shutdown(ctx context.Context) error {
@@ -708,21 +708,58 @@ func (cr *certificateReloader) start() {
 	cr.once.Do(func() {
 		cr.stopCh = make(chan bool)
 		go func() {
+			watcher, err := fsnotify.NewWatcher()
+			if err != nil {
+				log.Debugf("[certificate-reloader] could not initialize watcher: %s", err.Error())
+				return
+			}
+
+			defer watcher.Close()
+
+			// Add path of cert
+			err = watcher.Add(cr.conf.certFile)
+			if err != nil {
+				log.Debugf("[certificate-reloader] could watch cert file, err: %s\n", err.Error())
+				return
+			}
+
+			// Add path of cert
+			err = watcher.Add(cr.conf.keyFile)
+			if err != nil {
+				log.Debugf("[certificate-reloader] could watch key file, err: %s\n", err.Error())
+				return
+			}
+
 			for {
-				log.Debugf("[certificate-reloader] starting the certificate reloader")
-				changed, err := cr.conf.loadCertificate()
-				if err != nil {
-					log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
-				}
-				if changed {
-					fmt.Println("[certificate-reloader] a new certificate was successfully loaded")
-					cr.conf.certificateReloadedCh <- true
-				}
-				log.Debugf("[certificate-reloader] finishing the certificate reloader")
 				select {
 				case <-cr.stopCh:
 					return
-				case <-time.After(cr.interval):
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+					if event.Has(fsnotify.Write) {
+						log.Debugf("[certificate-reloader] modified file: %s\n", event.Name)
+
+						changed, err := cr.conf.readCertificateFromFilesystem()
+						if err != nil {
+							log.Errorf("[certificate-reloader] error when reloading a certificate: %v\n", err)
+						}
+						if changed {
+							log.Debugf("[certificate-reloader] a new certificate was successfully loaded")
+
+							// send message to certificateReloadedCh without blocking
+							select {
+							case cr.conf.certificateReloadedCh <- true:
+							default:
+							}
+						}
+					}
+				case err, ok := <-watcher.Errors:
+					if !ok {
+						return
+					}
+					log.Errorf("[certificate-reloader] error: %s", err.Error())
 				}
 			}
 		}()
@@ -768,17 +805,14 @@ func (cv *certificateValidator) start() {
 		go func() {
 			for {
 				log.Debug("[certificate-validator] starting certificate validator")
-				cv.conf.Lock()
-				certificate, err := x509.ParseCertificate(cv.conf.certificate.Certificate[0])
+				certificate, err := x509.ParseCertificate(cv.conf.certificate.Load().Certificate[0])
 				if err != nil {
 					log.Errorf("[certificate-validator] could not parse the current certificate as a x509 certificate: %v\n", err)
 					time.Sleep(time.Second)
-					cv.conf.Unlock()
 					continue
 				}
 				nextValidation := time.Until(certificate.NotAfter)
-				err = validateTLSCertificate(cv.conf.certificate, cv.conf.roots)
-				cv.conf.Unlock()
+				err = validateTLSCertificate(cv.conf.certificate.Load(), cv.conf.roots)
 				if err != nil {
 					log.Errorf("[certificate-validator] the currently loaded certificate is invalid: %v\n", err)
 					cv.shutdownServerFunc(err)
@@ -848,7 +882,7 @@ type srvConfig struct {
 	keyFile         string
 	httpSrv         *http.Server
 	httpsSrv        *http.Server
-	certificate     *tls.Certificate
+	certificate     atomic.Pointer[tls.Certificate]
 	shutdownTimeout time.Duration
 	// roots holds a set of trusted certificates that are used by certificate
 	// validator to check a given certificate. If roots is nil, the system
@@ -858,14 +892,11 @@ type srvConfig struct {
 	// certificate reloader routine.
 	certificateReloadedCh chan bool
 	once                  sync.Once
-	sync.Mutex
-	shutdownCalled      bool
-	validateCertificate bool
+	shutdownCalled        bool
+	validateCertificate   bool
 }
 
-func (conf *srvConfig) loadCertificate() (bool, error) {
-	conf.Lock()
-	defer conf.Unlock()
+func (conf *srvConfig) readCertificateFromFilesystem() (changed bool, err error) {
 	newCertificate, err := tls.LoadX509KeyPair(conf.certFile, conf.keyFile)
 	if err != nil {
 		return false, err
@@ -875,12 +906,12 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 			return false, err
 		}
 	}
-	if conf.certificate == nil {
-		conf.certificate = &newCertificate
+	if conf.certificate.Load() == nil {
+		conf.certificate.Store(&newCertificate)
 		return true, nil
 	}
-	if len(newCertificate.Certificate) != len(conf.certificate.Certificate) {
-		conf.certificate = &newCertificate
+	if len(newCertificate.Certificate) != len(conf.certificate.Load().Certificate) {
+		conf.certificate.Store(&newCertificate)
 		return true, nil
 	}
 	for i := 0; i < len(newCertificate.Certificate); i++ {
@@ -888,9 +919,9 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		older, _ := x509.ParseCertificate(conf.certificate.Certificate[i])
+		older, _ := x509.ParseCertificate(conf.certificate.Load().Certificate[i])
 		if !older.Equal(newer) {
-			conf.certificate = &newCertificate
+			conf.certificate.Store(&newCertificate)
 			return true, nil
 		}
 	}
@@ -898,8 +929,6 @@ func (conf *srvConfig) loadCertificate() (bool, error) {
 }
 
 func (conf *srvConfig) shutdown(shutdownTimeout time.Duration) {
-	conf.Lock()
-	defer conf.Unlock()
 	conf.once.Do(func() {
 		conf.onceShutdown(shutdownTimeout)
 	})
@@ -945,8 +974,6 @@ func (conf *srvConfig) handleSignals(shutdownTimeout time.Duration) {
 }
 
 func (conf *srvConfig) start() <-chan error {
-	conf.Lock()
-	defer conf.Unlock()
 	errChan := make(chan error, 2)
 	if conf.shutdownCalled {
 		errChan <- errors.New("shutdown called")
