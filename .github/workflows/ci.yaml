@@ -50,6 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Run govulncheck
     steps:
+    - uses: actions/setup-go@v3
+      with:
+        go-version: '1.21.11'
     - id: govulncheck
       uses: golang/govulncheck-action@v1
   check-contributors:
