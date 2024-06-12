@@ -738,7 +738,18 @@ func (cr *certificateReloader) start() {
 					if !ok {
 						return
 					}
-					if event.Has(fsnotify.Write) {
+
+					forceReload := false
+
+					if event.Has(fsnotify.Remove) {
+						// k8s configmaps uses symlinks, we need this workaround.
+						// original configmap file is removed
+						watcher.Remove(event.Name)
+						watcher.Add(event.Name)
+						forceReload = true
+					}
+
+					if event.Has(fsnotify.Write) || forceReload {
 						log.Debugf("[certificate-reloader] modified file: %s\n", event.Name)
 
 						changed, err := cr.conf.readCertificateFromFilesystem()
