@@ -1130,14 +1130,19 @@ func (app *App) validate() error {
 
 func (app *App) validatePlan() error {
 	cpuBurst := app.Plan.CPUBurst
+	planOverride := app.Plan.Override
 
 	if cpuBurst == nil {
 		cpuBurst = &appTypes.CPUBurst{}
 	}
 
+	if planOverride == nil {
+		planOverride = &appTypes.PlanOverride{}
+	}
+
 	if (cpuBurst.MaxAllowed != 0) &&
-		(app.Plan.Override.CPUBurst != nil) &&
-		(*app.Plan.Override.CPUBurst > app.Plan.CPUBurst.MaxAllowed) {
+		(planOverride.CPUBurst != nil) &&
+		(*planOverride.CPUBurst > cpuBurst.MaxAllowed) {
 
 		msg := fmt.Sprintf("CPU burst exceeds the maximum allowed by plan %q", app.Plan.Name)
 		return &tsuruErrors.ValidationError{Message: msg}
