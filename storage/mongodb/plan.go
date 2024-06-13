@@ -11,7 +11,11 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/app"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const plansCollectionName = "plans"
@@ -64,11 +68,11 @@ func (s *PlanStorage) Insert(ctx context.Context, p app.Plan) error {
 }
 
 func (s *PlanStorage) FindAll(ctx context.Context) ([]app.Plan, error) {
-	return s.findByQuery(ctx, nil)
+	return s.findByQuery(ctx, mongoBSON.M{})
 }
 
 func (s *PlanStorage) FindDefault(ctx context.Context) (*app.Plan, error) {
-	plans, err := s.findByQuery(ctx, bson.M{"default": true})
+	plans, err := s.findByQuery(ctx, mongoBSON.M{"default": true})
 	if err != nil {
 		return nil, err
 	}
@@ -81,23 +85,30 @@ func (s *PlanStorage) FindDefault(ctx context.Context) (*app.Plan, error) {
 	return &plans[0], nil
 }
 
-func (s *PlanStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Plan, error) {
+func (s *PlanStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]app.Plan, error) {
 	span := newMongoDBSpan(ctx, mongoSpanFind, plansCollectionName)
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(plansCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	var plans []planOnMongoDB
-	err = plansCollection(conn).Find(query).Sort("_id").All(&plans)
+
+	cursor, err := collection.Find(ctx, query, &options.FindOptions{Sort: mongoBSON.M{"_id": 1}})
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
+
+	plans := []planOnMongoDB{}
+	err = cursor.All(ctx, &plans)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
 	appPlans := make([]app.Plan, len(plans))
 	for i, p := range plans {
 		appPlans[i] = app.Plan(p)
@@ -111,16 +122,15 @@ func (s *PlanStorage) FindByName(ctx context.Context, name string) (*app.Plan, e
 	defer span.Finish()
 
 	var p planOnMongoDB
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(plansCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	err = plansCollection(conn).FindId(name).One(&p)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&p)
 	if err != nil {
 		span.SetError(err)
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			err = app.ErrPlanNotFound
 		}
 		return nil, err
