@@ -48,7 +48,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})

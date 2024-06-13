@@ -278,7 +278,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.AddRouter(appRouter)
+	return a.AddRouter(ctx, appRouter)
 }
 
 // title: update app router
@@ -342,7 +342,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.UpdateRouter(appRouter)
+	return a.UpdateRouter(ctx, appRouter)
 }
 
 // title: delete app router
@@ -354,6 +354,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //	200: OK
 //	404: App or router not found
 func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	routerName := r.URL.Query().Get(":router")
 	a, err := getAppFromContext(appName, r)
@@ -378,7 +379,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.RemoveRouter(routerName)
+	err = a.RemoveRouter(ctx, routerName)
 	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -395,6 +396,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //	204: No content
 //	404: App not found
 func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -406,7 +408,7 @@ func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	routers, err := a.GetRoutersWithAddr()
+	routers, err := a.GetRoutersWithAddr(ctx)
 	if err != nil {
 		return err
 	}

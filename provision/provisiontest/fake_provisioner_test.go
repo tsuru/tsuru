@@ -145,7 +145,7 @@ func (s *S) TestFakeAppGetCname(c *check.C) {
 
 func (s *S) TestFakeAppAddInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -156,7 +156,7 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance(bind.AddInstanceArgs{
+	err = app.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
@@ -184,7 +184,7 @@ func (s *S) TestFakeAppAddInstance(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -195,7 +195,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.AddInstance(bind.AddInstanceArgs{
+	err = app.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mongodb",
@@ -206,7 +206,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(bind.RemoveInstanceArgs{
+	err = app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst1",
 		ShouldRestart: true,
@@ -224,7 +224,7 @@ func (s *S) TestFakeAppRemoveInstance(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance(bind.AddInstanceArgs{
+	err := app.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{
 				ServiceName:  "mysql",
@@ -235,7 +235,7 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 		ShouldRestart: true,
 	})
 	c.Assert(err, check.IsNil)
-	err = app.RemoveInstance(bind.RemoveInstanceArgs{
+	err = app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst2",
 		ShouldRestart: true,
@@ -245,7 +245,7 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *check.C) {
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *check.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance(bind.RemoveInstanceArgs{
+	err := app.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "inst2",
 		ShouldRestart: true,

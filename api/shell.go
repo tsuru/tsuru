@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	stdContext "context"
 	"fmt"
 	"io"
 	"net/http"
@@ -105,6 +106,7 @@ var (
 //
 //	101: Switch Protocol to websocket
 func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Fprintf(w, "unable to upgrade ws connection: %v", err)
@@ -215,10 +217,10 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Stdin:  conn,
 		Width:  width,
 		Height: height,
-		Units:  unitsForShell(a, unitID, isolated),
+		Units:  unitsForShell(ctx, a, unitID, isolated),
 		Term:   clientTerm,
 	}
-	err = a.Shell(opts)
+	err = a.Shell(ctx, opts)
 	if err != nil {
 		httpErr = &errors.HTTP{
 			Code:    http.StatusInternalServerError,
@@ -227,14 +229,14 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func unitsForShell(a app.App, unitID string, isolated bool) []string {
+func unitsForShell(ctx stdContext.Context, a app.App, unitID string, isolated bool) []string {
 	if isolated {
 		return nil
 	}
 	if unitID != "" {
 		return []string{unitID}
 	}
-	appUnits, _ := a.Units()
+	appUnits, _ := a.Units(ctx)
 	if len(appUnits) > 0 {
 		return []string{appUnits[0].ID}
 	}

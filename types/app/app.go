@@ -15,14 +15,47 @@ import (
 	"github.com/tsuru/tsuru/types/volume"
 )
 
-type App interface {
+// App is the main type in tsuru. An app represents a real world application.
+// This struct holds information about the app: its name, address, list of
+// teams that have access to it, used platform, etc.
+type App struct {
+	Env             map[string]bind.EnvVar
+	ServiceEnvs     []bind.ServiceEnvVar
+	Platform        string `bson:"framework"`
+	PlatformVersion string
+	Name            string
+	CName           []string
+	Teams           []string
+	TeamOwner       string
+	Owner           string
+	Plan            Plan
+	UpdatePlatform  bool
+	Lock            AppLock
+	Pool            string
+	Description     string
+	Router          string
+	RouterOpts      map[string]string
+	Deploys         uint
+	Tags            []string
+	Error           string
+	Routers         []AppRouter
+	Metadata        Metadata
+	Processes       []Process
+
+	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
+	UUID string
+
+	Quota quota.Quota
+}
+
+type AppInterface interface {
 	GetName() string
 	GetPool() string
 	GetTeamOwner() string
 	GetTeamsName() []string
 	GetPlatform() string
 	GetPlatformVersion() string
-	GetRegistry() (image.ImageRegistry, error)
+	GetRegistry(ctx context.Context) (image.ImageRegistry, error)
 	GetDeploys() uint
 	GetUpdatePlatform() bool
 }
@@ -58,8 +91,8 @@ type Filter struct {
 }
 
 type AppService interface {
-	GetByName(ctx context.Context, name string) (App, error)
-	List(ctx context.Context, filter *Filter) ([]App, error)
+	GetByName(ctx context.Context, name string) (AppInterface, error)
+	List(ctx context.Context, filter *Filter) ([]AppInterface, error)
 }
 
 type AppInfo struct {

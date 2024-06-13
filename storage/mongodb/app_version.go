@@ -278,7 +278,7 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 	return allAppVersions, nil
 }
 
-func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.App) (appTypes.AppVersions, error) {
+func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.AppInterface) (appTypes.AppVersions, error) {
 	query := bson.M{"appname": app.GetName()}
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	span.SetQueryStatement(query)
@@ -374,7 +374,7 @@ func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName s
 	return s.baseUpdateWhere(ctx, where, update)
 }
 
-func (s *appVersionStorage) importLegacyVersions(app appTypes.App) error {
+func (s *appVersionStorage) importLegacyVersions(app appTypes.AppInterface) error {
 	imgData, err := s.legacyImagesData(app.GetName())
 	if err != nil {
 		return err

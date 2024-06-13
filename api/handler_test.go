@@ -69,10 +69,6 @@ func errorHandlerWriteHeader(w http.ResponseWriter, r *http.Request) error {
 	return errorHandler(w, r)
 }
 
-func badRequestHandler(w http.ResponseWriter, r *http.Request) error {
-	return &errors.HTTP{Code: http.StatusBadRequest, Message: "some error"}
-}
-
 func simpleHandler(w http.ResponseWriter, r *http.Request) error {
 	fmt.Fprint(w, "success")
 	return nil
@@ -87,7 +83,7 @@ func authorizedErrorHandlerWriteHeader(w http.ResponseWriter, r *http.Request, t
 }
 
 func authorizedBadRequestHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return badRequestHandler(w, r)
+	return &errors.HTTP{Code: http.StatusBadRequest, Message: "some error"}
 }
 
 func authorizedSimpleHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

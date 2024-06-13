@@ -257,7 +257,7 @@ func (p *kubernetesProvisioner) InitializeCluster(ctx context.Context, c *provTy
 	if err != nil {
 		return err
 	}
-	stopClusterController(ctx, p, clusterClient)
+	stopClusterController(p, clusterClient)
 	_, err = getClusterController(p, clusterClient)
 	return err
 }
@@ -298,7 +298,7 @@ func (p *kubernetesProvisioner) ClusterHelp() provTypes.ClusterHelpInfo {
 }
 
 func (p *kubernetesProvisioner) DeleteCluster(ctx context.Context, c *provTypes.Cluster) error {
-	stopClusterControllerByName(ctx, p, c.Name)
+	stopClusterControllerByName(p, c.Name)
 	return nil
 }
 
@@ -633,7 +633,7 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 		fmt.Fprintf(w, "---- Calling app stop internally as the number of units is zero ----\n")
 		return GetProvisioner().Stop(ctx, a, processName, version, w)
 	}
-	patchType, patch, err := replicasPatch(newReplicas, processName)
+	patchType, patch, err := replicasPatch(newReplicas)
 	if err != nil {
 		return err
 	}
@@ -641,7 +641,7 @@ func changeUnits(ctx context.Context, a provision.App, units int, processName st
 	return patchDeployment(ctx, client, a, patchType, patch, dep, version, w, processName)
 }
 
-func replicasPatch(replicas int, process string) (types.PatchType, []byte, error) {
+func replicasPatch(replicas int) (types.PatchType, []byte, error) {
 	patch, err := json.Marshal([]interface{}{
 		map[string]interface{}{
 			"op":    "replace",
@@ -1288,7 +1288,7 @@ func (p *kubernetesProvisioner) UpdateApp(ctx context.Context, old, new provisio
 
 func (p *kubernetesProvisioner) Shutdown(ctx context.Context) error {
 	err := forEachCluster(ctx, func(client *ClusterClient) error {
-		stopClusterController(ctx, p, client)
+		stopClusterController(p, client)
 		return nil
 	})
 	if err == provTypes.ErrNoCluster {

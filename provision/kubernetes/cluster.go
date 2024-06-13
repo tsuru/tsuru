@@ -155,7 +155,7 @@ type ClusterClient struct {
 	restConfig *rest.Config
 }
 
-func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
+func getRestBaseConfig() (*rest.Config, error) {
 	gv, err := schema.ParseGroupVersion("/v1")
 	if err != nil {
 		return nil, err
@@ -175,7 +175,7 @@ func getRestBaseConfig(c *provTypes.Cluster) (*rest.Config, error) {
 var randomGenerator *rand.Rand = nil
 
 func getRestConfig(c *provTypes.Cluster) (*rest.Config, error) {
-	cfg, err := getRestBaseConfig(c)
+	cfg, err := getRestBaseConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +276,8 @@ func getRestConfigByKubeConfig(cluster *provTypes.Cluster) (*rest.Config, error)
 	return restConfig, nil
 }
 
-func getInClusterConfig(c *provTypes.Cluster) (*rest.Config, error) {
-	cfg, err := getRestBaseConfig(c)
+func getInClusterConfig() (*rest.Config, error) {
+	cfg, err := getRestBaseConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func NewClusterClient(clust *provTypes.Cluster) (*ClusterClient, error) {
 	if clust.KubeConfig != nil {
 		cfg, err = getRestConfigByKubeConfig(clust)
 	} else if clust.Local || len(clust.Addresses) == 0 {
-		cfg, err = getInClusterConfig(clust)
+		cfg, err = getInClusterConfig()
 	} else {
 		cfg, err = getRestConfig(clust)
 	}
@@ -326,7 +326,7 @@ func (c *ClusterClient) SetTimeout(timeout time.Duration) error {
 	return nil
 }
 
-func (c *ClusterClient) AppNamespace(ctx context.Context, app appTypes.App) (string, error) {
+func (c *ClusterClient) AppNamespace(ctx context.Context, app appTypes.AppInterface) (string, error) {
 	if app == nil {
 		return c.Namespace(), nil
 	}

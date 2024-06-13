@@ -89,12 +89,12 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	}
 	err := c.initLeaderElection(ctx)
 	if err != nil {
-		c.stop(ctx)
+		c.stop()
 		return nil, err
 	}
 	_, err = c.start()
 	if err != nil {
-		c.stop(ctx)
+		c.stop()
 		return nil, err
 	}
 	err = c.startJobInformer()
@@ -106,20 +106,20 @@ func getClusterController(p *kubernetesProvisioner, cluster *ClusterClient) (*cl
 	return c, nil
 }
 
-func stopClusterController(ctx context.Context, p *kubernetesProvisioner, cluster *ClusterClient) {
-	stopClusterControllerByName(ctx, p, cluster.Name)
+func stopClusterController(p *kubernetesProvisioner, cluster *ClusterClient) {
+	stopClusterControllerByName(p, cluster.Name)
 }
 
-func stopClusterControllerByName(ctx context.Context, p *kubernetesProvisioner, clusterName string) {
+func stopClusterControllerByName(p *kubernetesProvisioner, clusterName string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if c, ok := p.clusterControllers[clusterName]; ok {
-		c.stop(ctx)
+		c.stop()
 	}
 	delete(p.clusterControllers, clusterName)
 }
 
-func (c *clusterController) stop(ctx context.Context) {
+func (c *clusterController) stop() {
 	close(c.stopCh)
 	// HACK(cezarsa): ridiculous hack trying to prevent race condition
 	// described in https://github.com/kubernetes/kubernetes/pull/83112. As

@@ -101,6 +101,7 @@ func getApp(ctx stdContext.Context, name string) (*app.App, error) {
 //	404: App not found
 //	404: Version not found
 func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	versionString := r.URL.Query().Get(":version")
 	a, err := getAppFromContext(appName, r)
@@ -127,9 +128,8 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -320,6 +320,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	404: Not found
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -331,7 +332,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	appInfo, err := app.AppInfo(&a)
+	appInfo, err := app.AppInfo(ctx, &a)
 	if err != nil {
 		return err
 	}
@@ -491,7 +492,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	msg := map[string]interface{}{
 		"status": "success",
 	}
-	addrs, err := a.GetAddresses()
+	addrs, err := a.GetAddresses(ctx)
 	if err != nil {
 		return err
 	}
@@ -639,15 +640,14 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.Update(app.UpdateAppArgs{
+	err = a.Update(ctx, app.UpdateAppArgs{
 		UpdateData:    updateData,
 		Writer:        evt,
 		ShouldRestart: !noRestart,
@@ -691,6 +691,7 @@ func numberOfUnits(r *http.Request) (uint, error) {
 //	401: Unauthorized
 //	404: App not found
 func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -722,15 +723,14 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.AddUnits(n, processName, version, evt)
+	return a.AddUnits(ctx, n, processName, version, evt)
 }
 
 // title: remove units
@@ -745,6 +745,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //	403: Not enough reserved units
 //	404: App not found
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	n, err := numberOfUnits(r)
 	if err != nil {
 		return err
@@ -776,9 +777,8 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -838,7 +838,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 	defer func() { evt.Done(err) }()
 
-	err = a.KillUnit(unitName, force)
+	err = a.KillUnit(ctx, unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -956,6 +956,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //	401: Unauthorized
 //	404: App not found
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	msg := "You must provide the command to run"
 	command := InputValue(r, "command")
 	if len(command) < 1 {
@@ -994,7 +995,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	onceBool, _ := strconv.ParseBool(once)
 	isolatedBool, _ := strconv.ParseBool(isolated)
 	args := provision.RunArgs{Once: onceBool, Isolated: isolatedBool}
-	return a.Run(command, evt, args)
+	return a.Run(ctx, command, evt, args)
 }
 
 // title: get envs
@@ -1055,6 +1056,7 @@ func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error 
 //	401: Unauthorized
 //	404: App not found
 func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	var e apiTypes.Envs
 	err = ParseInput(r, &e)
 	if err != nil {
@@ -1131,7 +1133,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = a.SetEnvs(bind.SetEnvArgs{
+	err = a.SetEnvs(ctx, bind.SetEnvArgs{
 		Envs:          variables,
 		ManagedBy:     e.ManagedBy,
 		PruneUnused:   e.PruneUnused,
@@ -1197,6 +1199,7 @@ func isEnvVarUnixLike(name string) error {
 //	401: Unauthorized
 //	404: App not found
 func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	msg := "You must provide the list of environment variables."
 	if InputValue(r, "env") == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
@@ -1236,7 +1239,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
 	noRestart, _ := strconv.ParseBool(InputValue(r, "noRestart"))
-	return a.UnsetEnvs(bind.UnsetEnvArgs{
+	return a.UnsetEnvs(ctx, bind.UnsetEnvArgs{
 		VariableNames: variables,
 		ShouldRestart: !noRestart,
 		Writer:        evt,
@@ -1254,6 +1257,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 //	401: Unauthorized
 //	404: App not found
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	cNameMsg := "You must provide the cname."
 	cnames, _ := InputValues(r, "cname")
 	if len(cnames) == 0 {
@@ -1282,7 +1286,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = a.AddCName(cnames...); err == nil {
+	if err = a.AddCName(ctx, cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -1301,6 +1305,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 //	401: Unauthorized
 //	404: App not found
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	cnames, _ := InputValues(r, "cname")
 	if len(cnames) == 0 {
 		msg := "You must provide the cname."
@@ -1329,7 +1334,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = a.RemoveCName(cnames...); err == nil {
+	if err = a.RemoveCName(ctx, cnames...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
@@ -1511,7 +1516,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = a.ValidateService(serviceName)
+	err = a.ValidateService(ctx, serviceName)
 	if err != nil {
 		if err == pool.ErrPoolHasNoService {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -1667,6 +1672,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 //	401: Unauthorized
 //	404: App not found
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1694,9 +1700,8 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1773,6 +1778,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //	401: Unauthorized
 //	404: App not found
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	version := InputValue(r, "version")
 	process := InputValue(r, "process")
 	appName := r.URL.Query().Get(":app")
@@ -1800,9 +1806,8 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1822,6 +1827,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //	401: Unauthorized
 //	404: App not found
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	process := InputValue(r, "process")
 	version := InputValue(r, "version")
 	appName := r.URL.Query().Get(":app")
@@ -1849,9 +1855,8 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	ctx, cancel := evt.CancelableContext(a.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	a.ReplaceContext(ctx)
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1921,6 +1926,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 //	401: Unauthorized
 //	404: App not found
 func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -1949,7 +1955,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.SetCertificate(cname, certificate, key)
+	err = a.SetCertificate(ctx, cname, certificate, key)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -1967,6 +1973,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	401: Unauthorized
 //	404: App not found
 func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -1993,7 +2000,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.RemoveCertificate(cname)
+	err = a.RemoveCertificate(ctx, cname)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -2010,6 +2017,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 //	401: Unauthorized
 //	404: App not found
 func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -2021,7 +2029,7 @@ func listCertificates(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	result, err := a.GetCertificates()
+	result, err := a.GetCertificates(ctx)
 	if err != nil {
 		return err
 	}

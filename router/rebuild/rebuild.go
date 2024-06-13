@@ -22,7 +22,7 @@ type RebuildApp interface {
 	router.App
 	GetCname() []string
 	GetRouters() []appTypes.AppRouter
-	GetHealthcheckData() (routerTypes.HealthcheckData, error)
+	GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error)
 	RoutableAddresses(context.Context) ([]appTypes.RoutableAddresses, error)
 }
 
@@ -64,7 +64,7 @@ func RebuildRoutesInRouter(ctx context.Context, appRouter appTypes.AppRouter, o 
 	if routesErr != nil {
 		return routesErr
 	}
-	hcData, errHc := o.App.GetHealthcheckData()
+	hcData, errHc := o.App.GetHealthcheckData(ctx)
 	if errHc != nil {
 		return errHc
 	}

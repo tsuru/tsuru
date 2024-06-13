@@ -167,7 +167,7 @@ func podsForAppProcess(ctx context.Context, client *ClusterClient, ns string, se
 	return podList, nil
 }
 
-func allNewPodsRunning(ctx context.Context, client *ClusterClient, a provision.App, process string, dep *appsv1.Deployment, version appTypes.AppVersion) (bool, error) {
+func allNewPodsRunning(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment) (bool, error) {
 	replica, err := activeReplicaSetForDeployment(ctx, client, dep)
 	if err != nil {
 		if k8sErrors.IsNotFound(errors.Cause(err)) {
@@ -358,7 +358,7 @@ func waitForPodContainersRunning(ctx context.Context, client *ClusterClient, ori
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		return newInvalidPodPhaseError(ctx, client, pod, namespace)
+		return newInvalidPodPhaseError(ctx, client, pod)
 	})
 }
 
@@ -387,7 +387,7 @@ func lastEventForPod(ctx context.Context, client *ClusterClient, pod *apiv1.Pod)
 	return nil, nil
 }
 
-func newInvalidPodPhaseError(ctx context.Context, client *ClusterClient, pod *apiv1.Pod, namespace string) error {
+func newInvalidPodPhaseError(ctx context.Context, client *ClusterClient, pod *apiv1.Pod) error {
 	phaseWithMsg := fmt.Sprintf("%q", pod.Status.Phase)
 	if pod.Status.Message != "" {
 		phaseWithMsg = fmt.Sprintf("%s(%q)", phaseWithMsg, pod.Status.Message)
@@ -434,7 +434,7 @@ func waitForPod(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, 
 					break
 				}
 				if termData.ExitCode != 0 {
-					invalidErr := newInvalidPodPhaseError(ctx, client, pod, namespace)
+					invalidErr := newInvalidPodPhaseError(ctx, client, pod)
 					return true, errors.Wrapf(invalidErr, "unexpected container %q termination: Exit %d - Reason: %q - Message: %q", contStatus.Name, termData.ExitCode, termData.Reason, termData.Message)
 				}
 			}
@@ -442,7 +442,7 @@ func waitForPod(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, 
 		case apiv1.PodUnknown:
 			fallthrough
 		case apiv1.PodFailed:
-			return true, newInvalidPodPhaseError(ctx, client, pod, namespace)
+			return true, newInvalidPodPhaseError(ctx, client, pod)
 		}
 		return true, nil
 	}, func() error {
@@ -450,7 +450,7 @@ func waitForPod(ctx context.Context, client *ClusterClient, origPod *apiv1.Pod, 
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		return newInvalidPodPhaseError(ctx, client, pod, namespace)
+		return newInvalidPodPhaseError(ctx, client, pod)
 	})
 }
 

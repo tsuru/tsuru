@@ -187,7 +187,7 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 		}
-		err = app.SetEnvs(bind.SetEnvArgs{
+		err = app.SetEnvs(ctx.Context, bind.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
@@ -201,7 +201,7 @@ var exportEnvironmentsAction = action.Action{
 		app, err := GetByName(ctx.Context, app.Name)
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
-			app.UnsetEnvs(bind.UnsetEnvArgs{
+			app.UnsetEnvs(ctx.Context, bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
@@ -220,7 +220,7 @@ var provisionApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		prov, err := app.getProvisioner()
+		prov, err := app.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ var provisionApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		prov, err := app.getProvisioner()
+		prov, err := app.getProvisioner(ctx.Context)
 		if err == nil {
 			prov.Destroy(ctx.Context, app)
 		}
@@ -303,7 +303,7 @@ var provisionAddUnits = action.Action{
 		n := ctx.Previous.(int)
 		process := ctx.Params[3].(string)
 		version := ctx.Params[4].(appTypes.AppVersion)
-		prov, err := app.getProvisioner()
+		prov, err := app.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +368,7 @@ var provisionAppNewProvisioner = action.Action{
 		if !ok {
 			return nil, errors.New("expected app ptr as first arg")
 		}
-		prov, err := app.getProvisioner()
+		prov, err := app.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -376,7 +376,7 @@ var provisionAppNewProvisioner = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		prov, err := app.getProvisioner()
+		prov, err := app.getProvisioner(ctx.Context)
 		if err != nil {
 			log.Errorf("BACKWARD provision app - failed to get provisioner: %s", err)
 		}
@@ -399,7 +399,7 @@ var provisionAppAddUnits = action.Action{
 			return nil, errors.New("expected app ptr as first arg")
 		}
 		w, _ := ctx.Params[2].(io.Writer)
-		units, err := oldApp.Units()
+		units, err := oldApp.Units(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -430,7 +430,7 @@ var provisionAppAddUnits = action.Action{
 			if processData.version > 0 {
 				version = strconv.Itoa(processData.version)
 			}
-			err = app.AddUnits(count, processData.process, version, w)
+			err = app.AddUnits(ctx.Context, count, processData.process, version, w)
 			if err != nil {
 				return nil, err
 			}
@@ -450,7 +450,7 @@ var destroyAppOldProvisioner = action.Action{
 		if !ok {
 			return nil, errors.New("expected app ptr as second arg")
 		}
-		oldProv, err := oldApp.getProvisioner()
+		oldProv, err := oldApp.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -469,7 +469,7 @@ var updateAppProvisioner = action.Action{
 		if !ok {
 			return nil, errors.New("expected app ptr as second arg")
 		}
-		oldProv, err := oldApp.getProvisioner()
+		oldProv, err := oldApp.getProvisioner(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -482,7 +482,7 @@ var updateAppProvisioner = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		oldApp := ctx.Params[1].(*App)
-		newProv, err := app.getProvisioner()
+		newProv, err := app.getProvisioner(ctx.Context)
 		if err != nil {
 			log.Errorf("BACKWARDS update-app-provisioner - failed to get app provisioner: %v", err)
 			return

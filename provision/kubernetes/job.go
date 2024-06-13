@@ -324,7 +324,7 @@ func (p *kubernetesProvisioner) JobUnits(ctx context.Context, job *jobTypes.Job)
 	if err != nil {
 		return nil, err
 	}
-	return p.jobsToJobUnits(ctx, client, k8sJobs.Items, job)
+	return p.jobsToJobUnits(ctx, client, k8sJobs.Items)
 }
 
 func (p *kubernetesProvisioner) DestroyJob(ctx context.Context, job *jobTypes.Job) error {
@@ -373,7 +373,7 @@ func (p *kubernetesProvisioner) getPodsForJob(ctx context.Context, client *Clust
 	return pods.Items, nil
 }
 
-func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *ClusterClient, k8sJobs []batchv1.Job, job *jobTypes.Job) ([]provTypes.Unit, error) {
+func (p *kubernetesProvisioner) jobsToJobUnits(ctx context.Context, client *ClusterClient, k8sJobs []batchv1.Job) ([]provTypes.Unit, error) {
 	if len(k8sJobs) == 0 {
 		return nil, nil
 	}
@@ -424,7 +424,7 @@ func incrementJobMetrics(job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup)
 	}
 }
 
-func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event) time.Time {
+func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job) time.Time {
 	now := time.Now().UTC()
 	defaultExpire := now.Add(expireTTL)
 	cj, err := clusterClient.BatchV1().CronJobs(job.Namespace).Get(context.Background(), job.Name, metav1.GetOptions{})
@@ -464,7 +464,7 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 		}
 	}
 
-	expire := generateExpireEventTime(clusterClient, job, evt)
+	expire := generateExpireEventTime(clusterClient, job)
 	opts := event.Opts{
 		Kind:       kind,
 		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},

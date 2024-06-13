@@ -50,18 +50,18 @@ func (a *MockApp) GetUpdatePlatform() bool {
 	return a.UpdatePlatform
 }
 
-func (a *MockApp) GetRegistry() (imgTypes.ImageRegistry, error) {
+func (a *MockApp) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
 	return a.Registry, nil
 }
 
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps   []App
-	OnList func(filter *Filter) ([]App, error)
+	Apps   []AppInterface
+	OnList func(filter *Filter) ([]AppInterface, error)
 }
 
-func (m *MockAppService) GetByName(ctx context.Context, name string) (App, error) {
+func (m *MockAppService) GetByName(ctx context.Context, name string) (AppInterface, error) {
 	for _, app := range m.Apps {
 		if app.GetName() == name {
 			return app, nil
@@ -70,7 +70,7 @@ func (m *MockAppService) GetByName(ctx context.Context, name string) (App, error
 	return nil, ErrAppNotFound
 }
 
-func (m *MockAppService) List(ctx context.Context, f *Filter) ([]App, error) {
+func (m *MockAppService) List(ctx context.Context, f *Filter) ([]AppInterface, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}

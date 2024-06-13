@@ -43,9 +43,6 @@ func (p *kubernetesProvisioner) ListLogs(ctx context.Context, obj logTypes.Logab
 	}
 
 	ns := clusterClient.PoolNamespace(obj.GetPool())
-	if err != nil {
-		return nil, err
-	}
 
 	podInformer, err := clusterController.getPodInformer()
 	if err != nil {

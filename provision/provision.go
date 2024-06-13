@@ -114,7 +114,7 @@ type App interface {
 
 	GetMetadata(process string) appTypes.Metadata
 
-	GetRegistry() (imgTypes.ImageRegistry, error)
+	GetRegistry(context.Context) (imgTypes.ImageRegistry, error)
 }
 
 type InspectData struct {

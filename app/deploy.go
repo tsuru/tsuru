@@ -242,18 +242,10 @@ func Build(ctx context.Context, opts DeployOptions) (string, error) {
 	logWriter.Async()
 	defer logWriter.Close()
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
-	prov, err := opts.App.getProvisioner()
-	if err != nil {
-		return "", err
-	}
 	if opts.App.GetPlatform() == "" {
 		return "", errors.Errorf("can't build app without platform")
 	}
-	builder, ok := prov.(provision.BuilderDeploy)
-	if !ok {
-		return "", errors.Errorf("provisioner don't implement builder interface")
-	}
-	version, err := builderDeploy(ctx, builder, &opts, opts.Event)
+	version, err := builderDeploy(ctx, &opts, opts.Event)
 	if err != nil {
 		return "", err
 	}
@@ -270,7 +262,7 @@ type errorWithLog struct {
 	logs   []appTypes.Applog
 }
 
-func newErrorWithLog(base error, app *App, action string) *errorWithLog {
+func newErrorWithLog(ctx context.Context, base error, app *App, action string) *errorWithLog {
 	logErr := &errorWithLog{
 		err:    base,
 		action: action,
@@ -281,7 +273,7 @@ func newErrorWithLog(base error, app *App, action string) *errorWithLog {
 			return logErr
 		}
 
-		logErr.logs, _ = app.LastLogs(app.ctx, servicemanager.LogService, appTypes.ListLogArgs{
+		logErr.logs, _ = app.LastLogs(ctx, servicemanager.LogService, appTypes.ListLogArgs{
 			Source:       "tsuru",
 			InvertSource: true,
 			Units:        startupErr.CrashedUnits,
@@ -346,7 +338,7 @@ func Deploy(ctx context.Context, opts DeployOptions) (string, error) {
 	opts.Event.SetLogWriter(io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &logWriter))
 	imageID, err := deployToProvisioner(ctx, &opts, opts.Event)
 	if err != nil {
-		return "", newErrorWithLog(err, opts.App, "deploy")
+		return "", newErrorWithLog(ctx, err, opts.App, "deploy")
 	}
 	err = rebuild.RebuildRoutesWithAppName(opts.App.Name, opts.Event)
 	if err != nil {
@@ -375,7 +367,7 @@ func RollbackUpdate(ctx context.Context, app *App, imageID, reason string, disab
 }
 
 func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Event) (string, error) {
-	prov, err := opts.App.getProvisioner()
+	prov, err := opts.App.getProvisioner(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -405,7 +397,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 			return "", errors.Errorf("the selected version is disabled for rollback: %s", version.VersionInfo().DisabledReason)
 		}
 	} else {
-		version, err = builderDeploy(ctx, deployer, opts, evt)
+		version, err = builderDeploy(ctx, opts, evt)
 		if err != nil {
 			return "", err
 		}
@@ -420,7 +412,7 @@ func deployToProvisioner(ctx context.Context, opts *DeployOptions, evt *event.Ev
 	})
 }
 
-func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
+func builderDeploy(ctx context.Context, opts *DeployOptions, evt *event.Event) (appTypes.AppVersion, error) {
 	buildOpts := builder.BuildOpts{
 		Rebuild:     opts.GetKind() == provisionTypes.DeployRebuild,
 		ArchiveURL:  opts.ArchiveURL,
@@ -433,7 +425,7 @@ func builderDeploy(ctx context.Context, prov provision.BuilderDeploy, opts *Depl
 		Dockerfile:  opts.Dockerfile,
 	}
 
-	b, err := opts.App.getBuilder()
+	b, err := opts.App.getBuilder(ctx)
 	if err != nil {
 		return nil, err
 	}

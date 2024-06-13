@@ -7,6 +7,7 @@
 package bind
 
 import (
+	"context"
 	"io"
 
 	bindTypes "github.com/tsuru/tsuru/types/bind"
@@ -14,10 +15,10 @@ import (
 
 type App interface {
 	// GetAddresses returns the app addresses.
-	GetAddresses() ([]string, error)
+	GetAddresses(ctx context.Context) ([]string, error)
 
 	// GetInternalAddresses returns the app bindable addresses inside the cluster, if any.
-	GetInternalBindableAddresses() ([]string, error)
+	GetInternalBindableAddresses(ctx context.Context) ([]string, error)
 
 	// GetName returns the app name.
 	GetName() string
@@ -26,10 +27,10 @@ type App interface {
 	GetUUID() (string, error)
 
 	// AddInstance adds an instance to the application.
-	AddInstance(args AddInstanceArgs) error
+	AddInstance(ctx context.Context, args AddInstanceArgs) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(args RemoveInstanceArgs) error
+	RemoveInstance(ctx context.Context, args RemoveInstanceArgs) error
 }
 
 type SetEnvArgs struct {
