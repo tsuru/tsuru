@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/builder"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -82,6 +83,7 @@ func (s *BuildSuite) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	storagev2.Reset()
 	s.testServer = RunServer(true)
 }
 
