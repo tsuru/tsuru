@@ -303,6 +303,45 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	return service.Proxy(ctx, &s, path, evt, requestIDHeader(r), w, r)
 }
 
+// title: service proxy for authenticated resources, that does not have permission to check
+// path: /services/{service}/authenticated-resources/{path:.*}
+// method: "*"
+// responses:
+//
+//	401: Unauthorized
+//	404: Service not found
+func serviceAuthenticatedResourcesProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
+	serviceName := r.URL.Query().Get(":service")
+	queryPath := r.URL.Query().Get(":path")
+	s, err := getService(ctx, serviceName)
+	if err != nil {
+		return err
+	}
+	var evt *event.Event
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		evt, err = event.New(&event.Opts{
+			Target:     serviceTarget(s.Name),
+			Kind:       permission.PermServiceUpdateProxy,
+			Owner:      t,
+			RemoteAddr: r.RemoteAddr,
+			CustomData: append(event.FormToCustomData(InputFields(r)), map[string]interface{}{
+				"name":  "method",
+				"value": r.Method,
+			}),
+			Allowed: event.Allowed(permission.PermServiceReadEvents, contextsForServiceProvision(&s)...),
+		})
+		if err != nil {
+			return err
+		}
+		defer func() { evt.Done(err) }()
+	}
+
+	path := "/authenticated-resources/" + queryPath
+
+	return service.Proxy(ctx, &s, path, evt, requestIDHeader(r), w, r)
+}
+
 // title: grant access to a service
 // path: /services/{service}/team/{team}
 // method: PUT
