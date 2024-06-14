@@ -5,6 +5,8 @@
 package storagetest
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/types/auth"
 	check "gopkg.in/check.v1"
 )
@@ -19,7 +21,7 @@ func (s *AuthGroupSuite) TestAddRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.AuthGroupStorage.AddRole("g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	groups, err := s.AuthGroupStorage.List(nil)
+	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []auth.Group{
 		{
@@ -35,7 +37,7 @@ func (s *AuthGroupSuite) TestAddRole(c *check.C) {
 
 	err = s.AuthGroupStorage.AddRole("g1", "r2", "v1")
 	c.Assert(err, check.IsNil)
-	groups, err = s.AuthGroupStorage.List(nil)
+	groups, err = s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []auth.Group{
 		{
@@ -59,7 +61,7 @@ func (s *AuthGroupSuite) TestRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.AuthGroupStorage.RemoveRole("g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	groups, err := s.AuthGroupStorage.List(nil)
+	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []auth.Group{
 		{
@@ -70,27 +72,27 @@ func (s *AuthGroupSuite) TestRemoveRole(c *check.C) {
 }
 
 func (s *AuthGroupSuite) TestList(c *check.C) {
-	groups, err := s.AuthGroupStorage.List(nil)
+	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 0)
 	err = s.AuthGroupStorage.AddRole("g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
 	err = s.AuthGroupStorage.AddRole("g2", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	groups, err = s.AuthGroupStorage.List(nil)
+	groups, err = s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 2)
-	groups, err = s.AuthGroupStorage.List([]string{})
+	groups, err = s.AuthGroupStorage.List(context.TODO(), []string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 0)
-	groups, err = s.AuthGroupStorage.List([]string{"g1", "g2", "gn"})
+	groups, err = s.AuthGroupStorage.List(context.TODO(), []string{"g1", "g2", "gn"})
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 2)
-	groups, err = s.AuthGroupStorage.List([]string{"g1"})
+	groups, err = s.AuthGroupStorage.List(context.TODO(), []string{"g1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 1)
 	c.Assert(groups[0].Name, check.Equals, "g1")
-	groups, err = s.AuthGroupStorage.List([]string{"g2"})
+	groups, err = s.AuthGroupStorage.List(context.TODO(), []string{"g2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 1)
 	c.Assert(groups[0].Name, check.Equals, "g2")
