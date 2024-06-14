@@ -10,11 +10,11 @@ import (
 )
 
 type TrackedInstance struct {
-	Name       string
-	Port       string
-	TLSPort    string
-	Addresses  []string
-	LastUpdate time.Time
+	Name       string    `bson:"_id"`
+	Port       string    `bson:"port"`
+	TLSPort    string    `bson:"tlsport"`
+	Addresses  []string  `bson:"addresses"`
+	LastUpdate time.Time `bson:"lastupdate"`
 }
 
 type InstanceService interface {
