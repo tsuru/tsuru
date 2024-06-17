@@ -533,6 +533,7 @@ func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 }
 
 func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
+	ctx := context.Background()
 	p1 := provisiontest.NewFakeProvisioner()
 	p1.Name = "fake1"
 	provision.Register("fake1", func() (provision.Provisioner, error) {
@@ -546,19 +547,19 @@ func (s *S) TestUpdateAppProvisionerBackward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp := App{Name: "myapp", Platform: "python", Pool: "test", TeamOwner: s.team.Name}
 	newSuccessfulAppVersion(c, &app)
-	err = app.AddUnits(1, "web", "", nil)
+	err = app.AddUnits(ctx, 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
 	fwctx := action.FWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	_, err = updateAppProvisioner.Forward(fwctx)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units()
+	units, err := app.Units(ctx)
 	c.Assert(err, check.IsNil)
 	provApp, err := p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(provApp.GetPlatform(), check.Equals, "python")
 	bwctx := action.BWContext{Params: []interface{}{&newApp, &app, io.Discard}}
 	updateAppProvisioner.Backward(bwctx)
-	units, err = app.Units()
+	units, err = app.Units(ctx)
 	c.Assert(err, check.IsNil)
 	provApp, err = p1.GetAppFromUnitID(units[0].ID)
 	c.Assert(err, check.IsNil)

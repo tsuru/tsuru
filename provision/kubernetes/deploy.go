@@ -317,7 +317,7 @@ func ensureHealthCheckDefaults(hc *provTypes.TsuruYamlHealthcheck) error {
 	return nil
 }
 
-func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, client *ClusterClient, port int) (hcResult, error) {
+func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error) {
 	var result hcResult
 	if hc == nil || (hc.Path == "" && len(hc.Command) == 0) {
 		return result, nil
@@ -484,7 +484,7 @@ func defineSelectorAndAffinity(ctx context.Context, a provision.App, client *Clu
 	}).ToNodeByPoolSelector(), affinity, nil
 }
 
-func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string, w io.Writer) (*appsv1.Deployment, *provision.LabelSet, error) {
+func createAppDeployment(ctx context.Context, client *ClusterClient, depName string, oldDeployment *appsv1.Deployment, a provision.App, process string, version appTypes.AppVersion, replicas int, labels *provision.LabelSet, selector map[string]string) (*appsv1.Deployment, *provision.LabelSet, error) {
 	realReplicas := int32(replicas)
 	cmdData, err := dockercommon.ContainerCmdsDataFromVersion(version)
 	if err != nil {
@@ -510,7 +510,7 @@ func createAppDeployment(ctx context.Context, client *ClusterClient, depName str
 	var hcData hcResult
 	if process == webProcessName && len(processPorts) > 0 {
 		//TODO: add support to multiple HCs
-		hcData, err = probesFromHC(yamlData.Healthcheck, client, processPorts[0].TargetPort)
+		hcData, err = probesFromHC(yamlData.Healthcheck, processPorts[0].TargetPort)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -849,7 +849,7 @@ func (m *serviceManager) CurrentLabels(ctx context.Context, a provision.App, pro
 
 const deadlineExeceededProgressCond = "ProgressDeadlineExceeded"
 
-func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns string, selector map[string]string, w io.Writer, timeout time.Duration, label string) error {
+func createDeployTimeoutError(ctx context.Context, client *ClusterClient, ns string, selector map[string]string, timeout time.Duration) error {
 	messages, err := notReadyPodEvents(ctx, client, ns, selector)
 	if err != nil {
 		return errors.Wrap(err, "Unknown error deploying application")
@@ -1031,7 +1031,7 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 		}
 		if healthcheckTimeout == nil && dep.Status.UpdatedReplicas == specReplicas {
 			var allInit bool
-			allInit, err = allNewPodsRunning(ctx, client, a, processName, dep, version)
+			allInit, err = allNewPodsRunning(ctx, client, dep)
 			if allInit && err == nil {
 				healthcheckTimeout = time.After(maxWaitTimeDuration)
 				fmt.Fprintf(w, " ---> waiting healthcheck on %d created units\n", specReplicas)
@@ -1085,9 +1085,9 @@ func monitorDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.D
 				fmt.Fprintf(w, "  ---> %s\n", formatEvtMessage(msg, false))
 			}
 		case <-healthcheckTimeout:
-			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, w, time.Since(t0), "healthcheck")
+			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-timer.C:
-			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, w, time.Since(t0), "full rollout")
+			return revision, createDeployTimeoutError(ctx, client, ns, dep.Spec.Selector.MatchLabels, time.Since(t0))
 		case <-ctx.Done():
 			err = ctx.Err()
 			if err == context.Canceled {
@@ -1177,7 +1177,7 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		}
 	}
 
-	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector, m.writer)
+	newDep, labels, err := createAppDeployment(ctx, m.client, depArgs.name, oldDep, opts.App, opts.ProcessName, opts.Version, opts.Replicas, opts.Labels, depArgs.selector)
 	if err != nil {
 		return err
 	}

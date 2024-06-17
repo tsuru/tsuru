@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -195,6 +196,7 @@ func migratePool() error {
 }
 
 func setPoolToApps() error {
+	ctx := context.Background()
 	db, err := db.Conn()
 	if err != nil {
 		return err
@@ -207,7 +209,7 @@ func setPoolToApps() error {
 		return err
 	}
 	for _, a := range apps {
-		err = a.SetPool()
+		err = a.SetPool(ctx)
 		if err != nil {
 			tooManyPoolsApps = append(tooManyPoolsApps, a)
 			continue

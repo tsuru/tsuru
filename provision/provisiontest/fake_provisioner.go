@@ -166,7 +166,7 @@ func (a *FakeApp) GetServiceEnvs() []bindTypes.ServiceEnvVar {
 	return a.serviceEnvs
 }
 
-func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
+func (a *FakeApp) AddInstance(ctx context.Context, instanceArgs bind.AddInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	a.serviceEnvs = append(a.serviceEnvs, instanceArgs.Envs...)
@@ -176,7 +176,7 @@ func (a *FakeApp) AddInstance(instanceArgs bind.AddInstanceArgs) error {
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(instanceArgs bind.RemoveInstanceArgs) error {
+func (a *FakeApp) RemoveInstance(ctx context.Context, instanceArgs bind.RemoveInstanceArgs) error {
 	a.serviceLock.Lock()
 	defer a.serviceLock.Unlock()
 	lenBefore := len(a.serviceEnvs)
@@ -313,11 +313,11 @@ func (app *FakeApp) GetRouters() []appTypes.AppRouter {
 	return []appTypes.AppRouter{{Name: "fake"}}
 }
 
-func (app *FakeApp) GetAddresses() ([]string, error) {
+func (app *FakeApp) GetAddresses(ctx context.Context) ([]string, error) {
 	return routertest.FakeRouter.Addresses(context.TODO(), app)
 }
 
-func (app *FakeApp) GetInternalBindableAddresses() ([]string, error) {
+func (app *FakeApp) GetInternalBindableAddresses(ctx context.Context) ([]string, error) {
 	var addresses []string
 	for _, addr := range app.InternalAddresses {
 		if addr.Version != "" {
@@ -340,7 +340,7 @@ func (app *FakeApp) GetMetadata(process string) appTypes.Metadata {
 	return app.Metadata
 }
 
-func (app *FakeApp) GetRegistry() (imgTypes.ImageRegistry, error) {
+func (app *FakeApp) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
 	return "", nil
 }
 

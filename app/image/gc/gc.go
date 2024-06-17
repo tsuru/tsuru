@@ -292,7 +292,7 @@ func markOldImages() error {
 }
 
 func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions appTypes.AppVersions, historySize int, exclusiveLockAcquired bool) (requireExclusiveLock bool, err error) {
-	deployedVersions, err := a.DeployedVersions()
+	deployedVersions, err := a.DeployedVersions(ctx)
 	causeErr := errors.Cause(err)
 	if causeErr == app.ErrNoVersionProvisioner || causeErr == provision.ErrNoCluster {
 		deployedVersions = []int{appVersions.LastSuccessfulVersion}

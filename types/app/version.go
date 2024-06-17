@@ -90,7 +90,7 @@ type AppVersionInfo struct {
 
 type NewVersionArgs struct {
 	EventID        string
-	App            App
+	App            AppInterface
 	CustomBuildTag string
 	Description    string
 }
@@ -102,11 +102,11 @@ type AppVersionWriteOptions struct {
 
 type AppVersionService interface {
 	commonAppVersion
-	VersionByPendingImage(ctx context.Context, app App, imageID string) (AppVersion, error)
-	VersionByImageOrVersion(ctx context.Context, app App, image string) (AppVersion, error)
-	LatestSuccessfulVersion(ctx context.Context, app App) (AppVersion, error)
+	VersionByPendingImage(ctx context.Context, app AppInterface, imageID string) (AppVersion, error)
+	VersionByImageOrVersion(ctx context.Context, app AppInterface, image string) (AppVersion, error)
+	LatestSuccessfulVersion(ctx context.Context, app AppInterface) (AppVersion, error)
 	NewAppVersion(ctx context.Context, args NewVersionArgs) (AppVersion, error)
-	AppVersionFromInfo(context.Context, App, AppVersionInfo) (AppVersion, error)
+	AppVersionFromInfo(context.Context, AppInterface, AppVersionInfo) (AppVersion, error)
 }
 
 type AppVersionStorage interface {
@@ -118,7 +118,7 @@ type AppVersionStorage interface {
 
 type commonAppVersion interface {
 	AllAppVersions(ctx context.Context, appNamesFilter ...string) ([]AppVersions, error)
-	AppVersions(ctx context.Context, app App) (AppVersions, error)
+	AppVersions(ctx context.Context, app AppInterface) (AppVersions, error)
 	DeleteVersions(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error
 	DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*AppVersionWriteOptions) error
 	MarkToRemoval(ctx context.Context, appName string, opts ...*AppVersionWriteOptions) error

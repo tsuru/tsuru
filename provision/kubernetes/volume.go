@@ -48,7 +48,7 @@ func createVolumesForApp(ctx context.Context, client *ClusterClient, app provisi
 			return nil, nil, err
 		}
 		if opts.isPersistent() {
-			err = createVolume(ctx, client, &volumes[i], opts, app)
+			err = createVolume(ctx, client, &volumes[i], opts)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -218,7 +218,7 @@ func deleteVolume(ctx context.Context, client *ClusterClient, name string) error
 	return nil
 }
 
-func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Volume, opts *volumeOptions, app provision.App) error {
+func createVolume(ctx context.Context, client *ClusterClient, v *volumeTypes.Volume, opts *volumeOptions) error {
 	namespace, err := getNamespaceForVolume(ctx, client, v)
 	if err != nil {
 		return err

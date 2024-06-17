@@ -244,7 +244,7 @@ func (c *endpointClient) BindJob(ctx context.Context, instance *ServiceInstance,
 
 func (c *endpointClient) UnbindApp(ctx context.Context, instance *ServiceInstance, app bind.App, evt *event.Event, requestID string) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
-	appAddrs, err := app.GetAddresses()
+	appAddrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return err
 	}
@@ -551,7 +551,7 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 		params.Set("user", evt.Owner.Name)
 		params.Set("eventid", evt.UniqueID.Hex())
 	}
-	appAddrs, err := app.GetAddresses()
+	appAddrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +559,7 @@ func buildBindAppParams(ctx context.Context, evt *event.Event, app bind.App, bin
 	if len(appAddrs) > 0 {
 		params.Set("app-host", appAddrs[0])
 	}
-	internalAddrs, err := app.GetInternalBindableAddresses()
+	internalAddrs, err := app.GetInternalBindableAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}

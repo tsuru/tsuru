@@ -33,13 +33,13 @@ func GetAppRouterUpdater() *appRouterUpdater {
 	return globalAppRouterUpdater.updater
 }
 
-func (u *appRouterUpdater) update(a *App) {
+func (u *appRouterUpdater) update(ctx context.Context, a *App) {
 	u.wg.Add(1)
 	go func() {
 		u.limiter <- struct{}{}
 		defer func() { <-u.limiter }()
 		defer u.wg.Done()
-		a.GetRoutersWithAddr()
+		a.GetRoutersWithAddr(ctx)
 	}()
 }
 

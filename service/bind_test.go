@@ -120,7 +120,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -142,7 +142,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -239,7 +239,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	newVersionForApp(c, a)
-	err = a.AddUnits(1, "", "", nil)
+	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
 	err = instance.BindApp(a, nil, true, nil, evt, "")
@@ -297,7 +297,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	a := &app.App{Name: "painkiller", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(bind.AddInstanceArgs{
+	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "ENV1", Value: "VAL1"}, ServiceName: "mysql", InstanceName: "my-mysql"},
 		},
@@ -338,7 +338,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	c.Assert(err, check.Equals, service.ErrAppNotBound)
 }
 
-func newVersionForApp(c *check.C, a appTypes.App) appTypes.AppVersion {
+func newVersionForApp(c *check.C, a appTypes.AppInterface) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: a,
 	})

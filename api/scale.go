@@ -24,6 +24,7 @@ import (
 //	401: Unauthorized
 //	404: App not found
 func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -37,7 +38,7 @@ func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return permission.ErrUnauthorized
 	}
 
-	info, err := a.AutoScaleInfo()
+	info, err := a.AutoScaleInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -57,6 +58,7 @@ func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //	401: Unauthorized
 //	404: App not found
 func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -76,7 +78,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("unable to parse autoscale spec: %v", err),
 		}
 	}
-	quota, err := a.GetQuota()
+	quota, err := a.GetQuota(ctx)
 	if err != nil {
 		return err
 	}
@@ -99,7 +101,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.AutoScale(spec)
+	return a.AutoScale(ctx, spec)
 }
 
 // title: remove unit auto scale
@@ -112,6 +114,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //	401: Unauthorized
 //	404: App not found
 func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	process := InputValue(r, "process")
 	a, err := getAppFromContext(appName, r)
@@ -136,5 +139,5 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.RemoveAutoScale(process)
+	return a.RemoveAutoScale(ctx, process)
 }

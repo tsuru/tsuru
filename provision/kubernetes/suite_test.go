@@ -108,7 +108,7 @@ func (s *S) TearDownTest(c *check.C) {
 		builder.Register(n, b)
 	}
 
-	stopClusterController(context.TODO(), s.p, s.clusterClient)
+	stopClusterController(s.p, s.clusterClient)
 }
 
 func (s *S) SetUpTest(c *check.C) {

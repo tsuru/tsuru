@@ -465,7 +465,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 		return errors.WithStack(err)
 	}
 
-	expectedKEDAScaledObject, err := newKEDAScaledObject(ctx, spec, a, depInfo, ns, hpaName, labels)
+	expectedKEDAScaledObject, err := newKEDAScaledObject(spec, a, depInfo, ns, hpaName, labels)
 	if err != nil {
 		return err
 	}
@@ -484,7 +484,7 @@ func setKEDAAutoscale(ctx context.Context, client *ClusterClient, spec provTypes
 	return err
 }
 
-func newKEDAScaledObject(ctx context.Context, spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
+func newKEDAScaledObject(spec provTypes.AutoScaleSpec, a provision.App, depInfo *deploymentInfo, ns string, hpaName string, labels *provision.LabelSet) (*kedav1alpha1.ScaledObject, error) {
 	kedaTriggers := []kedav1alpha1.ScaleTriggers{}
 
 	if spec.AverageCPU != "" {

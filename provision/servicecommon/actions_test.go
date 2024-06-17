@@ -160,7 +160,7 @@ func (m *recordManager) RemoveService(ctx context.Context, a provision.App, proc
 	return nil
 }
 
-func newVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
 		App: app,
 	})
@@ -176,7 +176,7 @@ func newVersion(c *check.C, app appTypes.App, customData map[string]interface{})
 	return version
 }
 
-func newSuccessfulVersion(c *check.C, app appTypes.App, customData map[string]interface{}) appTypes.AppVersion {
+func newSuccessfulVersion(c *check.C, app appTypes.AppInterface, customData map[string]interface{}) appTypes.AppVersion {
 	version := newVersion(c, app, customData)
 	err := version.CommitSuccessful()
 	c.Assert(err, check.IsNil)

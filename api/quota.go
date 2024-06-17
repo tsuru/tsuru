@@ -114,6 +114,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 //	401: Unauthorized
 //	404: Application not found
 func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	a, err := getAppFromContext(r.URL.Query().Get(":app"), r)
 	if err != nil {
 		return err
@@ -123,7 +124,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	quota, err := a.GetQuota()
+	quota, err := a.GetQuota(ctx)
 	if err != nil {
 		return err
 	}
@@ -142,6 +143,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	403: Limit lower than allocated
 //	404: Application not found
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
 	a, err := getAppFromContext(appName, r)
 	if err != nil {
@@ -170,7 +172,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			Message: "Invalid limit",
 		}
 	}
-	err = a.SetQuotaLimit(limit)
+	err = a.SetQuotaLimit(ctx, limit)
 	if err == quota.ErrLimitLowerThanAllocated {
 		return &errors.HTTP{
 			Code:    http.StatusForbidden,

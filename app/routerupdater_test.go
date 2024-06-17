@@ -24,7 +24,7 @@ func (s *S) TestAppRouterUpdaterUpdateWait(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	updater := GetAppRouterUpdater()
-	updater.update(&a)
+	updater.update(context.TODO(), &a)
 	err = updater.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 	apps, err := List(context.TODO(), nil)

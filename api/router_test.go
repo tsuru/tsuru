@@ -296,6 +296,7 @@ func (s *S) TestListAppRouters(c *check.C) {
 }
 
 func (s *S) TestListAppRoutersWithStatus(c *check.C) {
+	ctx := context.Background()
 	routertest.FakeRouter.Status.Status = router.BackendStatusNotReady
 	routertest.FakeRouter.Status.Detail = "burn"
 	defer routertest.FakeRouter.Reset()
@@ -306,7 +307,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(appTypes.AppRouter{
+	err = myapp.AddRouter(ctx, appTypes.AppRouter{
 		Name: "fake",
 	})
 	c.Assert(err, check.IsNil)
@@ -325,6 +326,7 @@ func (s *S) TestListAppRoutersWithStatus(c *check.C) {
 }
 
 func (s *S) TestListAppRoutersEmpty(c *check.C) {
+	ctx := context.Background()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppReadRouter,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
@@ -332,7 +334,7 @@ func (s *S) TestListAppRoutersEmpty(c *check.C) {
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.RemoveRouter("fake")
+	err = myapp.RemoveRouter(ctx, "fake")
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/1.5/apps/myapp/routers", nil)
@@ -343,6 +345,7 @@ func (s *S) TestListAppRoutersEmpty(c *check.C) {
 }
 
 func (s *S) TestAddAppRouter(c *check.C) {
+	ctx := context.Background()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterAdd,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
@@ -360,7 +363,7 @@ func (s *S) TestAddAppRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
 	dbApp, err := app.GetByName(context.TODO(), myapp.Name)
 	c.Assert(err, check.IsNil)
-	routers, err := dbApp.GetRoutersWithAddr()
+	routers, err := dbApp.GetRoutersWithAddr(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Status: "ready"},
@@ -407,6 +410,7 @@ func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 }
 
 func (s *S) TestUpdateAppRouter(c *check.C) {
+	ctx := context.Background()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
@@ -414,7 +418,7 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake"})
+	err = myapp.AddRouter(ctx, appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)
@@ -451,6 +455,7 @@ func (s *S) TestUpdateAppRouterNotFound(c *check.C) {
 }
 
 func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
+	ctx := context.Background()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
@@ -458,7 +463,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 	myapp := app.App{Name: "apptest", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(appTypes.AppRouter{Name: "fake"})
+	err = myapp.AddRouter(ctx, appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
 	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
@@ -473,6 +478,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 }
 
 func (s *S) TestRemoveAppRouter(c *check.C) {
+	ctx := context.Background()
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppUpdateRouterRemove,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
@@ -488,7 +494,7 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	dbApp, err := app.GetByName(context.TODO(), myapp.Name)
 	c.Assert(err, check.IsNil)
-	routers, err := dbApp.GetRoutersWithAddr()
+	routers, err := dbApp.GetRoutersWithAddr(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{})
 }

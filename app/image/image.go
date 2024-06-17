@@ -146,7 +146,7 @@ func basicImageName(reg imgTypes.ImageRegistry, repoName string) (string, error)
 // * the container have an empty image name;
 // * the deploy number is multiple of 10.
 // in all other cases the app image name will be returned.
-func GetBuildImage(ctx context.Context, app appTypes.App) (string, error) {
+func GetBuildImage(ctx context.Context, app appTypes.AppInterface) (string, error) {
 	if usePlatformImage(app) {
 		return getPlatformImage(ctx, app)
 	}
@@ -157,7 +157,7 @@ func GetBuildImage(ctx context.Context, app appTypes.App) (string, error) {
 	return version.VersionInfo().DeployImage, nil
 }
 
-func usePlatformImage(app appTypes.App) bool {
+func usePlatformImage(app appTypes.AppInterface) bool {
 	maxLayers, _ := config.GetUint("docker:max-layers")
 	if maxLayers == 0 {
 		maxLayers = 10
@@ -166,8 +166,8 @@ func usePlatformImage(app appTypes.App) bool {
 	return deploys%maxLayers == 0 || app.GetUpdatePlatform()
 }
 
-func getPlatformImage(ctx context.Context, app appTypes.App) (string, error) {
-	reg, err := app.GetRegistry()
+func getPlatformImage(ctx context.Context, app appTypes.AppInterface) (string, error) {
+	reg, err := app.GetRegistry(ctx)
 	if err != nil {
 		return "", err
 	}

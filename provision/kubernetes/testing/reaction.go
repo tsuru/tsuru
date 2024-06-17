@@ -65,7 +65,7 @@ const (
 type ClusterInterface interface {
 	CoreV1() v1core.CoreV1Interface
 	RestConfig() *rest.Config
-	AppNamespace(context.Context, appTypes.App) (string, error)
+	AppNamespace(context.Context, appTypes.AppInterface) (string, error)
 	PoolNamespace(string) string
 	Namespace() string
 	GetCluster() *provTypes.Cluster

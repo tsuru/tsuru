@@ -97,82 +97,41 @@ const (
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
-type App struct {
-	Env             map[string]bindTypes.EnvVar
-	ServiceEnvs     []bindTypes.ServiceEnvVar
-	Platform        string `bson:"framework"`
-	PlatformVersion string
-	Name            string
-	CName           []string
-	Teams           []string
-	TeamOwner       string
-	Owner           string
-	Plan            appTypes.Plan
-	UpdatePlatform  bool
-	Lock            appTypes.AppLock
-	Pool            string
-	Description     string
-	Router          string
-	RouterOpts      map[string]string
-	Deploys         uint
-	Tags            []string
-	Error           string
-	Routers         []appTypes.AppRouter
-	Metadata        appTypes.Metadata
-	Processes       []appTypes.Process
-
-	// UUID is a v4 UUID lazily generated on the first call to GetUUID()
-	UUID string
-
-	Quota quota.Quota
-
-	ctx context.Context
-}
+type App appTypes.App
 
 var (
 	_ provision.App      = &App{}
 	_ rebuild.RebuildApp = &App{}
 )
 
-func (app *App) ReplaceContext(ctx context.Context) {
-	app.ctx = ctx
-}
-
-func (app *App) Context() context.Context {
-	if app.ctx != nil {
-		return app.ctx
-	}
-	return context.Background()
-}
-
-func (app *App) getBuilder() (builder.Builder, error) {
-	p, err := app.getProvisioner()
+func (app *App) getBuilder(ctx context.Context) (builder.Builder, error) {
+	p, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return builder.GetForProvisioner(p)
 }
 
-func internalAddresses(app *App) ([]appTypes.AppInternalAddress, error) {
-	provisioner, err := app.getProvisioner()
+func internalAddresses(ctx context.Context, app *App) ([]appTypes.AppInternalAddress, error) {
+	provisioner, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if interAppProvisioner, ok := provisioner.(provision.InterAppProvisioner); ok {
-		return interAppProvisioner.InternalAddresses(app.ctx, app)
+		return interAppProvisioner.InternalAddresses(ctx, app)
 	}
 
 	return nil, nil
 }
 
-func (app *App) getProvisioner() (provision.Provisioner, error) {
-	return pool.GetProvisionerForPool(app.ctx, app.Pool)
+func (app *App) getProvisioner(ctx context.Context) (provision.Provisioner, error) {
+	return pool.GetProvisionerForPool(ctx, app.Pool)
 }
 
 // Units returns the list of units.
-func (app *App) Units() ([]provTypes.Unit, error) {
-	prov, err := app.getProvisioner()
+func (app *App) Units(ctx context.Context) ([]provTypes.Unit, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return []provTypes.Unit{}, err
 	}
@@ -187,7 +146,7 @@ func (app *App) Units() ([]provTypes.Unit, error) {
 }
 
 // AppInfo returns a agregated format of app
-func AppInfo(app *App) (*appTypes.AppInfo, error) {
+func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 	var errMsgs []string
 	result := &appTypes.AppInfo{
 		Name:        app.Name,
@@ -208,14 +167,14 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 	if version := app.GetPlatformVersion(); version != "latest" {
 		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get provisioner name: %+v", err))
 	}
 	if prov != nil {
 		provisionerName := prov.GetName()
 		result.Provisioner = provisionerName
-		cluster, clusterErr := servicemanager.Cluster.FindByPool(app.ctx, provisionerName, app.Pool)
+		cluster, clusterErr := servicemanager.Cluster.FindByPool(ctx, provisionerName, app.Pool)
 		if clusterErr != nil && clusterErr != provTypes.ErrNoCluster {
 			errMsgs = append(errMsgs, fmt.Sprintf("unable to get cluster name: %+v", clusterErr))
 		}
@@ -223,13 +182,13 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 			result.Cluster = cluster.Name
 		}
 	}
-	units, err := app.Units()
+	units, err := app.Units(ctx)
 	result.Units = units
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to list app units: %+v", err))
 	}
 
-	routers, err := app.GetRoutersWithAddr()
+	routers, err := app.GetRoutersWithAddr(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app addresses: %+v", err))
 	}
@@ -244,14 +203,14 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 		result.Processes = app.Processes
 	}
 
-	q, err := app.GetQuota()
+	q, err := app.GetQuota(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app quota: %+v", err))
 	}
 	if q != nil {
 		result.Quota = q
 	}
-	internalAddresses, err := internalAddresses(app)
+	internalAddresses, err := internalAddresses(ctx, app)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get app cluster internal addresses: %+v", err))
 	}
@@ -259,28 +218,28 @@ func AppInfo(app *App) (*appTypes.AppInfo, error) {
 	if len(internalAddresses) > 0 {
 		result.InternalAddresses = internalAddresses
 	}
-	autoscale, err := app.AutoScaleInfo()
+	autoscale, err := app.AutoScaleInfo(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale info: %+v", err))
 	}
 	if autoscale != nil {
 		result.Autoscale = autoscale
 	}
-	autoscaleRec, err := app.VerticalAutoScaleRecommendations()
+	autoscaleRec, err := app.VerticalAutoScaleRecommendations(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get autoscale recommendation info: %+v", err))
 	}
 	if autoscaleRec != nil {
 		result.AutoscaleRecommendation = autoscaleRec
 	}
-	unitMetrics, err := app.UnitsMetrics()
+	unitMetrics, err := app.UnitsMetrics(ctx)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get units metrics: %+v", err))
 	}
 	if unitMetrics != nil {
 		result.UnitsMetrics = unitMetrics
 	}
-	volumeBinds, err := servicemanager.Volume.BindsForApp(app.ctx, nil, app.Name)
+	volumeBinds, err := servicemanager.Volume.BindsForApp(ctx, nil, app.Name)
 	if err != nil {
 		errMsgs = append(errMsgs, fmt.Sprintf("unable to get volume binds: %+v", err))
 	}
@@ -319,7 +278,6 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 	if err == mgo.ErrNotFound {
 		return nil, appTypes.ErrAppNotFound
 	}
-	app.ctx = ctx
 	return &app, err
 }
 
@@ -330,9 +288,6 @@ func GetByName(ctx context.Context, name string) (*App, error) {
 //  1. Save the app in the database
 //  2. Provision the app using the provisioner
 func CreateApp(ctx context.Context, app *App, user *auth.User) error {
-	if app.ctx == nil {
-		app.ctx = ctx
-	}
 	if _, err := GetByName(ctx, app.GetName()); err != appTypes.ErrAppNotFound {
 		if err != nil {
 			return errors.WithMessage(err, "unable to check if app already exists")
@@ -340,7 +295,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		return &appTypes.AppCreationError{Err: ErrAppAlreadyExists, App: app.GetName()}
 	}
 	var err error
-	err = app.SetPool()
+	err = app.SetPool(ctx)
 	if err != nil {
 		return err
 	}
@@ -359,7 +314,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		return err
 	}
 	app.Plan = *plan
-	err = app.configureCreateRouters()
+	err = app.configureCreateRouters(ctx)
 	if err != nil {
 		return err
 	}
@@ -373,7 +328,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 		}
 	}
 	app.pruneProcesses()
-	err = app.validateNew()
+	err = app.validateNew(ctx)
 	if err != nil {
 		return err
 	}
@@ -392,7 +347,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 	return nil
 }
 
-func (app *App) configureCreateRouters() error {
+func (app *App) configureCreateRouters(ctx context.Context) error {
 	if len(app.Routers) > 0 {
 		return nil
 	}
@@ -404,13 +359,13 @@ func (app *App) configureCreateRouters() error {
 	var err error
 	if app.Router == "" {
 		var appPool *pool.Pool
-		appPool, err = pool.GetPoolByName(app.ctx, app.GetPool())
+		appPool, err = pool.GetPoolByName(ctx, app.GetPool())
 		if err != nil {
 			return err
 		}
 		app.Router, err = appPool.GetDefaultRouter()
 	} else {
-		_, err = router.Get(app.ctx, app.Router)
+		_, err = router.Get(ctx, app.Router)
 	}
 	if err != nil {
 		return err
@@ -431,7 +386,7 @@ type UpdateAppArgs struct {
 }
 
 // Update changes informations of the application.
-func (app *App) Update(args UpdateAppArgs) (err error) {
+func (app *App) Update(ctx context.Context, args UpdateAppArgs) (err error) {
 	description := args.UpdateData.Description
 	poolName := args.UpdateData.Pool
 	teamOwner := args.UpdateData.TeamOwner
@@ -449,21 +404,21 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 	if poolName != "" {
 		app.Pool = poolName
-		_, err = app.getPoolForApp(app.Pool)
+		_, err = app.getPoolForApp(ctx, app.Pool)
 		if err != nil {
 			return err
 		}
 	}
-	newProv, err := app.getProvisioner()
+	newProv, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	oldProv, err := oldApp.getProvisioner()
+	oldProv, err := oldApp.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
 	if args.UpdateData.Plan.Name != "" {
-		plan, errFind := servicemanager.Plan.FindByName(app.ctx, args.UpdateData.Plan.Name)
+		plan, errFind := servicemanager.Plan.FindByName(ctx, args.UpdateData.Plan.Name)
 		if errFind != nil {
 			return errFind
 		}
@@ -481,7 +436,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	}
 
 	if teamOwner != "" {
-		team, errTeam := servicemanager.Team.FindByName(app.ctx, teamOwner)
+		team, errTeam := servicemanager.Team.FindByName(ctx, teamOwner)
 		if errTeam != nil {
 			return errTeam
 		}
@@ -500,7 +455,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 		return err
 	}
 
-	processesHasChanged, err := app.updateProcesses(args.UpdateData.Processes)
+	processesHasChanged, err := app.updateProcesses(ctx, args.UpdateData.Processes)
 	if err != nil {
 		return err
 	}
@@ -508,7 +463,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	app.Metadata.Update(args.UpdateData.Metadata)
 	if platform != "" {
 		var p, v string
-		p, v, err = app.getPlatformNameAndVersion(app.ctx, platform)
+		p, v, err = app.getPlatformNameAndVersion(ctx, platform)
 		if err != nil {
 			return err
 		}
@@ -521,7 +476,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	if args.UpdateData.UpdatePlatform {
 		app.UpdatePlatform = true
 	}
-	err = app.validate()
+	err = app.validate(ctx)
 	if err != nil {
 		return err
 	}
@@ -541,7 +496,7 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 			}
 
 		}()
-		err = validateVolumes(app.ctx, app)
+		err = validateVolumes(ctx, app)
 		if err != nil {
 			return err
 		}
@@ -558,10 +513,10 @@ func (app *App) Update(args UpdateAppArgs) (err error) {
 	} else if !reflect.DeepEqual(app.Metadata, oldApp.Metadata) && args.ShouldRestart {
 		actions = append(actions, &restartApp)
 	}
-	return action.NewPipeline(actions...).Execute(app.ctx, app, &oldApp, args.Writer)
+	return action.NewPipeline(actions...).Execute(ctx, app, &oldApp, args.Writer)
 }
 
-func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error) {
+func (app *App) updateProcesses(ctx context.Context, new []appTypes.Process) (changed bool, err error) {
 	if len(app.Processes) == 0 && len(new) == 0 {
 		return false, nil
 	}
@@ -578,7 +533,7 @@ func (app *App) updateProcesses(new []appTypes.Process) (changed bool, err error
 
 	for _, p := range new {
 		if p.Plan != "" && p.Plan != "$default" {
-			_, err = servicemanager.Plan.FindByName(app.ctx, p.Plan)
+			_, err = servicemanager.Plan.FindByName(ctx, p.Plan)
 			if err != nil {
 				return false, errors.WithMessagef(err, "could not find plan %q", p.Plan)
 			}
@@ -644,7 +599,7 @@ func (app *App) getPlatformNameAndVersion(ctx context.Context, platform string) 
 	if err != nil {
 		return "", "", err
 	}
-	reg, err := app.GetRegistry()
+	reg, err := app.GetRegistry(ctx)
 	if err != nil {
 		return "", "", err
 	}
@@ -708,19 +663,19 @@ func (app *App) unbind(evt *event.Event, requestID string) error {
 	return nil
 }
 
-func (app *App) unbindVolumes() error {
-	volumes, err := servicemanager.Volume.ListByApp(app.ctx, app.Name)
+func (app *App) unbindVolumes(ctx context.Context) error {
+	volumes, err := servicemanager.Volume.ListByApp(ctx, app.Name)
 	if err != nil {
 		return errors.Wrap(err, "Unable to list volumes for unbind")
 	}
 	for _, v := range volumes {
 		var binds []volumeTypes.VolumeBind
-		binds, err = servicemanager.Volume.Binds(app.ctx, &v)
+		binds, err = servicemanager.Volume.Binds(ctx, &v)
 		if err != nil {
 			return errors.Wrap(err, "Unable to list volume binds for unbind")
 		}
 		for _, b := range binds {
-			err = servicemanager.Volume.UnbindApp(app.ctx, &volumeTypes.BindOpts{
+			err = servicemanager.Volume.UnbindApp(ctx, &volumeTypes.BindOpts{
 				Volume:     &v,
 				AppName:    app.Name,
 				MountPoint: b.ID.MountPoint,
@@ -752,7 +707,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 		log.Errorf("[delete-app: %s] %s", appName, msg)
 		hasErrors = true
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -780,7 +735,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 			logErr("Failed to remove router backend", err)
 		}
 	}
-	err = app.unbindVolumes()
+	err = app.unbindVolumes(ctx)
 	if err != nil {
 		logErr("Unable to unbind volumes", err)
 	}
@@ -844,11 +799,11 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 		hasErrors = true
 	}
 
-	_, version, err := app.explicitVersion(versionStr)
+	_, version, err := app.explicitVersion(ctx, versionStr)
 	if err != nil {
 		return err
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -863,17 +818,17 @@ func (app *App) DeleteVersion(ctx context.Context, w io.Writer, versionStr strin
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error {
+func (app *App) AddUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
 	if n == 0 {
 		return errors.New("Cannot add zero units.")
 	}
 
-	err := app.ensureNoAutoscaler(process)
+	err := app.ensureNoAutoscaler(ctx, process)
 	if err != nil {
 		return err
 	}
 
-	units, err := app.Units()
+	units, err := app.Units(ctx)
 	if err != nil {
 		return err
 	}
@@ -882,7 +837,7 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 			return errors.New("Cannot add units to an app that has stopped units")
 		}
 	}
-	version, err := app.getVersion(app.ctx, versionStr)
+	version, err := app.getVersion(ctx, versionStr)
 	if err != nil {
 		return err
 	}
@@ -890,9 +845,9 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 	err = action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-	).Execute(app.ctx, app, n, w, process, version)
+	).Execute(ctx, app, n, w, process, version)
 	if err != nil {
-		return newErrorWithLog(err, app, "add units")
+		return newErrorWithLog(ctx, err, app, "add units")
 	}
 	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	if err != nil {
@@ -901,14 +856,14 @@ func (app *App) AddUnits(n uint, process, versionStr string, w io.Writer) error 
 	return nil
 }
 
-func (app *App) ensureNoAutoscaler(process string) error {
-	prov, err := app.getProvisioner()
+func (app *App) ensureNoAutoscaler(ctx context.Context, process string) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
 	autoscaleProv, ok := prov.(provision.AutoScaleProvisioner)
 	if ok {
-		autoscales, err := autoscaleProv.GetAutoScale(app.ctx, app)
+		autoscales, err := autoscaleProv.GetAutoScale(ctx, app)
 		if err != nil {
 			return err
 		}
@@ -928,11 +883,11 @@ func (app *App) ensureNoAutoscaler(process string) error {
 //  1. Remove units from the provisioner
 //  2. Update quota
 func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr string, w io.Writer) error {
-	err := app.ensureNoAutoscaler(process)
+	err := app.ensureNoAutoscaler(ctx, process)
 	if err != nil {
 		return err
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -943,15 +898,15 @@ func (app *App) RemoveUnits(ctx context.Context, n uint, process, versionStr str
 	}
 	err = prov.RemoveUnits(ctx, app, n, process, version, w)
 	if err != nil {
-		return newErrorWithLog(err, app, "remove units")
+		return newErrorWithLog(ctx, err, app, "remove units")
 	}
 
 	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	return err
 }
 
-func (app *App) KillUnit(unitName string, force bool) error {
-	prov, err := app.getProvisioner()
+func (app *App) KillUnit(ctx context.Context, unitName string, force bool) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -959,7 +914,7 @@ func (app *App) KillUnit(unitName string, force bool) error {
 	if !ok {
 		return ErrKillUnitProvisioner
 	}
-	return unitProv.KillUnit(app.ctx, app, unitName, force)
+	return unitProv.KillUnit(ctx, app, unitName, force)
 }
 
 type UpdateUnitsResult struct {
@@ -968,8 +923,8 @@ type UpdateUnitsResult struct {
 }
 
 // available returns true if at least one of N units is started or unreachable.
-func (app *App) available() bool {
-	units, err := app.Units()
+func (app *App) available(ctx context.Context) bool {
+	units, err := app.Units(ctx)
 	if err != nil {
 		return false
 	}
@@ -1036,40 +991,40 @@ func (app *App) Revoke(team *authTypes.Team) error {
 }
 
 // GetTeams returns a slice of teams that have access to the app.
-func (app *App) GetTeams() []authTypes.Team {
-	t, _ := servicemanager.Team.FindByNames(app.ctx, app.Teams)
+func (app *App) GetTeams(ctx context.Context) []authTypes.Team {
+	t, _ := servicemanager.Team.FindByNames(ctx, app.Teams)
 	return t
 }
 
-func (app *App) SetPool() error {
-	poolName, err := app.getPoolForApp(app.Pool)
+func (app *App) SetPool(ctx context.Context) error {
+	poolName, err := app.getPoolForApp(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
 	if poolName == "" {
 		var p *pool.Pool
-		p, err = pool.GetDefaultPool(app.ctx)
+		p, err = pool.GetDefaultPool(ctx)
 		if err != nil {
 			return err
 		}
 		poolName = p.Name
 	}
 	app.Pool = poolName
-	p, err := pool.GetPoolByName(app.ctx, poolName)
+	p, err := pool.GetPoolByName(ctx, poolName)
 	if err != nil {
 		return err
 	}
-	return app.validateTeamOwner(p)
+	return app.validateTeamOwner(ctx, p)
 }
 
-func (app *App) getPoolForApp(poolName string) (string, error) {
+func (app *App) getPoolForApp(ctx context.Context, poolName string) (string, error) {
 	if poolName == "" {
-		pools, err := pool.ListPoolsForTeam(app.ctx, app.TeamOwner)
+		pools, err := pool.ListPoolsForTeam(ctx, app.TeamOwner)
 		if err != nil {
 			return "", err
 		}
 		if len(pools) > 1 {
-			publicPools, err := pool.ListPublicPools(app.ctx)
+			publicPools, err := pool.ListPublicPools(ctx)
 			if err != nil {
 				return "", err
 			}
@@ -1084,7 +1039,7 @@ func (app *App) getPoolForApp(poolName string) (string, error) {
 		}
 		return pools[0].Name, nil
 	}
-	pool, err := pool.GetPoolByName(app.ctx, poolName)
+	pool, err := pool.GetPoolByName(ctx, poolName)
 	if err != nil {
 		return "", err
 	}
@@ -1103,19 +1058,19 @@ func (app *App) setEnv(env bindTypes.EnvVar) {
 }
 
 // validateNew checks app name format, pool and plan
-func (app *App) validateNew() error {
+func (app *App) validateNew(ctx context.Context) error {
 	if !validation.ValidateName(app.Name) {
 		msg := "Invalid app name, your app should have at most 40 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
-	return app.validate()
+	return app.validate(ctx)
 }
 
 // validate checks app pool and plan
-func (app *App) validate() error {
-	err := app.validatePool()
+func (app *App) validate(ctx context.Context) error {
+	err := app.validatePool(ctx)
 	if err != nil {
 		return err
 	}
@@ -1125,10 +1080,10 @@ func (app *App) validate() error {
 		return err
 	}
 
-	return app.validatePlan()
+	return app.validatePlan(ctx)
 }
 
-func (app *App) validatePlan() error {
+func (app *App) validatePlan(ctx context.Context) error {
 	cpuBurst := app.Plan.CPUBurst
 	planOverride := app.Plan.Override
 
@@ -1148,7 +1103,7 @@ func (app *App) validatePlan() error {
 		return &tsuruErrors.ValidationError{Message: msg}
 	}
 
-	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
+	pool, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
@@ -1164,12 +1119,12 @@ func (app *App) validatePlan() error {
 	return nil
 }
 
-func (app *App) validatePool() error {
-	pool, err := pool.GetPoolByName(app.ctx, app.Pool)
+func (app *App) validatePool(ctx context.Context) error {
+	pool, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
-	err = app.validateTeamOwner(pool)
+	err = app.validateTeamOwner(ctx, pool)
 	if err != nil {
 		return err
 	}
@@ -1182,7 +1137,7 @@ func (app *App) validatePool() error {
 		for i, instance := range instances {
 			serviceNames[i] = instance.ServiceName
 		}
-		err = app.ValidateService(serviceNames...)
+		err = app.ValidateService(ctx, serviceNames...)
 		if err != nil {
 			return err
 		}
@@ -1209,8 +1164,8 @@ func (app *App) validateProcesses() error {
 	return nil
 }
 
-func (app *App) validateTeamOwner(p *pool.Pool) error {
-	_, err := servicemanager.Team.FindByName(app.ctx, app.TeamOwner)
+func (app *App) validateTeamOwner(ctx context.Context, p *pool.Pool) error {
+	_, err := servicemanager.Team.FindByName(ctx, app.TeamOwner)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -1228,13 +1183,13 @@ func (app *App) validateTeamOwner(p *pool.Pool) error {
 	return &tsuruErrors.ValidationError{Message: msg}
 }
 
-func (app *App) ValidateService(services ...string) error {
-	_, err := pool.GetPoolByName(app.ctx, app.Pool)
+func (app *App) ValidateService(ctx context.Context, services ...string) error {
+	_, err := pool.GetPoolByName(ctx, app.Pool)
 	if err != nil {
 		return err
 	}
 
-	return pool.ValidatePoolService(app.ctx, app.Pool, services)
+	return pool.ValidatePoolService(ctx, app.Pool, services)
 }
 
 // InstanceEnvs returns a map of environment variables that belongs to the
@@ -1251,15 +1206,15 @@ func (app *App) InstanceEnvs(serviceName, instanceName string) map[string]bindTy
 
 // Run executes the command in app units, sourcing apprc before running the
 // command.
-func (app *App) Run(cmd string, w io.Writer, args provision.RunArgs) error {
-	if !args.Isolated && !app.available() {
+func (app *App) Run(ctx context.Context, cmd string, w io.Writer, args provision.RunArgs) error {
+	if !args.Isolated && !app.available(ctx) {
 		return errors.New("App must be available to run non-isolated commands")
 	}
 	logWriter := LogWriter{AppName: app.Name, Source: "app-run"}
 	logWriter.Async()
 	defer logWriter.Close()
 	logWriter.Write([]byte(fmt.Sprintf("running '%s'", cmd)))
-	return app.run(cmd, io.MultiWriter(w, &logWriter), args)
+	return app.run(ctx, cmd, io.MultiWriter(w, &logWriter), args)
 }
 
 func cmdsForExec(cmd string) []string {
@@ -1268,8 +1223,8 @@ func cmdsForExec(cmd string) []string {
 	return []string{"/bin/sh", "-c", fmt.Sprintf("%s; %s; %s", source, cd, cmd)}
 }
 
-func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
-	prov, err := app.getProvisioner()
+func (app *App) run(ctx context.Context, cmd string, w io.Writer, args provision.RunArgs) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -1283,7 +1238,7 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 		Stderr: w,
 		Cmds:   cmdsForExec(cmd),
 	}
-	units, err := app.Units()
+	units, err := app.Units(ctx)
 	if err != nil {
 		return err
 	}
@@ -1294,7 +1249,7 @@ func (app *App) run(cmd string, w io.Writer, args provision.RunArgs) error {
 			opts.Units = append(opts.Units, u.ID)
 		}
 	}
-	return execProv.ExecuteCommand(app.ctx, opts)
+	return execProv.ExecuteCommand(ctx, opts)
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
@@ -1305,18 +1260,18 @@ func (app *App) Restart(ctx context.Context, process, versionStr string, w io.Wr
 		msg = fmt.Sprintf("---- Restarting the app %q ----", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(versionStr)
+	version, err := app.getVersionAllowNil(ctx, versionStr)
 	if err != nil {
 		return err
 	}
 	err = prov.Restart(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
-		return newErrorWithLog(err, app, "restart")
+		return newErrorWithLog(ctx, err, app, "restart")
 	}
 	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	return err
@@ -1375,7 +1330,7 @@ func generateVersionProcessPastUnitsMap(version appTypes.AppVersion, units []pro
 }
 
 func (app *App) updatePastUnits(ctx context.Context, version appTypes.AppVersion, process string) error {
-	provisioner, err := app.getProvisioner()
+	provisioner, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -1408,11 +1363,11 @@ func (app *App) Stop(ctx context.Context, w io.Writer, process, versionStr strin
 		msg = fmt.Sprintf("\n ---> Stopping the app %q", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(versionStr)
+	version, err := app.getVersionAllowNil(ctx, versionStr)
 	if err != nil {
 		return err
 	}
@@ -1477,8 +1432,8 @@ func (app *App) GetPlan() appTypes.Plan {
 	return app.Plan
 }
 
-func (app *App) GetAddresses() ([]string, error) {
-	routers, err := app.GetRoutersWithAddr()
+func (app *App) GetAddresses(ctx context.Context) ([]string, error) {
+	routers, err := app.GetRoutersWithAddr(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1489,8 +1444,8 @@ func (app *App) GetAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetInternalBindableAddresses() ([]string, error) {
-	prov, err := app.getProvisioner()
+func (app *App) GetInternalBindableAddresses(ctx context.Context) ([]string, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1498,7 +1453,7 @@ func (app *App) GetInternalBindableAddresses() ([]string, error) {
 	if !ok {
 		return nil, nil
 	}
-	addrs, err := interAppProv.InternalAddresses(app.ctx, app)
+	addrs, err := interAppProv.InternalAddresses(ctx, app)
 	if err != nil {
 		return nil, err
 	}
@@ -1513,8 +1468,8 @@ func (app *App) GetInternalBindableAddresses() ([]string, error) {
 	return addresses, nil
 }
 
-func (app *App) GetQuotaInUse() (int, error) {
-	units, err := app.Units()
+func (app *App) GetQuotaInUse(ctx context.Context) (int, error) {
+	units, err := app.Units(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -1528,12 +1483,12 @@ func (app *App) GetQuotaInUse() (int, error) {
 	return counter, nil
 }
 
-func (app *App) GetQuota() (*quota.Quota, error) {
-	return servicemanager.AppQuota.Get(app.ctx, app)
+func (app *App) GetQuota(ctx context.Context) (*quota.Quota, error) {
+	return servicemanager.AppQuota.Get(ctx, app)
 }
 
-func (app *App) SetQuotaLimit(limit int) error {
-	return servicemanager.AppQuota.SetLimit(app.ctx, app, limit)
+func (app *App) SetQuotaLimit(ctx context.Context, limit int) error {
+	return servicemanager.AppQuota.SetLimit(ctx, app, limit)
 }
 
 // GetCname returns the cnames of the app.
@@ -1598,7 +1553,7 @@ func (app *App) Envs() map[string]bindTypes.EnvVar {
 }
 
 // SetEnvs saves a list of environment variables in the app.
-func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
+func (app *App) SetEnvs(ctx context.Context, setEnvs bind.SetEnvArgs) error {
 	if setEnvs.ManagedBy == "" && len(setEnvs.Envs) == 0 {
 		return nil
 	}
@@ -1651,7 +1606,7 @@ func (app *App) SetEnvs(setEnvs bind.SetEnvArgs) error {
 	}
 
 	if setEnvs.ShouldRestart {
-		return app.restartIfUnits(setEnvs.Writer)
+		return app.restartIfUnits(ctx, setEnvs.Writer)
 	}
 
 	return nil
@@ -1676,7 +1631,7 @@ func validateEnvConflicts(app *App, envNames []string) error {
 
 // UnsetEnvs removes environment variables from an app, serializing the
 // remaining list of environment variables to all units of the app.
-func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
+func (app *App) UnsetEnvs(ctx context.Context, unsetEnvs bind.UnsetEnvArgs) error {
 	if len(unsetEnvs.VariableNames) == 0 {
 		return nil
 	}
@@ -1696,30 +1651,30 @@ func (app *App) UnsetEnvs(unsetEnvs bind.UnsetEnvArgs) error {
 		return err
 	}
 	if unsetEnvs.ShouldRestart {
-		return app.restartIfUnits(unsetEnvs.Writer)
+		return app.restartIfUnits(ctx, unsetEnvs.Writer)
 	}
 	return nil
 }
 
-func (app *App) restartIfUnits(w io.Writer) error {
-	units, err := app.Units()
+func (app *App) restartIfUnits(ctx context.Context, w io.Writer) error {
+	units, err := app.Units(ctx)
 	if err != nil {
 		return err
 	}
 	if len(units) == 0 {
 		return nil
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil {
 		return err
 	}
-	err = prov.Restart(app.ctx, app, "", version, w)
+	err = prov.Restart(ctx, app, "", version, w)
 	if err != nil {
-		return newErrorWithLog(err, app, "restart")
+		return newErrorWithLog(ctx, err, app, "restart")
 	}
 	return nil
 }
@@ -1728,13 +1683,13 @@ func (app *App) restartIfUnits(w io.Writer) error {
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
 // in the database or add the CName on the provisioner.
-func (app *App) AddCName(cnames ...string) error {
+func (app *App) AddCName(ctx context.Context, cnames ...string) error {
 	actions := []*action.Action{
 		&validateNewCNames,
 		&saveCNames,
 		&updateApp,
 	}
-	err := action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
+	err := action.NewPipeline(actions...).Execute(ctx, app, cnames)
 	if err != nil {
 		return err
 	}
@@ -1742,16 +1697,16 @@ func (app *App) AddCName(cnames ...string) error {
 	return err
 }
 
-func (app *App) RemoveCName(cnames ...string) error {
+func (app *App) RemoveCName(ctx context.Context, cnames ...string) error {
 	actions := []*action.Action{
 		&checkCNameExists,
 		&removeCNameFromDatabase,
 		&rebuildRoutes,
 	}
-	return action.NewPipeline(actions...).Execute(app.ctx, app, cnames)
+	return action.NewPipeline(actions...).Execute(ctx, app, cnames)
 }
 
-func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
+func (app *App) AddInstance(ctx context.Context, addArgs bind.AddInstanceArgs) error {
 	if len(addArgs.Envs) == 0 {
 		return nil
 	}
@@ -1769,12 +1724,12 @@ func (app *App) AddInstance(addArgs bind.AddInstanceArgs) error {
 		return err
 	}
 	if addArgs.ShouldRestart {
-		return app.restartIfUnits(addArgs.Writer)
+		return app.restartIfUnits(ctx, addArgs.Writer)
 	}
 	return nil
 }
 
-func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
+func (app *App) RemoveInstance(ctx context.Context, removeArgs bind.RemoveInstanceArgs) error {
 	lenBefore := len(app.ServiceEnvs)
 	for i := 0; i < len(app.ServiceEnvs); i++ {
 		se := app.ServiceEnvs[i]
@@ -1800,7 +1755,7 @@ func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 		return err
 	}
 	if removeArgs.ShouldRestart {
-		return app.restartIfUnits(removeArgs.Writer)
+		return app.restartIfUnits(ctx, removeArgs.Writer)
 	}
 	return nil
 }
@@ -1808,7 +1763,7 @@ func (app *App) RemoveInstance(removeArgs bind.RemoveInstanceArgs) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
 func (app *App) LastLogs(ctx context.Context, logService appTypes.AppLogService, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1928,7 +1883,7 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 		prov, ok := poolProvMap[a.Pool]
 		if !ok {
 			var err error
-			prov, err = a.getProvisioner()
+			prov, err = a.getProvisioner(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -1991,15 +1946,12 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range apps {
-		apps[i].ctx = ctx
-	}
 	if filter != nil && len(filter.Statuses) > 0 {
 		appsProvisionerMap := make(map[string][]provision.App)
 		var prov provision.Provisioner
 		for i := range apps {
 			a := &apps[i]
-			prov, err = a.getProvisioner()
+			prov, err = a.getProvisioner(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -2063,14 +2015,14 @@ func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 			}
 		}
 		if hasEmpty {
-			GetAppRouterUpdater().update(a)
+			GetAppRouterUpdater().update(ctx, a)
 		}
 	}
 	return nil
 }
 
 func (app *App) hasMultipleVersions(ctx context.Context) (bool, error) {
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -2094,18 +2046,18 @@ func (app *App) Start(ctx context.Context, w io.Writer, process, versionStr stri
 		msg = fmt.Sprintf("\n ---> Starting the app %q", app.Name)
 	}
 	fmt.Fprintf(w, "%s\n", msg)
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
-	version, err := app.getVersionAllowNil(versionStr)
+	version, err := app.getVersionAllowNil(ctx, versionStr)
 	if err != nil {
 		return err
 	}
 	err = prov.Start(ctx, app, process, version, w)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
-		return newErrorWithLog(err, app, "start")
+		return newErrorWithLog(ctx, err, app, "start")
 	}
 	err = rebuild.RebuildRoutesWithAppName(app.Name, w)
 	return err
@@ -2127,7 +2079,7 @@ func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
 }
 
-func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
+func (app *App) AddRouter(ctx context.Context, appRouter appTypes.AppRouter) error {
 	for _, r := range app.GetRouters() {
 		if appRouter.Name == r.Name {
 			return ErrRouterAlreadyLinked
@@ -2151,14 +2103,14 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 			}
 		}
 	}
-	r, err := router.Get(app.ctx, appRouter.Name)
+	r, err := router.Get(ctx, appRouter.Name)
 	if err != nil {
 		return err
 	}
 
 	// skip rebuild routes task if app has no units available
-	if app.available() {
-		err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+	if app.available(ctx) {
+		err = rebuild.RebuildRoutesInRouter(ctx, appRouter, rebuild.RebuildRoutesOpts{
 			App: app,
 		})
 	}
@@ -2169,7 +2121,7 @@ func (app *App) AddRouter(appRouter appTypes.AppRouter) error {
 	routers := append(app.GetRouters(), appRouter)
 	err = app.updateRoutersDB(routers)
 	if err != nil {
-		rollbackErr := r.RemoveBackend(app.ctx, app)
+		rollbackErr := r.RemoveBackend(ctx, app)
 		if rollbackErr != nil {
 			log.Errorf("unable to remove router backend rolling back add router: %v", rollbackErr)
 		}
@@ -2187,7 +2139,7 @@ func cnameInSet(cname string, cnames []string) bool {
 	return false
 }
 
-func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
+func (app *App) UpdateRouter(ctx context.Context, appRouter appTypes.AppRouter) error {
 	var existing *appTypes.AppRouter
 	routers := app.GetRouters()
 	for i, r := range routers {
@@ -2206,7 +2158,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 		return err
 	}
 
-	err = rebuild.RebuildRoutesInRouter(app.ctx, appRouter, rebuild.RebuildRoutesOpts{
+	err = rebuild.RebuildRoutesInRouter(ctx, appRouter, rebuild.RebuildRoutesOpts{
 		App: app,
 	})
 	if err != nil {
@@ -2216,7 +2168,7 @@ func (app *App) UpdateRouter(appRouter appTypes.AppRouter) error {
 	return nil
 }
 
-func (app *App) RemoveRouter(name string) error {
+func (app *App) RemoveRouter(ctx context.Context, name string) error {
 	removed := false
 	routers := app.GetRouters()
 	for i, r := range routers {
@@ -2230,7 +2182,7 @@ func (app *App) RemoveRouter(name string) error {
 	if !removed {
 		return &router.ErrRouterNotFound{Name: name}
 	}
-	r, err := router.Get(app.ctx, name)
+	r, err := router.Get(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -2238,7 +2190,7 @@ func (app *App) RemoveRouter(name string) error {
 	if err != nil {
 		return err
 	}
-	err = r.RemoveBackend(app.ctx, app)
+	err = r.RemoveBackend(ctx, app)
 	if err != nil {
 		log.Errorf("unable to remove router backend: %v", err)
 	}
@@ -2279,19 +2231,19 @@ func (app *App) GetRouters() []appTypes.AppRouter {
 	return routers
 }
 
-func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
+func (app *App) GetRoutersWithAddr(ctx context.Context) ([]appTypes.AppRouter, error) {
 	routers := app.GetRouters()
 	multi := tsuruErrors.NewMultiError()
 	for i := range routers {
 		routerName := routers[i].Name
-		r, planRouter, err := router.GetWithPlanRouter(app.ctx, routerName)
+		r, planRouter, err := router.GetWithPlanRouter(ctx, routerName)
 		if err != nil {
 			multi.Add(err)
 			continue
 		}
 		routers[i].Type = planRouter.Type
 
-		addrs, aErr := r.Addresses(app.ctx, app)
+		addrs, aErr := r.Addresses(ctx, app)
 		if aErr == nil {
 			routers[i].Addresses = addrs
 		} else {
@@ -2305,13 +2257,13 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 
 		if len(addrs) > 0 {
 			routers[i].Address = addrs[0]
-			servicemanager.AppCache.Create(app.ctx, cache.CacheEntry{
+			servicemanager.AppCache.Create(ctx, cache.CacheEntry{
 				Key:   appRouterAddrKey(app.Name, routerName),
 				Value: addrs[0],
 			})
 		}
 
-		status, stErr := r.GetBackendStatus(app.ctx, app)
+		status, stErr := r.GetBackendStatus(ctx, app)
 		if stErr == nil {
 			routers[i].Status = string(status.Status)
 			routers[i].StatusDetail = status.Detail
@@ -2323,8 +2275,8 @@ func (app *App) GetRoutersWithAddr() ([]appTypes.AppRouter, error) {
 	return routers, multi.ToError()
 }
 
-func (app *App) Shell(opts provision.ExecOptions) error {
-	prov, err := app.getProvisioner()
+func (app *App) Shell(ctx context.Context, opts provision.ExecOptions) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -2334,11 +2286,11 @@ func (app *App) Shell(opts provision.ExecOptions) error {
 	}
 	opts.App = app
 	opts.Cmds = cmdsForExec("[ $(command -v bash) ] && exec bash -l || exec sh -l")
-	return execProv.ExecuteCommand(app.ctx, opts)
+	return execProv.ExecuteCommand(ctx, opts)
 }
 
-func (app *App) SetCertificate(name, certificate, key string) error {
-	err := app.validateNameForCert(name)
+func (app *App) SetCertificate(ctx context.Context, name, certificate, key string) error {
+	err := app.validateNameForCert(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -2356,7 +2308,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 	}
 	addedAny := false
 	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(app.ctx, appRouter.Name)
+		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return err
 		}
@@ -2365,7 +2317,7 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 			continue
 		}
 		addedAny = true
-		err = tlsRouter.AddCertificate(app.ctx, app, name, certificate, key)
+		err = tlsRouter.AddCertificate(ctx, app, name, certificate, key)
 		if err != nil {
 			return err
 		}
@@ -2376,14 +2328,14 @@ func (app *App) SetCertificate(name, certificate, key string) error {
 	return nil
 }
 
-func (app *App) RemoveCertificate(name string) error {
-	err := app.validateNameForCert(name)
+func (app *App) RemoveCertificate(ctx context.Context, name string) error {
+	err := app.validateNameForCert(ctx, name)
 	if err != nil {
 		return err
 	}
 	removedAny := false
 	for _, appRouter := range app.GetRouters() {
-		r, err := router.Get(app.ctx, appRouter.Name)
+		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return err
 		}
@@ -2392,7 +2344,7 @@ func (app *App) RemoveCertificate(name string) error {
 			continue
 		}
 		removedAny = true
-		err = tlsRouter.RemoveCertificate(app.ctx, app, name)
+		err = tlsRouter.RemoveCertificate(ctx, app, name)
 		if err != nil {
 			return err
 		}
@@ -2403,8 +2355,8 @@ func (app *App) RemoveCertificate(name string) error {
 	return nil
 }
 
-func (app *App) validateNameForCert(name string) error {
-	addrs, err := app.GetAddresses()
+func (app *App) validateNameForCert(ctx context.Context, name string) error {
+	addrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return err
 	}
@@ -2421,8 +2373,8 @@ func (app *App) validateNameForCert(name string) error {
 	return nil
 }
 
-func (app *App) GetCertificates() (map[string]map[string]string, error) {
-	addrs, err := app.GetAddresses()
+func (app *App) GetCertificates(ctx context.Context) (map[string]map[string]string, error) {
+	addrs, err := app.GetAddresses(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2430,7 +2382,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 	allCertificates := make(map[string]map[string]string)
 	for _, appRouter := range app.GetRouters() {
 		certificates := make(map[string]string)
-		r, err := router.Get(app.ctx, appRouter.Name)
+		r, err := router.Get(ctx, appRouter.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -2439,7 +2391,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 			continue
 		}
 		for _, n := range names {
-			cert, err := tlsRouter.GetCertificate(app.ctx, app, n)
+			cert, err := tlsRouter.GetCertificate(ctx, app, n)
 			if err != nil && err != router.ErrCertificateNotFound {
 				return nil, errors.Wrapf(err, "error in router %q", appRouter.Name)
 			}
@@ -2454,7 +2406,7 @@ func (app *App) GetCertificates() (map[string]map[string]string, error) {
 }
 
 func (app *App) RoutableAddresses(ctx context.Context) ([]appTypes.RoutableAddresses, error) {
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2512,8 +2464,8 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 	return err
 }
 
-func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
-	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
+func (app *App) GetHealthcheckData(ctx context.Context) (routerTypes.HealthcheckData, error) {
+	version, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	if err != nil {
 		if err == appTypes.ErrNoVersionsAvailable {
 			err = nil
@@ -2524,7 +2476,7 @@ func (app *App) GetHealthcheckData() (routerTypes.HealthcheckData, error) {
 	if err != nil {
 		return routerTypes.HealthcheckData{}, err
 	}
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return routerTypes.HealthcheckData{}, err
 	}
@@ -2546,7 +2498,7 @@ func validateEnv(envName string) error {
 }
 
 func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, isRoutable bool) error {
-	prov, err := app.getProvisioner()
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -2557,19 +2509,19 @@ func (app *App) SetRoutable(ctx context.Context, version appTypes.AppVersion, is
 	return rprov.ToggleRoutable(ctx, app, version, isRoutable)
 }
 
-func (app *App) DeployedVersions() ([]int, error) {
-	prov, err := app.getProvisioner()
+func (app *App) DeployedVersions(ctx context.Context) ([]int, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if rprov, ok := prov.(provision.VersionsProvisioner); ok {
-		return rprov.DeployedVersions(app.ctx, app)
+		return rprov.DeployedVersions(ctx, app)
 	}
 	return nil, ErrNoVersionProvisioner
 }
 
 func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVersion, error) {
-	versionProv, v, err := app.explicitVersion(version)
+	versionProv, v, err := app.explicitVersion(ctx, version)
 	if err != nil {
 		return nil, err
 	}
@@ -2582,34 +2534,34 @@ func (app *App) getVersion(ctx context.Context, version string) (appTypes.AppVer
 		return nil, err
 	}
 	if len(versions) == 0 {
-		return servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
+		return servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 	}
 	if len(versions) > 1 {
 		return nil, errors.Errorf("more than one version deployed, you must select one")
 	}
 
-	return servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, strconv.Itoa(versions[0]))
+	return servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, strconv.Itoa(versions[0]))
 }
 
-func (app *App) getVersionAllowNil(version string) (appTypes.AppVersion, error) {
-	_, v, err := app.explicitVersion(version)
+func (app *App) getVersionAllowNil(ctx context.Context, version string) (appTypes.AppVersion, error) {
+	_, v, err := app.explicitVersion(ctx, version)
 	return v, err
 }
 
-func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, appTypes.AppVersion, error) {
-	prov, err := app.getProvisioner()
+func (app *App) explicitVersion(ctx context.Context, version string) (provision.VersionsProvisioner, appTypes.AppVersion, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	versionProv, isVersionProv := prov.(provision.VersionsProvisioner)
 
 	if !isVersionProv {
-		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(app.ctx, app)
+		latest, err := servicemanager.AppVersion.LatestSuccessfulVersion(ctx, app)
 		if err != nil {
 			return nil, nil, err
 		}
 		if version != "" && version != "0" {
-			v, err := servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, version)
+			v, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, version)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -2621,7 +2573,7 @@ func (app *App) explicitVersion(version string) (provision.VersionsProvisioner, 
 	}
 
 	if version != "" && version != "0" {
-		v, err := servicemanager.AppVersion.VersionByImageOrVersion(app.ctx, app, version)
+		v, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, app, version)
 		return versionProv, v, err
 	}
 
@@ -2689,8 +2641,8 @@ buildResult:
 	return result
 }
 
-func (app *App) AutoScaleInfo() ([]provTypes.AutoScaleSpec, error) {
-	prov, err := app.getProvisioner()
+func (app *App) AutoScaleInfo(ctx context.Context) ([]provTypes.AutoScaleSpec, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2698,11 +2650,11 @@ func (app *App) AutoScaleInfo() ([]provTypes.AutoScaleSpec, error) {
 	if !ok {
 		return nil, nil
 	}
-	return autoscaleProv.GetAutoScale(app.ctx, app)
+	return autoscaleProv.GetAutoScale(ctx, app)
 }
 
-func (app *App) VerticalAutoScaleRecommendations() ([]provTypes.RecommendedResources, error) {
-	prov, err := app.getProvisioner()
+func (app *App) VerticalAutoScaleRecommendations(ctx context.Context) ([]provTypes.RecommendedResources, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2710,11 +2662,11 @@ func (app *App) VerticalAutoScaleRecommendations() ([]provTypes.RecommendedResou
 	if !ok {
 		return nil, nil
 	}
-	return autoscaleProv.GetVerticalAutoScaleRecommendations(app.ctx, app)
+	return autoscaleProv.GetVerticalAutoScaleRecommendations(ctx, app)
 }
 
-func (app *App) UnitsMetrics() ([]provTypes.UnitMetric, error) {
-	prov, err := app.getProvisioner()
+func (app *App) UnitsMetrics(ctx context.Context) ([]provTypes.UnitMetric, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2722,11 +2674,11 @@ func (app *App) UnitsMetrics() ([]provTypes.UnitMetric, error) {
 	if !ok {
 		return nil, nil
 	}
-	return metricsProv.UnitsMetrics(app.ctx, app)
+	return metricsProv.UnitsMetrics(ctx, app)
 }
 
-func (app *App) AutoScale(spec provTypes.AutoScaleSpec) error {
-	prov, err := app.getProvisioner()
+func (app *App) AutoScale(ctx context.Context, spec provTypes.AutoScaleSpec) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -2734,11 +2686,11 @@ func (app *App) AutoScale(spec provTypes.AutoScaleSpec) error {
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
-	return autoscaleProv.SetAutoScale(app.ctx, app, spec)
+	return autoscaleProv.SetAutoScale(ctx, app, spec)
 }
 
-func (app *App) RemoveAutoScale(process string) error {
-	prov, err := app.getProvisioner()
+func (app *App) RemoveAutoScale(ctx context.Context, process string) error {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return err
 	}
@@ -2746,7 +2698,7 @@ func (app *App) RemoveAutoScale(process string) error {
 	if !ok {
 		return errors.Errorf("provisioner %q does not support native autoscaling", prov.GetName())
 	}
-	return autoscaleProv.RemoveAutoScale(app.ctx, app, process)
+	return autoscaleProv.RemoveAutoScale(ctx, app, process)
 }
 
 func envInSet(envName string, envs []bindTypes.EnvVar) bool {
@@ -2758,8 +2710,8 @@ func envInSet(envName string, envs []bindTypes.EnvVar) bool {
 	return false
 }
 
-func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
-	prov, err := app.getProvisioner()
+func (app *App) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, error) {
+	prov, err := app.getProvisioner(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -2767,5 +2719,5 @@ func (app *App) GetRegistry() (imgTypes.ImageRegistry, error) {
 	if !ok {
 		return "", nil
 	}
-	return registryProv.RegistryForPool(app.ctx, app.Pool)
+	return registryProv.RegistryForPool(ctx, app.Pool)
 }

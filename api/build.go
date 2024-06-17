@@ -106,9 +106,8 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		appBuildDuration.With(labels).Observe(time.Since(startingBuildTime).Seconds())
 		appBuildsTotal.With(labels).Inc()
 	}()
-	ctx, cancel := evt.CancelableContext(opts.App.Context())
+	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
-	opts.App.ReplaceContext(ctx)
 	opts.Event = evt
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	defer writer.Stop()

@@ -212,7 +212,7 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 	return allAppVersions, nil
 }
 
-func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.App) (appTypes.AppVersions, error) {
+func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.AppInterface) (appTypes.AppVersions, error) {
 	query := mongoBSON.M{"appname": app.GetName()}
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	span.SetQueryStatement(query)

@@ -19,13 +19,13 @@ import (
 type appVersionImpl struct {
 	ctx         context.Context
 	storage     appTypes.AppVersionStorage
-	app         appTypes.App
+	app         appTypes.AppInterface
 	versionInfo *appTypes.AppVersionInfo
 	reg         imgTypes.ImageRegistry
 }
 
-func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, app appTypes.App, versionInfo *appTypes.AppVersionInfo) (*appVersionImpl, error) {
-	reg, err := app.GetRegistry()
+func newAppVersionImpl(ctx context.Context, storage appTypes.AppVersionStorage, app appTypes.AppInterface, versionInfo *appTypes.AppVersionInfo) (*appVersionImpl, error) {
+	reg, err := app.GetRegistry(ctx)
 	if err != nil {
 		return nil, err
 	}
