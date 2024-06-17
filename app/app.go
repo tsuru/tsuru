@@ -165,8 +165,8 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 		Metadata:    app.Metadata,
 	}
 
-	if version := app.GetPlatformVersion(); version != "latest" {
-		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
+	if app.PlatformVersion != "latest" && app.PlatformVersion != "" {
+		result.Platform = fmt.Sprintf("%s:%s", app.Platform, app.PlatformVersion)
 	}
 	prov, err := app.getProvisioner(ctx)
 	if err != nil {
