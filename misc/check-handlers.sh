@@ -54,6 +54,7 @@ github.com/tsuru/tsuru/api.tokenList
 github.com/tsuru/tsuru/api.forceDeleteLock
 github.com/tsuru/tsuru/api.diffDeploy
 github.com/tsuru/tsuru/api.swap
+github.com/tsuru/tsuru/api.serviceAuthenticatedResourcesProxy
 EOF
     )
     ignored=$(echo "$ignored" | sort)

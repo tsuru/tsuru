@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	_ "crypto/sha256"
@@ -190,7 +191,7 @@ func (u *User) UserGroups() ([]authTypes.Group, error) {
 	if u.Groups != nil {
 		groupsFilter = u.Groups
 	}
-	groups, err := servicemanager.AuthGroup.List(groupsFilter)
+	groups, err := servicemanager.AuthGroup.List(context.TODO(), groupsFilter)
 	if err != nil {
 		return nil, err
 	}

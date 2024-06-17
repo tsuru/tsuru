@@ -129,7 +129,7 @@ func (s *webhookService) run() {
 	for {
 		select {
 		case evtID := <-s.evtCh:
-			err := s.handleEvent(evtID)
+			err := s.handleEvent(context.Background(), evtID)
 			if err != nil {
 				log.Errorf("[webhooks] error handling webhooks for event %q: %v", evtID, err)
 			}
@@ -139,7 +139,7 @@ func (s *webhookService) run() {
 	}
 }
 
-func (s *webhookService) handleEvent(evtID string) error {
+func (s *webhookService) handleEvent(ctx context.Context, evtID string) error {
 	evt, err := event.GetByHexID(evtID)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func (s *webhookService) handleEvent(evtID string) error {
 		filter.TargetTypes = append(filter.TargetTypes, string(t.Target.Type))
 		filter.TargetValues = append(filter.TargetValues, t.Target.Value)
 	}
-	hooks, err := s.storage.FindByEvent(filter, evt.Error == "")
+	hooks, err := s.storage.FindByEvent(ctx, filter, evt.Error == "")
 	if err != nil {
 		return err
 	}
@@ -295,14 +295,14 @@ func (s *webhookService) Delete(name string) error {
 	return s.storage.Delete(name)
 }
 
-func (s *webhookService) Find(name string) (eventTypes.Webhook, error) {
-	w, err := s.storage.FindByName(name)
+func (s *webhookService) Find(ctx context.Context, name string) (eventTypes.Webhook, error) {
+	w, err := s.storage.FindByName(ctx, name)
 	if err != nil {
 		return eventTypes.Webhook{}, err
 	}
 	return *w, nil
 }
 
-func (s *webhookService) List(teams []string) ([]eventTypes.Webhook, error) {
-	return s.storage.FindAllByTeams(teams)
+func (s *webhookService) List(ctx context.Context, teams []string) ([]eventTypes.Webhook, error) {
+	return s.storage.FindAllByTeams(ctx, teams)
 }

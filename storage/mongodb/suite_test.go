@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	check "gopkg.in/check.v1"
 )
 
@@ -33,9 +34,13 @@ func (t *mongodbBaseTest) SetUpSuite(c *check.C) {
 	// Because of that, a new collection may have wrong indexes, as it doesn't create new ones and doesn't use the old ones.
 	// Therefore, tests may not work properly and you need an individual db for this test suite.
 	config.Set("database:name", t.dbName())
+
+	storagev2.Reset()
 }
 
 func (t *mongodbBaseTest) SetUpTest(c *check.C) {
+	// TODO: clear all collections with storagev2
+
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

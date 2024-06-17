@@ -11,6 +11,10 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	storagev2 "github.com/tsuru/tsuru/db/storagev2"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/tsuru/tsuru/types/auth"
 	"github.com/tsuru/tsuru/types/quota"
 )
@@ -79,15 +83,19 @@ func (s *TeamStorage) FindByName(ctx context.Context, name string) (*auth.Team, 
 	defer span.Finish()
 
 	var t team
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(teamsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	err = teamsCollection(conn).FindId(name).One(&t)
+
+	err = collection.FindOne(ctx, mongoBSON.M{
+		"_id": name,
+	}).Decode(&t)
+
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			err = auth.ErrTeamNotFound
 		}
 		span.SetError(err)
@@ -107,18 +115,18 @@ func (s *TeamStorage) findByQuery(ctx context.Context, query bson.M) ([]auth.Tea
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
-	if err != nil {
-		span.SetError(err)
-		return nil, err
-	}
-	defer conn.Close()
 	var teams []team
-	err = teamsCollection(conn).Find(query).All(&teams)
+	collection, err := storagev2.Collection(teamsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+	cursor.All(ctx, &teams)
 	authTeams := make([]auth.Team, len(teams))
 	for i, t := range teams {
 		authTeams[i] = auth.Team(t)

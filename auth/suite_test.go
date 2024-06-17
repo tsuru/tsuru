@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
@@ -40,6 +41,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.conn, _ = db.Conn()
 	config.Set("smtp:user", "root")
 	var err error
+
+	storagev2.Reset()
+
 	servicemanager.TeamToken, err = TeamTokenService()
 	c.Assert(err, check.IsNil)
 	servicemanager.Team, err = TeamService()

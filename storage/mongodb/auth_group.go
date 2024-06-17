@@ -5,12 +5,16 @@
 package mongodb
 
 import (
+	"context"
+
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -34,19 +38,29 @@ func (s *authGroupStorage) collection() (*storage.Collection, error) {
 	return coll, err
 }
 
-func (s *authGroupStorage) List(filter []string) ([]auth.Group, error) {
-	coll, err := s.collection()
+func (s *authGroupStorage) List(ctx context.Context, filter []string) ([]auth.Group, error) {
+	collection, err := storagev2.Collection(authGroupCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer coll.Close()
-	bsonFilter := bson.M{}
+
+	bsonFilter := mongoBSON.M{}
 	if filter != nil {
-		bsonFilter["name"] = bson.M{"$in": filter}
+		bsonFilter["name"] = mongoBSON.M{"$in": filter}
 	}
+
+	cursor, err := collection.Find(ctx, bsonFilter)
+	if err != nil {
+		return nil, err
+	}
+
 	var groups []auth.Group
-	err = coll.Find(bsonFilter).All(&groups)
-	return groups, err
+	err = cursor.All(ctx, &groups)
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
 }
 
 func (s *authGroupStorage) AddRole(name, roleName, contextValue string) error {

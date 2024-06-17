@@ -12,7 +12,10 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/auth"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const teamsTokensCollectionName = "team_tokens"
@@ -58,10 +61,10 @@ func (s *teamTokenStorage) Insert(ctx context.Context, t auth.TeamToken) error {
 	return err
 }
 
-func (s *teamTokenStorage) findOne(ctx context.Context, query bson.M) (*auth.TeamToken, error) {
+func (s *teamTokenStorage) findOne(ctx context.Context, query mongoBSON.M) (*auth.TeamToken, error) {
 	results, err := s.findByQuery(ctx, query)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			err = auth.ErrTeamTokenNotFound
 		}
 		return nil, err
@@ -73,33 +76,38 @@ func (s *teamTokenStorage) findOne(ctx context.Context, query bson.M) (*auth.Tea
 }
 
 func (s *teamTokenStorage) FindByToken(ctx context.Context, token string) (*auth.TeamToken, error) {
-	return s.findOne(ctx, bson.M{"token": token})
+	return s.findOne(ctx, mongoBSON.M{"token": token})
 }
 
 func (s *teamTokenStorage) FindByTokenID(ctx context.Context, tokenID string) (*auth.TeamToken, error) {
-	return s.findOne(ctx, bson.M{"token_id": tokenID})
+	return s.findOne(ctx, mongoBSON.M{"token_id": tokenID})
 }
 
 func (s *teamTokenStorage) FindByTeams(ctx context.Context, teamNames []string) ([]auth.TeamToken, error) {
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if teamNames != nil {
 		query["team"] = bson.M{"$in": teamNames}
 	}
 	return s.findByQuery(ctx, query)
 }
 
-func (s *teamTokenStorage) findByQuery(ctx context.Context, query bson.M) ([]auth.TeamToken, error) {
+func (s *teamTokenStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]auth.TeamToken, error) {
 	span := newMongoDBSpan(ctx, mongoSpanFind, teamsTokensCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(teamsTokensCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
 	var tokens []teamToken
-	err = teamTokensCollection(conn).Find(query).All(&tokens)
+	err = cursor.All(ctx, &tokens)
 	if err != nil {
 		span.SetError(err)
 		return nil, err

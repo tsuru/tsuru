@@ -262,7 +262,7 @@ func (s *S) TestWebhookServiceCreate(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	w, err := s.service.Find("xyz")
+	w, err := s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
 		Name: "xyz",
@@ -348,7 +348,7 @@ func (s *S) TestWebhookServiceUpdate(c *check.C) {
 		URL:  "http://b",
 	})
 	c.Assert(err, check.IsNil)
-	w, err := s.service.Find("xyz")
+	w, err := s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.IsNil)
 	c.Assert(w, check.DeepEquals, eventTypes.Webhook{
 		Name:    "xyz",
@@ -379,7 +379,7 @@ func (s *S) TestWebhookServiceDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.service.Delete("xyz")
 	c.Assert(err, check.IsNil)
-	_, err = s.service.Find("xyz")
+	_, err = s.service.Find(context.TODO(), "xyz")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 

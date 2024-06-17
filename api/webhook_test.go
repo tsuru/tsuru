@@ -5,6 +5,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -147,7 +148,7 @@ func (s *S) TestWebhookCreate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
-	wh, err := servicemanager.Webhook.Find("wh1")
+	wh, err := servicemanager.Webhook.Find(context.TODO(), "wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
 		TeamOwner: s.team.Name,
@@ -180,7 +181,7 @@ func (s *S) TestWebhookCreateAutoTeam(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
-	wh, err := servicemanager.Webhook.Find("wh1")
+	wh, err := servicemanager.Webhook.Find(context.TODO(), "wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
 		TeamOwner: s.team.Name,
@@ -259,7 +260,7 @@ func (s *S) TestWebhookUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	wh, err := servicemanager.Webhook.Find("wh1")
+	wh, err := servicemanager.Webhook.Find(context.TODO(), "wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(wh, check.DeepEquals, eventTypes.Webhook{
 		TeamOwner: s.team.Name,
@@ -336,7 +337,7 @@ func (s *S) TestWebhookDelete(c *check.C) {
 	recorder := httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	_, err = servicemanager.Webhook.Find("wh1")
+	_, err = servicemanager.Webhook.Find(context.TODO(), "wh1")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 

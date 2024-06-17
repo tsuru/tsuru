@@ -7,17 +7,19 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var _ quota.QuotaStorage = &quotaStorage{}
 
 type quotaStorage struct {
 	collection string
-	query      func(string) bson.M
+	query      func(string) mongoBSON.M
 }
 
 type quotaObject struct {
@@ -80,16 +82,16 @@ func (s *quotaStorage) Get(ctx context.Context, name string) (*quota.Quota, erro
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	var obj quotaObject
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(s.collection)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	err = conn.Collection(s.collection).Find(query).One(&obj)
+
+	var obj quotaObject
+	err = collection.FindOne(ctx, query).Decode(&obj)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, quota.ErrQuotaNotFound
 		}
 		span.SetError(err)

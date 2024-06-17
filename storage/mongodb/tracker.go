@@ -8,10 +8,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/tracker"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 const trackerCollectionName = "tracker"
@@ -50,30 +51,31 @@ func (s *instanceTrackerStorage) Notify(ctx context.Context, instance tracker.Tr
 }
 
 func (s *instanceTrackerStorage) List(ctx context.Context, maxStale time.Duration) ([]tracker.TrackedInstance, error) {
-	query := bson.M{
-		"lastupdate": bson.M{"$gt": time.Now().UTC().Add(-maxStale)},
+	query := mongoBSON.M{
+		"lastupdate": mongoBSON.M{"$gt": time.Now().UTC().Add(-maxStale)},
 	}
 
 	span := newMongoDBSpan(ctx, mongoSpanFind, trackerCollectionName)
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(trackerCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
 
-	defer conn.Close()
-	var instances []trackedInstance
-	err = trackerCollection(conn).Find(query).All(&instances)
+	cursor, err := collection.Find(ctx, query)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	results := make([]tracker.TrackedInstance, len(instances))
-	for i := range instances {
-		results[i] = tracker.TrackedInstance(instances[i])
+
+	var instances []tracker.TrackedInstance
+	err = cursor.All(ctx, &instances)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
 	}
-	return results, nil
+	return instances, nil
 }

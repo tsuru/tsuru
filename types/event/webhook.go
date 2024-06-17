@@ -5,6 +5,7 @@
 package event
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -41,15 +42,15 @@ type WebhookService interface {
 	Create(Webhook) error
 	Update(Webhook) error
 	Delete(string) error
-	Find(string) (Webhook, error)
-	List([]string) ([]Webhook, error)
+	Find(context.Context, string) (Webhook, error)
+	List(context.Context, []string) ([]Webhook, error)
 }
 
 type WebhookStorage interface {
 	Insert(Webhook) error
 	Update(Webhook) error
-	FindAllByTeams([]string) ([]Webhook, error)
-	FindByName(string) (*Webhook, error)
-	FindByEvent(f WebhookEventFilter, isSuccess bool) ([]Webhook, error)
+	FindAllByTeams(context.Context, []string) ([]Webhook, error)
+	FindByName(context.Context, string) (*Webhook, error)
+	FindByEvent(ctx context.Context, f WebhookEventFilter, isSuccess bool) ([]Webhook, error)
 	Delete(string) error
 }
