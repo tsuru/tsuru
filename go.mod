@@ -4,14 +4,14 @@ go 1.21
 
 require (
 	github.com/adhocore/gronx v1.6.6
-	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 	github.com/bradfitz/go-smtpd v0.0.0-20130623174436-5b56f4f917c7
+	github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
 	github.com/codegangsta/negroni v0.0.0-20140611175843-a13766a8c257
-	github.com/diego-araujo/go-saml v0.0.0-20151211102911-81203d242537
 	github.com/docker/cli v23.0.0-rc.1+incompatible
 	github.com/docker/docker v23.0.0-rc.1+incompatible
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2
 	github.com/felixge/fgprof v0.9.1
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/fsouza/go-dockerclient v1.7.4
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -41,11 +41,11 @@ require (
 	github.com/tsuru/tablecli v0.0.0-20190131152944-7ded8a3383c6
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
 	github.com/ugorji/go/codec v1.1.7
+	go.mongodb.org/mongo-driver v1.15.0
 	go.uber.org/automaxprocs v1.5.3
 	golang.org/x/crypto v0.23.0
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.6.0
-	golang.org/x/sys v0.20.0
 	golang.org/x/term v0.20.0
 	golang.org/x/text v0.15.0
 	google.golang.org/grpc v1.53.0
@@ -69,7 +69,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
-	github.com/RobotsAndPencils/go-saml v0.0.0-20150922030833-aa127de49a01 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
@@ -83,7 +82,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
@@ -135,10 +133,10 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.mongodb.org/mongo-driver v1.15.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
@@ -155,9 +153,4 @@ require (
 	sigs.k8s.io/controller-runtime v0.14.5 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-)
-
-replace (
-	github.com/ajg/form => github.com/cezarsa/form v0.0.0-20210510165411-863b166467b9
-	github.com/samalba/dockerclient => github.com/cezarsa/dockerclient v0.0.0-20190924055524-af5052a88081
 )
