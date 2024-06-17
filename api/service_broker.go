@@ -23,10 +23,11 @@ import (
 //	204: No content
 //	401: Unauthorized
 func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermServiceBrokerRead) {
 		return permission.ErrUnauthorized
 	}
-	brokers, err := servicemanager.ServiceBroker.List()
+	brokers, err := servicemanager.ServiceBroker.List(ctx)
 	if err != nil {
 		return err
 	}
@@ -86,6 +87,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //	401: Unauthorized
 //	404: Not Found
 func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermServiceBrokerUpdate) {
 		return permission.ErrUnauthorized
 	}
@@ -109,7 +111,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	if err = servicemanager.ServiceBroker.Update(brokerName, *broker); err == service.ErrServiceBrokerNotFound {
+	if err = servicemanager.ServiceBroker.Update(ctx, brokerName, *broker); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return err
