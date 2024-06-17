@@ -53,12 +53,12 @@ var _ = check.Suite(&S{})
 func (s *S) TestMigrateAppPlanRouterToRouter(c *check.C) {
 	config.Set("routers:galeb:default", true)
 	defer config.Unset("routers")
-	a := &app.App{Name: "with-plan-router"}
+	a := &appTypes.App{Name: "with-plan-router"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Update(bson.M{"name": "with-plan-router"}, bson.M{"$set": bson.M{"plan.router": "planb"}})
 	c.Assert(err, check.IsNil)
-	a = &app.App{Name: "without-plan-router"}
+	a = &appTypes.App{Name: "without-plan-router"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	c.Assert(err, check.IsNil)
@@ -212,14 +212,15 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvs(c *check.C) {
 	}
 	err := MigrateAppTsuruServicesVarToServiceEnvs()
 	c.Assert(err, check.IsNil)
-	var resultApps []app.App
-	var dbApp *app.App
+	var resultApps []appTypes.App
+	var dbApp *appTypes.App
 	for _, tt := range tests {
 		dbApp, err = app.GetByName(context.TODO(), tt.app.Name)
 		c.Assert(err, check.IsNil)
+		legacyDBApp := (*app.App)(dbApp)
 		resultApps = append(resultApps, *dbApp)
 		c.Assert(dbApp.ServiceEnvs, check.DeepEquals, tt.expected)
-		allEnvs := dbApp.Envs()
+		allEnvs := legacyDBApp.Envs()
 		if tt.expectedServicesEnv == "" {
 			tt.expectedServicesEnv = tt.app.Env[tsuruEnvs.TsuruServicesEnvVar].Value
 		}
@@ -253,10 +254,10 @@ func (s *S) TestMigrateAppTsuruServicesVarToServiceEnvsNothingToDo(c *check.C) {
 }
 
 func (s *S) TestMigrateAppPlanIDToPlanName(c *check.C) {
-	a := &app.App{Name: "app-with-plan-name", Plan: appTypes.Plan{Name: "plan-name"}}
+	a := &appTypes.App{Name: "app-with-plan-name", Plan: appTypes.Plan{Name: "plan-name"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	a = &app.App{Name: "app-with-plan-id"}
+	a = &appTypes.App{Name: "app-with-plan-id"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Update(bson.M{"name": "app-with-plan-id"}, bson.M{"$set": bson.M{"plan._id": "plan-id"}})

@@ -50,7 +50,12 @@ func defineLogabbleObject(ctx context.Context, lType logTypes.LogType, name stri
 	if lType == logTypes.LogTypeJob {
 		return servicemanager.Job.GetByName(ctx, name)
 	}
-	return servicemanager.App.GetByName(ctx, name)
+
+	a, err := servicemanager.App.GetByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 func (k *provisionerWrapper) List(ctx context.Context, args appTypes.ListLogArgs) ([]appTypes.Applog, error) {

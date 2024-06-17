@@ -87,7 +87,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	message := InputValue(r, "message")
-	opts.App = instance
+	opts.App = (*app.App)(instance)
 	opts.User = userName
 	opts.Origin = origin
 	opts.Message = message
@@ -192,10 +192,11 @@ func diffDeploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
-	instance, err := app.GetByName(ctx, appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
+	legacyApp := (*app.App)(a)
 	image := InputValue(r, "image")
 	if image == "" {
 		return &tsuruErrors.HTTP{
@@ -217,7 +218,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	opts := app.DeployOptions{
-		App:          instance,
+		App:          legacyApp,
 		OutputStream: writer,
 		Image:        image,
 		User:         t.GetUserName(),
@@ -227,7 +228,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
 	opts.GetKind()
-	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	canRollback := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(a)...)
 	if !canRollback {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
@@ -238,8 +239,8 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    opts,
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -334,10 +335,11 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
-	instance, err := app.GetByName(ctx, appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
+	legacyApp := (*app.App)(a)
 	origin := InputValue(r, "origin")
 	if !app.ValidateOrigin(origin) {
 		return &tsuruErrors.HTTP{
@@ -350,7 +352,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	opts := app.DeployOptions{
-		App:          instance,
+		App:          legacyApp,
 		OutputStream: writer,
 		User:         t.GetUserName(),
 		Origin:       origin,
@@ -358,7 +360,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	opts.NewVersion, _ = strconv.ParseBool(InputValue(r, "new-version"))
 	opts.OverrideVersions, _ = strconv.ParseBool(InputValue(r, "override-versions"))
-	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(instance)...)
+	canDeploy := permission.Check(t, permSchemeForDeploy(opts), contextsForApp(a)...)
 	if !canDeploy {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
@@ -369,8 +371,8 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    opts,
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    true,
 	})
 	if err != nil {
@@ -399,14 +401,15 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get(":app")
-	instance, err := app.GetByName(ctx, appName)
+	a, err := app.GetByName(ctx, appName)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("App %s was not found", appName),
 		}
 	}
-	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(instance)...)
+	legacyApp := (*app.App)(a)
+	canUpdateRollback := permission.Check(t, permission.PermAppUpdateDeployRollback, contextsForApp(a)...)
 	if !canUpdateRollback {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusForbidden,
@@ -441,15 +444,15 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    event.FormToCustomData(InputFields(r)),
-		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
-		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(instance)...),
+		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
+		AllowedCancel: event.Allowed(permission.PermAppUpdateEvents, contextsForApp(a)...),
 		Cancelable:    false,
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = app.RollbackUpdate(ctx, instance, img, reason, disableRollback)
+	err = app.RollbackUpdate(ctx, legacyApp, img, reason, disableRollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{
 			Code:    http.StatusBadRequest,

@@ -178,30 +178,33 @@ func removeApp(app *App) error {
 var exportEnvironmentsAction = action.Action{
 	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
-		app, err := GetByName(ctx.Context, app.Name)
+		legacyApp := ctx.Params[0].(*App)
+		a, err := GetByName(ctx.Context, legacyApp.Name)
 		if err != nil {
 			return nil, err
 		}
+		legacyApp = (*App)(a)
 		envVars := []bindTypes.EnvVar{
-			{Name: "TSURU_APPNAME", Value: app.Name},
+			{Name: "TSURU_APPNAME", Value: a.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
 		}
-		err = app.SetEnvs(ctx.Context, bind.SetEnvArgs{
+		err = legacyApp.SetEnvs(ctx.Context, bind.SetEnvArgs{
 			Envs:          envVars,
 			ShouldRestart: false,
 		})
 		if err != nil {
 			return nil, err
 		}
-		return app, nil
+		return legacyApp, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		app := ctx.Params[0].(*App)
-		app, err := GetByName(ctx.Context, app.Name)
+		legacyApp := ctx.Params[0].(*App)
+		a, err := GetByName(ctx.Context, legacyApp.Name)
+		legacyApp = (*App)(a)
+
 		if err == nil {
 			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
-			app.UnsetEnvs(ctx.Context, bind.UnsetEnvArgs{
+			legacyApp.UnsetEnvs(ctx.Context, bind.UnsetEnvArgs{
 				VariableNames: vars,
 				ShouldRestart: true,
 			})
@@ -243,10 +246,10 @@ var provisionApp = action.Action{
 var reserveUnitsToAdd = action.Action{
 	Name: "reserve-units-to-add",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
+		var legacyApp *App
 		switch ctx.Params[0].(type) {
 		case *App:
-			app = ctx.Params[0].(*App)
+			legacyApp = ctx.Params[0].(*App)
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
@@ -264,11 +267,12 @@ var reserveUnitsToAdd = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app, err = GetByName(ctx.Context, app.Name)
+		a, err := GetByName(ctx.Context, legacyApp.Name)
 		if err != nil {
 			return nil, appTypes.ErrAppNotFound
 		}
-		err = servicemanager.AppQuota.Inc(ctx.Context, app, n)
+		legacyApp = (*App)(a)
+		err = servicemanager.AppQuota.Inc(ctx.Context, legacyApp, n)
 		if err != nil {
 			return nil, err
 		}

@@ -69,20 +69,21 @@ func (s *S) TestGetAppByNameNotFound(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
-	a := App{
+	a := &appTypes.App{
 		Name:      "ritual",
 		Platform:  "ruby",
 		Owner:     s.user.Email,
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.LogService.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
 	version, err := servicemanager.AppVersion.NewAppVersion(context.TODO(), appTypes.NewVersionArgs{
-		App: app,
+		App: legacyApp,
 	})
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
@@ -94,36 +95,35 @@ func (s *S) TestDelete(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	err = Delete(context.TODO(), app, evt, "")
+	err = Delete(context.TODO(), legacyApp, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, false)
 	_, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.Equals, appTypes.ErrAppNotFound)
-	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
+	c.Assert(s.provisioner.Provisioned(legacyApp), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
-	appVersion, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
+	appVersion, err := servicemanager.AppVersion.AppVersions(context.TODO(), legacyApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersion.Count, check.Not(check.Equals), 0)
 	c.Assert(appVersion.Versions, check.DeepEquals, map[int]appTypes.AppVersionInfo{})
 }
 
 func (s *S) TestDeleteVersion(c *check.C) {
-	a := App{
+	a := &appTypes.App{
 		Name:      "ritual",
 		Platform:  "ruby",
 		Owner:     s.user.Email,
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(context.TODO(), a.Name)
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	err = servicemanager.LogService.Add(a.Name, "msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, app)
-	version2 := newSuccessfulAppVersion(c, app)
-	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
+	newSuccessfulAppVersion(c, legacyApp)
+	version2 := newSuccessfulAppVersion(c, legacyApp)
+	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), legacyApp)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersions.Count, check.Equals, 2)
 	evt, err := event.New(&event.Opts{
@@ -133,9 +133,9 @@ func (s *S) TestDeleteVersion(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	err = a.DeleteVersion(context.TODO(), evt, strconv.Itoa(version2.Version()))
+	err = legacyApp.DeleteVersion(context.TODO(), evt, strconv.Itoa(version2.Version()))
 	c.Assert(err, check.IsNil)
-	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
+	c.Assert(s.provisioner.Provisioned(legacyApp), check.Equals, false)
 	err = servicemanager.UserQuota.Inc(context.TODO(), s.user, 1)
 	c.Assert(err, check.IsNil)
 }
@@ -162,13 +162,14 @@ func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
 }
 
 func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
-	a := App{
+	a := &appTypes.App{
 		Name:      "ritual",
 		Platform:  "ruby",
 		Owner:     s.user.Email,
 		TeamOwner: s.team.Name,
 	}
-	err := CreateApp(context.TODO(), &a, s.user)
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	config.Set("volume-plans:nfs:fake:plugin", "nfs")
 	defer config.Unset("volume-plans")
@@ -191,6 +192,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyApp = (*App)(app)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
@@ -198,7 +200,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	err = Delete(context.TODO(), app, evt, "")
+	err = Delete(context.TODO(), legacyApp, evt, "")
 	c.Assert(err, check.IsNil)
 	dbV, err := servicemanager.Volume.Get(context.TODO(), v1.Name)
 	c.Assert(err, check.IsNil)
@@ -242,7 +244,8 @@ func (s *S) TestCreateApp(c *check.C) {
 	c.Assert(retrievedApp.Teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, check.Equals, s.user.Email)
 	c.Assert(retrievedApp.Tags, check.DeepEquals, []string{"test a", "test b"})
-	env := retrievedApp.Envs()
+	legacyRetrievedApp := (*App)(retrievedApp)
+	env := legacyRetrievedApp.Envs()
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
 }
@@ -308,7 +311,8 @@ func (s *S) TestCreateAppDefaultRouterForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	retrievedApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(retrievedApp.GetRouters(), check.DeepEquals, []appTypes.AppRouter{{Name: "fake-tls", Opts: map[string]string{}}})
+	legacyRetrievedApp := (*App)(retrievedApp)
+	c.Assert(legacyRetrievedApp.GetRouters(), check.DeepEquals, []appTypes.AppRouter{{Name: "fake-tls", Opts: map[string]string{}}})
 }
 
 func (s *S) TestCreateAppDefaultPlanForPool(c *check.C) {
@@ -1017,6 +1021,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "Environment variable \"DATABASE_HOST\" is already in use by service bind \"service/instance\"")
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyNewApp := (*App)(newApp)
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:      "DATABASE_HOST",
@@ -1025,7 +1030,7 @@ func (s *S) TestSetEnvKeepServiceVariables(c *check.C) {
 			ManagedBy: "service/instance",
 		},
 	}
-	newAppEnvs := newApp.Envs()
+	newAppEnvs := legacyNewApp.Envs()
 	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	delete(newAppEnvs, "TSURU_APPNAME")
 	delete(newAppEnvs, "TSURU_APPDIR")
@@ -1215,6 +1220,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyNewApp := (*App)(newApp)
 	expected := map[string]bindTypes.EnvVar{
 		"DATABASE_HOST": {
 			Name:      "DATABASE_HOST",
@@ -1237,7 +1243,7 @@ func (s *S) TestUnsetEnvKeepServiceVariables(c *check.C) {
 			ManagedBy: "tsuru",
 		},
 	}
-	newAppEnvs := newApp.Envs()
+	newAppEnvs := legacyNewApp.Envs()
 	delete(newAppEnvs, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(newAppEnvs, check.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
@@ -1331,15 +1337,16 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *check.C) {
 }
 
 func (s *S) TestAddCName(c *check.C) {
-	app := &App{Name: "ktulu", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), app, s.user)
+	app := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
+	legacyApp := (*App)(app)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.CName, check.DeepEquals, []string{"ktulu.mycompany.com"})
-	err = app.AddCName(context.TODO(), "ktulu2.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
@@ -1392,10 +1399,11 @@ func (s *S) TestAddCNameDifferentAppsNoRouter(c *check.C) {
 }
 
 func (s *S) TestAddCNameWithWildCard(c *check.C) {
-	app := &App{Name: "ktulu", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), app, s.user)
+	app := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
+	legacyApp := (*App)(app)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = app.AddCName(context.TODO(), "*.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "*.mycompany.com")
 	c.Assert(err, check.IsNil)
 	app, err = GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
@@ -1421,8 +1429,9 @@ func (s *S) TestAddCNameErrsOnInvalid(c *check.C) {
 }
 
 func (s *S) TestAddCNamePartialUpdate(c *check.C) {
-	a := &App{Name: "master", Platform: "puppet", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "master", Platform: "puppet", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	other := App{Name: a.Name, Routers: []appTypes.AppRouter{{Name: "fake"}}}
 	err = other.AddCName(context.TODO(), "ktulu.mycompany.com")
@@ -1567,12 +1576,13 @@ func (s *S) TestRemoveCNameRollback(c *check.C) {
 }
 
 func (s *S) TestRemoveCNameRemovesFromDatabase(c *check.C) {
-	a := &App{Name: "ktulu", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	err = a.RemoveCName(context.TODO(), "ktulu.mycompany.com")
+	err = legacyApp.RemoveCName(context.TODO(), "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -1589,14 +1599,15 @@ func (s *S) TestRemoveCNameWhichNoExists(c *check.C) {
 }
 
 func (s *S) TestRemoveMoreThanOneCName(c *check.C) {
-	a := &App{Name: "ktulu", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "ktulu", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(context.TODO(), "ktulu.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "ktulu.mycompany.com")
 	c.Assert(err, check.IsNil)
-	err = a.AddCName(context.TODO(), "ktulu2.mycompany.com")
+	err = legacyApp.AddCName(context.TODO(), "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
-	err = a.RemoveCName(context.TODO(), "ktulu.mycompany.com", "ktulu2.mycompany.com")
+	err = legacyApp.RemoveCName(context.TODO(), "ktulu.mycompany.com", "ktulu2.mycompany.com")
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
@@ -1616,10 +1627,11 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *check.C) {
 }
 
 func (s *S) TestAddInstanceFirst(c *check.C) {
-	a := &App{Name: "dark", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "srv1"},
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_PORT", Value: "3306"}, InstanceName: "myinstance", ServiceName: "srv1"},
@@ -1630,7 +1642,8 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	legacyApp = (*App)(a)
+	allEnvs := legacyApp.Envs()
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
@@ -1669,7 +1682,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 			Public:    false,
 		},
 	})
-	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestAddInstanceDuplicated(c *check.C) {
@@ -1714,13 +1727,14 @@ func (s *S) TestAddInstanceDuplicated(c *check.C) {
 }
 
 func (s *S) TestAddInstanceWithUnits(c *check.C) {
-	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	newSuccessfulAppVersion(c, legacyApp)
+	err = legacyApp.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -1729,7 +1743,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	allEnvs := legacyApp.Envs()
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
@@ -1749,17 +1763,18 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 		ManagedBy: "myservice/myinstance",
 		Public:    false,
 	})
-	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
-	a := &App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", Quota: quota.Quota{Limit: 10}, TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	newSuccessfulAppVersion(c, legacyApp)
+	err = legacyApp.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs: []bindTypes.ServiceEnvVar{
 			{EnvVar: bindTypes.EnvVar{Name: "DATABASE_HOST", Value: "localhost"}, InstanceName: "myinstance", ServiceName: "myservice"},
 		},
@@ -1768,7 +1783,8 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	legacyApp = (*App)(a)
+	allEnvs := legacyApp.Envs()
 	serviceEnv := allEnvs[tsuruEnvs.TsuruServicesEnvVar]
 	c.Assert(serviceEnv.Name, check.Equals, tsuruEnvs.TsuruServicesEnvVar)
 	c.Assert(serviceEnv.Public, check.Equals, false)
@@ -1788,7 +1804,7 @@ func (s *S) TestAddInstanceWithUnitsNoRestart(c *check.C) {
 		ManagedBy: "myservice/myinstance",
 		Public:    false,
 	})
-	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestAddInstanceMultipleServices(c *check.C) {
@@ -1986,15 +2002,16 @@ func (s *S) TestRemoveInstanceShifts(c *check.C) {
 }
 
 func (s *S) TestRemoveInstanceNotFound(c *check.C) {
-	a := &App{Name: "dark", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = legacyApp.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "yourdb",
 		ShouldRestart: true,
@@ -2002,7 +2019,8 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	legacyApp = (*App)(a)
+	allEnvs := legacyApp.Envs()
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
@@ -2021,15 +2039,16 @@ func (s *S) TestRemoveInstanceNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
-	a := &App{Name: "dark", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = legacyApp.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mongodb",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2037,7 +2056,8 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	legacyApp = (*App)(a)
+	allEnvs := legacyApp.Envs()
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
@@ -2056,18 +2076,19 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *check.C) {
 }
 
 func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
-	a := &App{Name: "dark", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	newSuccessfulAppVersion(c, legacyApp)
+	err = legacyApp.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = legacyApp.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: true,
@@ -2075,28 +2096,29 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	allEnvs := legacyApp.Envs()
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
-	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
-	a := &App{Name: "dark", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), a, s.user)
+	a := &appTypes.App{Name: "dark", TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, a)
-	err = a.AddUnits(context.TODO(), 1, "web", "", nil)
+	newSuccessfulAppVersion(c, legacyApp)
+	err = legacyApp.AddUnits(context.TODO(), 1, "web", "", nil)
 	c.Assert(err, check.IsNil)
-	err = a.AddInstance(context.TODO(), bind.AddInstanceArgs{
+	err = legacyApp.AddInstance(context.TODO(), bind.AddInstanceArgs{
 		Envs:          []bindTypes.ServiceEnvVar{{EnvVar: bindTypes.EnvVar{Name: "DATABASE_NAME", Value: "mydb"}, InstanceName: "mydb", ServiceName: "mysql"}},
 		ShouldRestart: false,
 	})
 	c.Assert(err, check.IsNil)
-	err = a.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
+	err = legacyApp.RemoveInstance(context.TODO(), bind.RemoveInstanceArgs{
 		ServiceName:   "mysql",
 		InstanceName:  "mydb",
 		ShouldRestart: false,
@@ -2104,13 +2126,14 @@ func (s *S) TestRemoveInstanceWithUnitsNoRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a, err = GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	allEnvs := a.Envs()
+	legacyApp = (*App)(a)
+	allEnvs := legacyApp.Envs()
 	var serviceEnvVal map[string]interface{}
 	err = json.Unmarshal([]byte(allEnvs[tsuruEnvs.TsuruServicesEnvVar].Value), &serviceEnvVal)
 	c.Assert(err, check.IsNil)
 	c.Assert(serviceEnvVal, check.DeepEquals, map[string]interface{}{})
 	c.Assert(allEnvs["DATABASE_NAME"], check.DeepEquals, bindTypes.EnvVar{})
-	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestIsValid(c *check.C) {
@@ -4958,8 +4981,9 @@ func (s *S) TestUpdatePool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePoolOtherProv(c *check.C) {
@@ -4997,8 +5021,9 @@ func (s *S) TestUpdatePoolOtherProv(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Pool, check.Equals, "test2")
-	prov, err = dbApp.getProvisioner(context.TODO())
+	prov, err = legacyDBApp.getProvisioner(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(prov.GetName(), check.Equals, "fake2")
 	c.Assert(p1.GetUnits(&app), check.HasLen, 0)
@@ -5021,8 +5046,9 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
 	dbApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Pool, check.Equals, "test")
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdatePoolWithBindedVolumeDifferentProvisioners(c *check.C) {
@@ -5125,8 +5151,9 @@ func (s *S) TestUpdatePlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
@@ -5140,8 +5167,9 @@ func (s *S) TestUpdatePlanShouldRestart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePlanWithConstraint(c *check.C) {
@@ -5185,17 +5213,19 @@ func (s *S) TestUpdatePlanWithCPUBurstExceeds(c *check.C) {
 
 func (s *S) TestUpdatePlanNoRouteChangeShouldRestart(c *check.C) {
 	s.plan = appTypes.Plan{Name: "something", Memory: 268435456}
-	a := App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "my-test-app", Routers: []appTypes.AppRouter{{Name: "fake"}}, Plan: appTypes.Plan{Memory: 536870912}, TeamOwner: s.team.Name}
+	legacyApp := (*App)(a)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", newSuccessfulAppVersion(c, &a), nil)
+	s.provisioner.AddUnits(context.TODO(), legacyApp, 3, "web", newSuccessfulAppVersion(c, legacyApp), nil)
 	updateData := App{Name: "my-test-app", Plan: appTypes.Plan{Name: "something"}}
-	err = a.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
+	err = legacyApp.Update(context.TODO(), UpdateAppArgs{UpdateData: updateData, Writer: new(bytes.Buffer), ShouldRestart: true})
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Plan, check.DeepEquals, s.plan)
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdatePlanNotFound(c *check.C) {
@@ -5234,8 +5264,9 @@ func (s *S) TestUpdatePlanRestartFailure(c *check.C) {
 	c.Assert(err, check.NotNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Plan.Name, check.Equals, "old")
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 0)
 }
 
 func (s *S) TestUpdateIgnoresEmptyAndDuplicatedTags(c *check.C) {
@@ -5317,10 +5348,11 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbApp, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyDBApp := (*App)(dbApp)
 	c.Assert(dbApp.Plan, check.DeepEquals, plan)
 	c.Assert(dbApp.Description, check.Equals, "bleble")
 	c.Assert(dbApp.Pool, check.Equals, "test2")
-	c.Assert(s.provisioner.Restarts(dbApp, ""), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(legacyDBApp, ""), check.Equals, 1)
 }
 
 func (s *S) TestUpdateMetadataWhenEmpty(c *check.C) {

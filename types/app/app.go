@@ -48,6 +48,15 @@ type App struct {
 	Quota quota.Quota
 }
 
+// Two methods to define logable interface
+func (a *App) GetName() string {
+	return a.Name
+}
+
+func (a *App) GetPool() string {
+	return a.Pool
+}
+
 type AppInterface interface {
 	GetName() string
 	GetPool() string
@@ -91,7 +100,7 @@ type Filter struct {
 }
 
 type AppService interface {
-	GetByName(ctx context.Context, name string) (AppInterface, error)
+	GetByName(ctx context.Context, name string) (*App, error)
 	List(ctx context.Context, filter *Filter) ([]AppInterface, error)
 }
 

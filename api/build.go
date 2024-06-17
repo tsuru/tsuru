@@ -77,7 +77,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	opts.App = instance
+	opts.App = (*app.App)(instance)
 	opts.Build = true
 	opts.BuildTag = tag
 	opts.User = userName

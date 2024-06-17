@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -32,7 +33,7 @@ func setAllowed(evt *event.Event) (err error) {
 	}()
 	switch evt.Target.Type {
 	case event.TargetTypeApp:
-		var a *app.App
+		var a *appTypes.App
 		a, err = app.GetByName(ctx, evt.Target.Value)
 		if err != nil {
 			evt.Allowed = event.Allowed(permission.PermAppReadEvents)
@@ -89,7 +90,7 @@ func setAllowed(evt *event.Event) (err error) {
 		if err != nil {
 			return err
 		}
-		var a *app.App
+		var a *appTypes.App
 		for _, p := range provisioners {
 			if finderProv, ok := p.(provision.UnitFinderProvisioner); ok {
 				var provApp provision.App
@@ -107,9 +108,9 @@ func setAllowed(evt *event.Event) (err error) {
 			return err
 		}
 		evt.Allowed = event.Allowed(permission.PermAppReadEvents,
-			append(permission.Contexts(permTypes.CtxTeam, a.GetTeamsName()),
-				permission.Context(permTypes.CtxApp, a.GetName()),
-				permission.Context(permTypes.CtxPool, a.GetPool()),
+			append(permission.Contexts(permTypes.CtxTeam, a.Teams),
+				permission.Context(permTypes.CtxApp, a.Name),
+				permission.Context(permTypes.CtxPool, a.Pool),
 			)...,
 		)
 	case event.TargetTypeNode:

@@ -57,13 +57,13 @@ func (a *MockApp) GetRegistry(ctx context.Context) (imgTypes.ImageRegistry, erro
 var _ AppService = &MockAppService{}
 
 type MockAppService struct {
-	Apps   []AppInterface
+	Apps   []*App
 	OnList func(filter *Filter) ([]AppInterface, error)
 }
 
-func (m *MockAppService) GetByName(ctx context.Context, name string) (AppInterface, error) {
+func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
 	for _, app := range m.Apps {
-		if app.GetName() == name {
+		if app.Name == name {
 			return app, nil
 		}
 	}

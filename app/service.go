@@ -12,7 +12,7 @@ import (
 
 type appService struct{}
 
-func (a *appService) GetByName(ctx context.Context, name string) (appTypes.AppInterface, error) {
+func (a *appService) GetByName(ctx context.Context, name string) (*appTypes.App, error) {
 	return GetByName(ctx, name)
 }
 

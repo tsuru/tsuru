@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -309,7 +310,8 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canBindApp := permission.Check(t, permission.PermAppUpdateBindVolume, contextsForApp(&a)...)
+	legacyApp := (*app.App)(a)
+	canBindApp := permission.Check(t, permission.PermAppUpdateBindVolume, contextsForApp(a)...)
 	if !canBindApp {
 		return permission.ErrUnauthorized
 	}
@@ -342,7 +344,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart(ctx, "", "", evt)
+	return legacyApp.Restart(ctx, "", "", evt)
 }
 
 // title: volume unbind
@@ -380,7 +382,8 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canUnbindApp := permission.Check(t, permission.PermAppUpdateUnbindVolume, contextsForApp(&a)...)
+	legacyApp := (*app.App)(a)
+	canUnbindApp := permission.Check(t, permission.PermAppUpdateUnbindVolume, contextsForApp(a)...)
 	if !canUnbindApp {
 		return permission.ErrUnauthorized
 	}
@@ -412,5 +415,5 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	return a.Restart(ctx, "", "", evt)
+	return legacyApp.Restart(ctx, "", "", evt)
 }

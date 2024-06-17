@@ -350,8 +350,8 @@ func (s *S) TestAddAppRouter(c *check.C) {
 		Scheme:  permission.PermAppUpdateRouterAdd,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &myapp, s.user)
+	myapp := &appTypes.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	err := app.CreateApp(context.TODO(), (*app.App)(myapp), s.user)
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=fake-tls&opts.x=y&opts.z=w`)
 	recorder := httptest.NewRecorder()
@@ -363,7 +363,8 @@ func (s *S) TestAddAppRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %q", recorder.Body.String()))
 	dbApp, err := app.GetByName(context.TODO(), myapp.Name)
 	c.Assert(err, check.IsNil)
-	routers, err := dbApp.GetRoutersWithAddr(ctx)
+	legacyDBApp := (*app.App)(dbApp)
+	routers, err := legacyDBApp.GetRoutersWithAddr(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Opts: map[string]string{}, Type: "fake", Address: "myapp.fakerouter.com", Addresses: []string{"myapp.fakerouter.com"}, Status: "ready"},
@@ -415,10 +416,11 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 		Scheme:  permission.PermAppUpdateRouterUpdate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
-	err := app.CreateApp(context.TODO(), &myapp, s.user)
+	myapp := &appTypes.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name, Router: "none"}
+	legacyMyApp := (*app.App)(myapp)
+	err := app.CreateApp(context.TODO(), legacyMyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = myapp.AddRouter(ctx, appTypes.AppRouter{Name: "fake"})
+	err = legacyMyApp.AddRouter(ctx, appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)
@@ -430,7 +432,8 @@ func (s *S) TestUpdateAppRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	dbApp, err := app.GetByName(context.TODO(), myapp.Name)
 	c.Assert(err, check.IsNil)
-	routers := dbApp.GetRouters()
+	legacyDBApp := (*app.App)(dbApp)
+	routers := legacyDBApp.GetRouters()
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{
 		{Name: "fake", Opts: map[string]string{"x": "y", "z": "w"}},
 	})
@@ -483,8 +486,9 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 		Scheme:  permission.PermAppUpdateRouterRemove,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &myapp, s.user)
+	myapp := &appTypes.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
+	legacyMyApp := (*app.App)(myapp)
+	err := app.CreateApp(context.TODO(), legacyMyApp, s.user)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("DELETE", "/1.5/apps/myapp/routers/fake", nil)
@@ -494,7 +498,8 @@ func (s *S) TestRemoveAppRouter(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	dbApp, err := app.GetByName(context.TODO(), myapp.Name)
 	c.Assert(err, check.IsNil)
-	routers, err := dbApp.GetRoutersWithAddr(ctx)
+	legacyDBApp := (*app.App)(dbApp)
+	routers, err := legacyDBApp.GetRoutersWithAddr(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []appTypes.AppRouter{})
 }

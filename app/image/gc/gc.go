@@ -257,8 +257,9 @@ func markOldImages() error {
 			}
 			continue
 		}
+		legacyApp := (*app.App)(a)
 
-		requireExclusiveLock, err := markOldImagesForAppVersion(ctx, a, appVersions, historySize, false)
+		requireExclusiveLock, err := markOldImagesForAppVersion(ctx, legacyApp, appVersions, historySize, false)
 		if err != nil {
 			multi.Add(err)
 			continue
@@ -282,7 +283,7 @@ func markOldImages() error {
 			continue
 		}
 
-		_, err = markOldImagesForAppVersion(ctx, a, appVersions, historySize, true)
+		_, err = markOldImagesForAppVersion(ctx, legacyApp, appVersions, historySize, true)
 		if err != nil {
 			multi.Add(err)
 		}

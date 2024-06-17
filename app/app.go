@@ -268,8 +268,8 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 
 // GetByName queries the database to find an app identified by the given
 // name.
-func GetByName(ctx context.Context, name string) (*App, error) {
-	var app App
+func GetByName(ctx context.Context, name string) (*appTypes.App, error) {
+	var app appTypes.App
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

@@ -134,7 +134,8 @@ func (s *S) SetUpTest(c *check.C) {
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
-		return a, err
+		legacyApp := (*App)(a)
+		return legacyApp, err
 	})
 	config.Set("docker:router", "fake")
 	s.provisioner.Reset()
