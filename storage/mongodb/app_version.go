@@ -303,4 +303,3 @@ func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName s
 	update := bson.M{"$set": set}
 	return s.baseUpdateWhere(ctx, where, update)
 }
-
