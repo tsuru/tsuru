@@ -7,36 +7,23 @@ package mongodb
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app/image"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
-	defaultLegacyCollectionPrefix = "docker"
-
 	appVersionsCollectionName = "app_versions"
 )
-
-type legacyImageMetadata struct {
-	Name            string `bson:"_id"`
-	CustomData      map[string]interface{}
-	LegacyProcesses map[string]string   `bson:"processes"`
-	Processes       map[string][]string `bson:"processes_list"`
-	ExposedPorts    []string
-	DisableRollback bool
-	Reason          string
-}
 
 type appVersionStorage struct{}
 
@@ -51,66 +38,6 @@ func (s *appVersionStorage) collection() (*storage.Collection, error) {
 		Unique: true,
 	})
 	return coll, err
-}
-
-func (s *appVersionStorage) legacyBuilderImagesCollection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	return conn.Collection("builder_app_image"), nil
-}
-
-func (s *appVersionStorage) legacyImagesCollection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	name, err := config.GetString("docker:collection")
-	if err != nil {
-		name = defaultLegacyCollectionPrefix
-	}
-	return conn.Collection(fmt.Sprintf("%s_app_image", name)), nil
-}
-
-func (s *appVersionStorage) legacyCustomDataCollection() (*storage.Collection, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	name, err := config.GetString("docker:collection")
-	if err != nil {
-		name = defaultLegacyCollectionPrefix
-	}
-	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
-}
-
-type appImages struct {
-	AppName string `bson:"_id"`
-	Images  []string
-	Count   int
-}
-
-func (s *appVersionStorage) legacyImagesData(appName string) (appImages, error) {
-	coll, err := s.legacyImagesCollection()
-	if err != nil {
-		return appImages{}, err
-	}
-	defer coll.Close()
-	var imageData appImages
-	err = coll.Find(bson.M{"_id": appName}).One(&imageData)
-	return imageData, err
-}
-
-func (s *appVersionStorage) legacyBuildImages(appName string) ([]string, error) {
-	coll, err := s.legacyBuilderImagesCollection()
-	if err != nil {
-		return nil, err
-	}
-	defer coll.Close()
-	var imageData appImages
-	err = coll.Find(bson.M{"_id": appName}).One(&imageData)
-	return imageData.Images, err
 }
 
 func (s *appVersionStorage) UpdateVersion(ctx context.Context, appName string, vi *appTypes.AppVersionInfo, opts ...*appTypes.AppVersionWriteOptions) error {
@@ -259,18 +186,25 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	defer span.Finish()
 
-	coll, err := s.collection()
+	collection, err := storagev2.Collection(appVersionsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer coll.Close()
+
 	var allAppVersions []appTypes.AppVersions
-	var filter bson.M
+	var filter mongoBSON.M
 	if len(appNamesFilter) > 0 {
-		filter = bson.M{"appname": bson.M{"$in": appNamesFilter}}
+		filter = mongoBSON.M{"appname": bson.M{"$in": appNamesFilter}}
 	}
-	err = coll.Find(filter).All(&allAppVersions)
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &allAppVersions)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
@@ -279,31 +213,27 @@ func (s *appVersionStorage) AllAppVersions(ctx context.Context, appNamesFilter .
 }
 
 func (s *appVersionStorage) AppVersions(ctx context.Context, app appTypes.App) (appTypes.AppVersions, error) {
-	query := bson.M{"appname": app.GetName()}
+	query := mongoBSON.M{"appname": app.GetName()}
 	span := newMongoDBSpan(ctx, mongoSpanFind, appVersionsCollectionName)
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	coll, err := s.collection()
+	collection, err := storagev2.Collection(appVersionsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return appTypes.AppVersions{}, err
 	}
 
-	defer coll.Close()
 	var appVersions appTypes.AppVersions
-	err = coll.Find(query).One(&appVersions)
-	if err == mgo.ErrNotFound {
-		err = s.importLegacyVersions(app)
-		if err == nil {
-			err = coll.Find(query).One(&appVersions)
-		}
-	}
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, query).Decode(&appVersions)
+	if err == mongo.ErrNoDocuments {
 		return appVersions, appTypes.ErrNoVersionsAvailable
 	}
-	span.SetError(err)
-	return appVersions, err
+	if err != nil {
+		span.SetError(err)
+		return appTypes.AppVersions{}, err
+	}
+	return appVersions, nil
 }
 
 func (s *appVersionStorage) DeleteVersionIDs(ctx context.Context, appName string, versions []int, opts ...*appTypes.AppVersionWriteOptions) error {
@@ -372,94 +302,4 @@ func (s *appVersionStorage) MarkVersionsToRemoval(ctx context.Context, appName s
 
 	update := bson.M{"$set": set}
 	return s.baseUpdateWhere(ctx, where, update)
-}
-
-func (s *appVersionStorage) importLegacyVersions(app appTypes.App) error {
-	imgData, err := s.legacyImagesData(app.GetName())
-	if err != nil {
-		return err
-	}
-	customDataColl, err := s.legacyCustomDataCollection()
-	if err != nil {
-		return err
-	}
-	defer customDataColl.Close()
-	now := time.Now().UTC()
-	versions := map[int]appTypes.AppVersionInfo{}
-	var lastSuccessfulVersion int
-	for _, imageID := range imgData.Images {
-		var version int
-		version, err = versionNumberFromLegacyImage(imageID)
-		if err != nil {
-			return err
-		}
-		var data legacyImageMetadata
-		err = customDataColl.FindId(imageID).One(&data)
-		if err != nil {
-			if err == mgo.ErrNotFound {
-				continue
-			}
-			return err
-		}
-		if len(data.Processes) == 0 {
-			data.Processes = make(map[string][]string, len(data.LegacyProcesses))
-			for k, v := range data.LegacyProcesses {
-				data.Processes[k] = []string{v}
-			}
-		}
-		vi := appTypes.AppVersionInfo{
-			Version:          version,
-			DeployImage:      imageID,
-			Processes:        data.Processes,
-			ExposedPorts:     data.ExposedPorts,
-			CustomData:       data.CustomData,
-			Disabled:         data.DisableRollback,
-			DisabledReason:   data.Reason,
-			DeploySuccessful: true,
-			CreatedAt:        now,
-			UpdatedAt:        now,
-		}
-		repo, tag := image.SplitImageName(vi.DeployImage)
-		vi.BuildImage = fmt.Sprintf("%s:%s-builder", repo, tag)
-		versions[version] = vi
-		lastSuccessfulVersion = version
-	}
-
-	buildImgs, err := s.legacyBuildImages(app.GetName())
-	if err != nil && err != mgo.ErrNotFound {
-		return err
-	}
-	for _, imageID := range buildImgs {
-		if strings.HasSuffix(imageID, "-builder") {
-			continue
-		}
-		_, tag := image.SplitImageName(imageID)
-		imgData.Count++
-		version := imgData.Count
-		vi := appTypes.AppVersionInfo{
-			Version:        version,
-			BuildImage:     imageID,
-			CustomBuildTag: tag,
-			CreatedAt:      now,
-			UpdatedAt:      now,
-		}
-		versions[version] = vi
-	}
-
-	coll, err := s.collection()
-	if err != nil {
-		return err
-	}
-	defer coll.Close()
-	return coll.Insert(appTypes.AppVersions{
-		AppName:               app.GetName(),
-		Count:                 imgData.Count,
-		Versions:              versions,
-		LastSuccessfulVersion: lastSuccessfulVersion,
-	})
-}
-
-func versionNumberFromLegacyImage(imageID string) (int, error) {
-	_, tag := image.SplitImageName(imageID)
-	return strconv.Atoi(strings.TrimPrefix(tag, "v"))
 }

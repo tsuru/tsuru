@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/storage"
@@ -34,8 +36,8 @@ type groupService struct {
 	storage authTypes.GroupStorage
 }
 
-func (s *groupService) List(filter []string) ([]authTypes.Group, error) {
-	return s.storage.List(filter)
+func (s *groupService) List(ctx context.Context, filter []string) ([]authTypes.Group, error) {
+	return s.storage.List(ctx, filter)
 }
 
 func (s *groupService) AddRole(name, roleName, contextValue string) error {

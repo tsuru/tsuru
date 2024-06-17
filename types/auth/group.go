@@ -4,6 +4,8 @@
 
 package auth
 
+import "context"
+
 type Group struct {
 	Name  string         `json:"name"`
 	Roles []RoleInstance `json:"roles,omitempty"`
@@ -14,7 +16,7 @@ type GroupStorage interface {
 }
 
 type GroupService interface {
-	List(filter []string) ([]Group, error)
+	List(ctx context.Context, filter []string) ([]Group, error)
 	AddRole(name, roleName, contextValue string) error
 	RemoveRole(name, roleName, contextValue string) error
 }

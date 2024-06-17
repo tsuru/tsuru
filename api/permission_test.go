@@ -1459,7 +1459,7 @@ func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK, check.Commentf("body: %s", recorder.Body.String()))
-	groups, err := servicemanager.AuthGroup.List(nil)
+	groups, err := servicemanager.AuthGroup.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []authTypes.Group{
 		{
@@ -1555,7 +1555,7 @@ func (s *S) TestDissociateRoleFromAuthGroup(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	groups, err := servicemanager.AuthGroup.List(nil)
+	groups, err := servicemanager.AuthGroup.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []authTypes.Group{
 		{
@@ -1597,7 +1597,7 @@ func (s *S) TestDissociateRoleFromAuthGroupRoleNotFound(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	groups, err := servicemanager.AuthGroup.List(nil)
+	groups, err := servicemanager.AuthGroup.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []authTypes.Group{
 		{
@@ -1643,7 +1643,7 @@ func (s *S) TestDissociateRoleFromAuthGroupNotAuthorized(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(recorder.Body.String(), check.Equals, "You don't have permission to do this action\n")
-	groups, err := servicemanager.AuthGroup.List(nil)
+	groups, err := servicemanager.AuthGroup.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.DeepEquals, []authTypes.Group{
 		{

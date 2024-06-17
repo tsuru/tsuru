@@ -5,6 +5,7 @@
 package storagetest
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -31,7 +32,7 @@ func (s *WebhookSuite) TestInsertWebhook(c *check.C) {
 	}
 	err := s.WebhookStorage.Insert(w)
 	c.Assert(err, check.IsNil)
-	webhook, err := s.WebhookStorage.FindByName(w.Name)
+	webhook, err := s.WebhookStorage.FindByName(context.TODO(), w.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(webhook, check.DeepEquals, &eventTypes.Webhook{
 		Name:      "wh1",
@@ -150,7 +151,7 @@ func (s *WebhookSuite) TestFindByEvent(c *check.C) {
 		},
 	}
 	for i, tt := range tests {
-		hooks, err := s.WebhookStorage.FindByEvent(tt.f, tt.success)
+		hooks, err := s.WebhookStorage.FindByEvent(context.TODO(), tt.f, tt.success)
 		c.Assert(err, check.IsNil)
 		names := webhooksNames(hooks)
 		sort.Strings(tt.expected)
@@ -182,16 +183,16 @@ func (s *WebhookSuite) TestFindAllByTeams(c *check.C) {
 	w2 := eventTypes.Webhook{Name: "wh2", TeamOwner: "t2"}
 	err = s.WebhookStorage.Insert(w2)
 	c.Assert(err, check.IsNil)
-	webhooks, err := s.WebhookStorage.FindAllByTeams(nil)
+	webhooks, err := s.WebhookStorage.FindAllByTeams(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1", "wh2"})
-	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{})
+	webhooks, err = s.WebhookStorage.FindAllByTeams(context.TODO(), []string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.IsNil)
-	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{"t1"})
+	webhooks, err = s.WebhookStorage.FindAllByTeams(context.TODO(), []string{"t1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1"})
-	webhooks, err = s.WebhookStorage.FindAllByTeams([]string{"t1", "t2"})
+	webhooks, err = s.WebhookStorage.FindAllByTeams(context.TODO(), []string{"t1", "t2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(webhooksNames(webhooks), check.DeepEquals, []string{"wh1", "wh2"})
 }
@@ -204,7 +205,7 @@ func (s *WebhookSuite) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.WebhookStorage.Delete("wh1")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
-	_, err = s.WebhookStorage.FindByName("wh1")
+	_, err = s.WebhookStorage.FindByName(context.TODO(), "wh1")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }
 
@@ -215,7 +216,7 @@ func (s *WebhookSuite) TestUpdate(c *check.C) {
 	w.Method = "GET"
 	err = s.WebhookStorage.Update(w)
 	c.Assert(err, check.IsNil)
-	dbW, err := s.WebhookStorage.FindByName("wh1")
+	dbW, err := s.WebhookStorage.FindByName(context.TODO(), "wh1")
 	c.Assert(err, check.IsNil)
 	c.Assert(dbW, check.DeepEquals, &eventTypes.Webhook{
 		Name:    "wh1",
@@ -236,6 +237,6 @@ func (s *WebhookSuite) TestUpdateNotFound(c *check.C) {
 }
 
 func (s *WebhookSuite) TestFindByNameNotFound(c *check.C) {
-	_, err := s.WebhookStorage.FindByName("wh1")
+	_, err := s.WebhookStorage.FindByName(context.TODO(), "wh1")
 	c.Assert(err, check.Equals, eventTypes.ErrWebhookNotFound)
 }

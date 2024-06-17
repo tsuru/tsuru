@@ -5,15 +5,15 @@
 package mongodb
 
 import (
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/types/quota"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 func teamQuotaStorage() quota.QuotaStorage {
 	return &quotaStorage{
 		collection: "teams",
-		query: func(name string) bson.M {
-			return bson.M{"_id": name}
+		query: func(name string) mongoBSON.M {
+			return mongoBSON.M{"_id": name}
 		},
 	}
 }

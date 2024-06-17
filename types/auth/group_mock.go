@@ -4,6 +4,8 @@
 
 package auth
 
+import "context"
+
 var (
 	_ GroupService = &MockGroupService{}
 )
@@ -28,7 +30,7 @@ func (m *MockGroupService) RemoveRole(name, roleName, contextValue string) error
 	return m.OnRemoveRole(name, roleName, contextValue)
 }
 
-func (m *MockGroupService) List(filter []string) ([]Group, error) {
+func (m *MockGroupService) List(ctx context.Context, filter []string) ([]Group, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}

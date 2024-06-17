@@ -1043,7 +1043,7 @@ func teamGroupList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 
-	allGroups, err := servicemanager.AuthGroup.List(nil)
+	allGroups, err := servicemanager.AuthGroup.List(ctx, nil)
 	if err != nil {
 		return err
 	}
