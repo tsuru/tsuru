@@ -35,7 +35,8 @@ func MigrateAppsCRDs() error {
 	}
 	multiErr := tsuruerrors.NewMultiError()
 	for _, a := range apps {
-		errProv := prov.Provision(ctx, &a)
+		legacyApp := (*app.App)(a)
+		errProv := prov.Provision(ctx, legacyApp)
 		if errProv != nil {
 			multiErr.Add(errProv)
 		}

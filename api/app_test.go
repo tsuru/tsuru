@@ -288,7 +288,6 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
-	ctx := context.Background()
 	recorder := httptest.NewRecorder()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
@@ -327,73 +326,9 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	apps := []app.App{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
-	c.Assert(err, check.IsNil)
-	expected := []app.App{app1, app2}
-	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
-		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
-		c.Assert(err, check.IsNil)
-		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
-	}
-}
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "status filter is not supported anymore\n")
 
-func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
-	ctx := context.Background()
-	recorder := httptest.NewRecorder()
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &app1)
-	requestBody := strings.NewReader("units=2&process=web")
-	request, err := http.NewRequest("PUT", "/apps/app1/units", requestBody)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &app2)
-	requestBody = strings.NewReader("units=1&process=web")
-	request, err = http.NewRequest("PUT", "/apps/app2/units", requestBody)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	request, err = http.NewRequest("GET", "/apps?status=invalid&status=started", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	apps := []app.App{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
-	c.Assert(err, check.IsNil)
-	expected := []app.App{app2}
-	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
-		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
-		c.Assert(err, check.IsNil)
-		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
-	}
 }
 
 func (s *S) TestSimplifiedAppList(c *check.C) {

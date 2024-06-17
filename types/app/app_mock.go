@@ -58,7 +58,7 @@ var _ AppService = &MockAppService{}
 
 type MockAppService struct {
 	Apps   []*App
-	OnList func(filter *Filter) ([]AppInterface, error)
+	OnList func(filter *Filter) ([]*App, error)
 }
 
 func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, error) {
@@ -70,7 +70,7 @@ func (m *MockAppService) GetByName(ctx context.Context, name string) (*App, erro
 	return nil, ErrAppNotFound
 }
 
-func (m *MockAppService) List(ctx context.Context, f *Filter) ([]AppInterface, error) {
+func (m *MockAppService) List(ctx context.Context, f *Filter) ([]*App, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}

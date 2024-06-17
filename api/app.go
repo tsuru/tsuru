@@ -181,7 +181,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	return app.Delete(ctx, legacyApp, evt, requestIDHeader(r))
 }
 
-func minifyApp(app app.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
+func minifyApp(app *appTypes.App, unitData app.AppUnitsResponse, extended bool) (appTypes.AppResume, error) {
 	var errorStr string
 	if unitData.Err != nil {
 		errorStr = unitData.Err.Error()
@@ -264,8 +264,8 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if locked {
 		filter.Locked = true
 	}
-	if status, ok := r.URL.Query()["status"]; ok {
-		filter.Statuses = status
+	if _, ok := r.URL.Query()["status"]; ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "status filter is not supported anymore"}
 	}
 	if tags, ok := r.URL.Query()["tag"]; ok {
 		filter.Tags = tags
@@ -298,7 +298,13 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return json.NewEncoder(w).Encode(miniApps)
 	}
-	appUnits, err := app.Units(ctx, apps)
+
+	legacyApps := []app.App{}
+	for _, a := range apps {
+		legacyApps = append(legacyApps, app.App(*a))
+	}
+
+	appUnits, err := app.Units(ctx, legacyApps)
 	if err != nil {
 		return err
 	}

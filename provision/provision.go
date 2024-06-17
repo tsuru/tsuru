@@ -283,12 +283,6 @@ type UnitFinderProvisioner interface {
 	GetAppFromUnitID(context.Context, string) (App, error)
 }
 
-// AppFilterProvisioner is a provisioner that allows filtering apps by the
-// state of its units.
-type AppFilterProvisioner interface {
-	FilterAppsByUnitStatus(context.Context, []App, []string) ([]App, error)
-}
-
 type VolumeProvisioner interface {
 	ValidateVolume(context.Context, *volumeTypes.Volume) error
 	IsVolumeProvisioned(ctx context.Context, volumeName, pool string) (bool, error)

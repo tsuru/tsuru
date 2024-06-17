@@ -3899,33 +3899,6 @@ func (s *S) TestListFilteringByPools(c *check.C) {
 	c.Assert(appNames, check.DeepEquals, []string{"testapp", "testapp2"})
 }
 
-func (s *S) TestListFilteringByStatuses(c *check.C) {
-	var apps []*App
-	appNames := []string{"ta1", "ta2", "ta3"}
-	for _, name := range appNames {
-		a := App{
-			Name:      name,
-			Teams:     []string{s.team.Name},
-			Quota:     quota.Quota{Limit: 10},
-			TeamOwner: s.team.Name,
-			Routers:   []appTypes.AppRouter{{Name: "fake"}},
-		}
-		err := CreateApp(context.TODO(), &a, s.user)
-		c.Assert(err, check.IsNil)
-		newSuccessfulAppVersion(c, &a)
-		err = a.AddUnits(context.TODO(), 1, "", "", nil)
-		c.Assert(err, check.IsNil)
-		apps = append(apps, &a)
-	}
-	var buf bytes.Buffer
-	err := apps[1].Stop(context.TODO(), &buf, "", "")
-	c.Assert(err, check.IsNil)
-	resultApps, err := List(context.TODO(), &Filter{Statuses: []string{"stopped"}})
-	c.Assert(err, check.IsNil)
-	c.Assert(resultApps, check.HasLen, 1)
-	c.Assert([]string{resultApps[0].Name}, check.DeepEquals, []string{"ta2"})
-}
-
 func (s *S) TestListFilteringByTag(c *check.C) {
 	app1 := App{Name: "app1", TeamOwner: s.team.Name, Tags: []string{"tag 1"}}
 	err := CreateApp(context.TODO(), &app1, s.user)
@@ -3953,7 +3926,7 @@ func (s *S) TestListFilteringByTag(c *check.C) {
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(apps, check.DeepEquals, []App{})
+	c.Assert(apps, check.DeepEquals, []*appTypes.App{})
 }
 
 func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
@@ -3963,8 +3936,8 @@ func (s *S) TestListReturnsAllAppsWhenUsedWithNoFilters(c *check.C) {
 	apps, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), Greater, 0)
-	c.Assert(apps[0].GetName(), check.Equals, "testApp")
-	c.Assert(apps[0].GetTeamsName(), check.DeepEquals, []string{"notAdmin", "noSuperUser"})
+	c.Assert(apps[0].Name, check.Equals, "testApp")
+	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
 }
 
 func (s *S) TestListFilteringExtraWithOr(c *check.C) {
