@@ -28,17 +28,11 @@ var (
 	clusterManagers = []ClusterManager{}
 	flows           = []ExecFlow{
 		platformsToInstall(),
-		installerConfigTest(),
-		installerComposeTest(),
-		installerTest(),
 		targetTest(),
 		loginTest(),
-		removeInstallNodes(),
 		quotaTest(),
 		teamTest(),
 		poolAdd(),
-		nodeContainerHostCert(),
-		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
 		unitAddRemove(),

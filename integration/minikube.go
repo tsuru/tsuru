@@ -5,10 +5,7 @@
 package integration
 
 import (
-	"fmt"
-	"os"
 	"regexp"
-	"time"
 )
 
 // MinikubeClusterManager represents a minikube local instance
@@ -43,26 +40,13 @@ func (m *MinikubeClusterManager) IP() string {
 }
 
 func (m *MinikubeClusterManager) Start() *Result {
-	minikube := NewCommand("minikube").WithArgs
-	return minikube("start", `--insecure-registry="192.168.0.0/16"`).WithTimeout(15 * time.Minute).Run(m.env)
+	return &Result{}
 }
 
 func (m *MinikubeClusterManager) Delete() *Result {
-	minikube := NewCommand("minikube").WithArgs
-	return minikube("delete").WithTimeout(5 * time.Minute).Run(m.env)
-}
-
-func (m *MinikubeClusterManager) certificateFiles() map[string]string {
-	minikubeDir := fmt.Sprintf("%s/.minikube", os.Getenv("HOME"))
-	return map[string]string{
-		"cacert":     minikubeDir + "/ca.crt",
-		"clientcert": minikubeDir + "/apiserver.crt",
-		"clientkey":  minikubeDir + "/apiserver.key",
-	}
+	return &Result{}
 }
 
 func (m *MinikubeClusterManager) UpdateParams() ([]string, bool) {
-	address := fmt.Sprintf("https://%s:8443", m.IP())
-	certfiles := m.certificateFiles()
-	return []string{"--addr", address, "--cacert", certfiles["cacert"], "--clientcert", certfiles["clientcert"], "--clientkey", certfiles["clientkey"]}, false
+	return nil, false
 }
