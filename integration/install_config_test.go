@@ -118,14 +118,6 @@ func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	return managers
 }
 
-func installerName(env *Environment) string {
-	name := env.Get("installername")
-	if name == "" {
-		name = "tsuru"
-	}
-	return name
-}
-
 func (s *S) config(c *check.C) {
 	env := NewEnvironment()
 	if !env.Has("enabled") {

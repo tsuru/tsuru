@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -61,102 +60,6 @@ func platformsToInstall() ExecFlow {
 	return flow
 }
 
-func installerConfigTest() ExecFlow {
-	flow := ExecFlow{
-		provides: []string{"installerconfig"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		f, err := os.CreateTemp("", "installer-config")
-		c.Assert(err, check.IsNil)
-		defer f.Close()
-		f.Write([]byte(installerConfig))
-		c.Assert(err, check.IsNil)
-		env.Set("installerconfig", f.Name())
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		res := NewCommand("rm", "{{.installerconfig}}").Run(env)
-		c.Check(res, ResultOk)
-	}
-	return flow
-}
-
-func installerComposeTest() ExecFlow {
-	flow := ExecFlow{
-		provides: []string{"installercompose"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		composeFile, err := os.CreateTemp("", "installer-compose")
-		c.Assert(err, check.IsNil)
-		defer composeFile.Close()
-		f, err := os.CreateTemp("", "installer-config")
-		c.Assert(err, check.IsNil)
-		defer func() {
-			res := NewCommand("rm", f.Name()).Run(env)
-			c.Check(res, ResultOk)
-			f.Close()
-		}()
-		res := T("install-config-init", f.Name(), composeFile.Name()).Run(env)
-		c.Assert(res, ResultOk)
-		env.Set("installercompose", composeFile.Name())
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		res := NewCommand("rm", "{{.installercompose}}").Run(env)
-		c.Check(res, ResultOk)
-	}
-	return flow
-}
-
-func installerTest() ExecFlow {
-	flow := ExecFlow{
-		provides: []string{"targetaddr", "installerhostname"},
-		requires: []string{"installerconfig", "installercompose"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		res := T("install-create", "--config", "{{.installerconfig}}", "--compose", "{{.installercompose}}").WithTimeout(60 * time.Minute).Run(env)
-		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile(`(?si).*New target (.\S+)`)
-		parts := regex.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		env.Set("installerhostname", parts[1]+"-1")
-		regex = regexp.MustCompile(`(?si).*Core Hosts:.*?([\d.]+)\s.*`)
-		parts = regex.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		targetHost := parts[1]
-		regex = regexp.MustCompile(`(?si).*tsuru_tsuru.*?\|\s(\d+)`)
-		parts = regex.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		targetPort := parts[1]
-		env.Set("targetaddr", fmt.Sprintf("http://%s:%s", targetHost, targetPort))
-		regex = regexp.MustCompile(`\| (https?[^\s]+?) \|`)
-		allParts := regex.FindAllStringSubmatch(res.Stdout.String(), -1)
-		certsDir := fmt.Sprintf("%s/.tsuru/installs/%s/certs", os.Getenv("HOME"), installerName(env))
-		for i, parts := range allParts {
-			if i == 0 && len(provisioners) == 0 {
-				// Keep the first node when there's no provisioner
-				continue
-			}
-			c.Assert(parts, check.HasLen, 2)
-			env.Add("noderegisteropts", fmt.Sprintf("--register address=%s --cacert %s/ca.pem --clientcert %s/cert.pem --clientkey %s/key.pem", parts[1], certsDir, certsDir, certsDir))
-			env.Add("installernodes", parts[1])
-		}
-		regex = regexp.MustCompile(`Username: ([[:print:]]+)`)
-		parts = regex.FindStringSubmatch(res.Stdout.String())
-		env.Set("adminuser", parts[1])
-		regex = regexp.MustCompile(`Password: ([[:print:]]+)`)
-		parts = regex.FindStringSubmatch(res.Stdout.String())
-		env.Set("adminpassword", parts[1])
-		caCertPath := filepath.Join(certsDir, "ca.pem")
-		res = NewCommand("cat", caCertPath).Run(env)
-		c.Assert(res, ResultOk)
-		env.Set("cacert", res.Stdout.String())
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		res := T("install-remove", "--config", "{{.installerconfig}}", "-y").Run(env)
-		c.Check(res, ResultOk)
-	}
-	return flow
-}
-
 func targetTest() ExecFlow {
 	flow := ExecFlow{}
 	flow.forward = func(c *check.C, env *Environment) {
@@ -175,19 +78,6 @@ func loginTest() ExecFlow {
 	flow := ExecFlow{}
 	flow.forward = func(c *check.C, env *Environment) {
 		res := T("login", "{{.adminuser}}").WithInput("{{.adminpassword}}").Run(env)
-		c.Assert(res, ResultOk)
-	}
-	return flow
-}
-
-func removeInstallNodes() ExecFlow {
-	flow := ExecFlow{
-		matrix: map[string]string{
-			"node": "installernodes",
-		},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		res := T("node-remove", "-y", "--no-rebalance", "{{.node}}").Run(env)
 		c.Assert(res, ResultOk)
 	}
 	return flow
@@ -218,93 +108,6 @@ func teamTest() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		res := T("team-remove", "-y", teamName).Run(env)
-		c.Check(res, ResultOk)
-	}
-	return flow
-}
-
-func nodeHealer() ExecFlow {
-	flow := ExecFlow{
-		requires: []string{"nodeopts", "installerhostname"},
-		matrix: map[string]string{
-			"pool": "multinodepools",
-		},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		poolName := env.Get("pool")
-		nodeOpts := strings.Join(env.All("nodeopts_"+strings.Replace(poolName, "-", "_", -1)), ",")
-		if nodeOpts == "" {
-			nodeOpts = strings.Join(env.All("nodeopts"), ",")
-		}
-		res := T("node-add", nodeOpts, "pool="+poolName).WithTimeout(20 * time.Minute).Run(env)
-		c.Assert(res, ResultOk)
-		nodeAddr := waitNewNode(c, env)
-		env.Set("newnode-"+poolName, nodeAddr)
-		res = T("node-healing-update", "--enable", "--max-unresponsive", "130").Run(env)
-		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
-		c.Assert(res, ResultOk)
-		// Wait BS node status upgrade
-		time.Sleep(time.Minute * 1)
-		res = T("machine-list").Run(env)
-		c.Assert(res, ResultOk)
-		table := resultTable{raw: res.Stdout.String()}
-		table.parse()
-		var machineID string
-		for _, row := range table.rows {
-			c.Assert(len(row) > 2, check.Equals, true)
-			if net.URLToHost(nodeAddr) == row[2] {
-				machineID = row[0]
-				break
-			}
-		}
-		c.Assert(machineID, check.Not(check.Equals), "")
-		nodeIP := net.URLToHost(nodeAddr)
-		res = T("node-container-add", "big-sibling", "-o", poolName, "--raw", "Config.Entrypoint.0=\"/bin/sh\"",
-			"--raw", "Config.Entrypoint.1=\"-c\"", "--raw", fmt.Sprintf("Config.Cmd.0=\"ifconfig | grep %s && sleep 3600 || /bin/bs\"", nodeIP),
-		).Run(env)
-		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
-		c.Assert(res, ResultOk)
-		ok := retry(15*time.Minute, func() bool {
-			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
-			c.Assert(res, ResultOk)
-			return res.Stdout.String() != ""
-		})
-		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not start after 15 minutes: %v", res))
-		res = T("node-container-delete", "big-sibling", "-p", poolName, "-y").Run(env)
-		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "big-sibling", "-y").Run(env)
-		c.Assert(res, ResultOk)
-		ok = retry(30*time.Minute, func() bool {
-			res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr, "-r").Run(env)
-			c.Assert(res, ResultOk)
-			return res.Stdout.String() == ""
-		})
-		c.Assert(ok, check.Equals, true, check.Commentf("node healing did not finish after 30 minutes: %v", res))
-		res = T("node-healing-update", "--disable").Run(env)
-		c.Assert(res, ResultOk)
-		res = T("event-list", "-k", "healer", "-t", "node", "-v", nodeAddr).Run(env)
-		c.Assert(res, ResultOk)
-		table = resultTable{raw: res.Stdout.String()}
-		table.parse()
-		c.Assert(len(table.rows) > 0, check.Equals, true)
-		c.Assert(table.rows[0][2], check.Equals, "true", check.Commentf("expected success, got: %v - event info: %v", res, T("event-info", table.rows[0][0]).Run(env)))
-		eventId := table.rows[0][0]
-		res = T("event-info", eventId).Run(env)
-		c.Assert(res, ResultOk)
-		newAddrRegexp := regexp.MustCompile(`(?s)End Custom Data:.*?_id: (.*?)\s`)
-		newAddrParts := newAddrRegexp.FindStringSubmatch(res.Stdout.String())
-		newAddr := newAddrParts[1]
-		env.Set("newnode-"+poolName, newAddr)
-		waitNodeAddr(c, env, newAddr)
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		nodeAddr := env.Get("newnode-" + env.Get("pool"))
-		if nodeAddr == "" {
-			return
-		}
-		res := T("node-remove", "-y", "--destroy", "--no-rebalance", nodeAddr).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -439,25 +242,6 @@ func poolAdd() ExecFlow {
 			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
-	}
-	return flow
-}
-
-func nodeContainerHostCert() ExecFlow {
-	flow := ExecFlow{
-		requires: []string{"cacert"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		res := T("node-container-add", "hostcert", "--privileged", "--image", "tsuru/hostcert", "-r", "hostconfig.pidmode=host", "-r", "config.cmd.0="+env.Get("cacert")).WithNoExpand().Run(env)
-		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "hostcert", "-y").Run(env)
-		c.Assert(res, ResultOk)
-		// Wait for docker daemon restart in nodes
-		time.Sleep(time.Minute * 1)
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		res := T("node-container-delete", "hostcert", "-k", "-y").Run(env)
-		c.Assert(res, ResultOk)
 	}
 	return flow
 }
