@@ -195,6 +195,7 @@ jobs:
     needs:
     - test
     - lint
+    - integration
     - check-contributors
     - leakdetector
     - check-handlers
