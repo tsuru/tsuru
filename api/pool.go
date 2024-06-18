@@ -44,7 +44,13 @@ func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(retrievedPool)
+
+	poolInfo, err := retrievedPool.Info(ctx)
+	if err != nil {
+		return err
+	}
+
+	return json.NewEncoder(w).Encode(poolInfo)
 }
 
 // title: pool list
@@ -57,6 +63,7 @@ func getPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //	204: No content
 //	401: Unauthorized
 func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var teams, poolNames []string
 	isGlobal := false
 	contexts := permission.ContextsForPermission(t, permission.PermAppCreate)
@@ -94,12 +101,18 @@ func poolList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	poolsMap := make(map[string]struct{})
-	var poolList []pool.Pool
+	var poolList []*pool.PoolInfo
 	for _, p := range pools {
 		if _, ok := poolsMap[p.Name]; ok {
 			continue
 		}
-		poolList = append(poolList, p)
+
+		poolInfo, err := p.Info(ctx)
+		if err != nil {
+			return err
+		}
+
+		poolList = append(poolList, poolInfo)
 		poolsMap[p.Name] = struct{}{}
 	}
 	if len(poolList) == 0 {

@@ -19,17 +19,17 @@ import (
 
 var (
 	ErrInvalidConstraintType = errors.Errorf("invalid constraint type. Valid types are: %s", validConstraintTypes)
-	validConstraintTypes     = []poolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan, ConstraintTypeVolumePlan}
+	validConstraintTypes     = []PoolConstraintType{ConstraintTypeTeam, ConstraintTypeService, ConstraintTypeRouter, ConstraintTypePlan, ConstraintTypeVolumePlan}
 )
 
-type poolConstraintType string
+type PoolConstraintType string
 
 const (
-	ConstraintTypeTeam       = poolConstraintType("team")
-	ConstraintTypeRouter     = poolConstraintType("router")
-	ConstraintTypeService    = poolConstraintType("service")
-	ConstraintTypePlan       = poolConstraintType("plan")
-	ConstraintTypeVolumePlan = poolConstraintType("volume-plan")
+	ConstraintTypeTeam       = PoolConstraintType("team")
+	ConstraintTypeRouter     = PoolConstraintType("router")
+	ConstraintTypeService    = PoolConstraintType("service")
+	ConstraintTypePlan       = PoolConstraintType("plan")
+	ConstraintTypeVolumePlan = PoolConstraintType("volume-plan")
 )
 
 type regexpCache struct {
@@ -61,7 +61,7 @@ func (c *regexpCache) MatchString(pattern, value string) (bool, error) {
 
 type PoolConstraint struct {
 	PoolExpr  string
-	Field     poolConstraintType
+	Field     PoolConstraintType
 	Values    []string
 	Blacklist bool
 }
@@ -139,7 +139,7 @@ func AppendPoolConstraint(c *PoolConstraint) error {
 	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
 }
 
-func validateConstraintType(c poolConstraintType) bool {
+func validateConstraintType(c PoolConstraintType) bool {
 	for _, v := range validConstraintTypes {
 		if c == v {
 			return true
@@ -148,7 +148,7 @@ func validateConstraintType(c poolConstraintType) bool {
 	return false
 }
 
-func appendPoolConstraint(poolExpr string, field poolConstraintType, values ...string) error {
+func appendPoolConstraint(poolExpr string, field PoolConstraintType, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func appendPoolConstraint(poolExpr string, field poolConstraintType, values ...s
 	return err
 }
 
-func removePoolConstraint(poolExpr string, field poolConstraintType, values ...string) error {
+func removePoolConstraint(poolExpr string, field PoolConstraintType, values ...string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func removePoolConstraint(poolExpr string, field poolConstraintType, values ...s
 	return conn.PoolsConstraints().Update(bson.M{"poolexpr": poolExpr, "field": field}, bson.M{"$pullAll": bson.M{"values": values}})
 }
 
-func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field poolConstraintType, values ...string) ([]Pool, error) {
+func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field PoolConstraintType, values ...string) ([]Pool, error) {
 	pools, err := listPools(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field pool
 	return satisfying, nil
 }
 
-func getConstraintsForPool(pool string, fields ...poolConstraintType) (map[poolConstraintType]*PoolConstraint, error) {
+func getConstraintsForPool(pool string, fields ...PoolConstraintType) (map[PoolConstraintType]*PoolConstraint, error) {
 	var query bson.M
 	if len(fields) > 0 {
 		query = bson.M{"field": bson.M{"$in": fields}}
@@ -223,7 +223,7 @@ func getConstraintsForPool(pool string, fields ...poolConstraintType) (map[poolC
 		}
 	}
 	sort.Sort(constraintList(matches))
-	merged := make(map[poolConstraintType]*PoolConstraint)
+	merged := make(map[PoolConstraintType]*PoolConstraint)
 	for i := range matches {
 		if _, ok := merged[matches[i].Field]; !ok {
 			merged[matches[i].Field] = matches[i]
@@ -232,7 +232,7 @@ func getConstraintsForPool(pool string, fields ...poolConstraintType) (map[poolC
 	return merged, nil
 }
 
-func getExactConstraintForPool(pool string, field poolConstraintType) (*PoolConstraint, error) {
+func getExactConstraintForPool(pool string, field PoolConstraintType) (*PoolConstraint, error) {
 	constraints, err := ListPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
 	if err != nil {
 		return nil, err
@@ -257,9 +257,9 @@ func ListPoolsConstraints(query bson.M) ([]*PoolConstraint, error) {
 	return constraints, nil
 }
 
-func ToConstraintType(value string) (poolConstraintType, error) {
-	if !validateConstraintType(poolConstraintType(value)) {
+func ToConstraintType(value string) (PoolConstraintType, error) {
+	if !validateConstraintType(PoolConstraintType(value)) {
 		return "", ErrInvalidConstraintType
 	}
-	return poolConstraintType(value), nil
+	return PoolConstraintType(value), nil
 }

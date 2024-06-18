@@ -108,7 +108,7 @@ func (s *S) TestAddPool(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusCreated)
 	p, err := pool.GetPoolByName(context.TODO(), "pool2")
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
@@ -252,7 +252,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	p2, err := pool.GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	teams, err := p2.GetTeams()
+	teams, err := p2.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
@@ -343,7 +343,7 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 	var p2 pool.Pool
 	err = s.conn.Pools().FindId(p.Name).One(&p2)
 	c.Assert(err, check.IsNil)
-	teams, err := p2.GetTeams()
+	teams, err := p2.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
@@ -382,7 +382,7 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	var p2 pool.Pool
 	err = s.conn.Pools().FindId(p.Name).One(&p2)
 	c.Assert(err, check.IsNil)
-	teams, err := p2.GetTeams()
+	teams, err := p2.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 }
@@ -403,13 +403,32 @@ func (s *S) TestPoolListPublicPool(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []pool.Pool
+	var pools []pool.PoolInfo
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
 	c.Assert(pools[0].Name, check.Equals, defaultPool.Name)
 	c.Assert(pools[0].Default, check.Equals, true)
+	c.Assert(pools[0].Public, check.Equals, true)
+	c.Assert(pools[0].Allowed, check.DeepEquals, map[pool.PoolConstraintType][]string{
+		"plan":        {"default-plan"},
+		"router":      {"fake", "fake-tls"},
+		"service":     nil,
+		"team":        {"tsuruteam"},
+		"volume-plan": nil,
+	})
+	c.Assert(pools[0].Teams, check.DeepEquals, []string{"tsuruteam"})
+
 	c.Assert(pools[1].Name, check.Equals, "pool1")
+	c.Assert(pools[1].Allowed, check.DeepEquals, map[pool.PoolConstraintType][]string{
+		"plan":        {"default-plan"},
+		"router":      {"fake", "fake-tls"},
+		"service":     nil,
+		"team":        {"tsuruteam"},
+		"volume-plan": nil,
+	})
+	c.Assert(pools[1].Public, check.Equals, true)
+	c.Assert(pools[1].Teams, check.DeepEquals, []string{"tsuruteam"})
 	c.Assert(pools[1].Default, check.Equals, false)
 }
 
@@ -438,7 +457,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []pool.Pool
+	var pools []pool.PoolInfo
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -488,7 +507,7 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []pool.Pool
+	var pools []pool.PoolInfo
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -513,7 +532,7 @@ func (s *S) TestPoolListHandlerWithGlobalContext(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = poolList(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []pool.Pool
+	var pools []pool.PoolInfo
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.HasLen, 2)
@@ -562,7 +581,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p, err := pool.GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	_, err = p.GetTeams()
+	_, err = p.GetTeams(context.TODO())
 	c.Assert(err, check.NotNil)
 	b := bytes.NewBufferString("public=true")
 	req, err := http.NewRequest(http.MethodPut, "/pools/pool1", b)
@@ -573,7 +592,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{

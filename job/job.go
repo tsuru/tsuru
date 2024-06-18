@@ -162,7 +162,7 @@ func (*jobService) BaseImageName(ctx context.Context, job *jobTypes.Job) (string
 	return fmt.Sprintf("%s:latest", newImage), nil
 }
 
-func imageID(ctx context.Context, job *jobTypes.Job) (string, error) {
+func imageID(job *jobTypes.Job) (string, error) {
 	var imageID string
 	if job.DeployOptions != nil && job.DeployOptions.Image != "" {
 		imageID = job.DeployOptions.Image
@@ -177,7 +177,7 @@ func imageID(ctx context.Context, job *jobTypes.Job) (string, error) {
 }
 
 func buildWithDeployAgent(ctx context.Context, job *jobTypes.Job) error {
-	imageID, err := imageID(ctx, job)
+	imageID, err := imageID(job)
 	if err != nil {
 		return err
 	}
@@ -227,9 +227,9 @@ func (*jobService) CreateJob(ctx context.Context, job *jobTypes.Job, user *authT
 		jobCreationErr.Err = err
 		return &jobCreationErr
 	}
-	buildTsuruInfo(ctx, job, user)
+	buildTsuruInfo(job, user)
 	if job.Spec.Manual {
-		buildFakeSchedule(ctx, job)
+		buildFakeSchedule(job)
 	}
 	if job.Spec.ActiveDeadlineSeconds == nil {
 		job.Spec.ActiveDeadlineSeconds = func(i int64) *int64 { return &i }(0)
@@ -294,7 +294,7 @@ func (*jobService) UpdateJob(ctx context.Context, newJob, oldJob *jobTypes.Job, 
 	}
 	if newJob.Spec.Manual {
 		manualJob = true
-		buildFakeSchedule(ctx, newJob)
+		buildFakeSchedule(newJob)
 	}
 	newJobActiveDeadlineSeconds := buildActiveDeadline(newJob.Spec.ActiveDeadlineSeconds)
 
@@ -592,7 +592,7 @@ func validatePlan(ctx context.Context, poolName, planName string) error {
 	if err != nil {
 		return err
 	}
-	plans, err := pool.GetPlans()
+	plans, err := pool.GetPlans(ctx)
 	if err != nil {
 		return err
 	}
@@ -609,7 +609,7 @@ func validateTeamOwner(ctx context.Context, job *jobTypes.Job, p *pool.Pool) err
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
-	poolTeams, err := p.GetTeams()
+	poolTeams, err := p.GetTeams(ctx)
 	if err != nil && err != pool.ErrPoolHasNoTeam {
 		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}

@@ -30,7 +30,7 @@ func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 	if err != nil {
 		return err
 	}
-	plan, err := jobPool.GetDefaultPlan()
+	plan, err := jobPool.GetDefaultPlan(ctx)
 	if err != nil {
 		return err
 	}
@@ -44,12 +44,12 @@ func buildPlan(ctx context.Context, job *jobTypes.Job) error {
 	return nil
 }
 
-func buildTsuruInfo(ctx context.Context, job *jobTypes.Job, user *authTypes.User) {
+func buildTsuruInfo(job *jobTypes.Job, user *authTypes.User) {
 	job.Teams = []string{job.TeamOwner}
 	job.Owner = user.Email
 }
 
-func buildFakeSchedule(ctx context.Context, job *jobTypes.Job) {
+func buildFakeSchedule(job *jobTypes.Job) {
 	// trick based on fact that crontab syntax is not strictly validated
 	job.Spec.Schedule = "* * 31 2 *"
 }

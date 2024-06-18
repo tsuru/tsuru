@@ -129,13 +129,13 @@ func (s *S) TestValidateRouters(c *check.C) {
 	err := SetPoolConstraint(&PoolConstraint{PoolExpr: "pool*", Field: ConstraintTypeRouter, Values: []string{"router2"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 
-	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router1"}})
+	err = pool.ValidateRouters(context.TODO(), []appTypes.AppRouter{{Name: "router1"}})
 	c.Assert(err, check.IsNil)
-	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router2"}})
+	err = pool.ValidateRouters(context.TODO(), []appTypes.AppRouter{{Name: "router2"}})
 	c.Assert(err, check.NotNil)
-	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "unknown-router"}})
+	err = pool.ValidateRouters(context.TODO(), []appTypes.AppRouter{{Name: "unknown-router"}})
 	c.Assert(err, check.NotNil)
-	err = pool.ValidateRouters([]appTypes.AppRouter{{Name: "router1"}, {Name: "router2"}})
+	err = pool.ValidateRouters(context.TODO(), []appTypes.AppRouter{{Name: "router1"}, {Name: "router2"}})
 	c.Assert(err, check.NotNil)
 }
 
@@ -367,7 +367,7 @@ func (s *S) TestAddTeamToPool(c *check.C) {
 	var p Pool
 	err = coll.FindId(pool.Name).One(&p)
 	c.Assert(err, check.IsNil)
-	teams, err := p.GetTeams()
+	teams, err := p.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
@@ -382,7 +382,7 @@ func (s *S) TestAddTeamToPoolWithTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool(pool.Name, []string{"pteam"})
 	c.Assert(err, check.IsNil)
-	teams, err := pool.GetTeams()
+	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "pteam", "test"})
@@ -397,7 +397,7 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
-	teams, err := pool.GetTeams()
+	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
@@ -438,13 +438,13 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = AddTeamsToPool(pool.Name, []string{"test", "ateam"})
 	c.Assert(err, check.IsNil)
-	teams, err := pool.GetTeams()
+	teams, err := pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	sort.Strings(teams)
 	c.Assert(teams, check.DeepEquals, []string{"ateam", "test"})
 	err = RemoveTeamsFromPool(pool.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
-	teams, err = pool.GetTeams()
+	teams, err = pool.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{"ateam"})
 }
@@ -674,11 +674,11 @@ func (s *S) TestGetRouters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	routers, err := pool.GetRouters()
+	routers, err := pool.GetRouters(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []string{"router1"})
 	pool.Name = "other"
-	routers, err = pool.GetRouters()
+	routers, err = pool.GetRouters(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, []string{"router1", "router2"})
 }
@@ -692,13 +692,13 @@ func (s *S) TestGetVolumePlans(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	vPlans, err := pool.GetVolumePlans()
+	vPlans, err := pool.GetVolumePlans(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(vPlans, check.DeepEquals, []string{"test-volume-plan"})
 	pool.Name = "other"
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "other", Field: ConstraintTypeVolumePlan, Values: []string{"test-volume-plan"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
-	_, err = pool.GetVolumePlans()
+	_, err = pool.GetVolumePlans(context.TODO())
 	c.Assert(err, check.Equals, ErrPoolHasNoVolumePlan)
 }
 
@@ -709,11 +709,11 @@ func (s *S) TestGetPlans(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	plans, err := pool.GetPlans()
+	plans, err := pool.GetPlans(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []string{"plan2"})
 	pool.Name = "other"
-	plans, err = pool.GetPlans()
+	plans, err = pool.GetPlans(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(plans, check.DeepEquals, []string{"plan1", "plan2"})
 }
@@ -728,7 +728,7 @@ func (s *S) TestGetDefaultRouterFromConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	r, err := pool.GetDefaultRouter()
+	r, err := pool.GetDefaultRouter(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.Equals, "router2")
 }
@@ -743,7 +743,7 @@ func (s *S) TestGetDefaultRouterNoDefault(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	r, err := pool.GetDefaultRouter()
+	r, err := pool.GetDefaultRouter(context.TODO())
 	c.Assert(err, check.Equals, router.ErrDefaultRouterNotFound)
 	c.Assert(r, check.Equals, "")
 }
@@ -757,7 +757,7 @@ func (s *S) TestGetDefaultFallbackFromConfig(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	r, err := pool.GetDefaultRouter()
+	r, err := pool.GetDefaultRouter(context.TODO())
 	c.Assert(err, check.Equals, nil)
 	c.Assert(r, check.Equals, "router2")
 }
@@ -771,7 +771,7 @@ func (s *S) TestGetDefaultAllowAllSingleAllowedValue(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	r, err := pool.GetDefaultRouter()
+	r, err := pool.GetDefaultRouter(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.Equals, "router2")
 }
@@ -786,7 +786,7 @@ func (s *S) TestGetDefaultBlacklistSingleAllowedValue(c *check.C) {
 	c.Assert(err, check.IsNil)
 	pool, err := GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
-	r, err := pool.GetDefaultRouter()
+	r, err := pool.GetDefaultRouter(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.Equals, "router1")
 }
@@ -811,9 +811,9 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = SetPoolConstraint(&PoolConstraint{PoolExpr: "pool1", Field: ConstraintTypeVolumePlan, Values: []string{"nfs"}})
 	c.Assert(err, check.IsNil)
-	constraints, err := pool.allowedValues()
+	constraints, err := pool.allowedValues(context.TODO())
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[poolConstraintType][]string{
+	c.Assert(constraints, check.DeepEquals, map[PoolConstraintType][]string{
 		ConstraintTypeTeam:       {"team1"},
 		ConstraintTypeRouter:     {"router1", "router2"},
 		ConstraintTypeService:    nil,
@@ -821,7 +821,7 @@ func (s *S) TestPoolAllowedValues(c *check.C) {
 		ConstraintTypeVolumePlan: {"nfs"},
 	})
 	pool.Name = "other"
-	constraints, err = pool.allowedValues()
+	constraints, err = pool.allowedValues(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.HasLen, 5)
 	sort.Strings(constraints[ConstraintTypeTeam])

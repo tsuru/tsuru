@@ -92,30 +92,30 @@ func (s *S) TestGetConstraintsForPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	tt := []struct {
 		pool     string
-		expected map[poolConstraintType]*PoolConstraint
+		expected map[PoolConstraintType]*PoolConstraint
 	}{
-		{pool: "prod", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "prod", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*", Field: ConstraintTypeRouter, Values: []string{"router1"}},
 		}},
-		{pool: "pp", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "pp", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "pp", Field: ConstraintTypeRouter, Values: []string{"router2"}},
 		}},
-		{pool: "pool1_dev", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "pool1_dev", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*_dev", Field: ConstraintTypeRouter, Values: []string{"router1_dev"}},
 			ConstraintTypeTeam:   {PoolExpr: "pool1_dev", Field: ConstraintTypeTeam, Values: []string{"team_pool1"}},
 		}},
-		{pool: "pool2_dev", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "pool2_dev", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*_dev", Field: ConstraintTypeRouter, Values: []string{"router1_dev"}},
 			ConstraintTypeTeam:   {PoolExpr: "*_dev", Field: ConstraintTypeTeam, Values: []string{"team_pool1"}, Blacklist: true},
 		}},
-		{pool: "pp2", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "pp2", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*", Field: ConstraintTypeRouter, Values: []string{"router1"}},
 		}},
-		{pool: "pool1\\x", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "pool1\\x", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*", Field: ConstraintTypeRouter, Values: []string{"router1"}},
 			ConstraintTypeTeam:   {PoolExpr: "pool1\\x", Field: ConstraintTypeTeam, Values: []string{"team_pool1x"}},
 		}},
-		{pool: "abc\\xdev", expected: map[poolConstraintType]*PoolConstraint{
+		{pool: "abc\\xdev", expected: map[PoolConstraintType]*PoolConstraint{
 			ConstraintTypeRouter: {PoolExpr: "*", Field: ConstraintTypeRouter, Values: []string{"router1"}},
 			ConstraintTypeTeam:   {PoolExpr: "*\\xdev", Field: ConstraintTypeTeam, Values: []string{"team_xdev"}},
 		}},
@@ -140,7 +140,7 @@ func (s *S) TestAppendPoolConstraint(c *check.C) {
 	c.Assert(err, check.Equals, ErrInvalidConstraintType)
 	constraints, err := getConstraintsForPool("*")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[poolConstraintType]*PoolConstraint{
+	c.Assert(constraints, check.DeepEquals, map[PoolConstraintType]*PoolConstraint{
 		ConstraintTypeRouter:  {Field: ConstraintTypeRouter, PoolExpr: "*", Values: []string{"router1", "router2"}, Blacklist: true},
 		ConstraintTypeService: {Field: ConstraintTypeService, PoolExpr: "*", Values: []string{"autoscale"}},
 	})
@@ -151,7 +151,7 @@ func (s *S) TestAppendPoolConstraintNewConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	constraints, err := getConstraintsForPool("myPool")
 	c.Assert(err, check.IsNil)
-	c.Assert(constraints, check.DeepEquals, map[poolConstraintType]*PoolConstraint{
+	c.Assert(constraints, check.DeepEquals, map[PoolConstraintType]*PoolConstraint{
 		ConstraintTypeRouter: {Field: ConstraintTypeRouter, PoolExpr: "myPool", Values: []string{"router2"}},
 	})
 }
