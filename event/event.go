@@ -718,7 +718,7 @@ func List(filter *Filter) ([]*Event, error) {
 	return evts, nil
 }
 
-func New(opts *Opts) (*Event, error) {
+func New(ctx context.Context, opts *Opts) (*Event, error) {
 	if opts == nil {
 		return nil, ErrNoOpts
 	}
@@ -731,10 +731,10 @@ func New(opts *Opts) (*Event, error) {
 	if opts.RetryTimeout == 0 && opts.Target.Type == TargetTypeApp {
 		opts.RetryTimeout = defaultAppRetryTimeout
 	}
-	return newEvt(opts)
+	return newEvt(ctx, opts)
 }
 
-func NewInternal(opts *Opts) (*Event, error) {
+func NewInternal(ctx context.Context, opts *Opts) (*Event, error) {
 	if opts == nil {
 		return nil, ErrNoOpts
 	}
@@ -747,10 +747,10 @@ func NewInternal(opts *Opts) (*Event, error) {
 	if opts.InternalKind == "" {
 		return nil, ErrNoInternalKind
 	}
-	return newEvt(opts)
+	return newEvt(ctx, opts)
 }
 
-func NewInternalMany(targets []Target, opts *Opts) (*Event, error) {
+func NewInternalMany(ctx context.Context, targets []Target, opts *Opts) (*Event, error) {
 	if len(targets) == 0 {
 		return nil, errors.New("event must have at least one target")
 	}
@@ -761,7 +761,7 @@ func NewInternalMany(targets []Target, opts *Opts) (*Event, error) {
 			Lock:   true,
 		})
 	}
-	return NewInternal(opts)
+	return NewInternal(ctx, opts)
 }
 
 func makeBSONRaw(in interface{}) (bson.Raw, error) {
@@ -834,14 +834,14 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 	return nil
 }
 
-func newEvt(opts *Opts) (evt *Event, err error) {
+func newEvt(ctx context.Context, opts *Opts) (evt *Event, err error) {
 	if opts.RetryTimeout == 0 {
-		return newEvtOnce(opts)
+		return newEvtOnce(ctx, opts)
 	}
 
 	timeoutCh := time.After(opts.RetryTimeout)
 	for {
-		evt, err := newEvtOnce(opts)
+		evt, err := newEvtOnce(ctx, opts)
 		if err == nil {
 			return evt, nil
 		}
@@ -856,7 +856,7 @@ func newEvt(opts *Opts) (evt *Event, err error) {
 	}
 }
 
-func newEvtOnce(opts *Opts) (evt *Event, err error) {
+func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 	var k Kind
 	defer func() {
 		eventCurrent.WithLabelValues(k.Name).Inc()
@@ -981,7 +981,7 @@ func newEvtOnce(opts *Opts) (evt *Event, err error) {
 				evt.Abort()
 				return nil, err
 			}
-			err = checkIsBlocked(evt)
+			err = checkIsBlocked(ctx, evt)
 			if err != nil {
 				evt.Done(err)
 				return nil, err

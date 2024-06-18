@@ -2115,7 +2115,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
@@ -2187,7 +2187,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	a := &app.App{Name: "myapp", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
@@ -4263,7 +4263,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1", "p2": "cm2"}})
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
@@ -4334,7 +4334,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	firstVersion := newVersion(c, a, map[string]interface{}{"processes": map[string]interface{}{"p1": "cm1"}})
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,

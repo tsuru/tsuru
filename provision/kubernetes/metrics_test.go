@@ -24,7 +24,7 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,

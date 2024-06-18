@@ -49,6 +49,7 @@ func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //	401: Unauthorized
 //	409: Broker already exists
 func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermServiceBrokerCreate) {
 		return permission.ErrUnauthorized
 	}
@@ -56,7 +57,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerCreate,
 		Owner:      t,
@@ -99,7 +100,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerUpdate,
 		Owner:      t,
@@ -126,6 +127,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //	401: Unauthorized
 //	404: Not Found
 func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermServiceBrokerDelete) {
 		return permission.ErrUnauthorized
 	}
@@ -133,7 +135,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if brokerName == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: brokerName},
 		Kind:       permission.PermServiceBrokerDelete,
 		Owner:      t,

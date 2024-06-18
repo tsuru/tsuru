@@ -5,6 +5,7 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := New(&Opts{
+	evt, err := New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
@@ -67,7 +68,7 @@ func (s *S) TestUpdaterRemoveEventStress(c *check.C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			evt, err := New(&Opts{
+			evt, err := New(context.TODO(), &Opts{
 				Target:  Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
 				Kind:    permission.PermAppUpdateEnvSet,
 				Owner:   s.token,
@@ -90,14 +91,14 @@ func (s *S) TestUpdaterUpdatesMultipleEvents(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt0, err := New(&Opts{
+	evt0, err := New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp0"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evt1, err := New(&Opts{
+	evt1, err := New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp1"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
@@ -141,7 +142,7 @@ func (s *S) TestUpdaterUpdatesNonBlockingEvents(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := New(&Opts{
+	evt, err := New(context.TODO(), &Opts{
 		Target:      Target{Type: "app", Value: "myapp"},
 		Kind:        permission.PermAppUpdateEnvSet,
 		Owner:       s.token,
@@ -184,7 +185,7 @@ func (s *S) TestEventCleaner(c *check.C) {
 		eventCleanerInterval = oldEventCleanerInterval
 		lockExpireTimeout = oldLockExpire
 	}()
-	_, err := New(&Opts{
+	_, err := New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,

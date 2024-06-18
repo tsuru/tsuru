@@ -5,14 +5,21 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
+
+const eventBlockCollectionName = "event_blocks"
 
 type ErrActiveEventBlockNotFound struct {
 	id string
@@ -37,7 +44,7 @@ func (e ErrEventBlocked) Error() string {
 }
 
 type Block struct {
-	ID         bson.ObjectId `bson:"_id,omitempty"`
+	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	StartTime  time.Time
 	EndTime    time.Time `bson:"endtime,omitempty"`
 	KindName   string
@@ -94,61 +101,86 @@ func (b *Block) String() string {
 	return fmt.Sprintf("block %s by %s on %s: %s", kind, owner, target, b.Reason)
 }
 
-func AddBlock(b *Block) error {
-	conn, err := db.Conn()
+func AddBlock(ctx context.Context, b *Block) error {
+	collection, err := storagev2.Collection(eventBlockCollectionName)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	b.Active = true
-	b.ID = bson.NewObjectId()
+	b.ID = primitive.NewObjectID()
 	b.StartTime = time.Now()
-	return conn.EventBlocks().Insert(b)
+
+	_, err = collection.InsertOne(ctx, b)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func RemoveBlock(id bson.ObjectId) error {
-	conn, err := db.Conn()
+func RemoveBlock(ctx context.Context, id primitive.ObjectID) error {
+	collection, err := storagev2.Collection(eventBlockCollectionName)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	query := bson.M{"_id": id, "active": true}
-	err = conn.EventBlocks().Update(query, bson.M{"$set": bson.M{"active": false, "endtime": time.Now()}})
-	if err == mgo.ErrNotFound {
+	query := mongoBSON.M{"_id": id, "active": true}
+
+	result, err := collection.UpdateOne(ctx, query, mongoBSON.M{"$set": mongoBSON.M{"active": false, "endtime": time.Now()}})
+
+	if err == mongo.ErrNoDocuments {
 		return &ErrActiveEventBlockNotFound{id: id.Hex()}
 	}
+
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return &ErrActiveEventBlockNotFound{id: id.Hex()}
+	}
+
 	return err
 }
 
-func ListBlocks(active *bool) ([]Block, error) {
-	query := bson.M{}
+func ListBlocks(ctx context.Context, active *bool) ([]Block, error) {
+	query := mongoBSON.M{}
 	if active != nil {
 		query["active"] = *active
 	}
-	return listBlocks(query)
+	return listBlocks(ctx, query)
 }
 
-func listBlocks(query bson.M) ([]Block, error) {
-	conn, err := db.Conn()
+func listBlocks(ctx context.Context, query mongoBSON.M) ([]Block, error) {
+	collection, err := storagev2.Collection(eventBlockCollectionName)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var blocks []Block
 
-	err = conn.EventBlocks().Find(query).Sort("-starttime").All(&blocks)
+	if query == nil {
+		query = mongoBSON.M{}
+	}
+
+	cursor, err := collection.Find(ctx, query, options.Find().SetSort(bson.M{"starttime": -1}))
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &blocks)
+
 	if err != nil {
 		return nil, err
 	}
 	return blocks, nil
 }
 
-func checkIsBlocked(evt *Event) error {
+func checkIsBlocked(ctx context.Context, evt *Event) error {
 	if evt.Target.Type == TargetTypeEventBlock {
 		return nil
 	}
 
-	blocks, err := listBlocks(bson.M{"active": true})
+	blocks, err := listBlocks(ctx, mongoBSON.M{"active": true})
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // title: event list
@@ -169,6 +170,7 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	204: No content
 //	401: Unauthorized
 func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermEventBlockRead) {
 		return permission.ErrUnauthorized
 	}
@@ -177,7 +179,7 @@ func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		b, _ := strconv.ParseBool(activeStr)
 		active = &b
 	}
-	blocks, err := event.ListBlocks(active)
+	blocks, err := event.ListBlocks(ctx, active)
 	if err != nil {
 		return err
 	}
@@ -199,6 +201,7 @@ func eventBlockList(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 //	400: Invalid data or empty reason
 //	401: Unauthorized
 func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermEventBlockAdd) {
 		return permission.ErrUnauthorized
 	}
@@ -210,7 +213,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if block.Reason == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is required"}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeEventBlock},
 		Kind:       permission.PermEventBlockAdd,
 		Owner:      t,
@@ -225,7 +228,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		evt.Target.Value = block.ID.Hex()
 		evt.Done(err)
 	}()
-	return event.AddBlock(&block)
+	return event.AddBlock(ctx, &block)
 }
 
 // title: remove event block
@@ -238,6 +241,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 //	401: Unauthorized
 //	404: Active block with provided uuid not found
 func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermEventBlockRemove) {
 		return permission.ErrUnauthorized
 	}
@@ -246,8 +250,11 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	objID := bson.ObjectIdHex(uuid)
-	evt, err := event.New(&event.Opts{
+	objID, err := primitive.ObjectIDFromHex(uuid)
+	if err != nil {
+		return err
+	}
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeEventBlock, Value: objID.Hex()},
 		Kind:       permission.PermEventBlockRemove,
 		Owner:      t,
@@ -261,7 +268,7 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = event.RemoveBlock(objID)
+	err = event.RemoveBlock(ctx, objID)
 	if _, ok := err.(*event.ErrActiveEventBlockNotFound); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

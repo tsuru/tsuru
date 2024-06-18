@@ -5,18 +5,19 @@
 package event
 
 import (
+	"context"
 	"reflect"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
 
 func (s *S) TestAddBlock(c *check.C) {
 	block := &Block{KindName: "app.deploy", Reason: "maintenance"}
-	err := AddBlock(block)
+	err := AddBlock(context.TODO(), block)
 	c.Assert(err, check.IsNil)
-	blocks, err := listBlocks(nil)
+	blocks, err := listBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	blocks[0].StartTime = block.StartTime
 	c.Assert(blocks[0], check.DeepEquals, *block)
@@ -24,33 +25,33 @@ func (s *S) TestAddBlock(c *check.C) {
 
 func (s *S) TestRemoveBlock(c *check.C) {
 	block := &Block{KindName: "app.deploy", Reason: "maintenance"}
-	err := AddBlock(block)
+	err := AddBlock(context.TODO(), block)
 	c.Assert(err, check.IsNil)
-	blocks, err := listBlocks(nil)
+	blocks, err := listBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(blocks[0].Active, check.Equals, true)
-	err = RemoveBlock(blocks[0].ID)
+	err = RemoveBlock(context.TODO(), blocks[0].ID)
 	c.Assert(err, check.IsNil)
-	blocks, err = listBlocks(nil)
+	blocks, err = listBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(blocks[0].Active, check.Equals, false)
 	c.Assert(blocks[0].EndTime.IsZero(), check.Equals, false)
 }
 
 func (s *S) TestRemoveBlockNotFound(c *check.C) {
-	err := RemoveBlock(bson.NewObjectId())
+	err := RemoveBlock(context.TODO(), primitive.NewObjectID())
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestListBlocks(c *check.C) {
 	block := &Block{KindName: "app.deploy", Reason: "maintenance"}
-	err := AddBlock(block)
+	err := AddBlock(context.TODO(), block)
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
 	block2 := &Block{KindName: "app.create", Reason: "maintenance"}
-	err = AddBlock(block2)
+	err = AddBlock(context.TODO(), block2)
 	c.Assert(err, check.IsNil)
-	err = RemoveBlock(block2.ID)
+	err = RemoveBlock(context.TODO(), block2.ID)
 	c.Assert(err, check.IsNil)
 	active := true
 	deactive := false
@@ -63,7 +64,7 @@ func (s *S) TestListBlocks(c *check.C) {
 		{&deactive, []Block{*block2}},
 	}
 	for i, t := range tt {
-		blocks, err := ListBlocks(t.active)
+		blocks, err := ListBlocks(context.TODO(), t.active)
 		c.Assert(err, check.IsNil)
 		c.Assert(len(blocks), check.Equals, len(t.expected))
 		for j := range blocks {
@@ -85,7 +86,7 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		"blockCreateAppInPoolAndCluster": {KindName: "app.create", Conditions: map[string]string{"pool": "pool1", "cluster": "c1"}},
 	}
 	for _, b := range blocks {
-		err := AddBlock(b)
+		err := AddBlock(context.TODO(), b)
 		c.Assert(err, check.IsNil)
 	}
 	bsonDataBlockedPoolCluster, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}, {"name": "cluster", "value": "c1"}})
@@ -113,7 +114,7 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataUnhandledFields}}, nil},
 	}
 	for i, t := range tt {
-		errBlock := checkIsBlocked(t.event)
+		errBlock := checkIsBlocked(context.TODO(), t.event)
 		var expectedErr error
 		if t.blockedBy != nil {
 			if errBlock == nil {

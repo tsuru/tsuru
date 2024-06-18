@@ -346,7 +346,7 @@ func (s *S) TestUnitsSkipTerminating(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -388,7 +388,7 @@ func (s *S) TestUnitsSkipEvicted(c *check.C) {
 			"worker": "myworker",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -429,7 +429,7 @@ func (s *S) TestUnitsStarting(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -474,7 +474,7 @@ func (s *S) TestUnitsStartingError(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -526,7 +526,7 @@ func (s *S) TestUnitsCrashLoopBackOff(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -583,7 +583,7 @@ func (s *S) TestUnitsCrashLoopBackOffWithExitCode(c *check.C) {
 			"web": "python myapp.py",
 		},
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -794,7 +794,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		},
 	})
 
-	evt1, err := event.New(&event.Opts{
+	evt1, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.GetName()},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -819,7 +819,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		},
 	})
 
-	evt2, err := event.New(&event.Opts{
+	evt2, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.GetName()},
 		Kind:     permission.PermAppDeploy,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -900,7 +900,7 @@ func (s *S) TestStopStart(c *check.C) {
 func (s *S) TestProvisionerDestroy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -940,7 +940,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	deployEvent, err := event.New(&event.Opts{
+	deployEvent, err := event.New(context.TODO(), &event.Opts{
 		Target:      event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:        permission.PermAppDeploy,
 		Owner:       s.token,
@@ -999,7 +999,7 @@ func (s *S) TestProvisionerDestroyVersion(c *check.C) {
 func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1073,7 +1073,7 @@ func (s *S) TestProvisionerRoutableAddressesMultipleProcs(c *check.C) {
 func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1128,7 +1128,7 @@ func (s *S) TestProvisionerRoutableAddresses(c *check.C) {
 func (s *S) TestDeploy(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1179,7 +1179,7 @@ func (s *S) TestDeployCreatesAppCR(c *check.C) {
 	defer rollback()
 	err := s.p.Destroy(context.TODO(), a)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1213,7 +1213,7 @@ func (s *S) TestDeployWithPoolNamespaces(c *check.C) {
 		}
 		return false, nil, nil
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1274,7 +1274,7 @@ func (s *S) TestInternalAddresses(c *check.C) {
 		return false, nil, nil
 	})
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1306,7 +1306,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1341,7 +1341,7 @@ func (s *S) TestInternalAddressesNoService(c *check.C) {
 func (s *S) TestDeployWithCustomConfig(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1446,7 +1446,7 @@ func (s *S) TestDeployWithCustomConfig(c *check.C) {
 func (s *S) TestDeployRollback(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	deployEvt, err := event.New(&event.Opts{
+	deployEvt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1473,7 +1473,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
 	deployEvt.Done(err)
 	c.Assert(err, check.IsNil)
-	rollbackEvt, err := event.New(&event.Opts{
+	rollbackEvt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeployRollback,
 		Owner:   s.token,
@@ -1874,7 +1874,7 @@ func (s *S) TestProvisionerUpdateApp(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -1963,7 +1963,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeploy(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -2036,7 +2036,7 @@ func (s *S) TestProvisionerUpdateAppCanaryDeployWithStoppedBaseDep(c *check.C) {
 		}, nil
 	})
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -2114,7 +2114,7 @@ func (s *S) TestProvisionerUpdateAppWithCanaryOtherCluster(c *check.C) {
 		Provisioner: "kubernetes",
 	})
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -2171,7 +2171,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterAndNamespace(c *check.C
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -2240,7 +2240,7 @@ func (s *S) TestProvisionerUpdateAppWithVolumeSameClusterOtherNamespace(c *check
 	defer config.Unset("kubernetes:use-pool-namespaces")
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,

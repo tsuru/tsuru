@@ -60,12 +60,12 @@ func (s *S) SetUpTest(c *check.C) {
 func (s *S) TestListFilterMany(c *check.C) {
 	var allEvts []*event.Event
 	var create = func(opts *event.Opts) {
-		evt, err := event.New(opts)
+		evt, err := event.New(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 		allEvts = append(allEvts, evt)
 	}
 	var createi = func(opts *event.Opts) {
-		evt, err := event.NewInternal(opts)
+		evt, err := event.NewInternal(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 		allEvts = append(allEvts, evt)
 	}
@@ -170,7 +170,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 }
 
 func (s *S) TestGetByID(c *check.C) {
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
@@ -191,7 +191,7 @@ func (s *S) TestGetByID(c *check.C) {
 }
 
 func (s *S) TestGetRunning(c *check.C) {
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
@@ -212,7 +212,7 @@ func boolPtr(b bool) *bool {
 }
 
 func (s *S) TestGetKinds(c *check.C) {
-	_, err := event.New(&event.Opts{
+	_, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,

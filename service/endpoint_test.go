@@ -81,7 +81,7 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func createEvt(c *check.C) *event.Event {
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: event.TargetTypeServiceInstance, Value: "x"},
 		Kind:     permission.PermServiceInstanceCreate,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "my@user"},

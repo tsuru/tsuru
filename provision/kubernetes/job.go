@@ -445,6 +445,7 @@ func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job) tim
 }
 
 func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	ctx := context.Background()
 	defer wg.Done()
 	var evtErr error
 	var kind *permission.PermissionScheme
@@ -473,7 +474,7 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 		Cancelable: false,
 		ExpireAt:   &expire,
 	}
-	e, err := event.New(&opts)
+	e, err := event.New(ctx, &opts)
 	if err != nil {
 		return
 	}

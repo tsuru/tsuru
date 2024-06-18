@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/servicemanager"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -65,6 +66,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_service_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *S) SetUpTest(c *check.C) {

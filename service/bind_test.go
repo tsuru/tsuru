@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
@@ -50,6 +51,9 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	app.AuthScheme = auth.Scheme(native.NativeScheme{})
 }
 
@@ -99,7 +103,7 @@ func (s *BindSuite) TearDownSuite(c *check.C) {
 }
 
 func createEvt(c *check.C) *event.Event {
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: event.TargetTypeServiceInstance, Value: "x"},
 		Kind:     permission.PermServiceInstanceCreate,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "my@user"},

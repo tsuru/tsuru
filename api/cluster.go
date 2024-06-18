@@ -52,7 +52,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
@@ -128,7 +128,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
@@ -258,7 +258,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 
 	clusterName := r.URL.Query().Get(":name")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
 		Kind:       permission.PermClusterDelete,
 		Owner:      t,

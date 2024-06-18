@@ -89,7 +89,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			Message: fmt.Sprintf("unable to validate autoscale spec: %v", err),
 		}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAutoscaleAdd,
 		Owner:      t,
@@ -127,7 +127,7 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateUnitAutoscaleRemove,
 		Owner:      t,

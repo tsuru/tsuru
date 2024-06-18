@@ -74,7 +74,7 @@ func (s *S) TestBuild_BuildFromRebuild(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -101,7 +101,7 @@ func (s *S) TestBuild_MissingBuildServiceAddress(c *check.C) {
 	a, _, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -126,7 +126,7 @@ func (s *S) TestBuild_BuildServiceReturnsError(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -171,7 +171,7 @@ func (s *S) TestBuild_BuildServiceShouldRespectContextCancelation(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -292,7 +292,7 @@ kubernetes:
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -380,7 +380,7 @@ func (s *S) TestBuild_BuildWithContainerImage(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -473,7 +473,7 @@ func (s *S) TestBuild_DeployWithContainerImage_NoImageConfigReturned(c *check.C)
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -499,7 +499,7 @@ func (s *S) TestBuild_BuildWithArchiveURL_FailedToDownloadArchive(c *check.C) {
 	}))
 	defer srv.Close()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -529,7 +529,7 @@ func (s *S) TestBuild_BuildWithArchiveURL_MissingArchive(c *check.C) {
 	}))
 	defer srv.Close()
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -578,7 +578,7 @@ func (s *S) TestBuild_BuildWithArchiveURL(c *check.C) {
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
@@ -648,7 +648,7 @@ CMD ["--port", "8888"]
 	})
 	s.clusterClient.CustomData[buildServiceAddressKey] = buildServiceAddress
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,

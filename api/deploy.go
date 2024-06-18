@@ -100,7 +100,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 
 	var imageID string
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
 		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},
@@ -232,7 +232,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
 	var imageID string
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
 		Owner:         t,
@@ -363,7 +363,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: permission.ErrUnauthorized.Error()}
 	}
 	var imageID string
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
 		Owner:         t,
@@ -435,7 +435,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 			Message: "Reason cannot be empty while disabling a image rollback",
 		}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateDeployRollback,
 		Owner:         t,

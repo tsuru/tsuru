@@ -142,7 +142,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return permission.ErrUnauthorized
 	}
 	delete(r.Form, "password")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceCreate,
 		Owner:      t,
@@ -196,7 +196,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return permission.ErrUnauthorized
 	}
 	delete(r.Form, "password")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdate,
 		Owner:      t,
@@ -238,7 +238,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceDelete,
 		Owner:      t,
@@ -284,7 +284,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceTarget(s.Name),
 			Kind:       permission.PermServiceUpdateProxy,
 			Owner:      t,
@@ -321,7 +321,7 @@ func serviceAuthenticatedResourcesProxy(w http.ResponseWriter, r *http.Request, 
 	}
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceTarget(s.Name),
 			Kind:       permission.PermServiceUpdateProxy,
 			Owner:      t,
@@ -374,7 +374,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		}
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateGrantAccess,
 		Owner:      t,
@@ -428,7 +428,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		msg := "You can not revoke the access from this team, because it is the unique team with access to this service, and a service can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateRevokeAccess,
 		Owner:      t,
@@ -470,7 +470,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return permission.ErrUnauthorized
 	}
 	s.Doc = InputValue(r, "doc")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceTarget(s.Name),
 		Kind:       permission.PermServiceUpdateDoc,
 		Owner:      t,

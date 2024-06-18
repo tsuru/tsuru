@@ -2439,7 +2439,7 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 	}
 	for _, a := range apps {
 		var evt *event.Event
-		evt, err = event.NewInternal(&event.Opts{
+		evt, err = event.NewInternal(ctx, &event.Opts{
 			Target:       event.Target{Type: event.TargetTypeApp, Value: a.Name},
 			InternalKind: "team rename",
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.Name)),

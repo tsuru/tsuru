@@ -43,7 +43,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},

@@ -58,7 +58,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypePlan, Value: plan.Name},
 		Kind:       permission.PermPlanCreate,
 		Owner:      t,
@@ -126,7 +126,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	planName := r.URL.Query().Get(":planname")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypePlan, Value: planName},
 		Kind:       permission.PermPlanDelete,
 		Owner:      t,

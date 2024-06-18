@@ -86,7 +86,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	email := InputValue(r, "email")
 	password := InputValue(r, "password")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermUserCreate,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
@@ -182,7 +182,7 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !ok {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(t.GetUserName()),
 		Kind:       permission.PermUserUpdatePassword,
 		Owner:      t,
@@ -233,7 +233,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 	email := r.URL.Query().Get(":email")
 	token := InputValue(r, "token")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermUserUpdateReset,
 		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
@@ -302,7 +302,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamUpdate,
 		Owner:      t,
@@ -374,7 +374,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	tags, _ := InputValues(r, "tag")
 	team.Tags = append(team.Tags, tags...) // for compatibility
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(team.Name),
 		Kind:       permission.PermTeamCreate,
 		Owner:      t,
@@ -421,7 +421,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(name),
 		Kind:       permission.PermTeamDelete,
 		Owner:      t,
@@ -591,7 +591,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermUserDelete,
 		Owner:      t,
@@ -669,6 +669,7 @@ func authSchemes(w http.ResponseWriter, r *http.Request) (err error) {
 //	401: Unauthorized
 //	404: User not found
 func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	email := r.URL.Query().Get("user")
 	if email == "" {
 		email = t.GetUserName()
@@ -679,7 +680,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermApikeyUpdate,
 		Owner:      t,

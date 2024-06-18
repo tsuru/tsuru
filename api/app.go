@@ -114,7 +114,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdate,
 		Owner:         t,
@@ -159,7 +159,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppDelete,
 		Owner:      t,
@@ -452,7 +452,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppCreate,
 		Owner:      t,
@@ -626,7 +626,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdate,
 		Owner:         t,
@@ -709,7 +709,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateUnitAdd,
 		Owner:         t,
@@ -763,7 +763,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateUnitRemove,
 		Owner:         t,
@@ -819,7 +819,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateUnitKill,
 		Owner:      t,
@@ -868,7 +868,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateGrant,
 		Owner:      t,
@@ -914,7 +914,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRevoke,
 		Owner:      t,
@@ -975,7 +975,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppRun,
 		Owner:      t,
@@ -1096,7 +1096,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvSet,
 		Owner:      t,
@@ -1221,7 +1221,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateEnvUnset,
 		Owner:      t,
@@ -1274,7 +1274,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameAdd,
 		Owner:      t,
@@ -1322,7 +1322,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateCnameRemove,
 		Owner:      t,
@@ -1523,7 +1523,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 		}
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
 		ExtraTargets: []event.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
@@ -1618,7 +1618,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 			return permission.ErrUnauthorized
 		}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
 		ExtraTargets: []event.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
@@ -1686,7 +1686,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateRestart,
 		Owner:         t,
@@ -1792,7 +1792,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateStart,
 		Owner:         t,
@@ -1841,7 +1841,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppUpdateStop,
 		Owner:         t,
@@ -1897,7 +1897,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return permission.ErrUnauthorized
 	}
 	dry, _ := strconv.ParseBool(InputValue(r, "dry"))
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppAdminRoutes,
 		Owner:      t,
@@ -1943,7 +1943,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateSet,
 		Owner:      t,
@@ -1988,7 +1988,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if cname == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a cname."}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(a.Name),
 		Kind:       permission.PermAppUpdateCertificateUnset,
 		Owner:      t,

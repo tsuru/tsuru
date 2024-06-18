@@ -799,10 +799,10 @@ func (s *DeploySuite) TestPermSchemeForDeploy(c *check.C) {
 	}
 }
 
-func insertDeploysAsEvents(data []app.DeployData, c *check.C) []*event.Event {
+func insertDeploysAsEvents(ctx context.Context, data []app.DeployData, c *check.C) []*event.Event {
 	evts := make([]*event.Event, len(data))
 	for i, d := range data {
-		evt, err := event.New(&event.Opts{
+		evt, err := event.New(ctx, &event.Opts{
 			Target:   event.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
 			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
@@ -845,7 +845,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	insertDeploysAsEvents([]app.DeployData{
+	insertDeploysAsEvents(context.TODO(), []app.DeployData{
 		{App: "g1", Timestamp: timestamp.Add(time.Minute)},
 		{App: "ge", Timestamp: timestamp.Add(time.Second)},
 	}, c)
@@ -878,7 +878,7 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 		{App: "g1", Timestamp: timestamp.Add(time.Minute)},
 		{App: "ge", Timestamp: timestamp.Add(time.Second)},
 	}
-	insertDeploysAsEvents(deps, c)
+	insertDeploysAsEvents(context.TODO(), deps, c)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
@@ -903,7 +903,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 		{App: "myblog", Timestamp: timestamp},
 		{App: "yourblog", Timestamp: timestamp},
 	}
-	insertDeploysAsEvents(deploys, c)
+	insertDeploysAsEvents(context.TODO(), deploys, c)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	c.Assert(err, check.IsNil)
@@ -929,7 +929,7 @@ func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
 		{App: "myblog", Timestamp: timestamp, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
 		{App: "yourblog", Timestamp: timestamp, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
 	}
-	insertDeploysAsEvents(deploys, c)
+	insertDeploysAsEvents(context.TODO(), deploys, c)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	c.Assert(err, check.IsNil)
@@ -973,7 +973,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	}
 	lastDeploy := depData[1]
 	lastDeploy.Origin = "git"
-	evts := insertDeploysAsEvents(depData, c)
+	evts := insertDeploysAsEvents(context.TODO(), depData, c)
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1007,7 +1007,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
 	}
 	lastDeploy := depData[1]
-	evts := insertDeploysAsEvents(depData, c)
+	evts := insertDeploysAsEvents(context.TODO(), depData, c)
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1042,7 +1042,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"},
 		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
 	}
-	evts := insertDeploysAsEvents(depData, c)
+	evts := insertDeploysAsEvents(context.TODO(), depData, c)
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1084,7 +1084,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 		{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"},
 		{App: "g1", Timestamp: timestamp, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git", Diff: "fake-diff"},
 	}
-	evts := insertDeploysAsEvents(depData, c)
+	evts := insertDeploysAsEvents(context.TODO(), depData, c)
 	url := fmt.Sprintf("/deploys/%s", evts[1].UniqueID.Hex())
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)

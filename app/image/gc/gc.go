@@ -159,8 +159,9 @@ func (g *imgGC) spin() {
 }
 
 func runPeriodicGC() (err error) {
+	ctx := context.Background()
 	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
-	evt, err := event.NewInternal(&event.Opts{
+	evt, err := event.NewInternal(ctx, &event.Opts{
 		Target:       event.Target{Type: event.TargetTypeGC, Value: "global"},
 		InternalKind: "gc",
 		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxGlobal, "")),
@@ -194,7 +195,7 @@ func runPeriodicGC() (err error) {
 	}
 
 	multi := tsuruErrors.NewMultiError()
-	err = markOldImages()
+	err = markOldImages(ctx)
 	if err != nil {
 		multi.Add(errors.Wrap(err, "errors running GC mark"))
 	}
@@ -217,7 +218,7 @@ func runPeriodicGC() (err error) {
 	return
 }
 
-func markOldImages() error {
+func markOldImages(ctx context.Context) error {
 	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
 
 	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC markOldImages")
@@ -267,7 +268,7 @@ func markOldImages() error {
 			continue
 		}
 
-		evt, err := event.NewInternal(&event.Opts{
+		evt, err := event.NewInternal(ctx, &event.Opts{
 			Target:       event.Target{Type: event.TargetTypeApp, Value: appVersions.AppName},
 			InternalKind: "version gc",
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appVersions.AppName)),

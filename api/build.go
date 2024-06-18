@@ -86,7 +86,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !canBuild {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppBuild,
 		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},

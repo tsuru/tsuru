@@ -87,7 +87,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -126,7 +126,7 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersions.Count, check.Equals, 2)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppUpdate,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -150,7 +150,7 @@ func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -191,7 +191,7 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -5444,7 +5444,7 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: "test2"},
 		Kind:     permission.PermAppUpdate,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
@@ -5474,7 +5474,7 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:   event.Target{Type: "app", Value: "test3"},
 		Kind:     permission.PermAppUpdate,
 		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},

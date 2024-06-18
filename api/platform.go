@@ -60,7 +60,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformCreate,
 		Owner:         t,
@@ -123,7 +123,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,
@@ -171,7 +171,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return permission.ErrUnauthorized
 	}
 	name := r.URL.Query().Get(":name")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformDelete,
 		Owner:      t,
@@ -290,7 +290,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,

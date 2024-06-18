@@ -105,7 +105,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(args.Team),
 		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
@@ -167,7 +167,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(teamToken.Team),
 		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
@@ -221,7 +221,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(teamName),
 		Kind:       permission.PermTeamTokenDelete,
 		Owner:      t,

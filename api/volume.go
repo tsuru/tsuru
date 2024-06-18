@@ -139,7 +139,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
 		Owner:      t,
@@ -193,7 +193,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
@@ -257,7 +257,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
 		Kind:       permission.PermVolumeDelete,
 		Owner:      t,
@@ -313,7 +313,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canBindApp {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateBind,
 		Owner:      t,
@@ -384,7 +384,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canUnbindApp {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateUnbind,
 		Owner:      t,

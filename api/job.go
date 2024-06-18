@@ -153,7 +153,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !canRun {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobTrigger,
 		Owner:      t,
@@ -274,7 +274,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobUnitKill,
 		Owner:      t,
@@ -363,7 +363,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
 		newJob.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(newJob.Name),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -449,7 +449,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        jobTarget(j.Name),
 		Kind:          permission.PermJobCreate,
 		Owner:         t,
@@ -511,7 +511,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobDelete,
 		Owner:      t,
@@ -586,7 +586,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(j.Name),
 		ExtraTargets: []event.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
@@ -665,7 +665,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 			return permission.ErrUnauthorized
 		}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(jobName),
 		ExtraTargets: []event.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
@@ -806,7 +806,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(jobName),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -888,7 +888,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(jobName),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,

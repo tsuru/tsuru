@@ -75,7 +75,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	} else if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
@@ -153,7 +153,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
@@ -223,6 +223,7 @@ func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	403: Limit lower than allocated value
 //	404: Team not found
 func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))
 	if !allowed {
@@ -238,7 +239,7 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeTeam, Value: teamName},
 		Kind:       permission.PermTeamUpdateQuota,
 		Owner:      t,

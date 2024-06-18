@@ -100,7 +100,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermWebhookCreate, permCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
@@ -131,23 +131,24 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid webhook
 //	404: Webhook not found
 func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var webhook eventTypes.Webhook
 	err := ParseInput(r, &webhook)
 	if err != nil {
 		return err
 	}
 	webhook.Name = r.URL.Query().Get(":name")
-	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookUpdate, ctx) {
+	permissionCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
+	if !permission.Check(t, permission.PermWebhookUpdate, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
+		Allowed:    event.Allowed(permission.PermWebhookReadEvents, permissionCtx),
 	})
 	if err != nil {
 		return err
@@ -184,7 +185,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermWebhookDelete, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookDelete,
 		Owner:      t,

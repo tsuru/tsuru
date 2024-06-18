@@ -47,7 +47,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusConflict, Message: "dynamic router already exists"}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterCreate,
 		Owner:      t,
@@ -90,7 +90,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterUpdate,
 		Owner:      t,
@@ -129,7 +129,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerName},
 		Kind:       permission.PermRouterDelete,
 		Owner:      t,
@@ -266,7 +266,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterAdd,
 		Owner:      t,
@@ -330,7 +330,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterUpdate,
 		Owner:      t,
@@ -367,7 +367,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterRemove,
 		Owner:      t,
@@ -451,7 +451,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRoutable,
 		Owner:      t,

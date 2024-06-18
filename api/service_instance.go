@@ -101,7 +101,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
 		Owner:      t,
@@ -220,7 +220,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !tagResponse.Valid {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
@@ -267,7 +267,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceDelete,
 		Owner:      t,
@@ -708,7 +708,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	path := r.URL.Query().Get("callback")
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
 			Kind:       permission.PermServiceInstanceUpdateProxy,
 			Owner:      t,
@@ -756,7 +756,7 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
 			Kind:       permission.PermServiceInstanceUpdateProxy,
 			Owner:      t,
@@ -799,7 +799,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateGrant,
 		Owner:      t,
@@ -838,7 +838,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateRevoke,
 		Owner:      t,

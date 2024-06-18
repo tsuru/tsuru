@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -63,6 +64,8 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
@@ -133,7 +136,7 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 			opts.Allowed = event.Allowed(permission.PermApp)
 			opts.AllowedCancel = event.Allowed(permission.PermApp)
 		}
-		evt, err := event.New(opts)
+		evt, err := event.New(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 		if i == 1 {
 			err = evt.Done(nil)
@@ -395,7 +398,7 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
@@ -426,7 +429,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:     event.Target{Type: event.TargetTypeApp, Value: "aha"},
 		Owner:      s.token,
 		Kind:       permission.PermAppDeploy,
@@ -505,7 +508,7 @@ func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, "some-other-team"),
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
@@ -527,7 +530,7 @@ func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
@@ -553,7 +556,7 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(context.TODO(), &event.Opts{
 		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
@@ -600,7 +603,7 @@ func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
 		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	blocks := addBlocks(c)
-	err := event.RemoveBlock(blocks[1].ID)
+	err := event.RemoveBlock(context.TODO(), blocks[1].ID)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
 	c.Assert(err, check.IsNil)
@@ -659,7 +662,7 @@ func (s *EventSuite) TestEventBlockAdd(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 1)
 	c.Assert(blocks[0].Active, check.Equals, true)
@@ -679,7 +682,7 @@ func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 0)
 }
@@ -701,7 +704,7 @@ func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "reason is required\n")
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 0)
 }
@@ -721,7 +724,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	active := false
-	afterBlocks, err := event.ListBlocks(&active)
+	afterBlocks, err := event.ListBlocks(context.TODO(), &active)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(afterBlocks), check.Equals, 1)
 	c.Assert(afterBlocks[0].ID.Hex(), check.Equals, blocks[0].ID.Hex())
@@ -785,7 +788,7 @@ func addBlocks(c *check.C) []*event.Block {
 		{OwnerName: "blocked-user"},
 	}
 	for _, b := range blocks {
-		err := event.AddBlock(b)
+		err := event.AddBlock(context.TODO(), b)
 		c.Assert(err, check.IsNil)
 	}
 	return blocks

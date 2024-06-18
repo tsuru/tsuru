@@ -95,7 +95,7 @@ func (s *serviceBrokerStorage) Find(ctx context.Context, name string) (service.B
 	}
 
 	var b service.Broker
-	err = collection.FindOne(ctx, mongoBSON.M{"name": "name"}).Decode(&b)
+	err = collection.FindOne(ctx, mongoBSON.M{"name": name}).Decode(&b)
 	if err == mongo.ErrNoDocuments {
 		err = service.ErrServiceBrokerNotFound
 	}
