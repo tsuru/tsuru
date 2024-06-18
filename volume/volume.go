@@ -233,7 +233,7 @@ func (s *volumeService) CheckPoolVolumeConstraints(ctx context.Context, volume v
 		return err
 	}
 
-	vPlans, err := pool.GetVolumePlans()
+	vPlans, err := pool.GetVolumePlans(ctx)
 	if err != nil {
 		return err
 	}

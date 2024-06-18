@@ -188,7 +188,7 @@ contexts:
 			return err
 		}
 		for _, p := range pools {
-			rs, err := p.GetRouters()
+			rs, err := p.GetRouters(ctx)
 			if stderrors.Is(err, pool.ErrPoolHasNoRouter) {
 				continue
 			}
@@ -258,7 +258,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	err = p.ValidateRouters([]appTypes.AppRouter{appRouter})
+	err = p.ValidateRouters(ctx, []appTypes.AppRouter{appRouter})
 	if err != nil {
 		if err == pool.ErrPoolHasNoRouter {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -322,7 +322,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	err = p.ValidateRouters([]appTypes.AppRouter{appRouter})
+	err = p.ValidateRouters(ctx, []appTypes.AppRouter{appRouter})
 	if err != nil {
 		if err == pool.ErrPoolHasNoRouter {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}

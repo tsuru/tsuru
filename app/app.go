@@ -306,7 +306,7 @@ func CreateApp(ctx context.Context, app *App, user *auth.User) error {
 
 	var plan *appTypes.Plan
 	if app.Plan.Name == "" {
-		plan, err = appPool.GetDefaultPlan()
+		plan, err = appPool.GetDefaultPlan(ctx)
 	} else {
 		plan, err = servicemanager.Plan.FindByName(ctx, app.Plan.Name)
 	}
@@ -363,7 +363,7 @@ func (app *App) configureCreateRouters(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		app.Router, err = appPool.GetDefaultRouter()
+		app.Router, err = appPool.GetDefaultRouter(ctx)
 	} else {
 		_, err = router.Get(ctx, app.Router)
 	}
@@ -1107,7 +1107,7 @@ func (app *App) validatePlan(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	plans, err := pool.GetPlans()
+	plans, err := pool.GetPlans(ctx)
 	if err != nil {
 		return err
 	}
@@ -1143,7 +1143,7 @@ func (app *App) validatePool(ctx context.Context) error {
 		}
 	}
 
-	return pool.ValidateRouters(app.GetRouters())
+	return pool.ValidateRouters(ctx, app.GetRouters())
 }
 
 func (app *App) validateProcesses() error {
@@ -1169,7 +1169,7 @@ func (app *App) validateTeamOwner(ctx context.Context, p *pool.Pool) error {
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
-	poolTeams, err := p.GetTeams()
+	poolTeams, err := p.GetTeams(ctx)
 	if err != nil && err != pool.ErrPoolHasNoTeam {
 		msg := fmt.Sprintf("failed to get pool %q teams", p.Name)
 		return &tsuruErrors.ValidationError{Message: msg}

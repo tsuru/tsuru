@@ -51,8 +51,13 @@ type Pool struct {
 	Provisioner string
 
 	Labels map[string]string
+}
 
-	ctx context.Context
+type PoolInfo struct {
+	Pool
+	Public  bool                            `json:"public"`
+	Teams   []string                        `json:"teams"`
+	Allowed map[PoolConstraintType][]string `json:"allowed"`
 }
 
 type AddPoolOptions struct {
@@ -92,8 +97,8 @@ func (p *Pool) GetProvisioner() (provision.Provisioner, error) {
 	return provision.GetDefault()
 }
 
-func (p *Pool) GetTeams() ([]string, error) {
-	allowedValues, err := p.allowedValues()
+func (p *Pool) GetTeams(ctx context.Context) ([]string, error) {
+	allowedValues, err := p.allowedValues(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +108,8 @@ func (p *Pool) GetTeams() ([]string, error) {
 	return nil, ErrPoolHasNoTeam
 }
 
-func (p *Pool) GetRouters() ([]string, error) {
-	allowedValues, err := p.allowedValues()
+func (p *Pool) GetRouters(ctx context.Context) ([]string, error) {
+	allowedValues, err := p.allowedValues(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +119,8 @@ func (p *Pool) GetRouters() ([]string, error) {
 	return nil, ErrPoolHasNoRouter
 }
 
-func (p *Pool) GetVolumePlans() ([]string, error) {
-	allowedValues, err := p.allowedValues()
+func (p *Pool) GetVolumePlans(ctx context.Context) ([]string, error) {
+	allowedValues, err := p.allowedValues(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +132,8 @@ func (p *Pool) GetVolumePlans() ([]string, error) {
 	return nil, ErrPoolHasNoVolumePlan
 }
 
-func (p *Pool) GetPlans() ([]string, error) {
-	allowedValues, err := p.allowedValues()
+func (p *Pool) GetPlans(ctx context.Context) ([]string, error) {
+	allowedValues, err := p.allowedValues(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +143,12 @@ func (p *Pool) GetPlans() ([]string, error) {
 	return nil, ErrPoolHasNoPlan
 }
 
-func (p *Pool) GetDefaultPlan() (*appTypes.Plan, error) {
+func (p *Pool) GetDefaultPlan(ctx context.Context) (*appTypes.Plan, error) {
 	constraints, err := getConstraintsForPool(p.Name, ConstraintTypePlan)
 	if err != nil {
 		return nil, err
 	}
-	defaultPlan, err := servicemanager.Plan.DefaultPlan(p.ctx)
+	defaultPlan, err := servicemanager.Plan.DefaultPlan(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -152,14 +157,14 @@ func (p *Pool) GetDefaultPlan() (*appTypes.Plan, error) {
 		return defaultPlan, nil
 	}
 	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
-		var allowed map[poolConstraintType][]string
+		var allowed map[PoolConstraintType][]string
 		var plan *appTypes.Plan
-		allowed, err = p.allowedValues()
+		allowed, err = p.allowedValues(ctx)
 		if err != nil {
 			return nil, err
 		}
 		if len(allowed[ConstraintTypePlan]) > 0 {
-			plan, err = servicemanager.Plan.FindByName(p.ctx, allowed[ConstraintTypePlan][0])
+			plan, err = servicemanager.Plan.FindByName(ctx, allowed[ConstraintTypePlan][0])
 			if err != nil {
 				return nil, err
 			}
@@ -167,34 +172,34 @@ func (p *Pool) GetDefaultPlan() (*appTypes.Plan, error) {
 		}
 		return defaultPlan, nil
 	}
-	plan, err := servicemanager.Plan.FindByName(p.ctx, constraint.Values[0])
+	plan, err := servicemanager.Plan.FindByName(ctx, constraint.Values[0])
 	if err != nil {
 		return defaultPlan, nil
 	}
 	return plan, nil
 }
 
-func (p *Pool) GetDefaultRouter() (string, error) {
+func (p *Pool) GetDefaultRouter(ctx context.Context) (string, error) {
 	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeRouter)
 	if err != nil {
 		return "", err
 	}
 	constraint := constraints[ConstraintTypeRouter]
 	if constraint == nil || len(constraint.Values) == 0 {
-		return router.Default(p.ctx)
+		return router.Default(ctx)
 	}
 	if constraint.Blacklist || strings.Contains(constraint.Values[0], "*") {
-		var allowed map[poolConstraintType][]string
-		allowed, err = p.allowedValues()
+		var allowed map[PoolConstraintType][]string
+		allowed, err = p.allowedValues(ctx)
 		if err != nil {
 			return "", err
 		}
 		if len(allowed[ConstraintTypeRouter]) == 1 {
 			return allowed[ConstraintTypeRouter][0], nil
 		}
-		return router.Default(p.ctx)
+		return router.Default(ctx)
 	}
-	routers, err := routersNames(p.ctx)
+	routers, err := routersNames(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -203,15 +208,15 @@ func (p *Pool) GetDefaultRouter() (string, error) {
 			return r, nil
 		}
 	}
-	return router.Default(p.ctx)
+	return router.Default(ctx)
 }
 
-func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
+func (p *Pool) ValidateRouters(ctx context.Context, routers []appTypes.AppRouter) error {
 	if len(routers) == 0 {
 		return nil
 	}
 
-	availableRouters, err := p.GetRouters()
+	availableRouters, err := p.GetRouters(ctx)
 	if err != nil {
 		return &tsuruErrors.ValidationError{Message: err.Error()}
 	}
@@ -229,29 +234,29 @@ func (p *Pool) ValidateRouters(routers []appTypes.AppRouter) error {
 	return nil
 }
 
-func (p *Pool) allowedValues() (map[poolConstraintType][]string, error) {
-	teams, err := teamsNames(p.ctx)
+func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]string, error) {
+	teams, err := teamsNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	routers, err := routersNames(p.ctx)
+	routers, err := routersNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	services, err := servicesNames(p.ctx)
+	services, err := servicesNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	plans, err := plansNames(p.ctx)
+	plans, err := plansNames(ctx)
 	if err != nil {
 		return nil, err
 	}
-	volumePlans, err := volumePlanNames(p.ctx, p.Name)
+	volumePlans, err := volumePlanNames(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resolved := map[poolConstraintType][]string{
+	resolved := map[PoolConstraintType][]string{
 		ConstraintTypeRouter:     routers,
 		ConstraintTypeService:    services,
 		ConstraintTypeTeam:       teams,
@@ -287,7 +292,7 @@ func routersNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func volumePlanNames(ctx context.Context, poolName string) ([]string, error) {
+func volumePlanNames(ctx context.Context) ([]string, error) {
 	volumePlans, err := servicemanager.Volume.ListPlans(ctx)
 	if err != nil {
 		return nil, err
@@ -339,24 +344,23 @@ func plansNames(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func (p *Pool) MarshalJSON() ([]byte, error) {
+func (p *Pool) Info(ctx context.Context) (*PoolInfo, error) {
+
 	teams, err := getExactConstraintForPool(p.Name, ConstraintTypeTeam)
 	if err != nil {
 		return nil, err
 	}
-	resolvedConstraints, err := p.allowedValues()
+	resolvedConstraints, err := p.allowedValues(ctx)
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]interface{})
-	result["name"] = p.Name
-	result["labels"] = p.Labels
-	result["public"] = teams.AllowsAll()
-	result["default"] = p.Default
-	result["provisioner"] = p.Provisioner
-	result["teams"] = resolvedConstraints[ConstraintTypeTeam]
-	result["allowed"] = resolvedConstraints
-	return json.Marshal(&result)
+
+	return &PoolInfo{
+		Pool:    *p,
+		Public:  teams.AllowsAll(),
+		Teams:   resolvedConstraints[ConstraintTypeTeam],
+		Allowed: resolvedConstraints,
+	}, nil
 }
 
 func validateLabels(labels map[string]string) error {
@@ -590,7 +594,6 @@ func GetPoolByName(ctx context.Context, name string) (*Pool, error) {
 		}
 		return nil, err
 	}
-	p.ctx = ctx
 	return &p, nil
 }
 
@@ -635,7 +638,6 @@ func GetDefaultPool(ctx context.Context) (*Pool, error) {
 		}
 		return nil, err
 	}
-	pool.ctx = ctx
 	return &pool, nil
 }
 
@@ -741,7 +743,7 @@ func (s *poolService) Services(ctx context.Context, pool string) ([]string, erro
 	return nil, ErrPoolHasNoService
 }
 
-func (p *poolService) allowedValues(ctx context.Context, pool string) (map[poolConstraintType][]string, error) {
+func (p *poolService) allowedValues(ctx context.Context, pool string) (map[PoolConstraintType][]string, error) {
 	teams, err := teamsNames(ctx)
 	if err != nil {
 		return nil, err
@@ -758,12 +760,12 @@ func (p *poolService) allowedValues(ctx context.Context, pool string) (map[poolC
 	if err != nil {
 		return nil, err
 	}
-	volumePlans, err := volumePlanNames(ctx, pool)
+	volumePlans, err := volumePlanNames(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resolved := map[poolConstraintType][]string{
+	resolved := map[PoolConstraintType][]string{
 		ConstraintTypeRouter:     routers,
 		ConstraintTypeService:    services,
 		ConstraintTypeTeam:       teams,
