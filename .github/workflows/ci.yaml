@@ -40,36 +40,36 @@ jobs:
         k8s_version:
         - 1.28
     steps:
-      - uses: actions/checkout@master
-      - name: Running up Kubernetes (using Minikube)
-        uses: medyagh/setup-minikube@master
-        with:
-          kubernetes-version: v${{ matrix.k8s_version }}
-      - uses: azure/setup-helm@v1
-        with:
-          version: v3.7.0
-      - uses: actions/setup-go@v3
-        with:
-          go-version: "1.20"
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-
-            ${{ runner.os }}-goleak-
-      - name: Run integration tests
-        env:
-          GOPATH: /tmp/go
-          CLUSTER_PROVIDER: minikube
-          DEBUG: "true"
-          TSURU_INTEGRATION_targetaddr: "http://127.0.0.1:8080"
-          TSURU_INTEGRATION_adminuser: "admin@admin.com"
-          TSURU_INTEGRATION_adminpassword: "123456"
-        run: |
-          ./scripts/localkube-integration.sh
+    - uses: actions/checkout@master
+    - name: Running up Kubernetes (using Minikube)
+      uses: medyagh/setup-minikube@master
+      with:
+        kubernetes-version: v${{ matrix.k8s_version }}
+    - uses: azure/setup-helm@v1
+      with:
+        version: v3.7.0
+    - uses: actions/setup-go@v3
+      with:
+        go-version: "1.20"
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ runner.os }}-goleak-${{ hashFiles('**/go.sum') }}-
+          ${{ runner.os }}-goleak-
+    - name: Run integration tests
+      env:
+        GOPATH: /tmp/go
+        CLUSTER_PROVIDER: minikube
+        DEBUG: "true"
+        TSURU_INTEGRATION_targetaddr: "http://127.0.0.1:8080"
+        TSURU_INTEGRATION_adminuser: "admin@admin.com"
+        TSURU_INTEGRATION_adminpassword: "123456"
+      run: |
+        ./scripts/localkube-integration.sh
   lint:
     runs-on: ubuntu-latest
     steps:
