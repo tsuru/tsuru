@@ -101,7 +101,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	var imageID string
 	defer func() {
-		evt.DoneCustomData(err, map[string]string{"image": imageID})
+		evt.DoneCustomData(ctx, err, map[string]string{"image": imageID})
 		labels := prometheus.Labels{"app": appName, "status": deployStatus(evt), "kind": string(opts.GetKind()), "platform": opts.App.Platform}
 		appBuildDuration.With(labels).Observe(time.Since(startingBuildTime).Seconds())
 		appBuildsTotal.With(labels).Inc()

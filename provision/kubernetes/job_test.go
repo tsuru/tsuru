@@ -836,7 +836,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
-				evts, err := event.List(&event.Filter{})
+				evts, err := event.List(context.TODO(), &event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
@@ -921,7 +921,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
-				evts, err := event.List(&event.Filter{})
+				evts, err := event.List(context.TODO(), &event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
@@ -1005,7 +1005,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
-				evts, err := event.List(&event.Filter{})
+				evts, err := event.List(context.TODO(), &event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 0)
 			},
@@ -1105,7 +1105,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
-				evts, err := event.List(&event.Filter{})
+				evts, err := event.List(context.TODO(), &event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
@@ -1227,7 +1227,7 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				createJobEvent(s.clusterClient, j, evt, wg)
 			},
 			testScenario: func(c *check.C) {
-				evts, err := event.List(&event.Filter{})
+				evts, err := event.List(context.TODO(), &event.Filter{})
 				c.Assert(err, check.IsNil)
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]

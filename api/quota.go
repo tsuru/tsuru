@@ -86,7 +86,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
@@ -164,7 +164,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
@@ -250,7 +250,7 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{

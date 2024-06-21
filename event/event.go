@@ -11,26 +11,26 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	internalConfig "github.com/tsuru/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/tracker"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -64,6 +64,8 @@ const (
 	rejectThrottled = "throttled"
 
 	timeFormat = "2006-01-02 15:04:05 -0700"
+
+	eventsCollection = "events"
 )
 
 var (
@@ -162,10 +164,6 @@ type Target struct {
 	Value string
 }
 
-func (id Target) GetBSON() (interface{}, error) {
-	return bson.D{{Name: "type", Value: id.Type}, {Name: "value", Value: id.Value}}, nil
-}
-
 func (id Target) IsValid() bool {
 	return id.Type != ""
 }
@@ -174,40 +172,21 @@ func (id Target) String() string {
 	return fmt.Sprintf("%s(%s)", id.Type, id.Value)
 }
 
-type eventID struct {
-	Target Target
-	ObjId  bson.ObjectId
-}
-
-func (id *eventID) SetBSON(raw bson.Raw) error {
-	err := raw.Unmarshal(&id.Target)
-	if err != nil {
-		return raw.Unmarshal(&id.ObjId)
-	}
-	return nil
-}
-
-func (id eventID) GetBSON() (interface{}, error) {
-	if len(id.ObjId) != 0 {
-		return id.ObjId, nil
-	}
-	return id.Target.GetBSON()
-}
-
 // This private type allow us to export the main Event struct without allowing
 // access to its public fields. (They have to be public for database
 // serializing).
 type eventData struct {
-	ID              eventID `bson:"_id"`
-	UniqueID        bson.ObjectId
+	ID              primitive.ObjectID `bson:"_id"`
+	UniqueID        primitive.ObjectID
+	Lock            *Target `bson:"lock,omitempty"`
 	StartTime       time.Time
-	EndTime         time.Time     `bson:",omitempty"`
-	ExpireAt        time.Time     `bson:",omitempty"`
-	Target          Target        `bson:",omitempty"`
-	ExtraTargets    []ExtraTarget `bson:",omitempty"`
-	StartCustomData bson.Raw      `bson:",omitempty"`
-	EndCustomData   bson.Raw      `bson:",omitempty"`
-	OtherCustomData bson.Raw      `bson:",omitempty"`
+	EndTime         time.Time          `bson:",omitempty"`
+	ExpireAt        time.Time          `bson:",omitempty"`
+	Target          Target             `bson:",omitempty"`
+	ExtraTargets    []ExtraTarget      `bson:",omitempty"`
+	StartCustomData mongoBSON.RawValue `bson:",omitempty"`
+	EndCustomData   mongoBSON.RawValue `bson:",omitempty"`
+	OtherCustomData mongoBSON.RawValue `bson:",omitempty"`
 	Kind            Kind
 	Owner           Owner
 	SourceIP        string
@@ -421,20 +400,6 @@ type AllowedPermission struct {
 	Contexts []permTypes.PermissionContext `bson:",omitempty"`
 }
 
-func (ap *AllowedPermission) GetBSON() (interface{}, error) {
-	var ctxs []bson.D
-	for _, ctx := range ap.Contexts {
-		ctxs = append(ctxs, bson.D{
-			{Name: "ctxtype", Value: ctx.CtxType},
-			{Name: "value", Value: ctx.Value},
-		})
-	}
-	return bson.M{
-		"scheme":   ap.Scheme,
-		"contexts": ctxs,
-	}, nil
-}
-
 func (e *Event) String() string {
 	return fmt.Sprintf("%s(%s) running %q start by %s at %s",
 		e.Target.Type,
@@ -460,7 +425,7 @@ type Filter struct {
 	Until          time.Time
 	Running        *bool
 	ErrorOnly      bool
-	Raw            bson.M
+	Raw            mongoBSON.M
 	AllowedTargets []TargetFilter
 	Permissions    []permission.Permission
 
@@ -491,72 +456,72 @@ func (f *Filter) LoadKindNames(form map[string][]string) {
 	}
 }
 
-func (f *Filter) toQuery() (bson.M, error) {
-	query := bson.M{}
+func (f *Filter) toQuery() (mongoBSON.M, error) {
+	query := mongoBSON.M{}
 	permMap := map[string][]permTypes.PermissionContext{}
-	andBlock := []bson.M{}
+	andBlock := []mongoBSON.M{}
 	if f.Permissions != nil {
 		for _, p := range f.Permissions {
 			permMap[p.Scheme.FullName()] = append(permMap[p.Scheme.FullName()], p.Context)
 		}
-		var permOrBlock []bson.M
+		var permOrBlock []mongoBSON.M
 		for perm, ctxs := range permMap {
-			ctxsBson := []bson.D{}
+			ctxsBson := []mongoBSON.D{}
 			for _, ctx := range ctxs {
 				if ctx.CtxType == permTypes.CtxGlobal {
 					ctxsBson = nil
 					break
 				}
-				ctxsBson = append(ctxsBson, bson.D{
-					{Name: "ctxtype", Value: ctx.CtxType},
-					{Name: "value", Value: ctx.Value},
+				ctxsBson = append(ctxsBson, mongoBSON.D{
+					{Key: "ctxtype", Value: ctx.CtxType},
+					{Key: "value", Value: ctx.Value},
 				})
 			}
-			toAppend := bson.M{
-				"allowed.scheme": bson.M{"$regex": "^" + strings.Replace(perm, ".", `\.`, -1)},
+			toAppend := mongoBSON.M{
+				"allowed.scheme": mongoBSON.M{"$regex": "^" + strings.Replace(perm, ".", `\.`, -1)},
 			}
 			if ctxsBson != nil {
-				toAppend["allowed.contexts"] = bson.M{"$in": ctxsBson}
+				toAppend["allowed.contexts"] = mongoBSON.M{"$in": ctxsBson}
 			}
 			permOrBlock = append(permOrBlock, toAppend)
 		}
-		andBlock = append(andBlock, bson.M{"$or": permOrBlock})
+		andBlock = append(andBlock, mongoBSON.M{"$or": permOrBlock})
 	}
 	if f.AllowedTargets != nil {
-		var orBlock []bson.M
+		var orBlock []mongoBSON.M
 		for _, at := range f.AllowedTargets {
-			f := bson.M{"target.type": at.Type}
-			extraF := bson.M{"extratargets.target.type": at.Type}
+			f := mongoBSON.M{"target.type": at.Type}
+			extraF := mongoBSON.M{"extratargets.target.type": at.Type}
 			if at.Values != nil {
-				f["target.value"] = bson.M{"$in": at.Values}
-				extraF["extratargets.target.value"] = bson.M{"$in": at.Values}
+				f["target.value"] = mongoBSON.M{"$in": at.Values}
+				extraF["extratargets.target.value"] = mongoBSON.M{"$in": at.Values}
 			}
 			orBlock = append(orBlock, f, extraF)
 		}
 		if len(orBlock) == 0 {
 			return nil, errInvalidQuery
 		}
-		andBlock = append(andBlock, bson.M{"$or": orBlock})
+		andBlock = append(andBlock, mongoBSON.M{"$or": orBlock})
 	}
 	if f.Target.Type != "" {
-		orBlock := []bson.M{
+		orBlock := []mongoBSON.M{
 			{"target.type": f.Target.Type},
 			{"extratargets.target.type": f.Target.Type},
 		}
-		andBlock = append(andBlock, bson.M{"$or": orBlock})
+		andBlock = append(andBlock, mongoBSON.M{"$or": orBlock})
 	}
 	if f.Target.Value != "" {
-		orBlock := []bson.M{
+		orBlock := []mongoBSON.M{
 			{"target.value": f.Target.Value},
 			{"extratargets.target.value": f.Target.Value},
 		}
-		andBlock = append(andBlock, bson.M{"$or": orBlock})
+		andBlock = append(andBlock, mongoBSON.M{"$or": orBlock})
 	}
 	if f.KindType != "" {
 		query["kind.type"] = f.KindType
 	}
 	if len(f.KindNames) > 0 {
-		query["kind.name"] = bson.M{"$in": f.KindNames}
+		query["kind.name"] = mongoBSON.M{"$in": f.KindNames}
 	}
 	if f.OwnerType != "" {
 		query["owner.type"] = f.OwnerType
@@ -564,12 +529,12 @@ func (f *Filter) toQuery() (bson.M, error) {
 	if f.OwnerName != "" {
 		query["owner.name"] = f.OwnerName
 	}
-	var timeParts []bson.M
+	var timeParts []mongoBSON.M
 	if !f.Since.IsZero() {
-		timeParts = append(timeParts, bson.M{"starttime": bson.M{"$gte": f.Since}})
+		timeParts = append(timeParts, mongoBSON.M{"starttime": mongoBSON.M{"$gte": f.Since}})
 	}
 	if !f.Until.IsZero() {
-		timeParts = append(timeParts, bson.M{"starttime": bson.M{"$lte": f.Until}})
+		timeParts = append(timeParts, mongoBSON.M{"starttime": mongoBSON.M{"$lte": f.Until}})
 	}
 	if len(timeParts) != 0 {
 		andBlock = append(andBlock, timeParts...)
@@ -581,7 +546,7 @@ func (f *Filter) toQuery() (bson.M, error) {
 		query["running"] = *f.Running
 	}
 	if f.ErrorOnly {
-		query["error"] = bson.M{"$ne": ""}
+		query["error"] = mongoBSON.M{"$ne": ""}
 	}
 	if f.Raw != nil {
 		for k, v := range f.Raw {
@@ -591,18 +556,38 @@ func (f *Filter) toQuery() (bson.M, error) {
 	return query, nil
 }
 
-func GetKinds() ([]Kind, error) {
-	conn, err := db.Conn()
+func GetKinds(ctx context.Context) ([]Kind, error) {
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
 	var kinds []Kind
-	err = coll.Find(nil).Distinct("kind", &kinds)
+
+	values, err := collection.Distinct(ctx, "kind", mongoBSON.M{}, options.Distinct())
 	if err != nil {
 		return nil, err
 	}
+
+	for _, value := range values {
+		rawD, ok := value.(primitive.D)
+
+		if !ok {
+			continue
+		}
+
+		var kind Kind
+
+		for _, elem := range rawD {
+			if elem.Key == "type" {
+				kind.Type = kindType(elem.Value.(string))
+			} else if elem.Key == "name" {
+				kind.Name = elem.Value.(string)
+			}
+		}
+
+		kinds = append(kinds, kind)
+	}
+
 	return kinds, nil
 }
 
@@ -613,21 +598,19 @@ func transformEvent(data eventData) *Event {
 	return &event
 }
 
-func GetRunning(target Target, kind string) (*Event, error) {
-	conn, err := db.Conn()
+func GetRunning(ctx context.Context, target Target, kind string) (*Event, error) {
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
 	var evtData eventData
-	err = coll.Find(bson.M{
-		"_id":       eventID{Target: target},
+	err = collection.FindOne(ctx, mongoBSON.M{
+		"lock":      target,
 		"kind.name": kind,
 		"running":   true,
-	}).One(&evtData)
+	}).Decode(&evtData)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, ErrEventNotFound
 		}
 		return nil, err
@@ -636,26 +619,27 @@ func GetRunning(target Target, kind string) (*Event, error) {
 	return evt, nil
 }
 
-func GetByHexID(hexid string) (*Event, error) {
-	if !bson.IsObjectIdHex(hexid) {
+func GetByHexID(ctx context.Context, hexid string) (*Event, error) {
+	objectID, err := primitive.ObjectIDFromHex(hexid)
+
+	if err != nil {
 		return nil, errors.Errorf("receive ID is not a valid event object id: %q", hexid)
 	}
-	return GetByID(bson.ObjectIdHex(hexid))
+
+	return GetByID(ctx, objectID)
 }
 
-func GetByID(id bson.ObjectId) (*Event, error) {
-	conn, err := db.Conn()
+func GetByID(ctx context.Context, id primitive.ObjectID) (*Event, error) {
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
 	var evtData eventData
-	err = coll.Find(bson.M{
+	err = collection.FindOne(ctx, mongoBSON.M{
 		"uniqueid": id,
-	}).One(&evtData)
+	}).Decode(&evtData)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, ErrEventNotFound
 		}
 		return nil, err
@@ -664,23 +648,25 @@ func GetByID(id bson.ObjectId) (*Event, error) {
 	return evt, nil
 }
 
-func All() ([]*Event, error) {
-	return List(nil)
+func All(ctx context.Context) ([]*Event, error) {
+	return List(ctx, nil)
 }
 
-func List(filter *Filter) ([]*Event, error) {
+func List(ctx context.Context, filter *Filter) ([]*Event, error) {
 	limit := 0
 	skip := 0
-	var query bson.M
+	var query mongoBSON.M
 	var err error
-	sort := "-starttime"
+	sort := mongoBSON.M{"starttime": -1}
 	if filter != nil {
 		limit = filterMaxLimit
 		if filter.Limit != 0 {
 			limit = filter.Limit
 		}
-		if filter.Sort != "" {
-			sort = filter.Sort
+		if strings.HasPrefix(filter.Sort, "-") {
+			sort = mongoBSON.M{filter.Sort[1:]: -1}
+		} else if filter.Sort != "" {
+			sort = mongoBSON.M{filter.Sort: 1}
 		}
 		if filter.Skip > 0 {
 			skip = filter.Skip
@@ -693,21 +679,26 @@ func List(filter *Filter) ([]*Event, error) {
 			return nil, err
 		}
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
-	find := coll.Find(query).Sort(sort)
+
+	options := options.Find().SetSort(sort)
 	if limit > 0 {
-		find = find.Limit(limit)
+		options = options.SetLimit(int64(limit))
 	}
 	if skip > 0 {
-		find = find.Skip(skip)
+		options = options.SetSkip(int64(skip))
 	}
+
+	cursor, err := collection.Find(ctx, query, options)
+	if err != nil {
+		return nil, err
+	}
+
 	var allData []eventData
-	err = find.All(&allData)
+	err = cursor.All(ctx, &allData)
 	if err != nil {
 		return nil, err
 	}
@@ -764,55 +755,33 @@ func NewInternalMany(ctx context.Context, targets []Target, opts *Opts) (*Event,
 	return NewInternal(ctx, opts)
 }
 
-func makeBSONRaw(in interface{}) (bson.Raw, error) {
+func makeBSONRaw(in interface{}) (mongoBSON.RawValue, error) {
 	if in == nil {
-		return bson.Raw{}, nil
+		return mongoBSON.RawValue{}, nil
 	}
-	var kind byte
-	v := reflect.ValueOf(in)
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return bson.Raw{}, nil
-		}
-		v = v.Elem()
-	}
-	switch v.Kind() {
-	case reflect.Map, reflect.Struct:
-		kind = 3 // BSON "Document" kind
-	case reflect.Array, reflect.Slice:
-		kind = 4 // BSON "Array" kind
-	default:
-		return bson.Raw{}, errors.Errorf("cannot use type %T as event custom data", in)
-	}
-	data, err := bson.Marshal(in)
+	kind, data, err := mongoBSON.MarshalValue(in)
 	if err != nil {
-		return bson.Raw{}, err
+		return mongoBSON.RawValue{}, err
 	}
-	if len(data) == 0 {
-		return bson.Raw{}, errors.Errorf("invalid empty bson object for object %#v", in)
-	}
-	return bson.Raw{
-		Kind: kind,
-		Data: data,
-	}, nil
+	return mongoBSON.RawValue{Type: kind, Value: data}, nil
 }
 
-func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTargets bool) error {
+func checkThrottling(ctx context.Context, collection *mongo.Collection, target *Target, kind *Kind, allTargets bool) error {
 	tSpec := getThrottling(target, kind, allTargets)
 	if tSpec == nil || tSpec.Max <= 0 || tSpec.Time <= 0 {
 		return nil
 	}
-	query := bson.M{
+	query := mongoBSON.M{
 		"target.type": target.Type,
 	}
 	now := time.Now().UTC()
-	startTimeQuery := bson.M{"$gt": now.Add(-tSpec.Time)}
+	startTimeQuery := mongoBSON.M{"$gt": now.Add(-tSpec.Time)}
 	if tSpec.WaitFinish {
-		query["$or"] = []bson.M{
+		query["$or"] = []mongoBSON.M{
 			{"starttime": startTimeQuery},
 			{
 				"running":        true,
-				"lockupdatetime": bson.M{"$gt": now.Add(-lockExpireTimeout)},
+				"lockupdatetime": mongoBSON.M{"$gt": now.Add(-lockExpireTimeout)},
 			},
 		}
 	} else {
@@ -824,11 +793,12 @@ func checkThrottling(coll *storage.Collection, target *Target, kind *Kind, allTa
 	if tSpec.KindName != "" {
 		query["kind.name"] = tSpec.KindName
 	}
-	c, err := coll.Find(query).Count()
+
+	c, err := collection.CountDocuments(ctx, query)
 	if err != nil {
 		return err
 	}
-	if c >= tSpec.Max {
+	if c >= int64(tSpec.Max) {
 		return ErrThrottled{Spec: tSpec, Target: *target, AllTargets: allTargets}
 	}
 	return nil
@@ -877,7 +847,9 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 			return
 		}
 	}()
+
 	updater.start()
+
 	if opts == nil {
 		return nil, ErrNoOpts
 	}
@@ -916,32 +888,27 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 			o.Name = opts.Owner.GetUserName()
 		}
 	}
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
-	err = checkThrottling(coll, &opts.Target, &k, false)
+	err = checkThrottling(ctx, collection, &opts.Target, &k, false)
 	if err != nil {
 		return nil, err
 	}
-	err = checkThrottling(coll, &opts.Target, &k, true)
+	err = checkThrottling(ctx, collection, &opts.Target, &k, true)
 	if err != nil {
 		return nil, err
 	}
+
 	now := time.Now().UTC()
 	raw, err := makeBSONRaw(opts.CustomData)
 	if err != nil {
 		return nil, err
 	}
-	uniqID := bson.NewObjectId()
-	var id eventID
-	if opts.DisableLock {
-		id.ObjId = uniqID
-	} else {
-		id.Target = opts.Target
-	}
+	uniqID := primitive.NewObjectID()
+
 	instance, err := servicemanager.InstanceTracker.CurrentInstance(context.TODO())
 	if err != nil {
 		return nil, err
@@ -952,48 +919,57 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 		sourceIP, _, _ = net.SplitHostPort(opts.RemoteAddr)
 	}
 
-	evt = &Event{eventData: eventData{
-		ID:              id,
-		UniqueID:        uniqID,
-		ExtraTargets:    opts.ExtraTargets,
-		Target:          opts.Target,
-		StartTime:       now,
-		Kind:            k,
-		Owner:           o,
-		SourceIP:        sourceIP,
-		StartCustomData: raw,
-		LockUpdateTime:  now,
-		Running:         true,
-		Cancelable:      opts.Cancelable,
-		Allowed:         opts.Allowed,
-		AllowedCancel:   opts.AllowedCancel,
-		Instance:        instance,
-	}}
+	evt = &Event{
+		eventData: eventData{
+			ID:              uniqID,
+			UniqueID:        uniqID,
+			ExtraTargets:    opts.ExtraTargets,
+			Target:          opts.Target,
+			StartTime:       now,
+			Kind:            k,
+			Owner:           o,
+			SourceIP:        sourceIP,
+			StartCustomData: raw,
+			LockUpdateTime:  now,
+			Running:         true,
+			Cancelable:      opts.Cancelable,
+			Allowed:         opts.Allowed,
+			AllowedCancel:   opts.AllowedCancel,
+			Instance:        instance,
+		}}
+
+	if !opts.DisableLock {
+		evt.eventData.Lock = &opts.Target
+	}
 	if opts.ExpireAt != nil {
 		evt.eventData.ExpireAt = *opts.ExpireAt
 	}
+
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
-		err = coll.Insert(evt.eventData)
+		_, err = collection.InsertOne(ctx, evt.eventData)
+
 		if err == nil {
-			err = checkLocked(evt, opts.DisableLock)
+			err = checkLocked(ctx, evt, opts.DisableLock)
 			if err != nil {
-				evt.Abort()
+				evt.Abort(context.TODO())
 				return nil, err
 			}
 			err = checkIsBlocked(ctx, evt)
 			if err != nil {
-				evt.Done(err)
+				evt.Done(context.TODO(), err)
 				return nil, err
 			}
-			updater.add(id)
+			updater.add(uniqID)
 			return evt, nil
 		}
-		if mgo.IsDup(err) {
-			if i >= maxRetries || !checkIsExpired(coll, evt.ID) {
+
+		if mongo.IsDuplicateKeyError(err) {
+			if i >= maxRetries || !checkIsExpired(ctx, collection, evt.Lock) {
 				var existing Event
-				err = coll.FindId(evt.ID).One(&existing.eventData)
-				if err == mgo.ErrNotFound {
+
+				err = collection.FindOne(ctx, mongoBSON.M{"lock": evt.Lock}).Decode(&existing.eventData)
+				if err == mongo.ErrNoDocuments {
 					maxRetries++
 				}
 				if err == nil {
@@ -1007,7 +983,7 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 	return nil, err
 }
 
-func checkLocked(evt *Event, disableLock bool) error {
+func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
 	var targets []Target
 	if !disableLock {
 		targets = append(targets, evt.Target)
@@ -1020,27 +996,29 @@ func checkLocked(evt *Event, disableLock bool) error {
 	if len(targets) == 0 {
 		return nil
 	}
-	var orBlock []bson.M
+	var orBlock []mongoBSON.M
 	for _, t := range targets {
-		tBson, _ := t.GetBSON()
-		orBlock = append(orBlock, bson.M{"_id": tBson}, bson.M{
-			"extratargets": bson.M{"$elemMatch": bson.M{"target": tBson, "lock": true}},
+		tBson := mongoBSON.D{
+			{Key: "type", Value: t.Type},
+			{Key: "value", Value: t.Value},
+		}
+		orBlock = append(orBlock, mongoBSON.M{"lock": tBson}, mongoBSON.M{
+			"extratargets": mongoBSON.M{"$elemMatch": mongoBSON.M{"target": tBson, "lock": true}},
 		})
 	}
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := conn.Events()
 	var existing Event
-	err = coll.Find(bson.M{
-		"running":  true,
-		"uniqueid": bson.M{"$ne": evt.UniqueID},
-		"$or":      orBlock,
-	}).One(&existing.eventData)
+	err = collection.FindOne(ctx, mongoBSON.M{
+		"running": true,
+		"_id":     mongoBSON.M{"$ne": evt.ID},
+		"$or":     orBlock,
+	}).Decode(&existing.eventData)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil
 		}
 		return err
@@ -1048,8 +1026,7 @@ func checkLocked(evt *Event, disableLock bool) error {
 	return ErrEventLocked{Event: &existing}
 }
 
-func (e *Event) RawInsert(start, other, end interface{}) error {
-	e.ID = eventID{ObjId: e.UniqueID}
+func (e *Event) RawInsert(ctx context.Context, start, other, end interface{}) error {
 	var err error
 	e.StartCustomData, err = makeBSONRaw(start)
 	if err != nil {
@@ -1063,27 +1040,27 @@ func (e *Event) RawInsert(start, other, end interface{}) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := conn.Events()
+
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
-	return coll.Insert(e.eventData)
+	_, err = collection.InsertOne(ctx, e.eventData)
+	return err
 }
 
-func (e *Event) Abort() error {
-	return e.done(nil, nil, true)
+func (e *Event) Abort(ctx context.Context) error {
+	return e.done(ctx, nil, nil, true)
 }
 
-func (e *Event) Done(evtErr error) error {
-	return e.done(evtErr, nil, false)
+func (e *Event) Done(ctx context.Context, evtErr error) error {
+	return e.done(ctx, evtErr, nil, false)
 }
 
-func (e *Event) DoneCustomData(evtErr error, customData interface{}) error {
-	return e.done(evtErr, customData, false)
+func (e *Event) DoneCustomData(ctx context.Context, evtErr error, customData interface{}) error {
+	return e.done(ctx, evtErr, customData, false)
 }
 
 func (e *Event) SetLogWriter(w io.Writer) {
@@ -1094,16 +1071,21 @@ func (e *Event) GetLogWriter() io.Writer {
 	return e.logWriter
 }
 
-func (e *Event) SetOtherCustomData(data interface{}) error {
-	conn, err := db.Conn()
+func (e *Event) SetOtherCustomData(ctx context.Context, data interface{}) error {
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := conn.Events()
-	return coll.UpdateId(e.ID, bson.M{
-		"$set": bson.M{"othercustomdata": data},
+
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{
+		"$set": mongoBSON.M{"othercustomdata": data},
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (e *Event) Logf(format string, params ...interface{}) {
@@ -1139,7 +1121,7 @@ func (e *Event) CancelableContext(ctx context.Context) (context.Context, context
 	go func() {
 		defer wg.Done()
 		for {
-			canceled, err := e.AckCancel()
+			canceled, err := e.AckCancel(context.Background())
 			if err != nil {
 				log.Errorf("unable to check if event was canceled: %v", err)
 				continue
@@ -1158,32 +1140,33 @@ func (e *Event) CancelableContext(ctx context.Context) (context.Context, context
 	return ctx, cancelWrapper
 }
 
-func (e *Event) TryCancel(reason, owner string) error {
+func (e *Event) TryCancel(ctx context.Context, reason, owner string) error {
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
 	if !e.Cancelable || !e.Running {
 		return ErrNotCancelable
 	}
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := conn.Events()
-	change := mgo.Change{
-		Update: bson.M{"$set": bson.M{
-			"cancelinfo": cancelInfo{
-				Owner:     owner,
-				Reason:    reason,
-				StartTime: time.Now().UTC(),
-				Asked:     true,
-			},
-		}},
-		ReturnNew: true,
-	}
-	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": false}).Apply(change, &e.eventData)
-	if err == mgo.ErrNotFound {
-		if _, errID := GetByID(e.UniqueID); errID == ErrEventNotFound {
+
+	update := mongoBSON.M{"$set": mongoBSON.M{
+		"cancelinfo": cancelInfo{
+			Owner:     owner,
+			Reason:    reason,
+			StartTime: time.Now().UTC(),
+			Asked:     true,
+		},
+	}}
+	query := mongoBSON.M{"_id": e.ID, "cancelinfo.asked": false}
+	options := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.eventData)
+
+	if err == mongo.ErrNoDocuments {
+		if _, errID := GetByID(ctx, e.ID); errID == ErrEventNotFound {
 			return ErrEventNotFound
 		}
 		err = ErrCancelAlreadyRequested
@@ -1191,54 +1174,55 @@ func (e *Event) TryCancel(reason, owner string) error {
 	return err
 }
 
-func (e *Event) AckCancel() (bool, error) {
+func (e *Event) AckCancel(ctx context.Context) (bool, error) {
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
 	if !e.Cancelable || !e.Running {
 		return false, nil
 	}
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
-	coll := conn.Events()
-	change := mgo.Change{
-		Update: bson.M{"$set": bson.M{
-			"cancelinfo.acktime":  time.Now().UTC(),
-			"cancelinfo.canceled": true,
-		}},
-		ReturnNew: true,
-	}
-	_, err = coll.Find(bson.M{"_id": e.ID, "cancelinfo.asked": true}).Apply(change, &e.eventData)
-	if err == mgo.ErrNotFound {
+
+	update := mongoBSON.M{"$set": mongoBSON.M{
+		"cancelinfo.acktime":  time.Now().UTC(),
+		"cancelinfo.canceled": true,
+	}}
+	query := mongoBSON.M{"_id": e.ID, "cancelinfo.asked": true}
+	options := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.eventData)
+	if err == mongo.ErrNoDocuments {
 		return false, nil
 	}
 	return err == nil, err
 }
 
 func (e *Event) StartData(value interface{}) error {
-	if e.StartCustomData.Kind == 0 {
+	if e.StartCustomData.Type == 0 {
 		return nil
 	}
 	return e.StartCustomData.Unmarshal(value)
 }
 
 func (e *Event) EndData(value interface{}) error {
-	if e.EndCustomData.Kind == 0 {
+	if e.EndCustomData.Type == 0 {
 		return nil
 	}
 	return e.EndCustomData.Unmarshal(value)
 }
 
 func (e *Event) OtherData(value interface{}) error {
-	if e.OtherCustomData.Kind == 0 {
+	if e.OtherCustomData.Type == 0 {
 		return nil
 	}
 	return e.OtherCustomData.Unmarshal(value)
 }
 
-func (e *Event) done(evtErr error, customData interface{}, abort bool) (err error) {
+func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, abort bool) (err error) {
+	ctx = context.WithoutCancel(ctx)
 	// Done will be usually called in a defer block ignoring errors. This is
 	// why we log error messages here.
 	defer func() {
@@ -1249,19 +1233,20 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 			log.Errorf("[events] error marking event as done - %#v: %s", e, err)
 		} else {
 			if !abort && servicemanager.Webhook != nil {
-				servicemanager.Webhook.Notify(e.UniqueID.Hex())
+				servicemanager.Webhook.Notify(e.ID.Hex())
 			}
 		}
 	}()
 	updater.remove(e.ID)
-	conn, err := db.Conn()
+
+	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	coll := conn.Events()
 	if abort {
-		return coll.RemoveId(e.ID)
+		_, err = collection.DeleteOne(ctx, mongoBSON.M{"_id": e.ID})
+		return err
+
 	}
 	if evtErr != nil {
 		if errors.Cause(evtErr) == context.Canceled && !e.CancelInfo.Canceled {
@@ -1285,18 +1270,20 @@ func (e *Event) done(evtErr error, customData interface{}, abort bool) (err erro
 	}
 	e.Running = false
 	var dbEvt Event
-	err = coll.FindId(e.ID).One(&dbEvt.eventData)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": e.ID}).Decode(&dbEvt.eventData)
 	if err == nil {
 		e.OtherCustomData = dbEvt.OtherCustomData
 	}
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
-	if len(e.ID.ObjId) != 0 {
-		return coll.UpdateId(e.ID, e.eventData)
+
+	if e.eventData.Lock != nil {
+		e.eventData.Lock = nil
 	}
-	defer coll.RemoveId(e.ID)
-	e.ID = eventID{ObjId: e.UniqueID}
-	return coll.Insert(e.eventData)
+
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{"$set": e.eventData, "$unset": mongoBSON.M{"lock": ""}})
+
+	return err
 }
 
 func (e *Event) Log() string {
@@ -1340,14 +1327,16 @@ func (e *Event) LogsFrom(origin *Event) {
 	e.StructuredLog = append(e.StructuredLog, origin.StructuredLog...)
 }
 
-func checkIsExpired(coll *storage.Collection, id interface{}) bool {
+func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock interface{}) bool {
 	var existingEvt Event
-	err := coll.FindId(id).One(&existingEvt.eventData)
+
+	err := collection.FindOne(ctx, mongoBSON.M{"lock": lock}).Decode(&existingEvt.eventData)
+
 	if err == nil {
 		now := time.Now().UTC()
 		lastUpdate := existingEvt.LockUpdateTime.UTC()
 		if now.After(lastUpdate.Add(lockExpireTimeout)) {
-			existingEvt.Done(errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
+			existingEvt.Done(context.TODO(), errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
 			return true
 		}
 	}
@@ -1364,29 +1353,6 @@ func FormToCustomData(form url.Values) []map[string]interface{} {
 		ret = append(ret, map[string]interface{}{"name": k, "value": val})
 	}
 	return ret
-}
-
-func Migrate(query bson.M, cb func(*Event) error) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	coll := conn.Events()
-	iter := coll.Find(query).Iter()
-	var evtData eventData
-	for iter.Next(&evtData) {
-		evt := &Event{eventData: evtData}
-		err = cb(evt)
-		if err != nil {
-			return errors.Wrapf(err, "unable to migrate %#v", evt)
-		}
-		err = coll.UpdateId(evt.ID, evt.eventData)
-		if err != nil {
-			return errors.Wrapf(err, "unable to update %#v", evt)
-		}
-	}
-	return iter.Close()
 }
 
 func addLinePrefix(data string, prefix string) string {

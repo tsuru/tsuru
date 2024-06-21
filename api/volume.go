@@ -150,7 +150,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Volume.Get(ctx, inputVolume.Name)
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
@@ -204,7 +204,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return servicemanager.Volume.Update(ctx, &inputVolume)
 }
 
@@ -268,7 +268,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return servicemanager.Volume.Delete(ctx, dbVolume)
 }
 
@@ -324,7 +324,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Volume.BindApp(ctx, &volumeTypes.BindOpts{
 		Volume:     dbVolume,
 		AppName:    bindInfo.App,
@@ -395,7 +395,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Volume.UnbindApp(ctx, &volumeTypes.BindOpts{
 		Volume:     dbVolume,
 		AppName:    bindInfo.App,

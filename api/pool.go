@@ -161,7 +161,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = pool.AddPool(context.TODO(), addOpts)
 	if err == pool.ErrDefaultPoolAlreadyExists || err == pool.ErrPoolAlreadyExists {
 		return &terrors.HTTP{
@@ -217,7 +217,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = pool.RemovePool(poolName)
 	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -253,7 +253,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := InputValues(r, "team"); ok {
 		err := pool.AddTeamsToPool(poolName, teams)
 		if err == pool.ErrPoolNotFound {
@@ -291,7 +291,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := r.URL.Query()["team"]; ok {
 		err := pool.RemoveTeamsFromPool(poolName, teams)
 		if err == pool.ErrPoolNotFound {
@@ -333,7 +333,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	var updateOpts pool.UpdatePoolOptions
 	err = ParseInput(r, &updateOpts)
 	if err != nil {
@@ -412,7 +412,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	append := false
 	if appendStr := InputValue(r, "append"); appendStr != "" {
 		append, _ = strconv.ParseBool(appendStr)

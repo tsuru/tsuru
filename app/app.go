@@ -2447,7 +2447,7 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 		if err != nil {
 			return errors.Wrap(err, "unable to create event")
 		}
-		defer evt.Abort()
+		defer evt.Abort(ctx)
 	}
 	bulk := conn.Apps().Bulk()
 	for _, a := range apps {

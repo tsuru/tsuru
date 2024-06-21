@@ -163,7 +163,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Job.Trigger(ctx, j)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = servicemanager.Job.KillUnit(ctx, j, unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
@@ -374,7 +374,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Job.UpdateJob(ctx, &newJob, oldJob, user)
 	if err != nil {
@@ -460,7 +460,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Cancelable:    true,
 	})
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Job.CreateJob(ctx, j, u)
 	if err != nil {
@@ -521,7 +521,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Job.RemoveJobProv(ctx, j)
 	if err != nil {
 		return err
@@ -599,7 +599,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = instance.BindJob(ctx, j, evt, evt, requestIDHeader(r))
 	if err != nil {
@@ -679,7 +679,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -817,7 +817,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	envs := map[string]string{}
 	variables := []bindTypes.EnvVar{}
 	for _, v := range e.Envs {
@@ -899,7 +899,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()

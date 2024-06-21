@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -55,6 +54,11 @@ type Block struct {
 	Active     bool
 }
 
+type startCustomDataMatch struct {
+	Name  string
+	Value string
+}
+
 func (b *Block) Blocks(e *Event) bool {
 	if !(strings.HasPrefix(e.Kind.Name, b.KindName) || b.KindName == "") {
 		return false
@@ -66,15 +70,14 @@ func (b *Block) Blocks(e *Event) bool {
 		return false
 	}
 	if b.Conditions != nil {
-		var eventCustomData []map[string]interface{}
+
+		var eventCustomData []startCustomDataMatch
 		e.StartCustomData.Unmarshal(&eventCustomData)
 		for k, v := range b.Conditions {
 			matchedFields := false
 			for i := range eventCustomData {
-				if value, ok := eventCustomData[i]["value"].(string); ok && value == v {
-					if name, ok := eventCustomData[i]["name"].(string); ok && name == k {
-						matchedFields = true
-					}
+				if eventCustomData[i].Value == v && eventCustomData[i].Name == k {
+					matchedFields = true
 				}
 			}
 			if !matchedFields {
@@ -162,7 +165,7 @@ func listBlocks(ctx context.Context, query mongoBSON.M) ([]Block, error) {
 		query = mongoBSON.M{}
 	}
 
-	cursor, err := collection.Find(ctx, query, options.Find().SetSort(bson.M{"starttime": -1}))
+	cursor, err := collection.Find(ctx, query, options.Find().SetSort(mongoBSON.M{"starttime": -1}))
 	if err != nil {
 		return nil, err
 	}

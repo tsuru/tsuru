@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -31,6 +30,8 @@ import (
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	trackerTypes "github.com/tsuru/tsuru/types/tracker"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -80,9 +81,10 @@ func (s *S) TestNewDone(c *check.C) {
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventID{Target: Target{Type: "app", Value: "myapp"}},
-		UniqueID:       evt.UniqueID,
+		ID:             evt.ID,
+		UniqueID:       evt.ID,
 		Target:         Target{Type: "app", Value: "myapp"},
+		Lock:           &Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
@@ -93,7 +95,7 @@ func (s *S) TestNewDone(c *check.C) {
 	}}
 
 	c.Assert(evt, check.DeepEquals, expected)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -102,9 +104,9 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
 	c.Assert(evts[0], check.DeepEquals, expected)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -115,7 +117,8 @@ func (s *S) TestNewDone(c *check.C) {
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
 	expected.Running = false
-	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
+	expected.ID = evts[0].ID
+	expected.Lock = nil
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
@@ -131,7 +134,7 @@ func (s *S) TestNewExpirable(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.ExpireAt, check.NotNil)
 	c.Assert(evt.ExpireAt.IsZero(), check.Equals, false)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, false)
@@ -146,7 +149,7 @@ func (s *S) TestNewExpirableMissingShouldNotCreateTimestampInDB(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.ExpireAt.IsZero(), check.Equals, true)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].ExpireAt.IsZero(), check.Equals, true)
@@ -169,9 +172,10 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(resultData, check.DeepEquals, customData)
 	expected := &Event{eventData: eventData{
-		ID:              eventID{Target: Target{Type: "app", Value: "myapp"}},
+		ID:              evt.UniqueID,
 		UniqueID:        evt.UniqueID,
 		Target:          Target{Type: "app", Value: "myapp"},
+		Lock:            &Target{Type: "app", Value: "myapp"},
 		Kind:            Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:           Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:         true,
@@ -184,9 +188,9 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 
 	c.Assert(evt, check.DeepEquals, expected)
 	customData = struct{ A string }{A: "other"}
-	err = evt.DoneCustomData(nil, customData)
+	err = evt.DoneCustomData(context.TODO(), nil, customData)
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -202,8 +206,9 @@ func (s *S) TestNewCustomDataDone(c *check.C) {
 	evts[0].StartTime = expected.StartTime
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	expected.Running = false
-	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
+	expected.ID = evts[0].UniqueID
 	expected.EndCustomData = evts[0].EndCustomData
+	expected.Lock = nil
 	expected.Instance = evts[0].Instance
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
@@ -297,10 +302,10 @@ func (s *S) TestNewExtraTargetLocks(c *check.C) {
 		} else {
 			c.Assert(err, check.IsNil, check.Commentf("failed test case %d - %#v", i, tt))
 		}
-		err = evt1.Done(nil)
+		err = evt1.Done(context.TODO(), nil)
 		c.Assert(err, check.IsNil)
 		if evt2 != nil {
-			err = evt2.Done(nil)
+			err = evt2.Done(context.TODO(), nil)
 			c.Assert(err, check.IsNil)
 		}
 	}
@@ -347,7 +352,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
 	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
 	expected := &Event{eventData: eventData{
-		ID:             eventID{ObjId: evt.UniqueID},
+		ID:             evt.UniqueID,
 		UniqueID:       evt.UniqueID,
 		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
@@ -360,7 +365,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	}}
 
 	c.Assert(evt, check.DeepEquals, expected)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -369,9 +374,9 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
 	c.Assert(evts[0], check.DeepEquals, expected)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -382,7 +387,7 @@ func (s *S) TestNewDoneDisableLock(c *check.C) {
 	evts[0].LockUpdateTime = expected.LockUpdateTime
 	evts[0].Instance = expected.Instance
 	expected.Running = false
-	expected.ID = eventID{ObjId: evts[0].ID.ObjId}
+	expected.ID = evts[0].UniqueID
 	c.Assert(evts[0], check.DeepEquals, expected)
 }
 
@@ -408,7 +413,7 @@ func (s *S) TestNewLockExpired(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(evts[0].Kind.Name, check.Equals, "app.update.env.unset")
@@ -440,13 +445,13 @@ func (s *S) TestNewLockRetry(c *check.C) {
 		close(doneCh)
 	}()
 	time.Sleep(500 * time.Millisecond)
-	evt1.Done(nil)
+	evt1.Done(context.TODO(), nil)
 	select {
 	case <-doneCh:
 	case <-time.After(10 * time.Second):
 		c.Fatal("timeout waiting for event to be created")
 	}
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(evts[0].Kind.Name, check.Equals, "app.update.env.unset")
@@ -488,7 +493,7 @@ func (s *S) TestNewEventBlocked(c *check.C) {
 	})
 	c.Assert(err, check.NotNil)
 	c.Assert(err.(ErrEventBlocked).block, check.DeepEquals, &blocks[0])
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Running, check.Equals, false)
@@ -503,9 +508,9 @@ func (s *S) TestEventAbort(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Abort()
+	err = evt.Abort(context.TODO())
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
@@ -518,9 +523,9 @@ func (s *S) TestEventDoneError(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(errors.New("myerr"))
+	err = evt.Done(context.TODO(), errors.New("myerr"))
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
@@ -528,7 +533,7 @@ func (s *S) TestEventDoneError(c *check.C) {
 	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
 	c.Assert(evts[0].Instance.Name, check.Not(check.Equals), "")
 	expected := &Event{eventData: eventData{
-		ID:             eventID{ObjId: evts[0].ID.ObjId},
+		ID:             evts[0].UniqueID,
 		UniqueID:       evts[0].UniqueID,
 		Target:         Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
@@ -553,9 +558,9 @@ func (s *S) TestEventLogf(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.Logf("%s %d", "hey", 42)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Log(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
@@ -576,9 +581,9 @@ func (s *S) TestEventLogfWithWriter(c *check.C) {
 	evt.SetLogWriter(&buf)
 	evt.Logf("%s %d", "hey", 42)
 	c.Assert(buf.String(), check.Matches, `hey 42`+"\n")
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Log(), check.Matches, `(?s)\d{4}-\d{2}-\d{2}.*: hey 42`+"\n")
@@ -594,10 +599,10 @@ func (s *S) TestEventCancel(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	err = evts[0].TryCancel("because I want", "admin@admin.com")
+	err = evts[0].TryCancel(context.TODO(), "because I want", "admin@admin.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
 	evts[0].CancelInfo.StartTime = time.Time{}
@@ -606,7 +611,7 @@ func (s *S) TestEventCancel(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -616,7 +621,7 @@ func (s *S) TestEventCancel(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(canceled, check.Equals, true)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -629,7 +634,7 @@ func (s *S) TestEventCancel(c *check.C) {
 		Asked:    true,
 		Canceled: true,
 	})
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -654,9 +659,9 @@ func (s *S) TestEventCancelMultipleTimes(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("because I want", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "because I want", "admin@admin.com")
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("because I still want", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "because I still want", "admin@admin.com")
 	c.Assert(err, check.DeepEquals, ErrCancelAlreadyRequested)
 }
 
@@ -668,9 +673,9 @@ func (s *S) TestEventCancelNotCancelable(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("yes", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "yes", "admin@admin.com")
 	c.Assert(err, check.Equals, ErrNotCancelable)
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(canceled, check.Equals, false)
 }
@@ -685,7 +690,7 @@ func (s *S) TestEventCancelNotAsked(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(canceled, check.Equals, false)
 }
@@ -700,11 +705,11 @@ func (s *S) TestEventCancelNotRunning(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("yes", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "yes", "admin@admin.com")
 	c.Assert(err, check.Equals, ErrNotCancelable)
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(canceled, check.Equals, false)
 }
@@ -719,14 +724,14 @@ func (s *S) TestEventCancelDoneNoError(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("yes", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(canceled, check.Equals, true)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Error, check.Equals, "canceled by user request")
@@ -742,14 +747,14 @@ func (s *S) TestEventCancelDoneCustomError(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.TryCancel("yes", "admin@admin.com")
+	err = evt.TryCancel(context.TODO(), "yes", "admin@admin.com")
 	c.Assert(err, check.IsNil)
-	canceled, err := evt.AckCancel()
+	canceled, err := evt.AckCancel(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(canceled, check.Equals, true)
-	err = evt.Done(errors.New("my err"))
+	err = evt.Done(context.TODO(), errors.New("my err"))
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Error, check.Equals, "my err")
@@ -777,10 +782,11 @@ func (s *S) TestEventDoneLogError(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	config.Set("database:url", "127.0.0.1:99999")
-	err = evt.Done(nil)
-	c.Assert(err, check.ErrorMatches, "no reachable servers")
-	c.Assert(logBuf.String(), check.Matches, `(?s).*\[events\] error marking event as done - .*: no reachable servers.*`)
+	config.Set("database:url", "127.0.0.1:9999")
+	storagev2.Reset()
+	err = evt.Done(context.TODO(), nil)
+	c.Assert(err, check.ErrorMatches, ".*connection refused.*")
+	c.Assert(logBuf.String(), check.Matches, `(?s).*connection refused.*`)
 }
 
 func (s *S) TestNewThrottledAllKinds(c *check.C) {
@@ -796,7 +802,7 @@ func (s *S) TestNewThrottledAllKinds(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	evt, err = New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -805,7 +811,7 @@ func (s *S) TestNewThrottledAllKinds(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	_, err = New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -830,7 +836,7 @@ func (s *S) TestNewThrottledAllKinds(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 }
 
@@ -848,7 +854,7 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	evt, err = New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -857,7 +863,7 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	_, err = New(context.TODO(), &Opts{
 		Target:  Target{Type: "app", Value: "myapp"},
@@ -883,7 +889,7 @@ func (s *S) TestNewThrottledOneKind(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 }
 
@@ -903,7 +909,7 @@ func (s *S) TestNewThrottledAllTargets(c *check.C) {
 	}
 	evt, err := New(context.TODO(), baseOpts)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	_, err = New(context.TODO(), baseOpts)
 	c.Assert(err, check.NotNil)
@@ -936,7 +942,7 @@ func (s *S) TestNewThrottledAllTargetsTwoRules(c *check.C) {
 	}
 	evt, err := New(context.TODO(), baseOpts)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	_, err = New(context.TODO(), baseOpts)
 	c.Assert(err, check.NotNil)
@@ -1020,7 +1026,7 @@ func (s *S) TestNewThrottledExpirationWaitFinish(c *check.C) {
 	_, err = New(context.TODO(), otherOpts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "event throttled, limit for app.update.env.set on any app is 1 every 300ms")
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	_, err = New(context.TODO(), otherOpts)
 	c.Assert(err, check.IsNil)
@@ -1067,38 +1073,38 @@ func (s *S) TestNewThrottledExpirationWaitFinishExpired(c *check.C) {
 func (s *S) TestListWithFilters(c *check.C) {
 	e1, err := New(context.TODO(), &Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermApp), Target: Target{Type: "node"}})
 	c.Assert(err, check.IsNil)
-	err = e1.Done(nil)
+	err = e1.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	e2, err := New(context.TODO(), &Opts{Owner: s.token, Kind: permission.PermAll, Allowed: Allowed(permission.PermApp), Target: Target{Type: "container"}})
 	c.Assert(err, check.IsNil)
-	err = e2.Done(nil)
+	err = e2.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	e3, err := New(context.TODO(), &Opts{Owner: s.token, Kind: permission.PermAppCreate, Allowed: Allowed(permission.PermApp), Target: Target{Type: "container", Value: "1234"}})
 	c.Assert(err, check.IsNil)
-	err = e3.Done(nil)
+	err = e3.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 
-	evts, err := List(nil)
+	evts, err := List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 3)
 
-	evts, err = List(&Filter{Target: Target{Type: "container"}})
+	evts, err = List(context.TODO(), &Filter{Target: Target{Type: "container"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(evts[0].Target.Type, check.Equals, TargetType("container"))
 	c.Assert(evts[1].Target.Type, check.Equals, TargetType("container"))
 
-	evts, err = List(&Filter{Target: Target{Type: "container", Value: "1234"}})
+	evts, err = List(context.TODO(), &Filter{Target: Target{Type: "container", Value: "1234"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Target.Type, check.Equals, TargetType("container"))
 	c.Assert(evts[0].Target.Value, check.Equals, "1234")
 
-	evts, err = List(&Filter{Target: Target{Type: "container", Value: "unknown"}})
+	evts, err = List(context.TODO(), &Filter{Target: Target{Type: "container", Value: "unknown"}})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 
-	evts, err = List(&Filter{Target: Target{Type: "node"}, Since: time.Now().Add(time.Duration(-1 * time.Hour))})
+	evts, err = List(context.TODO(), &Filter{Target: Target{Type: "node"}, Since: time.Now().Add(time.Duration(-1 * time.Hour))})
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Target.Type, check.Equals, TargetType("node"))
@@ -1115,7 +1121,7 @@ func (s *S) TestListFilterPruneUserValues(c *check.C) {
 		Since:          time.Now(),
 		Until:          time.Now(),
 		Running:        &t,
-		Raw:            bson.M{"a": 1},
+		Raw:            mongoBSON.M{"a": 1},
 		AllowedTargets: []TargetFilter{{Type: TargetTypeApp, Values: []string{"a1"}}},
 		Limit:          50,
 		Skip:           10,
@@ -1171,18 +1177,20 @@ func (s *S) TestEventOtherCustomData(c *check.C) {
 		Allowed:    Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	getEvt, err := GetRunning(Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	getEvt, err := GetRunning(context.TODO(), Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
-	err = getEvt.SetOtherCustomData(map[string]string{"z": "h"})
+	err = getEvt.SetOtherCustomData(context.TODO(), map[string]string{"z": "h"})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Owner, check.DeepEquals, Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()})
-	var data map[string]string
+	data := map[string]string{}
 	err = evts[0].StartData(&data)
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, map[string]string{"x": "y"})
+
+	data = map[string]string{}
 	err = evts[0].OtherData(&data)
 	c.Assert(err, check.IsNil)
 	c.Assert(data, check.DeepEquals, map[string]string{"z": "h"})
@@ -1203,7 +1211,7 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	c.Assert(n, check.Equals, 3)
 	c.Assert(evt.StructuredLog, check.HasLen, 1)
 	c.Assert(evt.StructuredLog[0].Message, check.Equals, "hey")
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	evt2, err := New(context.TODO(), &Opts{
 		Target:     Target{Type: "app", Value: "myapp"},
@@ -1218,7 +1226,7 @@ func (s *S) TestEventAsWriter(c *check.C) {
 	evt2.Write([]byte("hey2"))
 	c.Assert(evt2.StructuredLog, check.HasLen, 1)
 	c.Assert(evt2.StructuredLog[0].Message, check.Equals, "hey2")
-	err = evt2.Done(nil)
+	err = evt2.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1247,8 +1255,10 @@ func (s *S) TestGetTargetType(c *check.C) {
 
 func (s *S) TestEventRawInsert(c *check.C) {
 	now := time.Unix(time.Now().Unix(), 0).UTC()
+	id := primitive.NewObjectID()
 	evt := &Event{eventData: eventData{
-		UniqueID:  bson.NewObjectId(),
+		ID:        id,
+		UniqueID:  id,
 		Target:    Target{Type: "app", Value: "myapp"},
 		Owner:     Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Kind:      Kind{Type: KindTypePermission, Name: "app.update.env.set"},
@@ -1259,12 +1269,11 @@ func (s *S) TestEventRawInsert(c *check.C) {
 		Instance:  trackerTypes.TrackedInstance{Addresses: []string{}},
 	}}
 
-	err := evt.RawInsert(nil, nil, nil)
+	err := evt.RawInsert(context.TODO(), nil, nil, nil)
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	evt.ID = eventID{ObjId: evt.UniqueID}
 	c.Assert(evts[0], check.DeepEquals, evt)
 }
 
@@ -1279,9 +1288,10 @@ func (s *S) TestNewWithPermission(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	expected := &Event{eventData: eventData{
-		ID:             eventID{Target: Target{Type: "app", Value: "myapp"}},
+		ID:             evt.UniqueID,
 		UniqueID:       evt.UniqueID,
 		Target:         Target{Type: "app", Value: "myapp"},
+		Lock:           &Target{Type: "app", Value: "myapp"},
 		Kind:           Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:          Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:        true,
@@ -1296,7 +1306,7 @@ func (s *S) TestNewWithPermission(c *check.C) {
 	}}
 
 	c.Assert(evt, check.DeepEquals, expected)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	evts[0].StartTime = expected.StartTime
@@ -1325,13 +1335,13 @@ func (s *S) TestNewLockRetryRace(c *check.C) {
 			}
 			c.Assert(err, check.IsNil)
 			atomic.AddInt32(&countOK, 1)
-			err = evt.Done(nil)
+			err = evt.Done(context.TODO(), nil)
 			c.Assert(err, check.IsNil)
 		}()
 	}
 	wg.Wait()
 	c.Assert(countOK > 0, check.Equals, true)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, int(countOK))
 }
@@ -1353,9 +1363,10 @@ func (s *S) TestNewCustomDataPtr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(resultData, check.DeepEquals, customData)
 	expected := &Event{eventData: eventData{
-		ID:              eventID{Target: Target{Type: "app", Value: "myapp"}},
+		ID:              evt.UniqueID,
 		UniqueID:        evt.UniqueID,
 		Target:          Target{Type: "app", Value: "myapp"},
+		Lock:            &Target{Type: "app", Value: "myapp"},
 		Kind:            Kind{Type: KindTypePermission, Name: "app.update.env.set"},
 		Owner:           Owner{Type: OwnerTypeUser, Name: s.token.GetUserName()},
 		Running:         true,
@@ -1465,10 +1476,10 @@ func (s *S) TestEventCancelableContext(c *check.C) {
 		AllowedCancel: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	err = evts[0].TryCancel("because I want", "admin@admin.com")
+	err = evts[0].TryCancel(context.TODO(), "because I want", "admin@admin.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
 	evts[0].CancelInfo.StartTime = time.Time{}
@@ -1477,7 +1488,7 @@ func (s *S) TestEventCancelableContext(c *check.C) {
 		Owner:  "admin@admin.com",
 		Asked:  true,
 	})
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -1501,7 +1512,7 @@ func (s *S) TestEventCancelableContext(c *check.C) {
 		Asked:    true,
 		Canceled: true,
 	})
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -1524,7 +1535,7 @@ func (s *S) TestEventCancelableContextNotCancelable(c *check.C) {
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	nGoroutines := runtime.NumGoroutine()
@@ -1554,10 +1565,10 @@ func (s *S) TestEventCancelableContextBaseCanceled(c *check.C) {
 	evtCancel()
 	cancel()
 
-	err = evt.Done(cancelCtx.Err())
+	err = evt.Done(context.TODO(), cancelCtx.Err())
 	c.Assert(err, check.IsNil)
 
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo.StartTime.IsZero(), check.Equals, false)
@@ -1585,11 +1596,11 @@ func (s *S) TestEventCancelableContextNotCanceled(c *check.C) {
 	_, evtCancel := evt.CancelableContext(cancelCtx)
 	evtCancel()
 
-	err = evt.Done(cancelCtx.Err())
+	err = evt.Done(context.TODO(), cancelCtx.Err())
 	c.Assert(err, check.IsNil)
 	cancel()
 
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo, check.DeepEquals, cancelInfo{})

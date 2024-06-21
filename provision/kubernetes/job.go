@@ -486,7 +486,7 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 		"message":            evt.Message,
 		"cluster-start-time": evt.CreationTimestamp.String(),
 	}
-	e.DoneCustomData(evtErr, customData)
+	e.DoneCustomData(ctx, evtErr, customData)
 }
 
 func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job jobTypes.Job) error {

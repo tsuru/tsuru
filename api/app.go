@@ -127,7 +127,7 @@ func appVersionDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -170,7 +170,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
@@ -463,7 +463,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = app.CreateApp(ctx, &a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
@@ -639,7 +639,7 @@ func updateApp(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
@@ -722,7 +722,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -776,7 +776,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -836,7 +836,7 @@ func killUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = a.KillUnit(ctx, unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
@@ -879,7 +879,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
@@ -925,7 +925,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil || team == nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
@@ -986,7 +986,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1107,7 +1107,7 @@ func setAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	envs := map[string]string{}
 	variables := []bindTypes.EnvVar{}
 	for _, v := range e.Envs {
@@ -1232,7 +1232,7 @@ func unsetAppEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -1285,7 +1285,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if err = a.AddCName(ctx, cnames...); err == nil {
 		return nil
 	}
@@ -1333,7 +1333,7 @@ func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if err = a.RemoveCName(ctx, cnames...); err == nil {
 		return nil
 	}
@@ -1537,7 +1537,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
 	// read more about event retry-lock at event/event.go on newEvt function
@@ -1632,7 +1632,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	// NOTE(wpjunior): there is a race where apps can be modified during the retry-lock designed for the events
 	// read more about event retry-lock at event/event.go on newEvt function
@@ -1699,7 +1699,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -1805,7 +1805,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -1854,7 +1854,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	w.Header().Set("Content-Type", "application/x-json-stream")
@@ -1908,7 +1908,7 @@ func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return rebuild.RebuildRoutes(ctx, rebuild.RebuildRoutesOpts{
 		App: &a,
 		Dry: dry,
@@ -1954,7 +1954,7 @@ func setCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = a.SetCertificate(ctx, cname, certificate, key)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -1999,7 +1999,7 @@ func unsetCertificate(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = a.RemoveCertificate(ctx, cname)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}

@@ -16,7 +16,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -24,6 +23,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
 
@@ -44,9 +44,9 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 		evt.StartTime = d.Timestamp
 		c.Assert(err, check.IsNil)
 		evt.Logf(d.Log)
-		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
+		err = evt.SetOtherCustomData(context.TODO(), map[string]string{"diff": d.Diff})
 		c.Assert(err, check.IsNil)
-		err = evt.DoneCustomData(nil, map[string]string{"image": d.Image})
+		err = evt.DoneCustomData(context.TODO(), nil, map[string]string{"image": d.Image})
 		c.Assert(err, check.IsNil)
 		evts[i] = evt
 	}
@@ -223,7 +223,7 @@ func normalizeTS(deploys []DeployData) {
 	for i := range deploys {
 		deploys[i].Timestamp = time.Unix(deploys[i].Timestamp.Unix(), 0)
 		deploys[i].Duration = 0
-		deploys[i].ID = "-ignored-"
+		deploys[i].ID = primitive.ObjectID{}
 	}
 }
 
@@ -270,7 +270,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newDeploy := DeployData{App: "g1", Timestamp: time.Now()}
 	evts := insertDeploysAsEvents([]DeployData{newDeploy}, c)
-	lastDeploy, err := GetDeploy(evts[0].UniqueID.Hex())
+	lastDeploy, err := GetDeploy(context.TODO(), evts[0].UniqueID.Hex())
 	c.Assert(err, check.IsNil)
 	lastDeploy.Timestamp = time.Unix(lastDeploy.Timestamp.Unix(), 0)
 	newDeploy.Timestamp = time.Unix(newDeploy.Timestamp.Unix(), 0)
@@ -281,13 +281,13 @@ func (s *S) TestGetDeploy(c *check.C) {
 
 func (s *S) TestGetDeployNotFound(c *check.C) {
 	idTest := bson.NewObjectId()
-	deploy, err := GetDeploy(idTest.Hex())
+	deploy, err := GetDeploy(context.TODO(), idTest.Hex())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 	c.Assert(deploy, check.IsNil)
 }
 
 func (s *S) TestGetDeployInvalidHex(c *check.C) {
-	lastDeploy, err := GetDeploy("abc123")
+	lastDeploy, err := GetDeploy(context.TODO(), "abc123")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "id parameter is not ObjectId: abc123")
 	c.Assert(lastDeploy, check.IsNil)
@@ -786,7 +786,7 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	opts := DeployOptions{App: &a, Image: "myimage"}
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -810,7 +810,7 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -835,7 +835,7 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -859,7 +859,7 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -1039,60 +1039,6 @@ func (s *S) TestDeployKind(c *check.C) {
 		c.Check(t.input.GetKind(), check.Equals, t.expected)
 		c.Check(t.input.Kind, check.Equals, t.expected)
 	}
-}
-
-func (s *S) TestMigrateDeploysToEvents(c *check.C) {
-	a := App{Name: "g1", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	now := time.Unix(time.Now().Unix(), 0)
-	insert := []DeployData{
-		{
-			App:       "g1",
-			Timestamp: now.Add(-3600 * time.Second),
-			Log:       "logs",
-			Diff:      "diff",
-			Duration:  10 * time.Second,
-			Commit:    "c1",
-			Error:     "e1",
-			Origin:    "app-deploy",
-			User:      "admin@example.com",
-		},
-		{
-			App:       "g1",
-			Timestamp: now,
-			Log:       "logs",
-			Diff:      "diff",
-			Duration:  10 * time.Second,
-			Commit:    "c2",
-			Error:     "e2",
-			Origin:    "app-deploy",
-			User:      "admin@example.com",
-		},
-	}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	oldDeploysColl := conn.Collection("deploys")
-	for _, data := range insert {
-		err = oldDeploysColl.Insert(data)
-		c.Assert(err, check.IsNil)
-	}
-	err = MigrateDeploysToEvents()
-	c.Assert(err, check.IsNil)
-	deploys, err := ListDeploys(context.TODO(), nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.HasLen, 2)
-	for i := range deploys {
-		id := deploys[i].ID
-		var d *DeployData
-		d, err = GetDeploy(id.Hex())
-		c.Assert(err, check.IsNil)
-		deploys[i] = *d
-	}
-	normalizeTS(deploys)
-	normalizeTS(insert)
-	c.Assert(deploys, check.DeepEquals, []DeployData{insert[1], insert[0]})
 }
 
 func (s *S) TestRebuild(c *check.C) {

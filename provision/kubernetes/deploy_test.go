@@ -2155,9 +2155,9 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	defer cancel()
 	go func(id string) {
 		<-deployCreated
-		evtDB, errCancel := event.GetByHexID(id)
+		evtDB, errCancel := event.GetByHexID(context.TODO(), id)
 		c.Assert(errCancel, check.IsNil)
-		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
+		errCancel = evtDB.TryCancel(context.TODO(), "Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
 	err = servicecommon.RunServicePipeline(ctx, &m, 0, provision.DeployArgs{
@@ -2229,9 +2229,9 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	defer cancel()
 	go func(id string) {
 		<-deployCreated
-		evtDB, errCancel := event.GetByHexID(id)
+		evtDB, errCancel := event.GetByHexID(context.TODO(), id)
 		c.Assert(errCancel, check.IsNil)
-		errCancel = evtDB.TryCancel("Because i want.", "admin@admin.com")
+		errCancel = evtDB.TryCancel(context.TODO(), "Because i want.", "admin@admin.com")
 		c.Assert(errCancel, check.IsNil)
 	}(evt.UniqueID.Hex())
 	err = servicecommon.RunServicePipeline(ctx, &m, 0, provision.DeployArgs{
@@ -4297,7 +4297,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p2", metav1.GetOptions{})
 	c.Check(err, check.IsNil)
 	c.Check(rolloutFailureCalled, check.Equals, true)
-	c.Check(evt.Done(err), check.IsNil)
+	c.Check(evt.Done(context.TODO(), err), check.IsNil)
 	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*`)
 }
 
@@ -4363,7 +4363,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	c.Check(err, check.IsNil)
 	_, err = s.client.CoreV1().Services(ns).Get(context.TODO(), "myapp-p1-v2", metav1.GetOptions{})
 	c.Check(k8sErrors.IsNotFound(err), check.Equals, true)
-	c.Check(evt.Done(err), check.IsNil)
+	c.Check(evt.Done(context.TODO(), err), check.IsNil)
 	c.Check(evt.Log(), check.Matches, `(?s).*\*\*\*\* UPDATING BACK AFTER FAILURE \*\*\*\*.*ERROR DURING ROLLBACK.*`)
 }
 

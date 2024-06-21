@@ -97,7 +97,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	u := auth.User{
 		Email:    email,
 		Password: password,
@@ -192,7 +192,7 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	oldPassword := InputValue(r, "old")
 	newPassword := InputValue(r, "new")
 	confirmPassword := InputValue(r, "confirm")
@@ -244,7 +244,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		if err == authTypes.ErrUserNotFound {
@@ -313,7 +313,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if changeRequest.NewName == "" {
 		return servicemanager.Team.Update(ctx, name, changeRequest.Tags)
 	}
@@ -385,7 +385,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -432,7 +432,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Team.Remove(ctx, name)
 	if err != nil {
 		if _, ok := err.(*authTypes.ErrTeamStillUsed); ok {
@@ -602,7 +602,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -691,7 +691,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	u, err := auth.GetUserByEmail(email)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

@@ -114,7 +114,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 	defer func() {
-		evt.DoneCustomData(err, map[string]string{"image": imageID})
+		evt.DoneCustomData(ctx, err, map[string]string{"image": imageID})
 		labels := prometheus.Labels{"app": appName, "status": deployStatus(evt), "kind": string(opts.GetKind()), "platform": opts.App.Platform}
 		appDeployDuration.With(labels).Observe(time.Since(startingDeployTime).Seconds())
 		appDeploysTotal.With(labels).Inc()
@@ -245,7 +245,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	defer func() { evt.DoneCustomData(ctx, err, map[string]string{"image": imageID}) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	opts.Event = evt
@@ -301,7 +301,7 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	depID := r.URL.Query().Get(":deploy")
-	deploy, err := app.GetDeploy(depID)
+	deploy, err := app.GetDeploy(ctx, depID)
 	if err != nil {
 		if err == event.ErrEventNotFound {
 			return &tsuruErrors.HTTP{Code: http.StatusNotFound, Message: "Deploy not found."}
@@ -376,7 +376,7 @@ func deployRebuild(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.DoneCustomData(err, map[string]string{"image": imageID}) }()
+	defer func() { evt.DoneCustomData(ctx, err, map[string]string{"image": imageID}) }()
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
 	opts.Event = evt
@@ -448,7 +448,7 @@ func deployRollbackUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = app.RollbackUpdate(ctx, instance, img, reason, disableRollback)
 	if err != nil {
 		return &tsuruErrors.HTTP{

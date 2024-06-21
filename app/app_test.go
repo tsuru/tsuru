@@ -5451,7 +5451,7 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	defer evt.Done(nil)
+	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.ErrorMatches, `unable to create event: event locked: app\(test2\).*`)
 	var dbApps []App
@@ -5481,7 +5481,7 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	defer evt.Done(nil)
+	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App

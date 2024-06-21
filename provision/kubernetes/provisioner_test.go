@@ -808,7 +808,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 		Event:   evt1,
 	})
 	c.Assert(err, check.IsNil)
-	err = evt1.Done(nil)
+	err = evt1.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 
 	wait()
@@ -835,7 +835,7 @@ func (s *S) TestRestart_ShouldNotRestartBaseVersionWhenStopped_StoppedDueToScale
 	})
 	c.Assert(err, check.IsNil)
 
-	err = evt2.Done(nil)
+	err = evt2.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 
 	wait()
@@ -1471,7 +1471,7 @@ func (s *S) TestDeployRollback(c *check.C) {
 	img, err = s.p.Deploy(context.TODO(), provision.DeployArgs{App: a, Version: version2, Event: deployEvt})
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, "tsuru/app-myapp:v2")
-	deployEvt.Done(err)
+	deployEvt.Done(context.TODO(), err)
 	c.Assert(err, check.IsNil)
 	rollbackEvt, err := event.New(context.TODO(), &event.Opts{
 		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},

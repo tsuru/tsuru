@@ -139,7 +139,7 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 		evt, err := event.New(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 		if i == 1 {
-			err = evt.Done(nil)
+			err = evt.Done(context.TODO(), nil)
 			c.Assert(err, check.IsNil)
 		}
 		evts[i] = evt
@@ -454,7 +454,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
 
 	deployOptions := &app.DeployOptions{}
-	err = bson.Unmarshal(result.StartCustomData.Data, deployOptions)
+	err = result.StartCustomData.Unmarshal(deployOptions)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
@@ -491,7 +491,8 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(results, check.HasLen, 1)
 	deployOptions = &app.DeployOptions{}
-	err = bson.Unmarshal(results[0].StartCustomData.Data, deployOptions)
+
+	err = results[0].StartCustomData.Unmarshal(deployOptions)
 	c.Assert(err, check.IsNil)
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
 		"MY_PASSWORD": {

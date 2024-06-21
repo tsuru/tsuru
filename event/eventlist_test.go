@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/kr/pretty"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/event/webhook"
@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -45,6 +46,9 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:name", "tsuru_events_list_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	conn, err := db.Conn()
+
+	storagev2.Reset()
+
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Events().Database)
@@ -70,7 +74,7 @@ func (s *S) TestListFilterMany(c *check.C) {
 		allEvts = append(allEvts, evt)
 	}
 	var checkFilters = func(f *event.Filter, expected interface{}) {
-		evts, err := event.List(f)
+		evts, err := event.List(context.TODO(), f)
 		c.Assert(err, check.IsNil)
 		c.Assert(evts, eventtest.EvtEquals, expected, check.Commentf("Diff:\n%s", strings.Join(pretty.Diff(evts, expected), "\n")))
 	}
@@ -112,8 +116,8 @@ func (s *S) TestListFilterMany(c *check.C) {
 		InternalKind: "healer",
 		Allowed:      event.Allowed(permission.PermAppAdmin),
 	})
-	allEvts[len(allEvts)-1].Done(nil)
-	allEvts[len(allEvts)-2].Done(errors.New("my err"))
+	allEvts[len(allEvts)-1].Done(context.TODO(), nil)
+	allEvts[len(allEvts)-2].Done(context.TODO(), errors.New("my err"))
 	checkFilters(&event.Filter{Sort: "_id"}, allEvts)
 	checkFilters(&event.Filter{Running: boolPtr(false), Sort: "_id"}, allEvts[len(allEvts)-2:])
 	checkFilters(&event.Filter{Running: boolPtr(true), Sort: "_id"}, allEvts[:len(allEvts)-2])
@@ -177,15 +181,16 @@ func (s *S) TestGetByID(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	otherEvt, err := event.GetByID(evt.UniqueID)
+
+	otherEvt, err := event.GetByID(context.TODO(), evt.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt, eventtest.EvtEquals, otherEvt)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	otherEvt, err = event.GetByID(evt.UniqueID)
+	otherEvt, err = event.GetByID(context.TODO(), evt.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt, eventtest.EvtEquals, otherEvt)
-	otherEvt, err = event.GetByID(bson.NewObjectId())
+	otherEvt, err = event.GetByID(context.TODO(), primitive.NewObjectID())
 	c.Assert(otherEvt, check.IsNil)
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 }
@@ -198,12 +203,12 @@ func (s *S) TestGetRunning(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	getEvt, err := event.GetRunning(event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	getEvt, err := event.GetRunning(context.TODO(), event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.IsNil)
 	c.Assert(evt, eventtest.EvtEquals, getEvt)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	_, err = event.GetRunning(event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
+	_, err = event.GetRunning(context.TODO(), event.Target{Type: "app", Value: "myapp"}, permission.PermAppUpdateEnvSet.FullName())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 }
 
@@ -219,7 +224,7 @@ func (s *S) TestGetKinds(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	kinds, err := event.GetKinds()
+	kinds, err := event.GetKinds(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(kinds, check.HasLen, 1)
 	expected := []event.Kind{

@@ -68,7 +68,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if err = servicemanager.ServiceBroker.Create(*broker); err != nil {
 		if err == service.ErrServiceBrokerAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: "Broker already exists."}
@@ -111,7 +111,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if err = servicemanager.ServiceBroker.Update(ctx, brokerName, *broker); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -146,7 +146,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	if err = servicemanager.ServiceBroker.Delete(brokerName); err == service.ErrServiceBrokerNotFound {
 		w.WriteHeader(http.StatusNotFound)
 	}

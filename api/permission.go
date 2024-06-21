@@ -57,7 +57,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = permission.NewRole(roleName, InputValue(r, "context"), InputValue(r, "description"))
 	if err == permTypes.ErrInvalidRoleName {
 		return &errors.HTTP{
@@ -103,7 +103,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	usersWithRole, err := auth.ListUsersWithRole(roleName)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	role, err := permission.FindRole(roleName)
 	if err != nil {
 		return err
@@ -266,7 +266,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	permName := r.URL.Query().Get(":permission")
 	role, err := permission.FindRole(roleName)
 	if err != nil {
@@ -340,7 +340,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	email := InputValue(r, "email")
 	contextValue := InputValue(r, "context")
 	user, err := auth.GetUserByEmail(email)
@@ -390,7 +390,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	email := r.URL.Query().Get(":email")
 	contextValue := r.URL.Query().Get("context")
 	user, err := auth.GetUserByEmail(email)
@@ -478,7 +478,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(roleName)
 		if err != nil {
 			if err == permTypes.ErrRoleNotFound {
@@ -538,7 +538,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 		role, err := permission.FindRole(roleName)
 		if err != nil {
 			if err == permTypes.ErrRoleNotFound {
@@ -625,7 +625,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = auth.UpdateRoleFromAllUsers(roleName, newName, contextType, description)
 	if err != nil {
 		return &errors.HTTP{
@@ -718,7 +718,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -766,7 +766,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -812,7 +812,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err
@@ -856,7 +856,7 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	role, err := getRoleReturnNotFound(roleName)
 	if err != nil {
 		return err

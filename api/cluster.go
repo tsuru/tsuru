@@ -63,7 +63,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Cluster.FindByName(ctx, provCluster.Name)
 	if err == nil {
 		return &tsuruErrors.HTTP{
@@ -139,7 +139,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Cluster.FindByName(ctx, provCluster.Name)
 	if err != nil {
 		if err == provTypes.ErrClusterNotFound {
@@ -269,7 +269,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	streamResponse := strings.HasPrefix(r.Header.Get("Accept"), "application/x-json-stream")
 	if streamResponse {
 		w.Header().Set("Content-Type", "application/x-json-stream")

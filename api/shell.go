@@ -190,7 +190,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Fprintf(evt, "> %s\n", line)
 		}
-		evt.Done(finalErr)
+		evt.Done(ctx, finalErr)
 	}()
 	term = terminal.NewTerminal(buf, "")
 	ws.SetReadDeadline(time.Now().Add(pongWait))

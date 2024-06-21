@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -37,6 +38,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -63,6 +65,9 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	provision.DefaultProvisioner = "fake"
 	app.AuthScheme = auth.ManagedScheme(native.NativeScheme{})
 }
@@ -342,14 +347,15 @@ func (s *S) TestGCStartWithRunningEvent(c *check.C) {
 
 	for i := 0; i < 2; i++ {
 		evt := event.Event{}
-		evt.UniqueID = bson.NewObjectId()
+		evt.UniqueID = primitive.NewObjectID()
+		evt.ID = evt.UniqueID
 		if i%2 == 0 {
 			evt.Running = true
 		} else {
 			evt.EndTime = now
 		}
 
-		err = evt.RawInsert(nil, nil, nil)
+		err = evt.RawInsert(context.TODO(), nil, nil, nil)
 		c.Assert(err, check.IsNil)
 
 		var appVersion appTypes.AppVersion
@@ -422,7 +428,7 @@ func (s *S) TestGCStartIgnoreErrorOnProvisioner(c *check.C) {
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 
-	evts, err := event.All()
+	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	evts = filterGCEvents(evts)
 	c.Assert(evts, check.HasLen, 0)
@@ -457,7 +463,7 @@ func (s *S) TestGCStartWithErrorOnRegistry(c *check.C) {
 	err = gc.Shutdown(context.Background())
 	c.Assert(err, check.IsNil)
 
-	evts, err := event.All()
+	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	evts = filterGCEvents(evts)
 	c.Assert(evts, check.HasLen, 1)
@@ -547,7 +553,7 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v8-builder",
 		u.Host + "/tsuru/app-myapp:v9-builder",
 	})
-	evts, err := event.All()
+	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeApp)
@@ -583,7 +589,7 @@ func (s *S) TestGCNoOPWithApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Check(versions.Versions, check.HasLen, 6)
 
-	evts, err := event.All()
+	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
@@ -668,7 +674,7 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 		u.Host + "/tsuru/app-myapp:v9-builder",
 	})
 
-	evts, err := event.All()
+	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 

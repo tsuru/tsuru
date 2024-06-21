@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/builder"
@@ -27,14 +26,16 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
-	permTypes "github.com/tsuru/tsuru/types/permission"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var reImageVersion = regexp.MustCompile(":v([0-9]+)$")
 
 type DeployData struct {
-	ID          bson.ObjectId `bson:"_id,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
 	App         string
 	Timestamp   time.Time
 	Duration    time.Duration
@@ -70,7 +71,7 @@ func findValidImages(ctx context.Context, appNames []string) (set.Set, error) {
 
 // ListDeploys returns the list of deploy that match a given filter.
 func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]DeployData, error) {
-	var rawFilter bson.M
+	var rawFilter mongoBSON.M
 	if !filter.IsEmpty() {
 		appsList, err := List(ctx, filter)
 		if err != nil {
@@ -80,9 +81,9 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 		for i, a := range appsList {
 			apps[i] = a.GetName()
 		}
-		rawFilter = bson.M{"target.value": bson.M{"$in": apps}}
+		rawFilter = mongoBSON.M{"target.value": mongoBSON.M{"$in": apps}}
 	}
-	evts, err := event.List(&event.Filter{
+	evts, err := event.List(ctx, &event.Filter{
 		Target:    event.Target{Type: event.TargetTypeApp},
 		Raw:       rawFilter,
 		KindNames: []string{permission.PermAppDeploy.FullName()},
@@ -111,12 +112,11 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 	return list, nil
 }
 
-func GetDeploy(id string) (*DeployData, error) {
+func GetDeploy(ctx context.Context, id string) (*DeployData, error) {
 	if !bson.IsObjectIdHex(id) {
 		return nil, errors.Errorf("id parameter is not ObjectId: %s", id)
 	}
-	objID := bson.ObjectIdHex(id)
-	evt, err := event.GetByID(objID)
+	evt, err := event.GetByHexID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -464,59 +464,4 @@ func incrementDeploy(app *App) error {
 		app.Deploys += 1
 	}
 	return err
-}
-
-func deployDataToEvent(data *DeployData) error {
-	var evt event.Event
-	evt.UniqueID = data.ID
-	evt.Target = event.Target{Type: event.TargetTypeApp, Value: data.App}
-	evt.Owner = event.Owner{Type: event.OwnerTypeUser, Name: data.User}
-	evt.Kind = event.Kind{Type: event.KindTypePermission, Name: permission.PermAppDeploy.FullName()}
-	evt.StartTime = data.Timestamp
-	evt.EndTime = data.Timestamp.Add(data.Duration)
-	evt.Error = data.Error
-	evt.StructuredLog = []event.LogEntry{
-		{Message: data.Log},
-	}
-	a, err := GetByName(context.TODO(), data.App)
-	if err == nil {
-		evt.Allowed = event.Allowed(permission.PermAppReadEvents, append(permission.Contexts(permTypes.CtxTeam, a.Teams),
-			permission.Context(permTypes.CtxApp, a.Name),
-			permission.Context(permTypes.CtxPool, a.Pool),
-		)...)
-	} else {
-		evt.Allowed = event.Allowed(permission.PermAppReadEvents)
-	}
-	startOpts := DeployOptions{
-		Commit: data.Commit,
-		Origin: data.Origin,
-	}
-	var otherData map[string]string
-	if data.Diff != "" {
-		otherData = map[string]string{"diff": data.Diff}
-	}
-	endData := map[string]string{"image": data.Image}
-	err = evt.RawInsert(startOpts, otherData, endData)
-	if mgo.IsDup(err) {
-		return nil
-	}
-	return err
-}
-
-func MigrateDeploysToEvents() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	oldDeploysColl := conn.Collection("deploys")
-	iter := oldDeploysColl.Find(nil).Iter()
-	var data DeployData
-	for iter.Next(&data) {
-		err = deployDataToEvent(&data)
-		if err != nil {
-			return err
-		}
-	}
-	return iter.Close()
 }

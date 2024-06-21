@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,6 +27,9 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/provision"
+
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -175,9 +177,9 @@ func runPeriodicGC() (err error) {
 			return
 		}
 		if err == nil {
-			evt.Abort()
+			evt.Abort(context.TODO())
 		} else {
-			evt.Done(err)
+			evt.Done(context.TODO(), err)
 		}
 	}()
 
@@ -221,7 +223,7 @@ func runPeriodicGC() (err error) {
 func markOldImages(ctx context.Context) error {
 	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
 
-	span, ctx := opentracing.StartSpanFromContext(context.Background(), "GC markOldImages")
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GC markOldImages")
 	defer span.Finish()
 
 	gcExecutionsTotal.WithLabelValues("mark").Inc()
@@ -287,7 +289,7 @@ func markOldImages(ctx context.Context) error {
 		if err != nil {
 			multi.Add(err)
 		}
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}
 	return multi.ToError()
 }
@@ -313,7 +315,7 @@ func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions app
 	// to accomplish that, let's check the every EventID whether is running.
 	if len(selection.unsuccessfulDeploys) > 0 {
 		var toRemove []appTypes.AppVersionInfo
-		toRemove, err = versionsSafeToRemove(selection.unsuccessfulDeploys)
+		toRemove, err = versionsSafeToRemove(ctx, selection.unsuccessfulDeploys)
 		if err != nil {
 			return false, errors.Wrapf(err, "Could not check events running of app: %s", appVersions.AppName)
 		}
@@ -338,21 +340,27 @@ func markOldImagesForAppVersion(ctx context.Context, a *app.App, appVersions app
 }
 
 // versionsSafeToRemove checks whether a version does have a related event running
-func versionsSafeToRemove(appVersions []appTypes.AppVersionInfo) ([]appTypes.AppVersionInfo, error) {
-	uniqueIds := []bson.ObjectId{}
+func versionsSafeToRemove(ctx context.Context, appVersions []appTypes.AppVersionInfo) ([]appTypes.AppVersionInfo, error) {
+	uniqueIds := []primitive.ObjectID{}
 	mapEventID := map[string]appTypes.AppVersionInfo{}
 
 	for _, v := range appVersions {
 		if v.EventID == "" {
 			continue
 		}
-		uniqueIds = append(uniqueIds, bson.ObjectIdHex(v.EventID))
+
+		objID, err := primitive.ObjectIDFromHex(v.EventID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Could not convert eventID to ObjectID: %s", v.EventID)
+		}
+
+		uniqueIds = append(uniqueIds, objID)
 		mapEventID[v.EventID] = v
 	}
 
-	events, err := event.List(&event.Filter{
-		Raw: bson.M{
-			"uniqueid": bson.M{
+	events, err := event.List(ctx, &event.Filter{
+		Raw: mongoBSON.M{
+			"uniqueid": mongoBSON.M{
 				"$in": uniqueIds,
 			},
 		},

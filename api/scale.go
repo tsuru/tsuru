@@ -100,7 +100,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return a.AutoScale(ctx, spec)
 }
 
@@ -138,6 +138,6 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return a.RemoveAutoScale(ctx, process)
 }

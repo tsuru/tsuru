@@ -153,7 +153,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = service.Create(ctx, s)
 	if err != nil {
 		if err == service.ErrServiceAlreadyExists {
@@ -207,7 +207,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	s.Endpoint = d.Endpoint
 	s.Password = d.Password
 	s.Username = d.Username
@@ -249,7 +249,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	instances, err := service.GetServiceInstancesByServices([]service.Service{s})
 	if err != nil {
 		return err
@@ -298,7 +298,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 	}
 	path := r.URL.Query().Get("callback")
 	return service.Proxy(ctx, &s, path, evt, requestIDHeader(r), w, r)
@@ -335,7 +335,7 @@ func serviceAuthenticatedResourcesProxy(w http.ResponseWriter, r *http.Request, 
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 	}
 
 	path := "/authenticated-resources/" + queryPath
@@ -385,7 +385,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = s.GrantAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -439,7 +439,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = s.RevokeAccess(team)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -481,7 +481,8 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+
+	defer func() { evt.Done(ctx, err) }()
 	return service.Update(ctx, s)
 }
 

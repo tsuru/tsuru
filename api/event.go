@@ -18,6 +18,8 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 // title: event list
@@ -29,6 +31,7 @@ import (
 //	200: OK
 //	204: No content
 func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var filter *event.Filter
 	err := ParseInput(r, &filter)
 	if err != nil {
@@ -40,7 +43,7 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	events, err := event.List(filter)
+	events, err := event.List(ctx, filter)
 	if err != nil {
 		return err
 	}
@@ -67,7 +70,8 @@ func eventList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	200: OK
 //	204: No content
 func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	kinds, err := event.GetKinds()
+	ctx := r.Context()
+	kinds, err := event.GetKinds(ctx)
 	if err != nil {
 		return err
 	}
@@ -90,13 +94,13 @@ func kindList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	404: Not found
 func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	uuid := r.URL.Query().Get(":uuid")
 	if !bson.IsObjectIdHex(uuid) {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	objID := bson.ObjectIdHex(uuid)
-	e, err := event.GetByID(objID)
+	e, err := event.GetByHexID(ctx, uuid)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -127,13 +131,13 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	404: Not found
 func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	uuid := r.URL.Query().Get(":uuid")
 	if !bson.IsObjectIdHex(uuid) {
 		msg := fmt.Sprintf("uuid parameter is not ObjectId: %s", uuid)
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	objID := bson.ObjectIdHex(uuid)
-	e, err := event.GetByID(objID)
+	e, err := event.GetByHexID(ctx, uuid)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -149,7 +153,7 @@ func eventCancel(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	err = e.TryCancel(reason, t.GetUserName())
+	err = e.TryCancel(ctx, reason, t.GetUserName())
 	if err != nil {
 		if err == event.ErrNotCancelable {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
@@ -226,7 +230,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 	defer func() {
 		evt.Target.Value = block.ID.Hex()
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	return event.AddBlock(ctx, &block)
 }
@@ -267,7 +271,7 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = event.RemoveBlock(ctx, objID)
 	if _, ok := err.(*event.ErrActiveEventBlockNotFound); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -279,12 +283,13 @@ func suppressSensitiveEnvs(e *event.Event) error {
 	if supressEnabled, _ := config.GetBool("events:suppress-sensitive-envs"); !supressEnabled {
 		return nil
 	}
-	if e.Kind.Name != permission.PermAppDeploy.FullName() || len(e.StartCustomData.Data) == 0 {
+	if e.Kind.Name != permission.PermAppDeploy.FullName() || len(e.StartCustomData.Value) == 0 {
 		return nil
 	}
 
 	deployOptions := &app.DeployOptions{}
-	err := bson.Unmarshal(e.StartCustomData.Data, deployOptions)
+
+	err := e.StartCustomData.Unmarshal(deployOptions)
 	if err != nil {
 		return err
 	}
@@ -295,7 +300,7 @@ func suppressSensitiveEnvs(e *event.Event) error {
 
 	deployOptions.App.SuppressSensitiveEnvs()
 
-	e.StartCustomData.Data, err = bson.Marshal(deployOptions)
+	e.StartCustomData.Type, e.StartCustomData.Value, err = mongoBSON.MarshalValue(deployOptions)
 	if err != nil {
 		return err
 	}

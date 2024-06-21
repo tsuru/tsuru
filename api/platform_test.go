@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
@@ -65,6 +66,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_platform_test")
+	storagev2.Reset()
 	var err error
 	app.AuthScheme = nativeScheme
 	s.conn, err = db.Conn()

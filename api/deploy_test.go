@@ -815,9 +815,9 @@ func insertDeploysAsEvents(ctx context.Context, data []app.DeployData, c *check.
 		c.Assert(err, check.IsNil)
 		evt.StartTime = d.Timestamp
 		evt.Logf(d.Log)
-		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
+		err = evt.SetOtherCustomData(ctx, map[string]string{"diff": d.Diff})
 		c.Assert(err, check.IsNil)
-		err = evt.DoneCustomData(nil, map[string]string{"image": d.Image})
+		err = evt.DoneCustomData(ctx, nil, map[string]string{"image": d.Image})
 		c.Assert(err, check.IsNil)
 		evts[i] = evt
 	}

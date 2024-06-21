@@ -73,7 +73,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
@@ -136,7 +136,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
@@ -182,7 +182,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Platform.Remove(ctx, name)
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -303,7 +303,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()

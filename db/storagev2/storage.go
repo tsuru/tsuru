@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -50,6 +51,10 @@ func connect() (*mongo.Client, error) {
 
 	client.Store(connectedClient)
 
+	err = EnsureIndexesCreated(connectedClient.Database(databaseName))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create indexes")
+	}
 	return connectedClient, nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"time"
 
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
@@ -89,10 +90,18 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		err := AddBlock(context.TODO(), b)
 		c.Assert(err, check.IsNil)
 	}
-	bsonDataBlockedPoolCluster, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}, {"name": "cluster", "value": "c1"}})
-	bsonDataBlockedPool, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool2"}, {"name": "cluster", "value": "c2"}})
-	bsonDataAllowedPool, _ := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}})
-	bsonDataUnhandledFields, _ := makeBSONRaw([]map[string]interface{}{{"foo": "bar"}})
+	bsonDataBlockedPoolCluster, err := makeBSONRaw([]mongoBSON.M{{"name": "pool", "value": "pool1"}, {"name": "cluster", "value": "c1"}})
+	c.Assert(err, check.IsNil)
+
+	bsonDataBlockedPool, err := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool2"}, {"name": "cluster", "value": "c2"}})
+	c.Assert(err, check.IsNil)
+
+	bsonDataAllowedPool, err := makeBSONRaw([]map[string]interface{}{{"name": "pool", "value": "pool1"}})
+	c.Assert(err, check.IsNil)
+
+	bsonDataUnhandledFields, err := makeBSONRaw([]map[string]interface{}{{"foo": "bar"}})
+	c.Assert(err, check.IsNil)
+
 	tt := []struct {
 		event     *Event
 		blockedBy *Block

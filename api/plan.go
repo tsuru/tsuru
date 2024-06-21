@@ -69,7 +69,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Plan.Create(ctx, plan)
 	if err == appTypes.ErrPlanAlreadyExists {
 		return &errors.HTTP{
@@ -137,7 +137,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Plan.Remove(ctx, planName)
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{

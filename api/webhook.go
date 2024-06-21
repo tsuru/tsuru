@@ -112,7 +112,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Webhook.Create(webhook)
 	if err == eventTypes.ErrWebhookAlreadyExists {
@@ -154,7 +154,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Webhook.Update(webhook)
 	if err == eventTypes.ErrWebhookNotFound {
@@ -197,7 +197,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	return servicemanager.Webhook.Delete(webhookName)
 }
