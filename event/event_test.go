@@ -737,6 +737,28 @@ func (s *S) TestEventCancelDoneNoError(c *check.C) {
 	c.Assert(evts[0].Error, check.Equals, "canceled by user request")
 }
 
+func (s *S) TestEventCancelDoneWithCanceledContext(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:        Target{Type: "app", Value: "myapp"},
+		Kind:          permission.PermAppUpdateEnvSet,
+		Owner:         s.token,
+		Cancelable:    true,
+		Allowed:       Allowed(permission.PermAppReadEvents),
+		AllowedCancel: Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = evt.Done(canceledCtx, nil)
+	c.Assert(err, check.IsNil)
+	evts, err := All(context.TODO())
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].EndTime, check.Not(check.IsNil))
+}
+
 func (s *S) TestEventCancelDoneCustomError(c *check.C) {
 	evt, err := New(context.TODO(), &Opts{
 		Target:        Target{Type: "app", Value: "myapp"},

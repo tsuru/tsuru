@@ -177,9 +177,9 @@ func runPeriodicGC() (err error) {
 			return
 		}
 		if err == nil {
-			evt.Abort(context.TODO())
+			evt.Abort(ctx)
 		} else {
-			evt.Done(context.TODO(), err)
+			evt.Done(ctx, err)
 		}
 	}()
 
