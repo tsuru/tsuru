@@ -32,7 +32,7 @@ func Reset() {
 	databaseNamePtr.Store(nil)
 }
 
-func connect() (*mongo.Client, error) {
+func connect() (*mongo.Client, *string, error) {
 	var uri string
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -47,7 +47,7 @@ func connect() (*mongo.Client, error) {
 			SetAppName("tsurud"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	swapped := client.CompareAndSwap(nil, connectedClient)
@@ -57,11 +57,11 @@ func connect() (*mongo.Client, error) {
 		err = EnsureIndexesCreated(connectedClient.Database(databaseName))
 
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create indexes")
+			return nil, nil, errors.Wrap(err, "failed to create indexes")
 		}
 	}
 
-	return connectedClient, nil
+	return connectedClient, &databaseName, nil
 }
 
 func dbConfig() (string, string) {
@@ -90,13 +90,14 @@ func dbConfig() (string, string) {
 
 func Collection(name string) (*mongo.Collection, error) {
 	connectedClient := client.Load()
-	if connectedClient == nil {
+	databaseName := databaseNamePtr.Load()
+
+	if connectedClient == nil || databaseName == nil {
 		var err error
-		connectedClient, err = connect()
+		connectedClient, databaseName, err = connect()
 		if err != nil {
 			return nil, err
 		}
 	}
-	databaseName := databaseNamePtr.Load()
 	return connectedClient.Database(*databaseName).Collection(name, options.Collection()), nil
 }
