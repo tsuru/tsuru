@@ -6,7 +6,6 @@ package integration
 
 import (
 	"fmt"
-	"go/build"
 	"io/fs"
 	"os"
 	"path"
@@ -213,7 +212,7 @@ func exampleApps() ExecFlow {
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		lang := strings.Replace(parts[1], "-iplat", "", -1)
-		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang+"/").Run(env)
+		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
@@ -328,11 +327,10 @@ func appVersions() ExecFlow {
 		parallel: true,
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = build.Default.GOPATH
-		}
-		appDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "fixtures", "versions-app")
+		cwd, err := os.Getwd()
+		c.Assert(err, check.IsNil)
+
+		appDir := path.Join(cwd, "fixtures", "versions-app")
 		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
 		res := T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
