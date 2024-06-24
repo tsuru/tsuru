@@ -23,12 +23,13 @@ const (
 )
 
 var (
-	client       atomic.Pointer[mongo.Client]
-	databaseName string
+	client          atomic.Pointer[mongo.Client]
+	databaseNamePtr atomic.Pointer[string]
 )
 
 func Reset() {
 	client.Store(nil)
+	databaseNamePtr.Store(nil)
 }
 
 func connect() (*mongo.Client, error) {
@@ -37,7 +38,7 @@ func connect() (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	uri, databaseName = dbConfig()
+	uri, databaseName := dbConfig()
 
 	connectedClient, err := mongo.Connect(
 		ctx,
@@ -49,12 +50,17 @@ func connect() (*mongo.Client, error) {
 		return nil, err
 	}
 
-	client.Store(connectedClient)
+	swapped := client.CompareAndSwap(nil, connectedClient)
+	databaseNamePtr.Store(&databaseName)
 
-	err = EnsureIndexesCreated(connectedClient.Database(databaseName))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create indexes")
+	if swapped {
+		err = EnsureIndexesCreated(connectedClient.Database(databaseName))
+
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create indexes")
+		}
 	}
+
 	return connectedClient, nil
 }
 
@@ -91,5 +97,6 @@ func Collection(name string) (*mongo.Collection, error) {
 			return nil, err
 		}
 	}
-	return connectedClient.Database(databaseName).Collection(name, options.Collection()), nil
+	databaseName := databaseNamePtr.Load()
+	return connectedClient.Database(*databaseName).Collection(name, options.Collection()), nil
 }
