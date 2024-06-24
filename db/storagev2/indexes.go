@@ -49,19 +49,19 @@ var EnsureIndexes = []EnsureIndex{
 			},
 			{
 				Keys:    mongoBSON.D{{Key: "target.value", Value: 1}, {Key: "kind.name", Value: 1}, {Key: "starttime", Value: -1}},
-				Options: options.Index().SetBackground(true),
+				Options: options.Index().SetBackground(true), //nolint
 			},
 			{
 				Keys:    mongoBSON.D{{Key: "target.value", Value: 1}, {Key: "starttime", Value: -1}},
-				Options: options.Index().SetBackground(true),
+				Options: options.Index().SetBackground(true), //nolint
 			},
 			{
 				Keys:    mongoBSON.D{{Key: "extratargets.target.value", Value: 1}, {Key: "starttime", Value: -1}},
-				Options: options.Index().SetBackground(true),
+				Options: options.Index().SetBackground(true), //nolint
 			},
 			{
 				Keys:    mongoBSON.D{{Key: "lock", Value: 1}},
-				Options: options.Index().SetBackground(true).SetSparse(true).SetUnique(true).SetBackground(true),
+				Options: options.Index().SetBackground(true).SetSparse(true).SetUnique(true).SetBackground(true), //nolint
 			},
 		},
 	},
