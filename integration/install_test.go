@@ -329,7 +329,7 @@ func testCases() ExecFlow {
 			pwd, err := os.Getwd()
 			c.Assert(err, check.IsNil)
 
-			casesDir := path.Join(pwd, "integration", "testapps")
+			casesDir := path.Join(pwd, "testapps")
 			files, err := readDir(casesDir)
 			c.Assert(err, check.IsNil)
 			env.Add("testcasesdir", casesDir)
