@@ -31,6 +31,7 @@ function onerror() {
   [[ -n ${kubectl_port_forward_pid} ]] && kill ${kubectl_port_forward_pid}
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}
   set +e
+  exit 1
 }
 
 install_tsuru_stack() {
