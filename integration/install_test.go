@@ -22,7 +22,7 @@ import (
 var (
 	T               = NewCommand("tsuru").WithArgs
 	platforms       = []string{}
-	provisioners    = []string{}
+	provisioners    = []string{"kubernetes"}
 	clusterManagers = []ClusterManager{}
 	flows           = []ExecFlow{
 		platformsToInstall(),

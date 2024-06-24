@@ -73,25 +73,6 @@ func (s *S) getPlatforms() []string {
 	return selectedPlatforms
 }
 
-func (s *S) getProvisioners() []string {
-	availableProvisioners := []string{"docker"}
-	if _, ok := os.LookupEnv(integrationEnvID + "provisioners"); !ok {
-		return availableProvisioners
-	}
-	selectedProvisioners := make([]string, 0, len(availableProvisioners))
-	for _, provisioner := range s.env.All("provisioners") {
-		provisioner = strings.Trim(provisioner, " ")
-		for i, item := range availableProvisioners {
-			if item == provisioner {
-				selectedProvisioners = append(selectedProvisioners, provisioner)
-				availableProvisioners = append(availableProvisioners[:i], availableProvisioners[i+1:]...)
-				break
-			}
-		}
-	}
-	return selectedProvisioners
-}
-
 func (s *S) getClusterManagers(c *check.C) []ClusterManager {
 	availableClusterManagers := map[string]ClusterManager{
 		"minikube": &MinikubeClusterManager{env: s.env},
@@ -125,7 +106,6 @@ func (s *S) config(c *check.C) {
 	}
 	s.env = env
 	platforms = s.getPlatforms()
-	provisioners = s.getProvisioners()
 	clusterManagers = s.getClusterManagers(c)
 	installerConfig = s.getInstallerConfig()
 }
