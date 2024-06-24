@@ -221,7 +221,7 @@ func exampleApps() ExecFlow {
 			return regex.MatchString(res.Stdout.String())
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-		addrRE := regexp.MustCompile(`(?s)Address: (.*?)\n`)
+		addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
 		parts = addrRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		cmd := NewCommand("curl", "-sSf", "http://"+parts[1])
