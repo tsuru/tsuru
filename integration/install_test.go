@@ -263,7 +263,7 @@ func platformAdd() ExecFlow {
 		env.Add("installedplatforms", platName)
 		res = T("platform-list").Run(env)
 		c.Assert(res, ResultOk)
-		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*- " + platName + ".*"})
+		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*" + platName + ".*enabled.*"})
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		img := env.Get("platimg")

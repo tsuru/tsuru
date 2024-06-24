@@ -93,7 +93,7 @@ main() {
   sleep 30
 
   local_tsuru_api_port=8080
-  ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
+  DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
   kubectl_port_forward_pid=${!}
 
   set_initial_admin_password 
