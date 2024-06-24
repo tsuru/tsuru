@@ -11,7 +11,7 @@ jobs:
         image: redis
         ports: ['6379:6379']
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -48,7 +48,7 @@ jobs:
     - uses: azure/setup-helm@v1
       with:
         version: v3.7.0
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v5
       with:
         go-version: "1.20"
     - uses: actions/cache@v2
@@ -73,7 +73,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Run govulncheck
     steps:
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21.11'
     - id: govulncheck
@@ -108,7 +108,7 @@ jobs:
         image: redis
         ports: ['6379:6379']
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -129,7 +129,7 @@ jobs:
   check-handlers:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -143,7 +143,7 @@ jobs:
   check-events:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -157,7 +157,7 @@ jobs:
   check-api-doc:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -171,7 +171,7 @@ jobs:
   validate-api-spec:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
@@ -179,7 +179,7 @@ jobs:
   verify-codegen:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v5
       with:
         go-version: '1.21'
     - uses: actions/checkout@v2
