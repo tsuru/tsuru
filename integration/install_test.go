@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/tsuru/net"
 	check "gopkg.in/check.v1"
 )
 
@@ -42,7 +41,6 @@ var (
 		serviceCreate(),
 		serviceBind(),
 		appRouters(),
-		appSwap(),
 		appVersions(),
 	}
 	installerConfig = ""
@@ -113,28 +111,6 @@ func teamTest() ExecFlow {
 	return flow
 }
 
-func waitNewNode(c *check.C, env *Environment) string {
-	regex := regexp.MustCompile(`node.create.*?node:\s+(.*?)\s+`)
-	res := T("event-list").Run(env)
-	c.Assert(res, ResultOk)
-	parts := regex.FindStringSubmatch(res.Stdout.String())
-	c.Assert(parts, check.HasLen, 2)
-	return waitNodeAddr(c, env, parts[1])
-}
-
-func waitNodeAddr(c *check.C, env *Environment, nodeAddr string) string {
-	regex := regexp.MustCompile("(?i)" + net.URLToHost(nodeAddr) + `.*?\|\s+ready`)
-	var res *Result
-	ok := retry(5*time.Minute, func() bool {
-		res = T("node-list").Run(env)
-		return regex.MatchString(res.Stdout.String())
-	})
-	c.Assert(ok, check.Equals, true, check.Commentf("node not ready after 5 minutes: %v", res))
-	// Wait for docker daemon restart due to hostcert node container
-	time.Sleep(time.Minute * 1)
-	return nodeAddr
-}
-
 func poolAdd() ExecFlow {
 	flow := ExecFlow{
 		provides: []string{"poolnames"},
@@ -148,11 +124,6 @@ func poolAdd() ExecFlow {
 			env.Add("multinodepools", poolName)
 			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
-			opts := nodeOrRegisterOpts(c, env)
-			res = T("node-add", opts, "pool="+poolName).WithTimeout(20 * time.Minute).Run(env)
-			c.Assert(res, ResultOk)
-			nodeAddr := waitNewNode(c, env)
-			env.Add("nodeaddrs", nodeAddr)
 		}
 		for _, cluster := range clusterManagers {
 			poolName := "ipool-" + cluster.Name()
@@ -172,55 +143,6 @@ func poolAdd() ExecFlow {
 			}
 			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(120 * time.Minute).Run(env)
 			c.Assert(res, ResultOk)
-			T("cluster-list").Run(env)
-			readyRegex := regexp.MustCompile("(?i)^ready")
-			var nodeIPs []string
-			ok := retry(2*time.Minute, func() bool {
-				res = T("node-list", "-f", "tsuru.io/cluster="+clusterName).Run(env)
-				table := resultTable{raw: res.Stdout.String()}
-				table.parse()
-				if len(table.rows) == 0 {
-					return false
-				}
-				for _, row := range table.rows {
-					c.Assert(len(row) > 2, check.Equals, true)
-					if !readyRegex.MatchString(row[2]) {
-						nodeIPs = nil
-						return false
-					}
-					nodeIPs = append(nodeIPs, row[0])
-				}
-				return true
-			})
-			if noPoolOnKubeMasters, _ := strconv.ParseBool(env.Get("no_pool_on_kube_masters")); noPoolOnKubeMasters {
-				nodeIPs = nil
-			}
-			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 2 minutes: %v - all nodes: %v", res, T("node-list").Run(env)))
-			for _, ip := range nodeIPs {
-				res = T("node-update", ip, "pool="+poolName).Run(env)
-				c.Assert(res, ResultOk)
-			}
-			res = T("event-list").Run(env)
-			c.Assert(res, ResultOk)
-			for _, ip := range nodeIPs {
-				evtRegex := regexp.MustCompile(`node.update.*?node:\s+` + ip)
-				c.Assert(evtRegex.MatchString(res.Stdout.String()), check.Equals, true)
-			}
-			ok = retry(time.Minute, func() bool {
-				res = T("node-list").Run(env)
-				table := resultTable{raw: res.Stdout.String()}
-				table.parse()
-				for _, ip := range nodeIPs {
-					for _, row := range table.rows {
-						c.Assert(len(row) > 2, check.Equals, true)
-						if row[0] == ip && !readyRegex.MatchString(row[2]) {
-							return false
-						}
-					}
-				}
-				return true
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("nodes not ready after 1 minute: %v", res))
 		}
 	}
 	flow.backward = func(c *check.C, env *Environment) {
@@ -233,10 +155,7 @@ func poolAdd() ExecFlow {
 			res = T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
-		for _, node := range env.All("nodeaddrs") {
-			res := T("node-remove", "-y", "--no-rebalance", node).Run(env)
-			c.Check(res, ResultOk)
-		}
+
 		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool-remove", "-y", poolName).Run(env)
@@ -399,94 +318,6 @@ func appRouters() ExecFlow {
 			}
 		},
 	}
-}
-
-func appSwap() ExecFlow {
-	flow := ExecFlow{
-		matrix: map[string]string{
-			"pool":   "poolnames",
-			"router": "routers",
-		},
-		parallel: true,
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = build.Default.GOPATH
-		}
-		swapDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "fixtures", "swap-app")
-		appNames := []string{
-			slugifyName(fmt.Sprintf("swap-app1-%s-%s-iapp", env.Get("pool"), env.Get("router"))),
-			slugifyName(fmt.Sprintf("swap-app2-%s-%s-iapp", env.Get("pool"), env.Get("router"))),
-		}
-		appCname := func(appName string) string {
-			return fmt.Sprintf("%s.integration.test", appName)
-		}
-		var res *Result
-		var addrs []string
-		for _, appName := range appNames {
-			res = T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}", "-r", "{{.router}}").Run(env)
-			c.Assert(res, ResultOk)
-			res = T("cname-add", "-a", appName, appCname(appName)).Run(env)
-			c.Assert(res, ResultOk)
-			env.Add(fmt.Sprintf("swap-apps-%s-%s", env.Get("pool"), env.Get("router")), appName)
-			res = T("app-deploy", "-a", appName, swapDir).Run(env)
-			c.Assert(res, ResultOk)
-			regex := regexp.MustCompile("started|ready")
-			ok := retry(5*time.Minute, func() bool {
-				res = T("app-info", "-a", appName).Run(env)
-				c.Assert(res, ResultOk)
-				return regex.MatchString(res.Stdout.String())
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-			addrRE := regexp.MustCompile(fmt.Sprintf(`\| %s\s+(\|[^|]+){1}\| ([^| ]+)`, env.Get("router")))
-			parts := addrRE.FindStringSubmatch(res.Stdout.String())
-			c.Assert(parts, check.HasLen, 3)
-			addrs = append(addrs, parts[2])
-		}
-		runTest := func(idx int, expected, cnameExpected string) {
-			cmd := NewCommand("curl", "-sSf", "http://"+addrs[idx])
-			ok := retry(1*time.Minute, func() bool {
-				res = cmd.Run(env)
-				return res.ExitCode == 0
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("app did not respond after 1 minute: %v", res))
-			c.Assert(res.Stdout.String(), check.Matches, `app: `+expected)
-			cmd = NewCommand("curl", "-sSf", "-HHost:"+appCname(appNames[idx]), "http://"+addrs[idx])
-			ok = retry(1*time.Minute, func() bool {
-				res = cmd.Run(env)
-				return res.ExitCode == 0
-			})
-			c.Assert(ok, check.Equals, true, check.Commentf("app did not respond after 1 minute: %v", res))
-			c.Assert(res.Stdout.String(), check.Matches, `app: `+cnameExpected)
-		}
-		runTest(0, appNames[0], appNames[0])
-		runTest(1, appNames[1], appNames[1])
-		res = T("app-swap", appNames[0], appNames[1]).Run(env)
-		c.Assert(res, ResultOk)
-		runTest(0, appNames[1], appNames[1])
-		runTest(1, appNames[0], appNames[0])
-		res = T("app-swap", appNames[0], appNames[1]).Run(env)
-		c.Assert(res, ResultOk)
-		runTest(0, appNames[0], appNames[0])
-		runTest(1, appNames[1], appNames[1])
-		res = T("app-swap", "--cname-only", appNames[0], appNames[1]).Run(env)
-		c.Assert(res, ResultOk)
-		runTest(0, appNames[0], appNames[1])
-		runTest(1, appNames[1], appNames[0])
-		res = T("app-swap", "--cname-only", appNames[0], appNames[1]).Run(env)
-		c.Assert(res, ResultOk)
-		runTest(0, appNames[0], appNames[0])
-		runTest(1, appNames[1], appNames[1])
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		appNames := env.All(fmt.Sprintf("swap-apps-%s-%s", env.Get("pool"), env.Get("router")))
-		for _, appName := range appNames {
-			res := T("app-remove", "-y", "-a", appName).Run(env)
-			c.Check(res, ResultOk)
-		}
-	}
-	return flow
 }
 
 func appVersions() ExecFlow {

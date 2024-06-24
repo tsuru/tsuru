@@ -4,8 +4,6 @@
 
 package integration
 
-import check "gopkg.in/check.v1"
-
 const (
 	kubernetesProvisioner = "kubernetes"
 )
@@ -17,15 +15,4 @@ type ClusterManager interface {
 	Start() *Result
 	Delete() *Result
 	UpdateParams() (params []string, createNode bool)
-}
-
-func nodeOrRegisterOpts(c *check.C, env *Environment) string {
-	opts := env.Get("nodeopts")
-	if opts != "" {
-		return opts
-	}
-	regOpts := env.All("noderegisteropts")
-	c.Assert(regOpts, check.Not(check.HasLen), 0)
-	env.Set("noderegisteropts", append(regOpts[1:], regOpts[0])...)
-	return regOpts[0]
 }
