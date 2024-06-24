@@ -121,8 +121,9 @@ validate-api-spec: install-swagger
 	$(SWAGGER) validate ./docs/reference/api.yaml
 
 test-int:
+	git clone https://github.com/tsuru/platforms /tmp/platforms
 	go get -d github.com/tsuru/platforms/...
-	TSURU_INTEGRATION_examplesdir="${GOPATH}/src/github.com/tsuru/platforms/examples" \
+	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
 	TSURU_INTEGRATION_platforms="python" \
 	TSURU_INTEGRATION_provisioners="minikube" \
