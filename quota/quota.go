@@ -20,7 +20,7 @@ func (s *QuotaService) Inc(ctx context.Context, item quota.QuotaItem, quantity i
 	if err != nil {
 		return err
 	}
-	err = s.fixInUse(item, quota)
+	err = s.fixInUse(ctx, item, quota)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (s *QuotaService) SetLimit(ctx context.Context, item quota.QuotaItem, limit
 	if err != nil {
 		return err
 	}
-	err = s.fixInUse(item, q)
+	err = s.fixInUse(ctx, item, q)
 	if err != nil {
 		return err
 	}
@@ -91,17 +91,17 @@ func (s *QuotaService) Get(ctx context.Context, item quota.QuotaItem) (*quota.Qu
 	if err != nil {
 		return nil, err
 	}
-	err = s.fixInUse(item, q)
+	err = s.fixInUse(ctx, item, q)
 	if err != nil {
 		return nil, err
 	}
 	return q, nil
 }
 
-func (s *QuotaService) fixInUse(item quota.QuotaItem, q *quota.Quota) error {
+func (s *QuotaService) fixInUse(ctx context.Context, item quota.QuotaItem, q *quota.Quota) error {
 	var err error
 	if inuse, ok := item.(quota.QuotaItemInUse); ok {
-		q.InUse, err = inuse.GetQuotaInUse()
+		q.InUse, err = inuse.GetQuotaInUse(ctx)
 	}
 	return err
 }

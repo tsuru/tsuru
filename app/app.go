@@ -100,8 +100,9 @@ const (
 type App appTypes.App
 
 var (
-	_ provision.App      = &App{}
-	_ rebuild.RebuildApp = &App{}
+	_ provision.App        = &App{}
+	_ rebuild.RebuildApp   = &App{}
+	_ quota.QuotaItemInUse = &App{}
 )
 
 func (app *App) getBuilder(ctx context.Context) (builder.Builder, error) {

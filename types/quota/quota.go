@@ -28,7 +28,7 @@ type QuotaItem interface {
 
 type QuotaItemInUse interface {
 	QuotaItem
-	GetQuotaInUse() (int, error)
+	GetQuotaInUse(ctx context.Context) (int, error)
 }
 
 type QuotaService interface {
