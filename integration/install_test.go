@@ -326,11 +326,10 @@ func testCases() ExecFlow {
 	return ExecFlow{
 		provides: []string{"testcases", "testcasesdir"},
 		forward: func(c *check.C, env *Environment) {
-			gopath := os.Getenv("GOPATH")
-			if gopath == "" {
-				gopath = build.Default.GOPATH
-			}
-			casesDir := path.Join(gopath, "src", "github.com", "tsuru", "tsuru", "integration", "testapps")
+			pwd, err := os.Getwd()
+			c.Assert(err, check.IsNil)
+
+			casesDir := path.Join(pwd, "integration", "testapps")
 			files, err := readDir(casesDir)
 			c.Assert(err, check.IsNil)
 			env.Add("testcasesdir", casesDir)
