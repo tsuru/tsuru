@@ -212,7 +212,7 @@ func exampleApps() ExecFlow {
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		lang := strings.Replace(parts[1], "-iplat", "", -1)
-		res = T("app-deploy", "-a", appName, "{{.examplesdir}}/"+lang).Run(env)
+		res = T("app-deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir" + "/" + lang)).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {

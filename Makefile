@@ -122,7 +122,6 @@ validate-api-spec: install-swagger
 
 test-int:
 	git clone https://github.com/tsuru/platforms /tmp/platforms
-	go get -d github.com/tsuru/platforms/...
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
 	TSURU_INTEGRATION_platforms="python" \
