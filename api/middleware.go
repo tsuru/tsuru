@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ajg/form"
+	"github.com/cezarsa/form"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
