@@ -124,7 +124,7 @@ test-int:
 	git clone https://github.com/tsuru/platforms /tmp/platforms
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
-	TSURU_INTEGRATION_platforms="python" \
+	TSURU_INTEGRATION_platforms="python,go" \
 	TSURU_INTEGRATION_provisioners="minikube" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
