@@ -22,11 +22,10 @@ import (
 )
 
 var (
-	T               = NewCommand("tsuru").WithArgs
-	platforms       = []string{}
-	provisioners    = []string{"kubernetes"}
-	clusterManagers = []ClusterManager{}
-	flows           = []ExecFlow{
+	T            = NewCommand("tsuru").WithArgs
+	platforms    = []string{}
+	provisioners = []string{"kubernetes"}
+	flows        = []ExecFlow{
 		platformsToInstall(),
 		targetTest(),
 		loginTest(),
@@ -45,7 +44,6 @@ var (
 		appRouters(),
 		appVersions(),
 	}
-	installerConfig = ""
 )
 
 func platformsToInstall() ExecFlow {
@@ -123,41 +121,12 @@ func poolAdd() ExecFlow {
 			res := T("pool", "add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
-			env.Add("multinodepools", poolName)
 			res = T("pool", "constraint", "set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
-		}
-		for _, cluster := range clusterManagers {
-			poolName := "ipool-" + cluster.Name()
-			res := T("pool", "add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
-			c.Assert(res, ResultOk)
-			env.Add("poolnames", poolName)
-			env.Add("clusterpools", poolName)
-			res = T("pool", "constraint", "set", poolName, "team", "{{.team}}").Run(env)
-			c.Assert(res, ResultOk)
-			res = cluster.Start()
-			c.Assert(res, ResultOk)
-			clusterName := "icluster-" + cluster.Name()
-			params := []string{"cluster", "add", clusterName, cluster.Provisioner(), "--pool", poolName}
-			clusterParams, nodeCreate := cluster.UpdateParams()
-			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
-				env.Add("multinodepools", poolName)
-			}
-			res = T(append(params, clusterParams...)...).WithNoExpand().WithTimeout(120 * time.Minute).Run(env)
-			c.Assert(res, ResultOk)
-		}
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		for _, cluster := range clusterManagers {
-			res := T("cluster", "remove", "-y", "icluster-"+cluster.Name()).Run(env)
-			c.Check(res, ResultOk)
-			res = cluster.Delete()
-			c.Check(res, ResultOk)
-			poolName := "ipool-" + cluster.Name()
-			res = T("pool", "remove", "-y", poolName).Run(env)
-			c.Check(res, ResultOk)
 		}
 
+	}
+	flow.backward = func(c *check.C, env *Environment) {
 		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
 			res := T("pool", "remove", "-y", poolName).Run(env)
