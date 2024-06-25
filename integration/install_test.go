@@ -338,7 +338,7 @@ func appRouters() ExecFlow {
 func appVersions() ExecFlow {
 	flow := ExecFlow{
 		matrix: map[string]string{
-			"pool": "clusterpools",
+			"pool": "poolnames",
 		},
 		parallel: true,
 	}
