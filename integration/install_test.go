@@ -532,7 +532,7 @@ func serviceCreate() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("app", "info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		res = T("env-set", "-a", appName, "EVI_ENVIRONS='{\"INTEGRATION_ENV\":\"TRUE\"}'").Run(env)
+		res = T("env", "set", "-a", appName, "EVI_ENVIRONS='{\"INTEGRATION_ENV\":\"TRUE\"}'").Run(env)
 		c.Assert(res, ResultOk)
 		res = T("app", "deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
 		c.Assert(res, ResultOk)
@@ -594,7 +594,7 @@ func serviceCreate() ExecFlow {
 		res = T("service", "create", "manifest.yaml").Run(env)
 		c.Assert(res, ResultOk)
 
-		ok = retry(15*time.Minute, func() bool {
+		ok = retry(time.Minute, func() bool {
 			res = T("service", "info", "integration-service-{{.pool}}").Run(env)
 			return res.ExitCode == 0
 		})
