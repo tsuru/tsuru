@@ -536,11 +536,25 @@ func serviceCreate() ExecFlow {
 		c.Assert(res, ResultOk)
 		res = T("app-deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile("started|ready")
+
+		appInfo := appTypes.AppInfo{}
 		ok := retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName).Run(env)
+			res = T("app-info", "-a", appName, "--json").Run(env)
 			c.Assert(res, ResultOk)
-			return regex.MatchString(res.Stdout.String())
+
+			appInfo = appTypes.AppInfo{}
+			err := json.NewDecoder(&res.Stdout).Decode(&appInfo)
+			c.Assert(err, check.IsNil)
+
+			count := 0
+
+			for _, unit := range appInfo.Units {
+				if unit.Ready != nil && *unit.Ready {
+					count++
+				}
+			}
+
+			return count > 0
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 		addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
@@ -562,9 +576,12 @@ func serviceCreate() ExecFlow {
 		defer os.Chdir(currDir)
 		res = T("service-template").Run(env)
 		c.Assert(res, ResultOk)
+
+		c.Assert(appInfo.InternalAddresses, check.HasLen, 1)
+
 		replaces := map[string]string{
 			"team_responsible_to_provide_service": "integration-team",
-			"production-endpoint.com":             "http://" + parts[1],
+			"production-endpoint.com":             fmt.Sprintf("http://%s:%d", appInfo.InternalAddresses[0].Domain, appInfo.InternalAddresses[0].Port),
 			"servicename":                         "integration-service-" + env.Get("pool"),
 		}
 		for k, v := range replaces {
