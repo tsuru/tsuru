@@ -5,6 +5,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"time"
 
 	check "gopkg.in/check.v1"
+
+	appTypes "github.com/tsuru/tsuru/types/app"
 )
 
 var (
@@ -283,21 +286,34 @@ func unitAddRemove() ExecFlow {
 		appName := env.Get("appnames")
 		res := T("unit-add", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
-		regex := regexp.MustCompile(" (started|ready) ")
-		ok := retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName).Run(env)
+
+		unitsReady := func() int {
+			res = T("app-info", "-a", appName, "--json").Run(env)
 			c.Assert(res, ResultOk)
-			unitsReady := len(regex.FindAllString(res.Stdout.String(), -1))
-			return unitsReady == 3
+
+			appInfo := appTypes.AppInfo{}
+			err := json.NewDecoder(&res.Stdout).Decode(&appInfo)
+			c.Assert(err, check.IsNil)
+
+			count := 0
+
+			for _, unit := range appInfo.Units {
+				if unit.Ready != nil && *unit.Ready {
+					count++
+				}
+			}
+
+			return count
+		}
+
+		ok := retry(5*time.Minute, func() bool {
+			return unitsReady() == 3
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
 		res = T("unit-remove", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName).Run(env)
-			c.Assert(res, ResultOk)
-			unitsReady := len(regex.FindAllString(res.Stdout.String(), -1))
-			return unitsReady == 1
+			return unitsReady() == 1
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not removed after 5 minutes: %v", res))
 	}
