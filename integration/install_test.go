@@ -593,8 +593,14 @@ func serviceCreate() ExecFlow {
 		}
 		res = T("service", "create", "manifest.yaml").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("service", "info", "integration-service-{{.pool}}").Run(env)
-		c.Assert(res, ResultOk)
+
+		ok = retry(15*time.Minute, func() bool {
+			res = T("service", "info", "integration-service-{{.pool}}").Run(env)
+			return res.ExitCode == 0
+		})
+
+		c.Assert(ok, check.Equals, true, check.Commentf("invalid result: %v", res))
+
 		env.Add("servicename", "integration-service-"+env.Get("pool"))
 	}
 	flow.backward = func(c *check.C, env *Environment) {
