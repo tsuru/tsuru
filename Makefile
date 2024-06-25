@@ -120,12 +120,12 @@ run-tsurud-token: $(TSR_BIN)
 validate-api-spec: install-swagger
 	$(SWAGGER) validate ./docs/reference/api.yaml
 
-test-minikube-integration:
+test-ci-integration:
 	git clone https://github.com/tsuru/platforms /tmp/platforms
 	TSURU_INTEGRATION_examplesdir="/tmp/platforms/examples" \
 	TSURU_INTEGRATION_enabled=1 TSURU_INTEGRATION_verbose=2 TSURU_INTEGRATION_maxconcurrency=4 \
 	TSURU_INTEGRATION_platforms="python,go" \
-	TSURU_INTEGRATION_no_rollback_on_error="true" \
+	TSURU_INTEGRATION_no_rollback="true" \
 	TSURU_INTEGRATION_provisioners="minikube" \
 	go test -v -timeout 120m github.com/tsuru/tsuru/integration
 
