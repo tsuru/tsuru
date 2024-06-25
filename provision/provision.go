@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/event"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -115,12 +114,6 @@ type App interface {
 	GetMetadata(process string) appTypes.Metadata
 
 	GetRegistry(context.Context) (imgTypes.ImageRegistry, error)
-}
-
-type InspectData struct {
-	Image     docker.Image
-	TsuruYaml provTypes.TsuruYamlData
-	Procfile  string
 }
 
 type DeployArgs struct {

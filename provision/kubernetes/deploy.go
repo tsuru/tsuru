@@ -20,7 +20,6 @@ import (
 
 	"github.com/docker/cli/cli/config/configfile"
 	dockerclitypes "github.com/docker/cli/cli/config/types"
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/image"
@@ -62,12 +61,6 @@ const (
 	backendConfigCRDName    = "backendconfigs.cloud.google.com"
 	backendConfigKey        = "cloud.google.com/backend-config"
 )
-
-type InspectData struct {
-	Image     docker.Image
-	TsuruYaml provTypes.TsuruYamlData
-	Procfile  string
-}
 
 func keepAliveSpdyExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 	tlsConfig, err := rest.TLSConfigFor(config)
