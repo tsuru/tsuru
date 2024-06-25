@@ -64,11 +64,11 @@ func targetTest() ExecFlow {
 	flow := ExecFlow{}
 	flow.forward = func(c *check.C, env *Environment) {
 		targetName := "integration-target"
-		res := T("target-add", targetName, "{{.targetaddr}}").Run(env)
+		res := T("target", "add", targetName, "{{.targetaddr}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("target-list").Run(env)
+		res = T("target", "list").Run(env)
 		c.Assert(res, ResultMatches, Expected{Stdout: `\s+` + targetName + ` .*`})
-		res = T("target-set", targetName).Run(env)
+		res = T("target", "set", targetName).Run(env)
 		c.Assert(res, ResultOk)
 	}
 	return flow
@@ -88,9 +88,9 @@ func quotaTest() ExecFlow {
 		requires: []string{"adminuser"},
 	}
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("user-quota-change", "{{.adminuser}}", "100").Run(env)
+		res := T("user", "quota", "change", "{{.adminuser}}", "100").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("user-quota-view", "{{.adminuser}}").Run(env)
+		res = T("user", "quota", "view", "{{.adminuser}}").Run(env)
 		c.Assert(res, ResultMatches, Expected{Stdout: `(?s)Apps usage.*/100`})
 	}
 	return flow
@@ -102,12 +102,12 @@ func teamTest() ExecFlow {
 	}
 	teamName := "integration-team"
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("team-create", teamName).Run(env)
+		res := T("team", "create", teamName).Run(env)
 		c.Assert(res, ResultOk)
 		env.Set("team", teamName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("team-remove", "-y", teamName).Run(env)
+		res := T("team", "remove", "-y", teamName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -120,25 +120,25 @@ func poolAdd() ExecFlow {
 	flow.forward = func(c *check.C, env *Environment) {
 		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
-			res := T("pool-add", "--provisioner", prov, poolName).Run(env)
+			res := T("pool", "add", "--provisioner", prov, poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
 			env.Add("multinodepools", poolName)
-			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
+			res = T("pool", "constraint", "set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 		}
 		for _, cluster := range clusterManagers {
 			poolName := "ipool-" + cluster.Name()
-			res := T("pool-add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
+			res := T("pool", "add", "--provisioner", cluster.Provisioner(), poolName).Run(env)
 			c.Assert(res, ResultOk)
 			env.Add("poolnames", poolName)
 			env.Add("clusterpools", poolName)
-			res = T("pool-constraint-set", poolName, "team", "{{.team}}").Run(env)
+			res = T("pool", "constraint", "set", poolName, "team", "{{.team}}").Run(env)
 			c.Assert(res, ResultOk)
 			res = cluster.Start()
 			c.Assert(res, ResultOk)
 			clusterName := "icluster-" + cluster.Name()
-			params := []string{"cluster-add", clusterName, cluster.Provisioner(), "--pool", poolName}
+			params := []string{"cluster", "add", clusterName, cluster.Provisioner(), "--pool", poolName}
 			clusterParams, nodeCreate := cluster.UpdateParams()
 			if nodeCreate || env.Get("nodeopts_"+strings.Replace(poolName, "-", "_", -1)) != "" {
 				env.Add("multinodepools", poolName)
@@ -149,18 +149,18 @@ func poolAdd() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		for _, cluster := range clusterManagers {
-			res := T("cluster-remove", "-y", "icluster-"+cluster.Name()).Run(env)
+			res := T("cluster", "remove", "-y", "icluster-"+cluster.Name()).Run(env)
 			c.Check(res, ResultOk)
 			res = cluster.Delete()
 			c.Check(res, ResultOk)
 			poolName := "ipool-" + cluster.Name()
-			res = T("pool-remove", "-y", poolName).Run(env)
+			res = T("pool", "remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
 
 		for _, prov := range provisioners {
 			poolName := "ipool-" + prov
-			res := T("pool-remove", "-y", poolName).Run(env)
+			res := T("pool", "remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
 	}
@@ -179,10 +179,10 @@ func platformAdd() ExecFlow {
 		img := env.Get("platimg")
 		prefix := img[strings.LastIndex(img, "/")+1:]
 		platName := prefix + "-iplat"
-		res := T("platform-add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
+		res := T("platform", "add", platName, "-i", img).WithTimeout(15 * time.Minute).Run(env)
 		c.Assert(res, ResultOk)
 		env.Add("installedplatforms", platName)
-		res = T("platform-list").Run(env)
+		res = T("platform", "list").Run(env)
 		c.Assert(res, ResultOk)
 		c.Assert(res, ResultMatches, Expected{Stdout: "(?s).*" + platName + ".*enabled.*"})
 	}
@@ -190,7 +190,7 @@ func platformAdd() ExecFlow {
 		img := env.Get("platimg")
 		prefix := img[strings.LastIndex(img, "/")+1:]
 		platName := prefix + "-iplat"
-		res := T("platform-remove", "-y", platName).Run(env)
+		res := T("platform", "remove", "-y", platName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -207,19 +207,19 @@ func exampleApps() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("plat"), env.Get("pool"))
-		res := T("app-create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		res := T("app", "create", appName, "{{.plat}}", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-info", "-a", appName).Run(env)
+		res = T("app", "info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		platRE := regexp.MustCompile(`(?s)Platform: (.*?)\n`)
 		parts := platRE.FindStringSubmatch(res.Stdout.String())
 		c.Assert(parts, check.HasLen, 2)
 		lang := strings.Replace(parts[1], "-iplat", "", -1)
-		res = T("app-deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
+		res = T("app", "deploy", "-a", appName, ".").WithPWD(env.Get("examplesdir") + "/" + lang).Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName).Run(env)
+			res = T("app", "info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
 			return regex.MatchString(res.Stdout.String())
 		})
@@ -237,7 +237,7 @@ func exampleApps() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := "{{.plat}}-{{.pool}}-iapp"
-		res := T("app-remove", "-y", "-a", appName).Run(env)
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -284,11 +284,11 @@ func unitAddRemove() ExecFlow {
 	}
 	flow.forward = func(c *check.C, env *Environment) {
 		appName := env.Get("appnames")
-		res := T("unit-add", "-a", appName, "2").Run(env)
+		res := T("unit", "add", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 
 		unitsReady := func() int {
-			res = T("app-info", "-a", appName, "--json").Run(env)
+			res = T("app", "info", "-a", appName, "--json").Run(env)
 			c.Assert(res, ResultOk)
 
 			appInfo := appTypes.AppInfo{}
@@ -310,7 +310,7 @@ func unitAddRemove() ExecFlow {
 			return unitsReady() == 3
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("new units not ready after 5 minutes: %v", res))
-		res = T("unit-remove", "-a", appName, "2").Run(env)
+		res = T("unit", "remove", "-a", appName, "2").Run(env)
 		c.Assert(res, ResultOk)
 		ok = retry(5*time.Minute, func() bool {
 			return unitsReady() == 1
@@ -324,7 +324,7 @@ func appRouters() ExecFlow {
 	return ExecFlow{
 		provides: []string{"routers"},
 		forward: func(c *check.C, env *Environment) {
-			res := T("router-list").Run(env)
+			res := T("router", "list").Run(env)
 			c.Assert(res, ResultOk)
 			table := resultTable{raw: res.Stdout.String()}
 			table.parse()
@@ -348,13 +348,13 @@ func appVersions() ExecFlow {
 
 		appDir := path.Join(cwd, "fixtures", "versions-app")
 		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
-		res := T("app-create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		res := T("app", "create", appName, "python-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 
 		checkVersion := func(expectedVersions ...string) {
 			regex := regexp.MustCompile("started|ready")
 			ok := retry(5*time.Minute, func() bool {
-				res = T("app-info", "-a", appName).Run(env)
+				res = T("app", "info", "-a", appName).Run(env)
 				c.Assert(res, ResultOk)
 				return regex.MatchString(res.Stdout.String())
 			})
@@ -389,46 +389,46 @@ func appVersions() ExecFlow {
 			}
 		}
 
-		res = T("app-deploy", "-a", appName, appDir).Run(env)
+		res = T("app", "deploy", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("1")
-		res = T("app-deploy", "-a", appName, appDir).Run(env)
+		res = T("app", "deploy", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("2")
-		res = T("app-deploy", "--new-version", "-a", appName, appDir).Run(env)
+		res = T("app", "deploy", "--new-version", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("2")
 
 		time.Sleep(1 * time.Second)
-		res = T("app-router-version-add", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("2", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app-router-version-remove", "2", "-a", appName).Run(env)
+		res = T("app", "router", "version", "remove", "2", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("3")
 
-		res = T("unit-add", "1", "--version", "1", "-a", appName).Run(env)
+		res = T("unit", "add", "1", "--version", "1", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("3")
 
 		time.Sleep(1 * time.Second)
-		res = T("app-router-version-add", "1", "-a", appName).Run(env)
+		res = T("app", "router", "version", "add", "1", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("1", "3")
 		time.Sleep(1 * time.Second)
-		res = T("app-router-version-remove", "3", "-a", appName).Run(env)
+		res = T("app", "router", "version", "remove", "3", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("1")
 
-		res = T("app-deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
+		res = T("app", "deploy", "--override-old-versions", "-a", appName, appDir).Run(env)
 		c.Assert(res, ResultOk)
 		checkVersion("4")
 
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := slugifyName(fmt.Sprintf("versions-%s-iapp", env.Get("pool")))
-		res := T("app-remove", "-y", "-a", appName).Run(env)
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -448,15 +448,15 @@ func testApps() ExecFlow {
 		plat, err := os.ReadFile(path)
 		c.Assert(err, check.IsNil)
 		appName := fmt.Sprintf("%s-%s-iapp", env.Get("case"), env.Get("pool"))
-		res := T("app-create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		res := T("app", "create", appName, string(plat)+"-iplat", "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-info", "-a", appName).Run(env)
+		res = T("app", "info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-deploy", "-a", appName, "{{.testcasesdir}}/{{.case}}/").Run(env)
+		res = T("app", "deploy", "-a", appName, "{{.testcasesdir}}/{{.case}}/").Run(env)
 		c.Assert(res, ResultOk)
 		regex := regexp.MustCompile("started|ready")
 		ok := retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName).Run(env)
+			res = T("app", "info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
 			return regex.MatchString(res.Stdout.String())
 		})
@@ -464,7 +464,7 @@ func testApps() ExecFlow {
 	}
 	flow.backward = func(c *check.C, env *Environment) {
 		appName := "{{.case}}-{{.pool}}-iapp"
-		res := T("app-remove", "-y", "-a", appName).Run(env)
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -493,9 +493,9 @@ func updateAppPools() ExecFlow {
 		for _, combination := range combinations {
 			appName := combination[0]
 			destPool := combination[1]
-			res := T("app-update", "-a", appName, "-o", destPool).Run(env)
+			res := T("app", "update", "-a", appName, "-o", destPool).Run(env)
 			c.Assert(res, ResultOk)
-			res = T("app-info", "-a", appName).Run(env)
+			res = T("app", "info", "-a", appName).Run(env)
 			c.Assert(res, ResultOk)
 			addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
 			parts := addrRE.FindStringSubmatch(res.Stdout.String())
@@ -528,18 +528,18 @@ func serviceCreate() ExecFlow {
 	}
 	appName := "{{.pool}}-integration-service-app"
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("app-create", appName, env.Get("installedplatforms"), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
+		res := T("app", "create", appName, env.Get("installedplatforms"), "-t", "{{.team}}", "-o", "{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-info", "-a", appName).Run(env)
+		res = T("app", "info", "-a", appName).Run(env)
 		c.Assert(res, ResultOk)
 		res = T("env-set", "-a", appName, "EVI_ENVIRONS='{\"INTEGRATION_ENV\":\"TRUE\"}'").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("app-deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
+		res = T("app", "deploy", "-a", appName, "-i", "{{.serviceimage}}").Run(env)
 		c.Assert(res, ResultOk)
 
 		appInfo := appTypes.AppInfo{}
 		ok := retry(5*time.Minute, func() bool {
-			res = T("app-info", "-a", appName, "--json").Run(env)
+			res = T("app", "info", "-a", appName, "--json").Run(env)
 			c.Assert(res, ResultOk)
 
 			appInfo = appTypes.AppInfo{}
@@ -559,7 +559,7 @@ func serviceCreate() ExecFlow {
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
 
 		c.Assert(appInfo.Routers, check.HasLen, 1)
-		c.Assert(appInfo.Routers[0].Address, check.HasLen, 1)
+		c.Assert(appInfo.Routers[0].Addresses, check.HasLen, 1)
 
 		address := appInfo.Routers[0].Addresses[0]
 
@@ -577,7 +577,7 @@ func serviceCreate() ExecFlow {
 		err = os.Chdir(dir)
 		c.Assert(err, check.IsNil)
 		defer os.Chdir(currDir)
-		res = T("service-template").Run(env)
+		res = T("service", "template").Run(env)
 		c.Assert(res, ResultOk)
 
 		c.Assert(appInfo.InternalAddresses, check.HasLen, 1)
@@ -591,16 +591,16 @@ func serviceCreate() ExecFlow {
 			res = NewCommand("sed", "-i", "-e", "'s~"+k+"~"+v+"~'", "manifest.yaml").Run(env)
 			c.Assert(res, ResultOk)
 		}
-		res = T("service-create", "manifest.yaml").Run(env)
+		res = T("service", "create", "manifest.yaml").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("service-info", "integration-service-{{.pool}}").Run(env)
+		res = T("service", "info", "integration-service-{{.pool}}").Run(env)
 		c.Assert(res, ResultOk)
 		env.Add("servicename", "integration-service-"+env.Get("pool"))
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("app-remove", "-y", "-a", appName).Run(env)
+		res := T("app", "remove", "-y", "-a", appName).Run(env)
 		c.Check(res, ResultOk)
-		res = T("service-destroy", "integration-service-{{.pool}}", "-y").Run(env)
+		res = T("service", "destroy", "integration-service-{{.pool}}", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
@@ -617,26 +617,26 @@ func serviceBind() ExecFlow {
 	}
 	bindName := "{{.servicename}}-{{.app}}"
 	flow.forward = func(c *check.C, env *Environment) {
-		res := T("service-instance-add", "{{.servicename}}", bindName, "-t", "integration-team").Run(env)
+		res := T("service", "instance", "add", "{{.servicename}}", bindName, "-t", "integration-team").Run(env)
 		c.Assert(res, ResultOk)
-		res = T("service-instance-bind", "{{.servicename}}", bindName, "-a", "{{.app}}").Run(env)
+		res = T("service", "instance", "bind", "{{.servicename}}", bindName, "-a", "{{.app}}").Run(env)
 		c.Assert(res, ResultOk)
 		ok := retry(15*time.Minute, func() bool {
-			res = T("event-list", "-k", "app.update.bind", "-v", "{{.app}}", "-r").Run(env)
+			res = T("event", "list", "-k", "app.update.bind", "-v", "{{.app}}", "-r").Run(env)
 			c.Assert(res, ResultOk)
 			return res.Stdout.String() == ""
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("bind did not complete after 15 minutes: %v", res))
-		res = T("event-list", "-k", "app.update.bind", "-v", "{{.app}}").Run(env)
+		res = T("event", "list", "-k", "app.update.bind", "-v", "{{.app}}").Run(env)
 		c.Assert(res, ResultOk)
 		c.Assert(res, ResultMatches, Expected{Stdout: `.*true.*`}, check.Commentf("event did not succeed"))
 		ok = retry(time.Minute, func() bool {
-			res = T("env-get", "-a", "{{.app}}").Run(env)
+			res = T("env", "get", "-a", "{{.app}}").Run(env)
 			c.Check(res, ResultOk)
 			return strings.Contains(res.Stdout.String(), "INTEGRATION_ENV=")
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("env not gettable after 1 minute: %v", res))
-		cmd := T("app-run", "-a", "{{.app}}", "env")
+		cmd := T("app", "run", "-a", "{{.app}}", "env")
 		ok = retry(time.Minute, func() bool {
 			res = cmd.Run(env)
 			return strings.Contains(res.Stdout.String(), "INTEGRATION_ENV=TRUE")
@@ -645,7 +645,7 @@ func serviceBind() ExecFlow {
 		env.Add("bindnames", bindName)
 	}
 	flow.backward = func(c *check.C, env *Environment) {
-		res := T("service-instance-remove", "{{.servicename}}", bindName, "-f", "-y").Run(env)
+		res := T("service", "instance", "remove", "{{.servicename}}", bindName, "-f", "-y").Run(env)
 		c.Check(res, ResultOk)
 	}
 	return flow
