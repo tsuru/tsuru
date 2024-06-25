@@ -20,7 +20,7 @@ resources by setting the requires field.
 
 ## Running locally
 
-` $ make test-int`
+` $ make test-integration`
 
 ## Examples
 

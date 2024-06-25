@@ -110,7 +110,7 @@ main() {
   export TSURU_TARGET="http://127.0.0.1:${local_tsuru_api_port}"
   echo "123456" | ${TSURU} login admin@admin.com
 
-  PATH=$PATH:$PWD/bin make test-int
+  PATH=$PATH:$PWD/bin make test-minikube-integration
 
   [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
   [[ -n ${nginx_ingress_port_forward_pid} ]] && kill ${nginx_ingress_port_forward_pid}
