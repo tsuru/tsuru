@@ -234,7 +234,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	defer func() { evt.Done(err) }()
 	requestID := requestIDHeader(r)
-	return si.Update(srv, *si, evt, requestID)
+	return si.Update(ctx, srv, *si, evt, requestID)
 }
 
 // title: remove service instance
@@ -290,7 +290,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 				return instErr
 			}
 			fmt.Fprintf(evt, "Unbind app %q ...\n", app.GetName())
-			instErr = serviceInstance.UnbindApp(service.UnbindAppArgs{
+			instErr = serviceInstance.UnbindApp(ctx, service.UnbindAppArgs{
 				App:         app,
 				Restart:     true,
 				ForceRemove: false,
@@ -446,7 +446,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	var b string
 	requestID := requestIDHeader(r)
-	if b, err = serviceInstance.Status(requestID); err != nil {
+	if b, err = serviceInstance.Status(ctx, requestID); err != nil {
 		return errors.Wrap(err, "Could not retrieve status of service instance, error")
 	}
 	_, err = fmt.Fprintf(w, `Service instance "%s" is %s`, instanceName, b)
@@ -495,7 +495,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return permission.ErrUnauthorized
 	}
 	requestID := requestIDHeader(r)
-	info, err := serviceInstance.Info(requestID)
+	info, err := serviceInstance.Info(ctx, requestID)
 	if err != nil {
 		return err
 	}
@@ -544,7 +544,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var result []service.ServiceInstanceWithInfo
 	for _, instance := range instances {
-		infoData, err := instance.ToInfo()
+		infoData, err := instance.ToInfo(ctx)
 		if err != nil {
 			return err
 		}
@@ -813,7 +813,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	}
 	defer func() { evt.Done(err) }()
 	teamName := r.URL.Query().Get(":team")
-	return serviceInstance.Grant(teamName)
+	return serviceInstance.Grant(ctx, teamName)
 }
 
 // title: revoke access to service instance
@@ -852,7 +852,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	}
 	defer func() { evt.Done(err) }()
 	teamName := r.URL.Query().Get(":team")
-	return serviceInstance.Revoke(teamName)
+	return serviceInstance.Revoke(ctx, teamName)
 }
 
 func contextsForServiceInstance(si *service.ServiceInstance, serviceName string) []permTypes.PermissionContext {

@@ -655,7 +655,7 @@ func (s *S) TestRoleAssignValidateCtxServiceFound(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = service.Create(srv)
+	err = service.Create(context.TODO(), srv)
 	c.Assert(err, check.IsNil)
 	roleBody := bytes.NewBufferString(fmt.Sprintf("email=%s&context=%s", token.GetUserName(), serviceName))
 	req1, err := http.NewRequest(http.MethodPost, "/roles/test/user", roleBody)

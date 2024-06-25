@@ -31,7 +31,7 @@ func (s *S) createService(c *check.C) {
 		},
 		OwnerTeams: []string{"admin"},
 	}
-	err := Create(*s.service)
+	err := Create(context.TODO(), *s.service)
 	c.Assert(err, check.IsNil)
 }
 
@@ -146,7 +146,7 @@ func (s *S) TestCreateService(c *check.C) {
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err := Create(*service)
+	err := Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
 	se, err := Get(context.TODO(), service.Name)
 	c.Assert(err, check.IsNil)
@@ -158,7 +158,7 @@ func (s *S) TestCreateService(c *check.C) {
 
 	service.Name = "per-cluster-endpoing"
 	service.Endpoint = map[string]string{"my-cluster": "https://my.cluster"}
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.IsNil)
 	se, err = Get(context.TODO(), service.Name)
 	c.Assert(err, check.IsNil)
@@ -175,31 +175,31 @@ func (s *S) TestCreateServiceValidation(c *check.C) {
 		OwnerTeams: []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err := Create(*service)
+	err := Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Service id is required")
 	service.Name = "INVALID NAME"
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
 	service.Name = "a-very-loooooooooooong-name-41-characters"
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Invalid service id, should have at most 40 characters, containing only lower case letters, numbers or dashes, starting with a letter.")
 	service.Name = "servicename"
 	service.Password = ""
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Service password is required")
 	service.Password = "abcde"
 	service.Endpoint = nil
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "At least one endpoint is required")
 	service.Endpoint = endpt
 	service.OwnerTeams = []string{}
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "At least one service team owner is required")
 	service.OwnerTeams = []string{"unknown-team", s.team.Name}
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 	service.OwnerTeams = []string{s.team.Name, ""}
-	err = Create(*service)
+	err = Create(context.TODO(), *service)
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
@@ -386,10 +386,10 @@ func (s *S) TestUpdateService(c *check.C) {
 		Endpoint:   map[string]string{"production": "url"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	service.Doc = "doc"
-	err = Update(service)
+	err = Update(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
 	c.Assert(err, check.IsNil)
@@ -398,7 +398,7 @@ func (s *S) TestUpdateService(c *check.C) {
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *check.C) {
 	service := Service{Name: "something", Password: "abcde", Endpoint: map[string]string{"production": "url"}}
-	err := Update(service)
+	err := Update(context.TODO(), service)
 	c.Assert(err, check.NotNil)
 }
 
@@ -508,7 +508,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := Create(srvc)
+	err := Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	otherTeam := authTypes.Team{Name: "other-team"}
 	srvc2 := Service{
@@ -518,7 +518,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServices(c *check.C) {
 		Teams:      []string{s.team.Name},
 		Password:   "abcde",
 	}
-	err = Create(srvc2)
+	err = Create(context.TODO(), srvc2)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices(context.TODO(), []string{s.team.Name}, nil)
 	c.Assert(err, check.IsNil)
@@ -534,7 +534,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := Create(srvc)
+	err := Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	srvc2 := Service{
 		Name:       "mysql",
@@ -543,7 +543,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesWithServices(c *check.C) {
 		Password:   "abcde",
 		Endpoint:   map[string]string{"production": "url"},
 	}
-	err = Create(srvc2)
+	err = Create(context.TODO(), srvc2)
 	c.Assert(err, check.IsNil)
 	services, err := GetServicesByOwnerTeamsAndServices(context.TODO(), []string{s.team.Name}, []string{srvc2.Name})
 	c.Assert(err, check.IsNil)
@@ -564,7 +564,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 		Teams:      []string{},
 		Password:   "abcde",
 	}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	deletedService := Service{
 		Name:       "mongodb",
@@ -572,7 +572,7 @@ func (s *S) TestGetServicesByOwnerTeamsAndServicesShouldNotReturnsDeletedService
 		Password:   "abcde",
 		Endpoint:   map[string]string{"production": "url"},
 	}
-	err = Create(deletedService)
+	err = Create(context.TODO(), deletedService)
 	c.Assert(err, check.IsNil)
 	err = Delete(deletedService)
 	c.Assert(err, check.IsNil)

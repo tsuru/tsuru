@@ -70,8 +70,6 @@ type ServiceInstance struct {
 	// ForceRemove indicates whether service instance should be removed even the
 	// related call to service API fails.
 	ForceRemove bool `bson:"-" json:"-"`
-
-	ctx context.Context
 }
 
 type BrokerInstanceData struct {
@@ -143,8 +141,8 @@ type ServiceInstanceWithInfo struct {
 
 // ToInfo returns the service instance as a struct compatible with the return
 // of the service info api call.
-func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
-	info, err := si.Info("")
+func (si *ServiceInstance) ToInfo(ctx context.Context) (ServiceInstanceWithInfo, error) {
+	info, err := si.Info(ctx, "")
 	if err != nil {
 		info = nil
 	}
@@ -162,16 +160,16 @@ func (si *ServiceInstance) ToInfo() (ServiceInstanceWithInfo, error) {
 	}, nil
 }
 
-func (si *ServiceInstance) Info(requestID string) (map[string]string, error) {
-	s, err := Get(si.ctx, si.ServiceName)
+func (si *ServiceInstance) Info(ctx context.Context, requestID string) (map[string]string, error) {
+	s, err := Get(ctx, si.ServiceName)
 	if err != nil {
 		return nil, err
 	}
-	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
+	endpoint, err := s.getClientForPool(ctx, si.Pool)
 	if err != nil {
 		return nil, err
 	}
-	result, err := endpoint.Info(si.ctx, si, requestID)
+	result, err := endpoint.Info(ctx, si, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +199,8 @@ func (si *ServiceInstance) FindJob(jobName string) int {
 }
 
 // Update changes informations of the service instance.
-func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, evt *event.Event, requestID string) error {
-	err := validateServiceInstanceTeamOwner(updateData)
+func (si *ServiceInstance) Update(ctx context.Context, service Service, updateData ServiceInstance, evt *event.Event, requestID string) error {
+	err := validateServiceInstanceTeamOwner(ctx, updateData)
 	if err != nil {
 		return err
 	}
@@ -219,7 +217,7 @@ func (si *ServiceInstance) Update(service Service, updateData ServiceInstance, e
 	}
 	actions := []*action.Action{&updateServiceInstance, &notifyUpdateServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(si.ctx, service, *si, updateData, evt, requestID)
+	return pipeline.Execute(ctx, service, *si, updateData, evt, requestID)
 }
 
 func (si *ServiceInstance) updateData(update bson.M) error {
@@ -232,7 +230,7 @@ func (si *ServiceInstance) updateData(update bson.M) error {
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
+func (si *ServiceInstance) BindApp(ctx context.Context, app bind.App, params BindAppParameters, shouldRestart bool, writer io.Writer, evt *event.Event, requestID string) error {
 	args := bindAppPipelineArgs{
 		serviceInstance: si,
 		app:             app,
@@ -248,11 +246,11 @@ func (si *ServiceInstance) BindApp(app bind.App, params BindAppParameters, shoul
 		setBoundEnvsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(si.ctx, &args)
+	return pipeline.Execute(ctx, &args)
 }
 
 // BindJob makes the bind between the service instance and a job.
-func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *event.Event, requestID string) error {
+func (si *ServiceInstance) BindJob(ctx context.Context, job *jobTypes.Job, writer io.Writer, evt *event.Event, requestID string) error {
 	args := bindJobPipelineArgs{
 		serviceInstance: si,
 		job:             job,
@@ -267,7 +265,7 @@ func (si *ServiceInstance) BindJob(job *jobTypes.Job, writer io.Writer, evt *eve
 		reloadJobProvisioner,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(si.ctx, &args)
+	return pipeline.Execute(ctx, &args)
 }
 
 type UnbindJobArgs struct {
@@ -278,7 +276,7 @@ type UnbindJobArgs struct {
 }
 
 // UnbindJob makes the unbind between the service instance and a job.
-func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
+func (si *ServiceInstance) UnbindJob(ctx context.Context, unbindArgs UnbindJobArgs) error {
 	if si.FindJob(unbindArgs.Job.Name) == -1 {
 		return ErrJobNotBound
 	}
@@ -297,7 +295,7 @@ func (si *ServiceInstance) UnbindJob(unbindArgs UnbindJobArgs) error {
 		reloadJobProvisioner,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(si.ctx, &args)
+	return pipeline.Execute(ctx, &args)
 }
 
 type UnbindAppArgs struct {
@@ -309,7 +307,7 @@ type UnbindAppArgs struct {
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
+func (si *ServiceInstance) UnbindApp(ctx context.Context, unbindArgs UnbindAppArgs) error {
 	if si.FindApp(unbindArgs.App.GetName()) == -1 {
 		return ErrAppNotBound
 	}
@@ -328,35 +326,35 @@ func (si *ServiceInstance) UnbindApp(unbindArgs UnbindAppArgs) error {
 		&removeBoundEnvs,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(si.ctx, &args)
+	return pipeline.Execute(ctx, &args)
 }
 
 // Status returns the service instance status.
-func (si *ServiceInstance) Status(requestID string) (string, error) {
-	s, err := Get(si.ctx, si.ServiceName)
+func (si *ServiceInstance) Status(ctx context.Context, requestID string) (string, error) {
+	s, err := Get(ctx, si.ServiceName)
 	if err != nil {
 		return "", err
 	}
-	endpoint, err := s.getClientForPool(si.ctx, si.Pool)
+	endpoint, err := s.getClientForPool(ctx, si.Pool)
 	if err != nil {
 		return "", err
 	}
-	return endpoint.Status(si.ctx, si, requestID)
+	return endpoint.Status(ctx, si, requestID)
 }
 
-func (si *ServiceInstance) Grant(teamName string) error {
-	team, err := servicemanager.Team.FindByName(si.ctx, teamName)
+func (si *ServiceInstance) Grant(ctx context.Context, teamName string) error {
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		return err
 	}
 	return si.updateData(bson.M{"$push": bson.M{"teams": team.Name}})
 }
 
-func (si *ServiceInstance) Revoke(teamName string) error {
+func (si *ServiceInstance) Revoke(ctx context.Context, teamName string) error {
 	if teamName == si.TeamOwner {
 		return ErrRevokeInstanceTeamOwnerAccess
 	}
-	team, err := servicemanager.Team.FindByName(si.ctx, teamName)
+	team, err := servicemanager.Team.FindByName(ctx, teamName)
 	if err != nil {
 		return err
 	}
@@ -383,7 +381,7 @@ func validateServiceInstance(ctx context.Context, si ServiceInstance, s *Service
 	if err != nil {
 		return err
 	}
-	err = validateServiceInstanceTeamOwner(si)
+	err = validateServiceInstanceTeamOwner(ctx, si)
 	if err != nil {
 		return err
 	}
@@ -410,11 +408,11 @@ func validateServiceInstanceName(service, instance string) error {
 	return nil
 }
 
-func validateServiceInstanceTeamOwner(si ServiceInstance) error {
+func validateServiceInstanceTeamOwner(ctx context.Context, si ServiceInstance) error {
 	if si.TeamOwner == "" {
 		return ErrTeamMandatory
 	}
-	_, err := servicemanager.Team.FindByName(si.ctx, si.TeamOwner)
+	_, err := servicemanager.Team.FindByName(ctx, si.TeamOwner)
 	if err == authTypes.ErrTeamNotFound {
 		return fmt.Errorf("Team owner doesn't exist")
 	}
@@ -484,7 +482,6 @@ func GetServiceInstance(ctx context.Context, serviceName string, instanceName st
 	if err != nil {
 		return nil, ErrServiceInstanceNotFound
 	}
-	instance.ctx = ctx
 	return &instance, nil
 }
 

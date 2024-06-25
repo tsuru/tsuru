@@ -1242,7 +1242,7 @@ func (s *S) TestSuccessfulJobServiceInstanceBind(c *check.C) {
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1550,7 +1550,7 @@ func (s *S) TestJobServiceInstanceBindFailedToBindServiceInstanceToJob(c *check.
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	instance := service.ServiceInstance{
@@ -1611,7 +1611,7 @@ func (s *S) TestSuccessfulJobServiceInstanceUnbind(c *check.C) {
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1717,7 +1717,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbind(c *check.C) {
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -1814,7 +1814,7 @@ func (s *S) TestJobServiceInstanceUnbindWithSameInstanceName(c *check.C) {
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, srvc := range srvcs {
-		err = service.Create(srvc)
+		err = service.Create(context.TODO(), srvc)
 		c.Assert(err, check.IsNil)
 	}
 
@@ -2087,7 +2087,7 @@ func (s *S) TestSuccessfulForceJobServiceInstanceUnbindUnauthorized(c *check.C) 
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "fake-endpoint"}, Password: "secret", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{
@@ -2154,7 +2154,7 @@ func (s *S) TestJobServiceInstanceUnbindFailedToUnbindServiceInstanceFromJob(c *
 	defer ts.Close()
 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "secret", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc)
+	err = service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 
 	job := jobTypes.Job{

@@ -1551,9 +1551,9 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = instance.BindApp(a, req.Parameters, !req.NoRestart, evt, evt, requestIDHeader(r))
+	err = instance.BindApp(ctx, a, req.Parameters, !req.NoRestart, evt, evt, requestIDHeader(r))
 	if err != nil {
-		status, errStatus := instance.Status(requestIDHeader(r))
+		status, errStatus := instance.Status(ctx, requestIDHeader(r))
 		if errStatus != nil {
 			return fmt.Errorf("%v (failed to retrieve instance status: %v)", err, errStatus)
 		}
@@ -1647,7 +1647,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = instance.UnbindApp(service.UnbindAppArgs{
+	err = instance.UnbindApp(ctx, service.UnbindAppArgs{
 		App:         a,
 		Restart:     !noRestart,
 		ForceRemove: force,
