@@ -357,7 +357,7 @@ func (s *S) TestBindAppEndpointActionForwardReturnsEnvVars(c *check.C) {
 	}))
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -387,7 +387,7 @@ func (s *S) TestBindAppEndpointActionBackward(c *check.C) {
 	}))
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -691,7 +691,7 @@ func (s *S) TestBindJobEndpointActionForwardReturnsEnvVars(c *check.C) {
 		Password:   "s3cr3t",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{
@@ -729,7 +729,7 @@ func (s *S) TestBindJobEndpointActionBackward(c *check.C) {
 		Password:   "s3cr3t",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 
 	si := ServiceInstance{

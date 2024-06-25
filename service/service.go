@@ -39,8 +39,6 @@ type Service struct {
 	//
 	// This field is immutable (after creating Service).
 	IsMultiCluster bool `bson:"is_multi_cluster"`
-
-	ctx context.Context
 }
 
 type BindAppParameters map[string]interface{}
@@ -93,12 +91,11 @@ func Get(ctx context.Context, service string) (Service, error) {
 		}
 		return Service{}, err
 	}
-	s.ctx = ctx
 	return s, nil
 }
 
-func Create(s Service) error {
-	if err := s.validate(false); err != nil {
+func Create(ctx context.Context, s Service) error {
+	if err := s.validate(ctx, false); err != nil {
 		return err
 	}
 	conn, err := db.Conn()
@@ -116,8 +113,8 @@ func Create(s Service) error {
 	return conn.Services().Insert(s)
 }
 
-func Update(s Service) error {
-	if err := s.validate(true); err != nil {
+func Update(ctx context.Context, s Service) error {
+	if err := s.validate(ctx, true); err != nil {
 		return err
 	}
 	conn, err := db.Conn()
@@ -300,7 +297,7 @@ func (s *Service) getClient(endpoints ...string) (ServiceClient, error) {
 	return nil, err
 }
 
-func (s *Service) validate(skipName bool) (err error) {
+func (s *Service) validate(ctx context.Context, skipName bool) (err error) {
 	defer func() {
 		if err != nil {
 			err = &tsuruErrors.ValidationError{Message: err.Error()}
@@ -323,14 +320,14 @@ func (s *Service) validate(skipName bool) (err error) {
 	if len(s.Endpoint) == 0 {
 		return fmt.Errorf("At least one endpoint is required")
 	}
-	return s.validateOwnerTeams()
+	return s.validateOwnerTeams(ctx)
 }
 
-func (s *Service) validateOwnerTeams() error {
+func (s *Service) validateOwnerTeams(ctx context.Context) error {
 	if len(s.OwnerTeams) == 0 {
 		return fmt.Errorf("At least one service team owner is required")
 	}
-	teams, err := servicemanager.Team.FindByNames(s.ctx, s.OwnerTeams)
+	teams, err := servicemanager.Team.FindByNames(ctx, s.OwnerTeams)
 	if err != nil {
 		return nil
 	}

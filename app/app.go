@@ -634,7 +634,7 @@ func processTags(tags []string) []string {
 // unbind takes all service instances that are bound to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
-func (app *App) unbind(evt *event.Event, requestID string) error {
+func (app *App) unbind(ctx context.Context, evt *event.Event, requestID string) error {
 	instances, err := service.GetServiceInstancesBoundToApp(app.Name)
 	if err != nil {
 		return err
@@ -647,7 +647,7 @@ func (app *App) unbind(evt *event.Event, requestID string) error {
 		msg += fmt.Sprintf("- %s (%s)", instanceName, reason.Error())
 	}
 	for _, instance := range instances {
-		err = instance.UnbindApp(service.UnbindAppArgs{
+		err = instance.UnbindApp(ctx, service.UnbindAppArgs{
 			App:         app,
 			Restart:     false,
 			ForceRemove: true,
@@ -721,7 +721,7 @@ func Delete(ctx context.Context, app *App, evt *event.Event, requestID string) e
 	if err != nil {
 		log.Errorf("failed to remove image names from storage for app %s: %s", appName, err)
 	}
-	err = app.unbind(evt, requestID)
+	err = app.unbind(ctx, evt, requestID)
 	if err != nil {
 		logErr("Unable to unbind app", err)
 	}

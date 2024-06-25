@@ -4913,7 +4913,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 
 func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "http://localhost:1234"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -4963,7 +4963,7 @@ func (s *S) TestBindHandler(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -5031,7 +5031,7 @@ func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -5091,7 +5091,7 @@ func (s *S) TestBindHandlerErrorShowsStatusMessage(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -5248,7 +5248,7 @@ func (s *S) TestBindWithManyInstanceNameWithSameNameAndNoRestartFlag(c *check.C)
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, srvc := range srvcs {
-		err := service.Create(srvc)
+		err := service.Create(context.TODO(), srvc)
 		c.Assert(err, check.IsNil)
 	}
 	instance := service.ServiceInstance{
@@ -5330,7 +5330,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5424,7 +5424,7 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5518,7 +5518,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5605,7 +5605,7 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 func (s *S) TestUnbindForceFlagUnauthorized(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "myendpoint"}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:      "painkiller",
@@ -5654,7 +5654,7 @@ func (s *S) TestUnbindWithSameInstanceName(c *check.C) {
 		{Name: "mysql2", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}},
 	}
 	for _, srvc := range srvcs {
-		err := service.Create(srvc)
+		err := service.Create(context.TODO(), srvc)
 		c.Assert(err, check.IsNil)
 	}
 	a := app.App{

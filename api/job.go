@@ -601,9 +601,9 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	}
 	defer func() { evt.Done(err) }()
 
-	err = instance.BindJob(j, evt, evt, requestIDHeader(r))
+	err = instance.BindJob(ctx, j, evt, evt, requestIDHeader(r))
 	if err != nil {
-		status, errStatus := instance.Status(requestIDHeader(r))
+		status, errStatus := instance.Status(ctx, requestIDHeader(r))
 		if errStatus != nil {
 			return fmt.Errorf("%v (failed to retrieve instance status: %v)", err, errStatus)
 		}
@@ -685,7 +685,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt.SetLogWriter(writer)
-	err = instance.UnbindJob(service.UnbindJobArgs{
+	err = instance.UnbindJob(ctx, service.UnbindJobArgs{
 		Job:         j,
 		ForceRemove: force,
 		Event:       evt,

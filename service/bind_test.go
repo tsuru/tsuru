@@ -111,7 +111,7 @@ func createEvt(c *check.C) *event.Event {
 
 func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": "wrong"}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -123,7 +123,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, nil, true, nil, evt, "")
+	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.NotNil)
 }
 
@@ -133,7 +133,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -145,7 +145,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *check.C) {
 	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, nil, true, nil, evt, "")
+	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(instance.Apps, check.DeepEquals, []string{a.GetName()})
@@ -162,10 +162,10 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc1 := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc1)
+	err := service.Create(context.TODO(), srvc1)
 	c.Assert(err, check.IsNil)
 	srvc2 := service.Service{Name: "postgres", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err = service.Create(srvc2)
+	err = service.Create(context.TODO(), srvc2)
 	c.Assert(err, check.IsNil)
 	instance1 := service.ServiceInstance{
 		Name:        "my-db",
@@ -185,9 +185,9 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance1.BindApp(a, nil, true, nil, evt, "")
+	err = instance1.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
-	err = instance2.BindApp(a, nil, true, nil, evt, "")
+	err = instance2.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["SRV1"], check.DeepEquals, bindTypes.EnvVar{
@@ -204,7 +204,7 @@ func (s *BindSuite) TestBindUnbindAppDuplicatedInstanceNames(c *check.C) {
 	})
 	dbI1, err := service.GetServiceInstance(context.TODO(), instance1.ServiceName, instance1.Name)
 	c.Assert(err, check.IsNil)
-	err = dbI1.UnbindApp(service.UnbindAppArgs{
+	err = dbI1.UnbindApp(context.TODO(), service.UnbindAppArgs{
 		App:     a,
 		Restart: true,
 		Event:   evt,
@@ -225,7 +225,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	srvc := service.Service{Name: "mysql", Password: "s3cr3t", Endpoint: map[string]string{"production": ts.URL}, OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -242,7 +242,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 	err = a.AddUnits(context.TODO(), 1, "", "", nil)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, nil, true, nil, evt, "")
+	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.Equals, service.ErrAppAlreadyBound)
 }
 
@@ -252,7 +252,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -261,7 +261,7 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.BindApp(a, nil, true, nil, evt, "")
+	err = instance.BindApp(context.TODO(), a, nil, true, nil, evt, "")
 	c.Assert(err, check.IsNil)
 	envs := a.Envs()
 	c.Assert(envs["DATABASE_USER"], check.DeepEquals, bindTypes.EnvVar{
@@ -284,7 +284,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -305,7 +305,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(service.UnbindAppArgs{
+	err = instance.UnbindApp(context.TODO(), service.UnbindAppArgs{
 		App:     a,
 		Restart: true,
 		Event:   evt,
@@ -321,7 +321,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(instance)
@@ -330,7 +330,7 @@ func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheIn
 	err = app.CreateApp(context.TODO(), a, &s.user)
 	c.Assert(err, check.IsNil)
 	evt := createEvt(c)
-	err = instance.UnbindApp(service.UnbindAppArgs{
+	err = instance.UnbindApp(context.TODO(), service.UnbindAppArgs{
 		App:     a,
 		Restart: true,
 		Event:   evt,

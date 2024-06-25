@@ -88,7 +88,7 @@ func (s *InstanceSuite) TestDeleteServiceInstance(c *check.C) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer ts.Close()
-	err := Create(Service{
+	err := Create(context.TODO(), Service{
 		Name:       "mongodb",
 		Password:   "password",
 		OwnerTeams: []string{"raul"},
@@ -113,7 +113,7 @@ func (s *InstanceSuite) TestDeleteServiceInstanceWithForceRemoveEnabled(c *check
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer ts.Close()
-	err := Create(Service{
+	err := Create(context.TODO(), Service{
 		Name:       "mongodb",
 		Password:   "password",
 		OwnerTeams: []string{"raul"},
@@ -178,7 +178,7 @@ func (s *InstanceSuite) TestBindApp(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err := si.BindApp(a, nil, true, &buf, evt, "")
+	err := si.BindApp(context.TODO(), a, nil, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	expectedCalls := []string{
 		"bindAppDBAction", "bindAppEndpointAction",
@@ -352,7 +352,7 @@ func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
-	info, err := si.Info("")
+	info, err := si.Info(context.TODO(), "")
 	c.Assert(err, check.IsNil)
 	expected := map[string]string{
 		"key":  "value",
@@ -370,7 +370,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSON(c *check.C) {
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
-	info, err := si.ToInfo()
+	info, err := si.ToInfo(context.TODO())
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
@@ -397,7 +397,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutInfo(c *check.C
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
-	info, err := si.ToInfo()
+	info, err := si.ToInfo(context.TODO())
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
@@ -424,7 +424,7 @@ func (s *InstanceSuite) TestServiceInstanceInfoMarshalJSONWithoutEndpoint(c *che
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "ql", ServiceName: srvc.Name}
-	info, err := si.ToInfo()
+	info, err := si.ToInfo(context.TODO())
 	c.Assert(err, check.IsNil)
 	data, err := json.Marshal(info)
 	c.Assert(err, check.IsNil)
@@ -857,7 +857,7 @@ func (s *InstanceSuite) TestUpdateServiceInstance(c *check.C) {
 	si.Tags = []string{"tag2"}
 	si.TeamOwner = newTeam.Name
 	evt := createEvt(c)
-	err = instance.Update(srv, si, evt, "")
+	err = instance.Update(context.TODO(), srv, si, evt, "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
@@ -884,7 +884,7 @@ func (s *InstanceSuite) TestUpdateServiceInstanceValidatesTeamOwner(c *check.C) 
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).One(&si)
 	c.Assert(err, check.IsNil)
 	si.TeamOwner = "unknown"
-	err = instance.Update(srv, si, evt, "")
+	err = instance.Update(context.TODO(), srv, si, evt, "")
 	c.Assert(err, check.ErrorMatches, "Team owner doesn't exist")
 }
 
@@ -903,7 +903,7 @@ func (s *InstanceSuite) TestUpdateServiceInstanceRemovesDuplicatedAndEmptyTags(c
 	c.Assert(err, check.IsNil)
 	instance.Tags = []string{"tag2", " ", " tag2 "}
 	evt := createEvt(c)
-	err = instance.Update(srv, instance, evt, "")
+	err = instance.Update(context.TODO(), srv, instance, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), check.Equals, int32(1))
 	var si ServiceInstance
@@ -921,7 +921,7 @@ func (s *InstanceSuite) TestStatus(c *check.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
-	status, err := si.Status("")
+	status, err := si.Status(context.TODO(), "")
 	c.Assert(err, check.IsNil)
 	c.Assert(status, check.Equals, "up")
 }
@@ -974,7 +974,7 @@ func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
-	sInstance.Grant(team.Name)
+	sInstance.Grant(context.TODO(), team.Name)
 	si, err := GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
@@ -1002,7 +1002,7 @@ func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
 	si, err := GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
-	sInstance.Revoke(team.Name)
+	sInstance.Revoke(context.TODO(), team.Name)
 	si, err = GetServiceInstance(context.TODO(), "mysql", "j4sql")
 	c.Assert(err, check.IsNil)
 	c.Assert(si.Teams, check.DeepEquals, []string{})
@@ -1028,7 +1028,7 @@ func (s *InstanceSuite) TestRevokeTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	si, err := GetServiceInstance(context.TODO(), "service-one", "instance-one")
 	c.Assert(err, check.IsNil)
-	err = si.Revoke(team.Name)
+	err = si.Revoke(context.TODO(), team.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "cannot revoke the instance's team owner access")
 }
@@ -1044,7 +1044,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -1066,7 +1066,7 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
-	err = si.UnbindApp(UnbindAppArgs{
+	err = si.UnbindApp(context.TODO(), UnbindAppArgs{
 		App:   a,
 		Event: evt,
 	})
@@ -1097,7 +1097,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -1119,7 +1119,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
-	err = si.UnbindApp(UnbindAppArgs{
+	err = si.UnbindApp(context.TODO(), UnbindAppArgs{
 		App:     a,
 		Restart: true,
 		Event:   evt,
@@ -1155,7 +1155,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -1177,7 +1177,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCallWithForce(c *check.C)
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
-	err = si.UnbindApp(UnbindAppArgs{
+	err = si.UnbindApp(context.TODO(), UnbindAppArgs{
 		App:         a,
 		Restart:     true,
 		ForceRemove: true,
@@ -1205,7 +1205,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	si := ServiceInstance{
@@ -1219,7 +1219,7 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	var buf bytes.Buffer
 	evt := createEvt(c)
 	evt.SetLogWriter(&buf)
-	err = si.UnbindApp(UnbindAppArgs{
+	err = si.UnbindApp(context.TODO(), UnbindAppArgs{
 		App:     a,
 		Restart: true,
 		Event:   evt,
@@ -1251,7 +1251,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -1263,7 +1263,7 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 	a := provisiontest.NewFakeApp("myapp", "static", 2)
 	var buf bytes.Buffer
 	evt := createEvt(c)
-	err = si.BindApp(a, nil, true, &buf, evt, "")
+	err = si.BindApp(context.TODO(), a, nil, true, &buf, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "add instance")
 	c.Assert(reqs, check.HasLen, 1)
@@ -1294,7 +1294,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -1317,7 +1317,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 		go func(app bind.App) {
 			defer wg.Done()
 			var buf bytes.Buffer
-			bindErr := si.BindApp(app, nil, true, &buf, evt, "")
+			bindErr := si.BindApp(context.TODO(), app, nil, true, &buf, evt, "")
 			c.Assert(bindErr, check.IsNil)
 		}(app)
 	}
@@ -1345,7 +1345,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	}))
 	defer ts.Close()
 	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "s3cr3t", OwnerTeams: []string{s.team.Name}}
-	err := Create(serv)
+	err := Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	si := ServiceInstance{
 		Name:        "my-mysql",
@@ -1361,7 +1361,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
 		var buf bytes.Buffer
-		err = si.BindApp(app, nil, true, &buf, evt, "")
+		err = si.BindApp(context.TODO(), app, nil, true, &buf, evt, "")
 		c.Assert(err, check.IsNil)
 	}
 	siDB, err := GetServiceInstance(context.TODO(), si.ServiceName, si.Name)
@@ -1371,7 +1371,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		wg.Add(1)
 		go func(app bind.App) {
 			defer wg.Done()
-			unbindErr := siDB.UnbindApp(UnbindAppArgs{
+			unbindErr := siDB.UnbindApp(context.TODO(), UnbindAppArgs{
 				App:   app,
 				Event: evt,
 			})
@@ -1421,7 +1421,7 @@ func (s *S) TestProxyInstance(c *check.C) {
 		Password:   "abcde",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err := Create(service)
+	err := Create(context.TODO(), service)
 	c.Assert(err, check.IsNil)
 	sInstance := ServiceInstance{Name: "noflow", ServiceName: "tensorflow", Teams: []string{s.team.Name}}
 	err = s.conn.ServiceInstances().Insert(&sInstance)

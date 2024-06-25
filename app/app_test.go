@@ -834,7 +834,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
-	err := service.Create(srvc)
+	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "chemistry",
@@ -2965,7 +2965,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = service.Create(service1)
+	err = service.Create(context.TODO(), service1)
 	c.Assert(err, check.IsNil)
 	instance1 := service.ServiceInstance{
 		ServiceName: service1.Name,
@@ -2991,7 +2991,7 @@ func (s *S) TestAppMarshalJSONServiceInstanceBinds(c *check.C) {
 		Endpoint:   map[string]string{"production": "http://localhost:1234"},
 		Password:   "abcde",
 	}
-	err = service.Create(service2)
+	err = service.Create(context.TODO(), service2)
 	c.Assert(err, check.IsNil)
 	instance3 := service.ServiceInstance{
 		ServiceName: service2.Name,
@@ -4463,7 +4463,7 @@ func (s *S) TestValidateAppService(c *check.C) {
 		Endpoint:   map[string]string{"production": "somehost.com"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = service.Create(serv)
+	err = service.Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(context.TODO(), serv.Name)
 	c.Assert(err, check.IsNil)
@@ -4482,7 +4482,7 @@ func (s *S) TestValidateBlacklistedAppService(c *check.C) {
 		Endpoint:   map[string]string{"production": "somehost.com"},
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = service.Create(serv)
+	err = service.Create(context.TODO(), serv)
 	c.Assert(err, check.IsNil)
 	err = app.ValidateService(context.TODO(), serv.Name)
 	c.Assert(err, check.IsNil)
@@ -5805,7 +5805,7 @@ func (s *S) TestUpdateAppPoolWithInvalidConstraint(c *check.C) {
 		Password:   "abcde",
 		OwnerTeams: []string{s.team.Name},
 	}
-	err = service.Create(svc)
+	err = service.Create(context.TODO(), svc)
 	c.Assert(err, check.IsNil)
 	si1 := service.ServiceInstance{
 		Name:        "mydb",

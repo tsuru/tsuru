@@ -115,6 +115,7 @@ func parseService(r *http.Request) (service.Service, error) {
 //	401: Unauthorized
 //	409: Service already exists
 func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	s, err := parseService(r)
 	if err != nil {
 		return err
@@ -153,7 +154,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = service.Create(s)
+	err = service.Create(ctx, s)
 	if err != nil {
 		if err == service.ErrServiceAlreadyExists {
 			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -213,7 +214,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if len(d.OwnerTeams) != 0 {
 		s.OwnerTeams = d.OwnerTeams
 	}
-	return service.Update(s)
+	return service.Update(ctx, s)
 }
 
 // title: service delete
@@ -389,7 +390,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return service.Update(s)
+	return service.Update(ctx, s)
 }
 
 // title: revoke access to a service
@@ -443,7 +444,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	return service.Update(s)
+	return service.Update(ctx, s)
 }
 
 // title: change service documentation
@@ -481,7 +482,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return service.Update(s)
+	return service.Update(ctx, s)
 }
 
 func getService(ctx context.Context, name string) (service.Service, error) {
