@@ -557,10 +557,13 @@ func serviceCreate() ExecFlow {
 			return count > 0
 		})
 		c.Assert(ok, check.Equals, true, check.Commentf("app not ready after 5 minutes: %v", res))
-		addrRE := regexp.MustCompile(`(?s)External Addresses: (.*?)\n`)
-		parts := addrRE.FindStringSubmatch(res.Stdout.String())
-		c.Assert(parts, check.HasLen, 2)
-		cmd := NewCommand("curl", "-sS", "-o", "/dev/null", "--write-out", "%{http_code}", "http://"+parts[1])
+
+		c.Assert(appInfo.Routers, check.HasLen, 1)
+		c.Assert(appInfo.Routers[0].Address, check.HasLen, 1)
+
+		address := appInfo.Routers[0].Addresses[0]
+
+		cmd := NewCommand("curl", "-sS", "-o", "/dev/null", "--write-out", "%{http_code}", "http://"+address)
 		ok = retry(15*time.Minute, func() bool {
 			res = cmd.Run(env)
 			code, _ := strconv.Atoi(res.Stdout.String())
