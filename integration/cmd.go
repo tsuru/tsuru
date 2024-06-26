@@ -62,6 +62,7 @@ type Command struct {
 	Args     []string
 	Input    string
 	Timeout  time.Duration
+	PWD      string
 	NoExpand bool
 }
 
@@ -291,6 +292,12 @@ func (c *Command) WithArgs(args ...string) *Command {
 	return &c2
 }
 
+func (c *Command) WithPWD(pwd string) *Command {
+	c2 := *c
+	c2.PWD = pwd
+	return &c2
+}
+
 func (c *Command) WithInput(input string) *Command {
 	c2 := *c
 	c2.Input = input
@@ -348,6 +355,11 @@ func (c *Command) Run(e *Environment) *Result {
 		}
 	}
 	execCmd := exec.Command(c.Command, args...)
+
+	if c.PWD != "" {
+		execCmd.Dir = c.PWD
+	}
+
 	execCmd.Stdin = strings.NewReader(input)
 	var stdout, stderr io.Writer
 	stdout = &res.Stdout

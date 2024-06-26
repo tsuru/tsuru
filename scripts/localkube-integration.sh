@@ -28,9 +28,11 @@ function onerror() {
   ${KUBECTL} get pods -A
   echo
   ${KUBECTL} get services -A
-  [[ -n ${kubectl_port_forward_pid} ]] && kill ${kubectl_port_forward_pid}
+  [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
+  [[ -n ${nginx_ingress_port_forward_pid} ]] && kill ${nginx_ingress_port_forward_pid}
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}
   set +e
+  exit 1
 }
 
 install_tsuru_stack() {
@@ -93,8 +95,12 @@ main() {
   sleep 30
 
   local_tsuru_api_port=8080
-  ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
-  kubectl_port_forward_pid=${!}
+  DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-api ${local_tsuru_api_port}:80 --address=127.0.0.1 &
+  tsuru_api_port_forward_pid=${!}
+
+  local_nginx_ingress_port=8890
+  DEBUG="" ${KUBECTL} -n ${NAMESPACE} port-forward svc/tsuru-ingress-nginx-controller ${local_nginx_ingress_port}:80 --address=127.0.0.1 &
+  nginx_ingress_port_forward_pid=${!}
 
   set_initial_admin_password 
 
@@ -104,9 +110,10 @@ main() {
   export TSURU_TARGET="http://127.0.0.1:${local_tsuru_api_port}"
   echo "123456" | ${TSURU} login admin@admin.com
 
-  PATH=$PATH:$PWD/bin make test-int
+  PATH=$PATH:$PWD/bin make test-ci-integration
 
-  [[ -n ${kubectl_port_forward_pid} ]] && kill ${kubectl_port_forward_pid}
+  [[ -n ${tsuru_api_port_forward_pid} ]] && kill ${tsuru_api_port_forward_pid}
+  [[ -n ${nginx_ingress_port_forward_pid} ]] && kill ${nginx_ingress_port_forward_pid}
   [[ -n ${minikube_tunnel_pid} ]] && kill ${minikube_tunnel_pid}
 }
 
