@@ -176,7 +176,7 @@ func (id Target) String() string {
 // access to its public fields. (They have to be public for database
 // serializing).
 type eventData struct {
-	ID              primitive.ObjectID `bson:"_id"`
+	ID              primitive.ObjectID `json:"-" bson:"_id"`
 	UniqueID        primitive.ObjectID
 	Lock            *Target `bson:"lock,omitempty"`
 	StartTime       time.Time
