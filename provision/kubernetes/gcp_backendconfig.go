@@ -78,6 +78,11 @@ func backendConfigFromHC(ctx context.Context, app provision.App, process string,
 	if hc.Path == "" {
 		hc.Path = "/"
 	}
+
+	if !strings.HasPrefix(hc.Path, "/") {
+		hc.Path = "/" + hc.Path
+	}
+
 	intervalSec := int64PointerFromInt(hc.IntervalSeconds)
 	timeoutSec := int64PointerFromInt(hc.TimeoutSeconds)
 	if *timeoutSec >= *intervalSec {

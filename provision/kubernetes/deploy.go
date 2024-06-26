@@ -331,8 +331,13 @@ func probesFromHC(hc *provTypes.TsuruYamlHealthcheck, port int) (hcResult, error
 		ProbeHandler:     apiv1.ProbeHandler{},
 	}
 	if hc.Path != "" {
+		path := hc.Path
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+
 		probe.ProbeHandler.HTTPGet = &apiv1.HTTPGetAction{
-			Path:        hc.Path,
+			Path:        path,
 			Port:        intstr.FromInt(port),
 			Scheme:      apiv1.URIScheme(hc.Scheme),
 			HTTPHeaders: headers,
