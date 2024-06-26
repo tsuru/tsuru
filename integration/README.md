@@ -22,11 +22,7 @@ resources by setting the requires field.
 
 ` $ make test-integration`
 
-## Examples
 
-- Amazon Web Services - https://github.com/tsuru/integration_ec2
-- Google Cloud Engine - https://github.com/tsuru/integration_gce
-- Local -	https://github.com/tsuru/tsuru/blob/main/Makefile#L138
 
 ## Environment Variables
 
@@ -39,10 +35,6 @@ TSURU_INTEGRATION_.
 - maxconcurrency - test concurrency
 - verbose - test verbosity
 - examplesdir - path to the platforms examples
-- nodeopts - Additional options passed to node creation.
-- installername - Name of the installation to be created.
-- provisioners - List of provisioners to test. Defaults to docker.
-- clusters - List of cluster providers. Available values are gke, eks, aks, kubectl and minikube.
 - platforms - List of platforms to test. Defaults to all platforms available on https://github.com/tsuru/platforms
 
 ### Flow control
@@ -57,10 +49,3 @@ TSURU_INTEGRATION_.
 - serviceimage
 - servicename
 
-### Cluster configuration
-
-#### gke
-
-- GCE_ZONE - the [GCE zone](https://cloud.google.com/compute/docs/regions-zones/regions-zones) where you want the Tsuru instance to be created
-- GCE_PROJECT_ID - ID for a project created in GCE
-- GCE_MACHINE_TYPE - Machine type to be used for the kubernetes cluster master
