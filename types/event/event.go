@@ -46,7 +46,7 @@ type EventInfo struct {
 	EventData
 
 	// StartCustomData, EndCustomData and OtherCustomData are legacy fields that will be deprecated on the future
-	// just use for compability reasons
+	// just use for compatibility reasons
 	StartCustomData LegacyBSONRaw `bson:",omitempty"`
 	EndCustomData   LegacyBSONRaw `bson:",omitempty"`
 	OtherCustomData LegacyBSONRaw `bson:",omitempty"`

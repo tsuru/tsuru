@@ -1649,13 +1649,50 @@ func (s *S) TestEventInfo(c *check.C) {
 	customData = struct{ A string }{A: "other"}
 	err = evt.DoneCustomData(context.TODO(), nil, customData)
 	c.Assert(err, check.IsNil)
+
+	evt, err = GetByHexID(context.TODO(), evt.UniqueID.Hex())
+	c.Assert(err, check.IsNil)
+
 	evtInfo, err := EventInfo(evt)
 	c.Assert(err, check.IsNil)
 
-	c.Assert(evtInfo.StartCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
-	c.Assert(evtInfo.EndCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
+	c.Assert(evtInfo.StartCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{Kind: 0x3, Data: []uint8{0x12, 0x0, 0x0, 0x0, 0x2, 0x61, 0x0, 0x6, 0x0, 0x0, 0x0, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x0, 0x0}})
+	c.Assert(evtInfo.EndCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{Kind: 0x3, Data: []uint8{0x12, 0x0, 0x0, 0x0, 0x2, 0x61, 0x0, 0x6, 0x0, 0x0, 0x0, 0x6f, 0x74, 0x68, 0x65, 0x72, 0x0, 0x0}})
 	c.Assert(evtInfo.OtherCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
 
-	c.Assert(evtInfo.CustomData, check.DeepEquals, eventTypes.EventInfoCustomData{})
+	c.Assert(evtInfo.CustomData, check.DeepEquals, eventTypes.EventInfoCustomData{
+		Start: map[string]interface{}{
+			"a": "value",
+		},
+		End: map[string]interface{}{
+			"a": "other",
+		},
+	})
+}
 
+func (s *S) TestEventInfoWithGenericCustomData(c *check.C) {
+	evt, err := New(context.TODO(), &Opts{
+		Target:     eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: "start",
+		Allowed:    Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
+
+	err = evt.DoneCustomData(context.TODO(), nil, "end")
+	c.Assert(err, check.IsNil)
+	evtInfo, err := EventInfo(evt)
+	c.Assert(err, check.IsNil)
+
+	c.Assert(evtInfo.StartCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{Kind: 0x2, Data: []uint8{0x6, 0x0, 0x0, 0x0, 0x73, 0x74, 0x61, 0x72, 0x74, 0x0}})
+	c.Assert(evtInfo.EndCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{Kind: 0x2, Data: []uint8{0x4, 0x0, 0x0, 0x0, 0x65, 0x6e, 0x64, 0x0}})
+	c.Assert(evtInfo.OtherCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
+
+	c.Assert(evtInfo.CustomData, check.DeepEquals, eventTypes.EventInfoCustomData{
+		Start: "start",
+		End:   "end",
+	})
 }

@@ -545,7 +545,13 @@ func bsonToNative(raw mongoBSON.RawValue) (any, error) {
 		return data, nil
 	}
 
-	return nil, fmt.Errorf("Not implemented bson to native when type is %d", raw.Type)
+	var genericData any
+	err := raw.Unmarshal(&genericData)
+	if err != nil {
+		return nil, err
+	}
+
+	return genericData, nil
 }
 
 func All(ctx context.Context) ([]*Event, error) {
