@@ -118,7 +118,13 @@ func eventInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(e)
+
+	eventInfo, err := event.EventInfo(e)
+	if err != nil {
+		return err
+	}
+
+	return json.NewEncoder(w).Encode(eventInfo)
 }
 
 // title: event cancel

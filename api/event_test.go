@@ -30,6 +30,8 @@ import (
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -448,14 +450,20 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
 		c.Assert(recorder.Body.String(), check.Equals, "")
 	}
-	var result event.Event
+	var result eventTypes.EventInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
 
 	deployOptions := &app.DeployOptions{}
-	err = result.StartCustomData.Unmarshal(deployOptions)
+
+	mongoRaw := mongoBSON.RawValue{
+		Type:  bsontype.Type(result.StartCustomData.Kind),
+		Value: result.StartCustomData.Data,
+	}
+
+	err = mongoRaw.Unmarshal(deployOptions)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
@@ -493,15 +501,8 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(results, check.HasLen, 1)
 	deployOptions = &app.DeployOptions{}
 
-	err = results[0].StartCustomData.Unmarshal(deployOptions)
-	c.Assert(err, check.IsNil)
-	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
-		"MY_PASSWORD": {
-			Name:   "MY_PASSWORD",
-			Value:  "*** (private variable)",
-			Alias:  "",
-			Public: false,
-		}})
+	// On list StartCustomData, EndCustomData and OtherCustomData is empty for performance reasons
+	c.Assert(results[0].StartCustomData, check.DeepEquals, mongoBSON.RawValue{})
 
 }
 

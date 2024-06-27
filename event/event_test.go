@@ -1628,3 +1628,34 @@ func (s *S) TestEventCancelableContextNotCanceled(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].CancelInfo, check.DeepEquals, eventTypes.CancelInfo{})
 }
+
+func (s *S) TestEventInfo(c *check.C) {
+	customData := struct{ A string }{A: "value"}
+	evt, err := New(context.TODO(), &Opts{
+		Target:     eventTypes.Target{Type: "app", Value: "myapp"},
+		Kind:       permission.PermAppUpdateEnvSet,
+		Owner:      s.token,
+		CustomData: customData,
+		Allowed:    Allowed(permission.PermAppReadEvents),
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(evt.StartTime.IsZero(), check.Equals, false)
+	c.Assert(evt.LockUpdateTime.IsZero(), check.Equals, false)
+	var resultData struct{ A string }
+	err = evt.StartData(&resultData)
+	c.Assert(err, check.IsNil)
+	c.Assert(resultData, check.DeepEquals, customData)
+
+	customData = struct{ A string }{A: "other"}
+	err = evt.DoneCustomData(context.TODO(), nil, customData)
+	c.Assert(err, check.IsNil)
+	evtInfo, err := EventInfo(evt)
+	c.Assert(err, check.IsNil)
+
+	c.Assert(evtInfo.StartCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
+	c.Assert(evtInfo.EndCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
+	c.Assert(evtInfo.OtherCustomData, check.DeepEquals, eventTypes.LegacyBSONRaw{})
+
+	c.Assert(evtInfo.CustomData, check.DeepEquals, eventTypes.EventInfoCustomData{})
+
+}

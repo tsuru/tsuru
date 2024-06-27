@@ -28,6 +28,7 @@ import (
 	eventTypes "github.com/tsuru/tsuru/types/event"
 
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	"go.mongodb.org/mongo-driver/bson"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -478,6 +479,73 @@ func GetByID(ctx context.Context, id primitive.ObjectID) (*Event, error) {
 	}
 	evt := transformEvent(evtData)
 	return evt, nil
+}
+
+func EventInfo(event *Event) (*eventTypes.EventInfo, error) {
+	startCustomData, err := bsonToNative(event.StartCustomData)
+	if err != nil {
+		return nil, err
+	}
+
+	endCustomData, err := bsonToNative(event.EndCustomData)
+	if err != nil {
+		return nil, err
+	}
+
+	otherCustomData, err := bsonToNative(event.OtherCustomData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &eventTypes.EventInfo{
+		EventData: event.EventData,
+		StartCustomData: eventTypes.LegacyBSONRaw{
+			Kind: byte(event.StartCustomData.Type),
+			Data: event.EventData.StartCustomData.Value,
+		},
+		EndCustomData: eventTypes.LegacyBSONRaw{
+			Kind: byte(event.EndCustomData.Type),
+			Data: event.EventData.EndCustomData.Value,
+		},
+		OtherCustomData: eventTypes.LegacyBSONRaw{
+			Kind: byte(event.OtherCustomData.Type),
+			Data: event.EventData.OtherCustomData.Value,
+		},
+		CustomData: eventTypes.EventInfoCustomData{
+			Start: startCustomData,
+			End:   endCustomData,
+			Other: otherCustomData,
+		},
+	}, nil
+}
+
+func bsonToNative(raw mongoBSON.RawValue) (any, error) {
+	if raw.Type == 0 {
+		return nil, nil
+	}
+	if raw.Type == bson.TypeEmbeddedDocument {
+		data := map[string]any{}
+
+		err := raw.Unmarshal(&data)
+		if err != nil {
+			return nil, err
+		}
+
+		return data, nil
+	}
+
+	if raw.Type == bson.TypeArray {
+		data := []map[string]any{}
+
+		err := raw.Unmarshal(&data)
+		if err != nil {
+			return nil, err
+		}
+
+		return data, nil
+	}
+
+	return nil, fmt.Errorf("Not implemented bson to native when type is %d", raw.Type)
 }
 
 func All(ctx context.Context) ([]*Event, error) {

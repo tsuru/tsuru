@@ -24,9 +24,9 @@ type EventData struct {
 	ExpireAt        time.Time          `bson:",omitempty"`
 	Target          Target             `bson:",omitempty"`
 	ExtraTargets    []ExtraTarget      `bson:",omitempty"`
-	StartCustomData mongoBSON.RawValue `bson:",omitempty"`
-	EndCustomData   mongoBSON.RawValue `bson:",omitempty"`
-	OtherCustomData mongoBSON.RawValue `bson:",omitempty"`
+	StartCustomData mongoBSON.RawValue `json:"-" bson:",omitempty"`
+	EndCustomData   mongoBSON.RawValue `json:"-" bson:",omitempty"`
+	OtherCustomData mongoBSON.RawValue `json:"-" bson:",omitempty"`
 	Kind            Kind
 	Owner           Owner
 	SourceIP        string
@@ -40,6 +40,31 @@ type EventData struct {
 	Allowed         AllowedPermission
 	AllowedCancel   AllowedPermission
 	Instance        tracker.TrackedInstance
+}
+
+type EventInfo struct {
+	EventData
+
+	// StartCustomData, EndCustomData and OtherCustomData are legacy fields that will be deprecated on the future
+	// just use for compability reasons
+	StartCustomData LegacyBSONRaw `bson:",omitempty"`
+	EndCustomData   LegacyBSONRaw `bson:",omitempty"`
+	OtherCustomData LegacyBSONRaw `bson:",omitempty"`
+
+	// CustomData is the new way to access eventData.{StartCustomData, EndCustomData, OtherCustomData}
+	// the major advantage is that you can access the data without converting from bson.RawValue
+	CustomData EventInfoCustomData
+}
+
+type EventInfoCustomData struct {
+	Start any
+	End   any
+	Other any
+}
+
+type LegacyBSONRaw struct {
+	Kind byte
+	Data []byte
 }
 
 type Target struct {
