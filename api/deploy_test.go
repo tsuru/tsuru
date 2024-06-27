@@ -38,6 +38,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -803,9 +804,9 @@ func insertDeploysAsEvents(ctx context.Context, data []app.DeployData, c *check.
 	evts := make([]*event.Event, len(data))
 	for i, d := range data {
 		evt, err := event.New(ctx, &event.Opts{
-			Target:   event.Target{Type: "app", Value: d.App},
+			Target:   eventTypes.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
-			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
+			RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: d.User},
 			CustomData: app.DeployOptions{
 				Commit: d.Commit,
 				Origin: d.Origin,

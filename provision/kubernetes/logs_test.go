@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	check "gopkg.in/check.v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -50,7 +51,7 @@ func (s *S) Test_LogsProvisioner_ListLogs(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -91,7 +92,7 @@ func (s *S) Test_LogsProvisioner_ListLongLogs(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -130,7 +131,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterUnits(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -180,7 +181,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithFilterSource(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -230,7 +231,7 @@ func (s *S) Test_LogsProvisioner_ListLogsWithEvictedPOD(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -289,7 +290,7 @@ func (s *S) Test_LogsProvisioner_WatchLogs(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -351,7 +352,7 @@ func (s *S) Test_LogsProvisioner_WatchLongLogs(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -415,7 +416,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithFilterUnits(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),
@@ -482,7 +483,7 @@ func (s *S) Test_LogsProvisioner_WatchLogsWithEvictedUnits(c *check.C) {
 	defer rollback()
 
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),

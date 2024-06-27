@@ -18,11 +18,12 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
-func serviceTarget(name string) event.Target {
-	return event.Target{Type: event.TargetTypeService, Value: name}
+func serviceTarget(name string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeService, Value: name}
 }
 
 func provisionReadableServices(ctx context.Context, contexts []permTypes.PermissionContext) ([]service.Service, error) {

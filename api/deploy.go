@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -103,7 +104,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppDeploy,
-		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},
+		RawOwner:      eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: userName},
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    opts,
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),

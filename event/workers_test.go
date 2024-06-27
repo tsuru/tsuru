@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/permission"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 )
 
@@ -23,7 +24,7 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 		lockUpdateInterval = oldUpdateInterval
 	}()
 	evt, err := New(context.TODO(), &Opts{
-		Target:  Target{Type: "app", Value: "myapp"},
+		Target:  eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
@@ -69,7 +70,7 @@ func (s *S) TestUpdaterRemoveEventStress(c *check.C) {
 		go func(i int) {
 			defer wg.Done()
 			evt, err := New(context.TODO(), &Opts{
-				Target:  Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
+				Target:  eventTypes.Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
 				Kind:    permission.PermAppUpdateEnvSet,
 				Owner:   s.token,
 				Allowed: Allowed(permission.PermAppReadEvents),
@@ -92,14 +93,14 @@ func (s *S) TestUpdaterUpdatesMultipleEvents(c *check.C) {
 		lockUpdateInterval = oldUpdateInterval
 	}()
 	evt0, err := New(context.TODO(), &Opts{
-		Target:  Target{Type: "app", Value: "myapp0"},
+		Target:  eventTypes.Target{Type: "app", Value: "myapp0"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
 	evt1, err := New(context.TODO(), &Opts{
-		Target:  Target{Type: "app", Value: "myapp1"},
+		Target:  eventTypes.Target{Type: "app", Value: "myapp1"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
@@ -143,7 +144,7 @@ func (s *S) TestUpdaterUpdatesNonBlockingEvents(c *check.C) {
 		lockUpdateInterval = oldUpdateInterval
 	}()
 	evt, err := New(context.TODO(), &Opts{
-		Target:      Target{Type: "app", Value: "myapp"},
+		Target:      eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:        permission.PermAppUpdateEnvSet,
 		Owner:       s.token,
 		Allowed:     Allowed(permission.PermAppReadEvents),
@@ -186,7 +187,7 @@ func (s *S) TestEventCleaner(c *check.C) {
 		lockExpireTimeout = oldLockExpire
 	}()
 	_, err := New(context.TODO(), &Opts{
-		Target:  Target{Type: "app", Value: "myapp"},
+		Target:  eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),

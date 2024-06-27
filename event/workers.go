@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/log"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -59,7 +60,7 @@ func (l *eventCleaner) tryCleaning() error {
 		return errors.Wrap(err, "[events] [event cleaner] error getting db conn")
 	}
 
-	var allData []eventData
+	var allData []eventTypes.EventData
 	cursor, err := collection.Find(ctx, mongoBSON.M{
 		"running":        true,
 		"lockupdatetime": mongoBSON.M{"$lt": now.Add(-lockExpireTimeout)},
@@ -73,7 +74,7 @@ func (l *eventCleaner) tryCleaning() error {
 		return errors.Wrap(err, "[events] [event cleaner] error updating expired events")
 	}
 	for _, evtData := range allData {
-		evt := Event{eventData: evtData}
+		evt := Event{EventData: evtData}
 		lastUpdate := evt.LockUpdateTime.UTC()
 		err = evt.Done(ctx, errors.Errorf("event expired, no update for %v", time.Since(lastUpdate)))
 		if err != nil {

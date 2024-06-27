@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -218,7 +219,7 @@ func eventBlockAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "reason is required"}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeEventBlock},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeEventBlock},
 		Kind:       permission.PermEventBlockAdd,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -259,7 +260,7 @@ func eventBlockRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 		return err
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeEventBlock, Value: objID.Hex()},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeEventBlock, Value: objID.Hex()},
 		Kind:       permission.PermEventBlockRemove,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

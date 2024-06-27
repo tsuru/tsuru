@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
@@ -48,7 +49,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	}
 
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -91,7 +92,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -130,7 +131,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: routerName},
 		Kind:       permission.PermRouterDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

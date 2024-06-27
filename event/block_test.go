@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"time"
 
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
@@ -78,9 +79,9 @@ func (s *S) TestListBlocks(c *check.C) {
 
 func (s *S) TestCheckIsBlocked(c *check.C) {
 	blocks := map[string]*Block{
-		"blockApp":                       {Target: Target{Type: TargetTypeApp, Value: "blocked-app"}},
+		"blockApp":                       {Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "blocked-app"}},
 		"blockAllDeploys":                {KindName: "app.deploy", Reason: "maintenance"},
-		"blockAllNodes":                  {Target: Target{Type: TargetTypeNode}},
+		"blockAllNodes":                  {Target: eventTypes.Target{Type: eventTypes.TargetTypeNode}},
 		"blockUser":                      {OwnerName: "blocked-user"},
 		"blockMachineTemplate":           {KindName: "machine.template"},
 		"blockCreateAppInPool":           {KindName: "app.create", Conditions: map[string]string{"pool": "pool2"}},
@@ -106,21 +107,21 @@ func (s *S) TestCheckIsBlocked(c *check.C) {
 		event     *Event
 		blockedBy *Block
 	}{
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Target: Target{Type: TargetTypeApp, Value: "unblocked-app"}}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Owner: Owner{Type: OwnerTypeUser, Name: "unblocked-user"}}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.deploy"}}}, blocks["blockAllDeploys"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Target: Target{Type: TargetTypeApp, Value: "blocked-app"}}}, blocks["blockApp"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.update"}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, blocks["blockUser"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "node.update"}, Target: Target{Type: TargetTypeNode, Value: "my-node"}}}, blocks["blockAllNodes"]},
-		{&Event{eventData: eventData{Target: Target{Type: TargetTypeEventBlock}, Owner: Owner{Type: OwnerTypeUser, Name: "blocked-user"}}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template"}}}, blocks["blockMachineTemplate"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "machine.template.create"}}}, blocks["blockMachineTemplate"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "machine.create"}}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPoolCluster}}, blocks["blockCreateAppInPoolAndCluster"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPool}}, blocks["blockCreateAppInPool"]},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataAllowedPool}}, nil},
-		{&Event{eventData: eventData{Kind: Kind{Name: "app.create"}, Target: Target{Type: TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataUnhandledFields}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.update"}}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.update"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "unblocked-app"}}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.update"}, Owner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "unblocked-user"}}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.deploy"}}}, blocks["blockAllDeploys"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.update"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "blocked-app"}}}, blocks["blockApp"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.update"}, Owner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "blocked-user"}}}, blocks["blockUser"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "node.update"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeNode, Value: "my-node"}}}, blocks["blockAllNodes"]},
+		{&Event{EventData: eventTypes.EventData{Target: eventTypes.Target{Type: eventTypes.TargetTypeEventBlock}, Owner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "blocked-user"}}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "machine.template"}}}, blocks["blockMachineTemplate"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "machine.template.create"}}}, blocks["blockMachineTemplate"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "machine.create"}}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.create"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPoolCluster}}, blocks["blockCreateAppInPoolAndCluster"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.create"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataBlockedPool}}, blocks["blockCreateAppInPool"]},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.create"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataAllowedPool}}, nil},
+		{&Event{EventData: eventTypes.EventData{Kind: eventTypes.Kind{Name: "app.create"}, Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "my-app"}, StartCustomData: bsonDataUnhandledFields}}, nil},
 	}
 	for i, t := range tt {
 		errBlock := checkIsBlocked(context.TODO(), t.event)

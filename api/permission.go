@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -47,7 +48,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -93,7 +94,7 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -201,7 +202,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionAdd,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -256,7 +257,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdatePermissionRemove,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -330,7 +331,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -380,7 +381,7 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -468,7 +469,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	for roleName, evts := range rolesMap {
 		evt, err := event.New(ctx, &event.Opts{
-			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+			Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultCreate,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
@@ -528,7 +529,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	for roleName, evts := range rolesMap {
 		evt, err := event.New(ctx, &event.Opts{
-			Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+			Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 			Kind:       permission.PermRoleDefaultDelete,
 			Owner:      t,
 			RemoteAddr: r.RemoteAddr,
@@ -615,7 +616,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -708,7 +709,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -756,7 +757,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -802,7 +803,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateAssign,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -846,7 +847,7 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 	contextValue := InputValue(r, "context")
 	roleName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRole, Value: roleName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: roleName},
 		Kind:       permission.PermRoleUpdateDissociate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

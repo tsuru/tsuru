@@ -31,6 +31,7 @@ import (
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 )
 
@@ -104,9 +105,9 @@ func (s *BindSuite) TearDownSuite(c *check.C) {
 
 func createEvt(c *check.C) *event.Event {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:   event.Target{Type: event.TargetTypeServiceInstance, Value: "x"},
+		Target:   eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: "x"},
 		Kind:     permission.PermServiceInstanceCreate,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "my@user"},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "my@user"},
 		Allowed:  event.Allowed(permission.PermServiceInstanceReadEvents),
 	})
 	c.Assert(err, check.IsNil)

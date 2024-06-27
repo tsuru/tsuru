@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/db/storagev2"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,7 +49,7 @@ type Block struct {
 	EndTime    time.Time `bson:"endtime,omitempty"`
 	KindName   string
 	OwnerName  string
-	Target     Target            `bson:"target,omitempty"`
+	Target     eventTypes.Target `bson:"target,omitempty"`
 	Conditions map[string]string `bson:"conditions,omitempty"`
 	Reason     string
 	Active     bool
@@ -66,7 +67,7 @@ func (b *Block) Blocks(e *Event) bool {
 	if !(e.Owner.Name == b.OwnerName || b.OwnerName == "") {
 		return false
 	}
-	if !(e.Target == b.Target || b.Target == Target{} || (b.Target.Type == e.Target.Type && b.Target.Value == "")) {
+	if !(e.Target == b.Target || b.Target == eventTypes.Target{} || (b.Target.Type == e.Target.Type && b.Target.Value == "")) {
 		return false
 	}
 	if b.Conditions != nil {
@@ -179,7 +180,7 @@ func listBlocks(ctx context.Context, query mongoBSON.M) ([]Block, error) {
 }
 
 func checkIsBlocked(ctx context.Context, evt *Event) error {
-	if evt.Target.Type == TargetTypeEventBlock {
+	if evt.Target.Type == eventTypes.TargetTypeEventBlock {
 		return nil
 	}
 

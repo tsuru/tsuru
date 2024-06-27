@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -140,7 +141,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -194,7 +195,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -258,7 +259,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: volumeName},
 		Kind:       permission.PermVolumeDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -314,7 +315,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateBind,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -385,7 +386,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateUnbind,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

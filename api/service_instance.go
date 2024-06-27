@@ -26,12 +26,13 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
-func serviceInstanceTarget(name, instance string) event.Target {
-	return event.Target{Type: event.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
+func serviceInstanceTarget(name, instance string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
 }
 
 func serviceIntancePermName(serviceName, instanceName string) string {

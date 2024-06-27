@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
@@ -76,7 +77,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -154,7 +155,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -240,7 +241,7 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeTeam, Value: teamName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: teamName},
 		Kind:       permission.PermTeamUpdateQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

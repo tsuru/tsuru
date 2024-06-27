@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/volume"
 )
@@ -52,12 +53,12 @@ func handleAuthError(err error) error {
 	}
 }
 
-func userTarget(u string) event.Target {
-	return event.Target{Type: event.TargetTypeUser, Value: u}
+func userTarget(u string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: u}
 }
 
-func teamTarget(t string) event.Target {
-	return event.Target{Type: event.TargetTypeTeam, Value: t}
+func teamTarget(t string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: t}
 }
 
 // title: user create
@@ -89,7 +90,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermUserCreate,
-		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		RawOwner:   eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: email},
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r, "password")),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),
@@ -236,7 +237,7 @@ func resetPassword(w http.ResponseWriter, r *http.Request) (err error) {
 	evt, err := event.New(ctx, &event.Opts{
 		Target:     userTarget(email),
 		Kind:       permission.PermUserUpdateReset,
-		RawOwner:   event.Owner{Type: event.OwnerTypeUser, Name: email},
+		RawOwner:   eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: email},
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
 		Allowed:    event.Allowed(permission.PermUserReadEvents, permission.Context(permTypes.CtxUser, email)),

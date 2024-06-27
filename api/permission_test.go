@@ -17,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -25,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 	"github.com/tsuru/tsuru/types/volume"
@@ -50,7 +50,7 @@ func (s *S) TestAddRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 2)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.create",
 		StartCustomData: []map[string]interface{}{
@@ -130,7 +130,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.delete",
 		StartCustomData: []map[string]interface{}{
@@ -252,7 +252,7 @@ func (s *S) TestAddPermissionsToARole(c *check.C) {
 	sort.Strings(r.SchemeNames)
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{"app.deploy", "app.update"})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.permission.add",
 		StartCustomData: []map[string]interface{}{
@@ -354,7 +354,7 @@ func (s *S) TestRemovePermissionsFromRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r.SchemeNames, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.permission.remove",
 		StartCustomData: []map[string]interface{}{
@@ -390,7 +390,7 @@ func (s *S) TestAssignRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(emptyUser.Roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
@@ -877,7 +877,7 @@ func (s *S) TestDissociateRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(otherUser.Roles, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
@@ -975,7 +975,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r3.Events, check.DeepEquals, []string{permTypes.RoleEventUserCreate.String()})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
 		StartCustomData: []map[string]interface{}{
@@ -984,7 +984,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r2"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r2"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
 		StartCustomData: []map[string]interface{}{
@@ -993,7 +993,7 @@ func (s *S) TestAddDefaultRole(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r3"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r3"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.create",
 		StartCustomData: []map[string]interface{}{
@@ -1059,7 +1059,7 @@ func (s *S) TestRemoveDefaultRole(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r1.Events, check.DeepEquals, []string{})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.default.delete",
 		StartCustomData: []map[string]interface{}{
@@ -1089,7 +1089,7 @@ func (s *S) TestRoleUpdateDestroysAndCreatesNewRole(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update",
 		StartCustomData: []map[string]interface{}{
@@ -1181,7 +1181,7 @@ func (s *S) TestRoleUpdateSingleField(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "r1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "r1"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update",
 		StartCustomData: []map[string]interface{}{
@@ -1232,7 +1232,7 @@ func (s *S) TestAssignRoleToTeamToken(c *check.C) {
 		{Name: "newrole", ContextValue: "myapp"},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "newrole"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
@@ -1265,7 +1265,7 @@ func (s *S) TestAssignRoleToTeamTokenRoleNotFound(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
@@ -1355,7 +1355,7 @@ func (s *S) TestDissociateRoleFromTeamToken(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 0)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "newrole"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
@@ -1396,7 +1396,7 @@ func (s *S) TestDissociateRoleFromTeamTokenRoleNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Roles, check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
@@ -1473,7 +1473,7 @@ func (s *S) TestAssignRoleToAuthGroup(c *check.C) {
 		},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "newrole"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
@@ -1502,7 +1502,7 @@ func (s *S) TestAssignRoleToAuthGroupRoleNotFound(c *check.C) {
 	server.ServeHTTP(recorder, req)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.assign",
 		StartCustomData: []map[string]interface{}{
@@ -1564,7 +1564,7 @@ func (s *S) TestDissociateRoleFromAuthGroup(c *check.C) {
 		},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "newrole"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "newrole"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{
@@ -1611,7 +1611,7 @@ func (s *S) TestDissociateRoleFromAuthGroupRoleNotFound(c *check.C) {
 		},
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeRole, Value: "rolenotfound"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeRole, Value: "rolenotfound"},
 		Owner:  token.GetUserName(),
 		Kind:   "role.update.dissociate",
 		StartCustomData: []map[string]interface{}{

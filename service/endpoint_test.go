@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 
 	check "gopkg.in/check.v1"
@@ -82,9 +83,9 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func createEvt(c *check.C) *event.Event {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:   event.Target{Type: event.TargetTypeServiceInstance, Value: "x"},
+		Target:   eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: "x"},
 		Kind:     permission.PermServiceInstanceCreate,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: "my@user"},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: "my@user"},
 		Allowed:  event.Allowed(permission.PermServiceInstanceReadEvents),
 	})
 	c.Assert(err, check.IsNil)

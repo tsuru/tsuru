@@ -101,7 +101,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -143,7 +143,7 @@ func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -186,7 +186,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

@@ -12,14 +12,15 @@ import (
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 )
 
 type EventDesc struct {
-	Target          event.Target
-	ExtraTargets    []event.ExtraTarget
+	Target          eventTypes.Target
+	ExtraTargets    []eventTypes.ExtraTarget
 	Kind            string
 	Owner           string
 	StartCustomData interface{}

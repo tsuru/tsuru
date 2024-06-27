@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 	check "gopkg.in/check.v1"
@@ -2116,7 +2117,7 @@ func (s *S) TestServiceManagerDeployServiceFirstDeployDeleteDeploymentOnRollback
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -2188,7 +2189,7 @@ func (s *S) TestServiceManagerDeployServiceCancelRollback(c *check.C) {
 	err := app.CreateApp(context.TODO(), a, s.user)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -4264,7 +4265,7 @@ func (s *S) TestServiceManagerDeployServicePartialRollback(c *check.C) {
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),
@@ -4335,7 +4336,7 @@ func (s *S) TestServiceManagerDeployServiceRollbackErrorSingleProcess(c *check.C
 	err = servicecommon.RunServicePipeline(context.TODO(), manager, 0, provision.DeployArgs{App: a, Version: firstVersion}, nil)
 	c.Assert(err, check.IsNil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:          permission.PermAppDeploy,
 		Owner:         s.token,
 		Allowed:       event.Allowed(permission.PermAppDeploy),

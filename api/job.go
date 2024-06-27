@@ -27,6 +27,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -588,7 +589,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 
 	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(j.Name),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermJobUpdate,
@@ -667,7 +668,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(jobName),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermJobUpdate,
@@ -971,8 +972,8 @@ func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return followLogs(tsuruNet.CancelableParentContext(r.Context()), j.Name, watcher, encoder)
 }
 
-func jobTarget(jobName string) event.Target {
-	return event.Target{Type: event.TargetTypeJob, Value: jobName}
+func jobTarget(jobName string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: jobName}
 }
 
 func contextsForJob(job *jobTypes.Job) []permTypes.PermissionContext {

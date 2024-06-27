@@ -47,6 +47,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
@@ -2440,7 +2441,7 @@ func RenameTeam(ctx context.Context, oldName, newName string) error {
 	for _, a := range apps {
 		var evt *event.Event
 		evt, err = event.NewInternal(ctx, &event.Opts{
-			Target:       event.Target{Type: event.TargetTypeApp, Value: a.Name},
+			Target:       eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 			InternalKind: "team rename",
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, a.Name)),
 		})

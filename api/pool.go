@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 )
 
@@ -151,7 +152,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: addOpts.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: addOpts.Name},
 		Kind:       permission.PermPoolCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -207,7 +208,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return &terrors.HTTP{Code: http.StatusForbidden, Message: "This pool has apps, you need to migrate or remove them before removing the pool"}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -243,7 +244,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamAdd,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -281,7 +282,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdateTeamRemove,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -323,7 +324,7 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	poolName := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: poolName},
 		Kind:       permission.PermPoolUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -402,7 +403,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePool, Value: poolConstraint.PoolExpr},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePool, Value: poolConstraint.PoolExpr},
 		Kind:       permission.PermPoolUpdateConstraintsSet,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

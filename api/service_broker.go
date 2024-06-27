@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	"github.com/tsuru/tsuru/types/service"
 )
 
@@ -58,7 +59,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -101,7 +102,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: broker.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeServiceBroker, Value: broker.Name},
 		Kind:       permission.PermServiceBrokerUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -136,7 +137,7 @@ func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Empty broker name."}
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeServiceBroker, Value: brokerName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeServiceBroker, Value: brokerName},
 		Kind:       permission.PermServiceBrokerDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

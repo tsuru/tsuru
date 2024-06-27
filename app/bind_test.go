@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 )
 
@@ -44,9 +45,9 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := bytes.NewBuffer(nil)
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)

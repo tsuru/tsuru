@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -59,7 +60,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return permission.ErrUnauthorized
 	}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlan, Value: plan.Name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: plan.Name},
 		Kind:       permission.PermPlanCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -127,7 +128,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	}
 	planName := r.URL.Query().Get(":planname")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlan, Value: planName},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: planName},
 		Kind:       permission.PermPlanDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,

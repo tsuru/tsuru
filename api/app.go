@@ -37,6 +37,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	logTypes "github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	provTypes "github.com/tsuru/tsuru/types/provision"
@@ -61,8 +62,8 @@ func init() {
 	prometheus.MustRegister(logsAppTailEntries)
 }
 
-func appTarget(appName string) event.Target {
-	return event.Target{Type: event.TargetTypeApp, Value: appName}
+func appTarget(appName string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: appName}
 }
 
 func getAppFromContext(name string, r *http.Request) (app.App, error) {
@@ -1525,7 +1526,7 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermAppUpdateBind,
@@ -1620,7 +1621,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	evt, err := event.New(ctx, &event.Opts{
 		Target: appTarget(appName),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermAppUpdateUnbind,

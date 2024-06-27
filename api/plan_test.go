@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 )
 
@@ -36,7 +36,7 @@ func (s *S) TestPlanAdd(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
 		StartCustomData: []map[string]interface{}{
@@ -68,7 +68,7 @@ func (s *S) TestPlanAddJSON(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
 		StartCustomData: []interface{}{
@@ -159,7 +159,7 @@ func (s *S) TestPlanAddDupp(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusConflict)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlan, Value: "xyz"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "xyz"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.create",
 		StartCustomData: []map[string]interface{}{
@@ -216,7 +216,7 @@ func (s *S) TestPlanRemove(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlan, Value: "plan1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: "plan1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "plan.delete",
 		StartCustomData: []map[string]interface{}{

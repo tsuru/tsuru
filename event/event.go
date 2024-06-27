@@ -25,8 +25,9 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
+
 	permTypes "github.com/tsuru/tsuru/types/permission"
-	"github.com/tsuru/tsuru/types/tracker"
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -84,39 +85,6 @@ var (
 	ErrNoAllowedCancel        = errors.New("event allowed cancel is mandatory for cancelable events")
 	ErrInvalidOwner           = ErrValidation("event owner must not be set on internal events")
 	ErrInvalidKind            = ErrValidation("event kind must not be set on internal events")
-	ErrInvalidTargetType      = errors.New("invalid event target type")
-
-	OwnerTypeUser     = ownerType("user")
-	OwnerTypeApp      = ownerType("app")
-	OwnerTypeInternal = ownerType("internal")
-	OwnerTypeToken    = ownerType("token")
-
-	KindTypePermission = kindType("permission")
-	KindTypeInternal   = kindType("internal")
-
-	TargetTypeGlobal          = TargetType("global")
-	TargetTypeApp             = TargetType("app")
-	TargetTypeJob             = TargetType("job")
-	TargetTypeNode            = TargetType("node")
-	TargetTypeContainer       = TargetType("container")
-	TargetTypePool            = TargetType("pool")
-	TargetTypeService         = TargetType("service")
-	TargetTypeServiceInstance = TargetType("service-instance")
-	TargetTypeServiceBroker   = TargetType("service-broker")
-	TargetTypeTeam            = TargetType("team")
-	TargetTypeUser            = TargetType("user")
-	TargetTypeIaas            = TargetType("iaas")
-	TargetTypeRole            = TargetType("role")
-	TargetTypePlatform        = TargetType("platform")
-	TargetTypePlan            = TargetType("plan")
-	TargetTypeNodeContainer   = TargetType("node-container")
-	TargetTypeInstallHost     = TargetType("install-host")
-	TargetTypeEventBlock      = TargetType("event-block")
-	TargetTypeCluster         = TargetType("cluster")
-	TargetTypeVolume          = TargetType("volume")
-	TargetTypeWebhook         = TargetType("webhook")
-	TargetTypeGC              = TargetType("gc")
-	TargetTypeRouter          = TargetType("router")
 )
 
 const (
@@ -129,7 +97,7 @@ func init() {
 
 type ErrThrottled struct {
 	Spec       *ThrottlingSpec
-	Target     Target
+	Target     eventTypes.Target
 	AllTargets bool
 }
 
@@ -159,135 +127,9 @@ func (err ErrEventLocked) Error() string {
 	return fmt.Sprintf("event locked: %v", err.Event)
 }
 
-type Target struct {
-	Type  TargetType
-	Value string
-}
-
-func (id Target) IsValid() bool {
-	return id.Type != ""
-}
-
-func (id Target) String() string {
-	return fmt.Sprintf("%s(%s)", id.Type, id.Value)
-}
-
-// This private type allow us to export the main Event struct without allowing
-// access to its public fields. (They have to be public for database
-// serializing).
-type eventData struct {
-	ID              primitive.ObjectID `json:"-" bson:"_id"`
-	UniqueID        primitive.ObjectID
-	Lock            *Target `bson:"lock,omitempty"`
-	StartTime       time.Time
-	EndTime         time.Time          `bson:",omitempty"`
-	ExpireAt        time.Time          `bson:",omitempty"`
-	Target          Target             `bson:",omitempty"`
-	ExtraTargets    []ExtraTarget      `bson:",omitempty"`
-	StartCustomData mongoBSON.RawValue `bson:",omitempty"`
-	EndCustomData   mongoBSON.RawValue `bson:",omitempty"`
-	OtherCustomData mongoBSON.RawValue `bson:",omitempty"`
-	Kind            Kind
-	Owner           Owner
-	SourceIP        string
-	LockUpdateTime  time.Time
-	Error           string
-	Log             string     `bson:",omitempty"`
-	StructuredLog   []LogEntry `bson:",omitempty"`
-	CancelInfo      cancelInfo
-	Cancelable      bool
-	Running         bool
-	Allowed         AllowedPermission
-	AllowedCancel   AllowedPermission
-	Instance        tracker.TrackedInstance
-}
-
-type LogEntry struct {
-	Date    time.Time
-	Message string
-}
-
-type cancelInfo struct {
-	Owner     string
-	StartTime time.Time
-	AckTime   time.Time
-	Reason    string
-	Asked     bool
-	Canceled  bool
-}
-
-type ownerType string
-
-type kindType string
-
-type TargetType string
-
-func GetTargetType(t string) (TargetType, error) {
-	switch t {
-	case "global":
-		return TargetTypeGlobal, nil
-	case "app":
-		return TargetTypeApp, nil
-	case "node":
-		return TargetTypeNode, nil
-	case "container":
-		return TargetTypeContainer, nil
-	case "pool":
-		return TargetTypePool, nil
-	case "service":
-		return TargetTypeService, nil
-	case "service-instance":
-		return TargetTypeServiceInstance, nil
-	case "team":
-		return TargetTypeTeam, nil
-	case "user":
-		return TargetTypeUser, nil
-	case "iaas":
-		return TargetTypeIaas, nil
-	case "role":
-		return TargetTypeRole, nil
-	case "platform":
-		return TargetTypePlatform, nil
-	case "plan":
-		return TargetTypePlan, nil
-	case "node-container":
-		return TargetTypeNodeContainer, nil
-	case "install-host":
-		return TargetTypeInstallHost, nil
-	case "event-block":
-		return TargetTypeEventBlock, nil
-	case "cluster":
-		return TargetTypeCluster, nil
-	case "volume":
-		return TargetTypeVolume, nil
-	case "webhook":
-		return TargetTypeWebhook, nil
-	case "router":
-		return TargetTypeRouter, nil
-	}
-	return TargetType(""), ErrInvalidTargetType
-}
-
-type Owner struct {
-	Type ownerType
-	Name string
-}
-
-type Kind struct {
-	Type kindType
-	Name string
-}
-
-func (o Owner) String() string {
-	return fmt.Sprintf("%s %s", o.Type, o.Name)
-}
-
-func (k Kind) String() string {
-	return k.Name
-}
-
 type ThrottlingSpec struct {
-	TargetType TargetType    `json:"target-type"`
+	TargetType eventTypes.TargetType `json:"target-type"`
+
 	KindName   string        `json:"kind-name"`
 	Max        int           `json:"limit"`
 	Time       time.Duration `json:"window"`
@@ -307,7 +149,7 @@ func (d *ThrottlingSpec) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func throttlingKey(targetType TargetType, kindName string, allTargets bool) string {
+func throttlingKey(targetType eventTypes.TargetType, kindName string, allTargets bool) string {
 	key := string(targetType)
 	if kindName != "" {
 		key = fmt.Sprintf("%s_%s", key, kindName)
@@ -347,7 +189,7 @@ func SetThrottling(spec ThrottlingSpec) {
 	throttlingInfo[key] = spec
 }
 
-func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
+func getThrottling(t *eventTypes.Target, k *eventTypes.Kind, allTargets bool) *ThrottlingSpec {
 	keys := []string{
 		throttlingKey(t.Type, k.Name, allTargets),
 		throttlingKey(t.Type, "", allTargets),
@@ -361,43 +203,33 @@ func getThrottling(t *Target, k *Kind, allTargets bool) *ThrottlingSpec {
 }
 
 type Event struct {
-	eventData
+	eventTypes.EventData
 	logMu     sync.Mutex
 	logWriter io.Writer
 }
 
-type ExtraTarget struct {
-	Target Target
-	Lock   bool
-}
-
 type Opts struct {
-	Target        Target
-	ExtraTargets  []ExtraTarget
+	Target        eventTypes.Target
+	ExtraTargets  []eventTypes.ExtraTarget
 	Kind          *permission.PermissionScheme
 	InternalKind  string
 	Owner         auth.Token
-	RawOwner      Owner
+	RawOwner      eventTypes.Owner
 	RemoteAddr    string
 	CustomData    interface{}
 	DisableLock   bool
 	Cancelable    bool
-	Allowed       AllowedPermission
-	AllowedCancel AllowedPermission
+	Allowed       eventTypes.AllowedPermission
+	AllowedCancel eventTypes.AllowedPermission
 	RetryTimeout  time.Duration
 	ExpireAt      *time.Time
 }
 
-func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) AllowedPermission {
-	return AllowedPermission{
+func Allowed(scheme *permission.PermissionScheme, contexts ...permTypes.PermissionContext) eventTypes.AllowedPermission {
+	return eventTypes.AllowedPermission{
 		Scheme:   scheme.FullName(),
 		Contexts: contexts,
 	}
-}
-
-type AllowedPermission struct {
-	Scheme   string
-	Contexts []permTypes.PermissionContext `bson:",omitempty"`
 }
 
 func (e *Event) String() string {
@@ -411,15 +243,15 @@ func (e *Event) String() string {
 }
 
 type TargetFilter struct {
-	Type   TargetType
+	Type   eventTypes.TargetType
 	Values []string
 }
 
 type Filter struct {
-	Target         Target
-	KindType       kindType
+	Target         eventTypes.Target
+	KindType       eventTypes.KindType
 	KindNames      []string `form:"-"`
-	OwnerType      ownerType
+	OwnerType      eventTypes.OwnerType
 	OwnerName      string
 	Since          time.Time
 	Until          time.Time
@@ -556,12 +388,12 @@ func (f *Filter) toQuery() (mongoBSON.M, error) {
 	return query, nil
 }
 
-func GetKinds(ctx context.Context) ([]Kind, error) {
+func GetKinds(ctx context.Context) ([]eventTypes.Kind, error) {
 	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	var kinds []Kind
+	var kinds []eventTypes.Kind
 
 	values, err := collection.Distinct(ctx, "kind", mongoBSON.M{}, options.Distinct())
 	if err != nil {
@@ -575,11 +407,11 @@ func GetKinds(ctx context.Context) ([]Kind, error) {
 			continue
 		}
 
-		var kind Kind
+		var kind eventTypes.Kind
 
 		for _, elem := range rawD {
 			if elem.Key == "type" {
-				kind.Type = kindType(elem.Value.(string))
+				kind.Type = eventTypes.KindType(elem.Value.(string))
 			} else if elem.Key == "name" {
 				kind.Name = elem.Value.(string)
 			}
@@ -591,19 +423,19 @@ func GetKinds(ctx context.Context) ([]Kind, error) {
 	return kinds, nil
 }
 
-func transformEvent(data eventData) *Event {
+func transformEvent(data eventTypes.EventData) *Event {
 	var event Event
-	event.eventData = data
+	event.EventData = data
 	event.fillLegacyLog()
 	return &event
 }
 
-func GetRunning(ctx context.Context, target Target, kind string) (*Event, error) {
+func GetRunning(ctx context.Context, target eventTypes.Target, kind string) (*Event, error) {
 	collection, err := storagev2.Collection(eventsCollection)
 	if err != nil {
 		return nil, err
 	}
-	var evtData eventData
+	var evtData eventTypes.EventData
 	err = collection.FindOne(ctx, mongoBSON.M{
 		"lock":      target,
 		"kind.name": kind,
@@ -634,7 +466,7 @@ func GetByID(ctx context.Context, id primitive.ObjectID) (*Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	var evtData eventData
+	var evtData eventTypes.EventData
 	err = collection.FindOne(ctx, mongoBSON.M{
 		"uniqueid": id,
 	}).Decode(&evtData)
@@ -697,7 +529,7 @@ func List(ctx context.Context, filter *Filter) ([]*Event, error) {
 		return nil, err
 	}
 
-	var allData []eventData
+	var allData []eventTypes.EventData
 	err = cursor.All(ctx, &allData)
 	if err != nil {
 		return nil, err
@@ -719,7 +551,7 @@ func New(ctx context.Context, opts *Opts) (*Event, error) {
 	if opts.Kind == nil {
 		return nil, ErrNoKind
 	}
-	if opts.RetryTimeout == 0 && opts.Target.Type == TargetTypeApp {
+	if opts.RetryTimeout == 0 && opts.Target.Type == eventTypes.TargetTypeApp {
 		opts.RetryTimeout = defaultAppRetryTimeout
 	}
 	return newEvt(ctx, opts)
@@ -741,13 +573,13 @@ func NewInternal(ctx context.Context, opts *Opts) (*Event, error) {
 	return newEvt(ctx, opts)
 }
 
-func NewInternalMany(ctx context.Context, targets []Target, opts *Opts) (*Event, error) {
+func NewInternalMany(ctx context.Context, targets []eventTypes.Target, opts *Opts) (*Event, error) {
 	if len(targets) == 0 {
 		return nil, errors.New("event must have at least one target")
 	}
 	opts.Target = targets[0]
 	for _, target := range targets[1:] {
-		opts.ExtraTargets = append(opts.ExtraTargets, ExtraTarget{
+		opts.ExtraTargets = append(opts.ExtraTargets, eventTypes.ExtraTarget{
 			Target: target,
 			Lock:   true,
 		})
@@ -766,7 +598,7 @@ func makeBSONRaw(in interface{}) (mongoBSON.RawValue, error) {
 	return mongoBSON.RawValue{Type: kind, Value: data}, nil
 }
 
-func checkThrottling(ctx context.Context, collection *mongo.Collection, target *Target, kind *Kind, allTargets bool) error {
+func checkThrottling(ctx context.Context, collection *mongo.Collection, target *eventTypes.Target, kind *eventTypes.Kind, allTargets bool) error {
 	tSpec := getThrottling(target, kind, allTargets)
 	if tSpec == nil || tSpec.Max <= 0 || tSpec.Time <= 0 {
 		return nil
@@ -827,7 +659,7 @@ func newEvt(ctx context.Context, opts *Opts) (evt *Event, err error) {
 }
 
 func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
-	var k Kind
+	var k eventTypes.Kind
 	defer func() {
 		eventCurrent.WithLabelValues(k.Name).Inc()
 		if err != nil {
@@ -866,25 +698,25 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 		if opts.InternalKind == "" {
 			return nil, ErrNoKind
 		}
-		k.Type = KindTypeInternal
+		k.Type = eventTypes.KindTypeInternal
 		k.Name = opts.InternalKind
 	} else {
-		k.Type = KindTypePermission
+		k.Type = eventTypes.KindTypePermission
 		k.Name = opts.Kind.FullName()
 	}
-	var o Owner
+	var o eventTypes.Owner
 	if opts.Owner == nil {
 		if opts.RawOwner.Name != "" && opts.RawOwner.Type != "" {
 			o = opts.RawOwner
 		} else {
-			o.Type = OwnerTypeInternal
+			o.Type = eventTypes.OwnerTypeInternal
 		}
 	} else {
 		if token, ok := opts.Owner.(authTypes.NamedToken); ok {
-			o.Type = OwnerTypeToken
+			o.Type = eventTypes.OwnerTypeToken
 			o.Name = token.GetTokenName()
 		} else {
-			o.Type = OwnerTypeUser
+			o.Type = eventTypes.OwnerTypeUser
 			o.Name = opts.Owner.GetUserName()
 		}
 	}
@@ -920,7 +752,7 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 	}
 
 	evt = &Event{
-		eventData: eventData{
+		EventData: eventTypes.EventData{
 			ID:              uniqID,
 			UniqueID:        uniqID,
 			ExtraTargets:    opts.ExtraTargets,
@@ -939,15 +771,15 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 		}}
 
 	if !opts.DisableLock {
-		evt.eventData.Lock = &opts.Target
+		evt.EventData.Lock = &opts.Target
 	}
 	if opts.ExpireAt != nil {
-		evt.eventData.ExpireAt = *opts.ExpireAt
+		evt.EventData.ExpireAt = *opts.ExpireAt
 	}
 
 	maxRetries := 1
 	for i := 0; i < maxRetries+1; i++ {
-		_, err = collection.InsertOne(ctx, evt.eventData)
+		_, err = collection.InsertOne(ctx, evt.EventData)
 
 		if err == nil {
 			err = checkLocked(ctx, evt, opts.DisableLock)
@@ -968,7 +800,7 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 			if i >= maxRetries || !checkIsExpired(ctx, collection, evt.Lock) {
 				var existing Event
 
-				err = collection.FindOne(ctx, mongoBSON.M{"lock": evt.Lock}).Decode(&existing.eventData)
+				err = collection.FindOne(ctx, mongoBSON.M{"lock": evt.Lock}).Decode(&existing.EventData)
 				if err == mongo.ErrNoDocuments {
 					maxRetries++
 				}
@@ -984,7 +816,7 @@ func newEvtOnce(ctx context.Context, opts *Opts) (evt *Event, err error) {
 }
 
 func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
-	var targets []Target
+	var targets []eventTypes.Target
 	if !disableLock {
 		targets = append(targets, evt.Target)
 	}
@@ -1016,7 +848,7 @@ func checkLocked(ctx context.Context, evt *Event, disableLock bool) error {
 		"running": true,
 		"_id":     mongoBSON.M{"$ne": evt.ID},
 		"$or":     orBlock,
-	}).Decode(&existing.eventData)
+	}).Decode(&existing.EventData)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil
@@ -1047,7 +879,7 @@ func (e *Event) RawInsert(ctx context.Context, start, other, end interface{}) er
 
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
-	_, err = collection.InsertOne(ctx, e.eventData)
+	_, err = collection.InsertOne(ctx, e.EventData)
 	return err
 }
 
@@ -1100,7 +932,7 @@ func (e *Event) Write(data []byte) (int, error) {
 	}
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
-	e.StructuredLog = append(e.StructuredLog, LogEntry{
+	e.StructuredLog = append(e.StructuredLog, eventTypes.LogEntry{
 		Date:    time.Now().UTC(),
 		Message: string(data),
 	})
@@ -1153,7 +985,7 @@ func (e *Event) TryCancel(ctx context.Context, reason, owner string) error {
 	}
 
 	update := mongoBSON.M{"$set": mongoBSON.M{
-		"cancelinfo": cancelInfo{
+		"cancelinfo": eventTypes.CancelInfo{
 			Owner:     owner,
 			Reason:    reason,
 			StartTime: time.Now().UTC(),
@@ -1163,7 +995,7 @@ func (e *Event) TryCancel(ctx context.Context, reason, owner string) error {
 	query := mongoBSON.M{"_id": e.ID, "cancelinfo.asked": false}
 	options := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.eventData)
+	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.EventData)
 
 	if err == mongo.ErrNoDocuments {
 		if _, errID := GetByID(ctx, e.ID); errID == ErrEventNotFound {
@@ -1193,7 +1025,7 @@ func (e *Event) AckCancel(ctx context.Context) (bool, error) {
 	query := mongoBSON.M{"_id": e.ID, "cancelinfo.asked": true}
 	options := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.eventData)
+	err = collection.FindOneAndUpdate(ctx, query, update, options).Decode(&e.EventData)
 	if err == mongo.ErrNoDocuments {
 		return false, nil
 	}
@@ -1251,7 +1083,7 @@ func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, 
 	if evtErr != nil {
 		if errors.Cause(evtErr) == context.Canceled && !e.CancelInfo.Canceled {
 			now := time.Now().UTC()
-			e.CancelInfo = cancelInfo{
+			e.CancelInfo = eventTypes.CancelInfo{
 				Owner:     e.Owner.String(),
 				Reason:    context.Canceled.Error(),
 				AckTime:   now,
@@ -1270,25 +1102,25 @@ func (e *Event) done(ctx context.Context, evtErr error, customData interface{}, 
 	}
 	e.Running = false
 	var dbEvt Event
-	err = collection.FindOne(ctx, mongoBSON.M{"_id": e.ID}).Decode(&dbEvt.eventData)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": e.ID}).Decode(&dbEvt.EventData)
 	if err == nil {
 		e.OtherCustomData = dbEvt.OtherCustomData
 	}
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
 
-	if e.eventData.Lock != nil {
-		e.eventData.Lock = nil
+	if e.EventData.Lock != nil {
+		e.EventData.Lock = nil
 	}
 
-	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{"$set": e.eventData, "$unset": mongoBSON.M{"lock": ""}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"_id": e.ID}, mongoBSON.M{"$set": e.EventData, "$unset": mongoBSON.M{"lock": ""}})
 
 	return err
 }
 
 func (e *Event) Log() string {
 	if len(e.StructuredLog) == 0 {
-		return e.eventData.Log
+		return e.EventData.Log
 	}
 	msgs := make([]string, len(e.StructuredLog))
 	for i, entry := range e.StructuredLog {
@@ -1302,20 +1134,20 @@ func (e *Event) Log() string {
 }
 
 func (e *Event) fillLegacyLog() {
-	if e.eventData.Log != "" || len(e.StructuredLog) == 0 {
+	if e.EventData.Log != "" || len(e.StructuredLog) == 0 {
 		return
 	}
-	e.eventData.Log = e.Log()
+	e.EventData.Log = e.Log()
 }
 
 func (e *Event) Clone() *Event {
 	e.logMu.Lock()
 	defer e.logMu.Unlock()
 	e2 := Event{
-		eventData: e.eventData,
+		EventData: e.EventData,
 		logWriter: e.logWriter,
 	}
-	e2.eventData.StructuredLog = nil
+	e2.EventData.StructuredLog = nil
 	return &e2
 }
 
@@ -1330,7 +1162,7 @@ func (e *Event) LogsFrom(origin *Event) {
 func checkIsExpired(ctx context.Context, collection *mongo.Collection, lock interface{}) bool {
 	var existingEvt Event
 
-	err := collection.FindOne(ctx, mongoBSON.M{"lock": lock}).Decode(&existingEvt.eventData)
+	err := collection.FindOne(ctx, mongoBSON.M{"lock": lock}).Decode(&existingEvt.EventData)
 
 	if err == nil {
 		now := time.Now().UTC()

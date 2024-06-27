@@ -18,13 +18,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	"golang.org/x/crypto/bcrypt"
@@ -167,7 +167,7 @@ func (s *QuotaSuite) TestChangeUserQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.update.quota",
 		StartCustomData: []map[string]interface{}{
@@ -216,7 +216,7 @@ func (s *QuotaSuite) TestChangeUserQuotaInvalidLimitValue(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
 		c.Assert(eventtest.EventDesc{
-			Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+			Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 			Owner:  s.token.GetUserName(),
 			Kind:   "user.update.quota",
 			StartCustomData: []map[string]interface{}{
@@ -255,7 +255,7 @@ func (s *QuotaSuite) TestChangeUserQuotaLimitLowerThanAllocated(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeUser, Value: user.Email},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: user.Email},
 		Owner:  s.token.GetUserName(),
 		Kind:   "user.update.quota",
 		StartCustomData: []map[string]interface{}{
@@ -356,7 +356,7 @@ func (s *QuotaSuite) TestChangeTeamQuota(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.update.quota",
 		StartCustomData: []map[string]interface{}{
@@ -399,7 +399,7 @@ func (s *QuotaSuite) TestChangeTeamQuotaInvalidLimitValue(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
 		c.Assert(eventtest.EventDesc{
-			Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+			Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 			Owner:  s.token.GetUserName(),
 			Kind:   "team.update.quota",
 			StartCustomData: []map[string]interface{}{
@@ -440,7 +440,7 @@ func (s *QuotaSuite) TestChangeTeamQuotaLimitLowerThanAllocated(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(err, check.IsNil)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: team.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "team.update.quota",
 		StartCustomData: []map[string]interface{}{
@@ -563,7 +563,7 @@ func (s *QuotaSuite) TestChangeAppQuota(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
 		StartCustomData: []map[string]interface{}{
@@ -623,7 +623,7 @@ func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *check.C) {
 		c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 		c.Assert(recorder.Body.String(), check.Equals, "Invalid limit\n")
 		c.Assert(eventtest.EventDesc{
-			Target: event.Target{Type: event.TargetTypeApp, Value: app.Name},
+			Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: app.Name},
 			Owner:  s.token.GetUserName(),
 			Kind:   "app.admin.quota",
 			StartCustomData: []map[string]interface{}{
@@ -673,7 +673,7 @@ func (s *QuotaSuite) TestChangeAppQuotaLimitLowerThanAllocated(c *check.C) {
 	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeApp, Value: a.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.Name},
 		Owner:  s.token.GetUserName(),
 		Kind:   "app.admin.quota",
 		StartCustomData: []map[string]interface{}{

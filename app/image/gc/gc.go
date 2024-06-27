@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/registry"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/provision"
 
@@ -110,7 +111,7 @@ var (
 
 func init() {
 	event.SetThrottling(event.ThrottlingSpec{
-		TargetType: event.TargetTypeGC,
+		TargetType: eventTypes.TargetTypeGC,
 		KindName:   "gc",
 		Time:       imageGCRunInterval,
 		Max:        1,
@@ -164,7 +165,7 @@ func runPeriodicGC() (err error) {
 	ctx := context.Background()
 	eventExpireAt := time.Now().Add(180 * 24 * time.Hour) // 6 months
 	evt, err := event.NewInternal(ctx, &event.Opts{
-		Target:       event.Target{Type: event.TargetTypeGC, Value: "global"},
+		Target:       eventTypes.Target{Type: eventTypes.TargetTypeGC, Value: "global"},
 		InternalKind: "gc",
 		Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxGlobal, "")),
 		ExpireAt:     &eventExpireAt,
@@ -271,7 +272,7 @@ func markOldImages(ctx context.Context) error {
 		}
 
 		evt, err := event.NewInternal(ctx, &event.Opts{
-			Target:       event.Target{Type: event.TargetTypeApp, Value: appVersions.AppName},
+			Target:       eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: appVersions.AppName},
 			InternalKind: "version gc",
 			Allowed:      event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, appVersions.AppName)),
 			ExpireAt:     &eventExpireAt,

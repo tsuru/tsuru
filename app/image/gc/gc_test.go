@@ -37,6 +37,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -556,9 +557,9 @@ func (s *S) TestDryRunGCStartWithApp(c *check.C) {
 	evts, err := event.All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[0].Target.Type, check.Equals, eventTypes.TargetTypeApp)
 	c.Check(evts[0].Target.Value, check.Equals, "myapp")
-	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
+	c.Check(evts[0].Kind, check.Equals, eventTypes.Kind{Type: "internal", Name: "version gc"})
 	c.Check(evts[0].Error, check.Equals, "")
 }
 
@@ -678,9 +679,9 @@ func (s *S) TestGCStartWithAppStressNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 
-	c.Check(evts[0].Target.Type, check.Equals, event.TargetTypeApp)
+	c.Check(evts[0].Target.Type, check.Equals, eventTypes.TargetTypeApp)
 	c.Check(evts[0].Target.Value, check.Equals, "myapp")
-	c.Check(evts[0].Kind, check.Equals, event.Kind{Type: "internal", Name: "version gc"})
+	c.Check(evts[0].Kind, check.Equals, eventTypes.Kind{Type: "internal", Name: "version gc"})
 	c.Check(evts[0].Error, check.Equals, "")
 }
 
@@ -829,7 +830,7 @@ func versionIDs(versions []appTypes.AppVersionInfo) []int {
 func filterGCEvents(evts []*event.Event) []*event.Event {
 	n := 0
 	for _, evt := range evts {
-		if evt.Target.Type == event.TargetTypeGC {
+		if evt.Target.Type == eventTypes.TargetTypeGC {
 			evts[n] = evt
 			n++
 		}

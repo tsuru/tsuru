@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
 
 	mongoBSON "go.mongodb.org/mongo-driver/bson"
@@ -84,10 +85,10 @@ func ListDeploys(ctx context.Context, filter *Filter, skip, limit int) ([]Deploy
 		rawFilter = mongoBSON.M{"target.value": mongoBSON.M{"$in": apps}}
 	}
 	evts, err := event.List(ctx, &event.Filter{
-		Target:    event.Target{Type: event.TargetTypeApp},
+		Target:    eventTypes.Target{Type: eventTypes.TargetTypeApp},
 		Raw:       rawFilter,
 		KindNames: []string{permission.PermAppDeploy.FullName()},
-		KindType:  event.KindTypePermission,
+		KindType:  eventTypes.KindTypePermission,
 		Limit:     limit,
 		Skip:      skip,
 	})

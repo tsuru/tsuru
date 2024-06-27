@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 )
 
 // title: add platform
@@ -61,7 +62,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformCreate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
@@ -124,7 +125,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
@@ -172,7 +173,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	}
 	name := r.URL.Query().Get(":name")
 	evt, err := event.New(ctx, &event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -291,7 +292,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	evt, err := event.New(ctx, &event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,

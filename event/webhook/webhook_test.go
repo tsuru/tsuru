@@ -58,12 +58,12 @@ func (s *S) TearDownTest(c *check.C) {
 
 func (s *S) TestWebhookServiceNotify(c *check.C) {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -112,12 +112,12 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 
 func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -156,12 +156,12 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 
 func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -210,12 +210,12 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 
 func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},

@@ -28,6 +28,7 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
@@ -113,7 +114,7 @@ func (s *EventSuite) generateEventCustomData(appName string) *app.DeployOptions 
 }
 
 func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
-	t, err := event.GetTargetType(target)
+	t, err := eventTypes.GetTargetType(target)
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +125,12 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("app-%d", i)
 		opts := &event.Opts{
-			Target:     event.Target{Type: t, Value: name},
+			Target:     eventTypes.Target{Type: t, Value: name},
 			Owner:      s.token,
 			Kind:       kinds[i%len(kinds)],
 			Cancelable: i == 0,
 		}
-		if t == event.TargetTypeApp {
+		if t == eventTypes.TargetTypeApp {
 			opts.Allowed = event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
 			opts.AllowedCancel = event.Allowed(permission.PermAppUpdateEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
 		} else {
@@ -278,7 +279,7 @@ func (s *EventSuite) TestKindList(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result []event.Kind
+	var result []eventTypes.Kind
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
@@ -399,7 +400,7 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -430,7 +431,7 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:     event.Target{Type: event.TargetTypeApp, Value: "aha"},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:      s.token,
 		Kind:       permission.PermAppDeploy,
 		Allowed:    event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -510,7 +511,7 @@ func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, "some-other-team"),
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -532,7 +533,7 @@ func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
@@ -558,7 +559,7 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
 	evt, err := event.New(context.TODO(), &event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
@@ -730,7 +731,7 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 	c.Assert(len(afterBlocks), check.Equals, 1)
 	c.Assert(afterBlocks[0].ID.Hex(), check.Equals, blocks[0].ID.Hex())
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
 		Owner:  token.GetUserName(),
 		Kind:   "event-block.remove",
 		StartCustomData: []map[string]interface{}{

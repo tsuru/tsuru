@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
@@ -95,7 +95,7 @@ func (s *S) TestTeamTokenCreate(c *check.C) {
 		Description:  "desc",
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.create",
 		StartCustomData: []map[string]interface{}{
@@ -132,7 +132,7 @@ func (s *S) TestTeamTokenCreateAutomaticTeam(c *check.C) {
 		Description:  "desc",
 	})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.create",
 		StartCustomData: []map[string]interface{}{
@@ -182,7 +182,7 @@ func (s *S) TestTeamTokenDelete(c *check.C) {
 	_, err = servicemanager.TeamToken.FindByTokenID(context.TODO(), "id1")
 	c.Assert(err, check.Equals, authTypes.ErrTeamTokenNotFound)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.delete",
 		StartCustomData: []map[string]interface{}{
@@ -230,7 +230,7 @@ func (s *S) TestTeamTokenUpdate(c *check.C) {
 	c.Assert(originalToken.Token, check.Not(check.Equals), newToken.Token)
 
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeTeam, Value: s.team.Name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: s.team.Name},
 		Owner:  s.user.Email,
 		Kind:   "team.token.update",
 		StartCustomData: []map[string]interface{}{

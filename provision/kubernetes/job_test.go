@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
@@ -841,9 +842,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "cronjob-parent"})
+				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "cronjob-parent"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "cronjob-parent")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
 				c.Assert(gotEvt.Cancelable, check.Equals, false)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
@@ -926,9 +927,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
 				c.Assert(gotEvt.Cancelable, check.Equals, false)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
@@ -1110,9 +1111,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
 				c.Assert(gotEvt.Cancelable, check.Equals, false)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
@@ -1232,9 +1233,9 @@ func (s *S) TestCreateJobEvent(c *check.C) {
 				c.Assert(len(evts), check.Equals, 1)
 				gotEvt := evts[0]
 				c.Assert(gotEvt, check.NotNil)
-				c.Assert(gotEvt.Target, check.DeepEquals, event.Target{Type: event.TargetTypeJob, Value: "myjob"})
+				c.Assert(gotEvt.Target, check.DeepEquals, eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: "myjob"})
 				c.Assert(gotEvt.Allowed, check.DeepEquals, event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, "myjob")))
-				c.Assert(gotEvt.Owner.Type, check.DeepEquals, event.OwnerTypeInternal)
+				c.Assert(gotEvt.Owner.Type, check.DeepEquals, eventTypes.OwnerTypeInternal)
 				c.Assert(gotEvt.Cancelable, check.Equals, false)
 				expectedCustomData := map[string]string{
 					"job-name":           "myjob",
