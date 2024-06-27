@@ -288,7 +288,6 @@ func (s *S) TestAppListFilteringByPool(c *check.C) {
 }
 
 func (s *S) TestAppListFilteringByStatus(c *check.C) {
-	ctx := context.Background()
 	recorder := httptest.NewRecorder()
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
 	err := app.CreateApp(context.TODO(), &app1, s.user)
@@ -327,73 +326,9 @@ func (s *S) TestAppListFilteringByStatus(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	recorder = httptest.NewRecorder()
 	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	apps := []app.App{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
-	c.Assert(err, check.IsNil)
-	expected := []app.App{app1, app2}
-	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
-		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
-		c.Assert(err, check.IsNil)
-		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
-	}
-}
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "status filter is not supported anymore\n")
 
-func (s *S) TestAppListFilteringByStatusIgnoresInvalidValues(c *check.C) {
-	ctx := context.Background()
-	recorder := httptest.NewRecorder()
-	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{}}
-	err := app.CreateApp(context.TODO(), &app1, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &app1)
-	requestBody := strings.NewReader("units=2&process=web")
-	request, err := http.NewRequest("PUT", "/apps/app1/units", requestBody)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	request, err = http.NewRequest("POST", fmt.Sprintf("/apps/%s/stop", app1.Name), nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	app2 := app.App{Name: "app2", Platform: "zend", TeamOwner: s.team.Name, Tags: []string{"tag"}}
-	err = app.CreateApp(context.TODO(), &app2, s.user)
-	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &app2)
-	requestBody = strings.NewReader("units=1&process=web")
-	request, err = http.NewRequest("PUT", "/apps/app2/units", requestBody)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	request, err = http.NewRequest("GET", "/apps?status=invalid&status=started", nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "b "+s.token.GetValue())
-	recorder = httptest.NewRecorder()
-	s.testServer.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	apps := []app.App{}
-	err = json.Unmarshal(recorder.Body.Bytes(), &apps)
-	c.Assert(err, check.IsNil)
-	expected := []app.App{app2}
-	c.Assert(apps, check.HasLen, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		units, err := app.Units(ctx)
-		c.Assert(err, check.IsNil)
-		expectedUnits, err := expected[i].Units(ctx)
-		c.Assert(err, check.IsNil)
-		c.Assert(units, check.DeepEquals, expectedUnits)
-		c.Assert(app.Tags, check.DeepEquals, expected[i].Tags)
-	}
 }
 
 func (s *S) TestSimplifiedAppList(c *check.C) {
@@ -777,12 +712,13 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	legacyApp := (*app.App)(myApp)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
@@ -810,15 +746,16 @@ func (s *S) TestDelete(c *check.C) {
 }
 
 func (s *S) TestDeleteVersion(c *check.C) {
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myversiontodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	legacyApp := (*app.App)(myApp)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, myApp)
-	newSuccessfulAppVersion(c, myApp)
+	newSuccessfulAppVersion(c, legacyApp)
+	newSuccessfulAppVersion(c, legacyApp)
 	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"/versions/"+"2", nil)
@@ -873,12 +810,13 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestDeleteAdminAuthorized(c *check.C) {
-	myApp := &app.App{
+	myApp := &appTypes.App{
 		Name:      "myapptodelete",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err := app.CreateApp(context.TODO(), myApp, s.user)
+	legacyApp := (*app.App)(myApp)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	myApp, err = app.GetByName(context.TODO(), myApp.Name)
 	c.Assert(err, check.IsNil)
@@ -2458,10 +2396,11 @@ func (s *S) TestUpdateAppTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *che
 
 func (s *S) TestAddUnits(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 10, InUse: 0}}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.Quota{Limit: 10, InUse: 0}}
+	legacyApp := (*app.App)(a)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
+	newSuccessfulAppVersion(c, legacyApp)
 	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2475,9 +2414,10 @@ func (s *S) TestAddUnits(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	a, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	legacyApp = (*app.App)(a)
+	units, err := legacyApp.Units(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(eventtest.EventDesc{
@@ -2491,10 +2431,11 @@ func (s *S) TestAddUnits(c *check.C) {
 
 func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
+	legacyApp := (*app.App)(a)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
+	newSuccessfulAppVersion(c, legacyApp)
 	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2508,9 +2449,9 @@ func (s *S) TestAddUnitsUnlimited(c *check.C) {
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	a, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	units, err := legacyApp.Units(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(eventtest.EventDesc{
@@ -2570,10 +2511,11 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 
 func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "armorandsword", Platform: "zend", TeamOwner: s.team.Name, Quota: quota.UnlimitedQuota}
+	legacyApp := (*app.App)(a)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
+	newSuccessfulAppVersion(c, legacyApp)
 	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 3)
@@ -2587,9 +2529,10 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmitted(c *check.C) {
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	a, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	legacyApp = (*app.App)(a)
+	units, err := legacyApp.Units(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 3)
 	c.Assert(recorder.Body.String(), check.Matches, `{"Message":".*added 3 units","Timestamp":".*"}`+"\n")
@@ -2647,16 +2590,17 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 
 func (s *S) TestRemoveUnits(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
+	legacyApp := (*app.App)(a)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
+	newSuccessfulAppVersion(c, legacyApp)
 	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		c.Assert(item.GetName(), check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "web", nil, nil)
+	s.provisioner.AddUnits(context.TODO(), legacyApp, 3, "web", nil, nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?units=2&process=web", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "b "+s.token.GetValue())
@@ -2664,12 +2608,13 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-type"), check.Equals, "application/x-json-stream")
-	app, err := app.GetByName(context.TODO(), a.Name)
+	a, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	legacyApp = (*app.App)(a)
+	units, err := legacyApp.Units(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(legacyApp), check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
@@ -2727,27 +2672,29 @@ func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmitted(c *check.C) {
 
 func (s *S) TestRemoveUnitsWorksIfProcessIsOmitted(c *check.C) {
 	ctx := context.Background()
-	a := app.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
-	err := app.CreateApp(context.TODO(), &a, s.user)
+	a := &appTypes.App{Name: "velha", Platform: "zend", TeamOwner: s.team.Name}
+	legacyApp := (*app.App)(a)
+	err := app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	newSuccessfulAppVersion(c, &a)
+	newSuccessfulAppVersion(c, legacyApp)
 	s.mockService.AppQuota.OnInc = func(item quota.QuotaItem, quantity int) error {
 		c.Assert(item.GetName, check.Equals, a.Name)
 		c.Assert(quantity, check.Equals, 2)
 		return nil
 	}
-	s.provisioner.AddUnits(context.TODO(), &a, 3, "", nil, nil)
+	s.provisioner.AddUnits(context.TODO(), legacyApp, 3, "", nil, nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	app, err := app.GetByName(context.TODO(), a.Name)
+	a, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	units, err := app.Units(ctx)
+	legacyApp = (*app.App)(a)
+	units, err := legacyApp.Units(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
-	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(legacyApp), check.HasLen, 1)
 	c.Assert(eventtest.EventDesc{
 		Target: appTarget("velha"),
 		Owner:  s.token.GetUserName(),
@@ -3832,7 +3779,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) {
-	a := &app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bindTypes.ServiceEnvVar{
+	a := &appTypes.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, ServiceEnvs: []bindTypes.ServiceEnvVar{
 		{
 			EnvVar: bindTypes.EnvVar{
 				Name:  "DATABASE_HOST",
@@ -3865,7 +3812,8 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfServiceVariables(c *check.C) 
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/x-json-stream")
 	a, err = app.GetByName(context.TODO(), "losers")
 	c.Assert(err, check.IsNil)
-	envs := a.Envs()
+	legacyApp := (*app.App)(a)
+	envs := legacyApp.Envs()
 	delete(envs, tsuruEnvs.TsuruServicesEnvVar)
 	delete(envs, "TSURU_APPNAME")
 	delete(envs, "TSURU_APPDIR")
@@ -5375,11 +5323,12 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyOtherApp := (*app.App)(otherApp)
 	expected := bindTypes.EnvVar{
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := legacyOtherApp.Envs()
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -5426,14 +5375,15 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}, Password: "abcde", OwnerTeams: []string{s.team.Name}}
 	err := service.Create(context.TODO(), srvc)
 	c.Assert(err, check.IsNil)
-	a := app.App{
+	a := &appTypes.App{
 		Name:      "painkiller",
 		Platform:  "zend",
 		TeamOwner: s.team.Name,
 	}
-	err = app.CreateApp(context.TODO(), &a, s.user)
+	legacyApp := (*app.App)(a)
+	err = app.CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	err = s.provisioner.AddUnits(context.TODO(), &a, 1, "web", nil, nil)
+	err = s.provisioner.AddUnits(context.TODO(), legacyApp, 1, "web", nil, nil)
 	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -5468,11 +5418,12 @@ func (s *S) TestUnbindNoRestartFlag(c *check.C) {
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyOtherApp := (*app.App)(otherApp)
 	expected := bindTypes.EnvVar{
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := legacyOtherApp.Envs()
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -5573,11 +5524,12 @@ func (s *S) TestUnbindForceFlag(c *check.C) {
 	c.Assert(instance.Apps, check.DeepEquals, []string{})
 	otherApp, err = app.GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyOtherApp := (*app.App)(otherApp)
 	expected := bindTypes.EnvVar{
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	allEnvs := otherApp.Envs()
+	allEnvs := legacyOtherApp.Envs()
 	c.Assert(allEnvs["MY_VAR"], check.DeepEquals, expected)
 	_, ok := allEnvs["DATABASE_HOST"]
 	c.Assert(ok, check.Equals, false)
@@ -5995,7 +5947,7 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := getAppFromContext(a.Name, r)
 	c.Assert(err, check.IsNil)
-	c.Assert(app, check.DeepEquals, *expected)
+	c.Assert(app, check.DeepEquals, expected)
 }
 
 func (s *S) TestSwapDeprecated(c *check.C) {

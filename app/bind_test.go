@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/service"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -33,15 +34,17 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	instance := service.ServiceInstance{Name: "MyInstance", Apps: []string{"whichapp"}, ServiceName: srvc.Name}
 	err = s.conn.ServiceInstances().Insert(instance)
 	c.Assert(err, check.IsNil)
-	a := App{
+	a := &appTypes.App{
 		Name:      "whichapp",
 		Platform:  "python",
 		TeamOwner: s.team.Name,
 	}
-	err = CreateApp(context.TODO(), &a, s.user)
+	legacyApp := (*App)(a)
+	err = CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
+	legacyApp = (*App)(app)
 	buf := bytes.NewBuffer(nil)
 	evt, err := event.New(&event.Opts{
 		Target:   event.Target{Type: "app", Value: a.Name},
@@ -51,7 +54,7 @@ func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	evt.SetLogWriter(buf)
-	err = Delete(context.TODO(), app, evt, "")
+	err = Delete(context.TODO(), legacyApp, evt, "")
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*Done removing application\.`+"\n$")
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()

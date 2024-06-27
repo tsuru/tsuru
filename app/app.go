@@ -165,8 +165,8 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 		Metadata:    app.Metadata,
 	}
 
-	if version := app.GetPlatformVersion(); version != "latest" {
-		result.Platform = fmt.Sprintf("%s:%s", app.Platform, version)
+	if app.PlatformVersion != "latest" && app.PlatformVersion != "" {
+		result.Platform = fmt.Sprintf("%s:%s", app.Platform, app.PlatformVersion)
 	}
 	prov, err := app.getProvisioner(ctx)
 	if err != nil {
@@ -268,8 +268,8 @@ func AppInfo(ctx context.Context, app *App) (*appTypes.AppInfo, error) {
 
 // GetByName queries the database to find an app identified by the given
 // name.
-func GetByName(ctx context.Context, name string) (*App, error) {
-	var app App
+func GetByName(ctx context.Context, name string) (*appTypes.App, error) {
+	var app appTypes.App
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -1793,7 +1793,6 @@ type Filter struct {
 	UserOwner   string
 	Pool        string
 	Pools       []string
-	Statuses    []string
 	Locked      bool
 	Tags        []string
 	Extra       map[string][]string
@@ -1935,8 +1934,8 @@ func Units(ctx context.Context, apps []App) (map[string]AppUnitsResponse, error)
 }
 
 // List returns the list of apps filtered through the filter parameter.
-func List(ctx context.Context, filter *Filter) ([]App, error) {
-	apps := []App{}
+func List(ctx context.Context, filter *Filter) ([]*appTypes.App, error) {
+	apps := []*appTypes.App{}
 	query := filter.Query()
 	conn, err := db.Conn()
 	if err != nil {
@@ -1947,36 +1946,7 @@ func List(ctx context.Context, filter *Filter) ([]App, error) {
 	if err != nil {
 		return nil, err
 	}
-	if filter != nil && len(filter.Statuses) > 0 {
-		appsProvisionerMap := make(map[string][]provision.App)
-		var prov provision.Provisioner
-		for i := range apps {
-			a := &apps[i]
-			prov, err = a.getProvisioner(ctx)
-			if err != nil {
-				return nil, err
-			}
-			appsProvisionerMap[prov.GetName()] = append(appsProvisionerMap[prov.GetName()], a)
-		}
-		var provisionApps []provision.App
-		for provName, apps := range appsProvisionerMap {
-			prov, err = provision.Get(provName)
-			if err != nil {
-				return nil, err
-			}
-			if filterProv, ok := prov.(provision.AppFilterProvisioner); ok {
-				apps, err = filterProv.FilterAppsByUnitStatus(ctx, apps, filter.Statuses)
-				if err != nil {
-					return nil, err
-				}
-			}
-			provisionApps = append(provisionApps, apps...)
-		}
-		for i := range provisionApps {
-			apps[i] = *(provisionApps[i].(*App))
-		}
-		apps = apps[:len(provisionApps)]
-	}
+
 	err = loadCachedAddrsInApps(ctx, apps)
 	if err != nil {
 		return nil, err
@@ -1988,11 +1958,11 @@ func appRouterAddrKey(appName, routerName string) string {
 	return strings.Join([]string{"app-router-addr", appName, routerName}, "\x00")
 }
 
-func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
+func loadCachedAddrsInApps(ctx context.Context, apps []*appTypes.App) error {
 	keys := make([]string, 0, len(apps))
-	for i := range apps {
-		a := &apps[i]
-		a.Routers = a.GetRouters()
+	for _, a := range apps {
+		legacyApp := (*App)(a)
+		a.Routers = legacyApp.GetRouters()
 		for j := range a.Routers {
 			keys = append(keys, appRouterAddrKey(a.Name, a.Routers[j].Name))
 		}
@@ -2005,8 +1975,7 @@ func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 	for _, e := range entries {
 		entryMap[e.Key] = e
 	}
-	for i := range apps {
-		a := &apps[i]
+	for i, a := range apps {
 		hasEmpty := false
 		for j := range apps[i].Routers {
 			entry := entryMap[appRouterAddrKey(a.Name, a.Routers[j].Name)]
@@ -2016,7 +1985,8 @@ func loadCachedAddrsInApps(ctx context.Context, apps []App) error {
 			}
 		}
 		if hasEmpty {
-			GetAppRouterUpdater().update(ctx, a)
+			legacyApp := (*App)(a)
+			GetAppRouterUpdater().update(ctx, legacyApp)
 		}
 	}
 	return nil

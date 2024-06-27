@@ -148,7 +148,8 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	allowed := permission.Check(token, permission.PermAppRunShell, contextsForApp(&a)...)
+	legacyApp := (*app.App)(a)
+	allowed := permission.Check(token, permission.PermAppRunShell, contextsForApp(a)...)
 	if !allowed {
 		httpErr = permission.ErrUnauthorized
 		return
@@ -166,7 +167,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Owner:       token,
 		RemoteAddr:  r.RemoteAddr,
 		CustomData:  event.FormToCustomData(InputFields(r)),
-		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:     event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 		DisableLock: true,
 	})
 	if err != nil {
@@ -217,10 +218,10 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		Stdin:  conn,
 		Width:  width,
 		Height: height,
-		Units:  unitsForShell(ctx, a, unitID, isolated),
+		Units:  unitsForShell(ctx, legacyApp, unitID, isolated),
 		Term:   clientTerm,
 	}
-	err = a.Shell(ctx, opts)
+	err = legacyApp.Shell(ctx, opts)
 	if err != nil {
 		httpErr = &errors.HTTP{
 			Code:    http.StatusInternalServerError,
@@ -229,7 +230,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func unitsForShell(ctx stdContext.Context, a app.App, unitID string, isolated bool) []string {
+func unitsForShell(ctx stdContext.Context, a *app.App, unitID string, isolated bool) []string {
 	if isolated {
 		return nil
 	}

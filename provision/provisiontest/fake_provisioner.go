@@ -44,7 +44,6 @@ var (
 	_ provision.LogsProvisioner       = &FakeProvisioner{}
 	_ provision.MetricsProvisioner    = &FakeProvisioner{}
 	_ provision.VolumeProvisioner     = &FakeProvisioner{}
-	_ provision.AppFilterProvisioner  = &FakeProvisioner{}
 	_ provision.ExecutableProvisioner = &FakeProvisioner{}
 	_ provision.App                   = &FakeApp{}
 	_ bind.App                        = &FakeApp{}
@@ -862,20 +861,6 @@ func (p *FakeProvisioner) ExecuteCommand(ctx context.Context, opts provision.Exe
 		}
 	}
 	return err
-}
-
-func (p *FakeProvisioner) FilterAppsByUnitStatus(ctx context.Context, apps []provision.App, status []string) ([]provision.App, error) {
-	filteredApps := []provision.App{}
-	for i := range apps {
-		units, _ := p.Units(ctx, apps[i])
-		for _, u := range units {
-			if stringInArray(u.Status.String(), status) {
-				filteredApps = append(filteredApps, apps[i])
-				break
-			}
-		}
-	}
-	return filteredApps, nil
 }
 
 func (p *FakeProvisioner) GetName() string {

@@ -143,17 +143,19 @@ func (s *S) TestInsertAppMinimumParams(c *check.C) {
 func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
-	app := App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &app, s.user)
+	app := &appTypes.App{Name: "mist", Platform: "opeth", TeamOwner: s.team.Name}
+	legacyApp := (*App)(app)
+	err := CreateApp(context.TODO(), legacyApp, s.user)
 	c.Assert(err, check.IsNil)
-	ctx := action.FWContext{Params: []interface{}{&app}}
+	ctx := action.FWContext{Params: []interface{}{legacyApp}}
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.FitsTypeOf, &app)
+	c.Assert(result, check.FitsTypeOf, &App{}) // legacy support
 	c.Assert(result.(*App).Name, check.Equals, app.Name)
 	gotApp, err := GetByName(context.TODO(), app.Name)
 	c.Assert(err, check.IsNil)
-	appEnv := gotApp.Envs()
+	legacyGotApp := (*App)(gotApp)
+	appEnv := legacyGotApp.Envs()
 	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
 	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")

@@ -67,7 +67,8 @@ func (s *S) SetUpTest(c *check.C) {
 		if err == appTypes.ErrAppNotFound {
 			return nil, nil
 		}
-		return a, err
+		legacyApp := (*app.App)(a)
+		return legacyApp, err
 	})
 	routertest.FakeRouter.Reset()
 	provisiontest.ProvisionerInstance.Reset()

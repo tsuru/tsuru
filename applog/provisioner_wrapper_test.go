@@ -56,8 +56,8 @@ func (s *ProvisionerWrapperSuite) SetUpSuite(c *check.C) {
 		},
 	}
 	servicemanager.App = &appTypes.MockAppService{
-		Apps: []appTypes.AppInterface{
-			&appTypes.MockApp{Name: "myapp", Pool: "mypool"},
+		Apps: []*appTypes.App{
+			{Name: "myapp", Pool: "mypool"},
 		},
 	}
 	servicemanager.Job, err = job.JobService()

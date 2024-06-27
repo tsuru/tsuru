@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	appTypes "github.com/tsuru/tsuru/types/app"
 	check "gopkg.in/check.v1"
 )
 
@@ -135,9 +136,10 @@ func (s *S) TestGetApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	a := GetApp(r)
 	c.Assert(a, check.IsNil)
-	SetApp(r, s.app)
+	SetApp(r, (*appTypes.App)(s.app))
 	a = GetApp(r)
-	c.Assert(a, check.DeepEquals, s.app)
+	legacyApp := (*app.App)(a)
+	c.Assert(legacyApp, check.DeepEquals, s.app)
 }
 
 func (s *S) TestRequestID(c *check.C) {

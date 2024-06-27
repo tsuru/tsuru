@@ -543,7 +543,8 @@ func appFinder(appName string) (rebuild.RebuildApp, error) {
 	if err == appTypes.ErrAppNotFound {
 		return nil, nil
 	}
-	return a, err
+	legacyApp := (*app.App)(a)
+	return legacyApp, err
 }
 
 func startServer(handler http.Handler) error {

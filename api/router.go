@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"net/http"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event"
@@ -240,6 +241,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
+	legacyApp := (*app.App)(a)
 	_, err = router.Get(ctx, appRouter.Name)
 	if err != nil {
 		if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
@@ -248,7 +250,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 	allowed := permission.Check(t, permission.PermAppUpdateRouterAdd,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -272,13 +274,13 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.AddRouter(ctx, appRouter)
+	return legacyApp.AddRouter(ctx, appRouter)
 }
 
 // title: update app router
@@ -304,6 +306,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
+	legacyApp := (*app.App)(a)
 	_, err = router.Get(ctx, appRouter.Name)
 	if err != nil {
 		if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
@@ -312,7 +315,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 	allowed := permission.Check(t, permission.PermAppUpdateRouterUpdate,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -336,13 +339,13 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	return a.UpdateRouter(ctx, appRouter)
+	return legacyApp.UpdateRouter(ctx, appRouter)
 }
 
 // title: delete app router
@@ -361,8 +364,9 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
+	legacyApp := (*app.App)(a)
 	allowed := permission.Check(t, permission.PermAppUpdateRouterRemove,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -373,13 +377,13 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	err = a.RemoveRouter(ctx, routerName)
+	err = legacyApp.RemoveRouter(ctx, routerName)
 	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -401,14 +405,15 @@ func listAppRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
+	legacyApp := (*app.App)(a)
 	canRead := permission.Check(t, permission.PermAppReadRouter,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
 	w.Header().Set("Content-Type", "application/json")
-	routers, err := a.GetRoutersWithAddr(ctx)
+	routers, err := legacyApp.GetRoutersWithAddr(ctx)
 	if err != nil {
 		return err
 	}
@@ -445,8 +450,9 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
+	legacyApp := (*app.App)(a)
 	allowed := permission.Check(t, permission.PermAppUpdateRoutable,
-		contextsForApp(&a)...,
+		contextsForApp(a)...,
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
@@ -457,18 +463,18 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(&a)...),
+		Allowed:    event.Allowed(permission.PermAppReadEvents, contextsForApp(a)...),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() { evt.Done(err) }()
-	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, &a, args.Version)
+	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, legacyApp, args.Version)
 	if err != nil {
 		if appTypes.IsInvalidVersionError(err) {
 			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 		}
 		return err
 	}
-	return a.SetRoutable(ctx, version, args.IsRoutable)
+	return legacyApp.SetRoutable(ctx, version, args.IsRoutable)
 }
