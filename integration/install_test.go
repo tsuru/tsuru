@@ -627,7 +627,7 @@ func serviceBind() ExecFlow {
 }
 
 func (s *S) TestBase(c *check.C) {
-	s.config(c)
+	s.config()
 	if s.env == nil {
 		return
 	}

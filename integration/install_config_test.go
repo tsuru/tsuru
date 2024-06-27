@@ -7,8 +7,6 @@ package integration
 import (
 	"os"
 	"strings"
-
-	check "gopkg.in/check.v1"
 )
 
 func (s *S) getPlatforms() []string {
@@ -43,7 +41,7 @@ func (s *S) getPlatforms() []string {
 	return selectedPlatforms
 }
 
-func (s *S) config(c *check.C) {
+func (s *S) config() {
 	env := NewEnvironment()
 	if !env.Has("enabled") {
 		return
