@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -38,6 +39,9 @@ func (s *S) SetUpTest(c *check.C) {
 	config.Set("database:name", "tsuru_event_webhook_tests")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Events().Database)
 	c.Assert(err, check.IsNil)
@@ -53,13 +57,13 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceNotify(c *check.C) {
-	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -67,7 +71,7 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	called := make(chan struct{})
 	var receivedReq *http.Request
@@ -107,13 +111,13 @@ func (s *S) TestWebhookServiceNotify(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
-	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -121,9 +125,9 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	doneEvt, err := event.GetByID(evt.UniqueID)
+	doneEvt, err := event.GetByID(context.TODO(), evt.UniqueID)
 	c.Assert(err, check.IsNil)
 	evtData, err := json.Marshal(doneEvt)
 	c.Assert(err, check.IsNil)
@@ -151,13 +155,13 @@ func (s *S) TestWebhookServiceNotifyDefaultBody(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
-	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -165,7 +169,7 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	called := make(chan struct{})
 	var receivedReq *http.Request
@@ -205,13 +209,13 @@ func (s *S) TestWebhookServiceNotifyTemplate(c *check.C) {
 }
 
 func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
-	evt, err := event.New(&event.Opts{
-		Target: event.Target{Type: "app", Value: "myapp"},
-		ExtraTargets: []event.ExtraTarget{
-			{Target: event.Target{Type: "app", Value: "xapp1"}},
-			{Target: event.Target{Type: "app", Value: "xapp2"}},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target: eventTypes.Target{Type: "app", Value: "myapp"},
+		ExtraTargets: []eventTypes.ExtraTarget{
+			{Target: eventTypes.Target{Type: "app", Value: "xapp1"}},
+			{Target: eventTypes.Target{Type: "app", Value: "xapp2"}},
 		},
-		RawOwner: event.Owner{
+		RawOwner: eventTypes.Owner{
 			Type: "user",
 			Name: "me@me.com",
 		},
@@ -219,9 +223,9 @@ func (s *S) TestWebhookServiceNotifyProxy(c *check.C) {
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxApp, "myapp")),
 	})
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	doneEvt, err := event.GetByID(evt.UniqueID)
+	doneEvt, err := event.GetByID(context.TODO(), evt.UniqueID)
 	c.Assert(err, check.IsNil)
 	evtData, err := json.Marshal(doneEvt)
 	c.Assert(err, check.IsNil)

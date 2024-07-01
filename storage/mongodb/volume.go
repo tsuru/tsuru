@@ -12,7 +12,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/volume"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -71,15 +74,14 @@ func (*volumeStorage) Get(ctx context.Context, name string) (*volume.Volume, err
 	defer span.Finish()
 	span.SetMongoID(name)
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(volumeCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 	var v volume.Volume
-	err = volumesCollection(conn).FindId(name).One(&v)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&v)
+	if err == mongo.ErrNoDocuments {
 		return nil, volume.ErrVolumeNotFound
 	}
 	if err != nil {
@@ -94,25 +96,41 @@ func (*volumeStorage) ListByFilter(ctx context.Context, f *volume.Filter) ([]vol
 	span := newMongoDBSpan(ctx, mongoSpanFind, volumeCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(volumeCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if f != nil {
-		query["$or"] = []bson.M{
-			{"_id": bson.M{"$in": f.Names}},
-			{"pool": bson.M{"$in": f.Pools}},
-			{"teamowner": bson.M{"$in": f.Teams}},
+		orQueries := []mongoBSON.M{}
+
+		if len(f.Names) > 0 {
+			orQueries = append(orQueries, mongoBSON.M{"_id": mongoBSON.M{"$in": f.Names}})
 		}
+
+		if len(f.Pools) > 0 {
+			orQueries = append(orQueries, mongoBSON.M{"pool": mongoBSON.M{"$in": f.Pools}})
+		}
+
+		if len(f.Teams) > 0 {
+			orQueries = append(orQueries, mongoBSON.M{"teamowner": mongoBSON.M{"$in": f.Teams}})
+		}
+
+		query["$or"] = orQueries
 	}
 	span.SetQueryStatement(query)
 
 	var volumes []volume.Volume
-	err = volumesCollection(conn).Find(query).All(&volumes)
+
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &volumes)
 	if err != nil {
 		span.SetError(err)
 		return nil, errors.WithStack(err)
@@ -164,17 +182,23 @@ func (*volumeStorage) Binds(ctx context.Context, volumeName string) ([]volume.Vo
 	span := newMongoDBSpan(ctx, mongoSpanFind, volumeBindsCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(volumeBindsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 
 	var binds []volume.VolumeBind
-	query := bson.M{"_id.volume": volumeName}
+	query := mongoBSON.M{"_id.volume": volumeName}
 	span.SetQueryStatement(query)
-	err = volumeBindsCollection(conn).Find(query).All(&binds)
+
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &binds)
 	if err != nil {
 		span.SetError(err)
 		return nil, errors.WithStack(err)
@@ -187,20 +211,26 @@ func (*volumeStorage) BindsForApp(ctx context.Context, volumeName, appName strin
 	span := newMongoDBSpan(ctx, mongoSpanFind, volumeBindsCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(volumeBindsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 
 	var binds []volume.VolumeBind
-	query := bson.M{"_id.app": appName}
+	query := mongoBSON.M{"_id.app": appName}
 	if volumeName != "" {
 		query["_id.volume"] = volumeName
 	}
 	span.SetQueryStatement(query)
-	err = volumeBindsCollection(conn).Find(query).All(&binds)
+
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &binds)
 	if err != nil {
 		span.SetError(err)
 		return nil, errors.WithStack(err)

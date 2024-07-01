@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -58,8 +59,8 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlan, Value: plan.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: plan.Name},
 		Kind:       permission.PermPlanCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -69,7 +70,7 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Plan.Create(ctx, plan)
 	if err == appTypes.ErrPlanAlreadyExists {
 		return &errors.HTTP{
@@ -126,8 +127,8 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return permission.ErrUnauthorized
 	}
 	planName := r.URL.Query().Get(":planname")
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlan, Value: planName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlan, Value: planName},
 		Kind:       permission.PermPlanDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -137,7 +138,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Plan.Remove(ctx, planName)
 	if err == appTypes.ErrPlanNotFound {
 		return &errors.HTTP{

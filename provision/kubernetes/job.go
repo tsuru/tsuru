@@ -29,6 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 )
 
@@ -445,6 +446,7 @@ func generateExpireEventTime(clusterClient *ClusterClient, job *batchv1.Job) tim
 }
 
 func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.Event, wg *sync.WaitGroup) {
+	ctx := context.Background()
 	defer wg.Done()
 	var evtErr error
 	var kind *permission.PermissionScheme
@@ -467,13 +469,13 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 	expire := generateExpireEventTime(clusterClient, job)
 	opts := event.Opts{
 		Kind:       kind,
-		Target:     event.Target{Type: event.TargetTypeJob, Value: realJobOwner},
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: realJobOwner},
 		Allowed:    event.Allowed(permission.PermJobReadEvents, permission.Context(permTypes.CtxJob, realJobOwner)),
-		RawOwner:   event.Owner{Type: event.OwnerTypeInternal},
+		RawOwner:   eventTypes.Owner{Type: eventTypes.OwnerTypeInternal},
 		Cancelable: false,
 		ExpireAt:   &expire,
 	}
-	e, err := event.New(&opts)
+	e, err := event.New(ctx, &opts)
 	if err != nil {
 		return
 	}
@@ -485,7 +487,7 @@ func createJobEvent(clusterClient *ClusterClient, job *batchv1.Job, evt *apiv1.E
 		"message":            evt.Message,
 		"cluster-start-time": evt.CreationTimestamp.String(),
 	}
-	e.DoneCustomData(evtErr, customData)
+	e.DoneCustomData(ctx, evtErr, customData)
 }
 
 func ensureServiceAccountForJob(ctx context.Context, client *ClusterClient, job jobTypes.Job) error {

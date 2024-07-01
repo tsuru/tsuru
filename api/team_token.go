@@ -105,7 +105,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(args.Team),
 		Kind:       permission.PermTeamTokenCreate,
 		Owner:      t,
@@ -116,7 +116,7 @@ func tokenCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	token, err := servicemanager.TeamToken.Create(ctx, args, t)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(teamToken.Team),
 		Kind:       permission.PermTeamTokenUpdate,
 		Owner:      t,
@@ -178,7 +178,7 @@ func tokenUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	teamToken, err = servicemanager.TeamToken.Update(ctx, args, t)
 	if err == authTypes.ErrTeamTokenNotFound {
 		return &errors.HTTP{
@@ -221,7 +221,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     teamTarget(teamName),
 		Kind:       permission.PermTeamTokenDelete,
 		Owner:      t,
@@ -232,7 +232,7 @@ func tokenDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.TeamToken.Delete(ctx, tokenID)
 	if err == authTypes.ErrTeamTokenNotFound {
 		return &errors.HTTP{

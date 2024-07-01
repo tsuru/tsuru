@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 )
 
 // title: add platform
@@ -60,8 +61,8 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformCreate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
@@ -73,7 +74,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
@@ -123,8 +124,8 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
@@ -136,7 +137,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()
@@ -171,8 +172,8 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return permission.ErrUnauthorized
 	}
 	name := r.URL.Query().Get(":name")
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypePlatform, Value: name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:       permission.PermPlatformDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -182,7 +183,7 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Platform.Remove(ctx, name)
 	if err == appTypes.ErrPlatformNotFound {
 		return &tErrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -290,8 +291,8 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	keepAliveWriter := tsuruio.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruio.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypePlatform, Value: name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Kind:          permission.PermPlatformUpdate,
 		Owner:         t,
 		RemoteAddr:    r.RemoteAddr,
@@ -303,7 +304,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	evt.SetLogWriter(writer)
 	ctx, cancel := evt.CancelableContext(ctx)
 	defer cancel()

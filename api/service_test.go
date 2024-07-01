@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/permission/permissiontest"
@@ -52,6 +53,9 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.createUserAndTeam(c)
 	s.testServer = RunServer(true)

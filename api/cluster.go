@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/provision/cluster"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 )
 
@@ -52,8 +53,8 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -63,7 +64,7 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Cluster.FindByName(ctx, provCluster.Name)
 	if err == nil {
 		return &tsuruErrors.HTTP{
@@ -128,8 +129,8 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeCluster, Value: provCluster.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeCluster, Value: provCluster.Name},
 		Kind:       permission.PermClusterUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -139,7 +140,7 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Cluster.FindByName(ctx, provCluster.Name)
 	if err != nil {
 		if err == provTypes.ErrClusterNotFound {
@@ -258,8 +259,8 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	}
 
 	clusterName := r.URL.Query().Get(":name")
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeCluster, Value: clusterName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeCluster, Value: clusterName},
 		Kind:       permission.PermClusterDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -269,7 +270,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	streamResponse := strings.HasPrefix(r.Header.Get("Accept"), "application/x-json-stream")
 	if streamResponse {
 		w.Header().Set("Content-Type", "application/x-json-stream")

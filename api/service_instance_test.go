@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
@@ -79,6 +80,9 @@ func (s *ServiceInstanceSuite) SetUpTest(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
+
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.team = &authTypes.Team{Name: "tsuruteam"}
 	_, s.token = permissiontest.CustomUserWithPermission(c, nativeScheme, "consumption-master-user", permission.Permission{

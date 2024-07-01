@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	volumeTypes "github.com/tsuru/tsuru/types/volume"
 )
@@ -139,8 +140,8 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -150,7 +151,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	_, err = servicemanager.Volume.Get(ctx, inputVolume.Name)
 	if err == nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: "volume already exists"}
@@ -193,8 +194,8 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: inputVolume.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: inputVolume.Name},
 		Kind:       permission.PermVolumeUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -204,7 +205,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return servicemanager.Volume.Update(ctx, &inputVolume)
 }
 
@@ -257,8 +258,8 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: volumeName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: volumeName},
 		Kind:       permission.PermVolumeDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -268,7 +269,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return servicemanager.Volume.Delete(ctx, dbVolume)
 }
 
@@ -313,8 +314,8 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canBindApp {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateBind,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -324,7 +325,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Volume.BindApp(ctx, &volumeTypes.BindOpts{
 		Volume:     dbVolume,
 		AppName:    bindInfo.App,
@@ -384,8 +385,8 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !canUnbindApp {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeVolume, Value: dbVolume.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeVolume, Value: dbVolume.Name},
 		Kind:       permission.PermVolumeUpdateUnbind,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -395,7 +396,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Volume.UnbindApp(ctx, &volumeTypes.BindOpts{
 		Volume:     dbVolume,
 		AppName:    bindInfo.App,

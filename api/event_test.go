@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
@@ -27,7 +28,10 @@ import (
 	_ "github.com/tsuru/tsuru/storage/mongodb"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"golang.org/x/crypto/bcrypt"
 	check "gopkg.in/check.v1"
 )
@@ -63,6 +67,8 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
@@ -110,7 +116,7 @@ func (s *EventSuite) generateEventCustomData(appName string) *app.DeployOptions 
 }
 
 func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionScheme, c *check.C) ([]*event.Event, error) {
-	t, err := event.GetTargetType(target)
+	t, err := eventTypes.GetTargetType(target)
 	if err != nil {
 		return nil, err
 	}
@@ -121,22 +127,22 @@ func (s *EventSuite) insertEvents(target string, kinds []*permission.PermissionS
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("app-%d", i)
 		opts := &event.Opts{
-			Target:     event.Target{Type: t, Value: name},
+			Target:     eventTypes.Target{Type: t, Value: name},
 			Owner:      s.token,
 			Kind:       kinds[i%len(kinds)],
 			Cancelable: i == 0,
 		}
-		if t == event.TargetTypeApp {
+		if t == eventTypes.TargetTypeApp {
 			opts.Allowed = event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
 			opts.AllowedCancel = event.Allowed(permission.PermAppUpdateEvents, permission.Context(permTypes.CtxTeam, s.team.Name))
 		} else {
 			opts.Allowed = event.Allowed(permission.PermApp)
 			opts.AllowedCancel = event.Allowed(permission.PermApp)
 		}
-		evt, err := event.New(opts)
+		evt, err := event.New(context.TODO(), opts)
 		c.Assert(err, check.IsNil)
 		if i == 1 {
-			err = evt.Done(nil)
+			err = evt.Done(context.TODO(), nil)
 			c.Assert(err, check.IsNil)
 		}
 		evts[i] = evt
@@ -275,7 +281,7 @@ func (s *EventSuite) TestKindList(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var result []event.Kind
+	var result []eventTypes.Kind
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.HasLen, 1)
@@ -395,8 +401,8 @@ func (s *EventSuite) TestEventInfoPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -426,8 +432,8 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeApp, Value: "aha"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:      s.token,
 		Kind:       permission.PermAppDeploy,
 		Allowed:    event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -444,14 +450,20 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	if !c.Check(recorder.Code, check.Equals, http.StatusOK) {
 		c.Assert(recorder.Body.String(), check.Equals, "")
 	}
-	var result event.Event
+	var result eventTypes.EventInfo
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Kind, check.DeepEquals, evt.Kind)
 	c.Assert(result.Target, check.DeepEquals, evt.Target)
 
 	deployOptions := &app.DeployOptions{}
-	err = bson.Unmarshal(result.StartCustomData.Data, deployOptions)
+
+	mongoRaw := mongoBSON.RawValue{
+		Type:  bsontype.Type(result.StartCustomData.Kind),
+		Value: result.StartCustomData.Data,
+	}
+
+	err = mongoRaw.Unmarshal(deployOptions)
 	c.Assert(err, check.IsNil)
 
 	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
@@ -488,15 +500,9 @@ func (s *EventSuite) TestEventInfoPermissionWithSensitiveData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(results, check.HasLen, 1)
 	deployOptions = &app.DeployOptions{}
-	err = bson.Unmarshal(results[0].StartCustomData.Data, deployOptions)
-	c.Assert(err, check.IsNil)
-	c.Assert(deployOptions.App.Env, check.DeepEquals, map[string]bindTypes.EnvVar{
-		"MY_PASSWORD": {
-			Name:   "MY_PASSWORD",
-			Value:  "*** (private variable)",
-			Alias:  "",
-			Public: false,
-		}})
+
+	// On list StartCustomData, EndCustomData and OtherCustomData is empty for performance reasons
+	c.Assert(results[0].StartCustomData, check.DeepEquals, mongoBSON.RawValue{})
 
 }
 
@@ -505,8 +511,8 @@ func (s *EventSuite) TestEventInfoWithoutPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, "some-other-team"),
 	})
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: "aha"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "aha"},
 		Owner:   s.token,
 		Kind:    permission.PermAppDeploy,
 		Allowed: event.Allowed(permission.PermAppReadEvents, permission.Context(permTypes.CtxTeam, s.team.Name)),
@@ -527,8 +533,8 @@ func (s *EventSuite) TestEventCancelPermission(c *check.C) {
 		Scheme:  permission.PermAppUpdate,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
@@ -553,8 +559,8 @@ func (s *EventSuite) TestEventCancelWithoutPermission(c *check.C) {
 		Scheme:  permission.PermAppRead,
 		Context: permission.Context(permTypes.CtxTeam, s.team.Name),
 	})
-	evt, err := event.New(&event.Opts{
-		Target:        event.Target{Type: event.TargetTypeApp, Value: "anything"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:        eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: "anything"},
 		Owner:         s.token,
 		Kind:          permission.PermAppDeploy,
 		Cancelable:    true,
@@ -600,7 +606,7 @@ func (s *EventSuite) TestEventBlockListFiltered(c *check.C) {
 		Context: permTypes.PermissionContext{CtxType: permTypes.CtxGlobal},
 	})
 	blocks := addBlocks(c)
-	err := event.RemoveBlock(blocks[1].ID)
+	err := event.RemoveBlock(context.TODO(), blocks[1].ID)
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("GET", "/events/blocks?active=true", nil)
 	c.Assert(err, check.IsNil)
@@ -659,7 +665,7 @@ func (s *EventSuite) TestEventBlockAdd(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 1)
 	c.Assert(blocks[0].Active, check.Equals, true)
@@ -679,7 +685,7 @@ func (s *EventSuite) TestEventBlockAddWithoutPermission(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 0)
 }
@@ -701,7 +707,7 @@ func (s *EventSuite) TestEventBlockAddWithoutReason(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "reason is required\n")
-	blocks, err := event.ListBlocks(nil)
+	blocks, err := event.ListBlocks(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(blocks), check.Equals, 0)
 }
@@ -721,12 +727,12 @@ func (s *EventSuite) TestEventBlockRemove(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	active := false
-	afterBlocks, err := event.ListBlocks(&active)
+	afterBlocks, err := event.ListBlocks(context.TODO(), &active)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(afterBlocks), check.Equals, 1)
 	c.Assert(afterBlocks[0].ID.Hex(), check.Equals, blocks[0].ID.Hex())
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypeEventBlock, Value: blocks[0].ID.Hex()},
 		Owner:  token.GetUserName(),
 		Kind:   "event-block.remove",
 		StartCustomData: []map[string]interface{}{
@@ -785,7 +791,7 @@ func addBlocks(c *check.C) []*event.Block {
 		{OwnerName: "blocked-user"},
 	}
 	for _, b := range blocks {
-		err := event.AddBlock(b)
+		err := event.AddBlock(context.TODO(), b)
 		c.Assert(err, check.IsNil)
 	}
 	return blocks

@@ -5,19 +5,26 @@
 package mongodb
 
 import (
+	"context"
+
 	mgo "github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/service"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type serviceBrokerStorage struct{}
 
 var _ service.ServiceBrokerStorage = &serviceBrokerStorage{}
 
+const serviceBrokerCollectionName = "service_broker"
+
 func serviceBrokerCollection(conn *db.Storage) *dbStorage.Collection {
-	coll := conn.Collection("service_broker")
+	coll := conn.Collection(serviceBrokerCollectionName)
 	coll.EnsureIndex(mgo.Index{
 		Key:    []string{"name"},
 		Unique: true,
@@ -38,7 +45,7 @@ func (s *serviceBrokerStorage) Insert(b service.Broker) error {
 	return err
 }
 
-func (s *serviceBrokerStorage) Update(name string, b service.Broker) error {
+func (s *serviceBrokerStorage) Update(ctx context.Context, name string, b service.Broker) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -64,27 +71,36 @@ func (s *serviceBrokerStorage) Delete(name string) error {
 	return err
 }
 
-func (s *serviceBrokerStorage) FindAll() ([]service.Broker, error) {
-	conn, err := db.Conn()
+func (s *serviceBrokerStorage) FindAll(ctx context.Context) ([]service.Broker, error) {
+	collection, err := storagev2.Collection(serviceBrokerCollectionName)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var brokers []service.Broker
-	err = serviceBrokerCollection(conn).Find(nil).All(&brokers)
-	return brokers, err
+	cursor, err := collection.Find(ctx, mongoBSON.M{})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &brokers)
+	if err != nil {
+		return nil, err
+	}
+	return brokers, nil
 }
 
-func (s *serviceBrokerStorage) Find(name string) (service.Broker, error) {
-	conn, err := db.Conn()
+func (s *serviceBrokerStorage) Find(ctx context.Context, name string) (service.Broker, error) {
+	collection, err := storagev2.Collection(serviceBrokerCollectionName)
 	if err != nil {
 		return service.Broker{}, err
 	}
-	defer conn.Close()
+
 	var b service.Broker
-	err = serviceBrokerCollection(conn).Find(bson.M{"name": name}).One(&b)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"name": name}).Decode(&b)
+	if err == mongo.ErrNoDocuments {
 		err = service.ErrServiceBrokerNotFound
 	}
-	return b, err
+	if err != nil {
+		return service.Broker{}, err
+	}
+	return b, nil
 }

@@ -5,11 +5,13 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/permission"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
 )
 
@@ -21,32 +23,32 @@ func (s *S) TestUpdaterUpdatesAndStopsUpdating(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := New(&Opts{
-		Target:  Target{Type: "app", Value: "myapp"},
+	evt, err := New(context.TODO(), &Opts{
+		Target:  eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 := evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 := evts[0].LockUpdateTime
 	c.Assert(t0.Before(t1), check.Equals, true)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 = evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 = evts[0].LockUpdateTime
@@ -67,14 +69,14 @@ func (s *S) TestUpdaterRemoveEventStress(c *check.C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			evt, err := New(&Opts{
-				Target:  Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
+			evt, err := New(context.TODO(), &Opts{
+				Target:  eventTypes.Target{Type: "app", Value: fmt.Sprintf("myapp-%d", i)},
 				Kind:    permission.PermAppUpdateEnvSet,
 				Owner:   s.token,
 				Allowed: Allowed(permission.PermAppReadEvents),
 			})
 			c.Assert(err, check.IsNil)
-			evt.Done(nil)
+			evt.Done(context.TODO(), nil)
 		}(i)
 	}
 	wg.Wait()
@@ -90,43 +92,43 @@ func (s *S) TestUpdaterUpdatesMultipleEvents(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt0, err := New(&Opts{
-		Target:  Target{Type: "app", Value: "myapp0"},
+	evt0, err := New(context.TODO(), &Opts{
+		Target:  eventTypes.Target{Type: "app", Value: "myapp0"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evt1, err := New(&Opts{
-		Target:  Target{Type: "app", Value: "myapp1"},
+	evt1, err := New(context.TODO(), &Opts{
+		Target:  eventTypes.Target{Type: "app", Value: "myapp1"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	t0 := evts[0].LockUpdateTime
 	t1 := evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(t0.Before(evts[0].LockUpdateTime), check.Equals, true)
 	c.Assert(t1.Before(evts[1].LockUpdateTime), check.Equals, true)
-	err = evt0.Done(nil)
+	err = evt0.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
-	err = evt1.Done(nil)
+	err = evt1.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	t0 = evts[0].LockUpdateTime
 	t1 = evts[1].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 2)
 	c.Assert(t0, check.DeepEquals, evts[0].LockUpdateTime)
@@ -141,33 +143,33 @@ func (s *S) TestUpdaterUpdatesNonBlockingEvents(c *check.C) {
 		updater.stop()
 		lockUpdateInterval = oldUpdateInterval
 	}()
-	evt, err := New(&Opts{
-		Target:      Target{Type: "app", Value: "myapp"},
+	evt, err := New(context.TODO(), &Opts{
+		Target:      eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:        permission.PermAppUpdateEnvSet,
 		Owner:       s.token,
 		Allowed:     Allowed(permission.PermAppReadEvents),
 		DisableLock: true,
 	})
 	c.Assert(err, check.IsNil)
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 := evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 := evts[0].LockUpdateTime
 	c.Assert(t0.Before(t1), check.Equals, true)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t0 = evts[0].LockUpdateTime
 	time.Sleep(100 * time.Millisecond)
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	t1 = evts[0].LockUpdateTime
@@ -184,28 +186,28 @@ func (s *S) TestEventCleaner(c *check.C) {
 		eventCleanerInterval = oldEventCleanerInterval
 		lockExpireTimeout = oldLockExpire
 	}()
-	_, err := New(&Opts{
-		Target:  Target{Type: "app", Value: "myapp"},
+	_, err := New(context.TODO(), &Opts{
+		Target:  eventTypes.Target{Type: "app", Value: "myapp"},
 		Kind:    permission.PermAppUpdateEnvSet,
 		Owner:   s.token,
 		Allowed: Allowed(permission.PermAppReadEvents),
 	})
 	c.Assert(err, check.IsNil)
 	updater.stop()
-	evts, err := All()
+	evts, err := All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Running, check.Equals, true)
 	cleaner.start()
 	cleaner.stop()
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Running, check.Equals, true)
 	time.Sleep(120 * time.Millisecond)
 	cleaner.start()
 	cleaner.stop()
-	evts, err = All()
+	evts, err = All(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
 	c.Assert(evts[0].Running, check.Equals, false)

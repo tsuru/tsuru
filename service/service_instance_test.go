@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
@@ -52,6 +53,8 @@ func (s *InstanceSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_service_instance_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+
+	storagev2.Reset()
 }
 
 func (s *InstanceSuite) SetUpTest(c *check.C) {

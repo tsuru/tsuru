@@ -4,6 +4,8 @@
 
 package service
 
+import "context"
+
 var _ ServiceBrokerService = &MockServiceBrokerService{}
 
 // MockServiceBrokerService implements ServiceBrokerService interface
@@ -22,7 +24,7 @@ func (m *MockServiceBrokerService) Create(broker Broker) error {
 	return m.OnCreate(broker)
 }
 
-func (m *MockServiceBrokerService) Update(name string, broker Broker) error {
+func (m *MockServiceBrokerService) Update(ctx context.Context, name string, broker Broker) error {
 	if m.OnUpdate == nil {
 		return nil
 	}
@@ -36,14 +38,14 @@ func (m *MockServiceBrokerService) Delete(name string) error {
 	return m.OnDelete(name)
 }
 
-func (m *MockServiceBrokerService) Find(name string) (Broker, error) {
+func (m *MockServiceBrokerService) Find(ctx context.Context, name string) (Broker, error) {
 	if m.OnFind == nil {
 		return Broker{}, nil
 	}
 	return m.OnFind(name)
 }
 
-func (m *MockServiceBrokerService) List() ([]Broker, error) {
+func (m *MockServiceBrokerService) List(ctx context.Context) ([]Broker, error) {
 	if m.OnList == nil {
 		return nil, nil
 	}

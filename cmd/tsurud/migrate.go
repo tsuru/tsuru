@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
-	evtMigrate "github.com/tsuru/tsuru/event/migrate"
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
@@ -45,14 +44,6 @@ func init() {
 		log.Fatalf("unable to register migration: %s", err)
 	}
 	err = migration.Register("migrate-set-pool-to-app", setPoolToApps)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-events-deploy", app.MigrateDeploysToEvents)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
-	err = migration.Register("migrate-rc-events", migrateRCEvents)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
@@ -311,12 +302,4 @@ func migrateRoles() error {
 		}
 	}
 	return nil
-}
-
-func migrateRCEvents() error {
-	err := provision.InitializeAll()
-	if err != nil {
-		return err
-	}
-	return evtMigrate.MigrateRCEvents()
 }

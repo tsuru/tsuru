@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	routerTypes "github.com/tsuru/tsuru/types/router"
 )
@@ -47,8 +48,8 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return &errors.HTTP{Code: http.StatusConflict, Message: "dynamic router already exists"}
 	}
 
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -58,7 +59,7 @@ func addRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.DynamicRouter.Create(ctx, dynamicRouter)
 	if err == nil {
 		w.WriteHeader(http.StatusCreated)
@@ -90,8 +91,8 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: dynamicRouter.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: dynamicRouter.Name},
 		Kind:       permission.PermRouterUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -101,7 +102,7 @@ func updateRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = servicemanager.DynamicRouter.Update(ctx, dynamicRouter)
 	if err != nil {
@@ -129,8 +130,8 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeRouter, Value: routerName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeRouter, Value: routerName},
 		Kind:       permission.PermRouterDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -140,7 +141,7 @@ func deleteRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = servicemanager.DynamicRouter.Remove(ctx, routerName)
 	if err != nil {
@@ -266,7 +267,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterAdd,
 		Owner:      t,
@@ -277,7 +278,7 @@ func addAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return a.AddRouter(ctx, appRouter)
 }
 
@@ -330,7 +331,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterUpdate,
 		Owner:      t,
@@ -341,7 +342,7 @@ func updateAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	return a.UpdateRouter(ctx, appRouter)
 }
 
@@ -367,7 +368,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRouterRemove,
 		Owner:      t,
@@ -378,7 +379,7 @@ func removeAppRouter(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = a.RemoveRouter(ctx, routerName)
 	if _, isNotFound := err.(*router.ErrRouterNotFound); isNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -451,7 +452,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     appTarget(appName),
 		Kind:       permission.PermAppUpdateRoutable,
 		Owner:      t,
@@ -462,7 +463,7 @@ func appSetRoutable(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	version, err := servicemanager.AppVersion.VersionByImageOrVersion(ctx, &a, args.Version)
 	if err != nil {
 		if appTypes.IsInvalidVersionError(err) {

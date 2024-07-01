@@ -21,13 +21,14 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/event"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	servicemock "github.com/tsuru/tsuru/servicemanager/mock"
 	appTypes "github.com/tsuru/tsuru/types/app"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 	check "gopkg.in/check.v1"
@@ -65,6 +66,7 @@ func (s *PlatformSuite) SetUpTest(c *check.C) {
 	config.Set("database:driver", "mongodb")
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_api_platform_test")
+	storagev2.Reset()
 	var err error
 	app.AuthScheme = nativeScheme
 	s.conn, err = db.Conn()
@@ -106,7 +108,7 @@ func (s *PlatformSuite) TestPlatformAdd(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: "test"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: "test"},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.create",
 		StartCustomData: []map[string]interface{}{
@@ -204,7 +206,7 @@ func (s *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
@@ -238,7 +240,7 @@ func (s *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
@@ -275,7 +277,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: platformName},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: platformName},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{
@@ -332,7 +334,7 @@ func (s *PlatformSuite) TestPlatformRemove(c *check.C) {
 	s.testServer.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.delete",
 		StartCustomData: []map[string]interface{}{
@@ -484,7 +486,7 @@ func (s *PlatformSuite) TestPlatformRollback(c *check.C) {
 	json.Unmarshal(recorder.Body.Bytes(), &msg)
 	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePlatform, Value: name},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePlatform, Value: name},
 		Owner:  token.GetUserName(),
 		Kind:   "platform.update",
 		StartCustomData: []map[string]interface{}{

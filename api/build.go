@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/permission"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 )
 
 var (
@@ -86,10 +87,10 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if !canBuild {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        appTarget(appName),
 		Kind:          permission.PermAppBuild,
-		RawOwner:      event.Owner{Type: event.OwnerTypeUser, Name: userName},
+		RawOwner:      eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: userName},
 		RemoteAddr:    r.RemoteAddr,
 		CustomData:    opts,
 		Allowed:       event.Allowed(permission.PermAppReadEvents, contextsForApp(instance)...),
@@ -101,7 +102,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	}
 	var imageID string
 	defer func() {
-		evt.DoneCustomData(err, map[string]string{"image": imageID})
+		evt.DoneCustomData(ctx, err, map[string]string{"image": imageID})
 		labels := prometheus.Labels{"app": appName, "status": deployStatus(evt), "kind": string(opts.GetKind()), "platform": opts.App.Platform}
 		appBuildDuration.With(labels).Observe(time.Since(startingBuildTime).Seconds())
 		appBuildsTotal.With(labels).Inc()

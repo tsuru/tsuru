@@ -43,7 +43,7 @@ func (s *serviceBrokerCatalogCacheService) Save(ctx context.Context, brokerName 
 	entry := cache.CacheEntry{
 		Key:      brokerName,
 		Value:    string(b),
-		ExpireAt: s.expirationTime(brokerName),
+		ExpireAt: s.expirationTime(ctx, brokerName),
 	}
 	return s.storage.Put(ctx, entry)
 }
@@ -63,9 +63,9 @@ func (s *serviceBrokerCatalogCacheService) Load(ctx context.Context, brokerName 
 	return &catalog, nil
 }
 
-func (s *serviceBrokerCatalogCacheService) expirationTime(brokerName string) time.Time {
+func (s *serviceBrokerCatalogCacheService) expirationTime(ctx context.Context, brokerName string) time.Time {
 	expiration := defaultExpiration
-	sb, err := servicemanager.ServiceBroker.Find(brokerName)
+	sb, err := servicemanager.ServiceBroker.Find(ctx, brokerName)
 	if err == nil && sb.Config.CacheExpirationSeconds > 0 {
 		expiration = time.Duration(sb.Config.CacheExpirationSeconds) * time.Second
 	}

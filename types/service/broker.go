@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 )
 
@@ -66,16 +67,16 @@ type BearerConfig struct {
 
 type ServiceBrokerStorage interface {
 	Insert(Broker) error
-	Update(string, Broker) error
+	Update(context.Context, string, Broker) error
 	Delete(string) error
-	FindAll() ([]Broker, error)
-	Find(string) (Broker, error)
+	FindAll(ctx context.Context) ([]Broker, error)
+	Find(ctx context.Context, name string) (Broker, error)
 }
 
 type ServiceBrokerService interface {
 	Create(Broker) error
-	Update(string, Broker) error
+	Update(context.Context, string, Broker) error
 	Delete(string) error
-	Find(string) (Broker, error)
-	List() ([]Broker, error)
+	Find(context.Context, string) (Broker, error)
+	List(context.Context) ([]Broker, error)
 }

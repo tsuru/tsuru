@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tsuru/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -22,21 +23,22 @@ const (
 )
 
 var (
-	client       atomic.Pointer[mongo.Client]
-	databaseName string
+	client          atomic.Pointer[mongo.Client]
+	databaseNamePtr atomic.Pointer[string]
 )
 
 func Reset() {
 	client.Store(nil)
+	databaseNamePtr.Store(nil)
 }
 
-func connect() (*mongo.Client, error) {
+func connect() (*mongo.Client, *string, error) {
 	var uri string
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	uri, databaseName = dbConfig()
+	uri, databaseName := dbConfig()
 
 	connectedClient, err := mongo.Connect(
 		ctx,
@@ -45,12 +47,21 @@ func connect() (*mongo.Client, error) {
 			SetAppName("tsurud"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	client.Store(connectedClient)
+	swapped := client.CompareAndSwap(nil, connectedClient)
+	databaseNamePtr.Store(&databaseName)
 
-	return connectedClient, nil
+	if swapped {
+		err = EnsureIndexesCreated(connectedClient.Database(databaseName))
+
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "failed to create indexes")
+		}
+	}
+
+	return connectedClient, &databaseName, nil
 }
 
 func dbConfig() (string, string) {
@@ -79,12 +90,14 @@ func dbConfig() (string, string) {
 
 func Collection(name string) (*mongo.Collection, error) {
 	connectedClient := client.Load()
-	if connectedClient == nil {
+	databaseName := databaseNamePtr.Load()
+
+	if connectedClient == nil || databaseName == nil {
 		var err error
-		connectedClient, err = connect()
+		connectedClient, databaseName, err = connect()
 		if err != nil {
 			return nil, err
 		}
 	}
-	return connectedClient.Database(databaseName).Collection(name, options.Collection()), nil
+	return connectedClient.Database(*databaseName).Collection(name, options.Collection()), nil
 }

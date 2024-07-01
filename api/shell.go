@@ -160,7 +160,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	clientTerm := r.URL.Query().Get("term")
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:      appTarget(appName),
 		Kind:        permission.PermAppRunShell,
 		Owner:       token,
@@ -190,7 +190,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Fprintf(evt, "> %s\n", line)
 		}
-		evt.Done(finalErr)
+		evt.Done(ctx, finalErr)
 	}()
 	term = terminal.NewTerminal(buf, "")
 	ws.SetReadDeadline(time.Now().Add(pongWait))

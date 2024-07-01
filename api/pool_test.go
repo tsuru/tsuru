@@ -16,11 +16,11 @@ import (
 	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	check "gopkg.in/check.v1"
 )
@@ -48,7 +48,7 @@ func (s *S) TestAddPoolDefaultPoolAlreadyExists(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, pool.ErrDefaultPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
 		StartCustomData: []map[string]interface{}{
@@ -73,7 +73,7 @@ func (s *S) TestAddPoolAlreadyExists(c *check.C) {
 	c.Assert(rec.Code, check.Equals, http.StatusConflict)
 	c.Assert(rec.Body.String(), check.Equals, pool.ErrPoolAlreadyExists.Error()+"\n")
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
 		StartCustomData: []map[string]interface{}{
@@ -112,7 +112,7 @@ func (s *S) TestAddPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
 		StartCustomData: []map[string]interface{}{
@@ -120,7 +120,7 @@ func (s *S) TestAddPool(c *check.C) {
 		},
 	}, eventtest.HasEvent)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool2"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool2"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.create",
 		StartCustomData: []map[string]interface{}{
@@ -154,7 +154,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	_, err = pool.GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.Equals, pool.ErrPoolNotFound)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.delete",
 		StartCustomData: []map[string]interface{}{
@@ -256,7 +256,7 @@ func (s *S) TestAddTeamsToPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.add",
 		StartCustomData: []map[string]interface{}{
@@ -347,7 +347,7 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.team.remove",
 		StartCustomData: []map[string]interface{}{
@@ -596,7 +596,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(teams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "pool1"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "pool1"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update",
 		StartCustomData: []map[string]interface{}{
@@ -736,7 +736,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "*"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "*"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.constraints.set",
 		StartCustomData: []map[string]interface{}{
@@ -774,7 +774,7 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
-		Target: event.Target{Type: event.TargetTypePool, Value: "*"},
+		Target: eventTypes.Target{Type: eventTypes.TargetTypePool, Value: "*"},
 		Owner:  s.token.GetUserName(),
 		Kind:   "pool.update.constraints.set",
 		StartCustomData: []map[string]interface{}{

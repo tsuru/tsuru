@@ -168,6 +168,9 @@ func (s *Storage) Events() *storage.Collection {
 	return c
 }
 
+// EventBlocks returns the event_blocks collection from MongoDB.
+//
+// Deprecated: use storagev2 instead.
 func (s *Storage) EventBlocks() *storage.Collection {
 	index := mgo.Index{Key: []string{"ownername", "kindname", "target"}}
 	startTimeIndex := mgo.Index{Key: []string{"-starttime"}}

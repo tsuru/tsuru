@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/servicemanager"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	"github.com/tsuru/tsuru/types/quota"
 )
@@ -75,8 +76,8 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	} else if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeUser, Value: email},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeUser, Value: email},
 		Kind:       permission.PermUserUpdateQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -86,7 +87,7 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
@@ -153,8 +154,8 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeApp, Value: appName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: appName},
 		Kind:       permission.PermAppAdminQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -164,7 +165,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{
@@ -223,6 +224,7 @@ func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	403: Limit lower than allocated value
 //	404: Team not found
 func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
+	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
 	allowed := permission.Check(t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))
 	if !allowed {
@@ -238,8 +240,8 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeTeam, Value: teamName},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeTeam, Value: teamName},
 		Kind:       permission.PermTeamUpdateQuota,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -249,7 +251,7 @@ func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err 
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	limit, err := strconv.Atoi(InputValue(r, "limit"))
 	if err != nil {
 		return &errors.HTTP{

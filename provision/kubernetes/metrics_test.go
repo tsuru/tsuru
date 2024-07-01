@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	check "gopkg.in/check.v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,8 +25,8 @@ func (s *S) Test_MetricsProvisioner_UnitsMetrics(c *check.C) {
 	a, wait, rollback := s.mock.DefaultReactions(c)
 	defer rollback()
 
-	evt, err := event.New(&event.Opts{
-		Target:  event.Target{Type: event.TargetTypeApp, Value: a.GetName()},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:  eventTypes.Target{Type: eventTypes.TargetTypeApp, Value: a.GetName()},
 		Kind:    permission.PermAppDeploy,
 		Owner:   s.token,
 		Allowed: event.Allowed(permission.PermAppDeploy),

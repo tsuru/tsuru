@@ -43,6 +43,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	"github.com/tsuru/tsuru/types/cache"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provTypes "github.com/tsuru/tsuru/types/provision"
 	"github.com/tsuru/tsuru/types/quota"
 	routerTypes "github.com/tsuru/tsuru/types/router"
@@ -87,10 +88,10 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = version.CommitBaseImage()
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -126,10 +127,10 @@ func (s *S) TestDeleteVersion(c *check.C) {
 	appVersions, err := servicemanager.AppVersion.AppVersions(context.TODO(), app)
 	c.Assert(err, check.IsNil)
 	c.Assert(appVersions.Count, check.Equals, 2)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppUpdate,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -150,10 +151,10 @@ func (s *S) TestDeleteAppWithNoneRouters(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -191,10 +192,10 @@ func (s *S) TestDeleteWithBoundVolumes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(context.TODO(), a.Name)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDelete,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -5444,14 +5445,14 @@ func (s *S) TestRenameTeamLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: "test2"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "test2"},
 		Kind:     permission.PermAppUpdate,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	defer evt.Done(nil)
+	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.ErrorMatches, `unable to create event: event locked: app\(test2\).*`)
 	var dbApps []App
@@ -5474,14 +5475,14 @@ func (s *S) TestRenameTeamUnchangedLockedApp(c *check.C) {
 		err := s.conn.Apps().Insert(a)
 		c.Assert(err, check.IsNil)
 	}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: "test3"},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: "test3"},
 		Kind:     permission.PermAppUpdate,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
-	defer evt.Done(nil)
+	defer evt.Done(context.TODO(), nil)
 	err = RenameTeam(context.TODO(), "t2", "t9000")
 	c.Assert(err, check.IsNil)
 	var dbApps []App

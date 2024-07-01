@@ -100,8 +100,8 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermWebhookCreate, permCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookCreate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -112,7 +112,7 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Webhook.Create(webhook)
 	if err == eventTypes.ErrWebhookAlreadyExists {
@@ -131,29 +131,30 @@ func webhookCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	400: Invalid webhook
 //	404: Webhook not found
 func webhookUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	var webhook eventTypes.Webhook
 	err := ParseInput(r, &webhook)
 	if err != nil {
 		return err
 	}
 	webhook.Name = r.URL.Query().Get(":name")
-	ctx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
-	if !permission.Check(t, permission.PermWebhookUpdate, ctx) {
+	permissionCtx := permission.Context(permTypes.CtxTeam, webhook.TeamOwner)
+	if !permission.Check(t, permission.PermWebhookUpdate, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookUpdate,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
 		CustomData: event.FormToCustomData(InputFields(r)),
-		Allowed:    event.Allowed(permission.PermWebhookReadEvents, ctx),
+		Allowed:    event.Allowed(permission.PermWebhookReadEvents, permissionCtx),
 	})
 	if err != nil {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Webhook.Update(webhook)
 	if err == eventTypes.ErrWebhookNotFound {
@@ -184,8 +185,8 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if !permission.Check(t, permission.PermWebhookDelete, permissionCtx) {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
-		Target:     event.Target{Type: event.TargetTypeWebhook, Value: webhook.Name},
+	evt, err := event.New(ctx, &event.Opts{
+		Target:     eventTypes.Target{Type: eventTypes.TargetTypeWebhook, Value: webhook.Name},
 		Kind:       permission.PermWebhookDelete,
 		Owner:      t,
 		RemoteAddr: r.RemoteAddr,
@@ -196,7 +197,7 @@ func webhookDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	return servicemanager.Webhook.Delete(webhookName)
 }

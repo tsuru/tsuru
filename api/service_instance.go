@@ -26,12 +26,13 @@ import (
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/servicemanager"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
 	tagTypes "github.com/tsuru/tsuru/types/tag"
 )
 
-func serviceInstanceTarget(name, instance string) event.Target {
-	return event.Target{Type: event.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
+func serviceInstanceTarget(name, instance string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeServiceInstance, Value: serviceIntancePermName(name, instance)}
 }
 
 func serviceIntancePermName(serviceName, instanceName string) string {
@@ -101,7 +102,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instance.Name),
 		Kind:       permission.PermServiceInstanceCreate,
 		Owner:      t,
@@ -113,7 +114,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	requestID := requestIDHeader(r)
 	err = service.CreateServiceInstance(ctx, instance, &srv, evt, requestID)
 	if err == service.ErrMultiClusterViolatingConstraint {
@@ -220,7 +221,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !tagResponse.Valid {
 		return &tsuruErrors.HTTP{Code: http.StatusBadRequest, Message: tagResponse.Error}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdate,
 		Owner:      t,
@@ -232,7 +233,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	requestID := requestIDHeader(r)
 	return si.Update(ctx, srv, *si, evt, requestID)
 }
@@ -267,7 +268,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceDelete,
 		Owner:      t,
@@ -280,7 +281,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	evt.SetLogWriter(writer)
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	requestID := requestIDHeader(r)
 	unbindAllBool, _ := strconv.ParseBool(unbindAll)
 	if unbindAllBool {
@@ -708,7 +709,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	path := r.URL.Query().Get("callback")
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
 			Kind:       permission.PermServiceInstanceUpdateProxy,
 			Owner:      t,
@@ -723,7 +724,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 	}
 	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
@@ -756,7 +757,7 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 
 	var evt *event.Event
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		evt, err = event.New(&event.Opts{
+		evt, err = event.New(ctx, &event.Opts{
 			Target:     serviceInstanceTarget(serviceName, instanceName),
 			Kind:       permission.PermServiceInstanceUpdateProxy,
 			Owner:      t,
@@ -771,7 +772,7 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 		if err != nil {
 			return err
 		}
-		defer func() { evt.Done(err) }()
+		defer func() { evt.Done(ctx, err) }()
 	}
 	return service.ProxyInstance(ctx, serviceInstance, path, evt, requestIDHeader(r), w, r)
 }
@@ -799,7 +800,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateGrant,
 		Owner:      t,
@@ -811,7 +812,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	teamName := r.URL.Query().Get(":team")
 	return serviceInstance.Grant(ctx, teamName)
 }
@@ -838,7 +839,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     serviceInstanceTarget(serviceName, instanceName),
 		Kind:       permission.PermServiceInstanceUpdateRevoke,
 		Owner:      t,
@@ -850,7 +851,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	teamName := r.URL.Query().Get(":team")
 	return serviceInstance.Revoke(ctx, teamName)
 }

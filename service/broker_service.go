@@ -34,9 +34,9 @@ func (b *brokerService) Create(broker serviceTypes.Broker) error {
 	return b.storage.Insert(broker)
 }
 
-func (b *brokerService) Update(name string, broker serviceTypes.Broker) error {
+func (b *brokerService) Update(ctx context.Context, name string, broker serviceTypes.Broker) error {
 	if broker.Config.CacheExpirationSeconds == 0 {
-		sb, err := b.Find(name)
+		sb, err := b.Find(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -44,19 +44,19 @@ func (b *brokerService) Update(name string, broker serviceTypes.Broker) error {
 	} else if broker.Config.CacheExpirationSeconds < 0 {
 		broker.Config.CacheExpirationSeconds = 0
 	}
-	return b.storage.Update(name, broker)
+	return b.storage.Update(ctx, name, broker)
 }
 
 func (b *brokerService) Delete(name string) error {
 	return b.storage.Delete(name)
 }
 
-func (b *brokerService) Find(name string) (serviceTypes.Broker, error) {
-	return b.storage.Find(name)
+func (b *brokerService) Find(ctx context.Context, name string) (serviceTypes.Broker, error) {
+	return b.storage.Find(ctx, name)
 }
 
-func (b *brokerService) List() ([]serviceTypes.Broker, error) {
-	return b.storage.FindAll()
+func (b *brokerService) List(ctx context.Context) ([]serviceTypes.Broker, error) {
+	return b.storage.FindAll(ctx)
 }
 
 func getBrokeredServices(ctx context.Context) ([]Service, error) {
@@ -64,7 +64,7 @@ func getBrokeredServices(ctx context.Context) ([]Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	brokers, err := brokerService.List()
+	brokers, err := brokerService.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func newBrokeredServiceClient(service string) (*brokerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	broker, err := servicemanager.ServiceBroker.Find(brokerName)
+	broker, err := servicemanager.ServiceBroker.Find(context.TODO(), brokerName)
 	if err != nil {
 		return nil, err
 	}

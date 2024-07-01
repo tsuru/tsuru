@@ -5,6 +5,8 @@
 package storagetest
 
 import (
+	"context"
+
 	"github.com/tsuru/tsuru/types/service"
 	check "gopkg.in/check.v1"
 )
@@ -32,7 +34,7 @@ func (s *ServiceBrokerSuite) TestInsert(c *check.C) {
 	}
 	err := s.ServiceBrokerStorage.Insert(broker)
 	c.Assert(err, check.IsNil)
-	b, err := s.ServiceBrokerStorage.Find("broker")
+	b, err := s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)
 	c.Assert(b, check.DeepEquals, broker)
 }
@@ -72,9 +74,9 @@ func (s *ServiceBrokerSuite) TestUpdate(c *check.C) {
 	err := s.ServiceBrokerStorage.Insert(broker)
 	c.Assert(err, check.IsNil)
 	broker.Config.AuthConfig.BasicAuthConfig.Password = "new-password"
-	err = s.ServiceBrokerStorage.Update("broker", broker)
+	err = s.ServiceBrokerStorage.Update(context.TODO(), "broker", broker)
 	c.Assert(err, check.IsNil)
-	broker, err = s.ServiceBrokerStorage.Find("broker")
+	broker, err = s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)
 	c.Assert(broker.Config.AuthConfig.BasicAuthConfig.Password, check.Equals, "new-password")
 }
@@ -92,7 +94,7 @@ func (s *ServiceBrokerSuite) TestUpdateNotFound(c *check.C) {
 			},
 		},
 	}
-	err := s.ServiceBrokerStorage.Update("broker", broker)
+	err := s.ServiceBrokerStorage.Update(context.TODO(), "broker", broker)
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 }
 
@@ -113,7 +115,7 @@ func (s *ServiceBrokerSuite) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.ServiceBrokerStorage.Delete("broker")
 	c.Assert(err, check.IsNil)
-	_, err = s.ServiceBrokerStorage.Find("broker")
+	_, err = s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 }
 
@@ -131,7 +133,7 @@ func (s *ServiceBrokerSuite) TestFindAll(c *check.C) {
 		Name: "broker-2",
 	})
 	c.Assert(err, check.IsNil)
-	brokers, err := s.ServiceBrokerStorage.FindAll()
+	brokers, err := s.ServiceBrokerStorage.FindAll(context.TODO())
 	c.Assert(err, check.IsNil)
 	c.Assert(len(brokers), check.Equals, 2)
 }
@@ -154,13 +156,13 @@ func (s *ServiceBrokerSuite) TestFind(c *check.C) {
 	}
 	err := s.ServiceBrokerStorage.Insert(broker)
 	c.Assert(err, check.IsNil)
-	b, err := s.ServiceBrokerStorage.Find("broker")
+	b, err := s.ServiceBrokerStorage.Find(context.TODO(), "broker")
 	c.Assert(err, check.IsNil)
 	c.Assert(b, check.DeepEquals, broker)
 }
 
 func (s *ServiceBrokerSuite) TestFindNotFound(c *check.C) {
-	broker, err := s.ServiceBrokerStorage.Find("not-found")
+	broker, err := s.ServiceBrokerStorage.Find(context.TODO(), "not-found")
 	c.Assert(err, check.DeepEquals, service.ErrServiceBrokerNotFound)
 	c.Assert(broker, check.DeepEquals, service.Broker{})
 }

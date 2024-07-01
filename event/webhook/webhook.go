@@ -140,7 +140,7 @@ func (s *webhookService) run() {
 }
 
 func (s *webhookService) handleEvent(ctx context.Context, evtID string) error {
-	evt, err := event.GetByHexID(evtID)
+	evt, err := event.GetByHexID(ctx, evtID)
 	if err != nil {
 		return err
 	}

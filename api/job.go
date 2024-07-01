@@ -27,6 +27,7 @@ import (
 	apiTypes "github.com/tsuru/tsuru/types/api"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	jobTypes "github.com/tsuru/tsuru/types/job"
 	"github.com/tsuru/tsuru/types/log"
 	permTypes "github.com/tsuru/tsuru/types/permission"
@@ -153,7 +154,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if !canRun {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobTrigger,
 		Owner:      t,
@@ -163,7 +164,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Job.Trigger(ctx, j)
 	if err != nil {
 		return err
@@ -274,7 +275,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return permission.ErrUnauthorized
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobUnitKill,
 		Owner:      t,
@@ -291,7 +292,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = servicemanager.Job.KillUnit(ctx, j, unitName, force)
 	if _, ok := err.(*provision.UnitNotFoundError); ok {
@@ -363,7 +364,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if ij.ActiveDeadlineSeconds != nil && *ij.ActiveDeadlineSeconds >= 0 {
 		newJob.Spec.ActiveDeadlineSeconds = ij.ActiveDeadlineSeconds
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(newJob.Name),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -374,7 +375,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		return err
 	}
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Job.UpdateJob(ctx, &newJob, oldJob, user)
 	if err != nil {
@@ -449,7 +450,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:        jobTarget(j.Name),
 		Kind:          permission.PermJobCreate,
 		Owner:         t,
@@ -460,7 +461,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		Cancelable:    true,
 	})
 	defer func() {
-		evt.Done(err)
+		evt.Done(ctx, err)
 	}()
 	err = servicemanager.Job.CreateJob(ctx, j, u)
 	if err != nil {
@@ -511,7 +512,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(j.Name),
 		Kind:       permission.PermJobDelete,
 		Owner:      t,
@@ -521,7 +522,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	err = servicemanager.Job.RemoveJobProv(ctx, j)
 	if err != nil {
 		return err
@@ -586,9 +587,9 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 		return err
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(j.Name),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermJobUpdate,
@@ -599,7 +600,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 
 	err = instance.BindJob(ctx, j, evt, evt, requestIDHeader(r))
 	if err != nil {
@@ -665,9 +666,9 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 			return permission.ErrUnauthorized
 		}
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target: jobTarget(jobName),
-		ExtraTargets: []event.ExtraTarget{
+		ExtraTargets: []eventTypes.ExtraTarget{
 			{Target: serviceInstanceTarget(serviceName, instanceName)},
 		},
 		Kind:       permission.PermJobUpdate,
@@ -679,7 +680,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -806,7 +807,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 		}
 	}
 
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(jobName),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -817,7 +818,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	envs := map[string]string{}
 	variables := []bindTypes.EnvVar{}
 	for _, v := range e.Envs {
@@ -888,7 +889,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	evt, err := event.New(&event.Opts{
+	evt, err := event.New(ctx, &event.Opts{
 		Target:     jobTarget(jobName),
 		Kind:       permission.PermJobUpdate,
 		Owner:      t,
@@ -899,7 +900,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	defer func() { evt.Done(err) }()
+	defer func() { evt.Done(ctx, err) }()
 	w.Header().Set("Content-Type", "application/x-json-stream")
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
@@ -971,8 +972,8 @@ func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return followLogs(tsuruNet.CancelableParentContext(r.Context()), j.Name, watcher, encoder)
 }
 
-func jobTarget(jobName string) event.Target {
-	return event.Target{Type: event.TargetTypeJob, Value: jobName}
+func jobTarget(jobName string) eventTypes.Target {
+	return eventTypes.Target{Type: eventTypes.TargetTypeJob, Value: jobName}
 }
 
 func contextsForJob(job *jobTypes.Job) []permTypes.PermissionContext {

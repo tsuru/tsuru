@@ -16,24 +16,25 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
 	authTypes "github.com/tsuru/tsuru/types/auth"
+	eventTypes "github.com/tsuru/tsuru/types/event"
 	provisionTypes "github.com/tsuru/tsuru/types/provision"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	check "gopkg.in/check.v1"
 )
 
 func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 	evts := make([]*event.Event, len(data))
 	for i, d := range data {
-		evt, err := event.New(&event.Opts{
-			Target:   event.Target{Type: "app", Value: d.App},
+		evt, err := event.New(context.TODO(), &event.Opts{
+			Target:   eventTypes.Target{Type: "app", Value: d.App},
 			Kind:     permission.PermAppDeploy,
-			RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: d.User},
+			RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: d.User},
 			Allowed:  event.Allowed(permission.PermApp),
 			CustomData: DeployOptions{
 				Commit:  d.Commit,
@@ -44,9 +45,9 @@ func insertDeploysAsEvents(data []DeployData, c *check.C) []*event.Event {
 		evt.StartTime = d.Timestamp
 		c.Assert(err, check.IsNil)
 		evt.Logf(d.Log)
-		err = evt.SetOtherCustomData(map[string]string{"diff": d.Diff})
+		err = evt.SetOtherCustomData(context.TODO(), map[string]string{"diff": d.Diff})
 		c.Assert(err, check.IsNil)
-		err = evt.DoneCustomData(nil, map[string]string{"image": d.Image})
+		err = evt.DoneCustomData(context.TODO(), nil, map[string]string{"image": d.Image})
 		c.Assert(err, check.IsNil)
 		evts[i] = evt
 	}
@@ -223,7 +224,7 @@ func normalizeTS(deploys []DeployData) {
 	for i := range deploys {
 		deploys[i].Timestamp = time.Unix(deploys[i].Timestamp.Unix(), 0)
 		deploys[i].Duration = 0
-		deploys[i].ID = "-ignored-"
+		deploys[i].ID = primitive.ObjectID{}
 	}
 }
 
@@ -270,7 +271,7 @@ func (s *S) TestGetDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newDeploy := DeployData{App: "g1", Timestamp: time.Now()}
 	evts := insertDeploysAsEvents([]DeployData{newDeploy}, c)
-	lastDeploy, err := GetDeploy(evts[0].UniqueID.Hex())
+	lastDeploy, err := GetDeploy(context.TODO(), evts[0].UniqueID.Hex())
 	c.Assert(err, check.IsNil)
 	lastDeploy.Timestamp = time.Unix(lastDeploy.Timestamp.Unix(), 0)
 	newDeploy.Timestamp = time.Unix(newDeploy.Timestamp.Unix(), 0)
@@ -281,13 +282,13 @@ func (s *S) TestGetDeploy(c *check.C) {
 
 func (s *S) TestGetDeployNotFound(c *check.C) {
 	idTest := bson.NewObjectId()
-	deploy, err := GetDeploy(idTest.Hex())
+	deploy, err := GetDeploy(context.TODO(), idTest.Hex())
 	c.Assert(err, check.Equals, event.ErrEventNotFound)
 	c.Assert(deploy, check.IsNil)
 }
 
 func (s *S) TestGetDeployInvalidHex(c *check.C) {
-	lastDeploy, err := GetDeploy("abc123")
+	lastDeploy, err := GetDeploy(context.TODO(), "abc123")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "id parameter is not ObjectId: abc123")
 	c.Assert(lastDeploy, check.IsNil)
@@ -303,10 +304,10 @@ func (s *S) TestBuildApp(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -334,10 +335,10 @@ func (s *S) TestDeployAppUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -367,10 +368,10 @@ func (s *S) TestDeployAppImage(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -402,10 +403,10 @@ func (s *S) TestDeployAppWithUpdatedPlatform(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -436,10 +437,10 @@ func (s *S) TestDeployAppImageWithUpdatedPlatform(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -468,10 +469,10 @@ func (s *S) TestDeployAppWithoutImageOrPlatform(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -495,10 +496,10 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -527,10 +528,10 @@ func (s *S) TestDeployAppSaveDeployData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -559,10 +560,10 @@ func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -590,10 +591,10 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -623,10 +624,10 @@ func (s *S) TestDeployAppSaveDeployDataOriginDragAndDrop(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -656,10 +657,10 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -686,10 +687,10 @@ func (s *S) TestDeployAppShowLogLinesOnStartupError(c *check.C) {
 	err = servicemanager.LogService.Add(a.Name, "msg1", "src1", "unit1")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -726,10 +727,10 @@ func (s *S) TestDeployAppShowLogEmbeddedLinesOnStartupError(c *check.C) {
 	err = servicemanager.LogService.Add(a.Name, "msg1", "src1", "unit1")
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -776,17 +777,17 @@ func (s *S) TestDeployToProvisioner(c *check.C) {
 	}
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	opts := DeployOptions{App: &a, Image: "myimage"}
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -801,16 +802,16 @@ func (s *S) TestDeployToProvisionerArchive(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -826,16 +827,16 @@ func (s *S) TestDeployToProvisionerUpload(c *check.C) {
 	c.Assert(err, check.IsNil)
 	buf := strings.NewReader("my file")
 	opts := DeployOptions{App: &a, File: io.NopCloser(buf), FileSize: int64(buf.Len())}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -850,16 +851,16 @@ func (s *S) TestDeployToProvisionerImage(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	opts := DeployOptions{App: &a, Image: "my-image-x"}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
 	_, err = deployToProvisioner(context.TODO(), &opts, evt)
 	c.Assert(err, check.IsNil)
-	err = evt.Done(nil)
+	err = evt.Done(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(evt.Log(), check.Matches, ".*Builder deploy called")
 }
@@ -876,10 +877,10 @@ func (s *S) TestRollbackWithNameImage(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -912,10 +913,10 @@ func (s *S) TestRollbackWithVersionImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	version := newSuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -948,10 +949,10 @@ func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newSuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -982,10 +983,10 @@ func (s *S) TestRollbackWithVersionMarkedToRemoved(c *check.C) {
 	c.Assert(err, check.IsNil)
 	newUnsuccessfulAppVersion(c, &a)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
@@ -1041,60 +1042,6 @@ func (s *S) TestDeployKind(c *check.C) {
 	}
 }
 
-func (s *S) TestMigrateDeploysToEvents(c *check.C) {
-	a := App{Name: "g1", TeamOwner: s.team.Name}
-	err := CreateApp(context.TODO(), &a, s.user)
-	c.Assert(err, check.IsNil)
-	now := time.Unix(time.Now().Unix(), 0)
-	insert := []DeployData{
-		{
-			App:       "g1",
-			Timestamp: now.Add(-3600 * time.Second),
-			Log:       "logs",
-			Diff:      "diff",
-			Duration:  10 * time.Second,
-			Commit:    "c1",
-			Error:     "e1",
-			Origin:    "app-deploy",
-			User:      "admin@example.com",
-		},
-		{
-			App:       "g1",
-			Timestamp: now,
-			Log:       "logs",
-			Diff:      "diff",
-			Duration:  10 * time.Second,
-			Commit:    "c2",
-			Error:     "e2",
-			Origin:    "app-deploy",
-			User:      "admin@example.com",
-		},
-	}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	oldDeploysColl := conn.Collection("deploys")
-	for _, data := range insert {
-		err = oldDeploysColl.Insert(data)
-		c.Assert(err, check.IsNil)
-	}
-	err = MigrateDeploysToEvents()
-	c.Assert(err, check.IsNil)
-	deploys, err := ListDeploys(context.TODO(), nil, 0, 0)
-	c.Assert(err, check.IsNil)
-	c.Assert(deploys, check.HasLen, 2)
-	for i := range deploys {
-		id := deploys[i].ID
-		var d *DeployData
-		d, err = GetDeploy(id.Hex())
-		c.Assert(err, check.IsNil)
-		deploys[i] = *d
-	}
-	normalizeTS(deploys)
-	normalizeTS(insert)
-	c.Assert(deploys, check.DeepEquals, []DeployData{insert[1], insert[0]})
-}
-
 func (s *S) TestRebuild(c *check.C) {
 	a := App{
 		Name:      "otherapp",
@@ -1105,10 +1052,10 @@ func (s *S) TestRebuild(c *check.C) {
 	err := CreateApp(context.TODO(), &a, s.user)
 	c.Assert(err, check.IsNil)
 	writer := &bytes.Buffer{}
-	evt, err := event.New(&event.Opts{
-		Target:   event.Target{Type: "app", Value: a.Name},
+	evt, err := event.New(context.TODO(), &event.Opts{
+		Target:   eventTypes.Target{Type: "app", Value: a.Name},
 		Kind:     permission.PermAppDeploy,
-		RawOwner: event.Owner{Type: event.OwnerTypeUser, Name: s.user.Email},
+		RawOwner: eventTypes.Owner{Type: eventTypes.OwnerTypeUser, Name: s.user.Email},
 		Allowed:  event.Allowed(permission.PermApp),
 	})
 	c.Assert(err, check.IsNil)
