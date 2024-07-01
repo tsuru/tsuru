@@ -57,7 +57,7 @@ func (s *clusterService) Create(ctx context.Context, c provTypes.Cluster) error 
 		return err
 	}
 
-	return s.save(ctx, c, true)
+	return s.save(ctx, c)
 }
 
 func (s *clusterService) Update(ctx context.Context, c provTypes.Cluster) error {
@@ -65,15 +65,15 @@ func (s *clusterService) Update(ctx context.Context, c provTypes.Cluster) error 
 	if err != nil {
 		return err
 	}
-	return s.save(ctx, c, false)
+	return s.save(ctx, c)
 }
 
-func (s *clusterService) save(ctx context.Context, c provTypes.Cluster, isNewCluster bool) error {
+func (s *clusterService) save(ctx context.Context, c provTypes.Cluster) error {
 	err := s.storage.Upsert(ctx, c)
 	if err != nil {
 		return err
 	}
-	return s.initCluster(ctx, c, isNewCluster)
+	return s.initCluster(ctx, c)
 }
 
 func (s *clusterService) List(ctx context.Context) ([]provTypes.Cluster, error) {
@@ -169,7 +169,7 @@ func (s *clusterService) validate(c provTypes.Cluster, isNewCluster bool) error 
 	return nil
 }
 
-func (s *clusterService) initCluster(ctx context.Context, c provTypes.Cluster, isNewCluster bool) error {
+func (s *clusterService) initCluster(ctx context.Context, c provTypes.Cluster) error {
 	prov, err := provision.Get(c.Provisioner)
 	if err != nil {
 		return err
@@ -186,6 +186,5 @@ func (s *clusterService) updateClusterFromStorage(ctx context.Context, c provTyp
 	if err != nil {
 		return c, err
 	}
-	updatedCluster.Writer = c.Writer
 	return *updatedCluster, nil
 }

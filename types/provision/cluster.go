@@ -7,7 +7,6 @@ package provision
 import (
 	"context"
 	"errors"
-	"io"
 
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -26,8 +25,6 @@ type Cluster struct {
 	Default     bool              `json:"default"`
 	KubeConfig  *KubeConfig       `json:"kubeConfig,omitempty"`
 	HTTPProxy   string            `json:"httpProxy,omitempty"`
-
-	Writer io.Writer `json:"-"`
 }
 
 type KubeConfig struct {
