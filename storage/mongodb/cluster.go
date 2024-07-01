@@ -6,7 +6,6 @@ package mongodb
 
 import (
 	"context"
-	"io"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
@@ -35,8 +34,6 @@ type cluster struct {
 	Default     bool
 	KubeConfig  *provision.KubeConfig `bson:",omitempty"`
 	HTTPProxy   string                `json:"httpProxy,omitempty"`
-
-	Writer io.Writer `bson:"-"`
 }
 
 func clustersCollection(conn *db.Storage) *dbStorage.Collection {

@@ -92,7 +92,6 @@ func createCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	provCluster.Writer = evt
 	err = servicemanager.Cluster.Create(ctx, provCluster)
 	if err != nil {
 		return errors.WithStack(err)
@@ -171,7 +170,6 @@ func updateCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	provCluster.Writer = evt
 	err = servicemanager.Cluster.Update(ctx, provCluster)
 	if err != nil {
 		return errors.WithStack(err)
@@ -279,7 +277,7 @@ func deleteCluster(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 		evt.SetLogWriter(writer)
 	}
-	err = servicemanager.Cluster.Delete(ctx, provTypes.Cluster{Name: clusterName, Writer: evt})
+	err = servicemanager.Cluster.Delete(ctx, provTypes.Cluster{Name: clusterName})
 	if err != nil {
 		if errors.Cause(err) == provTypes.ErrClusterNotFound {
 			return &tsuruErrors.HTTP{
