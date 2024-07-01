@@ -7,11 +7,10 @@ package mongodb
 import (
 	"context"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-	"github.com/tsuru/tsuru/db"
-	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/app"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var _ app.PlatformStorage = &PlatformStorage{}
@@ -25,26 +24,27 @@ type platform struct {
 	Disabled bool   `bson:",omitempty"`
 }
 
-func platformsCollection(conn *db.Storage) *dbStorage.Collection {
-	return conn.Collection(platformsCollectionName)
-}
-
 func (s *PlatformStorage) Insert(ctx context.Context, p app.Platform) error {
+
 	span := newMongoDBSpan(ctx, mongoSpanInsert, platformsCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(platformsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = platformsCollection(conn).Insert(platform(p))
-	span.SetError(err)
-	if mgo.IsDup(err) {
-		return app.ErrDuplicatePlatform
+
+	_, err = collection.InsertOne(ctx, platform(p))
+	if err != nil {
+		span.SetError(err)
+		if mongo.IsDuplicateKeyError(err) {
+			return app.ErrDuplicatePlatform
+		}
+		return err
 	}
-	return err
+
+	return nil
 }
 
 func (s *PlatformStorage) FindByName(ctx context.Context, name string) (*app.Platform, error) {
@@ -52,15 +52,15 @@ func (s *PlatformStorage) FindByName(ctx context.Context, name string) (*app.Pla
 	defer span.Finish()
 
 	var p platform
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(platformsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
-	err = platformsCollection(conn).FindId(name).One(&p)
+
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&p)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			err = app.ErrPlatformNotFound
 		}
 		span.SetError(err)
@@ -71,27 +71,32 @@ func (s *PlatformStorage) FindByName(ctx context.Context, name string) (*app.Pla
 }
 
 func (s *PlatformStorage) FindAll(ctx context.Context) ([]app.Platform, error) {
-	return s.findByQuery(ctx, nil)
+	return s.findByQuery(ctx, mongoBSON.M{})
 }
 
 func (s *PlatformStorage) FindEnabled(ctx context.Context) ([]app.Platform, error) {
-	query := bson.M{"$or": []bson.M{{"disabled": false}, {"disabled": bson.M{"$exists": false}}}}
+	query := mongoBSON.M{"$or": []mongoBSON.M{{"disabled": false}, {"disabled": mongoBSON.M{"$exists": false}}}}
 	return s.findByQuery(ctx, query)
 }
 
-func (s *PlatformStorage) findByQuery(ctx context.Context, query bson.M) ([]app.Platform, error) {
+func (s *PlatformStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]app.Platform, error) {
 	span := newMongoDBSpan(ctx, mongoSpanFindID, platformsCollectionName)
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(platformsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
+
 	var platforms []platform
-	err = platformsCollection(conn).Find(query).All(&platforms)
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+	err = cursor.All(ctx, &platforms)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
@@ -108,18 +113,22 @@ func (s *PlatformStorage) Update(ctx context.Context, p app.Platform) error {
 	span.SetMongoID(p.Name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(platformsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = platformsCollection(conn).Update(
-		bson.M{"_id": p.Name},
-		bson.M{"$set": bson.M{"disabled": p.Disabled}},
-	)
-	span.SetError(err)
-	return err
+	result, err := collection.UpdateOne(ctx, mongoBSON.M{"_id": p.Name}, mongoBSON.M{"$set": mongoBSON.M{"disabled": p.Disabled}})
+
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	if result.ModifiedCount == 0 {
+		return app.ErrPlatformNotFound
+	}
+	return nil
 }
 
 func (s *PlatformStorage) Delete(ctx context.Context, p app.Platform) error {
@@ -127,16 +136,27 @@ func (s *PlatformStorage) Delete(ctx context.Context, p app.Platform) error {
 	span.SetMongoID(p.Name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(platformsCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return err
 	}
-	defer conn.Close()
-	err = platformsCollection(conn).RemoveId(p.Name)
-	if err == mgo.ErrNotFound {
+
+	result, err := collection.DeleteOne(ctx, mongoBSON.M{"_id": p.Name})
+
+	if err == mongo.ErrNoDocuments {
 		span.SetError(err)
 		return app.ErrPlatformNotFound
 	}
-	return err
+
+	if err != nil {
+		span.SetError(err)
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return app.ErrPlatformNotFound
+	}
+
+	return nil
 }
