@@ -6,14 +6,16 @@ package mongodb
 
 import (
 	"context"
-	"io"
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/provision"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const clusterCollection = "provisioner_clusters"
@@ -35,8 +37,6 @@ type cluster struct {
 	Default     bool
 	KubeConfig  *provision.KubeConfig `bson:",omitempty"`
 	HTTPProxy   string                `json:"httpProxy,omitempty"`
-
-	Writer io.Writer `bson:"-"`
 }
 
 func clustersCollection(conn *db.Storage) *dbStorage.Collection {
@@ -89,20 +89,19 @@ func (s *clusterStorage) FindAll(ctx context.Context) ([]provision.Cluster, erro
 }
 
 func (s *clusterStorage) FindByName(ctx context.Context, name string) (*provision.Cluster, error) {
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(clusterCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 	var c cluster
 
 	span := newMongoDBSpan(ctx, mongoSpanFindID, clusterCollection)
 	span.SetMongoID(name)
 	defer span.Finish()
 
-	err = clustersCollection(conn).FindId(name).One(&c)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&c)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			span.LogKV("event", provision.ErrClusterNotFound.Error())
 			return nil, provision.ErrClusterNotFound
 		}
@@ -114,44 +113,41 @@ func (s *clusterStorage) FindByName(ctx context.Context, name string) (*provisio
 }
 
 func (s *clusterStorage) FindByProvisioner(ctx context.Context, provisioner string) ([]provision.Cluster, error) {
-	return s.findByQuery(ctx, bson.M{"provisioner": provisioner})
+	return s.findByQuery(ctx, mongoBSON.M{"provisioner": provisioner})
 }
 
 func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool string) (*provision.Cluster, error) {
-
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(clusterCollection)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-	coll := clustersCollection(conn)
 	var c cluster
 	if pool != "" {
-		query := bson.M{"provisioner": provisioner, "pools": pool}
+		query := mongoBSON.M{"provisioner": provisioner, "pools": pool}
 
 		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
 		span.SetQueryStatement(query)
 
-		err = coll.Find(query).One(&c)
-		if err != mgo.ErrNotFound {
+		err = collection.FindOne(ctx, query).Decode(&c)
+		if err != mongo.ErrNoDocuments {
 			span.SetError(err)
 		}
 	}
 
-	if pool == "" || err == mgo.ErrNotFound {
-		query := bson.M{"provisioner": provisioner, "default": true}
+	if pool == "" || err == mongo.ErrNoDocuments {
+		query := mongoBSON.M{"provisioner": provisioner, "default": true}
 
 		span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
 		span.SetQueryStatement(query)
 
-		err = coll.Find(query).One(&c)
-		if err != mgo.ErrNotFound {
+		err = collection.FindOne(ctx, query).Decode(&c)
+		if err != mongo.ErrNoDocuments {
 			span.SetError(err)
 		}
 		span.Finish()
 	}
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, provision.ErrNoCluster
 		}
 		return nil, errors.WithStack(err)
@@ -160,19 +156,24 @@ func (s *clusterStorage) FindByPool(ctx context.Context, provisioner, pool strin
 	return &cluster, nil
 }
 
-func (s *clusterStorage) findByQuery(ctx context.Context, query bson.M) ([]provision.Cluster, error) {
+func (s *clusterStorage) findByQuery(ctx context.Context, query mongoBSON.M) ([]provision.Cluster, error) {
 	span := newMongoDBSpan(ctx, mongoSpanFind, clusterCollection)
 	span.SetQueryStatement(query)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(clusterCollection)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 	var clusters []cluster
-	err = clustersCollection(conn).Find(query).All(&clusters)
+
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+	err = cursor.All(ctx, &clusters)
 	if err != nil {
 		span.SetError(err)
 		return nil, err

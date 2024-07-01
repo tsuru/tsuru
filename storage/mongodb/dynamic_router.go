@@ -10,7 +10,10 @@ import (
 	"github.com/globalsign/mgo"
 	"github.com/tsuru/tsuru/db"
 	dbStorage "github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/types/router"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const dynamicRouterCollectionName = "dynamic_routers"
@@ -52,16 +55,15 @@ func (s *dynamicRouterStorage) Get(ctx context.Context, name string) (*router.Dy
 	span.SetMongoID(name)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(dynamicRouterCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 	var dr dynamicRouter
-	err = s.coll(conn).FindId(name).One(&dr)
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&dr)
 	if err != nil {
-		if err == mgo.ErrNotFound {
+		if err == mongo.ErrNoDocuments {
 			return nil, router.ErrDynamicRouterNotFound
 		}
 		span.SetError(err)
@@ -75,18 +77,23 @@ func (s *dynamicRouterStorage) List(ctx context.Context) ([]router.DynamicRouter
 	span := newMongoDBSpan(ctx, mongoSpanFind, dynamicRouterCollectionName)
 	defer span.Finish()
 
-	conn, err := db.Conn()
+	collection, err := storagev2.Collection(dynamicRouterCollectionName)
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
-	defer conn.Close()
 	var drs []dynamicRouter
-	err = s.coll(conn).Find(nil).All(&drs)
+	cursor, err := collection.Find(ctx, mongoBSON.M{})
 	if err != nil {
 		span.SetError(err)
 		return nil, err
 	}
+	err = cursor.All(ctx, &drs)
+	if err != nil {
+		span.SetError(err)
+		return nil, err
+	}
+
 	result := make([]router.DynamicRouter, len(drs))
 	for i := range drs {
 		result[i] = router.DynamicRouter(drs[i])
