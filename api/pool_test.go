@@ -822,8 +822,7 @@ func (s *S) TestPoolGetHandler(c *check.C) {
 	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{teamName})
 	c.Assert(err, check.IsNil)
 	expected := pool.Pool{
-		Name:   "pool1",
-		Labels: map[string]string{},
+		Name: "pool1",
 	}
 	req, err := http.NewRequest(http.MethodGet, "/pools/pool1", nil)
 	c.Assert(err, check.IsNil)
