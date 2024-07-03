@@ -219,7 +219,7 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = pool.RemovePool(poolName)
+	err = pool.RemovePool(ctx, poolName)
 	if err == pool.ErrPoolNotFound {
 		return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
@@ -256,7 +256,7 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := InputValues(r, "team"); ok {
-		err := pool.AddTeamsToPool(poolName, teams)
+		err := pool.AddTeamsToPool(ctx, poolName, teams)
 		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
@@ -294,7 +294,7 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	defer func() { evt.Done(ctx, err) }()
 	if teams, ok := r.URL.Query()["team"]; ok {
-		err := pool.RemoveTeamsFromPool(poolName, teams)
+		err := pool.RemoveTeamsFromPool(ctx, poolName, teams)
 		if err == pool.ErrPoolNotFound {
 			return &terrors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}

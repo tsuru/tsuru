@@ -102,11 +102,6 @@ func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
 }
 
-// Pools returns the pool collection.
-func (s *Storage) Pools() *storage.Collection {
-	return s.Collection("pool")
-}
-
 // PoolsConstraints return the pool constraints collection.
 func (s *Storage) PoolsConstraints() *storage.Collection {
 	poolConstraintIndex := mgo.Index{Key: []string{"poolexpr", "field"}, Unique: true}

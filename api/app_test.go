@@ -2137,7 +2137,7 @@ func (s *S) TestUpdateAppWithPoolOnly(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("pool=test")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -2156,7 +2156,7 @@ func (s *S) TestUpdateAppPoolWithNoRestart(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("pool=test&noRestart=true")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)
@@ -2214,7 +2214,7 @@ func (s *S) TestUpdateAppPoolWithDifferentProvisioner(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "fakepool", Provisioner: "fake1"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("fakepool", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "fakepool", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader("pool=fakepool")
 	request, err := http.NewRequest("PUT", "/apps/myappx", body)

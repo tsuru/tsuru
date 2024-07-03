@@ -51,10 +51,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)
 	}
-	err = migration.Register("migrate-pool-teams-to-pool-constraints", pool.MigratePoolTeamsToPoolConstraints)
-	if err != nil {
-		log.Fatalf("unable to register migration: %s", err)
-	}
 	err = migration.Register("migrate-app-service-envs", appMigrate.MigrateAppTsuruServicesVarToServiceEnvs)
 	if err != nil {
 		log.Fatalf("unable to register migration: %s", err)

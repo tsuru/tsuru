@@ -16,12 +16,14 @@ import (
 	"github.com/cezarsa/form"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event/eventtest"
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision/pool"
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -312,7 +314,7 @@ func (s *S) TestRemoveTeamsFromPoolWithoutTeam(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{"test"})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{"test"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/pools/pool1/team", nil)
 	c.Assert(err, check.IsNil)
@@ -330,9 +332,9 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{"ateam"})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{"ateam"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/pools/pool1/team?team=ateam", nil)
 	c.Assert(err, check.IsNil)
@@ -341,7 +343,12 @@ func (s *S) TestRemoveTeamsFromPoolHandler(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	var p2 pool.Pool
-	err = s.conn.Pools().FindId(p.Name).One(&p2)
+
+	poolCollection, err := storagev2.PoolCollection()
+	c.Assert(err, check.IsNil)
+	err = poolCollection.FindOne(context.TODO(), mongoBSON.M{"_id": p.Name}).Decode(&p2)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(err, check.IsNil)
 	teams, err := p2.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -369,9 +376,9 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{s.team.Name})
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{"ateam"})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{"ateam"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodDelete, "/pools/pool1/team?team=ateam", nil)
 	c.Assert(err, check.IsNil)
@@ -380,7 +387,12 @@ func (s *S) TestRemoveTeamsFromPoolWithPoolContextPermission(c *check.C) {
 	s.testServer.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	var p2 pool.Pool
-	err = s.conn.Pools().FindId(p.Name).One(&p2)
+
+	poolCollection, err := storagev2.PoolCollection()
+	c.Assert(err, check.IsNil)
+	err = poolCollection.FindOne(context.TODO(), mongoBSON.M{"_id": p.Name}).Decode(&p2)
+	c.Assert(err, check.IsNil)
+
 	c.Assert(err, check.IsNil)
 	teams, err := p2.GetTeams(context.TODO())
 	c.Assert(err, check.IsNil)
@@ -445,7 +457,7 @@ func (s *S) TestPoolListHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{teamName})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{teamName})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "nopool"}
 	err = pool.AddPool(context.TODO(), opts)
@@ -468,7 +480,9 @@ func (s *S) TestPoolListHandler(c *check.C) {
 }
 
 func (s *S) TestPoolListEmptyHandler(c *check.C) {
-	_, err := s.conn.Pools().RemoveAll(nil)
+	poolCollection, err := storagev2.PoolCollection()
+	c.Assert(err, check.IsNil)
+	_, err = poolCollection.DeleteMany(context.TODO(), mongoBSON.M{})
 	c.Assert(err, check.IsNil)
 	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
 	_, err = nativeScheme.Create(context.TODO(), &u)
@@ -500,7 +514,7 @@ func (s *S) TestPoolListHandlerWithPermissionToDefault(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name, Default: p.Default}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{team.Name})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest(http.MethodGet, "/pools", nil)
 	c.Assert(err, check.IsNil)
@@ -607,7 +621,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
-	pool.RemovePool("test1")
+	pool.RemovePool(context.TODO(), "test1")
 	opts := pool.AddPoolOptions{Name: "pool1"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -626,7 +640,7 @@ func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
-	pool.RemovePool("test1")
+	pool.RemovePool(context.TODO(), "test1")
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -647,7 +661,7 @@ func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
-	pool.RemovePool("test1")
+	pool.RemovePool(context.TODO(), "test1")
 	opts := pool.AddPoolOptions{Name: "pool1", Default: true}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
@@ -805,7 +819,7 @@ func (s *S) TestPoolGetHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: p.Name}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool(p.Name, []string{teamName})
+	err = pool.AddTeamsToPool(context.TODO(), p.Name, []string{teamName})
 	c.Assert(err, check.IsNil)
 	expected := pool.Pool{
 		Name:   "pool1",

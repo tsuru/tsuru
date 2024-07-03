@@ -201,7 +201,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	err := config.Unset("routers")
 	c.Assert(err, check.IsNil)
-	err = pool.RemovePool(s.Pool)
+	err = pool.RemovePool(context.TODO(), s.Pool)
 	c.Assert(err, check.IsNil)
 	router1 := routerTypes.DynamicRouter{Name: "router-1", Type: "api", Config: map[string]interface{}{"key1": "value1", "key2": "value2"}}
 	router2 := routerTypes.DynamicRouter{Name: "router-2", Type: "api"}

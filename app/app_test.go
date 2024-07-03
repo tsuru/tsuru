@@ -4537,7 +4537,7 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4565,12 +4565,12 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("pool2", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "pool2", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4586,12 +4586,12 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"test"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("pool2", []string{"test"})
+	err = pool.AddTeamsToPool(context.TODO(), "pool2", []string{"test"})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "pool3", Public: true}
 	err = pool.AddPool(context.TODO(), opts)
@@ -4606,7 +4606,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
-	err := pool.RemovePool("pool1")
+	err := pool.RemovePool(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name: "test",
@@ -4620,7 +4620,7 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{"nopool"})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:      "test",
@@ -4652,7 +4652,7 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 	opts = pool.AddPoolOptions{Name: "nonpublic"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("nonpublic", []string{"tsuruteam"})
+	err = pool.AddTeamsToPool(context.TODO(), "nonpublic", []string{"tsuruteam"})
 	c.Assert(err, check.IsNil)
 	a := App{
 		Name:      "testapp",
@@ -4943,12 +4943,12 @@ func (s *S) TestUpdatePool(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -5012,7 +5012,7 @@ func (s *S) TestUpdatePoolNotExists(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	app := App{Name: "test", TeamOwner: s.team.Name, Pool: "test"}
 	err = CreateApp(context.TODO(), &app, s.user)
@@ -5291,12 +5291,12 @@ func (s *S) TestUpdateDescriptionPoolPlan(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "test"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	opts = pool.AddPoolOptions{Name: "test2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AddTeamsToPool("test2", []string{s.team.Name})
+	err = pool.AddTeamsToPool(context.TODO(), "test2", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	plan := appTypes.Plan{Name: "something", Memory: 268435456}
 	s.mockService.Plan.OnList = func() ([]appTypes.Plan, error) {
