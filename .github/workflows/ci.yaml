@@ -90,7 +90,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.21.11'
+        go-version: '1.21.12'
     - id: govulncheck
       uses: golang/govulncheck-action@v1
   check-contributors:

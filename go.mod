@@ -32,7 +32,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.42.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/rs/cors v1.9.0
+	github.com/rs/cors v1.11.0
 	github.com/sajari/fuzzy v1.0.0
 	github.com/tsuru/commandmocker v0.0.0-20160909010208-e1d28f4f616a
 	github.com/tsuru/config v0.0.0-20201023175036-375aaee8b560
