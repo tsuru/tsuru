@@ -339,7 +339,7 @@ func (s *S) TestVolumeInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestVolumeCreate(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "test1",
 		Field:    pool.ConstraintTypeVolumePlan,
 		Values:   []string{"nfs"},
@@ -392,7 +392,7 @@ func (s *S) TestVolumeCreate(c *check.C) {
 }
 
 func (s *S) TestVolumeCreateErrNoVolumePlan(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "test1",
 		Field:    pool.ConstraintTypeVolumePlan,
 		Values:   []string{"nfs"},
@@ -415,7 +415,7 @@ func (s *S) TestVolumeCreateErrNoVolumePlan(c *check.C) {
 }
 
 func (s *S) TestVolumeCreateConflict(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "test1",
 		Field:    pool.ConstraintTypeVolumePlan,
 		Values:   []string{"nfs"},
@@ -485,7 +485,7 @@ func (s *S) TestVolumeUpdate(c *check.C) {
 }
 
 func (s *S) TestVolumeUpdateNotFound(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "test1",
 		Field:    pool.ConstraintTypeVolumePlan,
 		Values:   []string{"nfs"},

@@ -11,10 +11,11 @@ import (
 	"strings"
 	"sync"
 
-	mgo "github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -110,33 +111,37 @@ func (l constraintList) Less(i, j int) bool {
 	return lenI > lenJ
 }
 
-func SetPoolConstraint(c *PoolConstraint) error {
-	conn, err := db.Conn()
+func SetPoolConstraint(ctx context.Context, c *PoolConstraint) error {
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
 	isValid := validateConstraintType(c.Field)
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
 	if len(c.Values) == 0 || (len(c.Values) == 1 && c.Values[0] == "") {
-		errRem := conn.PoolsConstraints().Remove(bson.M{"poolexpr": c.PoolExpr, "field": c.Field})
-		if errRem != mgo.ErrNotFound {
+		result, errRem := collection.DeleteMany(ctx, mongoBSON.M{"poolexpr": c.PoolExpr, "field": c.Field})
+		if errRem != mongo.ErrNoDocuments {
 			return errRem
 		}
-		return nil
+
+		if result.DeletedCount > 0 {
+			return nil
+		}
 	}
-	_, err = conn.PoolsConstraints().Upsert(bson.M{"poolexpr": c.PoolExpr, "field": c.Field}, c)
+
+	opts := options.Update().SetUpsert(true)
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"poolexpr": c.PoolExpr, "field": c.Field}, mongoBSON.M{"$set": c}, opts)
 	return err
 }
 
-func AppendPoolConstraint(c *PoolConstraint) error {
+func AppendPoolConstraint(ctx context.Context, c *PoolConstraint) error {
 	isValid := validateConstraintType(c.Field)
 	if !isValid {
 		return ErrInvalidConstraintType
 	}
-	return appendPoolConstraint(c.PoolExpr, c.Field, c.Values...)
+	return appendPoolConstraint(ctx, c.PoolExpr, c.Field, c.Values...)
 }
 
 func validateConstraintType(c PoolConstraintType) bool {
@@ -148,26 +153,28 @@ func validateConstraintType(c PoolConstraintType) bool {
 	return false
 }
 
-func appendPoolConstraint(poolExpr string, field PoolConstraintType, values ...string) error {
-	conn, err := db.Conn()
+func appendPoolConstraint(ctx context.Context, poolExpr string, field PoolConstraintType, values ...string) error {
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.PoolsConstraints().Upsert(
-		bson.M{"poolexpr": poolExpr, "field": field},
-		bson.M{"$addToSet": bson.M{"values": bson.M{"$each": values}}},
+
+	opts := options.Update().SetUpsert(true)
+	_, err = collection.UpdateOne(ctx,
+		mongoBSON.M{"poolexpr": poolExpr, "field": field},
+		mongoBSON.M{"$addToSet": mongoBSON.M{"values": mongoBSON.M{"$each": values}}},
+		opts,
 	)
 	return err
 }
 
-func removePoolConstraint(poolExpr string, field PoolConstraintType, values ...string) error {
-	conn, err := db.Conn()
+func removePoolConstraint(ctx context.Context, poolExpr string, field PoolConstraintType, values ...string) error {
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	return conn.PoolsConstraints().Update(bson.M{"poolexpr": poolExpr, "field": field}, bson.M{"$pullAll": bson.M{"values": values}})
+	_, err = collection.UpdateOne(ctx, mongoBSON.M{"poolexpr": poolExpr, "field": field}, mongoBSON.M{"$pullAll": mongoBSON.M{"values": values}})
+	return err
 }
 
 func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field PoolConstraintType, values ...string) ([]Pool, error) {
@@ -178,7 +185,7 @@ func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field Pool
 	var satisfying []Pool
 	for _, p := range pools {
 		checked := false
-		constraints, err := getConstraintsForPool(p.Name, field)
+		constraints, err := getConstraintsForPool(ctx, p.Name, field)
 		if err != nil {
 			return nil, err
 		}
@@ -202,12 +209,12 @@ func getPoolsSatisfyConstraints(ctx context.Context, exactCheck bool, field Pool
 	return satisfying, nil
 }
 
-func getConstraintsForPool(pool string, fields ...PoolConstraintType) (map[PoolConstraintType]*PoolConstraint, error) {
-	var query bson.M
+func getConstraintsForPool(ctx context.Context, pool string, fields ...PoolConstraintType) (map[PoolConstraintType]*PoolConstraint, error) {
+	var query mongoBSON.M
 	if len(fields) > 0 {
-		query = bson.M{"field": bson.M{"$in": fields}}
+		query = mongoBSON.M{"field": mongoBSON.M{"$in": fields}}
 	}
-	constraints, err := ListPoolsConstraints(query)
+	constraints, err := ListPoolsConstraints(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -232,8 +239,8 @@ func getConstraintsForPool(pool string, fields ...PoolConstraintType) (map[PoolC
 	return merged, nil
 }
 
-func getExactConstraintForPool(pool string, field PoolConstraintType) (*PoolConstraint, error) {
-	constraints, err := ListPoolsConstraints(bson.M{"poolexpr": pool, "field": field})
+func getExactConstraintForPool(ctx context.Context, pool string, field PoolConstraintType) (*PoolConstraint, error) {
+	constraints, err := ListPoolsConstraints(ctx, mongoBSON.M{"poolexpr": pool, "field": field})
 	if err != nil {
 		return nil, err
 	}
@@ -243,14 +250,23 @@ func getExactConstraintForPool(pool string, field PoolConstraintType) (*PoolCons
 	return constraints[0], nil
 }
 
-func ListPoolsConstraints(query bson.M) ([]*PoolConstraint, error) {
-	conn, err := db.Conn()
+func ListPoolsConstraints(ctx context.Context, query mongoBSON.M) ([]*PoolConstraint, error) {
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+
+	if query == nil {
+		query = mongoBSON.M{}
+	}
+
 	constraints := []*PoolConstraint{}
-	err = conn.PoolsConstraints().Find(query).All(&constraints)
+	cursor, err := collection.Find(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(ctx, &constraints)
 	if err != nil {
 		return nil, err
 	}

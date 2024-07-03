@@ -591,7 +591,7 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	opts := pool.AddPoolOptions{Name: "pool1"}
 	err := pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}, Blacklist: true})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	p, err := pool.GetPoolByName(context.TODO(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -691,11 +691,11 @@ func (s *S) TestPoolUpdateNotFound(c *check.C) {
 }
 
 func (s *S) TestPoolConstraint(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}})
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"*"}})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeRouter, Values: []string{"dev"}})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeVolumePlan, Values: []string{"faas"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "dev", Field: pool.ConstraintTypeVolumePlan, Values: []string{"faas"}})
 	c.Assert(err, check.IsNil)
 	expected := []pool.PoolConstraint{
 		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
@@ -716,7 +716,7 @@ func (s *S) TestPoolConstraint(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintListEmpty(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{""}, Blacklist: true})
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{""}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest(http.MethodGet, "/1.3/constraints", nil)
 	c.Assert(err, check.IsNil)
@@ -746,7 +746,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
 		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA"}, Blacklist: true},
 	}
-	constraints, err := pool.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{
@@ -764,7 +764,7 @@ func (s *S) TestPoolConstraintSet(c *check.C) {
 }
 
 func (s *S) TestPoolConstraintSetAppend(c *check.C) {
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA"}, Blacklist: true})
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	params := pool.PoolConstraint{
 		PoolExpr: "*",
@@ -784,7 +784,7 @@ func (s *S) TestPoolConstraintSetAppend(c *check.C) {
 		{PoolExpr: "test1", Field: pool.ConstraintTypeTeam, Values: []string{"*"}},
 		{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"routerA", "routerB"}, Blacklist: true},
 	}
-	constraints, err := pool.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(constraints, check.DeepEquals, expected)
 	c.Assert(eventtest.EventDesc{

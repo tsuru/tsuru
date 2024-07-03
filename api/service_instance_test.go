@@ -2205,7 +2205,7 @@ func (s *ServiceInstanceSuite) TestServicePlans(c *check.C) {
 
 func (s *ServiceInstanceSuite) TestServicePlansWithMissingPool(c *check.C) {
 	for _, poolName := range []string{"test1", "test2"} {
-		err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
+		err := pool.SetPoolConstraint(stdContext.TODO(), &pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
 		c.Assert(err, check.IsNil)
 		err = pool.AddPool(stdContext.TODO(), pool.AddPoolOptions{Name: poolName, Default: false})
 		c.Assert(err, check.IsNil)
@@ -2240,7 +2240,7 @@ func (s *ServiceInstanceSuite) TestServicePlansWithMissingPool(c *check.C) {
 
 func (s *ServiceInstanceSuite) TestServicePlansWithPool(c *check.C) {
 	for _, poolName := range []string{"test1", "test2"} {
-		err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
+		err := pool.SetPoolConstraint(stdContext.TODO(), &pool.PoolConstraint{PoolExpr: poolName, Field: pool.ConstraintTypeTeam, Values: []string{"tsuruteam"}, Blacklist: false})
 		c.Assert(err, check.IsNil)
 		err = pool.AddPool(stdContext.TODO(), pool.AddPoolOptions{Name: poolName, Default: false})
 		c.Assert(err, check.IsNil)

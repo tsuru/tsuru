@@ -11,10 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storagev2"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
@@ -147,7 +144,7 @@ func (p *Pool) GetPlans(ctx context.Context) ([]string, error) {
 }
 
 func (p *Pool) GetDefaultPlan(ctx context.Context) (*appTypes.Plan, error) {
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypePlan)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypePlan)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +180,7 @@ func (p *Pool) GetDefaultPlan(ctx context.Context) (*appTypes.Plan, error) {
 }
 
 func (p *Pool) GetDefaultRouter(ctx context.Context) (string, error) {
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeRouter)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeRouter)
 	if err != nil {
 		return "", err
 	}
@@ -266,7 +263,7 @@ func (p *Pool) allowedValues(ctx context.Context) (map[PoolConstraintType][]stri
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	constraints, err := getConstraintsForPool(ctx, p.Name, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +346,7 @@ func plansNames(ctx context.Context) ([]string, error) {
 
 func (p *Pool) Info(ctx context.Context) (*PoolInfo, error) {
 
-	teams, err := getExactConstraintForPool(p.Name, ConstraintTypeTeam)
+	teams, err := getExactConstraintForPool(ctx, p.Name, ConstraintTypeTeam)
 	if err != nil {
 		return nil, err
 	}
@@ -417,26 +414,31 @@ func AddPool(ctx context.Context, opts AddPoolOptions) error {
 		return err
 	}
 	if opts.Public || opts.Default {
-		return SetPoolConstraint(&PoolConstraint{PoolExpr: opts.Name, Field: ConstraintTypeTeam, Values: []string{"*"}})
+		return SetPoolConstraint(ctx, &PoolConstraint{PoolExpr: opts.Name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 	}
 	return nil
 }
 
 func RenamePoolTeam(ctx context.Context, oldName, newName string) error {
-	conn, err := db.Conn()
+	collection, err := storagev2.PoolConstraintsCollection()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	query := bson.M{
+	query := mongoBSON.M{
 		"field":  "team",
 		"values": oldName,
 	}
-	bulk := conn.PoolsConstraints().Bulk()
-	bulk.UpdateAll(query, bson.M{"$push": bson.M{"values": newName}})
-	bulk.UpdateAll(query, bson.M{"$pull": bson.M{"values": oldName}})
-	_, err = bulk.Run()
-	return err
+
+	_, err = collection.BulkWrite(ctx, []mongo.WriteModel{
+		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$push": mongoBSON.M{"values": newName}}),
+		mongo.NewUpdateManyModel().SetFilter(query).SetUpdate(mongoBSON.M{"$pull": mongoBSON.M{"values": oldName}}),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func changeDefaultPool(ctx context.Context, force bool) error {
@@ -492,8 +494,8 @@ func AddTeamsToPool(ctx context.Context, poolName string, teams []string) error 
 	if err != nil {
 		return err
 	}
-	teamConstraint, err := getExactConstraintForPool(poolName, ConstraintTypeTeam)
-	if err != nil && err != mgo.ErrNotFound {
+	teamConstraint, err := getExactConstraintForPool(ctx, poolName, ConstraintTypeTeam)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if teamConstraint != nil && teamConstraint.Blacklist {
@@ -507,7 +509,7 @@ func AddTeamsToPool(ctx context.Context, poolName string, teams []string) error 
 			return errors.New("Team already exists in pool.")
 		}
 	}
-	return appendPoolConstraint(poolName, ConstraintTypeTeam, teams...)
+	return appendPoolConstraint(ctx, poolName, ConstraintTypeTeam, teams...)
 }
 
 func RemoveTeamsFromPool(ctx context.Context, poolName string, teams []string) error {
@@ -523,18 +525,18 @@ func RemoveTeamsFromPool(ctx context.Context, poolName string, teams []string) e
 	if err != nil {
 		return err
 	}
-	constraint, err := getExactConstraintForPool(poolName, ConstraintTypeTeam)
-	if err != nil && err != mgo.ErrNotFound {
+	constraint, err := getExactConstraintForPool(ctx, poolName, ConstraintTypeTeam)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
 	if constraint != nil && constraint.Blacklist {
 		return errors.New("Unable to remove teams from blacklist constraint")
 	}
-	return removePoolConstraint(poolName, ConstraintTypeTeam, teams...)
+	return removePoolConstraint(ctx, poolName, ConstraintTypeTeam, teams...)
 }
 
 func ListPools(ctx context.Context, names ...string) ([]Pool, error) {
-	return listPools(ctx, mongoBSON.M{"_id": bson.M{"$in": names}})
+	return listPools(ctx, mongoBSON.M{"_id": mongoBSON.M{"$in": names}})
 }
 
 func ListAllPools(ctx context.Context) ([]Pool, error) {
@@ -661,7 +663,7 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 			return err
 		}
 	}
-	query := bson.M{}
+	query := mongoBSON.M{}
 	if opts.Default != nil {
 		query["default"] = *opts.Default
 	}
@@ -674,13 +676,13 @@ func PoolUpdate(ctx context.Context, name string, opts UpdatePoolOptions) error 
 		query["labels"] = opts.Labels
 	}
 	if (opts.Public != nil && *opts.Public) || (opts.Default != nil && *opts.Default) {
-		errConstraint := SetPoolConstraint(&PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
+		errConstraint := SetPoolConstraint(ctx, &PoolConstraint{PoolExpr: name, Field: ConstraintTypeTeam, Values: []string{"*"}})
 		if errConstraint != nil {
 			return err
 		}
 	}
 	if (opts.Public != nil && !*opts.Public) || (opts.Default != nil && !*opts.Default) {
-		errConstraint := removePoolConstraint(name, ConstraintTypeTeam, "*")
+		errConstraint := removePoolConstraint(ctx, name, ConstraintTypeTeam, "*")
 		if errConstraint != nil {
 			return err
 		}
@@ -789,7 +791,7 @@ func (p *poolService) allowedValues(ctx context.Context, pool string) (map[PoolC
 		ConstraintTypePlan:       plans,
 		ConstraintTypeVolumePlan: volumePlans,
 	}
-	constraints, err := getConstraintsForPool(pool, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
+	constraints, err := getConstraintsForPool(ctx, pool, ConstraintTypeTeam, ConstraintTypeRouter, ConstraintTypeService, ConstraintTypePlan, ConstraintTypeVolumePlan)
 	if err != nil {
 		return nil, err
 	}

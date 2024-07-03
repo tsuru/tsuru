@@ -174,13 +174,13 @@ func (s *S) SetUpTest(c *check.C) {
 	opts = pool.AddPoolOptions{Name: "pool2"}
 	err = pool.AddPool(context.TODO(), opts)
 	c.Assert(err, check.IsNil)
-	err = pool.AppendPoolConstraint(&pool.PoolConstraint{
+	err = pool.AppendPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool2",
 		Field:    pool.ConstraintTypeTeam,
 		Values:   []string{"team-2"},
 	})
 	c.Assert(err, check.IsNil)
-	err = pool.AppendPoolConstraint(&pool.PoolConstraint{
+	err = pool.AppendPoolConstraint(context.TODO(), &pool.PoolConstraint{
 		PoolExpr: "pool1",
 		Field:    pool.ConstraintTypePlan,
 		Values:   []string{"default-plan", "c2m1"},

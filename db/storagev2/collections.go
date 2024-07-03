@@ -9,3 +9,7 @@ import "go.mongodb.org/mongo-driver/mongo"
 func PoolCollection() (*mongo.Collection, error) {
 	return Collection("pool")
 }
+
+func PoolConstraintsCollection() (*mongo.Collection, error) {
+	return Collection("pool_constraints")
+}

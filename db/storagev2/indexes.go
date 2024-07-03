@@ -20,7 +20,7 @@ type EnsureIndex struct {
 
 var EnsureIndexes = []EnsureIndex{
 	{
-		Collection: "events", // Assuming the collection name is "events"
+		Collection: "events",
 		Indexes: []mongo.IndexModel{
 			{
 				Keys: mongoBSON.D{{Key: "owner.name", Value: 1}},
@@ -65,13 +65,23 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "pool_constraints",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys:    mongoBSON.D{{Key: "poolexpr", Value: 1}, {Key: "field", Value: 1}},
+				Options: options.Index().SetUnique(true),
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {
 
 	for _, index := range EnsureIndexes {
 
-		collection := db.Collection(index.Collection) // Replace "events" with the actual name of your collection
+		collection := db.Collection(index.Collection)
 
 		_, err := collection.Indexes().CreateMany(context.TODO(), index.Indexes)
 		if err != nil {

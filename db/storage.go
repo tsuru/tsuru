@@ -102,14 +102,6 @@ func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.Collection("service_instances")
 }
 
-// PoolsConstraints return the pool constraints collection.
-func (s *Storage) PoolsConstraints() *storage.Collection {
-	poolConstraintIndex := mgo.Index{Key: []string{"poolexpr", "field"}, Unique: true}
-	c := s.Collection("pool_constraints")
-	c.EnsureIndex(poolConstraintIndex)
-	return c
-}
-
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *storage.Collection {
 	c := s.Collection("users")

@@ -181,7 +181,7 @@ func (s *S) TestRoutersListAppCreatePermissionTeam(c *check.C) {
 		Scheme:  permission.PermAppCreate,
 		Context: permission.Context(permTypes.CtxTeam, "tsuruteam"),
 	})
-	err := pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeRouter, Values: []string{"router1", "router2"}})
+	err := pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "test1", Field: pool.ConstraintTypeRouter, Values: []string{"router1", "router2"}})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/routers", nil)
@@ -222,16 +222,16 @@ func (s *S) TestRoutersListWhenPoolHasNoRouterShouldNotReturnError(c *check.C) {
 	}
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool-1"})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeRouter, Values: []string{"router-1"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeRouter, Values: []string{"router-1"}})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool-1", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
 	c.Assert(err, check.IsNil)
 	// pool-2 constraint for routers doesn't match any valid router
 	err = pool.AddPool(context.TODO(), pool.AddPoolOptions{Name: "pool-2"})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeRouter, Values: []string{"not-found-router"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeRouter, Values: []string{"not-found-router"}})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "pool-2", Field: pool.ConstraintTypeTeam, Values: []string{"my-team"}})
 	c.Assert(err, check.IsNil)
 	token := userWithPermission(c, permission.Permission{
 		Scheme:  permission.PermAppCreate,
@@ -397,7 +397,7 @@ func (s *S) TestAddAppRouterBlockedByConstraint(c *check.C) {
 	myapp := app.App{Name: "myapp", Platform: "go", TeamOwner: s.team.Name}
 	err := app.CreateApp(context.TODO(), &myapp, s.user)
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake-tls"}, Blacklist: true})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake-tls"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	body := strings.NewReader(`name=fake-tls&opts.x=y&opts.z=w`)
 	recorder := httptest.NewRecorder()
@@ -465,7 +465,7 @@ func (s *S) TestUpdateAppRouterBlockedByConstraint(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = myapp.AddRouter(ctx, appTypes.AppRouter{Name: "fake"})
 	c.Assert(err, check.IsNil)
-	err = pool.SetPoolConstraint(&pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake"}, Blacklist: true})
+	err = pool.SetPoolConstraint(context.TODO(), &pool.PoolConstraint{PoolExpr: "*", Field: pool.ConstraintTypeRouter, Values: []string{"fake"}, Blacklist: true})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	body := strings.NewReader(`opts.x=y&opts.z=w`)

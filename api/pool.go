@@ -363,10 +363,11 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //	204: No content
 //	401: Unauthorized
 func poolConstraintList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	if !permission.Check(t, permission.PermPoolReadConstraints) {
 		return permission.ErrUnauthorized
 	}
-	constraints, err := pool.ListPoolsConstraints(nil)
+	constraints, err := pool.ListPoolsConstraints(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -419,7 +420,7 @@ func poolConstraintSet(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		append, _ = strconv.ParseBool(appendStr)
 	}
 	if append {
-		return pool.AppendPoolConstraint(&poolConstraint)
+		return pool.AppendPoolConstraint(ctx, &poolConstraint)
 	}
-	return pool.SetPoolConstraint(&poolConstraint)
+	return pool.SetPoolConstraint(ctx, &poolConstraint)
 }
