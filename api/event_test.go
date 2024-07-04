@@ -17,8 +17,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	"github.com/tsuru/tsuru/event/eventtest"
@@ -37,7 +35,6 @@ import (
 )
 
 type EventSuite struct {
-	conn  *db.Storage
 	token auth.Token
 	team  *authTypes.Team
 	user  *auth.User
@@ -65,21 +62,18 @@ func (s *EventSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "tsuru_events_api_tests")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 
 	storagev2.Reset()
 }
 
 func (s *EventSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
+	storagev2.ClearAllCollections(nil)
 }
 
 func (s *EventSuite) SetUpTest(c *check.C) {
 	var err error
 	routertest.FakeRouter.Reset()
-	err = dbtest.ClearAllCollections(s.conn.Apps().Database)
+	err = storagev2.ClearAllCollections(nil)
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 }
@@ -205,8 +199,12 @@ func (s *EventSuite) TestEventListFilterByTarget(c *check.C) {
 func (s *EventSuite) TestEventListFilterRunning(c *check.C) {
 	_, err := s.insertEvents("app", nil, c)
 	c.Assert(err, check.IsNil)
-	err = s.conn.Events().Update(bson.M{}, bson.M{"$set": bson.M{"running": true}})
+
+	collection, err := storagev2.EventsCollection()
 	c.Assert(err, check.IsNil)
+	_, err = collection.UpdateOne(context.TODO(), mongoBSON.M{}, mongoBSON.M{"$set": mongoBSON.M{"running": true}})
+	c.Assert(err, check.IsNil)
+
 	request, err := http.NewRequest("GET", "/events?running=true", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())

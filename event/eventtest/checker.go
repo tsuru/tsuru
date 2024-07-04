@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storagev2"
 	"github.com/tsuru/tsuru/event"
 	eventTypes "github.com/tsuru/tsuru/types/event"
 	check "gopkg.in/check.v1"
@@ -58,6 +58,7 @@ func queryPartCustom(query map[string]interface{}, name string, value interface{
 }
 
 func (hasEventChecker) Check(params []interface{}, names []string) (bool, string) {
+	ctx := context.TODO()
 	var evt EventDesc
 	switch params[0].(type) {
 	case EventDesc:
@@ -67,14 +68,14 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	default:
 		return false, "First parameter must be of type EventDesc or *EventDesc"
 	}
-	conn, err := db.Conn()
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return false, err.Error()
 	}
-	defer conn.Close()
 	if evt.IsEmpty {
-		var n int
-		n, err = conn.Events().Find(nil).Count()
+		var n int64
+
+		n, err = collection.CountDocuments(ctx, mongoBSON.M{})
 		if err != nil {
 			return false, err.Error()
 		}
@@ -116,7 +117,7 @@ func (hasEventChecker) Check(params []interface{}, names []string) (bool, string
 	} else {
 		query["error"] = ""
 	}
-	n, err := conn.Events().Find(query).Count()
+	n, err := collection.CountDocuments(ctx, query)
 	if err != nil {
 		return false, err.Error()
 	}

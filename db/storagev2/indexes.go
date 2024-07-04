@@ -75,6 +75,21 @@ var EnsureIndexes = []EnsureIndex{
 			},
 		},
 	},
+
+	{
+		Collection: "event_blocks",
+		Indexes: []mongo.IndexModel{
+			{
+				Keys: mongoBSON.D{{Key: "ownername", Value: 1}, {Key: "kindname", Value: 1}, {Key: "target", Value: 1}},
+			},
+			{
+				Keys: mongoBSON.D{{Key: "starttime", Value: -1}},
+			},
+			{
+				Keys: mongoBSON.D{{Key: "active", Value: 1}, {Key: "starttime", Value: -1}},
+			},
+		},
+	},
 }
 
 func EnsureIndexesCreated(db *mongo.Database) error {

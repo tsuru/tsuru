@@ -89,6 +89,15 @@ func dbConfig() (string, string) {
 }
 
 func Collection(name string) (*mongo.Collection, error) {
+	db, err := database()
+	if err != nil {
+		return nil, err
+	}
+
+	return db.Collection(name, options.Collection()), nil
+}
+
+func database() (*mongo.Database, error) {
 	connectedClient := client.Load()
 	databaseName := databaseNamePtr.Load()
 
@@ -99,5 +108,5 @@ func Collection(name string) (*mongo.Collection, error) {
 			return nil, err
 		}
 	}
-	return connectedClient.Database(*databaseName).Collection(name, options.Collection()), nil
+	return connectedClient.Database(*databaseName), nil
 }

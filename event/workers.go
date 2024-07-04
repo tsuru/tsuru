@@ -55,7 +55,7 @@ func (l *eventCleaner) tryCleaning() error {
 	ctx := context.Background()
 	now := time.Now().UTC()
 
-	collection, err := storagev2.Collection(eventsCollection)
+	collection, err := storagev2.EventsCollection()
 	if err != nil {
 		return errors.Wrap(err, "[events] [event cleaner] error getting db conn")
 	}
@@ -159,7 +159,7 @@ func (l *lockUpdater) spin() {
 			continue
 		}
 
-		collection, err := storagev2.Collection(eventsCollection)
+		collection, err := storagev2.EventsCollection()
 
 		if err != nil {
 			log.Errorf("[events] [lock update] error getting db conn: %s", err)

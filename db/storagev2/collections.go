@@ -13,3 +13,7 @@ func PoolCollection() (*mongo.Collection, error) {
 func PoolConstraintsCollection() (*mongo.Collection, error) {
 	return Collection("pool_constraints")
 }
+
+func EventsCollection() (*mongo.Collection, error) {
+	return Collection("events")
+}

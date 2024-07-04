@@ -52,7 +52,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	err = dbtest.ClearAllCollections(conn.Events().Database)
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, check.IsNil)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	user := &auth.User{Email: "me@me.com", Password: "123456"}
