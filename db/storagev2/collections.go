@@ -17,3 +17,7 @@ func PoolConstraintsCollection() (*mongo.Collection, error) {
 func EventsCollection() (*mongo.Collection, error) {
 	return Collection("events")
 }
+
+func ServicesCollection() (*mongo.Collection, error) {
+	return Collection("services")
+}
