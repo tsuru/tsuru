@@ -210,7 +210,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 		return err
 	}
 
-	sis, err := service.GetServiceInstancesBoundToJob(j.Name)
+	sis, err := service.GetServiceInstancesBoundToJob(ctx, j.Name)
 	if err != nil {
 		return err
 	}

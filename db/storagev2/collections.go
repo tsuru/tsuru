@@ -21,3 +21,7 @@ func EventsCollection() (*mongo.Collection, error) {
 func ServicesCollection() (*mongo.Collection, error) {
 	return Collection("services")
 }
+
+func ServiceInstancesCollection() (*mongo.Collection, error) {
+	return Collection("service_instances")
+}

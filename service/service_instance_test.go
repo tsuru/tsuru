@@ -34,6 +34,7 @@ import (
 	authTypes "github.com/tsuru/tsuru/types/auth"
 	bindTypes "github.com/tsuru/tsuru/types/bind"
 	provTypes "github.com/tsuru/tsuru/types/provision"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
 	check "gopkg.in/check.v1"
 )
 
@@ -227,11 +228,11 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToApp(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesBoundToApp("app2")
+	sInstances, err := GetServiceInstancesBoundToApp(context.TODO(), "app2")
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{sInstance}
 	c.Assert(sInstances, check.DeepEquals, expected)
-	sInstances, err = GetServiceInstancesBoundToApp("app1")
+	sInstances, err = GetServiceInstancesBoundToApp(context.TODO(), "app1")
 	c.Assert(err, check.IsNil)
 	expected = []ServiceInstance{sInstance, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
@@ -263,11 +264,11 @@ func (s *InstanceSuite) TestGetServiceInstancesBoundToJob(c *check.C) {
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesBoundToJob("job2")
+	sInstances, err := GetServiceInstancesBoundToJob(context.TODO(), "job2")
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{sInstance}
 	c.Assert(sInstances, check.DeepEquals, expected)
-	sInstances, err = GetServiceInstancesBoundToJob("job1")
+	sInstances, err = GetServiceInstancesBoundToJob(context.TODO(), "job1")
 	c.Assert(err, check.IsNil)
 	expected = []ServiceInstance{sInstance, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
@@ -283,7 +284,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	sInstance2 := ServiceInstance{Name: "s9sql", ServiceName: "mysql", Tags: []string{}}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
@@ -293,7 +294,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithoutAnyExistingServi
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices([]Service{srvc})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc})
 	c.Assert(err, check.IsNil)
 	c.Assert(sInstances, check.DeepEquals, []ServiceInstance(nil))
 }
@@ -311,7 +312,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *chec
 	sInstance2 := ServiceInstance{Name: "s9nosql", ServiceName: "mongodb", Tags: []string{"tag 1", "tag 2"}}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
-	sInstances, err := GetServiceInstancesByServices([]Service{srvc, srvc2})
+	sInstances, err := GetServiceInstancesByServices(context.TODO(), []Service{srvc, srvc2})
 	c.Assert(err, check.IsNil)
 	expected := []ServiceInstance{{Name: "t3sql", ServiceName: "mysql", Tags: []string{}}, sInstance2}
 	c.Assert(sInstances, check.DeepEquals, expected)
@@ -321,7 +322,7 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilter(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	teams := []string{s.team.Name}
 	query := genericServiceInstancesFilter(srvc, teams)
-	c.Assert(query, check.DeepEquals, bson.M{"service_name": srvc.Name, "teams": bson.M{"$in": teams}})
+	c.Assert(query, check.DeepEquals, mongoBSON.M{"service_name": srvc.Name, "teams": mongoBSON.M{"$in": teams}})
 }
 
 func (s *InstanceSuite) TestGenericServiceInstancesFilterWithServiceSlice(c *check.C) {
@@ -332,7 +333,7 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilterWithServiceSlice(c *che
 	names := []string{"mysql", "mongodb"}
 	teams := []string{s.team.Name}
 	query := genericServiceInstancesFilter(services, teams)
-	c.Assert(query, check.DeepEquals, bson.M{"service_name": bson.M{"$in": names}, "teams": bson.M{"$in": teams}})
+	c.Assert(query, check.DeepEquals, mongoBSON.M{"service_name": mongoBSON.M{"$in": names}, "teams": mongoBSON.M{"$in": teams}})
 }
 
 func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *check.C) {
@@ -343,7 +344,7 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c
 	names := []string{"mysql", "mongodb"}
 	teams := []string{}
 	query := genericServiceInstancesFilter(services, teams)
-	c.Assert(query, check.DeepEquals, bson.M{"service_name": bson.M{"$in": names}})
+	c.Assert(query, check.DeepEquals, mongoBSON.M{"service_name": mongoBSON.M{"$in": names}})
 }
 
 func (s *InstanceSuite) TestAdditionalInfo(c *check.C) {

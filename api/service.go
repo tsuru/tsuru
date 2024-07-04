@@ -47,7 +47,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	sInstances, err := service.GetServiceInstancesByServices(services)
+	sInstances, err := service.GetServiceInstancesByServices(ctx, services)
 	if err != nil {
 		return err
 	}
@@ -251,7 +251,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	instances, err := service.GetServiceInstancesByServices([]service.Service{s})
+	instances, err := service.GetServiceInstancesByServices(ctx, []service.Service{s})
 	if err != nil {
 		return err
 	}
