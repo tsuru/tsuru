@@ -83,7 +83,7 @@ func build(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	opts.BuildTag = tag
 	opts.User = userName
 	opts.GetKind()
-	canBuild := permission.Check(t, permission.PermAppBuild, contextsForApp(instance)...)
+	canBuild := permission.Check(ctx, t, permission.PermAppBuild, contextsForApp(instance)...)
 	if !canBuild {
 		return &tsuruErrors.HTTP{Code: http.StatusForbidden, Message: "User does not have permission to do this action in this app"}
 	}

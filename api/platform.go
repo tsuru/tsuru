@@ -53,7 +53,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	for key, values := range r.Form {
 		args[key] = values[0]
 	}
-	canCreatePlatform := permission.Check(t, permission.PermPlatformCreate)
+	canCreatePlatform := permission.Check(ctx, t, permission.PermPlatformCreate)
 	if !canCreatePlatform {
 		return permission.ErrUnauthorized
 	}
@@ -116,7 +116,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	for key, values := range r.Form {
 		args[key] = values[0]
 	}
-	canUpdatePlatform := permission.Check(t, permission.PermPlatformUpdate)
+	canUpdatePlatform := permission.Check(ctx, t, permission.PermPlatformUpdate)
 	if !canUpdatePlatform {
 		return permission.ErrUnauthorized
 	}
@@ -167,7 +167,7 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	404: Not found
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	canDeletePlatform := permission.Check(t, permission.PermPlatformDelete)
+	canDeletePlatform := permission.Check(ctx, t, permission.PermPlatformDelete)
 	if !canDeletePlatform {
 		return permission.ErrUnauthorized
 	}
@@ -202,8 +202,8 @@ func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	401: Unauthorized
 func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-		permission.Check(t, permission.PermPlatformCreate)
+	canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+		permission.Check(ctx, t, permission.PermPlatformCreate)
 	platforms, err := servicemanager.Platform.List(ctx, !canUsePlat)
 	if err != nil {
 		return err
@@ -228,8 +228,8 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func platformInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	canUsePlat := permission.Check(t, permission.PermPlatformUpdate) ||
-		permission.Check(t, permission.PermPlatformRead)
+	canUsePlat := permission.Check(ctx, t, permission.PermPlatformUpdate) ||
+		permission.Check(ctx, t, permission.PermPlatformRead)
 	if !canUsePlat {
 		return permission.ErrUnauthorized
 	}
@@ -283,7 +283,7 @@ func platformRollback(w http.ResponseWriter, r *http.Request, t auth.Token) (err
 			Message: fmt.Sprintf("invalid image version %q", version),
 		}
 	}
-	canUpdatePlatform := permission.Check(t, permission.PermPlatformUpdate)
+	canUpdatePlatform := permission.Check(ctx, t, permission.PermPlatformUpdate)
 	if !canUpdatePlatform {
 		return permission.ErrUnauthorized
 	}

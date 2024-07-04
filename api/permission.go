@@ -37,7 +37,7 @@ import (
 //	409: Role already exists
 func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleCreate) {
+	if !permission.Check(ctx, t, permission.PermRoleCreate) {
 		return permission.ErrUnauthorized
 	}
 	roleName := InputValue(r, "name")
@@ -89,7 +89,7 @@ func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 //	412: Role with users
 func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleDelete) {
+	if !permission.Check(ctx, t, permission.PermRoleDelete) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -128,14 +128,15 @@ func removeRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //	200: OK
 //	401: Unauthorized
 func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !(permission.Check(t, permission.PermRoleUpdate) ||
-		permission.Check(t, permission.PermRoleUpdateAssign) ||
-		permission.Check(t, permission.PermRoleUpdateDissociate) ||
-		permission.Check(t, permission.PermRoleCreate) ||
-		permission.Check(t, permission.PermRoleDelete)) {
+	ctx := r.Context()
+	if !(permission.Check(ctx, t, permission.PermRoleUpdate) ||
+		permission.Check(ctx, t, permission.PermRoleUpdateAssign) ||
+		permission.Check(ctx, t, permission.PermRoleUpdateDissociate) ||
+		permission.Check(ctx, t, permission.PermRoleCreate) ||
+		permission.Check(ctx, t, permission.PermRoleDelete)) {
 		return permission.ErrUnauthorized
 	}
-	roles, err := permission.ListRoles()
+	roles, err := permission.ListRoles(ctx)
 	if err != nil {
 		return err
 	}
@@ -158,15 +159,16 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	401: Unauthorized
 //	404: Role not found
 func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !(permission.Check(t, permission.PermRoleUpdate) ||
-		permission.Check(t, permission.PermRoleUpdateAssign) ||
-		permission.Check(t, permission.PermRoleUpdateDissociate) ||
-		permission.Check(t, permission.PermRoleCreate) ||
-		permission.Check(t, permission.PermRoleDelete)) {
+	ctx := r.Context()
+	if !(permission.Check(ctx, t, permission.PermRoleUpdate) ||
+		permission.Check(ctx, t, permission.PermRoleUpdateAssign) ||
+		permission.Check(ctx, t, permission.PermRoleUpdateDissociate) ||
+		permission.Check(ctx, t, permission.PermRoleCreate) ||
+		permission.Check(ctx, t, permission.PermRoleDelete)) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
-	role, err := permission.FindRole(roleName)
+	role, err := permission.FindRole(ctx, roleName)
 	if err == permTypes.ErrRoleNotFound {
 		return &errors.HTTP{
 			Code:    http.StatusNotFound,
@@ -197,7 +199,7 @@ func roleInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: Permission not allowed
 func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdatePermissionAdd) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionAdd) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -213,13 +215,13 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := permission.FindRole(roleName)
+	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return err
 	}
 
 	permissions, _ := InputValues(r, "permission")
-	err = role.AddPermissions(permissions...)
+	err = role.AddPermissions(ctx, permissions...)
 
 	if err == permTypes.ErrInvalidPermissionName {
 		return &errors.HTTP{
@@ -252,7 +254,7 @@ func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	404: Not found
 func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdatePermissionRemove) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdatePermissionRemove) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -269,7 +271,7 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	}
 	defer func() { evt.Done(ctx, err) }()
 	permName := r.URL.Query().Get(":permission")
-	role, err := permission.FindRole(roleName)
+	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		if err == permTypes.ErrRoleNotFound {
 			return &errors.HTTP{
@@ -280,11 +282,11 @@ func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 		return err
 	}
 
-	return role.RemovePermissions(permName)
+	return role.RemovePermissions(ctx, permName)
 }
 
-func getRoleReturnNotFound(roleName string) (permission.Role, error) {
-	role, err := permission.FindRole(roleName)
+func getRoleReturnNotFound(ctx context.Context, roleName string) (permission.Role, error) {
+	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		if err == permTypes.ErrRoleNotFound {
 			return permission.Role{}, &errors.HTTP{
@@ -297,8 +299,8 @@ func getRoleReturnNotFound(roleName string) (permission.Role, error) {
 	return role, nil
 }
 
-func canUseRole(t auth.Token, role permission.Role, contextValue string) error {
-	userPerms, err := t.Permissions()
+func canUseRole(ctx context.Context, t auth.Token, role permission.Role, contextValue string) error {
+	userPerms, err := t.Permissions(ctx)
 	if err != nil {
 		return err
 	}
@@ -326,7 +328,7 @@ func canUseRole(t auth.Token, role permission.Role, contextValue string) error {
 //	404: Role not found
 func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -349,7 +351,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -357,12 +359,12 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 		return err
 	}
 
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
 
-	return user.AddRole(roleName, contextValue)
+	return user.AddRole(ctx, roleName, contextValue)
 }
 
 // title: dissociate role from user
@@ -376,7 +378,7 @@ func assignRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 //	404: Role not found
 func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
 	roleName := r.URL.Query().Get(":name")
@@ -399,11 +401,11 @@ func dissociateRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 		return err
 	}
 
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -425,7 +427,8 @@ type permissionSchemeData struct {
 //	200: Ok
 //	401: Unauthorized
 func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermRoleUpdate) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermRoleUpdate) {
 		return permission.ErrUnauthorized
 	}
 	lst := permission.PermissionRegistry.Permissions()
@@ -457,7 +460,7 @@ func listPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error
 //	401: Unauthorized
 func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleDefaultCreate) {
+	if !permission.Check(ctx, t, permission.PermRoleDefaultCreate) {
 		return permission.ErrUnauthorized
 	}
 	rolesMap := map[string][]string{}
@@ -480,7 +483,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			return err
 		}
 		defer func() { evt.Done(ctx, err) }()
-		role, err := permission.FindRole(roleName)
+		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
 			if err == permTypes.ErrRoleNotFound {
 				return &errors.HTTP{
@@ -491,7 +494,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 			return err
 		}
 		for _, evtName := range evts {
-			err = role.AddEvent(evtName)
+			err = role.AddEvent(ctx, evtName)
 			if err != nil {
 				if _, ok := err.(permTypes.ErrRoleEventWrongContext); ok {
 					return &errors.HTTP{
@@ -516,7 +519,7 @@ func addDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	401: Unauthorized
 func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleDefaultDelete) {
+	if !permission.Check(ctx, t, permission.PermRoleDefaultDelete) {
 		return permission.ErrUnauthorized
 	}
 
@@ -540,7 +543,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			return err
 		}
 		defer func() { evt.Done(ctx, err) }()
-		role, err := permission.FindRole(roleName)
+		role, err := permission.FindRole(ctx, roleName)
 		if err != nil {
 			if err == permTypes.ErrRoleNotFound {
 				return &errors.HTTP{
@@ -551,7 +554,7 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 			return err
 		}
 		for _, evtName := range evts {
-			err = role.RemoveEvent(evtName)
+			err = role.RemoveEvent(ctx, evtName)
 			if err != nil {
 				return err
 			}
@@ -569,11 +572,12 @@ func removeDefaultRole(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 //	200: Ok
 //	401: Unauthorized
 func listDefaultRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermRoleDefaultCreate) &&
-		!permission.Check(t, permission.PermRoleDefaultDelete) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermRoleDefaultCreate) &&
+		!permission.Check(ctx, t, permission.PermRoleDefaultDelete) {
 		return permission.ErrUnauthorized
 	}
-	roles, err := permission.ListRolesWithEvents()
+	roles, err := permission.ListRolesWithEvents(ctx)
 	if err != nil {
 		return err
 	}
@@ -611,7 +615,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
 	for _, perm := range wantedPerms {
-		if !permission.Check(t, perm) {
+		if !permission.Check(ctx, t, perm) {
 			return permission.ErrUnauthorized
 		}
 	}
@@ -627,7 +631,7 @@ func roleUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	err = auth.UpdateRoleFromAllUsers(roleName, newName, contextType, description)
+	err = auth.UpdateRoleFromAllUsers(ctx, roleName, newName, contextType, description)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -702,7 +706,7 @@ func validateContextValue(ctx context.Context, role permission.Role, contextValu
 //	404: Role or team token not found
 func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
 	tokenID := InputValue(r, "token_id")
@@ -720,14 +724,14 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
 	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -750,7 +754,7 @@ func assignRoleToToken(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //	404: Role or team token not found
 func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
 	tokenID := r.URL.Query().Get(":token_id")
@@ -768,11 +772,11 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
@@ -796,7 +800,7 @@ func dissociateRoleFromToken(w http.ResponseWriter, r *http.Request, t auth.Toke
 //	404: Role not found
 func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermRoleUpdateAssign) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateAssign) {
 		return permission.ErrUnauthorized
 	}
 	groupName := InputValue(r, "group_name")
@@ -814,18 +818,18 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
 	if err = validateContextValue(ctx, role, contextValue); err != nil {
 		return err
 	}
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
-	return servicemanager.AuthGroup.AddRole(groupName, roleName, contextValue)
+	return servicemanager.AuthGroup.AddRole(ctx, groupName, roleName, contextValue)
 }
 
 // title: dissociate role from group
@@ -840,7 +844,7 @@ func assignRoleToGroup(w http.ResponseWriter, r *http.Request, t auth.Token) err
 func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 
-	if !permission.Check(t, permission.PermRoleUpdateDissociate) {
+	if !permission.Check(ctx, t, permission.PermRoleUpdateDissociate) {
 		return permission.ErrUnauthorized
 	}
 	groupName := r.URL.Query().Get(":group_name")
@@ -858,13 +862,13 @@ func dissociateRoleFromGroup(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	defer func() { evt.Done(ctx, err) }()
-	role, err := getRoleReturnNotFound(roleName)
+	role, err := getRoleReturnNotFound(ctx, roleName)
 	if err != nil {
 		return err
 	}
-	err = canUseRole(t, role, contextValue)
+	err = canUseRole(ctx, t, role, contextValue)
 	if err != nil {
 		return err
 	}
-	return servicemanager.AuthGroup.RemoveRole(groupName, roleName, contextValue)
+	return servicemanager.AuthGroup.RemoveRole(ctx, groupName, roleName, contextValue)
 }

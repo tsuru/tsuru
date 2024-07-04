@@ -90,7 +90,7 @@ func (s *S) TestNativeCreateInvalidPassword(c *check.C) {
 
 func (s *S) TestNativeCreateExistingEmail(c *check.C) {
 	existingUser := auth.User{Email: "x@x.com"}
-	existingUser.Create()
+	existingUser.Create(context.TODO())
 	scheme := NativeScheme{}
 	user := &auth.User{Email: "x@x.com", Password: "123456"}
 	_, err := scheme.Create(context.TODO(), user)
@@ -172,7 +172,7 @@ func (s *S) TestResetPassword(c *check.C) {
 	scheme := NativeScheme{}
 	defer s.server.Reset()
 	u := auth.User{Email: "blues@rush.com"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	p := u.Password
@@ -221,7 +221,7 @@ func (s *S) TestResetPassword(c *check.C) {
 func (s *S) TestResetPasswordThirdToken(c *check.C) {
 	scheme := NativeScheme{}
 	u := auth.User{Email: "profecia@raul.com"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	t, err := createPasswordToken(&u)

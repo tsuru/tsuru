@@ -260,7 +260,7 @@ func (s *S) TestReserveUserAppForward(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:     "clap",
@@ -281,7 +281,7 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:     "clap",
@@ -302,7 +302,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:     "clap",
@@ -342,7 +342,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, user.Email)
 		return &quota.QuotaExceededError{Available: 0, Requested: 1}
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:     "clap",
@@ -365,7 +365,7 @@ func (s *S) TestReserveUserAppBackward(c *check.C) {
 		c.Assert(item.GetName(), check.Equals, user.Email)
 		return nil
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	app := App{
 		Name:     "clap",

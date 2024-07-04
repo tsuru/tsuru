@@ -5,6 +5,7 @@
 package permission
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -13,7 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storagev2"
 	permTypes "github.com/tsuru/tsuru/types/permission"
+	mongoBSON "go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Role struct {
@@ -46,14 +50,18 @@ func NewRole(name string, ctx string, description string) (Role, error) {
 	return role, err
 }
 
-func ListRoles() ([]Role, error) {
+func ListRoles(ctx context.Context) ([]Role, error) {
 	var roles []Role
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return roles, err
 	}
-	defer coll.Close()
-	err = coll.Find(nil).All(&roles)
+
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &roles)
 	if err != nil {
 		return nil, err
 	}
@@ -63,14 +71,17 @@ func ListRoles() ([]Role, error) {
 	return roles, nil
 }
 
-func ListRolesWithEvents() ([]Role, error) {
+func ListRolesWithEvents(ctx context.Context) ([]Role, error) {
 	var roles []Role
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return roles, err
 	}
-	defer coll.Close()
-	err = coll.Find(bson.M{"events": bson.M{"$not": bson.M{"$size": 0}, "$exists": true}}).All(&roles)
+	cursor, err := collection.Find(ctx, mongoBSON.M{"events": mongoBSON.M{"$not": mongoBSON.M{"$size": 0}, "$exists": true}})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &roles)
 	if err != nil {
 		return nil, err
 	}
@@ -80,17 +91,20 @@ func ListRolesWithEvents() ([]Role, error) {
 	return roles, nil
 }
 
-func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
+func ListRolesForEvent(ctx context.Context, evt *permTypes.RoleEvent) ([]Role, error) {
 	if evt == nil {
 		return nil, errors.New("invalid role event")
 	}
 	var roles []Role
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return roles, err
 	}
-	defer coll.Close()
-	err = coll.Find(bson.M{"events": evt.Name}).All(&roles)
+	cursor, err := collection.Find(ctx, mongoBSON.M{"events": evt.Name})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(ctx, &roles)
 	if err != nil {
 		return nil, err
 	}
@@ -102,8 +116,8 @@ func ListRolesForEvent(evt *permTypes.RoleEvent) ([]Role, error) {
 
 // ListRolesWithPermissionWithContextMap returns a map with all roles valid for a
 // specific Context or having any scheme permission which is valid for the specific Context.
-func ListRolesWithPermissionWithContextMap(contextValue permTypes.ContextType) (map[string]Role, error) {
-	allRoles, err := ListRoles()
+func ListRolesWithPermissionWithContextMap(ctx context.Context, contextValue permTypes.ContextType) (map[string]Role, error) {
+	allRoles, err := ListRoles(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,15 +147,14 @@ func (r *Role) hasPermissionWithContext(contextValue permTypes.ContextType) bool
 	return false
 }
 
-func FindRole(name string) (Role, error) {
+func FindRole(ctx context.Context, name string) (Role, error) {
 	var role Role
-	coll, err := rolesCollection()
+	collection, err := storagev2.RolesCollection()
 	if err != nil {
 		return role, err
 	}
-	defer coll.Close()
-	err = coll.FindId(name).One(&role)
-	if err == mgo.ErrNotFound {
+	err = collection.FindOne(ctx, mongoBSON.M{"_id": name}).Decode(&role)
+	if err == mongo.ErrNoDocuments {
 		return role, permTypes.ErrRoleNotFound
 	}
 	if err != nil {
@@ -164,7 +177,7 @@ func DestroyRole(name string) error {
 	return err
 }
 
-func (r *Role) AddPermissions(permNames ...string) error {
+func (r *Role) AddPermissions(ctx context.Context, permNames ...string) error {
 	for _, permName := range permNames {
 		if permName == "" {
 			return permTypes.ErrInvalidPermissionName
@@ -199,7 +212,7 @@ func (r *Role) AddPermissions(permNames ...string) error {
 	if err != nil {
 		return err
 	}
-	dbRole, err := FindRole(r.Name)
+	dbRole, err := FindRole(ctx, r.Name)
 	if err != nil {
 		return err
 	}
@@ -207,7 +220,7 @@ func (r *Role) AddPermissions(permNames ...string) error {
 	return nil
 }
 
-func (r *Role) RemovePermissions(permNames ...string) error {
+func (r *Role) RemovePermissions(ctx context.Context, permNames ...string) error {
 	coll, err := rolesCollection()
 	if err != nil {
 		return err
@@ -217,7 +230,7 @@ func (r *Role) RemovePermissions(permNames ...string) error {
 	if err != nil {
 		return err
 	}
-	dbRole, err := FindRole(r.Name)
+	dbRole, err := FindRole(ctx, r.Name)
 	if err != nil {
 		return err
 	}
@@ -261,7 +274,7 @@ func (r *Role) PermissionsFor(contextValue string) []Permission {
 	return permissions
 }
 
-func (r *Role) AddEvent(eventName string) error {
+func (r *Role) AddEvent(ctx context.Context, eventName string) error {
 	roleEvent := permTypes.RoleEventMap[eventName]
 	if roleEvent == nil {
 		return permTypes.ErrRoleEventNotFound
@@ -278,7 +291,7 @@ func (r *Role) AddEvent(eventName string) error {
 	if err != nil {
 		return err
 	}
-	dbRole, err := FindRole(r.Name)
+	dbRole, err := FindRole(ctx, r.Name)
 	if err != nil {
 		return err
 	}
@@ -286,7 +299,7 @@ func (r *Role) AddEvent(eventName string) error {
 	return nil
 }
 
-func (r *Role) RemoveEvent(eventName string) error {
+func (r *Role) RemoveEvent(ctx context.Context, eventName string) error {
 	coll, err := rolesCollection()
 	if err != nil {
 		return err
@@ -296,7 +309,7 @@ func (r *Role) RemoveEvent(eventName string) error {
 	if err != nil {
 		return err
 	}
-	dbRole, err := FindRole(r.Name)
+	dbRole, err := FindRole(ctx, r.Name)
 	if err != nil {
 		return err
 	}

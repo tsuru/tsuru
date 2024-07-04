@@ -63,7 +63,7 @@ func (s *authGroupStorage) List(ctx context.Context, filter []string) ([]auth.Gr
 	return groups, nil
 }
 
-func (s *authGroupStorage) AddRole(name, roleName, contextValue string) error {
+func (s *authGroupStorage) AddRole(ctx context.Context, name, roleName, contextValue string) error {
 	if name == "" {
 		return errAuthGroupNameEmpty
 	}
@@ -80,7 +80,7 @@ func (s *authGroupStorage) AddRole(name, roleName, contextValue string) error {
 	return err
 }
 
-func (s *authGroupStorage) RemoveRole(name, roleName, contextValue string) error {
+func (s *authGroupStorage) RemoveRole(ctx context.Context, name, roleName, contextValue string) error {
 	if name == "" {
 		return errAuthGroupNameEmpty
 	}

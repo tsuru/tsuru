@@ -165,7 +165,7 @@ func (s *oAuthScheme) handleToken(ctx context.Context, t *oauth2.Token) (*tokenW
 			return nil, err
 		}
 		dbUser = &auth.User{Email: user.Email}
-		err = dbUser.Create()
+		err = dbUser.Create(ctx)
 	} else {
 		dbGroups := set.FromSlice(dbUser.Groups)
 		providerGroups := set.FromSlice(user.Groups)
@@ -238,7 +238,7 @@ func (s *oAuthScheme) parse(infoResponse *http.Response) (userData, error) {
 
 func (s *oAuthScheme) Create(ctx context.Context, user *auth.User) (*auth.User, error) {
 	user.Password = ""
-	err := user.Create()
+	err := user.Create(ctx)
 	if err != nil {
 		return nil, err
 	}

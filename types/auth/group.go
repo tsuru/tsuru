@@ -17,6 +17,6 @@ type GroupStorage interface {
 
 type GroupService interface {
 	List(ctx context.Context, filter []string) ([]Group, error)
-	AddRole(name, roleName, contextValue string) error
-	RemoveRole(name, roleName, contextValue string) error
+	AddRole(ctx context.Context, name, roleName, contextValue string) error
+	RemoveRole(ctx context.Context, name, roleName, contextValue string) error
 }

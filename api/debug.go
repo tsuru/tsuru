@@ -19,7 +19,8 @@ import (
 //
 //	200: Ok
 func dumpGoroutines(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	if !permission.Check(t, permission.PermDebug) {
+	ctx := r.Context()
+	if !permission.Check(ctx, t, permission.PermDebug) {
 		return permission.ErrUnauthorized
 	}
 	return pprof.Lookup("goroutine").WriteTo(w, 2)

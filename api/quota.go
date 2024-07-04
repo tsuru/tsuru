@@ -30,8 +30,9 @@ import (
 //	401: Unauthorized
 //	404: User not found
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	email := r.URL.Query().Get(":email")
-	allowed := permission.Check(t, permission.PermUserReadQuota, permission.Context(permTypes.CtxUser, email))
+	allowed := permission.Check(ctx, t, permission.PermUserReadQuota, permission.Context(permTypes.CtxUser, email))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -63,7 +64,7 @@ func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	email := r.URL.Query().Get(":email")
-	allowed := permission.Check(t, permission.PermUserUpdateQuota)
+	allowed := permission.Check(ctx, t, permission.PermUserUpdateQuota)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -120,7 +121,7 @@ func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppRead, contextsForApp(&a)...)
+	canRead := permission.Check(ctx, t, permission.PermAppRead, contextsForApp(&a)...)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
@@ -150,7 +151,7 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppAdminQuota, contextsForApp(&a)...)
+	allowed := permission.Check(ctx, t, permission.PermAppAdminQuota, contextsForApp(&a)...)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -193,8 +194,9 @@ func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err e
 //	401: Unauthorized
 //	404: Team not found
 func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermTeamReadQuota, permission.Context(permTypes.CtxTeam, teamName))
+	allowed := permission.Check(ctx, t, permission.PermTeamReadQuota, permission.Context(permTypes.CtxTeam, teamName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -226,7 +228,7 @@ func getTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func changeTeamQuota(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	teamName := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))
+	allowed := permission.Check(ctx, t, permission.PermTeamUpdateQuota, permission.Context(permTypes.CtxTeam, teamName))
 	if !allowed {
 		return permission.ErrUnauthorized
 	}

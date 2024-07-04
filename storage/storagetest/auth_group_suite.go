@@ -17,9 +17,9 @@ type AuthGroupSuite struct {
 }
 
 func (s *AuthGroupSuite) TestAddRole(c *check.C) {
-	err := s.AuthGroupStorage.AddRole("g1", "r1", "v1")
+	err := s.AuthGroupStorage.AddRole(context.TODO(), "g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	err = s.AuthGroupStorage.AddRole("g1", "r1", "v1")
+	err = s.AuthGroupStorage.AddRole(context.TODO(), "g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
 	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
@@ -35,7 +35,7 @@ func (s *AuthGroupSuite) TestAddRole(c *check.C) {
 		},
 	})
 
-	err = s.AuthGroupStorage.AddRole("g1", "r2", "v1")
+	err = s.AuthGroupStorage.AddRole(context.TODO(), "g1", "r2", "v1")
 	c.Assert(err, check.IsNil)
 	groups, err = s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
@@ -57,9 +57,9 @@ func (s *AuthGroupSuite) TestAddRole(c *check.C) {
 }
 
 func (s *AuthGroupSuite) TestRemoveRole(c *check.C) {
-	err := s.AuthGroupStorage.AddRole("g1", "r1", "v1")
+	err := s.AuthGroupStorage.AddRole(context.TODO(), "g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	err = s.AuthGroupStorage.RemoveRole("g1", "r1", "v1")
+	err = s.AuthGroupStorage.RemoveRole(context.TODO(), "g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
 	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
@@ -75,9 +75,9 @@ func (s *AuthGroupSuite) TestList(c *check.C) {
 	groups, err := s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(groups, check.HasLen, 0)
-	err = s.AuthGroupStorage.AddRole("g1", "r1", "v1")
+	err = s.AuthGroupStorage.AddRole(context.TODO(), "g1", "r1", "v1")
 	c.Assert(err, check.IsNil)
-	err = s.AuthGroupStorage.AddRole("g2", "r1", "v1")
+	err = s.AuthGroupStorage.AddRole(context.TODO(), "g2", "r1", "v1")
 	c.Assert(err, check.IsNil)
 	groups, err = s.AuthGroupStorage.List(context.TODO(), nil)
 	c.Assert(err, check.IsNil)

@@ -639,6 +639,6 @@ func (t fakeToken) Engine() string {
 	return "fake"
 }
 
-func (t fakeToken) Permissions() ([]permission.Permission, error) {
+func (t fakeToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
 	return []permission.Permission{}, nil
 }

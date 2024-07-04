@@ -4,14 +4,18 @@
 
 package auth
 
-import "github.com/tsuru/tsuru/permission"
+import (
+	"context"
+
+	"github.com/tsuru/tsuru/permission"
+)
 
 type Token interface {
 	GetValue() string
 	GetUserName() string
 	User() (*User, error)
 	Engine() string
-	Permissions() ([]permission.Permission, error)
+	Permissions(ctx context.Context) ([]permission.Permission, error)
 }
 
 type NamedToken interface {

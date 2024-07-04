@@ -85,7 +85,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 		Email: "whydidifall@thewho.com",
 		Quota: quota.UnlimitedQuota,
 	}
-	err := s.user.Create()
+	err := s.user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	s.team = authTypes.Team{
 		Name:  "tsuruteam",

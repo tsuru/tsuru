@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	stdContext "context"
 	"fmt"
 
@@ -23,6 +24,7 @@ import (
 type createRootUserCmd struct{}
 
 func (createRootUserCmd) Run(context *cmd.Context) error {
+	ctx := stdContext.Background()
 	context.RawOutput()
 	scheme, err := config.GetString("auth:scheme")
 	if err != nil {
@@ -35,7 +37,7 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 	email := context.Args[0]
 	user, err := auth.GetUserByEmail(email)
 	if err == nil {
-		err = addSuperRole(user)
+		err = addSuperRole(ctx, user)
 		if err != nil {
 			return err
 		}
@@ -68,13 +70,13 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 			return err
 		}
 	} else {
-		err = user.Create()
+		err = user.Create(stdContext.Background())
 		if err != nil {
 			return err
 		}
 	}
 
-	err = addSuperRole(user)
+	err = addSuperRole(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -83,20 +85,20 @@ func (createRootUserCmd) Run(context *cmd.Context) error {
 	return nil
 }
 
-func addSuperRole(u *auth.User) error {
+func addSuperRole(ctx context.Context, u *auth.User) error {
 	defaultRoleName := "AllowAll"
-	r, err := permission.FindRole(defaultRoleName)
+	r, err := permission.FindRole(ctx, defaultRoleName)
 	if err != nil {
 		r, err = permission.NewRole(defaultRoleName, string(permTypes.CtxGlobal), "")
 		if err != nil {
 			return err
 		}
 	}
-	err = r.AddPermissions("*")
+	err = r.AddPermissions(ctx, "*")
 	if err != nil {
 		return err
 	}
-	return u.AddRole(defaultRoleName, "")
+	return u.AddRole(ctx, defaultRoleName, "")
 }
 
 func (createRootUserCmd) Info() *cmd.Info {

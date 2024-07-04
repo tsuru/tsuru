@@ -5,6 +5,7 @@
 package native
 
 import (
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -44,7 +45,7 @@ func (s *S) TestCreatePasswordTokenErrors(c *check.C) {
 
 func (s *S) TestPasswordTokenUser(c *check.C) {
 	u := auth.User{Email: "need@who.com", Password: "123456"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	t, err := createPasswordToken(&u)

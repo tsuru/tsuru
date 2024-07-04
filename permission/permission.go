@@ -5,6 +5,7 @@
 package permission
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -135,11 +136,11 @@ func (p *Permission) String() string {
 }
 
 type Token interface {
-	Permissions() ([]Permission, error)
+	Permissions(ctx context.Context) ([]Permission, error)
 }
 
-func ListContextValues(t Token, scheme *PermissionScheme, failIfEmpty bool) ([]string, error) {
-	contexts := ContextsForPermission(t, scheme)
+func ListContextValues(ctx context.Context, t Token, scheme *PermissionScheme, failIfEmpty bool) ([]string, error) {
+	contexts := ContextsForPermission(ctx, t, scheme)
 	if len(contexts) == 0 && failIfEmpty {
 		return nil, ErrUnauthorized
 	}
@@ -172,16 +173,16 @@ func ContextsFromListForPermission(perms []Permission, scheme *PermissionScheme,
 	return contexts
 }
 
-func ContextsForPermission(token Token, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
-	perms, err := token.Permissions()
+func ContextsForPermission(ctx context.Context, token Token, scheme *PermissionScheme, ctxTypes ...permTypes.ContextType) []permTypes.PermissionContext {
+	perms, err := token.Permissions(ctx)
 	if err != nil {
 		return []permTypes.PermissionContext{}
 	}
 	return ContextsFromListForPermission(perms, scheme, ctxTypes...)
 }
 
-func Check(token Token, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
-	perms, err := token.Permissions()
+func Check(ctx context.Context, token Token, scheme *PermissionScheme, contexts ...permTypes.PermissionContext) bool {
+	perms, err := token.Permissions(ctx)
 	if err != nil {
 		log.Errorf("unable to read token permissions: %v", err)
 		return false
@@ -205,8 +206,8 @@ func CheckFromPermList(perms []Permission, scheme *PermissionScheme, contexts ..
 	return false
 }
 
-func TeamForPermission(t Token, scheme *PermissionScheme) (string, error) {
-	allContexts := ContextsForPermission(t, scheme)
+func TeamForPermission(ctx context.Context, t Token, scheme *PermissionScheme) (string, error) {
+	allContexts := ContextsForPermission(ctx, t, scheme)
 	teams := make([]string, 0, len(allContexts))
 	for _, ctx := range allContexts {
 		if ctx.CtxType == permTypes.CtxGlobal {

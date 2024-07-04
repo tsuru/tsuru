@@ -81,7 +81,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return createDisabledErr
 		}
-		if !permission.Check(t, permission.PermUserCreate) {
+		if !permission.Check(ctx, t, permission.PermUserCreate) {
 			return createDisabledErr
 		}
 	}
@@ -290,7 +290,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	tags, _ := InputValues(r, "tag")
 	changeRequest.Tags = append(changeRequest.Tags, tags...) // for compatibility
-	allowed := permission.Check(t, permission.PermTeamUpdate,
+	allowed := permission.Check(ctx, t, permission.PermTeamUpdate,
 		permission.Context(permTypes.CtxTeam, name),
 	)
 	if !allowed {
@@ -365,7 +365,7 @@ func updateTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	409: Team already exists
 func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	allowed := permission.Check(t, permission.PermTeamCreate)
+	allowed := permission.Check(ctx, t, permission.PermTeamCreate)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
@@ -416,7 +416,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	ctx := r.Context()
 	name := r.URL.Query().Get(":name")
-	allowed := permission.Check(t, permission.PermTeamDelete,
+	allowed := permission.Check(ctx, t, permission.PermTeamDelete,
 		permission.Context(permTypes.CtxTeam, name),
 	)
 	if !allowed {
@@ -466,7 +466,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	teamsMap := map[string]authTypes.Team{}
 	permsMap := map[string][]string{}
-	perms, err := t.Permissions()
+	perms, err := t.Permissions(ctx)
 	if err != nil {
 		return err
 	}
@@ -516,7 +516,7 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	canRead := permission.Check(t, permission.PermTeamRead)
+	canRead := permission.Check(ctx, t, permission.PermTeamRead)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
@@ -536,23 +536,23 @@ func teamInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	includedUsers := make([]*apiUser, 0)
 
-	filteredRolesMap, err := permission.ListRolesWithPermissionWithContextMap(permTypes.CtxTeam)
+	filteredRolesMap, err := permission.ListRolesWithPermissionWithContextMap(ctx, permTypes.CtxTeam)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 
-	canInclude := permission.Check(t, permission.PermTeam)
+	canInclude := permission.Check(ctx, t, permission.PermTeam)
 	if canInclude {
 		for _, user := range users {
 			for _, roleInstance := range user.Roles {
 				_, found := filteredRolesMap[roleInstance.Name]
 				if found && roleInstance.ContextValue == teamName {
 					roleMap := make(map[string]*permission.Role)
-					perms, err := t.Permissions()
+					perms, err := t.Permissions(ctx)
 					if err != nil {
 						return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 					}
-					userData, err := createAPIUser(perms, &user, roleMap, canInclude)
+					userData, err := createAPIUser(ctx, perms, &user, roleMap, canInclude)
 					if err != nil {
 						return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
 					}
@@ -586,7 +586,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if email == "" {
 		email = t.GetUserName()
 	}
-	allowed := permission.Check(t, permission.PermUserDelete,
+	allowed := permission.Check(ctx, t, permission.PermUserDelete,
 		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
@@ -675,7 +675,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if email == "" {
 		email = t.GetUserName()
 	}
-	allowed := permission.Check(t, permission.PermApikeyUpdate,
+	allowed := permission.Check(ctx, t, permission.PermApikeyUpdate,
 		permission.Context(permTypes.CtxUser, email),
 	)
 	if !allowed {
@@ -715,6 +715,7 @@ func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 //	401: Unauthorized
 //	404: User not found
 func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	u, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
@@ -727,7 +728,7 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		emailToCheckPerm = u.Email
 	}
 
-	if !permission.Check(t, permission.PermApikeyRead, permission.Context(permTypes.CtxUser, emailToCheckPerm)) {
+	if !permission.Check(ctx, t, permission.PermApikeyRead, permission.Context(permTypes.CtxUser, emailToCheckPerm)) {
 		return permission.ErrUnauthorized
 	}
 
@@ -759,7 +760,7 @@ type apiUser struct {
 	Groups      []string
 }
 
-func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
+func createAPIUser(ctx context.Context, perms []permission.Permission, user *auth.User, roleMap map[string]*permission.Role, includeAll bool) (*apiUser, error) {
 	if roleMap == nil {
 		roleMap = make(map[string]*permission.Role)
 	}
@@ -772,7 +773,7 @@ func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[s
 	}
 
 	for _, userRole := range user.Roles {
-		isGlobal, err := expandRoleData(perms, userRole, apiUsr, roleMap, includeAll, "")
+		isGlobal, err := expandRoleData(ctx, perms, userRole, apiUsr, roleMap, includeAll, "")
 		if err != nil {
 			return nil, err
 		}
@@ -787,7 +788,7 @@ func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[s
 	}
 	for _, group := range groups {
 		for _, groupRole := range group.Roles {
-			isGlobal, err := expandRoleData(perms, groupRole, apiUsr, roleMap, includeAll, group.Name)
+			isGlobal, err := expandRoleData(ctx, perms, groupRole, apiUsr, roleMap, includeAll, group.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -803,10 +804,10 @@ func createAPIUser(perms []permission.Permission, user *auth.User, roleMap map[s
 	return apiUsr, nil
 }
 
-func expandRoleData(perms []permission.Permission, userRole authTypes.RoleInstance, user *apiUser, roleMap map[string]*permission.Role, includeAll bool, group string) (bool, error) {
+func expandRoleData(ctx context.Context, perms []permission.Permission, userRole authTypes.RoleInstance, user *apiUser, roleMap map[string]*permission.Role, includeAll bool, group string) (bool, error) {
 	role := roleMap[userRole.Name]
 	if role == nil {
-		r, err := permission.FindRole(userRole.Name)
+		r, err := permission.FindRole(ctx, userRole.Name)
 		if err != nil {
 			return true, err
 		}
@@ -853,6 +854,7 @@ func expandRoleData(perms []permission.Permission, userRole authTypes.RoleInstan
 //	200: OK
 //	401: Unauthorized
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	userEmail := r.URL.Query().Get("userEmail")
 	roleName := r.URL.Query().Get("role")
 	contextValue := r.URL.Query().Get("context")
@@ -862,13 +864,13 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	apiUsers := make([]apiUser, 0, len(users))
 	roleMap := make(map[string]*permission.Role)
-	includeAll := permission.Check(t, permission.PermUserUpdate)
-	perms, err := t.Permissions()
+	includeAll := permission.Check(ctx, t, permission.PermUserUpdate)
+	perms, err := t.Permissions(ctx)
 	if err != nil {
 		return err
 	}
 	for _, user := range users {
-		usrData, err := createAPIUser(perms, &user, roleMap, includeAll)
+		usrData, err := createAPIUser(ctx, perms, &user, roleMap, includeAll)
 		if err != nil {
 			return err
 		}
@@ -904,11 +906,11 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-		perm, err := user.Permissions()
+		perm, err := user.Permissions(ctx)
 		if err != nil {
 			return err
 		}
-		userData, err := createAPIUser(perm, user, nil, true)
+		userData, err := createAPIUser(ctx, perm, user, nil, true)
 		if err != nil {
 			return err
 		}
@@ -927,15 +929,16 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //	200: OK
 //	401: Unauthorized
 func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ctx := r.Context()
 	user, err := auth.ConvertNewUser(t.User())
 	if err != nil {
 		return err
 	}
-	perms, err := t.Permissions()
+	perms, err := t.Permissions(ctx)
 	if err != nil {
 		return err
 	}
-	userData, err := createAPIUser(perms, user, nil, true)
+	userData, err := createAPIUser(ctx, perms, user, nil, true)
 	if err != nil {
 		return err
 	}
@@ -963,14 +966,14 @@ func teamUserList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	allowed := permission.Check(t, permission.PermTeamRead,
+	allowed := permission.Check(ctx, t, permission.PermTeamRead,
 		permission.Context(permTypes.CtxTeam, teamName),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 
-	allRoles, err := permission.ListRoles()
+	allRoles, err := permission.ListRoles(ctx)
 	if err != nil {
 		return err
 	}
@@ -1026,14 +1029,14 @@ func teamGroupList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	allowed := permission.Check(t, permission.PermTeamRead,
+	allowed := permission.Check(ctx, t, permission.PermTeamRead,
 		permission.Context(permTypes.CtxTeam, teamName),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 
-	allRoles, err := permission.ListRoles()
+	allRoles, err := permission.ListRoles(ctx)
 	if err != nil {
 		return err
 	}

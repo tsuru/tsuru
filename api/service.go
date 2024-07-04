@@ -42,7 +42,7 @@ func provisionReadableServices(ctx context.Context, contexts []permTypes.Permiss
 //	401: Unauthorized
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	contexts := permission.ContextsForPermission(t, permission.PermServiceRead)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceRead)
 	services, err := provisionReadableServices(ctx, contexts)
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 
 	if len(s.OwnerTeams) == 0 {
 		var team string
-		team, err = permission.TeamForPermission(t, permission.PermServiceCreate)
+		team, err = permission.TeamForPermission(ctx, t, permission.PermServiceCreate)
 		if err == permission.ErrTooManyTeams {
 			return &errors.HTTP{
 				Code:    http.StatusBadRequest,
@@ -136,7 +136,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 		}
 		s.OwnerTeams = []string{team}
 	}
-	allowed := permission.Check(t, permission.PermServiceCreate,
+	allowed := permission.Check(ctx, t, permission.PermServiceCreate,
 		permission.Context(permTypes.CtxTeam, s.OwnerTeams[0]),
 	)
 	if !allowed {
@@ -190,7 +190,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceUpdate,
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdate,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
@@ -233,7 +233,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceDelete,
+	allowed := permission.Check(ctx, t, permission.PermServiceDelete,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
@@ -277,7 +277,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceUpdateProxy,
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdateProxy,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
@@ -361,7 +361,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceUpdateGrantAccess,
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdateGrantAccess,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
@@ -411,7 +411,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) (
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceUpdateRevokeAccess,
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdateRevokeAccess,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {
@@ -464,7 +464,7 @@ func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) (err er
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceUpdateDoc,
+	allowed := permission.Check(ctx, t, permission.PermServiceUpdateDoc,
 		contextsForServiceProvision(&s)...,
 	)
 	if !allowed {

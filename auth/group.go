@@ -40,20 +40,20 @@ func (s *groupService) List(ctx context.Context, filter []string) ([]authTypes.G
 	return s.storage.List(ctx, filter)
 }
 
-func (s *groupService) AddRole(name, roleName, contextValue string) error {
+func (s *groupService) AddRole(ctx context.Context, name, roleName, contextValue string) error {
 	if name == "" {
 		return errGroupNameEmpty
 	}
-	_, err := permission.FindRole(roleName)
+	_, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return err
 	}
-	return s.storage.AddRole(name, roleName, contextValue)
+	return s.storage.AddRole(ctx, name, roleName, contextValue)
 }
 
-func (s *groupService) RemoveRole(name, roleName, contextValue string) error {
+func (s *groupService) RemoveRole(ctx context.Context, name, roleName, contextValue string) error {
 	if name == "" {
 		return errGroupNameEmpty
 	}
-	return s.storage.RemoveRole(name, roleName, contextValue)
+	return s.storage.RemoveRole(ctx, name, roleName, contextValue)
 }

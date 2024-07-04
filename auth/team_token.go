@@ -63,8 +63,8 @@ func (t *teamToken) Engine() string {
 	return "team"
 }
 
-func (t *teamToken) Permissions() ([]permission.Permission, error) {
-	return expandRolePermissions(t.Roles)
+func (t *teamToken) Permissions(ctx context.Context) ([]permission.Permission, error) {
+	return expandRolePermissions(ctx, t.Roles)
 }
 
 type teamTokenService struct {
@@ -160,7 +160,7 @@ func (s *teamTokenService) Create(ctx context.Context, args authTypes.TeamTokenC
 }
 
 func (s *teamTokenService) AddRole(ctx context.Context, tokenID string, roleName, contextValue string) error {
-	_, err := permission.FindRole(roleName)
+	_, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return err
 	}
@@ -207,9 +207,9 @@ func (s *teamTokenService) FindByTokenID(ctx context.Context, tokenID string) (a
 	return *t, nil
 }
 
-func getTokenTeams(t Token) []string {
+func getTokenTeams(ctx context.Context, t Token) []string {
 	var teams []string
-	contexts := permission.ContextsForPermission(t, permission.PermTeamTokenRead, permTypes.CtxGlobal, permTypes.CtxTeam)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermTeamTokenRead, permTypes.CtxGlobal, permTypes.CtxTeam)
 	for _, ctx := range contexts {
 		if ctx.CtxType == permTypes.CtxGlobal {
 			teams = nil
@@ -242,11 +242,11 @@ func (s *teamTokenService) Update(ctx context.Context, args authTypes.TeamTokenU
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
-	userPerms, err := t.Permissions()
+	userPerms, err := t.Permissions(ctx)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
-	canView, err := canViewTokenValue(userPerms, token)
+	canView, err := canViewTokenValue(ctx, userPerms, token)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -261,11 +261,11 @@ func (s *teamTokenService) Info(ctx context.Context, tokenID string, t authTypes
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
-	userPerms, err := t.Permissions()
+	userPerms, err := t.Permissions(ctx)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
-	canView, err := canViewTokenValue(userPerms, token)
+	canView, err := canViewTokenValue(ctx, userPerms, token)
 	if err != nil {
 		return authTypes.TeamToken{}, err
 	}
@@ -276,16 +276,16 @@ func (s *teamTokenService) Info(ctx context.Context, tokenID string, t authTypes
 }
 
 func (s *teamTokenService) FindByUserToken(ctx context.Context, t authTypes.Token) ([]authTypes.TeamToken, error) {
-	teamTokens, err := s.storage.FindByTeams(ctx, getTokenTeams(t))
+	teamTokens, err := s.storage.FindByTeams(ctx, getTokenTeams(ctx, t))
 	if err != nil {
 		return nil, err
 	}
-	userPerms, err := t.Permissions()
+	userPerms, err := t.Permissions(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for i, teamToken := range teamTokens {
-		canView, err := canViewTokenValue(userPerms, &teamToken)
+		canView, err := canViewTokenValue(ctx, userPerms, &teamToken)
 		if err != nil {
 			return nil, err
 		}
@@ -296,8 +296,8 @@ func (s *teamTokenService) FindByUserToken(ctx context.Context, t authTypes.Toke
 	return teamTokens, nil
 }
 
-func canUseRole(userPerms []permission.Permission, roleName, contextValue string) (bool, error) {
-	role, err := permission.FindRole(roleName)
+func canUseRole(ctx context.Context, userPerms []permission.Permission, roleName, contextValue string) (bool, error) {
+	role, err := permission.FindRole(ctx, roleName)
 	if err != nil {
 		return false, err
 	}
@@ -310,9 +310,9 @@ func canUseRole(userPerms []permission.Permission, roleName, contextValue string
 	return true, nil
 }
 
-func canViewTokenValue(userPerms []permission.Permission, teamToken *authTypes.TeamToken) (bool, error) {
+func canViewTokenValue(ctx context.Context, userPerms []permission.Permission, teamToken *authTypes.TeamToken) (bool, error) {
 	for _, roleInstance := range teamToken.Roles {
-		canUse, err := canUseRole(userPerms, roleInstance.Name, roleInstance.ContextValue)
+		canUse, err := canUseRole(ctx, userPerms, roleInstance.Name, roleInstance.ContextValue)
 		if err != nil {
 			return false, err
 		}

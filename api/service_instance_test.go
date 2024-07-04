@@ -272,9 +272,9 @@ func (s *ServiceInstanceSuite) TestCreateInstanceTeamOwnerMissing(c *check.C) {
 	}
 	role, err := permission.NewRole("instance-user", string(p.Context.CtxType), "")
 	c.Assert(err, check.IsNil)
-	err = role.AddPermissions(p.Scheme.FullName())
+	err = role.AddPermissions(stdContext.TODO(), p.Scheme.FullName())
 	c.Assert(err, check.IsNil)
-	err = s.user.AddRole(role.Name, p.Context.Value)
+	err = s.user.AddRole(stdContext.TODO(), role.Name, p.Context.Value)
 	c.Assert(err, check.IsNil)
 	params := map[string]interface{}{
 		"name":         "brainsql",

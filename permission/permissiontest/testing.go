@@ -22,6 +22,7 @@ func CustomUserWithPermission(c *check.C, scheme auth.Scheme, baseName string, p
 }
 
 func ExistingUserWithPermission(c *check.C, scheme auth.Scheme, user *auth.User, perm ...permission.Permission) auth.Token {
+	ctx := context.TODO()
 	token, err := scheme.(auth.UserScheme).Login(context.TODO(), map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	for _, p := range perm {
@@ -36,9 +37,9 @@ func ExistingUserWithPermission(c *check.C, scheme auth.Scheme, user *auth.User,
 		if name == "" {
 			name = "*"
 		}
-		err = role.AddPermissions(name)
+		err = role.AddPermissions(ctx, name)
 		c.Assert(err, check.IsNil)
-		err = user.AddRole(role.Name, p.Context.Value)
+		err = user.AddRole(context.TODO(), role.Name, p.Context.Value)
 		c.Assert(err, check.IsNil)
 	}
 	return token

@@ -4,7 +4,9 @@
 
 package storagev2
 
-import "go.mongodb.org/mongo-driver/mongo"
+import (
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 func PoolCollection() (*mongo.Collection, error) {
 	return Collection("pool")
@@ -24,4 +26,8 @@ func ServicesCollection() (*mongo.Collection, error) {
 
 func ServiceInstancesCollection() (*mongo.Collection, error) {
 	return Collection("service_instances")
+}
+
+func RolesCollection() (*mongo.Collection, error) {
+	return Collection("roles")
 }

@@ -101,7 +101,7 @@ func (s *oidcScheme) Auth(ctx context.Context, token string) (auth.Token, error)
 	if err == authTypes.ErrUserNotFound {
 		if s.registrationEnabled {
 			user = &auth.User{Email: identity.Email, Groups: identity.Groups}
-			err = user.Create()
+			err = user.Create(ctx)
 			if err != nil {
 				return nil, err
 			}

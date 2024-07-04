@@ -148,7 +148,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	allowed := permission.Check(token, permission.PermAppRunShell, contextsForApp(&a)...)
+	allowed := permission.Check(ctx, token, permission.PermAppRunShell, contextsForApp(&a)...)
 	if !allowed {
 		httpErr = permission.ErrUnauthorized
 		return

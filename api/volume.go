@@ -59,7 +59,7 @@ func contextsForVolume(v *volumeTypes.Volume) []permTypes.PermissionContext {
 //	401: Unauthorized
 func volumesList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	contexts := permission.ContextsForPermission(t, permission.PermVolumeRead)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermVolumeRead)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -94,7 +94,7 @@ func volumeInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	canRead := permission.Check(t, permission.PermVolumeRead, contextsForVolume(v)...)
+	canRead := permission.Check(ctx, t, permission.PermVolumeRead, contextsForVolume(v)...)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}
@@ -124,7 +124,7 @@ func volumeCreate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 	}
 	inputVolume.Plan.Opts = nil
 	inputVolume.Status = ""
-	canCreate := permission.Check(t, permission.PermVolumeCreate,
+	canCreate := permission.Check(ctx, t, permission.PermVolumeCreate,
 		permission.Context(permTypes.CtxTeam, inputVolume.TeamOwner),
 		permission.Context(permTypes.CtxPool, inputVolume.Pool),
 	)
@@ -190,7 +190,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 		}
 		return err
 	}
-	canUpdate := permission.Check(t, permission.PermVolumeUpdate, contextsForVolume(dbVolume)...)
+	canUpdate := permission.Check(ctx, t, permission.PermVolumeUpdate, contextsForVolume(dbVolume)...)
 	if !canUpdate {
 		return permission.ErrUnauthorized
 	}
@@ -219,7 +219,7 @@ func volumeUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) (err err
 //	401: Unauthorized
 func volumePlansList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	contexts := permission.ContextsForPermission(t, permission.PermVolumeCreate)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermVolumeCreate)
 	if len(contexts) == 0 {
 		return permission.ErrUnauthorized
 	}
@@ -254,7 +254,7 @@ func volumeDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	canDelete := permission.Check(t, permission.PermVolumeDelete, contextsForVolume(dbVolume)...)
+	canDelete := permission.Check(ctx, t, permission.PermVolumeDelete, contextsForVolume(dbVolume)...)
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
@@ -302,7 +302,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	canBindVolume := permission.Check(t, permission.PermVolumeUpdateBind, contextsForVolume(dbVolume)...)
+	canBindVolume := permission.Check(ctx, t, permission.PermVolumeUpdateBind, contextsForVolume(dbVolume)...)
 	if !canBindVolume {
 		return permission.ErrUnauthorized
 	}
@@ -310,7 +310,7 @@ func volumeBind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canBindApp := permission.Check(t, permission.PermAppUpdateBindVolume, contextsForApp(&a)...)
+	canBindApp := permission.Check(ctx, t, permission.PermAppUpdateBindVolume, contextsForApp(&a)...)
 	if !canBindApp {
 		return permission.ErrUnauthorized
 	}
@@ -373,7 +373,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
-	canUnbind := permission.Check(t, permission.PermVolumeUpdateUnbind, contextsForVolume(dbVolume)...)
+	canUnbind := permission.Check(ctx, t, permission.PermVolumeUpdateUnbind, contextsForVolume(dbVolume)...)
 	if !canUnbind {
 		return permission.ErrUnauthorized
 	}
@@ -381,7 +381,7 @@ func volumeUnbind(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	canUnbindApp := permission.Check(t, permission.PermAppUpdateUnbindVolume, contextsForApp(&a)...)
+	canUnbindApp := permission.Check(ctx, t, permission.PermAppUpdateUnbindVolume, contextsForApp(&a)...)
 	if !canUnbindApp {
 		return permission.ErrUnauthorized
 	}

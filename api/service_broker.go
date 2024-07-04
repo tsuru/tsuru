@@ -25,7 +25,7 @@ import (
 //	401: Unauthorized
 func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermServiceBrokerRead) {
+	if !permission.Check(ctx, t, permission.PermServiceBrokerRead) {
 		return permission.ErrUnauthorized
 	}
 	brokers, err := servicemanager.ServiceBroker.List(ctx)
@@ -51,7 +51,7 @@ func serviceBrokerList(w http.ResponseWriter, r *http.Request, t auth.Token) err
 //	409: Broker already exists
 func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermServiceBrokerCreate) {
+	if !permission.Check(ctx, t, permission.PermServiceBrokerCreate) {
 		return permission.ErrUnauthorized
 	}
 	broker, err := decodeServiceBroker(r)
@@ -90,7 +90,7 @@ func serviceBrokerAdd(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 //	404: Not Found
 func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermServiceBrokerUpdate) {
+	if !permission.Check(ctx, t, permission.PermServiceBrokerUpdate) {
 		return permission.ErrUnauthorized
 	}
 	brokerName := r.URL.Query().Get(":broker")
@@ -129,7 +129,7 @@ func serviceBrokerUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) e
 //	404: Not Found
 func serviceBrokerDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
-	if !permission.Check(t, permission.PermServiceBrokerDelete) {
+	if !permission.Check(ctx, t, permission.PermServiceBrokerDelete) {
 		return permission.ErrUnauthorized
 	}
 	brokerName := r.URL.Query().Get(":broker")

@@ -5,6 +5,7 @@
 package native
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"fmt"
@@ -58,8 +59,8 @@ func (t *Token) GetUserName() string {
 func (t *Token) Engine() string {
 	return "native"
 }
-func (t *Token) Permissions() ([]permission.Permission, error) {
-	return auth.BaseTokenPermission(t)
+func (t *Token) Permissions(ctx context.Context) ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(ctx, t)
 }
 
 func loadConfig() error {

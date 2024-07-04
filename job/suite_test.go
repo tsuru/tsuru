@@ -54,7 +54,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 		Email: "august@tswift.com",
 		Quota: quota.UnlimitedQuota,
 	}
-	err := user.Create()
+	err := user.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	s.user = &authTypes.User{
 		Email: user.Email,

@@ -541,7 +541,7 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 
 func (s *S) TestCannotCreateAppWithoutTeamOwner(c *check.C) {
 	u := auth.User{Email: "perpetual@yes.com"}
-	err := u.Create()
+	err := u.Create(context.TODO())
 	c.Assert(err, check.IsNil)
 	a := App{Name: "beyond"}
 	err = CreateApp(context.TODO(), &a, &u)

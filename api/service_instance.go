@@ -70,20 +70,20 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	instance.Tags = append(instance.Tags, tags...) // for compatibility
 	var teamOwner string
 	if instance.TeamOwner == "" {
-		teamOwner, err = permission.TeamForPermission(t, permission.PermServiceInstanceCreate)
+		teamOwner, err = permission.TeamForPermission(ctx, t, permission.PermServiceInstanceCreate)
 		if err != nil {
 			return err
 		}
 		instance.TeamOwner = teamOwner
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceCreate,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceCreate,
 		permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 	)
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
 	if srv.IsRestricted {
-		allowed := permission.Check(t, permission.PermServiceRead,
+		allowed := permission.Check(ctx, t, permission.PermServiceRead,
 			contextsForService(&srv)...,
 		)
 		if !allowed {
@@ -204,7 +204,7 @@ func updateServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	for _, perm := range wantedPerms {
-		allowed := permission.Check(t, perm,
+		allowed := permission.Check(ctx, t, perm,
 			contextsForServiceInstance(si, serviceName)...,
 		)
 		if !allowed {
@@ -262,7 +262,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	w.Header().Set("Content-Type", "application/x-json-stream")
-	allowed := permission.Check(t, permission.PermServiceInstanceDelete,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceDelete,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -382,12 +382,12 @@ func readableServices(ctx stdContext.Context, contexts []permTypes.PermissionCon
 func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ctx := r.Context()
 	appName := r.URL.Query().Get("app")
-	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceInstanceRead)
 	instances, err := readableInstances(ctx, contexts, appName, "")
 	if err != nil {
 		return err
 	}
-	contexts = permission.ContextsForPermission(t, permission.PermServiceRead)
+	contexts = permission.ContextsForPermission(ctx, t, permission.PermServiceRead)
 	services, err := readableServices(ctx, contexts)
 	if err != nil {
 		return err
@@ -439,7 +439,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceReadStatus,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceReadStatus,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -489,7 +489,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceRead,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceRead,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -538,7 +538,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceInstanceRead)
 	instances, err := readableInstances(ctx, contexts, "", serviceName)
 	if err != nil {
 		return err
@@ -570,7 +570,7 @@ func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	if s.IsRestricted {
-		allowed := permission.Check(t, permission.PermServiceReadDoc,
+		allowed := permission.Check(ctx, t, permission.PermServiceReadDoc,
 			contextsForService(&s)...,
 		)
 		if !allowed {
@@ -620,7 +620,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 
 	if s.IsRestricted {
-		allowed := permission.Check(t, permission.PermServiceReadPlans,
+		allowed := permission.Check(ctx, t, permission.PermServiceReadPlans,
 			contextsForService(&s)...,
 		)
 		if !allowed {
@@ -647,7 +647,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func possiblePoolsForService(ctx stdContext.Context, t auth.Token) ([]string, error) {
-	global, teams := teamsForToken(t)
+	global, teams := teamsForToken(ctx, t)
 	var pools []pool.Pool
 	var err error
 	if global {
@@ -668,8 +668,8 @@ func possiblePoolsForService(ctx stdContext.Context, t auth.Token) ([]string, er
 	return result, nil
 }
 
-func teamsForToken(t auth.Token) (global bool, teams []string) {
-	contexts := permission.ContextsForPermission(t, permission.PermServiceInstanceRead)
+func teamsForToken(ctx stdContext.Context, t auth.Token) (global bool, teams []string) {
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermServiceInstanceRead)
 	teams = []string{}
 
 	for _, c := range contexts {
@@ -700,7 +700,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateProxy,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -746,7 +746,7 @@ func serviceInstanceProxyV2(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateProxy,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateProxy,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -794,7 +794,7 @@ func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateGrant,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateGrant,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {
@@ -833,7 +833,7 @@ func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.To
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateRevoke,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateRevoke,
 		contextsForServiceInstance(serviceInstance, serviceName)...,
 	)
 	if !allowed {

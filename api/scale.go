@@ -31,7 +31,7 @@ func autoScaleUnitsInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (e
 		return err
 	}
 
-	canRead := permission.Check(t, permission.PermAppRead,
+	canRead := permission.Check(ctx, t, permission.PermAppRead,
 		contextsForApp(&a)...,
 	)
 	if !canRead {
@@ -64,7 +64,7 @@ func addAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) (er
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitAutoscaleAdd,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleAdd,
 		contextsForApp(&a)...,
 	)
 	if !allowed {
@@ -121,7 +121,7 @@ func removeAutoScaleUnits(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermAppUpdateUnitAutoscaleRemove,
+	allowed := permission.Check(ctx, t, permission.PermAppUpdateUnitAutoscaleRemove,
 		contextsForApp(&a)...,
 	)
 	if !allowed {

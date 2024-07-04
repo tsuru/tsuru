@@ -115,8 +115,8 @@ func jobList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if pool := r.URL.Query().Get("pool"); pool != "" {
 		filter.Pool = pool
 	}
-	contexts := permission.ContextsForPermission(t, permission.PermJobRead)
-	contexts = append(contexts, permission.ContextsForPermission(t, permission.PermJobRead)...)
+	contexts := permission.ContextsForPermission(ctx, t, permission.PermJobRead)
+	contexts = append(contexts, permission.ContextsForPermission(ctx, t, permission.PermJobRead)...)
 	if len(contexts) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
@@ -148,7 +148,7 @@ func jobTrigger(w http.ResponseWriter, r *http.Request, t auth.Token) (err error
 	if err != nil {
 		return err
 	}
-	canRun := permission.Check(t, permission.PermJobRun,
+	canRun := permission.Check(ctx, t, permission.PermJobRun,
 		contextsForJob(j)...,
 	)
 	if !canRun {
@@ -198,7 +198,7 @@ func jobInfo(w http.ResponseWriter, r *http.Request, t auth.Token) (err error) {
 	if err != nil {
 		return err
 	}
-	canGet := permission.Check(t, permission.PermJobRead,
+	canGet := permission.Check(ctx, t, permission.PermJobRead,
 		contextsForJob(j)...,
 	)
 	if !canGet {
@@ -268,7 +268,7 @@ func killJob(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	force, _ := strconv.ParseBool(InputValue(r, "force"))
-	allowed := permission.Check(t, permission.PermJobUnitKill,
+	allowed := permission.Check(ctx, t, permission.PermJobUnitKill,
 		contextsForJob(j)...,
 	)
 	if !allowed {
@@ -328,7 +328,7 @@ func updateJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	canUpdate := permission.Check(t, permission.PermJobUpdate,
+	canUpdate := permission.Check(ctx, t, permission.PermJobUpdate,
 		permission.Context(permTypes.CtxTeam, oldJob.TeamOwner),
 	)
 	if !canUpdate {
@@ -440,7 +440,7 @@ func createJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 			return err
 		}
 	}
-	canCreate := permission.Check(t, permission.PermJobCreate,
+	canCreate := permission.Check(ctx, t, permission.PermJobCreate,
 		permission.Context(permTypes.CtxTeam, j.TeamOwner),
 	)
 	if !canCreate {
@@ -506,7 +506,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	canDelete := permission.Check(t, permission.PermJobDelete,
+	canDelete := permission.Check(ctx, t, permission.PermJobDelete,
 		contextsForJob(j)...,
 	)
 	if !canDelete {
@@ -558,7 +558,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateBind,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateBind,
 		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
 			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 			permission.Context(permTypes.CtxServiceInstance, instance.Name),
@@ -572,7 +572,7 @@ func bindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token
 	if err != nil {
 		return err
 	}
-	canUpdate := permission.Check(t, permission.PermJobUpdate,
+	canUpdate := permission.Check(ctx, t, permission.PermJobUpdate,
 		contextsForJob(j)...,
 	)
 	if !canUpdate {
@@ -639,7 +639,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermServiceInstanceUpdateUnbind,
+	allowed := permission.Check(ctx, t, permission.PermServiceInstanceUpdateUnbind,
 		append(permission.Contexts(permTypes.CtxTeam, instance.Teams),
 			permission.Context(permTypes.CtxTeam, instance.TeamOwner),
 			permission.Context(permTypes.CtxServiceInstance, instance.Name),
@@ -648,7 +648,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 	if !allowed {
 		return permission.ErrUnauthorized
 	}
-	allowed = permission.Check(t, permission.PermJobUpdate,
+	allowed = permission.Check(ctx, t, permission.PermJobUpdate,
 		contextsForJob(j)...,
 	)
 	if !allowed {
@@ -659,7 +659,7 @@ func unbindJobServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Tok
 		if errGet != nil {
 			return errGet
 		}
-		allowed = permission.Check(t, permission.PermServiceUpdate,
+		allowed = permission.Check(ctx, t, permission.PermServiceUpdate,
 			contextsForServiceProvision(&s)...,
 		)
 		if !allowed {
@@ -723,7 +723,7 @@ func getJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 
-	allowed := permission.Check(t, permission.PermJobRead,
+	allowed := permission.Check(ctx, t, permission.PermJobRead,
 		contextsForJob(job)...,
 	)
 	if !allowed {
@@ -793,7 +793,7 @@ func setJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err error)
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermJobUpdate,
+	allowed := permission.Check(ctx, t, permission.PermJobUpdate,
 		contextsForJob(j)...,
 	)
 	if !allowed {
@@ -883,7 +883,7 @@ func unsetJobEnv(w http.ResponseWriter, r *http.Request, t auth.Token) (err erro
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermJobUpdate,
+	allowed := permission.Check(ctx, t, permission.PermJobUpdate,
 		contextsForJob(j)...,
 	)
 	if !allowed {
@@ -941,7 +941,7 @@ func jobLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	allowed := permission.Check(t, permission.PermJobReadLogs,
+	allowed := permission.Check(ctx, t, permission.PermJobReadLogs,
 		contextsForJob(j)...,
 	)
 	if !allowed {
