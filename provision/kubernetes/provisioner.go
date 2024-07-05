@@ -1616,7 +1616,7 @@ func (p *kubernetesProvisioner) ToggleRoutable(ctx context.Context, a provision.
 		return errors.Errorf("no deployment found for version %v", version.Version())
 	}
 	for _, depData := range depsForVersion {
-		err = toggleRoutableDeployment(ctx, client, version.Version(), depData.dep, isRoutable)
+		err = toggleRoutableDeployment(ctx, client, depData.dep, isRoutable)
 		if err != nil {
 			return err
 		}
@@ -1624,13 +1624,13 @@ func (p *kubernetesProvisioner) ToggleRoutable(ctx context.Context, a provision.
 	return ensureAutoScale(ctx, client, a, "")
 }
 
-func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, version int, dep *appsv1.Deployment, isRoutable bool) (err error) {
-	ls := labelOnlySetFromMetaPrefix(&dep.ObjectMeta, false)
-	ls.ToggleIsRoutable(isRoutable)
-	ls.SetVersion(version)
+func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, dep *appsv1.Deployment, isRoutable bool) (err error) {
+	isRouteableLabel := "tsuru.io/is-routable"
+	isRouteableValue := strconv.FormatBool(isRoutable)
+
 	dep.Spec.Paused = true
-	dep.ObjectMeta.Labels = ls.WithoutVersion().ToLabels()
-	dep.Spec.Template.ObjectMeta.Labels = ls.PodLabels()
+	dep.ObjectMeta.Labels[isRouteableLabel] = isRouteableValue
+	dep.Spec.Template.ObjectMeta.Labels[isRouteableLabel] = isRouteableValue
 	_, err = client.AppsV1().Deployments(dep.Namespace).Update(ctx, dep, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.WithStack(err)
@@ -1658,11 +1658,9 @@ func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, versio
 		}
 		return err
 	}
-	ls = labelOnlySetFromMetaPrefix(&rs.ObjectMeta, false)
-	ls.ToggleIsRoutable(isRoutable)
-	ls.SetVersion(version)
-	rs.ObjectMeta.Labels = ls.ToLabels()
-	rs.Spec.Template.ObjectMeta.Labels = ls.ToLabels()
+
+	rs.ObjectMeta.Labels[isRouteableLabel] = isRouteableValue
+	rs.Spec.Template.ObjectMeta.Labels[isRouteableLabel] = isRouteableValue
 	_, err = client.AppsV1().ReplicaSets(rs.Namespace).Update(ctx, rs, metav1.UpdateOptions{})
 	if err != nil {
 		return errors.WithStack(err)
@@ -1673,10 +1671,7 @@ func toggleRoutableDeployment(ctx context.Context, client *ClusterClient, versio
 		return err
 	}
 	for _, pod := range pods {
-		ls = labelOnlySetFromMetaPrefix(&pod.ObjectMeta, false)
-		ls.ToggleIsRoutable(isRoutable)
-		ls.SetVersion(version)
-		pod.ObjectMeta.Labels = ls.ToLabels()
+		pod.ObjectMeta.Labels[isRouteableLabel] = isRouteableValue
 		_, err = client.CoreV1().Pods(pod.Namespace).Update(ctx, &pod, metav1.UpdateOptions{})
 		if err != nil {
 			return errors.WithStack(err)

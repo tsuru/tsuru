@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tsuru/tsuru/app/image"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	tsuruNet "github.com/tsuru/tsuru/net"
@@ -662,7 +661,6 @@ type deploymentInfo struct {
 	dep        *appsv1.Deployment
 	process    string
 	version    int
-	isLegacy   bool
 	isBase     bool
 	isRoutable bool
 	replicas   int
@@ -701,26 +699,15 @@ func groupDeployments(deps []appsv1.Deployment) groupedDeploymentsAll {
 	for i, dep := range deps {
 		labels := labelSetFromMeta(&dep.Spec.Template.ObjectMeta)
 		version := labels.AppVersion()
-		isLegacy := false
 		isBase := labels.IsBase()
 		isRoutable := labels.IsRoutable()
-		if version == 0 {
-			isBase = true
-			isLegacy = true
-			isRoutable = true
-			if len(dep.Spec.Template.Spec.Containers) == 0 {
-				continue
-			}
-			_, tag := image.SplitImageName(dep.Spec.Template.Spec.Containers[0].Image)
-			version, _ = strconv.Atoi(strings.TrimPrefix(tag, "v"))
-		}
+
 		if version == 0 {
 			continue
 		}
 		di := deploymentInfo{
 			dep:        &deps[i],
 			version:    version,
-			isLegacy:   isLegacy,
 			isBase:     isBase,
 			isRoutable: isRoutable,
 			process:    labels.AppProcess(),
