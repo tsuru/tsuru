@@ -2710,6 +2710,35 @@ func (s *S) TestProvisionerToggleRoutable(c *check.C) {
 	c.Assert(pods.Items[0].Labels["tsuru.io/is-routable"], check.Equals, "true")
 }
 
+func (s *S) TestProvisionerToggleRoutableAtomic(c *check.C) {
+	a, wait, rollback := s.mock.DefaultReactions(c)
+	defer rollback()
+	version := newSuccessfulVersion(c, a, map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
+	})
+	err := s.p.AddUnits(context.TODO(), a, 1, "web", version, nil)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	dep, err := s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	dep.Spec.Template.ObjectMeta.Labels["tsuru.io/test-atomic"] = "true"
+	_, err = s.client.AppsV1().Deployments("default").Update(context.TODO(), dep, metav1.UpdateOptions{})
+	c.Assert(err, check.IsNil)
+
+	err = s.p.ToggleRoutable(context.TODO(), a, version, false)
+	c.Assert(err, check.IsNil)
+	wait()
+
+	dep, err = s.client.AppsV1().Deployments("default").Get(context.TODO(), "myapp-web", metav1.GetOptions{})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(dep.Spec.Template.ObjectMeta.Labels["tsuru.io/test-atomic"], check.Equals, "true")
+}
+
 func (s *S) TestEnsureAppCustomResourceSyncedPreserveAnnotations(c *check.C) {
 	ctx := context.TODO()
 	a, wait, rollback := s.mock.DefaultReactions(c)

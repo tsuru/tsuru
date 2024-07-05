@@ -1129,14 +1129,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 		return err
 	}
 
-	if depArgs.baseDep != nil && depArgs.baseDep.isLegacy && depArgs.name != depArgs.baseDep.dep.Name {
-		fmt.Fprint(m.writer, "\n---- Updating legacy deployment ----\n")
-		err = toggleRoutableDeployment(ctx, m.client, depArgs.baseDep.version, depArgs.baseDep.dep, true)
-		if err != nil {
-			return errors.Wrap(err, "unable to update legacy deployment")
-		}
-	}
-
 	oldDep, err := m.client.AppsV1().Deployments(ns).Get(ctx, depArgs.name, metav1.GetOptions{})
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
@@ -1242,7 +1234,6 @@ func (m *serviceManager) DeployService(ctx context.Context, opts servicecommon.D
 type baseDepArgs struct {
 	name     string
 	selector map[string]string
-	isLegacy bool
 	baseDep  *deploymentInfo
 }
 
@@ -1277,7 +1268,6 @@ func (m *serviceManager) baseDeploymentArgs(ctx context.Context, a provision.App
 		if !versionDep.isBase {
 			labels.ReplaceIsIsolatedRunWithNew()
 		}
-		result.isLegacy = versionDep.isLegacy
 		result.name = versionDep.dep.Name
 		result.selector = versionDep.dep.Spec.Selector.MatchLabels
 		return result, nil

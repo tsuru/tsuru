@@ -346,10 +346,6 @@ func (s *LabelSet) SetIsRoutable() {
 	s.addLabel(labelIsRoutable, strconv.FormatBool(true))
 }
 
-func (s *LabelSet) ToggleIsRoutable(isRoutable bool) {
-	s.addLabel(labelIsRoutable, strconv.FormatBool(isRoutable))
-}
-
 func (s *LabelSet) SetVersion(version int) {
 	s.addLabel(LabelAppVersion, strconv.Itoa(version))
 	if s.RawLabels == nil {
